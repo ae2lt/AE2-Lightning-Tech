@@ -138,9 +138,10 @@ public final class RailgunChainResolver {
         List<Hit> out = new ArrayList<>();
         if (!ctx.isMaxCharged() || radius <= 0) return out;
         AABB box = new AABB(center, center).inflate(radius);
+        double r2 = radius * radius;
         for (LivingEntity ent : level.getEntitiesOfClass(LivingEntity.class, box,
                 e -> e != source && shouldTarget(e, ctx.pvpLock()))) {
-            if (ent.position().distanceTo(center) > radius) continue;
+            if (ent.position().distanceToSqr(center) > r2) continue;
             double dmg = ctx.firstDamage() * damageRatio;
             if (ent instanceof Player) {
                 dmg *= 0.5D; // halved for players to avoid wiping teammates
@@ -170,11 +171,13 @@ public final class RailgunChainResolver {
         List<Hit> out = new ArrayList<>();
         if (radius <= 0 || damageRatio <= 0) return out;
         AABB box = new AABB(center, center).inflate(radius);
+        double r2 = radius * radius;
         for (LivingEntity ent : level.getEntitiesOfClass(LivingEntity.class, box,
                 e -> e != source && shouldTarget(e, ctx.pvpLock()))) {
             if (ent.getId() == primaryId) continue;
-            double d = ent.position().distanceTo(center);
-            if (d > radius) continue;
+            double d2 = ent.position().distanceToSqr(center);
+            if (d2 > r2) continue;
+            double d = Math.sqrt(d2);
             // Linear falloff: 1.0 at center → 0.4 at edge
             double falloff = 1.0D - (d / radius) * 0.6D;
             double dmg = ctx.firstDamage() * damageRatio * falloff;
@@ -197,15 +200,16 @@ public final class RailgunChainResolver {
         Vec3 c = from.position();
         AABB box = new AABB(c, c).inflate(radius);
         LivingEntity best = null;
-        double bestDist = Double.MAX_VALUE;
+        double r2 = radius * radius;
+        double bestDistSqr = Double.MAX_VALUE;
         for (LivingEntity ent : level.getEntitiesOfClass(LivingEntity.class, box, e -> shouldTarget(e, pvpLock))) {
             if (ent == source) continue;
             if (visited.contains(ent.getId())) continue;
-            double d = ent.position().distanceTo(c);
-            if (d > radius) continue;
-            if (d < bestDist) {
+            double d2 = ent.position().distanceToSqr(c);
+            if (d2 > r2) continue;
+            if (d2 < bestDistSqr) {
                 best = ent;
-                bestDist = d;
+                bestDistSqr = d2;
             }
         }
         return best;

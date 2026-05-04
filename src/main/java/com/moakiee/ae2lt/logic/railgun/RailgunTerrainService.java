@@ -49,10 +49,13 @@ public final class RailgunTerrainService {
 
     private static final Deque<DestroyJob> PENDING = new ArrayDeque<>();
 
+    /** Lazy-built identity set of blocks in our MODID / AE2 namespaces (registry-frozen). */
+    private static volatile java.util.Set<Block> PROTECTED_BLOCKS;
+
     public record DestroyJob(
             ResourceKey<Level> dim,
             UUID playerId,
-            List<BlockPos> queue,
+            Deque<BlockPos> queue,
             float maxHardness,
             ItemStack toolStack) {}
 
@@ -79,8 +82,17 @@ public final class RailgunTerrainService {
                 1.5F + tier.ordinal() * 0.3F, 0.5F);
 
         List<BlockPos> candidates = collectSphere(centerPos, radius);
-        java.util.Collections.shuffle(candidates, new java.util.Random(level.random.nextLong()));
-        PENDING.add(new DestroyJob(level.dimension(), player.getUUID(), candidates, maxHardness, stack.copy()));
+        // Fisher-Yates shuffle directly on the level's RandomSource (Collections.shuffle
+        // would need a java.util.Random). Then move into an ArrayDeque so per-tick
+        // consumption is O(1) head-pop instead of ArrayList.remove(0)'s O(n) shift.
+        for (int i = candidates.size() - 1; i > 0; i--) {
+            int j = level.random.nextInt(i + 1);
+            BlockPos tmp = candidates.get(i);
+            candidates.set(i, candidates.get(j));
+            candidates.set(j, tmp);
+        }
+        PENDING.add(new DestroyJob(level.dimension(), player.getUUID(),
+                new ArrayDeque<>(candidates), maxHardness, stack.copy()));
     }
 
     public static void queueDestroyAlongPath(ServerLevel level, List<Vec3> hitPoints,
@@ -89,7 +101,8 @@ public final class RailgunTerrainService {
         float maxHardness = (float) RailgunDefaults.PENETRATION_DESTROY_HARDNESS;
         for (Vec3 p : hitPoints) {
             List<BlockPos> candidates = collectSphere(BlockPos.containing(p), r);
-            PENDING.add(new DestroyJob(level.dimension(), player.getUUID(), candidates, maxHardness, stack.copy()));
+            PENDING.add(new DestroyJob(level.dimension(), player.getUUID(),
+                    new ArrayDeque<>(candidates), maxHardness, stack.copy()));
         }
     }
 
@@ -110,8 +123,9 @@ public final class RailgunTerrainService {
             }
             ServerPlayer player = server.getPlayerList().getPlayer(job.playerId());
 
-            while (budget > 0 && !job.queue().isEmpty()) {
-                BlockPos pos = job.queue().remove(0);
+            Deque<BlockPos> queue = job.queue();
+            while (budget > 0 && !queue.isEmpty()) {
+                BlockPos pos = queue.pollFirst();
                 BlockState state = level.getBlockState(pos);
                 if (state.isAir()) {
                     budget--;
@@ -133,7 +147,7 @@ public final class RailgunTerrainService {
                 }
                 budget--;
             }
-            if (job.queue().isEmpty()) it.remove();
+            if (queue.isEmpty()) it.remove();
         }
     }
 
@@ -144,13 +158,26 @@ public final class RailgunTerrainService {
         if (be instanceof SignBlockEntity || be instanceof BannerBlockEntity || be instanceof BedBlockEntity) {
             return false;
         }
-        var blockId = BuiltInRegistries.BLOCK.getKey(state.getBlock());
-        if (blockId == null) return false;
-        if (blockId.getNamespace().equals(AE2LightningTech.MODID)) return false;
-        if (blockId.getNamespace().equals("ae2") || blockId.getNamespace().equals("appliedenergistics2")) return false;
+        // Identity-set lookup replaces a per-block registry id + namespace match.
+        if (protectedBlocks().contains(state.getBlock())) return false;
         float hardness = state.getDestroySpeed(level, pos);
         if (hardness < 0) return false;
         return hardness <= maxHardness;
+    }
+
+    /** Lazy-init the protected-block set on first use (after registries are frozen). */
+    private static java.util.Set<Block> protectedBlocks() {
+        java.util.Set<Block> cached = PROTECTED_BLOCKS;
+        if (cached != null) return cached;
+        java.util.Set<Block> set = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+        for (var entry : BuiltInRegistries.BLOCK.entrySet()) {
+            String ns = entry.getKey().location().getNamespace();
+            if (ns.equals(AE2LightningTech.MODID) || ns.equals("ae2") || ns.equals("appliedenergistics2")) {
+                set.add(entry.getValue());
+            }
+        }
+        PROTECTED_BLOCKS = set;
+        return set;
     }
 
     private static List<BlockPos> collectSphere(BlockPos center, double radius) {

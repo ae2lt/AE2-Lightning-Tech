@@ -713,6 +713,7 @@ public class AE2LightningTech {
         EjectModeRegistry.onServerStop();
         WirelessFrequencyManager.onServerStop();
         ResearchNoteGenerator.onServerStopped();
+        com.moakiee.ae2lt.registry.ModDamageTypes.clearCache();
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})

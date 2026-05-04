@@ -8,7 +8,6 @@ import java.util.Set;
 import org.jetbrains.annotations.Nullable;
 
 import net.minecraft.core.Holder;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -210,7 +209,7 @@ public final class RailgunFireService {
     public static void applyAll(ServerLevel level, ServerPlayer player, List<RailgunChainResolver.Hit> hits, DamageContext ctx) {
         if (hits.isEmpty()) return;
         Holder<net.minecraft.world.damagesource.DamageType> damageHolder =
-                level.registryAccess().registryOrThrow(Registries.DAMAGE_TYPE).getHolderOrThrow(ModDamageTypes.ELECTROMAGNETIC);
+                ModDamageTypes.electromagneticHolder(level);
         DamageSource ds = new DamageSource(damageHolder, player, player);
         boolean damagePlayers = AE2LTCommonConfig.railgunDamagePlayers();
         boolean paralyzePlayers = AE2LTCommonConfig.railgunParalysisOnPlayers();

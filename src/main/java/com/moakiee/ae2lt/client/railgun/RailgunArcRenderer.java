@@ -3,7 +3,6 @@ package com.moakiee.ae2lt.client.railgun;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.BufferBuilder;
@@ -58,7 +57,8 @@ public final class RailgunArcRenderer {
         }
     }
 
-    private static final List<Arc> ACTIVE = new CopyOnWriteArrayList<>();
+    // Render-thread-only: packet handlers route via ctx.enqueueWork to the client thread.
+    private static final List<Arc> ACTIVE = new ArrayList<>();
     private static final Random RAND = new Random();
 
     private RailgunArcRenderer() {}

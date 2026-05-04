@@ -183,7 +183,7 @@ public final class RailgunBeamRenderClient {
             // Resolve dynamic origin per-frame so the beam tracks the player's gun barrel
             // even when other players move between server packets.
             Vec3 origin = resolveOriginFor(s, mc, partialTick);
-            addBeam(bb, matrix, origin, s.to, camPos, pulse, smoothTime);
+            addBeam(bb, matrix, origin, s.to, pulse, smoothTime);
             addEndpointGlow(bb, matrix, s.to, camPos, pulse);
         }
         var built = bb.build();
@@ -250,27 +250,50 @@ public final class RailgunBeamRenderClient {
         });
     }
 
+    /**
+     * Build the prism segments along the beam. Hot path: uses primitive doubles
+     * to avoid the per-frame Vec3 allocations the original implementation produced.
+     */
     private static void addBeam(BufferBuilder bb, org.joml.Matrix4f matrix, Vec3 origin, Vec3 endpoint,
-                                Vec3 cameraPos, float pulse, double smoothTime) {
-        Vec3 axis = endpoint.subtract(origin);
-        double len = axis.length();
+                                float pulse, double smoothTime) {
+        double ax = endpoint.x - origin.x;
+        double ay = endpoint.y - origin.y;
+        double az = endpoint.z - origin.z;
+        double len = Math.sqrt(ax * ax + ay * ay + az * az);
         if (len < 1.0E-3D) return;
+        double inv = 1.0D / len;
+        double dx = ax * inv, dy = ay * inv, dz = az * inv;
 
-        Vec3 dir = axis.scale(1.0D / len);
         // Build a fixed world-space orthonormal basis in the plane perpendicular to
         // dir. Decoupling from the camera is what turns this from a flat billboard
-        // into real volume -- the prism keeps its shape when viewed from any angle.
-        Vec3 helper = Math.abs(dir.y) < 0.95D ? new Vec3(0.0D, 1.0D, 0.0D) : new Vec3(1.0D, 0.0D, 0.0D);
-        Vec3 e1 = dir.cross(helper).normalize();
-        Vec3 e2 = dir.cross(e1).normalize();
+        // into real volume — the prism keeps its shape from any viewing angle.
+        double hx, hy, hz;
+        if (Math.abs(dy) < 0.95D) { hx = 0.0D; hy = 1.0D; hz = 0.0D; }
+        else                       { hx = 1.0D; hy = 0.0D; hz = 0.0D; }
+        // e1 = dir × helper
+        double e1x = dy * hz - dz * hy;
+        double e1y = dz * hx - dx * hz;
+        double e1z = dx * hy - dy * hx;
+        double e1l = Math.sqrt(e1x * e1x + e1y * e1y + e1z * e1z);
+        e1x /= e1l; e1y /= e1l; e1z /= e1l;
+        // e2 = dir × e1 (already unit length, dir & e1 are perpendicular & unit)
+        double e2x = dy * e1z - dz * e1y;
+        double e2y = dz * e1x - dx * e1z;
+        double e2z = dx * e1y - dy * e1x;
 
         // Each layer spins around dir at its own rate for a "twisting plasma" feel.
-        double angOuter = smoothTime * SPIN_OUTER;
-        double angMid = smoothTime * SPIN_MID;
-        double angCore = smoothTime * SPIN_CORE;
-        Vec3[] outerBasis = rotateBasis(e1, e2, angOuter);
-        Vec3[] midBasis = rotateBasis(e1, e2, angMid);
-        Vec3[] coreBasis = rotateBasis(e1, e2, angCore);
+        double cO = Math.cos(smoothTime * SPIN_OUTER), sO = Math.sin(smoothTime * SPIN_OUTER);
+        double cM = Math.cos(smoothTime * SPIN_MID),   sM = Math.sin(smoothTime * SPIN_MID);
+        double cC = Math.cos(smoothTime * SPIN_CORE),  sC = Math.sin(smoothTime * SPIN_CORE);
+        // Rotated bases: u = e1*cos + e2*sin, v = -e1*sin + e2*cos
+        double oUx = e1x * cO + e2x * sO, oUy = e1y * cO + e2y * sO, oUz = e1z * cO + e2z * sO;
+        double oVx = -e1x * sO + e2x * cO, oVy = -e1y * sO + e2y * cO, oVz = -e1z * sO + e2z * cO;
+        double mUx = e1x * cM + e2x * sM, mUy = e1y * cM + e2y * sM, mUz = e1z * cM + e2z * sM;
+        double mVx = -e1x * sM + e2x * cM, mVy = -e1y * sM + e2y * cM, mVz = -e1z * sM + e2z * cM;
+        double cUx = e1x * cC + e2x * sC, cUy = e1y * cC + e2y * sC, cUz = e1z * cC + e2z * sC;
+        double cVx = -e1x * sC + e2x * cC, cVy = -e1y * sC + e2y * cC, cVz = -e1z * sC + e2z * cC;
+
+        double ox = origin.x, oy = origin.y, oz = origin.z;
 
         // Sub-segment the beam so vertex-color interpolation can paint a traveling
         // energy wave along its length. Each segment also slightly tapers from the
@@ -278,8 +301,8 @@ public final class RailgunBeamRenderClient {
         for (int i = 0; i < BEAM_SEGMENTS; i++) {
             float t0 = i / (float) BEAM_SEGMENTS;
             float t1 = (i + 1) / (float) BEAM_SEGMENTS;
-            Vec3 a = origin.add(axis.scale(t0));
-            Vec3 b = origin.add(axis.scale(t1));
+            double afx = ox + ax * t0, afy = oy + ay * t0, afz = oz + az * t0;
+            double atx = ox + ax * t1, aty = oy + ay * t1, atz = oz + az * t1;
             // Subtle taper: 1.0 at the muzzle, 0.78 at the tip.
             float taper0 = 1.0F - 0.22F * t0;
             float taper1 = 1.0F - 0.22F * t1;
@@ -289,31 +312,24 @@ public final class RailgunBeamRenderClient {
             float a0 = pulse * flow0;
             float a1 = pulse * flow1;
 
-            // Outer wide blue halo -- soft and large; lower alpha than the old
-            // billboard because a 4-sided prism exposes twice the area.
-            addPrismSegment(bb, matrix, a, b, outerBasis,
+            // Outer wide blue halo — soft and large.
+            addPrismSegment(bb, matrix, afx, afy, afz, atx, aty, atz,
+                    oUx, oUy, oUz, oVx, oVy, oVz,
                     OUTER_RADIUS * taper0, OUTER_RADIUS * taper1,
                     0.22F, 0.58F, 1.00F, 0.18F * a0, 0.18F * a1);
-            // Mid bright cyan -- most of the beam's color comes from here.
-            addPrismSegment(bb, matrix, a, b, midBasis,
+            // Mid bright cyan — most of the beam's color comes from here.
+            addPrismSegment(bb, matrix, afx, afy, afz, atx, aty, atz,
+                    mUx, mUy, mUz, mVx, mVy, mVz,
                     MID_RADIUS * taper0, MID_RADIUS * taper1,
                     0.52F, 0.88F, 1.00F, 0.34F * a0, 0.34F * a1);
-            // Hot near-white core -- narrow and bright, with extra pulse intensity.
+            // Hot near-white core — narrow and bright, with extra pulse intensity.
             float coreA0 = Math.min(1.0F, 1.10F * a0);
             float coreA1 = Math.min(1.0F, 1.10F * a1);
-            addPrismSegment(bb, matrix, a, b, coreBasis,
+            addPrismSegment(bb, matrix, afx, afy, afz, atx, aty, atz,
+                    cUx, cUy, cUz, cVx, cVy, cVz,
                     CORE_RADIUS * taper0, CORE_RADIUS * taper1,
                     0.95F, 1.00F, 1.00F, 0.70F * coreA0, 0.70F * coreA1);
         }
-    }
-
-    /** Rotate the (e1,e2) basis around dir by {@code angle} radians. */
-    private static Vec3[] rotateBasis(Vec3 e1, Vec3 e2, double angle) {
-        double c = Math.cos(angle);
-        double s = Math.sin(angle);
-        Vec3 r1 = e1.scale(c).add(e2.scale(s));
-        Vec3 r2 = e1.scale(-s).add(e2.scale(c));
-        return new Vec3[] { r1, r2 };
     }
 
     /**
@@ -322,37 +338,110 @@ public final class RailgunBeamRenderClient {
      */
     private static void addEndpointGlow(BufferBuilder bb, org.joml.Matrix4f matrix, Vec3 center,
                                         Vec3 cameraPos, float pulse) {
-        Vec3 toCam = cameraPos.subtract(center);
-        if (toCam.lengthSqr() < 1.0E-6D) return;
-        Vec3 fwd = toCam.normalize();
-        Vec3 up = new Vec3(0.0D, 1.0D, 0.0D);
-        Vec3 right = fwd.cross(up);
-        if (right.lengthSqr() < 1.0E-9D) {
-            right = fwd.cross(new Vec3(1.0D, 0.0D, 0.0D));
+        double tcx = cameraPos.x - center.x;
+        double tcy = cameraPos.y - center.y;
+        double tcz = cameraPos.z - center.z;
+        double tcLenSqr = tcx * tcx + tcy * tcy + tcz * tcz;
+        if (tcLenSqr < 1.0E-6D) return;
+        double tcInv = 1.0D / Math.sqrt(tcLenSqr);
+        double fx = tcx * tcInv, fy = tcy * tcInv, fz = tcz * tcInv;
+
+        // right = fwd × up; fall back if degenerate.
+        double rx = fy * 0.0D - fz * 1.0D;       // = -fz
+        double ry = fz * 0.0D - fx * 0.0D;       // = 0
+        double rz = fx * 1.0D - fy * 0.0D;       // = fx
+        double rLenSqr = rx * rx + ry * ry + rz * rz;
+        if (rLenSqr < 1.0E-9D) {
+            // Fallback: fwd × (1,0,0) = (0, fz, -fy)
+            rx = 0.0D; ry = fz; rz = -fy;
+            rLenSqr = ry * ry + rz * rz;
         }
         float radius = 0.55F * pulse;
-        right = right.normalize().scale(radius);
-        Vec3 vUp = right.cross(fwd).normalize().scale(radius);
-        Vec3 p1 = center.add(right).add(vUp);
-        Vec3 p2 = center.subtract(right).add(vUp);
-        Vec3 p3 = center.subtract(right).subtract(vUp);
-        Vec3 p4 = center.add(right).subtract(vUp);
-        // Bright blue-white burst, faded edges via per-vertex alpha.
-        bb.addVertex(matrix, (float) p1.x, (float) p1.y, (float) p1.z).setColor(0.65F, 0.90F, 1.00F, 0.05F * pulse);
-        bb.addVertex(matrix, (float) p2.x, (float) p2.y, (float) p2.z).setColor(0.65F, 0.90F, 1.00F, 0.05F * pulse);
-        bb.addVertex(matrix, (float) p3.x, (float) p3.y, (float) p3.z).setColor(0.65F, 0.90F, 1.00F, 0.05F * pulse);
-        bb.addVertex(matrix, (float) p4.x, (float) p4.y, (float) p4.z).setColor(0.65F, 0.90F, 1.00F, 0.05F * pulse);
-        // Inner bright core
-        Vec3 ir = right.scale(0.45D);
-        Vec3 iu = vUp.scale(0.45D);
-        Vec3 c1 = center.add(ir).add(iu);
-        Vec3 c2 = center.subtract(ir).add(iu);
-        Vec3 c3 = center.subtract(ir).subtract(iu);
-        Vec3 c4 = center.add(ir).subtract(iu);
-        bb.addVertex(matrix, (float) c1.x, (float) c1.y, (float) c1.z).setColor(1.00F, 1.00F, 1.00F, 0.90F * pulse);
-        bb.addVertex(matrix, (float) c2.x, (float) c2.y, (float) c2.z).setColor(1.00F, 1.00F, 1.00F, 0.90F * pulse);
-        bb.addVertex(matrix, (float) c3.x, (float) c3.y, (float) c3.z).setColor(1.00F, 1.00F, 1.00F, 0.90F * pulse);
-        bb.addVertex(matrix, (float) c4.x, (float) c4.y, (float) c4.z).setColor(1.00F, 1.00F, 1.00F, 0.90F * pulse);
+        double rNormScale = radius / Math.sqrt(rLenSqr);
+        rx *= rNormScale; ry *= rNormScale; rz *= rNormScale;
+        // up = right × fwd, then renormalize and scale to radius
+        double ux = ry * fz - rz * fy;
+        double uy = rz * fx - rx * fz;
+        double uz = rx * fy - ry * fx;
+        double uLen = Math.sqrt(ux * ux + uy * uy + uz * uz);
+        double uScale = radius / uLen;
+        ux *= uScale; uy *= uScale; uz *= uScale;
+
+        double cx = center.x, cy = center.y, cz = center.z;
+        // Outer faded quad
+        emitGlowQuad(bb, matrix,
+                cx + rx + ux, cy + ry + uy, cz + rz + uz,
+                cx - rx + ux, cy - ry + uy, cz - rz + uz,
+                cx - rx - ux, cy - ry - uy, cz - rz - uz,
+                cx + rx - ux, cy + ry - uy, cz + rz - uz,
+                0.65F, 0.90F, 1.00F, 0.05F * pulse);
+        // Inner bright core (45% radius)
+        double irx = rx * 0.45D, iry = ry * 0.45D, irz = rz * 0.45D;
+        double iux = ux * 0.45D, iuy = uy * 0.45D, iuz = uz * 0.45D;
+        emitGlowQuad(bb, matrix,
+                cx + irx + iux, cy + iry + iuy, cz + irz + iuz,
+                cx - irx + iux, cy - iry + iuy, cz - irz + iuz,
+                cx - irx - iux, cy - iry - iuy, cz - irz - iuz,
+                cx + irx - iux, cy + iry - iuy, cz + irz - iuz,
+                1.00F, 1.00F, 1.00F, 0.90F * pulse);
+    }
+
+    private static void emitGlowQuad(BufferBuilder bb, org.joml.Matrix4f matrix,
+                                     double p0x, double p0y, double p0z,
+                                     double p1x, double p1y, double p1z,
+                                     double p2x, double p2y, double p2z,
+                                     double p3x, double p3y, double p3z,
+                                     float r, float g, float b, float a) {
+        bb.addVertex(matrix, (float) p0x, (float) p0y, (float) p0z).setColor(r, g, b, a);
+        bb.addVertex(matrix, (float) p1x, (float) p1y, (float) p1z).setColor(r, g, b, a);
+        bb.addVertex(matrix, (float) p2x, (float) p2y, (float) p2z).setColor(r, g, b, a);
+        bb.addVertex(matrix, (float) p3x, (float) p3y, (float) p3z).setColor(r, g, b, a);
+    }
+
+    /**
+     * Emit the four side faces of a rectangular prism segment whose cross-section
+     * is aligned to (uX,uY,uZ) and (vX,vY,vZ) — a pre-rotated orthonormal pair in
+     * the plane perpendicular to the beam axis. Radii may differ at each end for
+     * taper. End caps are hidden by the endpoint glow and the muzzle.
+     */
+    private static void addPrismSegment(BufferBuilder bb, org.joml.Matrix4f matrix,
+                                        double fx, double fy, double fz,
+                                        double tx, double ty, double tz,
+                                        double uX, double uY, double uZ,
+                                        double vX, double vY, double vZ,
+                                        float radiusFrom, float radiusTo,
+                                        float r, float g, float b,
+                                        float aFrom, float aTo) {
+        double uFx = uX * radiusFrom, uFy = uY * radiusFrom, uFz = uZ * radiusFrom;
+        double vFx = vX * radiusFrom, vFy = vY * radiusFrom, vFz = vZ * radiusFrom;
+        double uTx = uX * radiusTo,   uTy = uY * radiusTo,   uTz = uZ * radiusTo;
+        double vTx = vX * radiusTo,   vTy = vY * radiusTo,   vTz = vZ * radiusTo;
+        // Four corners at each end (CCW from the muzzle looking down the beam).
+        double f0x = fx + uFx + vFx, f0y = fy + uFy + vFy, f0z = fz + uFz + vFz;
+        double f1x = fx - uFx + vFx, f1y = fy - uFy + vFy, f1z = fz - uFz + vFz;
+        double f2x = fx - uFx - vFx, f2y = fy - uFy - vFy, f2z = fz - uFz - vFz;
+        double f3x = fx + uFx - vFx, f3y = fy + uFy - vFy, f3z = fz + uFz - vFz;
+        double t0x = tx + uTx + vTx, t0y = ty + uTy + vTy, t0z = tz + uTz + vTz;
+        double t1x = tx - uTx + vTx, t1y = ty - uTy + vTy, t1z = tz - uTz + vTz;
+        double t2x = tx - uTx - vTx, t2y = ty - uTy - vTy, t2z = tz - uTz - vTz;
+        double t3x = tx + uTx - vTx, t3y = ty + uTy - vTy, t3z = tz + uTz - vTz;
+        emitFace(bb, matrix, f0x, f0y, f0z, f1x, f1y, f1z, t1x, t1y, t1z, t0x, t0y, t0z, r, g, b, aFrom, aTo);
+        emitFace(bb, matrix, f1x, f1y, f1z, f2x, f2y, f2z, t2x, t2y, t2z, t1x, t1y, t1z, r, g, b, aFrom, aTo);
+        emitFace(bb, matrix, f2x, f2y, f2z, f3x, f3y, f3z, t3x, t3y, t3z, t2x, t2y, t2z, r, g, b, aFrom, aTo);
+        emitFace(bb, matrix, f3x, f3y, f3z, f0x, f0y, f0z, t0x, t0y, t0z, t3x, t3y, t3z, r, g, b, aFrom, aTo);
+    }
+
+    private static void emitFace(BufferBuilder bb, org.joml.Matrix4f matrix,
+                                 double p0x, double p0y, double p0z,
+                                 double p1x, double p1y, double p1z,
+                                 double p2x, double p2y, double p2z,
+                                 double p3x, double p3y, double p3z,
+                                 float r, float g, float b,
+                                 float aFrom, float aTo) {
+        bb.addVertex(matrix, (float) p0x, (float) p0y, (float) p0z).setColor(r, g, b, aFrom);
+        bb.addVertex(matrix, (float) p1x, (float) p1y, (float) p1z).setColor(r, g, b, aFrom);
+        bb.addVertex(matrix, (float) p2x, (float) p2y, (float) p2z).setColor(r, g, b, aTo);
+        bb.addVertex(matrix, (float) p3x, (float) p3y, (float) p3z).setColor(r, g, b, aTo);
     }
 
     /**
@@ -383,48 +472,5 @@ public final class RailgunBeamRenderClient {
                 RailgunArcRenderer.spawnImpactSpark(fromArc, toArc, 14 + mc.level.random.nextInt(8));
             }
         }
-    }
-
-    /**
-     * Emit the four side faces of a rectangular prism segment whose cross-section
-     * is aligned to {@code basis} (a pre-rotated orthonormal pair in the plane
-     * perpendicular to the beam axis). Radii may differ at each end for taper.
-     * End caps are omitted -- they are hidden by the endpoint glow and the muzzle.
-     */
-    private static void addPrismSegment(BufferBuilder bb, org.joml.Matrix4f matrix,
-                                        Vec3 from, Vec3 to, Vec3[] basis,
-                                        float radiusFrom, float radiusTo,
-                                        float r, float g, float b,
-                                        float aFrom, float aTo) {
-        Vec3 u = basis[0];
-        Vec3 v = basis[1];
-        // Four corners of the square cross-section at each end, in CCW order
-        // when viewed from the muzzle end looking toward the impact.
-        Vec3 uF = u.scale(radiusFrom);
-        Vec3 vF = v.scale(radiusFrom);
-        Vec3 uT = u.scale(radiusTo);
-        Vec3 vT = v.scale(radiusTo);
-        Vec3 f0 = from.add(uF).add(vF);
-        Vec3 f1 = from.subtract(uF).add(vF);
-        Vec3 f2 = from.subtract(uF).subtract(vF);
-        Vec3 f3 = from.add(uF).subtract(vF);
-        Vec3 t0 = to.add(uT).add(vT);
-        Vec3 t1 = to.subtract(uT).add(vT);
-        Vec3 t2 = to.subtract(uT).subtract(vT);
-        Vec3 t3 = to.add(uT).subtract(vT);
-        emitFace(bb, matrix, f0, f1, t1, t0, r, g, b, aFrom, aTo);
-        emitFace(bb, matrix, f1, f2, t2, t1, r, g, b, aFrom, aTo);
-        emitFace(bb, matrix, f2, f3, t3, t2, r, g, b, aFrom, aTo);
-        emitFace(bb, matrix, f3, f0, t0, t3, r, g, b, aFrom, aTo);
-    }
-
-    private static void emitFace(BufferBuilder bb, org.joml.Matrix4f matrix,
-                                 Vec3 p0, Vec3 p1, Vec3 p2, Vec3 p3,
-                                 float r, float g, float b,
-                                 float aFrom, float aTo) {
-        bb.addVertex(matrix, (float) p0.x, (float) p0.y, (float) p0.z).setColor(r, g, b, aFrom);
-        bb.addVertex(matrix, (float) p1.x, (float) p1.y, (float) p1.z).setColor(r, g, b, aFrom);
-        bb.addVertex(matrix, (float) p2.x, (float) p2.y, (float) p2.z).setColor(r, g, b, aTo);
-        bb.addVertex(matrix, (float) p3.x, (float) p3.y, (float) p3.z).setColor(r, g, b, aTo);
     }
 }

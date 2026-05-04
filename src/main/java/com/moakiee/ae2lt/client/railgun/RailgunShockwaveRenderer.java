@@ -1,6 +1,6 @@
 package com.moakiee.ae2lt.client.railgun;
 
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.ArrayList;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.BufferBuilder;
@@ -50,7 +50,8 @@ public final class RailgunShockwaveRenderer {
     }
 
     private static final int RING_SEGMENTS = 64;
-    private static final java.util.List<Burst> ACTIVE = new CopyOnWriteArrayList<>();
+    // Plain ArrayList: render-thread-only (packet handlers enqueueWork to client thread).
+    private static final java.util.List<Burst> ACTIVE = new ArrayList<>();
 
     private RailgunShockwaveRenderer() {}
 

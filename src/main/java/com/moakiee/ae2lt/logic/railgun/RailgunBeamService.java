@@ -7,7 +7,6 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 import net.minecraft.core.Holder;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
@@ -119,7 +118,8 @@ public final class RailgunBeamService {
                 continue;
             }
             if (player.tickCount - s.lastSettleTick < settleInterval) {
-                broadcastTrace((ServerLevel) player.level(), player, traceBeam((ServerLevel) player.level(), player));
+                // Settle (every 2 ticks) re-broadcasts the beam; client STALE_TICKS=6
+                // covers the gap. No keepalive needed between settles.
                 continue;
             }
             s.lastSettleTick = player.tickCount;
@@ -225,8 +225,6 @@ public final class RailgunBeamService {
     private static void broadcastTrace(ServerLevel level, ServerPlayer player, BeamTrace trace) {
         var pkt = new RailgunBeamUpdatePacket(player.getUUID(), trace.from(), trace.endPoint(), true);
         NetworkHandler.sendToTrackingChunk(level, player.chunkPosition(), pkt);
-        // also send to self even if outside tracking chunk distance (shouldn't happen, defensive)
-        net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(player, pkt);
     }
 
     /**
@@ -255,12 +253,10 @@ public final class RailgunBeamService {
         if (path.isEmpty()) return;
         var pkt = new RailgunBeamChainFxPacket(player.getUUID(), firstHit, path);
         NetworkHandler.sendToTrackingChunk(level, player.chunkPosition(), pkt);
-        net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(player, pkt);
     }
 
     private static DamageSource beamDamageSource(ServerLevel level, ServerPlayer player) {
-        Holder<net.minecraft.world.damagesource.DamageType> h =
-                level.registryAccess().registryOrThrow(Registries.DAMAGE_TYPE).getHolderOrThrow(ModDamageTypes.ELECTROMAGNETIC);
+        Holder<net.minecraft.world.damagesource.DamageType> h = ModDamageTypes.electromagneticHolder(level);
         return new DamageSource(h, player, player);
     }
 
@@ -268,6 +264,5 @@ public final class RailgunBeamService {
         if (!(player.level() instanceof ServerLevel sl)) return;
         var pkt = new RailgunBeamUpdatePacket(player.getUUID(), Vec3.ZERO, Vec3.ZERO, false);
         NetworkHandler.sendToTrackingChunk(sl, player.chunkPosition(), pkt);
-        net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(player, pkt);
     }
 }

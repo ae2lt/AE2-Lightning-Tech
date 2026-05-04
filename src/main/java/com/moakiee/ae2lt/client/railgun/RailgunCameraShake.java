@@ -1,5 +1,7 @@
 package com.moakiee.ae2lt.client.railgun;
 
+import java.util.concurrent.ThreadLocalRandom;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.neoforged.api.distmarker.Dist;
@@ -37,8 +39,10 @@ public final class RailgunCameraShake {
     public static void onCameraAngles(ViewportEvent.ComputeCameraAngles e) {
         if (intensity <= 0) return;
         // Frame-based decay using partial tick; keeps motion smooth.
-        float dx = (float) ((Math.random() - 0.5) * intensity * 4.0);
-        float dy = (float) ((Math.random() - 0.5) * intensity * 4.0);
+        // ThreadLocalRandom avoids the global synchronized monitor inside Math.random().
+        ThreadLocalRandom rng = ThreadLocalRandom.current();
+        float dx = (float) ((rng.nextDouble() - 0.5) * intensity * 4.0);
+        float dy = (float) ((rng.nextDouble() - 0.5) * intensity * 4.0);
         e.setPitch(e.getPitch() + dx);
         e.setYaw(e.getYaw() + dy);
         // Decay
