@@ -9,6 +9,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
 
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+
 import org.jetbrains.annotations.Nullable;
 
 import net.minecraft.core.BlockPos;
@@ -108,18 +112,21 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
 
     // ---- wireless dispatch state ------------------------------------------------
 
-    /** Items left over from a wireless push (race-condition overflow). */
-    private final List<GenericStack> wirelessSendList = new ArrayList<>();
+    private static final int GLOBAL_BUCKETS_MAX = OverloadedPatternProviderBlockEntity.MAX_WIRELESS_CONNECTIONS;
+    private static final int GLOBAL_BUCKETS_REARM = 768;
 
-    /** The connection that still has pending overflow items. */
-    @Nullable
-    private WirelessConnection wirelessSendConn;
+    /** Per-target wireless overflow buckets. A bucketed connection is not eligible for new pushes. */
+    private final Object2ObjectOpenHashMap<WirelessConnection, ConnBucket> pendingOverflowByConn =
+            new Object2ObjectOpenHashMap<>();
 
-    /** How many consecutive flush attempts have failed (target gone / full). */
-    private int wirelessFlushFailures = 0;
+    /** Runtime-local pattern id tables used by compact overflow buckets. */
+    private final Object2IntOpenHashMap<IPatternDetails> patternTable = new Object2IntOpenHashMap<>();
+    private final Int2ObjectOpenHashMap<IPatternDetails> patternById = new Int2ObjectOpenHashMap<>();
+    private int nextPatternId = 0;
 
-    /** After this many failed flushes the overflow is returned to the network. */
-    private static final int MAX_FLUSH_FAILURES = 40; // ~2 seconds at 20 TPS
+    private boolean wirelessGlobalBackpressure = false;
+    private final Map<Integer, ItemStack> pendingOverflowPatternDefinitions = new HashMap<>();
+    private final List<PendingBucketLoad> pendingOverflowBuckets = new ArrayList<>();
 
     /** Round-robin index across the *valid* connection list for SINGLE_TARGET. */
     private int wirelessRoundRobin = 0;
@@ -302,6 +309,35 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
 
     private enum PushOutcome { SUCCESS, SOFT_FAIL, HARD_FAIL }
 
+    private static final class ConnBucket {
+        final boolean compactMode;
+        short patternId;
+        short stuckIdx;
+        long remaining;
+        final List<GenericStack> fallbackList;
+
+        private ConnBucket(boolean compactMode, short patternId, short stuckIdx,
+                           long remaining, List<GenericStack> fallbackList) {
+            this.compactMode = compactMode;
+            this.patternId = patternId;
+            this.stuckIdx = stuckIdx;
+            this.remaining = remaining;
+            this.fallbackList = fallbackList;
+        }
+
+        static ConnBucket compact(short patternId, short stuckIdx, long remaining) {
+            return new ConnBucket(true, patternId, stuckIdx, remaining, new ArrayList<>());
+        }
+
+        static ConnBucket fallback(short patternId, List<GenericStack> overflow) {
+            return new ConnBucket(false, patternId, (short) 0, 0, new ArrayList<>(overflow));
+        }
+    }
+
+    private record PendingBucketLoad(WirelessConnection conn, short patternId, short stuckIdx,
+                                     long remaining, List<GenericStack> fallbackList,
+                                     boolean compactMode) {}
+
     // ---- PatternProviderTarget cache (avoids recreating strategies every push) -----
 
     private record TargetCacheKey(ResourceKey<Level> dimension, long posLong, Direction face) {}
@@ -398,6 +434,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
         this.wirelessSource = new MachineSource(mainNode::getNode);
         this.totalCapacity = patternInventorySize;
         this.wirelessDistributor = new WirelessEnergyDistributor(new DistributorHost());
+        this.patternTable.defaultReturnValue(-1);
 
         var accessor = (PatternProviderLogicAccessor) this;
         IAEItemFilter patternFilter = new IAEItemFilter() {
@@ -569,7 +606,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
     @Override
     public boolean pushPattern(IPatternDetails patternDetails, KeyCounter[] inputHolder) {
         // Always try to flush wireless overflow (handles mode-switching edge case)
-        if (!wirelessSendList.isEmpty()) {
+        if (!pendingOverflowByConn.isEmpty()) {
             flushWirelessSends();
         }
 
@@ -601,7 +638,8 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
     }
 
     private boolean wirelessPushPattern(IPatternDetails pattern, KeyCounter[] inputs) {
-        if (!wirelessSendList.isEmpty()) return false;
+        refreshGlobalBackpressure();
+        if (wirelessGlobalBackpressure) return false;
         if (!gridNode.isActive()) return false;
         if (!SmartDoublingCompat.containsOrUnwrapped(getAvailablePatterns(), pattern)) return false;
         if (getCraftingLockedReason() != LockCraftingMode.NONE) return false;
@@ -609,6 +647,11 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
         var level = overloadedHost.getLevel();
         if (!(level instanceof ServerLevel sl)) return false;
         var server = sl.getServer();
+        var dispatchMode = overloadedHost.getWirelessDispatchMode();
+        if (dispatchMode == OverloadedPatternProviderBlockEntity.WirelessDispatchMode.SINGLE_TARGET
+                && !pendingOverflowByConn.isEmpty()) {
+            return false;
+        }
 
         var valid = getOrRefreshValidConnections(sl, sl.getGameTime());
         if (valid.isEmpty()) return false;
@@ -622,7 +665,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
         }
         advancePushWheel(gameTick, fastMode);
 
-        return switch (overloadedHost.getWirelessDispatchMode()) {
+        return switch (dispatchMode) {
             case EVEN_DISTRIBUTION -> wirelessPushEvenDistribution(pattern, inputs, valid, server, gameTick, fastMode);
             case SINGLE_TARGET -> wirelessPushSingleTarget(pattern, inputs, valid, server, gameTick, fastMode);
         };
@@ -640,6 +683,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
 
             if (entry.generation() != state.readyGeneration) continue;
             if (!state.ready) continue;
+            if (pendingOverflowByConn.containsKey(entry.conn())) continue;
 
             boolean probing = state.probeArmed
                     && state.cooldownUntil >= 0 && gameTick < state.cooldownUntil;
@@ -654,8 +698,10 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
                         state.onPushSuccess(gameTick);
                     }
                     state.pushCount++;
-                    state.readyGeneration++;
-                    readyPQ.offer(new PushEntry(entry.conn(), state, state.readyGeneration));
+                    if (!pendingOverflowByConn.containsKey(entry.conn())) {
+                        state.readyGeneration++;
+                        readyPQ.offer(new PushEntry(entry.conn(), state, state.readyGeneration));
+                    }
                     return true;
                 }
                 case HARD_FAIL -> {
@@ -688,6 +734,10 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
 
         while (!readyQueue.isEmpty()) {
             var conn = readyQueue.peek();
+            if (pendingOverflowByConn.containsKey(conn)) {
+                readyQueue.poll();
+                continue;
+            }
             var state = connectionStates.get(conn);
 
             if (state == null) {
@@ -708,7 +758,10 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
                         state.onPushSuccess(gameTick);
                     }
                     state.pushCount++;
-                return true;
+                    if (pendingOverflowByConn.containsKey(conn)) {
+                        readyQueue.poll();
+                    }
+                    return true;
                 }
                 case SOFT_FAIL -> {
                     readyQueue.poll();
@@ -742,6 +795,9 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
         readyPQ.clear();
         readyQueue.clear();
         for (var conn : valid) {
+            if (pendingOverflowByConn.containsKey(conn)) {
+                continue;
+            }
             var state = getOrCreateState(conn);
             if (state.cooldownUntil >= 0 && gameTick < state.cooldownUntil) {
                 state.ready = false;
@@ -773,6 +829,10 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
             var iter = list.iterator();
             while (iter.hasNext()) {
                 var conn = iter.next();
+                if (pendingOverflowByConn.containsKey(conn)) {
+                    iter.remove();
+                    continue;
+                }
                 var state = connectionStates.get(conn);
                 if (state == null) { iter.remove(); continue; }
                 boolean fire = false;
@@ -797,6 +857,9 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
     }
 
     private void schedulePushWheel(WirelessConnection conn, ConnectionState state, boolean fastMode) {
+        if (pendingOverflowByConn.containsKey(conn)) {
+            return;
+        }
         state.ready = false;
         state.probeArmed = false;
         if (state.cooldownUntil < 0) {
@@ -827,6 +890,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
 
     private PushOutcome tryPushToConnection(IPatternDetails pattern, KeyCounter[] inputs,
             WirelessConnection conn, net.minecraft.server.MinecraftServer server) {
+        if (pendingOverflowByConn.containsKey(conn)) return PushOutcome.SOFT_FAIL;
         if (AdvancedAECompat.isDirectional(pattern)) {
             return tryPushToConnectionDirectionally(pattern, inputs, conn, server);
         }
@@ -870,8 +934,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
         PowerCostUtil.consumeRaw(grid, cost);
 
         if (!result.overflow().isEmpty()) {
-            wirelessSendList.addAll(result.overflow());
-            wirelessSendConn = conn;
+            bucketOverflow(conn, pattern, result.overflow(), false);
         }
 
         ((PatternProviderLogicAccessor) this).invokeOnPushPatternSuccess(pattern);
@@ -882,6 +945,144 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
             getOrCreateState(conn).resetBackoff(targetLevel.getGameTime());
         }
         return PushOutcome.SUCCESS;
+    }
+
+    private void bucketOverflow(WirelessConnection conn, IPatternDetails pattern,
+                                List<GenericStack> overflow, boolean forceFallback) {
+        if (overflow.isEmpty()) return;
+
+        short patternId = internPattern(pattern);
+        ConnBucket bucket;
+        if (!forceFallback && isCompactEligible(pattern)) {
+            var inputs = pattern.getInputs();
+            var first = overflow.get(0);
+            int stuckIdx = findSlotIndex(inputs, first.what());
+            if (stuckIdx >= 0 && verifySequentialOverflow(inputs, stuckIdx, overflow)) {
+                bucket = ConnBucket.compact(patternId, (short) stuckIdx, first.amount());
+            } else {
+                bucket = ConnBucket.fallback(patternId, overflow);
+            }
+        } else {
+            bucket = ConnBucket.fallback(patternId, overflow);
+        }
+
+        pendingOverflowByConn.put(conn, bucket);
+        connectionsDirty = true;
+        refreshGlobalBackpressure();
+        alertGridTick();
+    }
+
+    private short internPattern(IPatternDetails pattern) {
+        int id = patternTable.getInt(pattern);
+        if (id >= 0) {
+            return (short) id;
+        }
+
+        if (patternById.size() >= 0xFFFF) {
+            compactRuntimePatternTable();
+        }
+
+        for (int attempts = 0; attempts <= 0xFFFF; attempts++) {
+            id = nextPatternId++ & 0xFFFF;
+            if (nextPatternId > 0xFFFF) {
+                nextPatternId = 0;
+            }
+            if (!patternById.containsKey(id)) {
+                patternTable.put(pattern, id);
+                patternById.put(id, pattern);
+                return (short) id;
+            }
+        }
+
+        compactRuntimePatternTable();
+        id = nextPatternId++ & 0xFFFF;
+        patternTable.put(pattern, id);
+        patternById.put(id, pattern);
+        return (short) id;
+    }
+
+    private void compactRuntimePatternTable() {
+        var oldPatternById = new Int2ObjectOpenHashMap<IPatternDetails>(patternById);
+        patternTable.clear();
+        patternById.clear();
+        nextPatternId = 0;
+
+        for (var bucket : pendingOverflowByConn.values()) {
+            if (!bucket.compactMode) continue;
+            var pattern = oldPatternById.get(Short.toUnsignedInt(bucket.patternId));
+            if (pattern == null) continue;
+            int id = nextPatternId++ & 0xFFFF;
+            bucket.patternId = (short) id;
+            patternTable.put(pattern, id);
+            patternById.put(id, pattern);
+        }
+    }
+
+    private static boolean isCompactEligible(IPatternDetails pattern) {
+        if (SmartDoublingCompat.unwrap(pattern) != null) {
+            return false;
+        }
+        OverloadPatternDetails overloadDetails = pattern instanceof OverloadedProviderOnlyPatternDetails overload
+                ? overload.overloadPatternDetailsView()
+                : null;
+        var seen = new java.util.HashSet<AEKey>();
+        var inputs = pattern.getInputs();
+        for (int i = 0; i < inputs.length; i++) {
+            if (overloadDetails != null && overloadDetails.inputMode(i) != MatchMode.STRICT) {
+                return false;
+            }
+            var input = inputs[i];
+            var possible = input.getPossibleInputs();
+            if (possible.length != 1) {
+                return false;
+            }
+            if (!seen.add(possible[0].what())) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static int findSlotIndex(IPatternDetails.IInput[] inputs, AEKey key) {
+        for (int i = 0; i < inputs.length; i++) {
+            var possible = inputs[i].getPossibleInputs();
+            if (possible.length == 1 && possible[0].what().equals(key)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private static boolean verifySequentialOverflow(IPatternDetails.IInput[] inputs, int stuckIdx,
+                                                    List<GenericStack> overflow) {
+        if (stuckIdx < 0 || stuckIdx >= inputs.length) return false;
+        if (overflow.size() != inputs.length - stuckIdx) return false;
+
+        for (int i = 0; i < overflow.size(); i++) {
+            var stack = overflow.get(i);
+            var input = inputs[stuckIdx + i];
+            var possible = input.getPossibleInputs();
+            if (possible.length != 1 || !possible[0].what().equals(stack.what())) {
+                return false;
+            }
+            long fullAmount = inputAmount(input);
+            if (i == 0) {
+                if (stack.amount() <= 0 || stack.amount() > fullAmount) {
+                    return false;
+                }
+            } else if (stack.amount() != fullAmount) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static long inputAmount(IPatternDetails.IInput input) {
+        var possible = input.getPossibleInputs();
+        if (possible.length == 0) {
+            return 0;
+        }
+        return possible[0].amount() * input.getMultiplier();
     }
 
     // ---- AdvancedAE directional push (NORMAL mode) --------------------------------
@@ -953,6 +1154,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
      */
     private PushOutcome tryPushToConnectionDirectionally(IPatternDetails pattern, KeyCounter[] inputs,
             WirelessConnection conn, net.minecraft.server.MinecraftServer server) {
+        if (pendingOverflowByConn.containsKey(conn)) return PushOutcome.SOFT_FAIL;
         var targetLevel = server.getLevel(conn.dimension());
         if (targetLevel == null) return PushOutcome.HARD_FAIL;
         if (!targetLevel.isLoaded(conn.pos())) return PushOutcome.HARD_FAIL;
@@ -991,8 +1193,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
             var overflow = commitDirectionalPushWithOverflow(pattern, inputs, faceToTarget, defaultFace);
             PowerCostUtil.consumeRaw(grid, cost);
             if (!overflow.isEmpty()) {
-                wirelessSendList.addAll(overflow);
-                wirelessSendConn = conn;
+                bucketOverflow(conn, pattern, overflow, true);
             }
         } finally {
             EjectModeRegistry.setBypass(false);
@@ -1121,85 +1322,90 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
     // ---- overflow flush ---------------------------------------------------------
 
     private void flushWirelessSends() {
-        if (wirelessSendConn == null) {
-            wirelessSendList.clear();
-            wirelessFlushFailures = 0;
-            return;
-        }
-
-        boolean flushed = false;
+        if (pendingOverflowByConn.isEmpty()) return;
         var level = overloadedHost.getLevel();
-        if (level instanceof ServerLevel sl) {
-            var targetLevel = sl.getServer().getLevel(wirelessSendConn.dimension());
-            if (targetLevel != null) {
-                var state = getOrCreateState(wirelessSendConn);
-                var adapter = state.resolveAdapter(targetLevel, wirelessSendConn.pos());
-                if (adapter != null) {
-                    var be = targetLevel.getBlockEntity(wirelessSendConn.pos());
-                    var cached = (be != null)
-                            ? getCachedTarget(targetLevel, wirelessSendConn.pos(),
-                                    be, wirelessSendConn.boundFace(), wirelessSource)
-                            : null;
-                    adapter.flushOverflow(
-                            targetLevel, wirelessSendConn.pos(), wirelessSendConn.boundFace(),
-                            wirelessSendList, wirelessSource, cached);
-                    if (wirelessSendList.isEmpty()) {
-                        flushed = true;
-                    }
-                }
-            }
-        }
+        if (!(level instanceof ServerLevel sl)) return;
+        var server = sl.getServer();
 
-        if (flushed) {
-            wirelessSendConn = null;
-            wirelessFlushFailures = 0;
-        } else {
-            wirelessFlushFailures++;
-            if (wirelessFlushFailures >= MAX_FLUSH_FAILURES) {
-                // Target unreachable for too long — dump overflow back to network
-                // to avoid permanently blocking the crafting CPU.
-                returnOverflowToNetwork();
+        var iter = pendingOverflowByConn.object2ObjectEntrySet().iterator();
+        while (iter.hasNext()) {
+            var entry = iter.next();
+            var conn = entry.getKey();
+            var bucket = entry.getValue();
+
+            var targetLevel = server.getLevel(conn.dimension());
+            if (targetLevel == null || !targetLevel.isLoaded(conn.pos())) continue;
+
+            var state = getOrCreateState(conn);
+            var adapter = state.resolveAdapter(targetLevel, conn.pos());
+            if (adapter == null) continue;
+
+            var be = targetLevel.getBlockEntity(conn.pos());
+            var cached = (be != null)
+                    ? getCachedTarget(targetLevel, conn.pos(), be, conn.boundFace(), wirelessSource)
+                    : null;
+
+            boolean cleared = bucket.compactMode
+                    ? flushCompactBucket(bucket, conn, targetLevel, adapter, cached)
+                    : flushFallbackBucket(bucket, conn, targetLevel, adapter, cached);
+
+            if (cleared) {
+                iter.remove();
+                connectionsDirty = true;
             }
         }
+        refreshGlobalBackpressure();
     }
 
-    /**
-     * Return stuck overflow items to the ME network as a last resort.
-     * Items that the network cannot absorb are dropped as entity items.
-     */
-    private void returnOverflowToNetwork() {
-        var drops = new ArrayList<ItemStack>();
-        gridNode.ifPresent((grid, node) -> {
-            var storage = grid.getStorageService().getInventory();
-            var it = wirelessSendList.listIterator();
-            while (it.hasNext()) {
-                var stack = it.next();
-                var inserted = storage.insert(stack.what(), stack.amount(),
-                        appeng.api.config.Actionable.MODULATE, wirelessSource);
-                if (inserted >= stack.amount()) {
-                    it.remove();
-                } else if (inserted > 0) {
-                    it.set(new GenericStack(stack.what(), stack.amount() - inserted));
-                }
+    private boolean flushCompactBucket(ConnBucket bucket, WirelessConnection conn,
+            ServerLevel targetLevel, MachineAdapter adapter, @Nullable PatternProviderTarget cached) {
+        var pattern = patternById.get(Short.toUnsignedInt(bucket.patternId));
+        if (pattern == null) return true;
+        var inputs = pattern.getInputs();
+
+        while (bucket.stuckIdx < inputs.length) {
+            var input = inputs[bucket.stuckIdx];
+            var possible = input.getPossibleInputs();
+            if (possible.length != 1) {
+                return true;
             }
-        });
-        // Anything left after network insert → collect and spawn as item drops
-        if (!wirelessSendList.isEmpty()) {
-            for (var stack : wirelessSendList) {
-                stack.what().addDrops(stack.amount(), drops,
-                        overloadedHost.getLevel(), overloadedHost.getBlockPos());
+            var single = new ArrayList<GenericStack>(1);
+            single.add(new GenericStack(possible[0].what(), bucket.remaining));
+            adapter.flushOverflow(targetLevel, conn.pos(), conn.boundFace(),
+                    single, wirelessSource, cached);
+
+            long left = single.isEmpty() ? 0 : single.get(0).amount();
+            long inserted = bucket.remaining - left;
+            if (inserted == 0) return false;
+            if (left > 0) {
+                bucket.remaining = left;
+                return false;
             }
-            wirelessSendList.clear();
-        }
-        for (var drop : drops) {
-            var level = overloadedHost.getLevel();
-            var pos = overloadedHost.getBlockPos();
-            if (level != null) {
-                net.minecraft.world.level.block.Block.popResource(level, pos, drop);
+
+            bucket.stuckIdx++;
+            if (bucket.stuckIdx < inputs.length) {
+                bucket.remaining = inputAmount(inputs[bucket.stuckIdx]);
             }
         }
-        wirelessSendConn = null;
-        wirelessFlushFailures = 0;
+        return true;
+    }
+
+    private boolean flushFallbackBucket(ConnBucket bucket, WirelessConnection conn,
+            ServerLevel targetLevel, MachineAdapter adapter, @Nullable PatternProviderTarget cached) {
+        adapter.flushOverflow(targetLevel, conn.pos(), conn.boundFace(),
+                bucket.fallbackList, wirelessSource, cached);
+        return bucket.fallbackList.isEmpty();
+    }
+
+    private void refreshGlobalBackpressure() {
+        int total = pendingOverflowByConn.size();
+        if (wirelessGlobalBackpressure) {
+            if (total <= GLOBAL_BUCKETS_REARM) {
+                wirelessGlobalBackpressure = false;
+            }
+        } else if (total >= GLOBAL_BUCKETS_MAX) {
+            wirelessGlobalBackpressure = true;
+        }
     }
 
     // ---- auto-return (full-scan + per-machine exponential backoff) ---------------
@@ -1245,7 +1451,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
      * allowing the tick to be completely skipped.
      */
     public boolean hasAnyTickWork() {
-        if (!wirelessSendList.isEmpty()) return true;
+        if (!pendingOverflowByConn.isEmpty()) return true;
         if (overloadedHost.getProviderMode() == ProviderMode.WIRELESS
                 && gridNode.isActive()
                 && isInductionCardInstalled()
@@ -1706,7 +1912,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
     }
 
     private boolean hasActiveOverloadedTickWork(long gameTick) {
-        if (!wirelessSendList.isEmpty()) {
+        if (!pendingOverflowByConn.isEmpty()) {
             return true;
         }
         if (shouldTickWirelessEnergyNow(gameTick)) {
@@ -1901,6 +2107,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
             needsSavedDataLoad = false;
             loadFromSavedData();
         }
+        finishPendingWirelessOverflowLoad();
     }
 
     public int getTotalCapacity() {
@@ -1927,6 +2134,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
 
             var accessor = (PatternProviderLogicAccessor) OverloadedPatternProviderLogic.this;
             boolean parentDidWork = accessor.invokeDoWork();
+            flushWirelessSends();
             tickAutoReturn();
             var level = overloadedHost.getLevel();
             long gameTick = level instanceof ServerLevel sl ? sl.getGameTime() : Long.MAX_VALUE;
@@ -1967,9 +2175,8 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
     @Override
     public void addDrops(List<ItemStack> drops) {
         super.addDrops(drops);
-        for (var stack : wirelessSendList) {
-            stack.what().addDrops(stack.amount(), drops,
-                    overloadedHost.getLevel(), overloadedHost.getBlockPos());
+        for (var bucket : pendingOverflowByConn.values()) {
+            addBucketDrops(bucket, drops);
         }
         if (totalCapacity > 36) {
             removeSavedData();
@@ -1982,8 +2189,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
         if (totalCapacity > 36) {
             removeSavedData();
         }
-        wirelessSendList.clear();
-        wirelessSendConn = null;
+        clearWirelessOverflowState();
         connectionStates.clear();
         machineNextPoll.clear();
         machineBackoff.clear();
@@ -2002,6 +2208,17 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
 
     private static final String TAG_W_SEND_LIST = "WirelessSendList";
     private static final String TAG_W_SEND_CONN = "WirelessSendConn";
+    private static final String TAG_WIRELESS_OVERFLOW = "ae2lt:wireless_overflow";
+    private static final String TAG_OVERFLOW_PATTERNS = "patterns";
+    private static final String TAG_OVERFLOW_PATTERN_ID = "id";
+    private static final String TAG_OVERFLOW_PATTERN = "pattern";
+    private static final String TAG_OVERFLOW_BUCKETS = "buckets";
+    private static final String TAG_OVERFLOW_CONN = "conn";
+    private static final String TAG_OVERFLOW_PID = "pid";
+    private static final String TAG_OVERFLOW_IDX = "idx";
+    private static final String TAG_OVERFLOW_REMAINING = "remaining";
+    private static final String TAG_OVERFLOW_FALLBACK = "fallback";
+    private static final String TAG_OVERFLOW_COMPACT = "compact";
     private static final String TAG_W_ROUND_ROBIN = "WirelessRoundRobin";
     private static final String TAG_UNLOCK_MATCH_MODE = "Ae2ltUnlockMatchMode";
     private static final String TAG_UNLOCK_TEMPLATE = "Ae2ltUnlockTemplate";
@@ -2028,16 +2245,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
         if (pendingUnlockTemplate != null && !pendingUnlockTemplate.isEmpty()) {
             tag.put(TAG_UNLOCK_TEMPLATE, pendingUnlockTemplate.saveOptional(registries));
         }
-        if (!wirelessSendList.isEmpty()) {
-            var list = new ListTag();
-            for (var stack : wirelessSendList) {
-                list.add(GenericStack.writeTag(registries, stack));
-            }
-            tag.put(TAG_W_SEND_LIST, list);
-            if (wirelessSendConn != null) {
-                tag.put(TAG_W_SEND_CONN, wirelessSendConn.toTag());
-            }
-        }
+        writeWirelessOverflowToNBT(tag, registries);
     }
 
     @Override
@@ -2062,20 +2270,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
                 pendingUnlockTemplate = null;
             }
         }
-        wirelessSendList.clear();
-        wirelessSendConn = null;
-        if (tag.contains(TAG_W_SEND_LIST, Tag.TAG_LIST)) {
-            var list = tag.getList(TAG_W_SEND_LIST, Tag.TAG_COMPOUND);
-            for (int i = 0; i < list.size(); i++) {
-                var stack = GenericStack.readTag(registries, list.getCompound(i));
-                if (stack != null) {
-                    wirelessSendList.add(stack);
-                }
-            }
-        }
-        if (tag.contains(TAG_W_SEND_CONN, Tag.TAG_COMPOUND)) {
-            wirelessSendConn = WirelessConnection.fromTag(tag.getCompound(TAG_W_SEND_CONN));
-        }
+        readWirelessOverflowFromNBT(tag, registries);
         cachedOutputFilter = null;
         outputFilterDirty = true;
         invalidateValidConnectionsCache();
@@ -2085,5 +2280,202 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
         lastReturnRobinTick = -1;
         lastSingleReturnTick = -1;
         refreshEjectRegistrations();
+    }
+
+    private void addBucketDrops(ConnBucket bucket, List<ItemStack> drops) {
+        if (bucket.compactMode) {
+            var pattern = patternById.get(Short.toUnsignedInt(bucket.patternId));
+            if (pattern == null) return;
+            var inputs = pattern.getInputs();
+            for (int i = bucket.stuckIdx; i < inputs.length; i++) {
+                var possible = inputs[i].getPossibleInputs();
+                if (possible.length != 1) continue;
+                long amount = i == bucket.stuckIdx ? bucket.remaining : inputAmount(inputs[i]);
+                if (amount > 0) {
+                    possible[0].what().addDrops(amount, drops,
+                            overloadedHost.getLevel(), overloadedHost.getBlockPos());
+                }
+            }
+            return;
+        }
+
+        for (var stack : bucket.fallbackList) {
+            stack.what().addDrops(stack.amount(), drops,
+                    overloadedHost.getLevel(), overloadedHost.getBlockPos());
+        }
+    }
+
+    private void writeWirelessOverflowToNBT(CompoundTag tag, HolderLookup.Provider registries) {
+        if (pendingOverflowByConn.isEmpty()) return;
+
+        var overflowTag = new CompoundTag();
+        var patternList = new ListTag();
+        var remappedIds = new HashMap<Integer, Short>();
+        short nextWriteId = 0;
+
+        for (var bucket : pendingOverflowByConn.values()) {
+            if (!bucket.compactMode) continue;
+            int runtimeId = Short.toUnsignedInt(bucket.patternId);
+            if (remappedIds.containsKey(runtimeId)) continue;
+            var pattern = patternById.get(runtimeId);
+            if (pattern == null) continue;
+
+            short writeId = nextWriteId++;
+            remappedIds.put(runtimeId, writeId);
+            var patternTag = new CompoundTag();
+            patternTag.putShort(TAG_OVERFLOW_PATTERN_ID, writeId);
+            patternTag.put(TAG_OVERFLOW_PATTERN,
+                    pattern.getDefinition().toStack().saveOptional(registries));
+            patternList.add(patternTag);
+        }
+        overflowTag.put(TAG_OVERFLOW_PATTERNS, patternList);
+
+        var bucketList = new ListTag();
+        for (var entry : pendingOverflowByConn.object2ObjectEntrySet()) {
+            var bucket = entry.getValue();
+            var bucketTag = new CompoundTag();
+            bucketTag.put(TAG_OVERFLOW_CONN, entry.getKey().toTag());
+            bucketTag.putBoolean(TAG_OVERFLOW_COMPACT, bucket.compactMode);
+            if (bucket.compactMode) {
+                var remapped = remappedIds.get(Short.toUnsignedInt(bucket.patternId));
+                if (remapped == null) {
+                    continue;
+                }
+                bucketTag.putShort(TAG_OVERFLOW_PID, remapped);
+                bucketTag.putShort(TAG_OVERFLOW_IDX, bucket.stuckIdx);
+                bucketTag.putLong(TAG_OVERFLOW_REMAINING, bucket.remaining);
+            } else {
+                var fallback = new ListTag();
+                for (var stack : bucket.fallbackList) {
+                    fallback.add(GenericStack.writeTag(registries, stack));
+                }
+                bucketTag.put(TAG_OVERFLOW_FALLBACK, fallback);
+            }
+            bucketList.add(bucketTag);
+        }
+        overflowTag.put(TAG_OVERFLOW_BUCKETS, bucketList);
+        tag.put(TAG_WIRELESS_OVERFLOW, overflowTag);
+    }
+
+    private void readWirelessOverflowFromNBT(CompoundTag tag, HolderLookup.Provider registries) {
+        clearWirelessOverflowState();
+
+        if (tag.contains(TAG_WIRELESS_OVERFLOW, Tag.TAG_COMPOUND)) {
+            var overflowTag = tag.getCompound(TAG_WIRELESS_OVERFLOW);
+            var patterns = overflowTag.getList(TAG_OVERFLOW_PATTERNS, Tag.TAG_COMPOUND);
+            for (int i = 0; i < patterns.size(); i++) {
+                var patternTag = patterns.getCompound(i);
+                int id = Short.toUnsignedInt(patternTag.getShort(TAG_OVERFLOW_PATTERN_ID));
+                var stack = ItemStack.parseOptional(registries,
+                        patternTag.getCompound(TAG_OVERFLOW_PATTERN));
+                if (!stack.isEmpty()) {
+                    pendingOverflowPatternDefinitions.put(id, stack);
+                }
+            }
+
+            var buckets = overflowTag.getList(TAG_OVERFLOW_BUCKETS, Tag.TAG_COMPOUND);
+            for (int i = 0; i < buckets.size(); i++) {
+                var bucketTag = buckets.getCompound(i);
+                if (!bucketTag.contains(TAG_OVERFLOW_CONN, Tag.TAG_COMPOUND)) continue;
+                var conn = WirelessConnection.fromTag(bucketTag.getCompound(TAG_OVERFLOW_CONN));
+                boolean compact = bucketTag.getBoolean(TAG_OVERFLOW_COMPACT);
+                if (compact) {
+                    pendingOverflowBuckets.add(new PendingBucketLoad(
+                            conn,
+                            bucketTag.getShort(TAG_OVERFLOW_PID),
+                            bucketTag.getShort(TAG_OVERFLOW_IDX),
+                            bucketTag.getLong(TAG_OVERFLOW_REMAINING),
+                            List.of(),
+                            true));
+                } else {
+                    var fallback = readGenericStackList(registries,
+                            bucketTag.getList(TAG_OVERFLOW_FALLBACK, Tag.TAG_COMPOUND));
+                    if (!fallback.isEmpty()) {
+                        pendingOverflowBuckets.add(new PendingBucketLoad(
+                                conn, (short) 0, (short) 0, 0, fallback, false));
+                    }
+                }
+            }
+        } else {
+            readLegacyWirelessOverflowFromNBT(tag, registries);
+        }
+
+        finishPendingWirelessOverflowLoad();
+    }
+
+    private void readLegacyWirelessOverflowFromNBT(CompoundTag tag, HolderLookup.Provider registries) {
+        if (!tag.contains(TAG_W_SEND_LIST, Tag.TAG_LIST)
+                || !tag.contains(TAG_W_SEND_CONN, Tag.TAG_COMPOUND)) {
+            return;
+        }
+        var fallback = readGenericStackList(registries, tag.getList(TAG_W_SEND_LIST, Tag.TAG_COMPOUND));
+        if (!fallback.isEmpty()) {
+            pendingOverflowBuckets.add(new PendingBucketLoad(
+                    WirelessConnection.fromTag(tag.getCompound(TAG_W_SEND_CONN)),
+                    (short) 0, (short) 0, 0, fallback, false));
+        }
+    }
+
+    private static List<GenericStack> readGenericStackList(HolderLookup.Provider registries, ListTag list) {
+        var stacks = new ArrayList<GenericStack>(list.size());
+        for (int i = 0; i < list.size(); i++) {
+            var stack = GenericStack.readTag(registries, list.getCompound(i));
+            if (stack != null && stack.amount() > 0) {
+                stacks.add(stack);
+            }
+        }
+        return stacks;
+    }
+
+    private void finishPendingWirelessOverflowLoad() {
+        if (pendingOverflowBuckets.isEmpty()) return;
+
+        var level = overloadedHost.getLevel();
+        if (!pendingOverflowPatternDefinitions.isEmpty() && level == null) {
+            return;
+        }
+
+        for (var entry : pendingOverflowPatternDefinitions.entrySet()) {
+            var details = PatternDetailsHelper.decodePattern(entry.getValue(), level);
+            if (details != null) {
+                patternById.put(entry.getKey(), details);
+                patternTable.put(details, entry.getKey());
+                nextPatternId = Math.max(nextPatternId, (entry.getKey() + 1) & 0xFFFF);
+            }
+        }
+
+        for (var pending : pendingOverflowBuckets) {
+            if (pending.compactMode()) {
+                int patternId = Short.toUnsignedInt(pending.patternId());
+                var pattern = patternById.get(patternId);
+                if (pattern == null || pending.remaining() <= 0) {
+                    continue;
+                }
+                var inputs = pattern.getInputs();
+                if (pending.stuckIdx() < 0 || pending.stuckIdx() >= inputs.length) {
+                    continue;
+                }
+                pendingOverflowByConn.put(pending.conn(),
+                        ConnBucket.compact(pending.patternId(), pending.stuckIdx(), pending.remaining()));
+            } else if (!pending.fallbackList().isEmpty()) {
+                pendingOverflowByConn.put(pending.conn(),
+                        ConnBucket.fallback(pending.patternId(), pending.fallbackList()));
+            }
+        }
+
+        pendingOverflowPatternDefinitions.clear();
+        pendingOverflowBuckets.clear();
+        connectionsDirty = true;
+        refreshGlobalBackpressure();
+    }
+
+    private void clearWirelessOverflowState() {
+        pendingOverflowByConn.clear();
+        pendingOverflowPatternDefinitions.clear();
+        pendingOverflowBuckets.clear();
+        patternTable.clear();
+        patternById.clear();
+        nextPatternId = 0;
+        wirelessGlobalBackpressure = false;
     }
 }

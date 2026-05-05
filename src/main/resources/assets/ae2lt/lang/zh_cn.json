@@ -146,6 +146,8 @@
   "ae2lt.connector.dimension_mismatch": "无线连接不能跨维度",
   "ae2lt.connector.cannot_bind_provider": "不能将过载样板供应器绑定到另一个样板供应器",
   "ae2lt.connector.cannot_bind_power_supply": "不能将过载供电仪绑定到另一个供电仪",
+  "ae2lt.connector.provider_partial": "已处理 %d 个目标，跳过 %d 个；过载样板供应器最多连接 %d 台机器",
+  "ae2lt.connector.provider_full": "已跳过 %d 个目标；过载样板供应器最多连接 %d 台机器",
   "ae2lt.connector.power_supply_partial": "已处理 %d 个目标，跳过 %d 个；过载供电仪最多连接 %d 台机器",
   "ae2lt.connector.power_supply_full": "已跳过 %d 个目标；过载供电仪最多连接 %d 台机器",
   "ae2lt.gui.wireless_speed.normal": "速度：普通",

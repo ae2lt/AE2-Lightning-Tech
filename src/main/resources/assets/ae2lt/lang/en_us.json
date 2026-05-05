@@ -177,6 +177,8 @@
   "ae2lt.connector.dimension_mismatch": "Wireless connections cannot cross dimensions",
   "ae2lt.connector.cannot_bind_provider": "Cannot bind an Overloaded Pattern Provider to another Pattern Provider",
   "ae2lt.connector.cannot_bind_power_supply": "Cannot bind an Overloaded Power Supply to another Power Supply",
+  "ae2lt.connector.provider_partial": "Processed %d targets; skipped %d. Overloaded Pattern Provider can link at most %d machines",
+  "ae2lt.connector.provider_full": "Skipped %d targets; Overloaded Pattern Provider can link at most %d machines",
   "ae2lt.connector.power_supply_partial": "Processed %d targets; skipped %d. Overloaded Power Supply can link at most %d machines",
   "ae2lt.connector.power_supply_full": "Skipped %d targets; Overloaded Power Supply can link at most %d machines",
   "ae2lt.gui.wireless_speed.normal": "Speed: Normal",

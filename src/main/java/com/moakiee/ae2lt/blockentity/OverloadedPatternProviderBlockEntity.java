@@ -52,6 +52,7 @@ public class OverloadedPatternProviderBlockEntity extends PatternProviderBlockEn
 
     /** Pattern slots displayed per GUI page. */
     public static final int SLOTS_PER_PAGE = 36;
+    public static final int MAX_WIRELESS_CONNECTIONS = 1024;
 
     // ── Idle power (recomputed on mode/connection changes) ───────────────
     // Mirrors the overloaded interface: wireless dispatch is far more
@@ -298,28 +299,32 @@ public class OverloadedPatternProviderBlockEntity extends PatternProviderBlockEn
      * Add or update a wireless connection. If a connection to the same (dimension, pos)
      * already exists, the bound face is updated; otherwise a new record is added.
      */
-    public void addOrUpdateConnection(ResourceKey<Level> dimension, BlockPos pos, Direction boundFace) {
+    public boolean addOrUpdateConnection(ResourceKey<Level> dimension, BlockPos pos, Direction boundFace) {
         if (!isLocalDimension(dimension)) {
-            return;
+            return false;
         }
         for (int i = 0; i < connections.size(); i++) {
             if (connections.get(i).sameTarget(dimension, pos)) {
                 var updated = new WirelessConnection(dimension, pos, boundFace);
                 if (connections.get(i).equals(updated)) {
-                    return;
+                    return true;
                 }
                 connections.set(i, updated);
                 notifyLogicStateChanged();
                 saveChanges();
                 markForClientUpdate();
-                return;
+                return true;
             }
+        }
+        if (connections.size() >= MAX_WIRELESS_CONNECTIONS) {
+            return false;
         }
         connections.add(new WirelessConnection(dimension, pos, boundFace));
         recomputeIdlePower();
         notifyLogicStateChanged();
         saveChanges();
         markForClientUpdate();
+        return true;
     }
 
     /**
@@ -428,12 +433,14 @@ public class OverloadedPatternProviderBlockEntity extends PatternProviderBlockEn
                 ? WirelessSpeedMode.values()[speedOrd] : WirelessSpeedMode.NORMAL;
         var newFilteredImport = data.readBoolean();
         int count = data.readVarInt();
-        var newConns = new ArrayList<WirelessConnection>(count);
+        var newConns = new ArrayList<WirelessConnection>(Math.min(count, MAX_WIRELESS_CONNECTIONS));
         for (int i = 0; i < count; i++) {
             var dim = ResourceKey.create(Registries.DIMENSION, data.readResourceLocation());
             var pos = data.readBlockPos();
             var face = Direction.from3DDataValue(data.readByte());
-            newConns.add(new WirelessConnection(dim, pos, face));
+            if (newConns.size() < MAX_WIRELESS_CONNECTIONS) {
+                newConns.add(new WirelessConnection(dim, pos, face));
+            }
         }
         if (newMode != providerMode || newReturnMode != returnMode
                 || newDispatchMode != wirelessDispatchMode
@@ -517,7 +524,7 @@ public class OverloadedPatternProviderBlockEntity extends PatternProviderBlockEn
         connections.clear();
         if (data.contains(TAG_CONNECTIONS, Tag.TAG_LIST)) {
             var connList = data.getList(TAG_CONNECTIONS, Tag.TAG_COMPOUND);
-            for (int i = 0; i < connList.size(); i++) {
+            for (int i = 0; i < connList.size() && connections.size() < MAX_WIRELESS_CONNECTIONS; i++) {
                 connections.add(WirelessConnection.fromTag(connList.getCompound(i)));
             }
         }

@@ -170,6 +170,7 @@ public record WirelessConnectorUsePacket(
         var disconnected = new ArrayList<BlockPos>();
         var updated = new ArrayList<BlockPos>();
         var connected = new ArrayList<BlockPos>();
+        int skippedDueToLimit = 0;
 
         for (var targetPos : targets) {
             var existing = provider.getConnections().stream()
@@ -182,13 +183,44 @@ public record WirelessConnectorUsePacket(
                         disconnected.add(targetPos.immutable());
                     }
                 } else {
-                    provider.addOrUpdateConnection(targetDim, targetPos, face);
-                    updated.add(targetPos.immutable());
+                    if (provider.addOrUpdateConnection(targetDim, targetPos, face)) {
+                        updated.add(targetPos.immutable());
+                    }
                 }
             } else {
-                provider.addOrUpdateConnection(targetDim, targetPos, face);
-                connected.add(targetPos.immutable());
+                if (provider.addOrUpdateConnection(targetDim, targetPos, face)) {
+                    connected.add(targetPos.immutable());
+                } else {
+                    skippedDueToLimit++;
+                }
             }
+        }
+
+        sendProviderConnectionFeedback(player, disconnected, updated, connected, skippedDueToLimit);
+    }
+
+    private void sendProviderConnectionFeedback(ServerPlayer player,
+                                                ArrayList<BlockPos> disconnected,
+                                                ArrayList<BlockPos> updated,
+                                                ArrayList<BlockPos> connected,
+                                                int skippedDueToLimit) {
+        if (skippedDueToLimit > 0) {
+            int changed = disconnected.size() + updated.size() + connected.size();
+            if (changed > 0) {
+                player.displayClientMessage(Component.translatable(
+                        "ae2lt.connector.provider_partial",
+                        changed,
+                        skippedDueToLimit,
+                        OverloadedPatternProviderBlockEntity.MAX_WIRELESS_CONNECTIONS)
+                        .withStyle(ChatFormatting.GREEN), true);
+                return;
+            }
+            player.displayClientMessage(Component.translatable(
+                    "ae2lt.connector.provider_full",
+                    skippedDueToLimit,
+                    OverloadedPatternProviderBlockEntity.MAX_WIRELESS_CONNECTIONS)
+                    .withStyle(ChatFormatting.RED), true);
+            return;
         }
 
         sendConnectionFeedback(player, disconnected, updated, connected);
