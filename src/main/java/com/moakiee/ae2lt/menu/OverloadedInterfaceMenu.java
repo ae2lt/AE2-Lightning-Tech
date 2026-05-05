@@ -313,7 +313,7 @@ public class OverloadedInterfaceMenu extends InterfaceMenu implements FrequencyB
         if (host instanceof net.minecraft.world.level.block.entity.BlockEntity be) {
             return be.getBlockPos();
         }
-        return net.minecraft.core.BlockPos.ZERO;
+        throw new IllegalStateException("Frequency binding host is not a block entity: " + host);
     }
 
     // ══════════════════════════════════════════════════════════════════════

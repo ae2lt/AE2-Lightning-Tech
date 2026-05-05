@@ -14,6 +14,7 @@ import appeng.client.gui.widgets.TabButton;
 
 import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.client.ClientFrequencyCache;
+import com.moakiee.ae2lt.client.FrequencyBindingClient;
 import com.moakiee.ae2lt.grid.FrequencyAccessLevel;
 import com.moakiee.ae2lt.grid.FrequencySecurityLevel;
 import com.moakiee.ae2lt.grid.WirelessFrequency;
@@ -303,6 +304,7 @@ public class FrequencyScreen extends AbstractContainerScreen<FrequencyMenu> {
     @Override
     protected void init() {
         super.init();
+        FrequencyBindingClient.restoreCursorPositionIfNeeded();
         lastCacheRevision = ClientFrequencyCache.revision();
         lastFreqId = freqMenu().getCurrentFrequencyId();
         initTabWidgets();

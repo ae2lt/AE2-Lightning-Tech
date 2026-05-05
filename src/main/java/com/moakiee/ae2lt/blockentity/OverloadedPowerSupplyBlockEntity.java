@@ -562,6 +562,33 @@ public class OverloadedPowerSupplyBlockEntity extends AENetworkedBlockEntity
     }
 
     @Override
+    public void exportSettings(appeng.util.SettingsFrom mode,
+                               net.minecraft.core.component.DataComponentMap.Builder builder,
+                               @Nullable Player player) {
+        super.exportSettings(mode, builder, player);
+        if (mode == appeng.util.SettingsFrom.MEMORY_CARD && getFrequencyId() > 0) {
+            var tag = new CompoundTag();
+            tag.putInt(FrequencyBindingHelper.TAG_MEMORY_FREQUENCY, getFrequencyId());
+            com.moakiee.ae2lt.logic.MemoryCardConfigSupport.writeCustomTag(builder, tag);
+        }
+    }
+
+    @Override
+    public void importSettings(appeng.util.SettingsFrom mode,
+                               net.minecraft.core.component.DataComponentMap input,
+                               @Nullable Player player) {
+        super.importSettings(mode, input, player);
+        if (mode != appeng.util.SettingsFrom.MEMORY_CARD) {
+            return;
+        }
+
+        var tag = com.moakiee.ae2lt.logic.MemoryCardConfigSupport.readCustomTag(input);
+        if (tag != null && tag.contains(FrequencyBindingHelper.TAG_MEMORY_FREQUENCY)) {
+            setFrequency(tag.getInt(FrequencyBindingHelper.TAG_MEMORY_FREQUENCY));
+        }
+    }
+
+    @Override
     public void setRemoved() {
         frequencyBinding.setRemoved();
         logic.flushBufferToNetwork();
