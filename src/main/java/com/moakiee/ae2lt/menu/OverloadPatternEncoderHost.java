@@ -1,11 +1,9 @@
 package com.moakiee.ae2lt.menu;
 
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 
 import appeng.api.implementations.menuobjects.ItemMenuHost;
-import appeng.menu.locator.ItemMenuLocator;
-
-import com.moakiee.ae2lt.item.OverloadPatternEncoderItem;
 
 /**
  * Item-menu host for the hand-held overload pattern encoder.
@@ -13,13 +11,13 @@ import com.moakiee.ae2lt.item.OverloadPatternEncoderItem;
  * The host only anchors the menu to the held item. All edit state lives in the
  * menu itself.
  */
-public final class OverloadPatternEncoderHost extends ItemMenuHost<OverloadPatternEncoderItem> {
+public final class OverloadPatternEncoderHost extends ItemMenuHost {
     public OverloadPatternEncoderHost(
-            OverloadPatternEncoderItem item,
             Player player,
-            ItemMenuLocator locator
+            int inventorySlot,
+            ItemStack stack
     ) {
-        super(item, player, locator);
+        super(player, inventorySlot, stack);
     }
 }
 
