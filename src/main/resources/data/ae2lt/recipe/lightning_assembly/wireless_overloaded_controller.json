@@ -1,0 +1,43 @@
+{
+  "type": "ae2lt:lightning_assembly",
+  "priority": 0,
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "ae2lt:overloaded_controller"
+      },
+      "count": 16
+    },
+    {
+      "ingredient": {
+        "item": "ae2:fluix_pearl"
+      },
+      "count": 256
+    },
+    {
+      "ingredient": {
+        "item": "ae2lt:overload_machine_frame"
+      },
+      "count": 4
+    },
+    {
+      "ingredient": {
+        "item": "ae2lt:ultimate_overload_core"
+      },
+      "count": 4
+    },
+    {
+      "ingredient": {
+        "item": "ae2:mysterious_cube"
+      },
+      "count": 1
+    }
+  ],
+  "result": {
+    "id": "ae2lt:wireless_overloaded_controller",
+    "count": 1
+  },
+  "totalEnergy": 1000000,
+  "lightningCost": 64,
+  "lightningTier": "extreme_high_voltage"
+}

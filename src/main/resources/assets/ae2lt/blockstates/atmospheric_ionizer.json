@@ -1,0 +1,20 @@
+{
+  "multipart": [
+    {
+      "when": {
+        "working": "false"
+      },
+      "apply": {
+        "model": "ae2lt:block/atmospheric_ionizer_off"
+      }
+    },
+    {
+      "when": {
+        "working": "true"
+      },
+      "apply": {
+        "model": "ae2lt:block/atmospheric_ionizer_on"
+      }
+    }
+  ]
+}

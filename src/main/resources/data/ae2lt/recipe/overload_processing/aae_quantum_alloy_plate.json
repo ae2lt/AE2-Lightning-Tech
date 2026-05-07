@@ -1,0 +1,43 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "advanced_ae"
+    }
+  ],
+  "type": "ae2lt:overload_processing",
+  "priority": 0,
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "advanced_ae:quantum_alloy"
+      },
+      "count": 8
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:netherite_ingot"
+      },
+      "count": 2
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:nether_star"
+      },
+      "count": 1
+    }
+  ],
+  "inputFluid": {
+    "id": "advanced_ae:quantum_infusion_source",
+    "amount": 1000
+  },
+  "results": [
+    {
+      "id": "advanced_ae:quantum_alloy_plate",
+      "count": 1
+    }
+  ],
+  "totalEnergy": 1000000,
+  "lightningCost": 1,
+  "lightningTier": "high_voltage"
+}

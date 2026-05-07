@@ -1,0 +1,27 @@
+{
+  "type": "ae2lt:overload_processing",
+  "priority": 0,
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "ae2lt:overload_alloy_blank"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "ae2lt:overload_crystal_dust"
+      },
+      "count": 1
+    }
+  ],
+  "results": [
+    {
+      "id": "ae2lt:overload_alloy",
+      "count": 1
+    }
+  ],
+  "totalEnergy": 100000,
+  "lightningCost": 1,
+  "lightningTier": "high_voltage"
+}

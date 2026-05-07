@@ -1,0 +1,12 @@
+{
+  "parent": "block/cube",
+  "textures": {
+    "particle": "ae2lt:block/overloaded_pattern_provider",
+    "down": "ae2lt:block/overloaded_pattern_provider_alternate",
+    "up": "ae2lt:block/overloaded_pattern_provider_alternate_front",
+    "north": "ae2lt:block/overloaded_pattern_provider_alternate_arrow",
+    "south": "ae2lt:block/overloaded_pattern_provider_alternate_arrow",
+    "east": "ae2lt:block/overloaded_pattern_provider_alternate_arrow",
+    "west": "ae2lt:block/overloaded_pattern_provider_alternate_arrow"
+  }
+}

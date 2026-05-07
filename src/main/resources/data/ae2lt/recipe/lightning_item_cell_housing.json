@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "a": {
+      "item": "ae2:quartz_glass"
+    },
+    "b": {
+      "tag": "c:dusts/redstone"
+    },
+    "d": {
+      "item": "ae2lt:overload_alloy"
+    }
+  },
+  "pattern": [
+    "aba",
+    "b b",
+    "ddd"
+  ],
+  "result": {
+    "count": 1,
+    "id": "ae2lt:lightning_item_cell_housing"
+  }
+}

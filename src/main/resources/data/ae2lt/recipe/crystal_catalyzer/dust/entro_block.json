@@ -1,0 +1,19 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "extendedae"
+    }
+  ],
+  "type": "ae2lt:crystal_catalyzer",
+  "mode": "dust",
+  "catalyst": {
+    "item": "extendedae:entro_block"
+  },
+  "catalystCount": 1,
+  "output": {
+    "id": "extendedae:entro_dust",
+    "count": 1
+  },
+  "energyPerCycle": 100000
+}

@@ -1,0 +1,31 @@
+{
+  "type": "ae2lt:lightning_assembly",
+  "priority": 0,
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "ae2:item_cell_housing"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "ae2lt:overload_crystal"
+      },
+      "count": 4
+    },
+    {
+      "ingredient": {
+        "item": "ae2lt:overload_processor"
+      },
+      "count": 4
+    }
+  ],
+  "result": {
+    "id": "ae2lt:overloaded_filter_component",
+    "count": 1
+  },
+  "totalEnergy": 16000,
+  "lightningCost": 4,
+  "lightningTier": "extreme_high_voltage"
+}

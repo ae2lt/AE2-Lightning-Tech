@@ -1,0 +1,31 @@
+{
+  "type": "ae2lt:lightning_simulation",
+  "priority": 0,
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "ae2lt:overload_processor"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "ae2lt:lightning_cell_component_iii"
+      },
+      "count": 3
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:redstone"
+      },
+      "count": 4
+    }
+  ],
+  "result": {
+    "id": "ae2lt:lightning_cell_component_iv",
+    "count": 1
+  },
+  "totalEnergy": 1000000,
+  "lightningCost": 32,
+  "lightningTier": "high_voltage"
+}

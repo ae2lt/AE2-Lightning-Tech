@@ -1,0 +1,12 @@
+{
+  "type": "extendedae:circuit_cutter",
+  "input": {
+    "ingredient": {
+      "item": "ae2lt:overload_crystal_block"
+    }
+  },
+  "output": {
+    "count": 4,
+    "id": "ae2lt:unoverloaded_circuit_board"
+  }
+}

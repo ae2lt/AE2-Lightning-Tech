@@ -1,0 +1,16 @@
+{
+  "type": "ae2:inscriber",
+  "ingredients": {
+    "middle": {
+      "item": "ae2lt:overload_crystal"
+    },
+    "top": {
+      "item": "ae2lt:overload_inscriber_press"
+    }
+  },
+  "mode": "inscribe",
+  "result": {
+    "count": 1,
+    "id": "ae2lt:unoverloaded_circuit_board"
+  }
+}

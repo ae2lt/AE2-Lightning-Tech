@@ -1,0 +1,37 @@
+{
+  "type": "ae2lt:overload_processing",
+  "priority": 0,
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "ae2:charged_certus_quartz_crystal"
+      },
+      "count": 16
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:redstone"
+      },
+      "count": 16
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:nether_quartz"
+      },
+      "count": 16
+    }
+  ],
+  "inputFluid": {
+    "id": "minecraft:water",
+    "amount": 500
+  },
+  "results": [
+    {
+      "id": "ae2:fluix_crystal",
+      "count": 64
+    }
+  ],
+  "totalEnergy": 200000,
+  "lightningCost": 1,
+  "lightningTier": "high_voltage"
+}

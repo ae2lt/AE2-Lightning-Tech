@@ -1,0 +1,22 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:not",
+      "value": {
+        "type": "neoforge:tag_empty",
+        "tag": "c:dusts/amethyst"
+      }
+    }
+  ],
+  "type": "ae2lt:crystal_catalyzer",
+  "mode": "dust",
+  "catalyst": {
+    "item": "minecraft:amethyst_block"
+  },
+  "catalystCount": 1,
+  "output": {
+    "tag": "c:dusts/amethyst",
+    "count": 1
+  },
+  "energyPerCycle": 100000
+}

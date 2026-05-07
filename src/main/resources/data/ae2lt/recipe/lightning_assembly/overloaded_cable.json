@@ -1,0 +1,25 @@
+{
+  "type": "ae2lt:lightning_assembly",
+  "priority": 0,
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "ae2:fluix_covered_dense_cable"
+      },
+      "count": 16
+    },
+    {
+      "ingredient": {
+        "item": "ae2lt:overload_alloy_plate"
+      },
+      "count": 6
+    }
+  ],
+  "result": {
+    "id": "ae2lt:overloaded_cable",
+    "count": 8
+  },
+  "totalEnergy": 1000000,
+  "lightningCost": 2,
+  "lightningTier": "extreme_high_voltage"
+}

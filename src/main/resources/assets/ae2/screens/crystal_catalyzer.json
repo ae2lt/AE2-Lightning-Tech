@@ -1,0 +1,71 @@
+{
+  "$schema": "schema.json",
+  "includes": ["common/common.json"],
+  "background": {
+    "texture": "ae2lt:textures/guis/crystal_catalyzer.png",
+    "srcRect": [0, 0, 176, 190]
+  },
+  "slots": {
+    "PLAYER_INVENTORY": {
+      "left": 8,
+      "top": 85,
+      "grid": "BREAK_AFTER_9COLS"
+    },
+    "PLAYER_HOTBAR": {
+      "left": 8,
+      "top": 143,
+      "grid": "HORIZONTAL"
+    },
+    "AE2LT_CRYSTAL_CATALYZER_CATALYST": { "left": 56, "top": 30 },
+    "AE2LT_CRYSTAL_CATALYZER_MATRIX": { "left": 84, "top": 54 },
+    "MACHINE_OUTPUT": { "left": 117, "top": 30 }
+  },
+  "images": {
+    "energyBar": {
+      "texture": "ae2:textures/guis/inscriber.png",
+      "srcRect": [176, 0, 6, 18]
+    },
+    "processOverlay": {
+      "texture": "ae2lt:textures/guis/crystal_catalyzer.png",
+      "srcRect": [176, 18, 35, 10]
+    }
+  },
+  "widgets": {
+    "fluidBar": {
+      "left": 26,
+      "top": 18
+    },
+    "energyBar": {
+      "left": 140,
+      "top": 30
+    },
+    "processArea": {
+      "left": 74,
+      "top": 33
+    },
+    "lightningStatus": {
+      "left": 156,
+      "top": 4
+    }
+  },
+  "text": {
+    "dialog_title": {
+      "text": {
+        "translate": "block.ae2lt.crystal_catalyzer"
+      },
+      "position": {
+        "left": 8,
+        "top": 6
+      }
+    },
+    "player_inventory_title": {
+      "text": {
+        "translate": "container.inventory"
+      },
+      "position": {
+        "left": 8,
+        "top": 74
+      }
+    }
+  }
+}

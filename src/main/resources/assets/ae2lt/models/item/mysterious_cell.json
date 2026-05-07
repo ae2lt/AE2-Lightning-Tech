@@ -1,0 +1,20 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "ae2lt:item/mysterious_cell"
+  },
+  "overrides": [
+    {
+      "predicate": {
+        "ae2lt:cell_type": 1.0
+      },
+      "model": "ae2lt:item/infinite_lightning_cell"
+    },
+    {
+      "predicate": {
+        "ae2lt:cell_type": 2.0
+      },
+      "model": "ae2lt:item/infinite_high_voltage_lightning_cell"
+    }
+  ]
+}

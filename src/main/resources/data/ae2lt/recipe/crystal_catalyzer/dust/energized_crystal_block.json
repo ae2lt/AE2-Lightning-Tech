@@ -1,0 +1,19 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "neoecoae"
+    }
+  ],
+  "type": "ae2lt:crystal_catalyzer",
+  "mode": "dust",
+  "catalyst": {
+    "item": "neoecoae:energized_crystal_block"
+  },
+  "catalystCount": 1,
+  "output": {
+    "id": "neoecoae:energized_crystal_dust",
+    "count": 1
+  },
+  "energyPerCycle": 100000
+}

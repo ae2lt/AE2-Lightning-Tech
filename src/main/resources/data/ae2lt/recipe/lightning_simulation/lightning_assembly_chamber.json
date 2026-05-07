@@ -1,0 +1,31 @@
+{
+  "type": "ae2lt:lightning_simulation",
+  "priority": 0,
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "ae2lt:overload_machine_frame"
+      },
+      "count": 4
+    },
+    {
+      "ingredient": {
+        "item": "ae2lt:overload_singularity"
+      },
+      "count": 4
+    },
+    {
+      "ingredient": {
+        "item": "ae2:molecular_assembler"
+      },
+      "count": 64
+    }
+  ],
+  "result": {
+    "id": "ae2lt:lightning_assembly_chamber",
+    "count": 1
+  },
+  "totalEnergy": 4000000,
+  "lightningCost": 8,
+  "lightningTier": "extreme_high_voltage"
+}

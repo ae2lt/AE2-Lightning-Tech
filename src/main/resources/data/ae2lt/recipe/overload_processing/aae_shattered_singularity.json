@@ -1,0 +1,43 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "advanced_ae"
+    }
+  ],
+  "type": "ae2lt:overload_processing",
+  "priority": 0,
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "ae2:singularity"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:ender_pearl"
+      },
+      "count": 2
+    },
+    {
+      "ingredient": {
+        "item": "ae2:sky_dust"
+      },
+      "count": 2
+    }
+  ],
+  "inputFluid": {
+    "id": "minecraft:lava",
+    "amount": 100
+  },
+  "results": [
+    {
+      "id": "advanced_ae:shattered_singularity",
+      "count": 2
+    }
+  ],
+  "totalEnergy": 200000,
+  "lightningCost": 1,
+  "lightningTier": "high_voltage"
+}

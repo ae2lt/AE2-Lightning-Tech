@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "working=false": {
+      "model": "ae2lt:block/lightning_collector_off"
+    },
+    "working=true": {
+      "model": "ae2lt:block/lightning_collector_on"
+    }
+  }
+}

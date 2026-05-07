@@ -1,0 +1,33 @@
+{
+  "replace": false,
+  "values": [
+    "ae2lt:silicon_block",
+    "ae2lt:overload_machine_frame",
+    "ae2lt:overload_crystal_block",
+    "ae2lt:lightning_collector",
+    "ae2lt:lightning_simulation_room",
+    "ae2lt:lightning_assembly_chamber",
+    "ae2lt:overload_processing_factory",
+    "ae2lt:tesla_coil",
+    "ae2lt:atmospheric_ionizer",
+    "ae2lt:crystal_catalyzer",
+    "ae2lt:overloaded_controller",
+    "ae2lt:overloaded_pattern_provider",
+    "ae2lt:overloaded_interface",
+    {
+      "id": "ae2lt:overloaded_power_supply",
+      "required": false
+    },
+    "ae2lt:wireless_receiver",
+    "ae2lt:wireless_overloaded_controller",
+    "ae2lt:advanced_wireless_overloaded_controller",
+    "ae2lt:flawless_budding_overload_crystal",
+    "ae2lt:flawed_budding_overload_crystal",
+    "ae2lt:cracked_budding_overload_crystal",
+    "ae2lt:damaged_budding_overload_crystal",
+    "ae2lt:small_overload_crystal_bud",
+    "ae2lt:medium_overload_crystal_bud",
+    "ae2lt:large_overload_crystal_bud",
+    "ae2lt:overload_crystal_cluster"
+  ]
+}

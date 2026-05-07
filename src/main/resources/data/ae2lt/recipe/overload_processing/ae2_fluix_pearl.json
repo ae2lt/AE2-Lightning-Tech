@@ -1,0 +1,27 @@
+{
+  "type": "ae2lt:overload_processing",
+  "priority": 0,
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "minecraft:ender_pearl"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "ae2:fluix_dust"
+      },
+      "count": 4
+    }
+  ],
+  "results": [
+    {
+      "id": "ae2:fluix_pearl",
+      "count": 1
+    }
+  ],
+  "totalEnergy": 20000,
+  "lightningCost": 1,
+  "lightningTier": "high_voltage"
+}

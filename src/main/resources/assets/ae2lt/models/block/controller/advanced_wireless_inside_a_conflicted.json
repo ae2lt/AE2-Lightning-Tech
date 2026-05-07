@@ -1,0 +1,8 @@
+{
+  "parent": "ae2lt:block/controller/controller_block_lights",
+  "textures": {
+    "block": "ae2lt:block/overload_controller/advanced_wireless_inside_a_powered",
+    "lights": "ae2lt:block/overload_controller/advanced_wireless_conflict"
+  }
+}
+

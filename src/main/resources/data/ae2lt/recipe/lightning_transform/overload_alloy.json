@@ -1,0 +1,22 @@
+{
+  "type": "ae2lt:lightning_transform",
+  "priority": 0,
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "ae2lt:overload_alloy_blank"
+      },
+      "count": 3
+    },
+    {
+      "ingredient": {
+        "item": "ae2lt:overload_crystal_dust"
+      },
+      "count": 4
+    }
+  ],
+  "result": {
+    "count": 1,
+    "id": "ae2lt:overload_alloy"
+  }
+}

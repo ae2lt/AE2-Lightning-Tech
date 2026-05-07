@@ -1,0 +1,55 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "appflux"
+    }
+  ],
+  "type": "ae2lt:overload_processing",
+  "priority": 0,
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "minecraft:cactus"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:bone_meal"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "ae2:silicon"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:slime_ball"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:glowstone_dust"
+      },
+      "count": 1
+    }
+  ],
+  "inputFluid": {
+    "id": "minecraft:lava",
+    "amount": 100
+  },
+  "results": [
+    {
+      "id": "appflux:harden_insulating_resin",
+      "count": 1
+    }
+  ],
+  "totalEnergy": 20000,
+  "lightningCost": 1,
+  "lightningTier": "high_voltage"
+}

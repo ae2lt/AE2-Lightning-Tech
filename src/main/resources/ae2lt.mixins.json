@@ -2,11 +2,31 @@
   "required": true,
   "minVersion": "0.8",
   "package": "com.moakiee.ae2lt.mixin",
-  "compatibilityLevel": "JAVA_8",
-  "refmap": "ae2lt.refmap.json",
+  "compatibilityLevel": "JAVA_17",
   "mixins": [
+    "ServerLevelMixin",
+    "PatternProviderLogicAccessor",
+    "PatternProviderLogicMixin",
+    "CraftingCpuLogicAccessor",
+    "ExecutingCraftingJobAccessor",
+    "ElapsedTimeTrackerAccessor",
+    "AdvCraftingCpuAccessor",
+    "AdvCraftingCpuLogicMixin",
+    "ECOCraftingCpuAccessor",
+    "ECOCraftingCpuLogicMixin",
+    "CraftingCpuLogicMixin",
+    "GridNodeMaxChannelsMixin",
+    "GridConnectionMaxChannelsMixin",
+    "GridGetMachineNodesMixin",
+    "PathingCalculationCapMixin",
+    "ControllerValidatorMixin",
+    "EjectCapabilityMixin",
+    "EjectGhostBEMixin"
   ],
   "client": [
+    "client.CableBusRenderStateMixin",
+    "client.CableBusContainerRenderMixin",
+    "client.CableBusBakedModelMixin"
   ],
   "injectors": {
     "defaultRequire": 1

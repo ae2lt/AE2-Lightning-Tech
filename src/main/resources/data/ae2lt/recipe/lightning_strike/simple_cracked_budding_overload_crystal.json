@@ -1,0 +1,16 @@
+{
+  "type": "ae2lt:lightning_strike",
+  "requires_natural_lightning": false,
+  "center_input": "ae2:flawed_budding_quartz",
+  "center_output": "ae2lt:cracked_budding_overload_crystal",
+  "requirements": [
+    { "offset": [-1, 0, -1], "block": "ae2:quartz_block", "consume": true },
+    { "offset": [1, 0, -1], "block": "ae2:quartz_block", "consume": true },
+    { "offset": [-1, 0, 1], "block": "ae2:quartz_block", "consume": true },
+    { "offset": [1, 0, 1], "block": "ae2:quartz_block", "consume": true },
+    { "offset": [0, 0, -1], "block": "ae2:fluix_block", "consume": true },
+    { "offset": [-1, 0, 0], "block": "ae2:fluix_block", "consume": true },
+    { "offset": [1, 0, 0], "block": "ae2:fluix_block", "consume": true },
+    { "offset": [0, 0, 1], "block": "ae2:fluix_block", "consume": true }
+  ]
+}

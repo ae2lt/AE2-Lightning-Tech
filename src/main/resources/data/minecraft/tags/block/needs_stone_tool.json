@@ -1,0 +1,16 @@
+{
+  "replace": false,
+  "values": [
+    "ae2lt:silicon_block",
+    "ae2lt:overload_machine_frame",
+    "ae2lt:overload_crystal_block",
+    "ae2lt:flawless_budding_overload_crystal",
+    "ae2lt:flawed_budding_overload_crystal",
+    "ae2lt:cracked_budding_overload_crystal",
+    "ae2lt:damaged_budding_overload_crystal",
+    "ae2lt:small_overload_crystal_bud",
+    "ae2lt:medium_overload_crystal_bud",
+    "ae2lt:large_overload_crystal_bud",
+    "ae2lt:overload_crystal_cluster"
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "ABC",
+    "DEF",
+    "GHI"
+  ],
+  "key": {
+    "A": {
+      "item": "ae2lt:overload_alloy_plate"
+    },
+    "B": {
+      "item": "minecraft:redstone"
+    },
+    "C": {
+      "item": "ae2lt:overload_alloy_plate"
+    },
+    "D": {
+      "item": "minecraft:redstone"
+    },
+    "E": {
+      "item": "ae2lt:overload_processor"
+    },
+    "F": {
+      "item": "minecraft:redstone"
+    },
+    "G": {
+      "item": "ae2lt:overload_alloy_plate"
+    },
+    "H": {
+      "item": "minecraft:redstone"
+    },
+    "I": {
+      "item": "ae2lt:overload_alloy_plate"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "ae2lt:overload_machine_frame"
+  }
+}

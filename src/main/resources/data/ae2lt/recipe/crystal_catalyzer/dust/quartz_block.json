@@ -1,0 +1,13 @@
+{
+  "type": "ae2lt:crystal_catalyzer",
+  "mode": "dust",
+  "catalyst": {
+    "item": "ae2:quartz_block"
+  },
+  "catalystCount": 1,
+  "output": {
+    "id": "ae2:certus_quartz_dust",
+    "count": 1
+  },
+  "energyPerCycle": 100000
+}

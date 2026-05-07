@@ -1,0 +1,42 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "ABC",
+    "DEF",
+    "GHI"
+  ],
+  "key": {
+    "A": {
+      "item": "ae2:entropy_manipulator"
+    },
+    "B": {
+      "item": "ae2lt:overload_crystal_block"
+    },
+    "C": {
+      "item": "ae2:entropy_manipulator"
+    },
+    "D": {
+      "item": "minecraft:copper_ingot"
+    },
+    "E": {
+      "item": "ae2lt:overload_machine_frame"
+    },
+    "F": {
+      "item": "minecraft:copper_ingot"
+    },
+    "G": {
+      "item": "ae2:fluix_glass_cable"
+    },
+    "H": {
+      "item": "ae2:fluix_glass_cable"
+    },
+    "I": {
+      "item": "ae2:fluix_glass_cable"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "ae2lt:atmospheric_ionizer"
+  }
+}

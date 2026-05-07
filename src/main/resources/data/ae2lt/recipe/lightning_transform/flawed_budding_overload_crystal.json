@@ -1,0 +1,16 @@
+{
+  "type": "ae2lt:lightning_transform",
+  "priority": 0,
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "ae2lt:cracked_budding_overload_crystal"
+      },
+      "count": 1
+    }
+  ],
+  "result": {
+    "count": 1,
+    "id": "ae2lt:flawed_budding_overload_crystal"
+  }
+}

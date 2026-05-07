@@ -1,0 +1,31 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "ae2omnicells"
+    }
+  ],
+  "type": "ae2lt:overload_processing",
+  "priority": 0,
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "ae2omnicells:ender_ingot"
+      },
+      "count": 64
+    }
+  ],
+  "inputFluid": {
+    "id": "minecraft:water",
+    "amount": 1000
+  },
+  "results": [
+    {
+      "id": "ae2omnicells:charged_ender_ingot",
+      "count": 64
+    }
+  ],
+  "totalEnergy": 1000000,
+  "lightningCost": 1,
+  "lightningTier": "high_voltage"
+}

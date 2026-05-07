@@ -1,0 +1,41 @@
+{
+  "$schema": "schema.json",
+  "includes": ["common/common.json", "common/player_inventory.json"],
+  "background": {
+    "texture": "ae2lt:textures/guis/lightning_collector.png",
+    "srcRect": [0, 0, 176, 168]
+  },
+  "slots": {
+    "AE2LT_LIGHTNING_COLLECTOR_CRYSTAL": {
+      "left": 80,
+      "top": 37
+    }
+  },
+  "images": {
+    "progressBar": {
+      "texture": "ae2lt:textures/guis/lightning_collector.png",
+      "srcRect": [176, 14, 6, 18]
+    }
+  },
+  "widgets": {
+    "progressBar": {
+      "left": 99,
+      "top": 36
+    },
+    "lightningStatus": {
+      "left": 156,
+      "top": 4
+    }
+  },
+  "text": {
+    "dialog_title": {
+      "text": {
+        "translate": "block.ae2lt.lightning_collector"
+      },
+      "position": {
+        "left": 8,
+        "top": 6
+      }
+    }
+  }
+}

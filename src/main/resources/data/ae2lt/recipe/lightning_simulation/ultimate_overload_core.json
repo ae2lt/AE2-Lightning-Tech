@@ -1,0 +1,31 @@
+{
+  "type": "ae2lt:lightning_simulation",
+  "priority": 0,
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "ae2lt:overload_alloy_plate"
+      },
+      "count": 32
+    },
+    {
+      "ingredient": {
+        "item": "ae2lt:overload_singularity"
+      },
+      "count": 16
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:echo_shard"
+      },
+      "count": 16
+    }
+  ],
+  "result": {
+    "id": "ae2lt:ultimate_overload_core",
+    "count": 1
+  },
+  "totalEnergy": 8000000,
+  "lightningCost": 16,
+  "lightningTier": "extreme_high_voltage"
+}

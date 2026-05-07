@@ -1,0 +1,33 @@
+{
+  "type": "ae2lt:overload_processing",
+  "priority": 0,
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "ae2lt:overload_alloy"
+      },
+      "count": 16
+    },
+    {
+      "ingredient": {
+        "item": "ae2lt:overload_processor"
+      },
+      "count": 16
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:netherite_ingot"
+      },
+      "count": 16
+    }
+  ],
+  "results": [
+    {
+      "id": "ae2lt:overload_alloy_plate",
+      "count": 1
+    }
+  ],
+  "totalEnergy": 1000000,
+  "lightningCost": 1,
+  "lightningTier": "high_voltage"
+}

@@ -1,0 +1,39 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "ABC",
+    "DEF",
+    "GHA"
+  ],
+  "key": {
+    "A": {
+      "item": "minecraft:ender_eye"
+    },
+    "B": {
+      "item": "minecraft:amethyst_shard"
+    },
+    "C": {
+      "item": "minecraft:chorus_fruit"
+    },
+    "D": {
+      "item": "minecraft:copper_ingot"
+    },
+    "E": {
+      "item": "minecraft:iron_ingot"
+    },
+    "F": {
+      "item": "minecraft:gold_ingot"
+    },
+    "G": {
+      "item": "minecraft:chorus_fruit"
+    },
+    "H": {
+      "item": "minecraft:amethyst_shard"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "ae2lt:overload_alloy_blank"
+  }
+}

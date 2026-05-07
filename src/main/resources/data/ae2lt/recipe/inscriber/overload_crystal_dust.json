@@ -1,0 +1,13 @@
+{
+  "type": "ae2:inscriber",
+  "ingredients": {
+    "middle": {
+      "item": "ae2lt:overload_crystal"
+    }
+  },
+  "mode": "inscribe",
+  "result": {
+    "count": 1,
+    "id": "ae2lt:overload_crystal_dust"
+  }
+}

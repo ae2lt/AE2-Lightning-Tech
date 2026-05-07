@@ -1,0 +1,49 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "neoecoae"
+    }
+  ],
+  "type": "ae2lt:overload_processing",
+  "priority": 0,
+  "inputs": [
+    {
+      "ingredient": {
+        "tag": "c:gems/energized_fluix_crystal"
+      },
+      "count": 4
+    },
+    {
+      "ingredient": {
+        "tag": "c:ingots/aluminum"
+      },
+      "count": 4
+    },
+    {
+      "ingredient": {
+        "tag": "c:silicon"
+      },
+      "count": 4
+    },
+    {
+      "ingredient": {
+        "tag": "neoecoae:superconductive_ingot_base"
+      },
+      "count": 4
+    }
+  ],
+  "inputFluid": {
+    "id": "minecraft:lava",
+    "amount": 2000
+  },
+  "results": [
+    {
+      "id": "neoecoae:energized_superconductive_ingot",
+      "count": 4
+    }
+  ],
+  "totalEnergy": 200000,
+  "lightningCost": 1,
+  "lightningTier": "high_voltage"
+}

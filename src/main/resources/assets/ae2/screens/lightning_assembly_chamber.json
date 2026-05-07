@@ -1,0 +1,56 @@
+{
+  "$schema": "schema.json",
+  "includes": ["common/common.json", "common/player_inventory.json", "common/toolbox.json"],
+  "background": {
+    "texture": "ae2lt:textures/guis/lightning_assembly_chamber.png",
+    "srcRect": [0, 0, 176, 198]
+  },
+  "slots": {
+    "PLAYER_INVENTORY": {
+      "left": 8,
+      "top": 116,
+      "grid": "BREAK_AFTER_9COLS"
+    },
+    "PLAYER_HOTBAR": {
+      "left": 8,
+      "top": 174,
+      "grid": "HORIZONTAL"
+    },
+    "AE2LT_LIGHTNING_ASSEMBLY_INPUT_0": { "left": 29, "top": 31 },
+    "AE2LT_LIGHTNING_ASSEMBLY_INPUT_1": { "left": 47, "top": 31 },
+    "AE2LT_LIGHTNING_ASSEMBLY_INPUT_2": { "left": 65, "top": 31 },
+    "AE2LT_LIGHTNING_ASSEMBLY_INPUT_3": { "left": 29, "top": 49 },
+    "AE2LT_LIGHTNING_ASSEMBLY_INPUT_4": { "left": 47, "top": 49 },
+    "AE2LT_LIGHTNING_ASSEMBLY_INPUT_5": { "left": 65, "top": 49 },
+    "AE2LT_LIGHTNING_ASSEMBLY_INPUT_6": { "left": 29, "top": 67 },
+    "AE2LT_LIGHTNING_ASSEMBLY_INPUT_7": { "left": 47, "top": 67 },
+    "AE2LT_LIGHTNING_ASSEMBLY_INPUT_8": { "left": 65, "top": 67 },
+    "AE2LT_LIGHTNING_ASSEMBLY_CATALYST": { "left": 126, "top": 16 },
+    "MACHINE_OUTPUT": { "left": 126, "top": 49 }
+  },
+  "text": {
+    "dialog_title": {
+      "text": { "translate": "block.ae2lt.lightning_assembly_chamber" },
+      "position": { "left": 8, "top": 6 }
+    },
+    "player_inventory_title": {
+      "text": { "translate": "container.inventory" },
+      "position": { "left": 8, "top": 104 }
+    }
+  },
+  "images": {
+    "energyBar": {
+      "texture": "ae2:textures/guis/inscriber.png",
+      "srcRect": [176, 0, 6, 18]
+    },
+    "processOverlay": {
+      "texture": "ae2lt:textures/guis/lightning_assembly_chamber.png",
+      "srcRect": [177, 48, 50, 46]
+    }
+  },
+  "widgets": {
+    "processArea": { "left": 83, "top": 22 },
+    "energyBar": { "left": 148, "top": 48 },
+    "lightningStatus": { "left": 156, "top": 4 }
+  }
+}

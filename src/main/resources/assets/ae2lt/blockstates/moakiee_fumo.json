@@ -1,0 +1,19 @@
+{
+    "variants": {
+        "facing=north": {
+            "model": "ae2lt:block/moakiee_fumo"
+        },
+        "facing=south": {
+            "model": "ae2lt:block/moakiee_fumo",
+            "y": 180
+        },
+        "facing=west": {
+            "model": "ae2lt:block/moakiee_fumo",
+            "y": 270
+        },
+        "facing=east": {
+            "model": "ae2lt:block/moakiee_fumo",
+            "y": 90
+        }
+    }
+}

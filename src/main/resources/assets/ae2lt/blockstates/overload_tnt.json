@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "unstable=false": {
+      "model": "ae2lt:block/overload_tnt"
+    },
+    "unstable=true": {
+      "model": "ae2lt:block/overload_tnt_unstable"
+    }
+  }
+}

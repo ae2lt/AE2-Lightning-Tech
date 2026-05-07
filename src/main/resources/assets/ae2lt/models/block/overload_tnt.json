@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/cube_bottom_top",
+  "textures": {
+    "bottom": "ae2lt:block/overload_tnt/bottom",
+    "side": "ae2lt:block/overload_tnt/side",
+    "top": "ae2lt:block/overload_tnt/top"
+  }
+}

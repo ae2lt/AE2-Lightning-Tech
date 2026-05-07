@@ -1,0 +1,23 @@
+{
+    DataVersion: 3337,
+    size: [3, 2, 3],
+    data: [
+        {pos: [0, 0, 0], state: "ae2lt:overload_crystal_block"},
+        {pos: [1, 0, 0], state: "ae2:fluix_block"},
+        {pos: [2, 0, 0], state: "ae2lt:overload_crystal_block"},
+        {pos: [0, 0, 1], state: "ae2:fluix_block"},
+        {pos: [1, 0, 1], state: "ae2:flawless_budding_quartz"},
+        {pos: [2, 0, 1], state: "ae2:fluix_block"},
+        {pos: [0, 0, 2], state: "ae2lt:overload_crystal_block"},
+        {pos: [1, 0, 2], state: "ae2:fluix_block"},
+        {pos: [2, 0, 2], state: "ae2lt:overload_crystal_block"},
+        {pos: [1, 1, 1], state: "minecraft:lightning_rod{facing:up,powered:false,waterlogged:false}"}
+    ],
+    entities: [],
+    palette: [
+        "ae2lt:overload_crystal_block",
+        "ae2:fluix_block",
+        "ae2:flawless_budding_quartz",
+        "minecraft:lightning_rod{facing:up,powered:false,waterlogged:false}"
+    ]
+}

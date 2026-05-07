@@ -1,0 +1,22 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "type": "neoforge:difference",
+      "base": {
+        "tag": "ae2lt:overloaded_cable"
+      },
+      "subtracted": {
+        "item": "ae2lt:overloaded_cable"
+      }
+    },
+    {
+      "tag": "ae2:can_remove_color"
+    }
+  ],
+  "result": {
+    "count": 1,
+    "id": "ae2lt:overloaded_cable"
+  }
+}

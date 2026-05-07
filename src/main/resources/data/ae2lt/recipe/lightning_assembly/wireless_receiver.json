@@ -1,0 +1,37 @@
+{
+  "type": "ae2lt:lightning_assembly",
+  "priority": 0,
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "ae2lt:overload_machine_frame"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "ae2lt:overloaded_cable"
+      },
+      "count": 8
+    },
+    {
+      "ingredient": {
+        "item": "ae2:quantum_ring"
+      },
+      "count": 8
+    },
+    {
+      "ingredient": {
+        "item": "ae2:quantum_link"
+      },
+      "count": 1
+    }
+  ],
+  "result": {
+    "id": "ae2lt:wireless_receiver",
+    "count": 1
+  },
+  "totalEnergy": 200000,
+  "lightningCost": 16,
+  "lightningTier": "extreme_high_voltage"
+}
