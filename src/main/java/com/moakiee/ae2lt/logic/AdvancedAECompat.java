@@ -3,12 +3,8 @@ package com.moakiee.ae2lt.logic;
 import org.jetbrains.annotations.Nullable;
 
 import net.minecraft.core.Direction;
-import net.neoforged.fml.ModList;
-
 import appeng.api.crafting.IPatternDetails;
 import appeng.api.stacks.AEKey;
-
-import net.pedroksl.advanced_ae.common.patterns.IAdvPatternDetails;
 
 /**
  * Runtime compatibility layer for AdvancedAE directional processing patterns.
@@ -18,13 +14,8 @@ import net.pedroksl.advanced_ae.common.patterns.IAdvPatternDetails;
  */
 public final class AdvancedAECompat {
 
-    private static Boolean loaded;
-
     public static boolean isLoaded() {
-        if (loaded == null) {
-            loaded = ModList.get().isLoaded("advanced_ae");
-        }
-        return loaded;
+        return false;
     }
 
     /**
@@ -32,9 +23,7 @@ public final class AdvancedAECompat {
      *         a non-empty direction map.
      */
     public static boolean isDirectional(IPatternDetails pattern) {
-        return isLoaded()
-                && pattern instanceof IAdvPatternDetails adv
-                && adv.directionalInputsSet();
+        return false;
     }
 
     /**
@@ -43,9 +32,6 @@ public final class AdvancedAECompat {
      */
     @Nullable
     public static Direction getDirectionForKey(IPatternDetails pattern, AEKey key) {
-        if (pattern instanceof IAdvPatternDetails adv) {
-            return adv.getDirectionSideForInputKey(key);
-        }
         return null;
     }
 

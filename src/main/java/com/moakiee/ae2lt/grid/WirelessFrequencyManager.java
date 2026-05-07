@@ -17,7 +17,6 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
@@ -25,8 +24,12 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.saveddata.SavedData;
+import net.minecraft.world.level.saveddata.SavedDataType;
 
 import appeng.api.networking.IGridNode;
+
+import com.moakiee.ae2lt.AE2LightningTech;
+import com.moakiee.ae2lt.util.SavedDataCodecs;
 
 /**
  * Global registry of wireless frequencies and their transmitters.
@@ -36,6 +39,10 @@ import appeng.api.networking.IGridNode;
 public final class WirelessFrequencyManager extends SavedData {
 
     private static final String DATA_NAME = "ae2lt_wireless_frequencies";
+    private static final SavedDataType<WirelessFrequencyManager> TYPE = new SavedDataType<>(
+            Identifier.fromNamespaceAndPath(AE2LightningTech.MODID, DATA_NAME),
+            level -> new WirelessFrequencyManager(),
+            SavedDataCodecs.codecFactory(WirelessFrequencyManager::load, WirelessFrequencyManager::saveTag));
 
     // ── Transmitter Entry ──
 
@@ -108,15 +115,15 @@ public final class WirelessFrequencyManager extends SavedData {
         read(tag);
     }
 
+    private static WirelessFrequencyManager load(CompoundTag tag, HolderLookup.Provider registries) {
+        return new WirelessFrequencyManager(tag, registries);
+    }
+
     // ── Lifecycle ──
 
     public static void onServerStart(MinecraftServer server) {
         ServerLevel overworld = server.overworld();
-        instance = overworld.getDataStorage().computeIfAbsent(
-                new SavedData.Factory<>(
-                        WirelessFrequencyManager::new,
-                        WirelessFrequencyManager::new),
-                DATA_NAME);
+        instance = overworld.getDataStorage().computeIfAbsent(TYPE);
         // broadcast connection changes to every player whose FrequencyMenu is on this freq
         instance.addDeviceListener(freqId ->
                 com.moakiee.ae2lt.network.SyncFrequencyDetailPacket.broadcastConnectionsTo(server, freqId));
@@ -332,47 +339,45 @@ public final class WirelessFrequencyManager extends SavedData {
     // ── Persistence ──
 
     private void read(CompoundTag root) {
-        uniqueId = root.getInt("uniqueId");
+        uniqueId = root.getIntOr("uniqueId", 0);
 
-        ListTag freqList = root.getList("frequencies", Tag.TAG_COMPOUND);
+        ListTag freqList = root.getListOrEmpty("frequencies");
         for (int i = 0; i < freqList.size(); i++) {
             WirelessFrequency freq = new WirelessFrequency();
-            freq.readFromTag(freqList.getCompound(i), WirelessFrequency.NBT_SAVE_ALL);
+            freq.readFromTag(freqList.getCompoundOrEmpty(i), WirelessFrequency.NBT_SAVE_ALL);
             if (freq.getId() > 0) {
                 frequencies.put(freq.getId(), freq);
             }
         }
 
-        ListTag txList = root.getList("transmitters", Tag.TAG_COMPOUND);
+        ListTag txList = root.getListOrEmpty("transmitters");
         for (int i = 0; i < txList.size(); i++) {
-            CompoundTag entry = txList.getCompound(i);
-            int freqId = entry.getInt("freqId");
+            CompoundTag entry = txList.getCompoundOrEmpty(i);
+            int freqId = entry.getIntOr("freqId", 0);
             var dimKey = ResourceKey.create(Registries.DIMENSION,
-                    Identifier.parse(entry.getString("dim")));
-            BlockPos pos = BlockPos.of(entry.getLong("pos"));
-            boolean adv = entry.getBoolean("advanced");
+                    Identifier.parse(entry.getStringOr("dim", "minecraft:overworld")));
+            BlockPos pos = BlockPos.of(entry.getLongOr("pos", 0L));
+            boolean adv = entry.getBooleanOr("advanced", false);
             transmitters.put(freqId, new TransmitterEntry(dimKey, pos, null, adv));
         }
 
-        ListTag devList = root.getList("devices", Tag.TAG_COMPOUND);
+        ListTag devList = root.getListOrEmpty("devices");
         for (int i = 0; i < devList.size(); i++) {
-            CompoundTag entry = devList.getCompound(i);
-            int freqId = entry.getInt("freqId");
+            CompoundTag entry = devList.getCompoundOrEmpty(i);
+            int freqId = entry.getIntOr("freqId", 0);
             var dimKey = ResourceKey.create(Registries.DIMENSION,
-                    Identifier.parse(entry.getString("dim")));
-            BlockPos pos = BlockPos.of(entry.getLong("pos"));
-            boolean ctrl = entry.getBoolean("controller");
-            boolean adv = entry.getBoolean("advanced");
-            String deviceName = entry.contains("name")
-                    ? entry.getString("name")
-                    : DeviceEntry.defaultDeviceName(ctrl, adv);
+                    Identifier.parse(entry.getStringOr("dim", "minecraft:overworld")));
+            BlockPos pos = BlockPos.of(entry.getLongOr("pos", 0L));
+            boolean ctrl = entry.getBooleanOr("controller", false);
+            boolean adv = entry.getBooleanOr("advanced", false);
+            String deviceName = entry.getStringOr("name", DeviceEntry.defaultDeviceName(ctrl, adv));
             devices.computeIfAbsent(freqId, k -> new HashSet<>())
                     .add(new DeviceEntry(dimKey, pos, ctrl, adv, deviceName));
         }
     }
 
-    @Override
-    public CompoundTag save(CompoundTag root, HolderLookup.Provider registries) {
+    private CompoundTag saveTag(HolderLookup.Provider registries) {
+        var root = new CompoundTag();
         root.putInt("uniqueId", uniqueId);
 
         ListTag freqList = new ListTag();

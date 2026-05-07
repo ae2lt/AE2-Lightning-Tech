@@ -8,9 +8,14 @@ import org.jetbrains.annotations.Nullable;
 
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.saveddata.SavedData;
+import net.minecraft.world.level.saveddata.SavedDataType;
 import net.neoforged.neoforge.server.ServerLifecycleHooks;
+
+import com.moakiee.ae2lt.AE2LightningTech;
+import com.moakiee.ae2lt.util.SavedDataCodecs;
 
 /**
  * World-level persistent storage for all infinite cell inventories.
@@ -25,18 +30,18 @@ import net.neoforged.neoforge.server.ServerLifecycleHooks;
 public final class InfiniteCellSavedData extends SavedData {
 
     private static final String DATA_NAME = "ae2lt_infinite_cells";
+    private static final SavedDataType<InfiniteCellSavedData> TYPE = new SavedDataType<>(
+            Identifier.fromNamespaceAndPath(AE2LightningTech.MODID, DATA_NAME),
+            level -> new InfiniteCellSavedData(),
+            SavedDataCodecs.codecFactory(InfiniteCellSavedData::load, InfiniteCellSavedData::saveTag));
 
     private final Map<UUID, CompoundTag> cells = new HashMap<>();
     private final transient Map<UUID, IndexedStorage> storageCache = new HashMap<>();
 
     public InfiniteCellSavedData() {}
 
-    public static Factory<InfiniteCellSavedData> factory() {
-        return new Factory<>(InfiniteCellSavedData::new, InfiniteCellSavedData::load);
-    }
-
     public static InfiniteCellSavedData get(MinecraftServer server) {
-        return server.overworld().getDataStorage().computeIfAbsent(factory(), DATA_NAME);
+        return server.overworld().getDataStorage().computeIfAbsent(TYPE);
     }
 
     public static @Nullable InfiniteCellSavedData getOrNull() {
@@ -108,17 +113,17 @@ public final class InfiniteCellSavedData extends SavedData {
 
     private static InfiniteCellSavedData load(CompoundTag tag, HolderLookup.Provider registries) {
         var data = new InfiniteCellSavedData();
-        CompoundTag cellsTag = tag.getCompound("cells");
+        CompoundTag cellsTag = tag.getCompoundOrEmpty("cells");
         for (String key : cellsTag.getAllKeys()) {
             try {
-                data.cells.put(UUID.fromString(key), cellsTag.getCompound(key));
+                cellsTag.getCompound(key).ifPresent(cellTag -> data.cells.put(UUID.fromString(key), cellTag));
             } catch (IllegalArgumentException ignored) {}
         }
         return data;
     }
 
-    @Override
-    public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
+    private CompoundTag saveTag(HolderLookup.Provider registries) {
+        var tag = new CompoundTag();
         for (var entry : storageCache.entrySet()) {
             if (entry.getValue().needsPersist()) {
                 CompoundTag lastRoot = cells.get(entry.getKey());

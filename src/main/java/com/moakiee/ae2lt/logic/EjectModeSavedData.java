@@ -10,12 +10,15 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.saveddata.SavedData;
+import net.minecraft.world.level.saveddata.SavedDataType;
+
+import com.moakiee.ae2lt.AE2LightningTech;
+import com.moakiee.ae2lt.util.SavedDataCodecs;
 
 /**
  * Overworld-level SavedData that persists all active EJECT-mode capability
@@ -42,18 +45,17 @@ public class EjectModeSavedData extends SavedData {
 
     private final List<PersistentReg> entries = new ArrayList<>();
 
-    public static final Factory<EjectModeSavedData> FACTORY = new Factory<>(
-            EjectModeSavedData::new,
-            EjectModeSavedData::load,
-            null
-    );
+    private static final SavedDataType<EjectModeSavedData> TYPE = new SavedDataType<>(
+            Identifier.fromNamespaceAndPath(AE2LightningTech.MODID, DATA_NAME),
+            level -> new EjectModeSavedData(),
+            SavedDataCodecs.codecFactory(EjectModeSavedData::load, EjectModeSavedData::saveTag));
 
     public EjectModeSavedData() {
         super();
     }
 
     public static EjectModeSavedData get(MinecraftServer server) {
-        return server.overworld().getDataStorage().computeIfAbsent(FACTORY, DATA_NAME);
+        return server.overworld().getDataStorage().computeIfAbsent(TYPE);
     }
 
     public List<PersistentReg> getAll() {
@@ -83,8 +85,8 @@ public class EjectModeSavedData extends SavedData {
 
     // ---- Persistence -------------------------------------------------------
 
-    @Override
-    public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
+    private CompoundTag saveTag(HolderLookup.Provider registries) {
+        var tag = new CompoundTag();
         var list = new ListTag();
         for (var e : entries) {
             var ct = new CompoundTag();
@@ -101,19 +103,17 @@ public class EjectModeSavedData extends SavedData {
 
     private static EjectModeSavedData load(CompoundTag tag, HolderLookup.Provider registries) {
         var data = new EjectModeSavedData();
-        if (tag.contains(TAG_ENTRIES, Tag.TAG_LIST)) {
-            var list = tag.getList(TAG_ENTRIES, Tag.TAG_COMPOUND);
-            for (int i = 0; i < list.size(); i++) {
-                var ct = list.getCompound(i);
-                var iDim = ResourceKey.create(Registries.DIMENSION,
-                        Identifier.parse(ct.getString(TAG_I_DIM)));
-                var iPos = BlockPos.of(ct.getLong(TAG_I_POS));
-                var iFace = Direction.from3DDataValue(ct.getInt(TAG_I_FACE));
-                var pDim = ResourceKey.create(Registries.DIMENSION,
-                        Identifier.parse(ct.getString(TAG_P_DIM)));
-                var pPos = BlockPos.of(ct.getLong(TAG_P_POS));
-                data.entries.add(new PersistentReg(iDim, iPos, iFace, pDim, pPos));
-            }
+        var list = tag.getListOrEmpty(TAG_ENTRIES);
+        for (int i = 0; i < list.size(); i++) {
+            var ct = list.getCompoundOrEmpty(i);
+            var iDim = ResourceKey.create(Registries.DIMENSION,
+                    Identifier.parse(ct.getStringOr(TAG_I_DIM, "minecraft:overworld")));
+            var iPos = BlockPos.of(ct.getLongOr(TAG_I_POS, 0L));
+            var iFace = Direction.from3DDataValue(ct.getIntOr(TAG_I_FACE, 0));
+            var pDim = ResourceKey.create(Registries.DIMENSION,
+                    Identifier.parse(ct.getStringOr(TAG_P_DIM, "minecraft:overworld")));
+            var pPos = BlockPos.of(ct.getLongOr(TAG_P_POS, 0L));
+            data.entries.add(new PersistentReg(iDim, iPos, iFace, pDim, pPos));
         }
         return data;
     }

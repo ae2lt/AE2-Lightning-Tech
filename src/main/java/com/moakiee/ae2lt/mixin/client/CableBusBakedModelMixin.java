@@ -10,7 +10,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import net.minecraft.client.resources.model.geometry.BakedQuad;
 
 import appeng.client.render.cablebus.CableBusBakedModel;
-import appeng.client.render.cablebus.CableBusRenderState;
+import appeng.block.networking.CableBusRenderState;
 
 import com.moakiee.ae2lt.client.render.OverloadedCableRenderHelper;
 import com.moakiee.ae2lt.client.render.OverloadedCableRenderStateAccess;

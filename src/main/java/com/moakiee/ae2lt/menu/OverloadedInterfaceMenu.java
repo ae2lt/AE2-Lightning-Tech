@@ -18,7 +18,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.inventory.ClickType;
+import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
@@ -322,7 +322,7 @@ public class OverloadedInterfaceMenu extends InterfaceMenu implements FrequencyB
     // ══════════════════════════════════════════════════════════════════════
 
     @Override
-    public void clicked(int slotId, int button, ClickType clickType, Player player) {
+    public void clicked(int slotId, int button, ContainerInput clickType, Player player) {
         if (slotId >= 0 && slotId < slots.size() && storageSlotSet.contains(slots.get(slotId))) {
             if (!isClientSide()) {
                 handleStorageInteraction(slots.get(slotId), button, clickType, player);
@@ -340,7 +340,7 @@ public class OverloadedInterfaceMenu extends InterfaceMenu implements FrequencyB
         return null;
     }
 
-    private void handleStorageInteraction(Slot slot, int button, ClickType clickType, Player player) {
+    private void handleStorageInteraction(Slot slot, int button, ContainerInput clickType, Player player) {
         var proxy = getProxy();
         if (proxy == null) return;
         int idx = slot.getContainerSlot();

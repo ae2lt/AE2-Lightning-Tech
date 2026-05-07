@@ -4,22 +4,20 @@ import com.mojang.blaze3d.vertex.PoseStack;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.rendertype.RenderType;
-import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.inventory.InventoryMenu;
 import net.minecraft.world.level.Level;
 
-import appeng.api.client.AEKeyRenderHandler;
+import appeng.client.api.AEKeyRenderer;
 import appeng.client.gui.style.Blitter;
 
 import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.me.key.LightningKey;
 
-public final class LightningKeyRenderHandler implements AEKeyRenderHandler<LightningKey> {
+public final class LightningKeyRenderHandler implements AEKeyRenderer<LightningKey, LightningKeyRenderHandler.State> {
     public static final LightningKeyRenderHandler INSTANCE = new LightningKeyRenderHandler();
 
     private static final Identifier HIGH_VOLTAGE_SPRITE =
@@ -28,6 +26,9 @@ public final class LightningKeyRenderHandler implements AEKeyRenderHandler<Light
             Identifier.fromNamespaceAndPath(AE2LightningTech.MODID, "item/extreme_high_voltage_lightning");
 
     private LightningKeyRenderHandler() {
+    }
+
+    public static final class State {
     }
 
     private static TextureAtlasSprite spriteFor(LightningKey stack) {
@@ -45,53 +46,25 @@ public final class LightningKeyRenderHandler implements AEKeyRenderHandler<Light
     }
 
     @Override
-    public void drawOnBlockFace(PoseStack poseStack, MultiBufferSource buffers, LightningKey what, float scale,
-            int combinedLight, Level level) {
-        var sprite = spriteFor(what);
-
-        poseStack.pushPose();
-        poseStack.translate(0, 0, 0.01f);
-
-        var buffer = buffers.getBuffer(RenderType.cutout());
-
-        // Match FluidKeyRenderHandler: shrink slightly since sprites typically fill the full texel.
-        scale -= 0.05f;
-        float x0 = -scale / 2f;
-        float y0 = scale / 2f;
-        float x1 = scale / 2f;
-        float y1 = -scale / 2f;
-
-        var transform = poseStack.last().pose();
-        buffer.addVertex(transform, x0, y1, 0)
-                .setColor(0xFFFFFFFF)
-                .setUv(sprite.getU0(), sprite.getV1())
-                .setOverlay(OverlayTexture.NO_OVERLAY)
-                .setLight(combinedLight)
-                .setNormal(0, 0, 1);
-        buffer.addVertex(transform, x1, y1, 0)
-                .setColor(0xFFFFFFFF)
-                .setUv(sprite.getU1(), sprite.getV1())
-                .setOverlay(OverlayTexture.NO_OVERLAY)
-                .setLight(combinedLight)
-                .setNormal(0, 0, 1);
-        buffer.addVertex(transform, x1, y0, 0)
-                .setColor(0xFFFFFFFF)
-                .setUv(sprite.getU1(), sprite.getV0())
-                .setOverlay(OverlayTexture.NO_OVERLAY)
-                .setLight(combinedLight)
-                .setNormal(0, 0, 1);
-        buffer.addVertex(transform, x0, y0, 0)
-                .setColor(0xFFFFFFFF)
-                .setUv(sprite.getU0(), sprite.getV0())
-                .setOverlay(OverlayTexture.NO_OVERLAY)
-                .setLight(combinedLight)
-                .setNormal(0, 0, 1);
-
-        poseStack.popPose();
+    public Class<State> stateClass() {
+        return State.class;
     }
 
     @Override
-    public Component getDisplayName(LightningKey stack) {
-        return stack.getDisplayName();
+    public State createState() {
+        return new State();
+    }
+
+    @Override
+    public void extract(State state, LightningKey what, Level level, int seed) {
+    }
+
+    @Override
+    public void submit(PoseStack poseStack, State state, SubmitNodeCollector nodes, int lightCoords) {
+    }
+
+    @Override
+    public java.util.List<Component> getTooltip(LightningKey stack) {
+        return java.util.List.of(stack.getDisplayName());
     }
 }

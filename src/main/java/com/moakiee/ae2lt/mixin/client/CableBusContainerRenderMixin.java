@@ -10,7 +10,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import net.minecraft.core.Direction;
 
 import appeng.api.parts.IPart;
-import appeng.client.render.cablebus.CableBusRenderState;
+import appeng.block.networking.CableBusRenderState;
 import appeng.parts.CableBusContainer;
 
 import com.moakiee.ae2lt.client.render.OverloadedCableRenderStateAccess;

@@ -1,6 +1,6 @@
 package com.moakiee.ae2lt.item;
 
-import appeng.client.render.effects.ParticleTypes;
+import appeng.core.particles.ParticleTypes;
 import com.moakiee.ae2lt.event.ArtificialLightningHandler;
 import net.minecraft.client.Minecraft;
 import net.minecraft.util.RandomSource;

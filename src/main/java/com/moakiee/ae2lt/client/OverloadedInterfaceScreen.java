@@ -14,7 +14,7 @@ import net.minecraft.world.inventory.Slot;
 
 import appeng.api.config.FuzzyMode;
 import appeng.api.config.Settings;
-import appeng.client.gui.Icon;
+import appeng.util.Icon;
 import appeng.client.gui.AEBaseScreen;
 import appeng.client.gui.style.PaletteColor;
 import appeng.client.gui.style.ScreenStyle;

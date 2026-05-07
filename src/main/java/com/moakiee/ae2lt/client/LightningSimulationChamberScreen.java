@@ -12,7 +12,7 @@ import net.minecraft.world.item.ItemStack;
 import appeng.api.config.ActionItems;
 import appeng.api.upgrades.Upgrades;
 import appeng.client.gui.AEBaseScreen;
-import appeng.client.gui.Icon;
+import appeng.util.Icon;
 import appeng.client.gui.style.ScreenStyle;
 import appeng.client.gui.widgets.ActionButton;
 import appeng.client.gui.widgets.ToggleButton;

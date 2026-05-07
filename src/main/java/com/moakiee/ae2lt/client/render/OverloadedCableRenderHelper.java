@@ -16,8 +16,8 @@ import net.minecraft.resources.Identifier;
 import appeng.api.parts.IPartModel;
 import appeng.api.util.AECableType;
 import appeng.api.util.AEColor;
-import appeng.client.render.cablebus.CableBusRenderState;
-import appeng.client.render.cablebus.CubeBuilder;
+import appeng.block.networking.CableBusRenderState;
+import appeng.client.render.CubeBuilder;
 
 import com.moakiee.ae2lt.AE2LightningTech;
 

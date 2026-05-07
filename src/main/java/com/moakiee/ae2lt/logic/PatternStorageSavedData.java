@@ -5,10 +5,16 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.saveddata.SavedData;
+import net.minecraft.world.level.saveddata.SavedDataType;
+
+import com.moakiee.ae2lt.AE2LightningTech;
+import com.moakiee.ae2lt.util.SavedDataCodecs;
 
 /**
  * World-level storage for pattern provider inventories that exceed 36 slots.
@@ -25,18 +31,17 @@ public class PatternStorageSavedData extends SavedData {
 
     private final Long2ObjectOpenHashMap<ItemStack[]> storage = new Long2ObjectOpenHashMap<>();
 
-    public static final Factory<PatternStorageSavedData> FACTORY = new Factory<>(
-            PatternStorageSavedData::new,
-            PatternStorageSavedData::load,
-            null
-    );
+    private static final SavedDataType<PatternStorageSavedData> TYPE = new SavedDataType<>(
+            Identifier.fromNamespaceAndPath(AE2LightningTech.MODID, DATA_NAME),
+            level -> new PatternStorageSavedData(),
+            SavedDataCodecs.codecFactory(PatternStorageSavedData::load, PatternStorageSavedData::saveTag));
 
     public PatternStorageSavedData() {
         super();
     }
 
     public static PatternStorageSavedData get(ServerLevel level) {
-        return level.getDataStorage().computeIfAbsent(FACTORY, DATA_NAME);
+        return level.getDataStorage().computeIfAbsent(TYPE);
     }
 
     /**
@@ -65,8 +70,9 @@ public class PatternStorageSavedData extends SavedData {
         }
     }
 
-    @Override
-    public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
+    private CompoundTag saveTag(HolderLookup.Provider registries) {
+        var tag = new CompoundTag();
+        var ops = registries.createSerializationContext(NbtOps.INSTANCE);
         var entries = new ListTag();
         for (var entry : storage.entrySet()) {
             var entryTag = new CompoundTag();
@@ -78,7 +84,9 @@ public class PatternStorageSavedData extends SavedData {
                 if (patterns[i] != null && !patterns[i].isEmpty()) {
                     var slotTag = new CompoundTag();
                     slotTag.putInt(TAG_SLOT, i);
-                    slotTag.put(TAG_ITEM, patterns[i].save(registries));
+                    ItemStack.OPTIONAL_CODEC.encodeStart(ops, patterns[i])
+                            .result()
+                            .ifPresent(encoded -> slotTag.put(TAG_ITEM, encoded));
                     slotsTag.add(slotTag);
                 }
             }
@@ -91,28 +99,33 @@ public class PatternStorageSavedData extends SavedData {
 
     private static PatternStorageSavedData load(CompoundTag tag, HolderLookup.Provider registries) {
         var data = new PatternStorageSavedData();
-        if (tag.contains(TAG_ENTRIES, Tag.TAG_LIST)) {
-            var entries = tag.getList(TAG_ENTRIES, Tag.TAG_COMPOUND);
-            for (int i = 0; i < entries.size(); i++) {
-                var entryTag = entries.getCompound(i);
-                long pos = entryTag.getLong(TAG_POS);
+        var ops = registries.createSerializationContext(NbtOps.INSTANCE);
+        var entries = tag.getListOrEmpty(TAG_ENTRIES);
+        for (int i = 0; i < entries.size(); i++) {
+            var entryTag = entries.getCompoundOrEmpty(i);
+            long pos = entryTag.getLongOr(TAG_POS, 0L);
 
-                var slotsTag = entryTag.getList(TAG_SLOTS, Tag.TAG_COMPOUND);
-                int maxSlot = 0;
-                for (int j = 0; j < slotsTag.size(); j++) {
-                    maxSlot = Math.max(maxSlot, slotsTag.getCompound(j).getInt(TAG_SLOT) + 1);
-                }
-                var patterns = new ItemStack[maxSlot];
-                for (int j = 0; j < maxSlot; j++) {
-                    patterns[j] = ItemStack.EMPTY;
-                }
-                for (int j = 0; j < slotsTag.size(); j++) {
-                    var slotTag = slotsTag.getCompound(j);
-                    int slot = slotTag.getInt(TAG_SLOT);
-                    patterns[slot] = ItemStack.parseOptional(registries, slotTag.getCompound(TAG_ITEM));
-                }
-                data.storage.put(pos, patterns);
+            var slotsTag = entryTag.getListOrEmpty(TAG_SLOTS);
+            int maxSlot = 0;
+            for (int j = 0; j < slotsTag.size(); j++) {
+                maxSlot = Math.max(maxSlot, slotsTag.getCompoundOrEmpty(j).getIntOr(TAG_SLOT, 0) + 1);
             }
+            var patterns = new ItemStack[maxSlot];
+            for (int j = 0; j < maxSlot; j++) {
+                patterns[j] = ItemStack.EMPTY;
+            }
+            for (int j = 0; j < slotsTag.size(); j++) {
+                var slotTag = slotsTag.getCompoundOrEmpty(j);
+                int slot = slotTag.getIntOr(TAG_SLOT, -1);
+                Tag itemTag = slotTag.get(TAG_ITEM);
+                if (slot >= 0 && slot < patterns.length && itemTag != null) {
+                    patterns[slot] = ItemStack.OPTIONAL_CODEC.decode(ops, itemTag)
+                            .result()
+                            .map(com.mojang.datafixers.util.Pair::getFirst)
+                            .orElse(ItemStack.EMPTY);
+                }
+            }
+            data.storage.put(pos, patterns);
         }
         return data;
     }

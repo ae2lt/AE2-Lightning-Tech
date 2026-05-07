@@ -5,7 +5,7 @@ import java.util.List;
 
 import com.moakiee.ae2lt.me.key.LightningKey;
 
-import appeng.api.client.AEKeyRendering;
+import appeng.client.api.AEKeyRendering;
 import appeng.util.Platform;
 import mezz.jei.api.gui.builder.ITooltipBuilder;
 import mezz.jei.api.ingredients.IIngredientRenderer;

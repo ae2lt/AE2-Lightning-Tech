@@ -20,7 +20,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.Filterable;
 import net.minecraft.stats.Stats;
 import net.minecraft.world.InteractionHand;
-import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -39,10 +39,10 @@ public class ResearchNoteItem extends Item {
     }
 
     @Override
-    public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
+    public InteractionResult use(Level level, Player player, InteractionHand hand) {
         ItemStack heldStack = player.getItemInHand(hand);
         if (level.isClientSide()) {
-            return InteractionResultHolder.sidedSuccess(heldStack, true);
+            return InteractionResult.SUCCESS;
         }
 
         ServerLevel serverLevel = (ServerLevel) level;
@@ -54,7 +54,7 @@ public class ResearchNoteItem extends Item {
             if (!ResearchNoteGenerator.hasValidPool()) {
                 player.displayClientMessage(Component.translatable("ae2lt.research_note.error.invalid_pool")
                         .withStyle(ChatFormatting.RED), true);
-                return InteractionResultHolder.fail(heldStack);
+                return InteractionResult.FAIL;
             }
 
             RitualGoal forcedGoal = ResearchNoteData.readForcedGoal(heldStack);
@@ -67,7 +67,7 @@ public class ResearchNoteItem extends Item {
                 player.drop(generatedStack, false);
             }
             player.awardStat(Stats.ITEM_USED.get(this));
-            return InteractionResultHolder.sidedSuccess(player.getItemInHand(hand), false);
+            return InteractionResult.SUCCESS;
         }
 
         // 已生成笔记:直接打开书,不动堆叠(生成笔记因组件差异天然不可堆叠;
@@ -84,7 +84,7 @@ public class ResearchNoteItem extends Item {
             serverPlayer.connection.send(new ClientboundOpenBookPacket(hand));
         }
         player.awardStat(Stats.ITEM_USED.get(this));
-        return InteractionResultHolder.sidedSuccess(heldStack, false);
+        return InteractionResult.SUCCESS;
     }
 
     @Override
