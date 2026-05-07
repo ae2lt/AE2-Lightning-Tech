@@ -10,6 +10,7 @@ import com.moakiee.ae2lt.registry.ModItems;
 
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraftforge.registries.RegistryObject;
 
 /**
  * 铁砧调制研究笔记时,允许使用的催化物(每种 {@link RitualGoal} 对应 1 种物品)。
@@ -52,10 +53,10 @@ public final class NoteModulationCatalysts {
         return Optional.empty();
     }
 
-    private record CatalystEntry(net.minecraftforge.registries.DeferredItem<? extends Item> holder) {
+    private record CatalystEntry(RegistryObject<? extends Item> holder) {
         @Nullable
         Item item() {
-            return holder != null && holder.isBound() ? holder.get() : null;
+            return holder != null && holder.isPresent() ? holder.get() : null;
         }
     }
 }

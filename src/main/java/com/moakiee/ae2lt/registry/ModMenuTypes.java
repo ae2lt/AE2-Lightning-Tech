@@ -15,71 +15,71 @@ import com.moakiee.ae2lt.menu.TeslaCoilMenu;
 import com.moakiee.ae2lt.menu.FrequencyMenu;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.inventory.MenuType;
-import net.minecraftforge.registries.DeferredHolder;
 import net.minecraftforge.registries.DeferredRegister;
+import net.minecraftforge.registries.RegistryObject;
 
 public final class ModMenuTypes {
     public static final DeferredRegister<MenuType<?>> MENU_TYPES =
             DeferredRegister.create(Registries.MENU, AE2LightningTech.MODID);
 
-    public static final DeferredHolder<MenuType<?>, MenuType<OverloadedPatternProviderMenu>>
+    public static final RegistryObject<MenuType<OverloadedPatternProviderMenu>>
             OVERLOADED_PATTERN_PROVIDER = MENU_TYPES.register(
                     "overloaded_pattern_provider",
                     () -> OverloadedPatternProviderMenu.TYPE);
 
-    public static final DeferredHolder<MenuType<?>, MenuType<OverloadPatternEncoderMenu>>
+    public static final RegistryObject<MenuType<OverloadPatternEncoderMenu>>
             OVERLOAD_PATTERN_ENCODER = MENU_TYPES.register(
                     "overload_pattern_encoder",
                     () -> OverloadPatternEncoderMenu.TYPE);
 
-    public static final DeferredHolder<MenuType<?>, MenuType<OverloadedInterfaceMenu>>
+    public static final RegistryObject<MenuType<OverloadedInterfaceMenu>>
             OVERLOADED_INTERFACE = MENU_TYPES.register(
                     "overloaded_interface",
                     () -> OverloadedInterfaceMenu.TYPE);
 
-    public static final DeferredHolder<MenuType<?>, MenuType<OverloadedPowerSupplyMenu>>
+    public static final RegistryObject<MenuType<OverloadedPowerSupplyMenu>>
             OVERLOADED_POWER_SUPPLY = ModBlocks.hasOverloadedPowerSupply()
                     ? MENU_TYPES.register(
                             "overloaded_power_supply",
                             () -> OverloadedPowerSupplyMenu.TYPE)
                     : null;
 
-    public static final DeferredHolder<MenuType<?>, MenuType<LightningSimulationChamberMenu>>
+    public static final RegistryObject<MenuType<LightningSimulationChamberMenu>>
             LIGHTNING_SIMULATION_CHAMBER = MENU_TYPES.register(
                     "lightning_simulation_room",
                     () -> LightningSimulationChamberMenu.TYPE);
 
-    public static final DeferredHolder<MenuType<?>, MenuType<LightningAssemblyChamberMenu>>
+    public static final RegistryObject<MenuType<LightningAssemblyChamberMenu>>
             LIGHTNING_ASSEMBLY_CHAMBER = MENU_TYPES.register(
                     "lightning_assembly_chamber",
                     () -> LightningAssemblyChamberMenu.TYPE);
 
-    public static final DeferredHolder<MenuType<?>, MenuType<LightningCollectorMenu>>
+    public static final RegistryObject<MenuType<LightningCollectorMenu>>
             LIGHTNING_COLLECTOR = MENU_TYPES.register(
                     "lightning_collector",
                     () -> LightningCollectorMenu.TYPE);
 
-    public static final DeferredHolder<MenuType<?>, MenuType<OverloadProcessingFactoryMenu>>
+    public static final RegistryObject<MenuType<OverloadProcessingFactoryMenu>>
             OVERLOAD_PROCESSING_FACTORY = MENU_TYPES.register(
                     "overload_processing_factory",
                     () -> OverloadProcessingFactoryMenu.TYPE);
 
-    public static final DeferredHolder<MenuType<?>, MenuType<TeslaCoilMenu>>
+    public static final RegistryObject<MenuType<TeslaCoilMenu>>
             TESLA_COIL = MENU_TYPES.register(
                     "tesla_coil",
                     () -> TeslaCoilMenu.TYPE);
 
-    public static final DeferredHolder<MenuType<?>, MenuType<AtmosphericIonizerMenu>>
+    public static final RegistryObject<MenuType<AtmosphericIonizerMenu>>
             ATMOSPHERIC_IONIZER = MENU_TYPES.register(
                     "atmospheric_ionizer",
                     () -> AtmosphericIonizerMenu.TYPE);
 
-    public static final DeferredHolder<MenuType<?>, MenuType<FrequencyMenu>>
+    public static final RegistryObject<MenuType<FrequencyMenu>>
             FREQUENCY_MENU = MENU_TYPES.register(
                     "frequency_menu",
                     () -> FrequencyMenu.TYPE);
 
-    public static final DeferredHolder<MenuType<?>, MenuType<CrystalCatalyzerMenu>>
+    public static final RegistryObject<MenuType<CrystalCatalyzerMenu>>
             CRYSTAL_CATALYZER = MENU_TYPES.register(
                     "crystal_catalyzer",
                     () -> CrystalCatalyzerMenu.TYPE);

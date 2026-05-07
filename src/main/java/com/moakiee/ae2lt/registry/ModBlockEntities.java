@@ -20,14 +20,14 @@ import com.moakiee.ae2lt.blockentity.WirelessReceiverBlockEntity;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntityType;
-import net.minecraftforge.registries.DeferredHolder;
 import net.minecraftforge.registries.DeferredRegister;
+import net.minecraftforge.registries.RegistryObject;
 
 public final class ModBlockEntities {
     public static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITY_TYPES =
             DeferredRegister.create(Registries.BLOCK_ENTITY_TYPE, AE2LightningTech.MODID);
 
-    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<LightningCollectorBlockEntity>>
+    public static final RegistryObject<BlockEntityType<LightningCollectorBlockEntity>>
             LIGHTNING_COLLECTOR = BLOCK_ENTITY_TYPES.register(
                     "lightning_collector",
                     () -> BlockEntityType.Builder.of(
@@ -35,7 +35,7 @@ public final class ModBlockEntities {
                             ModBlocks.LIGHTNING_COLLECTOR.get())
                             .build(null));
 
-    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<OverloadedControllerBlockEntity>>
+    public static final RegistryObject<BlockEntityType<OverloadedControllerBlockEntity>>
             OVERLOADED_CONTROLLER = BLOCK_ENTITY_TYPES.register(
                     "overloaded_controller",
                     () -> BlockEntityType.Builder.of(
@@ -43,7 +43,7 @@ public final class ModBlockEntities {
                             ModBlocks.OVERLOADED_CONTROLLER.get())
                             .build(null));
 
-    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<LightningSimulationChamberBlockEntity>>
+    public static final RegistryObject<BlockEntityType<LightningSimulationChamberBlockEntity>>
             LIGHTNING_SIMULATION_CHAMBER = BLOCK_ENTITY_TYPES.register(
                     "lightning_simulation_room",
                     () -> BlockEntityType.Builder.of(
@@ -51,7 +51,7 @@ public final class ModBlockEntities {
                             ModBlocks.LIGHTNING_SIMULATION_CHAMBER.get())
                             .build(null));
 
-    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<LightningAssemblyChamberBlockEntity>>
+    public static final RegistryObject<BlockEntityType<LightningAssemblyChamberBlockEntity>>
             LIGHTNING_ASSEMBLY_CHAMBER = BLOCK_ENTITY_TYPES.register(
                     "lightning_assembly_chamber",
                     () -> BlockEntityType.Builder.of(
@@ -59,7 +59,7 @@ public final class ModBlockEntities {
                             ModBlocks.LIGHTNING_ASSEMBLY_CHAMBER.get())
                             .build(null));
 
-    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<OverloadProcessingFactoryBlockEntity>>
+    public static final RegistryObject<BlockEntityType<OverloadProcessingFactoryBlockEntity>>
             OVERLOAD_PROCESSING_FACTORY = BLOCK_ENTITY_TYPES.register(
                     "overload_processing_factory",
                     () -> BlockEntityType.Builder.of(
@@ -67,7 +67,7 @@ public final class ModBlockEntities {
                             ModBlocks.OVERLOAD_PROCESSING_FACTORY.get())
                             .build(null));
 
-    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TeslaCoilBlockEntity>>
+    public static final RegistryObject<BlockEntityType<TeslaCoilBlockEntity>>
             TESLA_COIL = BLOCK_ENTITY_TYPES.register(
                     "tesla_coil",
                     () -> BlockEntityType.Builder.of(
@@ -75,7 +75,7 @@ public final class ModBlockEntities {
                             ModBlocks.TESLA_COIL.get())
                             .build(null));
 
-    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<AtmosphericIonizerBlockEntity>>
+    public static final RegistryObject<BlockEntityType<AtmosphericIonizerBlockEntity>>
             ATMOSPHERIC_IONIZER = BLOCK_ENTITY_TYPES.register(
                     "atmospheric_ionizer",
                     () -> BlockEntityType.Builder.of(
@@ -83,7 +83,7 @@ public final class ModBlockEntities {
                             ModBlocks.ATMOSPHERIC_IONIZER.get())
                             .build(null));
 
-    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<CrystalCatalyzerBlockEntity>>
+    public static final RegistryObject<BlockEntityType<CrystalCatalyzerBlockEntity>>
             CRYSTAL_CATALYZER = BLOCK_ENTITY_TYPES.register(
                     "crystal_catalyzer",
                     () -> BlockEntityType.Builder.of(
@@ -91,7 +91,7 @@ public final class ModBlockEntities {
                             ModBlocks.CRYSTAL_CATALYZER.get())
                             .build(null));
 
-    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<OverloadedPatternProviderBlockEntity>>
+    public static final RegistryObject<BlockEntityType<OverloadedPatternProviderBlockEntity>>
             OVERLOADED_PATTERN_PROVIDER = BLOCK_ENTITY_TYPES.register(
                     "overloaded_pattern_provider",
                     () -> BlockEntityType.Builder.of(
@@ -99,7 +99,7 @@ public final class ModBlockEntities {
                             ModBlocks.OVERLOADED_PATTERN_PROVIDER.get())
                             .build(null));
 
-    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<OverloadedInterfaceBlockEntity>>
+    public static final RegistryObject<BlockEntityType<OverloadedInterfaceBlockEntity>>
             OVERLOADED_INTERFACE = BLOCK_ENTITY_TYPES.register(
                     "overloaded_interface",
                     () -> BlockEntityType.Builder.of(
@@ -107,7 +107,7 @@ public final class ModBlockEntities {
                             ModBlocks.OVERLOADED_INTERFACE.get())
                             .build(null));
 
-    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<OverloadedPowerSupplyBlockEntity>>
+    public static final RegistryObject<BlockEntityType<OverloadedPowerSupplyBlockEntity>>
             OVERLOADED_POWER_SUPPLY = ModBlocks.hasOverloadedPowerSupply()
                     ? BLOCK_ENTITY_TYPES.register(
                             "overloaded_power_supply",
@@ -117,7 +117,7 @@ public final class ModBlockEntities {
                                     .build(null))
                     : null;
 
-    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<WirelessReceiverBlockEntity>>
+    public static final RegistryObject<BlockEntityType<WirelessReceiverBlockEntity>>
             WIRELESS_RECEIVER = BLOCK_ENTITY_TYPES.register(
                     "wireless_receiver",
                     () -> BlockEntityType.Builder.of(
@@ -125,7 +125,7 @@ public final class ModBlockEntities {
                             ModBlocks.WIRELESS_RECEIVER.get())
                             .build(null));
 
-    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<WirelessOverloadedControllerBlockEntity>>
+    public static final RegistryObject<BlockEntityType<WirelessOverloadedControllerBlockEntity>>
             WIRELESS_OVERLOADED_CONTROLLER = BLOCK_ENTITY_TYPES.register(
                     "wireless_overloaded_controller",
                     () -> BlockEntityType.Builder.of(
@@ -133,7 +133,7 @@ public final class ModBlockEntities {
                             ModBlocks.WIRELESS_OVERLOADED_CONTROLLER.get())
                             .build(null));
 
-    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<AdvancedWirelessOverloadedControllerBlockEntity>>
+    public static final RegistryObject<BlockEntityType<AdvancedWirelessOverloadedControllerBlockEntity>>
             ADVANCED_WIRELESS_OVERLOADED_CONTROLLER = BLOCK_ENTITY_TYPES.register(
                     "advanced_wireless_overloaded_controller",
                     () -> BlockEntityType.Builder.of(
@@ -142,7 +142,7 @@ public final class ModBlockEntities {
                             .build(null));
 
     @SuppressWarnings("DataFlowIssue")
-    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<GhostOutputBlockEntity>>
+    public static final RegistryObject<BlockEntityType<GhostOutputBlockEntity>>
             GHOST_OUTPUT = BLOCK_ENTITY_TYPES.register(
                     "ghost_output",
                     () -> BlockEntityType.Builder.of(
@@ -150,7 +150,7 @@ public final class ModBlockEntities {
                             Blocks.AIR)
                             .build(null));
 
-    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<FumoBlockEntity>>
+    public static final RegistryObject<BlockEntityType<FumoBlockEntity>>
             FUMO = BLOCK_ENTITY_TYPES.register(
                     "fumo",
                     () -> BlockEntityType.Builder.of(

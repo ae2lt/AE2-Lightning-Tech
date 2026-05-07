@@ -4,8 +4,7 @@ import com.moakiee.ae2lt.block.FumoBlock;
 import com.moakiee.ae2lt.item.FumoBlockItem;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
-import net.minecraftforge.registries.DeferredBlock;
-import net.minecraftforge.registries.DeferredItem;
+import net.minecraftforge.registries.RegistryObject;
 
 /**
  * Registers AE2LT fumo decoration blocks.
@@ -13,12 +12,12 @@ import net.minecraftforge.registries.DeferredItem;
  */
 public final class ModFumos {
 
-    public static DeferredBlock<FumoBlock> MOAKIEE_FUMO;
-    public static DeferredBlock<FumoBlock> CYSTRYSU_FUMO;
-    public static DeferredBlock<FumoBlock> PIGMEE_FUMO;
-    public static DeferredItem<BlockItem> MOAKIEE_FUMO_ITEM;
-    public static DeferredItem<BlockItem> CYSTRYSU_FUMO_ITEM;
-    public static DeferredItem<FumoBlockItem> PIGMEE_FUMO_ITEM;
+    public static RegistryObject<FumoBlock> MOAKIEE_FUMO;
+    public static RegistryObject<FumoBlock> CYSTRYSU_FUMO;
+    public static RegistryObject<FumoBlock> PIGMEE_FUMO;
+    public static RegistryObject<BlockItem> MOAKIEE_FUMO_ITEM;
+    public static RegistryObject<BlockItem> CYSTRYSU_FUMO_ITEM;
+    public static RegistryObject<FumoBlockItem> PIGMEE_FUMO_ITEM;
 
     private ModFumos() {
     }
