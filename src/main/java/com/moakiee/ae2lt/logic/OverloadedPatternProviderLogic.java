@@ -1773,21 +1773,12 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
     }
 
     private void invalidateCapabilitiesAt(List<EjectModeRegistry.DimPos> positions) {
-        var level = overloadedHost.getLevel();
-        if (!(level instanceof ServerLevel sl)) return;
-        var server = sl.getServer();
-        for (var dp : positions) {
-            var targetLevel = server.getLevel(dp.dimension());
-            if (targetLevel != null) {
-                targetLevel.invalidateCapabilities(dp.pos());
-            }
-        }
+        // Forge 1.20.1 has no Neo-style position capability invalidation API.
+        // Downstream lookups resolve against the current ghost/provider state.
     }
 
     private static void invalidateCapabilitiesAt(@Nullable ServerLevel level, BlockPos pos) {
-        if (level != null) {
-            level.invalidateCapabilities(pos);
-        }
+        // See comment above.
     }
 
     private void tickWirelessInductionEnergy() {

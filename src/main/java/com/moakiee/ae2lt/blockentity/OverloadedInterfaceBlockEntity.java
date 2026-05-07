@@ -1726,7 +1726,8 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
                 new EjectModeRegistry.EjectEntry(
                         new java.lang.ref.WeakReference<>(this), ghost,
                         level.dimension(), getBlockPos()));
-        if (tl instanceof ServerLevel s) s.invalidateCapabilities(ip);
+        // Forge 1.20.1 capability lookups resolve through the live BlockEntity,
+        // so there is no position-scoped invalidate hook to poke here.
     }
 
     private void unregisterEject() {
@@ -1736,7 +1737,9 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
             var srv = sl.getServer();
             for (var dp : removed) {
                 var t = srv.getLevel(dp.dimension());
-                if (t!=null) t.invalidateCapabilities(dp.pos());
+                if (t != null) {
+                    // No explicit Forge-side invalidation hook needed here.
+                }
             }
         }
     }

@@ -20,7 +20,6 @@
     "GridGetMachineNodesMixin",
     "PathingCalculationCapMixin",
     "ControllerValidatorMixin",
-    "EjectCapabilityMixin",
     "EjectGhostBEMixin"
   ],
   "client": [

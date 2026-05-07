@@ -637,7 +637,8 @@ public class OverloadedPatternProviderBlockEntity extends PatternProviderBlockEn
                 for (var dp : removed) {
                     var targetLevel = server.getLevel(dp.dimension());
                     if (targetLevel != null) {
-                        targetLevel.invalidateCapabilities(dp.pos());
+                        // Forge 1.20.1 resolves capabilities from the current
+                        // BlockEntity state directly; no manual invalidation hook.
                     }
                 }
             }

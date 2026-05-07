@@ -8,8 +8,10 @@ package com.moakiee.ae2lt.api.lightning;
  * {@link com.moakiee.ae2lt.api.AE2LTCapabilities}:
  *
  * <pre>{@code
- * var handler = level.getCapability(
- *         AE2LTCapabilities.LIGHTNING_ENERGY_BLOCK, pos, side);
+ * var blockEntity = level.getBlockEntity(pos);
+ * var handler = blockEntity != null
+ *         ? blockEntity.getCapability(AE2LTCapabilities.LIGHTNING_ENERGY_BLOCK, side).orElse(null)
+ *         : null;
  * if (handler != null) {
  *     long inserted = handler.insert(LightningTier.HIGH_VOLTAGE, 1000L, false);
  * }

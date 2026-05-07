@@ -8,7 +8,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.capabilities.Capabilities;
+import net.minecraftforge.common.capabilities.ForgeCapabilities;
 import net.minecraftforge.energy.IEnergyStorage;
 
 import appeng.api.config.Actionable;
@@ -427,7 +427,7 @@ final class AppFluxAccess {
     private record ForgeEnergyTarget(IEnergyStorage target) implements TargetAccess {
         @Nullable
         static TargetAccess resolve(EnergyCapCache cache, Direction side) {
-            IEnergyStorage target = cache.getEnergyCap(Capabilities.EnergyStorage.BLOCK, side);
+            IEnergyStorage target = cache.getEnergyCap(ForgeCapabilities.ENERGY, side);
             return target != null ? new ForgeEnergyTarget(target) : null;
         }
 

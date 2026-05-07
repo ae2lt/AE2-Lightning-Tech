@@ -12,7 +12,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.neoforged.neoforge.capabilities.Capabilities;
+import net.minecraftforge.common.capabilities.ForgeCapabilities;
 
 import appeng.api.networking.IGrid;
 import appeng.api.networking.security.IActionSource;
@@ -124,7 +124,8 @@ public final class AppFluxBridge {
 
     public static boolean hasEnergyCapability(ServerLevel level, BlockPos pos,
                                               Direction face) {
-        return level.getCapability(Capabilities.EnergyStorage.BLOCK, pos, face) != null;
+        var blockEntity = level.getBlockEntity(pos);
+        return blockEntity != null && blockEntity.getCapability(ForgeCapabilities.ENERGY, face).isPresent();
     }
 }
 
