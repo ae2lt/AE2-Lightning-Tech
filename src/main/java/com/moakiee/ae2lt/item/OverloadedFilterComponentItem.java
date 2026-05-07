@@ -6,7 +6,6 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
 import appeng.api.config.FuzzyMode;
-import appeng.api.ids.AEComponents;
 import appeng.api.stacks.AEKeyType;
 import appeng.api.stacks.AEKeyTypes;
 import appeng.api.storage.cells.ICellWorkbenchItem;
@@ -30,6 +29,7 @@ public class OverloadedFilterComponentItem extends AE2LTItem implements ICellWor
 
     private static final int CONFIG_SLOTS = 63;
     private static final int UPGRADE_SLOTS = 2;
+    private static final String FUZZY_MODE_TAG = "FuzzyMode";
 
     public OverloadedFilterComponentItem(Properties properties) {
         super(properties);
@@ -49,12 +49,17 @@ public class OverloadedFilterComponentItem extends AE2LTItem implements ICellWor
 
     @Override
     public FuzzyMode getFuzzyMode(ItemStack stack) {
-        return stack.getOrDefault(AEComponents.STORAGE_CELL_FUZZY_MODE, FuzzyMode.IGNORE_ALL);
+        String fuzzyMode = stack.getOrCreateTag().getString(FUZZY_MODE_TAG);
+        try {
+            return FuzzyMode.valueOf(fuzzyMode);
+        } catch (IllegalArgumentException ignored) {
+            return FuzzyMode.IGNORE_ALL;
+        }
     }
 
     @Override
     public void setFuzzyMode(ItemStack stack, FuzzyMode mode) {
-        stack.set(AEComponents.STORAGE_CELL_FUZZY_MODE, mode);
+        stack.getOrCreateTag().putString(FUZZY_MODE_TAG, mode.name());
     }
 
     @Override

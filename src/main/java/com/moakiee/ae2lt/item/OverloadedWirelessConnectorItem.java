@@ -1,7 +1,5 @@
 package com.moakiee.ae2lt.item;
 
-import com.glodblock.github.extendedae.common.blocks.BlockWirelessConnector;
-import com.glodblock.github.extendedae.common.blocks.BlockWirelessHub;
 import com.moakiee.ae2lt.block.OverloadedInterfaceBlock;
 import com.moakiee.ae2lt.block.OverloadedPatternProviderBlock;
 import com.moakiee.ae2lt.block.OverloadedPowerSupplyBlock;
@@ -10,6 +8,7 @@ import com.moakiee.ae2lt.blockentity.OverloadedPatternProviderBlockEntity;
 import com.moakiee.ae2lt.blockentity.OverloadedPowerSupplyBlockEntity;
 import com.moakiee.ae2lt.network.NetworkInit;
 import com.moakiee.ae2lt.network.WirelessConnectorUsePacket;
+import com.moakiee.ae2lt.util.MixinReflectionSupport;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
@@ -39,6 +38,10 @@ public class OverloadedWirelessConnectorItem extends AE2LTItem {
     private static final String TAG_DIM = "Dim";
     private static final String TAG_POS = "Pos";
     private static final String TAG_HOST_TYPE = "HostType";
+    private static final @Nullable Class<?> EXTENDED_AE_WIRELESS_CONNECTOR_CLASS =
+            MixinReflectionSupport.findClassSafe("com.glodblock.github.extendedae.common.blocks.BlockWirelessConnector");
+    private static final @Nullable Class<?> EXTENDED_AE_WIRELESS_HUB_CLASS =
+            MixinReflectionSupport.findClassSafe("com.glodblock.github.extendedae.common.blocks.BlockWirelessHub");
 
     public static final String HOST_PROVIDER = "provider";
     public static final String HOST_INTERFACE = "interface";
@@ -68,7 +71,7 @@ public class OverloadedWirelessConnectorItem extends AE2LTItem {
         var pos = context.getClickedPos();
         var state = level.getBlockState(pos);
         var targetBe = level.getBlockEntity(pos);
-        if (state.getBlock() instanceof BlockWirelessConnector || state.getBlock() instanceof BlockWirelessHub) {
+        if (isExtendedAeWirelessBlock(state.getBlock())) {
             return InteractionResult.PASS;
         }
         boolean isHost = state.getBlock() instanceof OverloadedPatternProviderBlock
@@ -192,5 +195,14 @@ public class OverloadedWirelessConnectorItem extends AE2LTItem {
     public static OverloadedPowerSupplyBlockEntity getSelectedPowerSupply(Level level, ItemStack stack) {
         var be = resolveSelectedHost(level, stack);
         return be instanceof OverloadedPowerSupplyBlockEntity powerSupply ? powerSupply : null;
+    }
+
+    private static boolean isExtendedAeWirelessBlock(Object block) {
+        return isInstanceOf(block, EXTENDED_AE_WIRELESS_CONNECTOR_CLASS)
+                || isInstanceOf(block, EXTENDED_AE_WIRELESS_HUB_CLASS);
+    }
+
+    private static boolean isInstanceOf(Object value, @Nullable Class<?> targetClass) {
+        return targetClass != null && targetClass.isInstance(value);
     }
 }

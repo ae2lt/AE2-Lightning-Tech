@@ -8,6 +8,8 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraftforge.common.capabilities.Capability;
 import net.minecraftforge.common.capabilities.ForgeCapabilities;
 import net.minecraftforge.energy.IEnergyStorage;
 
@@ -21,18 +23,15 @@ import appeng.api.storage.StorageCells;
 
 import com.glodblock.github.appflux.api.IFluxCell;
 import com.glodblock.github.appflux.common.me.cell.FluxCellInventory;
-import com.glodblock.github.appflux.common.me.energy.EnergyCapCache;
 import com.glodblock.github.appflux.common.me.key.FluxKey;
 import com.glodblock.github.appflux.common.me.key.type.EnergyType;
 import com.glodblock.github.appflux.config.AFConfig;
-import com.glodblock.github.appflux.xmod.fluxnetwork.FluxNetworkCap;
-import com.glodblock.github.appflux.xmod.mek.MekEnergyCap;
-import com.glodblock.github.appflux.xmod.mi.LongEnergyCap;
 
-import dev.technici4n.grandpower.api.ILongEnergyStorage;
 import mekanism.api.Action;
 import mekanism.api.energy.IStrictEnergyHandler;
+import mekanism.common.capabilities.Capabilities;
 import mekanism.common.util.UnitDisplayUtils;
+import sonar.fluxnetworks.api.FluxCapabilities;
 import sonar.fluxnetworks.api.energy.IFNEnergyStorage;
 
 /**
@@ -47,16 +46,14 @@ final class AppFluxAccess {
     static final AEKey FE_KEY = FluxKey.of(EnergyType.FE);
 
     static final long TRANSFER_RATE;
-    private static final boolean GRAND_POWER_LOADED;
     private static final boolean FLUX_NETWORKS_LOADED;
     private static final boolean MEKANISM_LOADED;
 
     static {
         long rate = AFConfig.getFluxAccessorIO();
         TRANSFER_RATE = rate == 0L ? Long.MAX_VALUE : Math.max(0L, rate);
-        GRAND_POWER_LOADED = isClassPresent("dev.technici4n.grandpower.api.ILongEnergyStorage");
         FLUX_NETWORKS_LOADED = isClassPresent("sonar.fluxnetworks.api.energy.IFNEnergyStorage");
-        MEKANISM_LOADED = isClassPresent("mekanism.api.energy.IStrictEnergyHandler");
+        MEKANISM_LOADED = isClassPresent("mekanism.common.capabilities.Capabilities");
     }
 
     static boolean isFluxCell(ItemStack stack) {
@@ -66,20 +63,16 @@ final class AppFluxAccess {
     @Nullable
     static Object createCapCache(ServerLevel level, BlockPos pos,
                                  Supplier<IGrid> gridSupplier) {
-        return new EnergyCapCache(level, pos, gridSupplier);
+        return new CapabilityTargetCache(level, pos);
     }
 
     @Nullable
     static TargetAccess resolveEnergyTarget(Object energyCapCache, Direction side) {
-        if (!(energyCapCache instanceof EnergyCapCache cache)) {
+        if (!(energyCapCache instanceof CapabilityTargetCache cache)) {
             return null;
         }
 
-        TargetAccess target = resolveGrandPowerTarget(cache, side);
-        if (target != null) {
-            return target;
-        }
-        target = resolveFluxNetworkTarget(cache, side);
+        TargetAccess target = resolveFluxNetworkTarget(cache, side);
         if (target != null) {
             return target;
         }
@@ -245,25 +238,12 @@ final class AppFluxAccess {
     private AppFluxAccess() {}
 
     @Nullable
-    private static TargetAccess resolveGrandPowerTarget(EnergyCapCache cache, Direction side) {
-        if (!GRAND_POWER_LOADED) {
-            return null;
-        }
-        try {
-            ILongEnergyStorage target = cache.getEnergyCap(LongEnergyCap.CAP, side);
-            return target != null ? new GrandPowerTarget(target) : null;
-        } catch (LinkageError ignored) {
-            return null;
-        }
-    }
-
-    @Nullable
-    private static TargetAccess resolveFluxNetworkTarget(EnergyCapCache cache, Direction side) {
+    private static TargetAccess resolveFluxNetworkTarget(CapabilityTargetCache cache, Direction side) {
         if (!FLUX_NETWORKS_LOADED) {
             return null;
         }
         try {
-            IFNEnergyStorage target = cache.getEnergyCap(FluxNetworkCap.CAP, side);
+            IFNEnergyStorage target = getTargetCapability(cache, side, FluxCapabilities.FN_ENERGY_STORAGE);
             return target != null ? new FluxNetworkTarget(target) : null;
         } catch (LinkageError ignored) {
             return null;
@@ -271,27 +251,15 @@ final class AppFluxAccess {
     }
 
     @Nullable
-    private static TargetAccess resolveMekanismTarget(EnergyCapCache cache, Direction side) {
+    private static TargetAccess resolveMekanismTarget(CapabilityTargetCache cache, Direction side) {
         if (!MEKANISM_LOADED) {
             return null;
         }
         try {
-            IStrictEnergyHandler target = cache.getEnergyCap(MekEnergyCap.CAP, side);
+            IStrictEnergyHandler target = getTargetCapability(cache, side, Capabilities.STRICT_ENERGY);
             return target != null ? MekanismStrictTarget.create(target) : null;
         } catch (LinkageError ignored) {
             return null;
-        }
-    }
-
-    private record GrandPowerTarget(ILongEnergyStorage target) implements TargetAccess {
-        @Override
-        public long simulateReceive(long maxFe) {
-            return Math.max(0L, target.receive(maxFe, true));
-        }
-
-        @Override
-        public long receive(long amountFe) {
-            return Math.max(0L, target.receive(amountFe, false));
         }
     }
 
@@ -426,8 +394,8 @@ final class AppFluxAccess {
 
     private record ForgeEnergyTarget(IEnergyStorage target) implements TargetAccess {
         @Nullable
-        static TargetAccess resolve(EnergyCapCache cache, Direction side) {
-            IEnergyStorage target = cache.getEnergyCap(ForgeCapabilities.ENERGY, side);
+        static TargetAccess resolve(CapabilityTargetCache cache, Direction side) {
+            IEnergyStorage target = getTargetCapability(cache, side, ForgeCapabilities.ENERGY);
             return target != null ? new ForgeEnergyTarget(target) : null;
         }
 
@@ -440,6 +408,27 @@ final class AppFluxAccess {
         public long receive(long amountFe) {
             return Math.max(0, target.receiveEnergy(clampToInt(amountFe), false));
         }
+    }
+
+    private record CapabilityTargetCache(ServerLevel level, BlockPos pos) {
+        private CapabilityTargetCache {
+            pos = pos.immutable();
+        }
+
+        @Nullable
+        private BlockEntity resolveTarget(Direction side) {
+            BlockPos targetPos = pos.relative(side);
+            return level.isLoaded(targetPos) ? level.getBlockEntity(targetPos) : null;
+        }
+    }
+
+    @Nullable
+    private static <T> T getTargetCapability(CapabilityTargetCache cache, Direction side, Capability<T> capability) {
+        BlockEntity target = cache.resolveTarget(side);
+        if (target == null) {
+            return null;
+        }
+        return target.getCapability(capability, side.getOpposite()).resolve().orElse(null);
     }
 
     private static int clampToInt(long value) {
