@@ -64,7 +64,7 @@ public final class AppFluxBridge {
 
     @Nullable
     public static Item getInductionCard() {
-        Item card = BuiltInRegistries.ITEM.get(INDUCTION_CARD_ID);
+        Item card = BuiltInRegistries.ITEM.getValue(INDUCTION_CARD_ID);
         return card != null && card != Items.AIR ? card : null;
     }
 
@@ -124,6 +124,6 @@ public final class AppFluxBridge {
 
     public static boolean hasEnergyCapability(ServerLevel level, BlockPos pos,
                                               Direction face) {
-        return level.getCapability(Capabilities.EnergyStorage.BLOCK, pos, face) != null;
+        return level.getCapability(Capabilities.Energy.BLOCK, pos, face) != null;
     }
 }
