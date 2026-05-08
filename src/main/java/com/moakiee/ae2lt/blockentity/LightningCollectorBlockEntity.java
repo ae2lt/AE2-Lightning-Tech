@@ -32,8 +32,6 @@ import com.moakiee.ae2lt.registry.ModItems;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.core.HolderLookup;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Mth;
@@ -43,6 +41,8 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.items.IItemHandlerModifiable;
 
@@ -199,7 +199,7 @@ public class LightningCollectorBlockEntity extends AENetworkedBlockEntity implem
                 ? LightningKey.Tier.EXTREME_HIGH_VOLTAGE
                 : LightningKey.Tier.HIGH_VOLTAGE;
         OutputPreview preview = getPreview(tier);
-        int rolledOutput = preview.roll(serverLevel.random);
+        int rolledOutput = preview.roll(serverLevel.getRandom());
         if (rolledOutput <= 0) {
             return false;
         }
@@ -232,7 +232,7 @@ public class LightningCollectorBlockEntity extends AENetworkedBlockEntity implem
         }
 
         if (tier == LightningKey.Tier.EXTREME_HIGH_VOLTAGE && canCultivateFromNaturalStrike(serverLevel)) {
-            if (cultivateCrystal(serverLevel.random)) {
+            if (cultivateCrystal(serverLevel.getRandom())) {
                 lastNaturalCultivationGameTime = serverLevel.getGameTime();
             }
         }
@@ -251,20 +251,20 @@ public class LightningCollectorBlockEntity extends AENetworkedBlockEntity implem
     }
 
     @Override
-    public void saveAdditional(CompoundTag data, HolderLookup.Provider registries) {
-        super.saveAdditional(data, registries);
-        inventory.saveToTag(data, TAG_INVENTORY, registries);
+    public void saveAdditional(ValueOutput data) {
+        super.saveAdditional(data);
+        inventory.saveToTag(data, TAG_INVENTORY);
         data.putInt(TAG_COOLDOWN, cooldownTicks);
         data.putInt(TAG_WORKING_TICKS, workingTicks);
         frequencyBinding.save(data);
     }
 
     @Override
-    public void loadTag(CompoundTag data, HolderLookup.Provider registries) {
-        super.loadTag(data, registries);
-        inventory.loadFromTag(data, TAG_INVENTORY, registries);
-        cooldownTicks = Math.max(0, data.getInt(TAG_COOLDOWN));
-        workingTicks = Math.max(0, data.getInt(TAG_WORKING_TICKS));
+    public void loadTag(ValueInput data) {
+        super.loadTag(data);
+        inventory.loadFromTag(data, TAG_INVENTORY);
+        cooldownTicks = Math.max(0, data.getIntOr(TAG_COOLDOWN, 0));
+        workingTicks = Math.max(0, data.getIntOr(TAG_WORKING_TICKS, 0));
         frequencyBinding.load(data);
     }
 
