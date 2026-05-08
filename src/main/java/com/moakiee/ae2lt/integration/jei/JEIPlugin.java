@@ -17,7 +17,6 @@ import com.moakiee.ae2lt.integration.jei.category.LightningTransformCategory;
 import com.moakiee.ae2lt.integration.jei.category.OverloadGrowthCategory;
 import com.moakiee.ae2lt.integration.jei.category.OverloadProcessingCategory;
 import com.moakiee.ae2lt.integration.jei.category.TeslaCoilCategory;
-import com.moakiee.ae2lt.integration.jei.compat.ae2jeiintegration.AE2JeiIntegrationCompat;
 import com.moakiee.ae2lt.registry.ModBlocks;
 import mezz.jei.api.IModPlugin;
 import mezz.jei.api.JeiPlugin;
@@ -32,19 +31,11 @@ import mezz.jei.api.registration.IRecipeRegistration;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.resources.Identifier;
-import net.neoforged.fml.ModList;
 
 @JeiPlugin
 public class JEIPlugin implements IModPlugin {
     private static final Identifier ID =
             Identifier.fromNamespaceAndPath(AE2LightningTech.MODID, "jei_plugin");
-    private static final String AE2_JEI_INTEGRATION_MODID = "ae2jeiintegration";
-
-    public JEIPlugin() {
-        if (ModList.get().isLoaded(AE2_JEI_INTEGRATION_MODID)) {
-            AE2JeiIntegrationCompat.registerConverter();
-        }
-    }
 
     @Override
     public Identifier getPluginUid() {
