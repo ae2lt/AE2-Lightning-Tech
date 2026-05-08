@@ -9,15 +9,17 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockBehaviour.Properties;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
-import net.minecraft.core.Direction;
+import net.minecraft.world.level.redstone.Orientation;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
+import org.jetbrains.annotations.Nullable;
 
 import appeng.api.orientation.IOrientationStrategy;
 import appeng.api.orientation.OrientationStrategies;
@@ -45,7 +47,7 @@ public class CrystalCatalyzerBlock extends AEBaseEntityBlock<CrystalCatalyzerBlo
             BlockShapeHelper.createHorizontalFacingShapes(UPRIGHT_SHAPE);
 
     public CrystalCatalyzerBlock() {
-        super(metalProps().noOcclusion().forceSolidOn());
+        super(metalProps(Properties.of()).noOcclusion().forceSolidOn());
         registerDefaultState(defaultBlockState()
                 .setValue(WORKING, false)
                 .setValue(FACING, Direction.NORTH));
@@ -74,11 +76,11 @@ public class CrystalCatalyzerBlock extends AEBaseEntityBlock<CrystalCatalyzerBlo
     }
 
     @Override
-    public void neighborChanged(BlockState state, Level level, BlockPos pos,
-                                Block block, BlockPos fromPos, boolean isMoving) {
+    protected void neighborChanged(BlockState state, Level level, BlockPos pos, Block block,
+            @Nullable Orientation orientation, boolean movedByPiston) {
         var be = getBlockEntity(level, pos);
         if (be != null) {
-            be.onNeighborChanged(fromPos);
+            be.onNeighborChanged(null);
         }
     }
 

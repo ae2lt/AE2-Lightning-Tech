@@ -1,6 +1,6 @@
 package com.moakiee.ae2lt.item;
 
-import java.util.List;
+import java.util.function.Consumer;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -14,6 +14,7 @@ import net.minecraft.util.StringRepresentable;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.component.TooltipDisplay;
 
 public class WeatherCondensateItem extends Item {
     private final Type type;
@@ -39,15 +40,16 @@ public class WeatherCondensateItem extends Item {
     public void appendHoverText(
             ItemStack stack,
             TooltipContext context,
-            List<Component> tooltipComponents,
+            TooltipDisplay tooltipDisplay,
+            Consumer<Component> tooltipComponents,
             TooltipFlag tooltipFlag) {
-        tooltipComponents.add(Component.translatable(
+        tooltipComponents.accept(Component.translatable(
                 "item.ae2lt.weather_condensate.target",
                 type.getWeatherName()).withStyle(ChatFormatting.AQUA));
-        tooltipComponents.add(Component.translatable(
+        tooltipComponents.accept(Component.translatable(
                 "item.ae2lt.weather_condensate.energy",
                 type.totalEnergy()).withStyle(ChatFormatting.GRAY));
-        tooltipComponents.add(Component.translatable(
+        tooltipComponents.accept(Component.translatable(
                 "item.ae2lt.weather_condensate.duration",
                 type.minDuration(),
                 type.maxDuration()).withStyle(ChatFormatting.DARK_GRAY));

@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
@@ -490,8 +492,8 @@ public class CrystalCatalyzerBlockEntity extends AENetworkedBlockEntity
         logic.onStateChanged();
     }
 
-    public void onNeighborChanged(BlockPos changedPos) {
-        if (changedPos != null && worldPosition.distManhattan(changedPos) == 1) {
+    public void onNeighborChanged(@Nullable BlockPos changedPos) {
+        if (changedPos == null || worldPosition.distManhattan(changedPos) == 1) {
             exportTargetCache.invalidate();
         }
     }
