@@ -8,11 +8,13 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.Tag;
+import net.minecraft.nbt.NbtOps;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import net.neoforged.neoforge.items.IItemHandlerModifiable;
 
-import appeng.api.inventories.InternalInventory;
+import appeng.api.inventories.BaseInternalInventory;
 
 /**
  * Item handler that supports slot limits larger than the carried stack's
@@ -24,7 +26,7 @@ import appeng.api.inventories.InternalInventory;
  * size, which means automation commonly stops at 64 even when the slot says
  * 1024.</p>
  */
-public abstract class LargeStackItemHandler implements IItemHandlerModifiable, InternalInventory {
+public abstract class LargeStackItemHandler extends BaseInternalInventory implements IItemHandlerModifiable {
     private static final String TAG_SLOT = "Slot";
     private static final String TAG_COUNT_INT = "CountInt";
     private static final String TAG_STACK = "Stack";
@@ -221,6 +223,7 @@ public abstract class LargeStackItemHandler implements IItemHandlerModifiable, I
             return;
         }
 
+        var ops = registries.createSerializationContext(NbtOps.INSTANCE);
         ListTag items = new ListTag();
         for (int slot = 0; slot < stacks.size(); slot++) {
             ItemStack stack = stacks.get(slot);
@@ -231,11 +234,32 @@ public abstract class LargeStackItemHandler implements IItemHandlerModifiable, I
             CompoundTag itemTag = new CompoundTag();
             itemTag.putInt(TAG_SLOT, slot);
             itemTag.putInt(TAG_COUNT_INT, stack.getCount());
-            Tag stackTag = stack.copyWithCount(1).save(registries, new CompoundTag());
+            CompoundTag stackTag = new CompoundTag();
+            stackTag.store(ItemStack.MAP_CODEC, ops, stack.copyWithCount(1));
             itemTag.put(TAG_STACK, stackTag);
             items.add(itemTag);
         }
         tag.put(key, items);
+    }
+
+    public final void saveToTag(ValueOutput output, String key) {
+        if (isEmpty()) {
+            output.discard(key);
+            return;
+        }
+
+        var items = output.childrenList(key);
+        for (int slot = 0; slot < stacks.size(); slot++) {
+            ItemStack stack = stacks.get(slot);
+            if (stack.isEmpty()) {
+                continue;
+            }
+
+            ValueOutput itemOutput = items.addChild();
+            itemOutput.putInt(TAG_SLOT, slot);
+            itemOutput.putInt(TAG_COUNT_INT, stack.getCount());
+            itemOutput.child(TAG_STACK).store(ItemStack.MAP_CODEC, stack.copyWithCount(1));
+        }
     }
 
     public final void loadFromTag(CompoundTag tag, String key, HolderLookup.Provider registries) {
@@ -243,29 +267,49 @@ public abstract class LargeStackItemHandler implements IItemHandlerModifiable, I
             stacks.set(slot, ItemStack.EMPTY);
         }
 
-        if (!tag.contains(key, Tag.TAG_LIST)) {
-            return;
-        }
-
-        ListTag items = tag.getList(key, Tag.TAG_COMPOUND);
+        var ops = registries.createSerializationContext(NbtOps.INSTANCE);
+        ListTag items = tag.getListOrEmpty(key);
         for (int i = 0; i < items.size(); i++) {
-            CompoundTag itemTag = items.getCompound(i);
-            int slot = itemTag.getInt(TAG_SLOT);
+            CompoundTag itemTag = items.getCompoundOrEmpty(i);
+            int slot = itemTag.getIntOr(TAG_SLOT, -1);
             if (slot < 0 || slot >= stacks.size()) {
                 continue;
             }
 
-            ItemStack stack = itemTag.contains(TAG_STACK, Tag.TAG_COMPOUND)
-                    ? ItemStack.parseOptional(registries, itemTag.getCompound(TAG_STACK))
-                    : ItemStack.parseOptional(registries, itemTag);
+            ItemStack stack = itemTag.getCompound(TAG_STACK)
+                    .flatMap(stackTag -> stackTag.read(ItemStack.MAP_CODEC, ops))
+                    .orElseGet(() -> itemTag.read(ItemStack.MAP_CODEC, ops).orElse(ItemStack.EMPTY));
             if (stack.isEmpty()) {
                 continue;
             }
 
             int limit = getSlotLimit(slot);
-            int savedCount = itemTag.contains(TAG_COUNT_INT, Tag.TAG_INT)
-                    ? itemTag.getInt(TAG_COUNT_INT)
-                    : stack.getCount();
+            int savedCount = itemTag.getIntOr(TAG_COUNT_INT, stack.getCount());
+            stack = stack.copyWithCount(Math.min(limit, Math.max(1, savedCount)));
+            stacks.set(slot, stack);
+        }
+    }
+
+    public final void loadFromTag(ValueInput input, String key) {
+        for (int slot = 0; slot < stacks.size(); slot++) {
+            stacks.set(slot, ItemStack.EMPTY);
+        }
+
+        for (ValueInput itemInput : input.childrenListOrEmpty(key)) {
+            int slot = itemInput.getIntOr(TAG_SLOT, -1);
+            if (slot < 0 || slot >= stacks.size()) {
+                continue;
+            }
+
+            ItemStack stack = itemInput.child(TAG_STACK)
+                    .flatMap(stackInput -> stackInput.read(ItemStack.MAP_CODEC))
+                    .orElseGet(() -> itemInput.read(ItemStack.MAP_CODEC).orElse(ItemStack.EMPTY));
+            if (stack.isEmpty()) {
+                continue;
+            }
+
+            int limit = getSlotLimit(slot);
+            int savedCount = itemInput.getIntOr(TAG_COUNT_INT, stack.getCount());
             stack = stack.copyWithCount(Math.min(limit, Math.max(1, savedCount)));
             stacks.set(slot, stack);
         }

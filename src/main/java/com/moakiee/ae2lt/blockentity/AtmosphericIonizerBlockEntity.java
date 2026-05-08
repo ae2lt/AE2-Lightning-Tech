@@ -33,9 +33,8 @@ import com.moakiee.ae2lt.block.AtmosphericIonizerBlock;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.core.HolderLookup;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LightningBolt;
 import net.minecraft.world.entity.player.Player;
@@ -43,6 +42,8 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.items.IItemHandlerModifiable;
 
@@ -252,7 +253,7 @@ public class AtmosphericIonizerBlockEntity extends AENetworkedBlockEntity implem
         }
 
         WeatherCondensateItem.Type committedType = lockedType;
-        if (!committedType.apply(serverLevel, serverLevel.random)) {
+        if (!committedType.apply(serverLevel, serverLevel.getRandom())) {
             LOG.debug("[ae2lt/ionizer] commit aborted: apply() failed for type={} at {}", committedType, worldPosition);
             inventory.insertItem(AtmosphericIonizerInventory.SLOT_CONDENSATE, extracted, false);
             return false;
@@ -320,14 +321,14 @@ public class AtmosphericIonizerBlockEntity extends AENetworkedBlockEntity implem
      * + {@code ResearchRitualService} 按反应场内的物品判定,这里只负责"触发点"。
      */
     private void summonRitualLightning(ServerLevel serverLevel) {
-        LightningBolt bolt = EntityType.LIGHTNING_BOLT.create(serverLevel);
+        LightningBolt bolt = EntityType.LIGHTNING_BOLT.create(serverLevel, EntitySpawnReason.TRIGGERED);
         if (bolt == null) {
             LOG.warn("[ae2lt/ionizer] summonRitualLightning: EntityType.LIGHTNING_BOLT.create returned null at {}",
                     worldPosition);
             return;
         }
         BlockPos strikePos = worldPosition.above(RITUAL_STRIKE_HEIGHT_OFFSET);
-        bolt.moveTo(Vec3.atBottomCenterOf(strikePos));
+        bolt.setPos(Vec3.atBottomCenterOf(strikePos));
         bolt.setVisualOnly(false);
         serverLevel.addFreshEntity(bolt);
         LOG.info("[ae2lt/ionizer] thunderstorm nucleation -> spawn lightning at {} (ionizer={})", strikePos,
@@ -335,28 +336,28 @@ public class AtmosphericIonizerBlockEntity extends AENetworkedBlockEntity implem
     }
 
     @Override
-    public void saveAdditional(CompoundTag data, HolderLookup.Provider registries) {
-        super.saveAdditional(data, registries);
-        inventory.saveToTag(data, TAG_INVENTORY, registries);
+    public void saveAdditional(ValueOutput data) {
+        super.saveAdditional(data);
+        inventory.saveToTag(data, TAG_INVENTORY);
         data.putLong(TAG_CONSUMED_ENERGY, consumedEnergy);
         data.putInt(TAG_PROCESSING_TICKS, processingTicksSpent);
         if (lockedType != null) {
             data.putString(TAG_LOCKED_TYPE, lockedType.getSerializedName());
         } else {
-            data.remove(TAG_LOCKED_TYPE);
+            data.discard(TAG_LOCKED_TYPE);
         }
         frequencyBinding.save(data);
     }
 
     @Override
-    public void loadTag(CompoundTag data, HolderLookup.Provider registries) {
-        super.loadTag(data, registries);
-        inventory.loadFromTag(data, TAG_INVENTORY, registries);
-        lockedType = data.contains(TAG_LOCKED_TYPE)
-                ? WeatherCondensateItem.Type.fromName(data.getString(TAG_LOCKED_TYPE))
-                : null;
-        consumedEnergy = Math.max(0L, data.getLong(TAG_CONSUMED_ENERGY));
-        processingTicksSpent = Math.max(0, data.getInt(TAG_PROCESSING_TICKS));
+    public void loadTag(ValueInput data) {
+        super.loadTag(data);
+        inventory.loadFromTag(data, TAG_INVENTORY);
+        lockedType = data.getString(TAG_LOCKED_TYPE)
+                .map(WeatherCondensateItem.Type::fromName)
+                .orElse(null);
+        consumedEnergy = Math.max(0L, data.getLongOr(TAG_CONSUMED_ENERGY, 0L));
+        processingTicksSpent = Math.max(0, data.getIntOr(TAG_PROCESSING_TICKS, 0));
         frequencyBinding.load(data);
 
         if (lockedType == null) {
@@ -449,5 +450,4 @@ public class AtmosphericIonizerBlockEntity extends AENetworkedBlockEntity implem
         return extracted >= amount - POWER_EPSILON;
     }
 }
-
 

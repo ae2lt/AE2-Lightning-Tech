@@ -15,6 +15,8 @@ import appeng.util.SettingsFrom;
 import net.minecraft.core.component.DataComponentMap;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 
 import com.moakiee.ae2lt.blockentity.OverloadedControllerBlockEntity;
 import com.moakiee.ae2lt.logic.MemoryCardConfigSupport;
@@ -158,8 +160,16 @@ public final class FrequencyBindingHelper implements WirelessFrequencyManager.Tr
         tag.putInt(TAG_FREQUENCY_ID, frequencyId);
     }
 
+    public void save(ValueOutput output) {
+        output.putInt(TAG_FREQUENCY_ID, frequencyId);
+    }
+
     public void load(CompoundTag tag) {
-        frequencyId = tag.contains(TAG_FREQUENCY_ID) ? tag.getInt(TAG_FREQUENCY_ID) : -1;
+        frequencyId = tag.getIntOr(TAG_FREQUENCY_ID, -1);
+    }
+
+    public void load(ValueInput input) {
+        frequencyId = input.getIntOr(TAG_FREQUENCY_ID, -1);
     }
 
     public static void writeMemoryFrequency(CompoundTag tag, int frequencyId) {
@@ -172,7 +182,7 @@ public final class FrequencyBindingHelper implements WirelessFrequencyManager.Tr
         if (!tag.contains(TAG_MEMORY_FREQUENCY)) {
             return false;
         }
-        setter.accept(tag.getInt(TAG_MEMORY_FREQUENCY));
+        setter.accept(tag.getIntOr(TAG_MEMORY_FREQUENCY, -1));
         return true;
     }
 
