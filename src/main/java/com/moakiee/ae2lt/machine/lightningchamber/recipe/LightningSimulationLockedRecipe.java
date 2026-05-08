@@ -5,13 +5,11 @@ import java.util.Objects;
 
 import org.jetbrains.annotations.Nullable;
 
-import net.minecraft.core.HolderLookup;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.IntArrayTag;
-import net.minecraft.nbt.Tag;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.RecipeHolder;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 
 import com.moakiee.ae2lt.me.key.LightningKey;
 import com.moakiee.ae2lt.machine.lightningchamber.LightningSimulationChamberInventory;
@@ -62,7 +60,7 @@ public final class LightningSimulationLockedRecipe {
     public static LightningSimulationLockedRecipe fromCandidate(LightningSimulationRecipeCandidate candidate) {
         RecipeHolder<LightningSimulationRecipe> holder = candidate.recipe();
         return new LightningSimulationLockedRecipe(
-                holder.id(),
+                holder.id().identifier(),
                 holder.value().getResultStack(),
                 holder.value().totalEnergy(),
                 holder.value().lightningCost(),
@@ -102,50 +100,65 @@ public final class LightningSimulationLockedRecipe {
         return inputConsumptions[slot];
     }
 
-    public CompoundTag toTag(HolderLookup.Provider registries) {
-        CompoundTag tag = new CompoundTag();
-        tag.putString(TAG_RECIPE_ID, recipeId.toString());
-        tag.put(TAG_RESULT, result.save(registries, new CompoundTag()));
-        tag.putLong(TAG_TOTAL_ENERGY, totalEnergy);
-        tag.putInt(TAG_LIGHTNING_COST, lightningCost);
-        tag.putString(TAG_LIGHTNING_TIER, lightningTier.getSerializedName());
-        tag.put(TAG_INPUTS, new IntArrayTag(Arrays.copyOf(inputConsumptions, inputConsumptions.length)));
-        return tag;
+    public void writeTo(ValueOutput data) {
+        data.putString(TAG_RECIPE_ID, recipeId.toString());
+        data.child(TAG_RESULT).store(ItemStack.MAP_CODEC, result);
+        data.putLong(TAG_TOTAL_ENERGY, totalEnergy);
+        data.putInt(TAG_LIGHTNING_COST, lightningCost);
+        data.putString(TAG_LIGHTNING_TIER, lightningTier.getSerializedName());
+        data.putIntArray(TAG_INPUTS, Arrays.copyOf(inputConsumptions, inputConsumptions.length));
     }
 
     @Nullable
-    public static LightningSimulationLockedRecipe fromTag(CompoundTag tag, HolderLookup.Provider registries) {
-        if (!tag.contains(TAG_RECIPE_ID) || !tag.contains(TAG_RESULT, Tag.TAG_COMPOUND)) {
-            return null;
-        }
-
-        ItemStack result = ItemStack.parseOptional(registries, tag.getCompound(TAG_RESULT));
-        if (result.isEmpty()) {
-            return null;
-        }
-
-        int[] inputConsumptions = tag.getIntArray(TAG_INPUTS);
-        if (inputConsumptions.length != 3) {
-            return null;
-        }
-
-        long totalEnergy = tag.getLong(TAG_TOTAL_ENERGY);
-        int lightningCost = tag.contains(TAG_LIGHTNING_COST, Tag.TAG_ANY_NUMERIC)
-                ? tag.getInt(TAG_LIGHTNING_COST)
-                : (tag.getInt(TAG_LEGACY_DUST_COST) > 0 ? LightningSimulationRecipe.DEFAULT_LIGHTNING_COST : 0);
-        LightningKey.Tier lightningTier = tag.contains(TAG_LIGHTNING_TIER, Tag.TAG_STRING)
-                ? LightningKey.Tier.fromSerializedName(tag.getString(TAG_LIGHTNING_TIER))
-                : LightningSimulationRecipe.DEFAULT_LIGHTNING_TIER;
-        if (totalEnergy <= 0 || lightningCost <= 0) {
-            return null;
-        }
-
-        return new LightningSimulationLockedRecipe(
-                Identifier.parse(tag.getString(TAG_RECIPE_ID)),
+    public static LightningSimulationLockedRecipe fromInput(ValueInput data) {
+        ItemStack result = data.child(TAG_RESULT)
+                .flatMap(resultTag -> resultTag.read(ItemStack.MAP_CODEC))
+                .orElse(ItemStack.EMPTY);
+        int[] inputConsumptions = data.getIntArray(TAG_INPUTS).orElse(new int[0]);
+        long totalEnergy = data.getLongOr(TAG_TOTAL_ENERGY, 0L);
+        int lightningCost = data.getInt(TAG_LIGHTNING_COST)
+                .orElseGet(() -> data.getIntOr(TAG_LEGACY_DUST_COST, 0) > 0
+                        ? LightningSimulationRecipe.DEFAULT_LIGHTNING_COST
+                        : 0);
+        LightningKey.Tier lightningTier = LightningKey.Tier.fromSerializedName(
+                data.getStringOr(
+                        TAG_LIGHTNING_TIER,
+                        LightningSimulationRecipe.DEFAULT_LIGHTNING_TIER.getSerializedName()));
+        return createOrNull(
+                data.getStringOr(TAG_RECIPE_ID, ""),
                 result,
                 totalEnergy,
                 lightningCost,
                 lightningTier,
                 inputConsumptions);
+    }
+
+    @Nullable
+    private static LightningSimulationLockedRecipe createOrNull(
+            String recipeId,
+            ItemStack result,
+            long totalEnergy,
+            int lightningCost,
+            LightningKey.Tier lightningTier,
+            int[] inputConsumptions) {
+        if (recipeId.isEmpty()
+                || result.isEmpty()
+                || totalEnergy <= 0
+                || lightningCost <= 0
+                || inputConsumptions.length != 3) {
+            return null;
+        }
+
+        try {
+            return new LightningSimulationLockedRecipe(
+                    Identifier.parse(recipeId),
+                    result,
+                    totalEnergy,
+                    lightningCost,
+                    lightningTier,
+                    inputConsumptions);
+        } catch (RuntimeException e) {
+            return null;
+        }
     }
 }
