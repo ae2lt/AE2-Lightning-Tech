@@ -63,6 +63,7 @@ import com.moakiee.ae2lt.logic.MachineAdapterRegistry;
 import com.moakiee.ae2lt.logic.research.ResearchNoteGenerator;
 import com.moakiee.ae2lt.logic.research.ResearchNoteModulationHandler;
 import com.moakiee.ae2lt.overload.pattern.OverloadPatternDecoder;
+import com.moakiee.ae2lt.util.LegacyTransferAdapters;
 
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.server.ServerStartingEvent;
@@ -157,7 +158,6 @@ public class AE2LightningTech {
                         // 工具
                         output.accept(ModItems.OVERLOAD_PATTERN);
                         output.accept(ModItems.OVERLOAD_PATTERN_ENCODER);
-                        output.accept(ModItems.OVERLOADED_WIRELESS_CONNECT_TOOL);
                         output.accept(ModItems.OVERLOADED_FILTER_COMPONENT);
                         // 水晶生长
                         output.accept(ModBlocks.FLAWLESS_BUDDING_OVERLOAD_CRYSTAL);
@@ -198,105 +198,105 @@ public class AE2LightningTech {
 
     private void registerCapabilities(RegisterCapabilitiesEvent event) {
         event.registerBlockEntity(
-                Capabilities.ItemHandler.BLOCK,
+                Capabilities.Item.BLOCK,
                 ModBlockEntities.LIGHTNING_COLLECTOR.get(),
-                (blockEntity, side) -> blockEntity.getAutomationInventory());
+                (blockEntity, side) -> LegacyTransferAdapters.itemHandler(blockEntity.getAutomationInventory()));
 
         event.registerBlockEntity(
-                Capabilities.ItemHandler.BLOCK,
+                Capabilities.Item.BLOCK,
                 ModBlockEntities.LIGHTNING_SIMULATION_CHAMBER.get(),
-                (blockEntity, side) -> blockEntity.getAutomationInventory());
+                (blockEntity, side) -> LegacyTransferAdapters.itemHandler(blockEntity.getAutomationInventory()));
 
         event.registerBlockEntity(
-                Capabilities.ItemHandler.BLOCK,
+                Capabilities.Item.BLOCK,
                 ModBlockEntities.LIGHTNING_ASSEMBLY_CHAMBER.get(),
-                (blockEntity, side) -> blockEntity.getAutomationInventory());
+                (blockEntity, side) -> LegacyTransferAdapters.itemHandler(blockEntity.getAutomationInventory()));
 
         event.registerBlockEntity(
-                Capabilities.ItemHandler.BLOCK,
+                Capabilities.Item.BLOCK,
                 ModBlockEntities.TESLA_COIL.get(),
-                (blockEntity, side) -> blockEntity.getAutomationInventory());
+                (blockEntity, side) -> LegacyTransferAdapters.itemHandler(blockEntity.getAutomationInventory()));
 
         // TeslaCoil 是双格高方块,UPPER 半部分没有 BlockEntity;
         // 把 UPPER 的 ItemHandler 查询代理到下方 LOWER 的 BE,
         // 让漏斗/导管从顶面和上半身四面也能输入物品。
         event.registerBlock(
-                Capabilities.ItemHandler.BLOCK,
+                Capabilities.Item.BLOCK,
                 (level, pos, state, blockEntity, context) -> {
                     if (state.getValue(TeslaCoilBlock.HALF) != DoubleBlockHalf.UPPER) {
                         return null;
                     }
                     if (level.getBlockEntity(pos.below()) instanceof TeslaCoilBlockEntity be) {
-                        return be.getAutomationInventory();
+                        return LegacyTransferAdapters.itemHandler(be.getAutomationInventory());
                     }
                     return null;
                 },
                 ModBlocks.TESLA_COIL.get());
 
         event.registerBlockEntity(
-                Capabilities.ItemHandler.BLOCK,
+                Capabilities.Item.BLOCK,
                 ModBlockEntities.OVERLOAD_PROCESSING_FACTORY.get(),
-                (blockEntity, side) -> blockEntity.getAutomationInventory());
+                (blockEntity, side) -> LegacyTransferAdapters.itemHandler(blockEntity.getAutomationInventory()));
 
         event.registerBlockEntity(
-                Capabilities.ItemHandler.BLOCK,
+                Capabilities.Item.BLOCK,
                 ModBlockEntities.ATMOSPHERIC_IONIZER.get(),
-                (blockEntity, side) -> blockEntity.getAutomationInventory());
+                (blockEntity, side) -> LegacyTransferAdapters.itemHandler(blockEntity.getAutomationInventory()));
 
         event.registerBlockEntity(
-                Capabilities.ItemHandler.BLOCK,
+                Capabilities.Item.BLOCK,
                 ModBlockEntities.CRYSTAL_CATALYZER.get(),
-                (blockEntity, side) -> blockEntity.getAutomationInventory());
+                (blockEntity, side) -> LegacyTransferAdapters.itemHandler(blockEntity.getAutomationInventory()));
 
         event.registerBlockEntity(
-                Capabilities.FluidHandler.BLOCK,
+                Capabilities.Fluid.BLOCK,
                 ModBlockEntities.OVERLOAD_PROCESSING_FACTORY.get(),
-                (blockEntity, side) -> blockEntity.getFluidHandlerCapability(side));
+                (blockEntity, side) -> LegacyTransferAdapters.fluidHandler(blockEntity.getFluidHandlerCapability(side)));
 
         event.registerBlockEntity(
-                Capabilities.FluidHandler.BLOCK,
+                Capabilities.Fluid.BLOCK,
                 ModBlockEntities.CRYSTAL_CATALYZER.get(),
-                (blockEntity, side) -> blockEntity.getFluidHandlerCapability(side));
+                (blockEntity, side) -> LegacyTransferAdapters.fluidHandler(blockEntity.getFluidHandlerCapability(side)));
 
         event.registerBlockEntity(
-                Capabilities.EnergyStorage.BLOCK,
+                Capabilities.Energy.BLOCK,
                 ModBlockEntities.LIGHTNING_SIMULATION_CHAMBER.get(),
-                (blockEntity, side) -> blockEntity.getEnergyStorageCapability(side));
+                (blockEntity, side) -> LegacyTransferAdapters.energyHandler(blockEntity.getEnergyStorageCapability(side)));
 
         event.registerBlockEntity(
-                Capabilities.EnergyStorage.BLOCK,
+                Capabilities.Energy.BLOCK,
                 ModBlockEntities.LIGHTNING_ASSEMBLY_CHAMBER.get(),
-                (blockEntity, side) -> blockEntity.getEnergyStorageCapability(side));
+                (blockEntity, side) -> LegacyTransferAdapters.energyHandler(blockEntity.getEnergyStorageCapability(side)));
 
         event.registerBlockEntity(
-                Capabilities.EnergyStorage.BLOCK,
+                Capabilities.Energy.BLOCK,
                 ModBlockEntities.OVERLOAD_PROCESSING_FACTORY.get(),
-                (blockEntity, side) -> blockEntity.getEnergyStorageCapability(side));
+                (blockEntity, side) -> LegacyTransferAdapters.energyHandler(blockEntity.getEnergyStorageCapability(side)));
 
         event.registerBlockEntity(
-                Capabilities.EnergyStorage.BLOCK,
+                Capabilities.Energy.BLOCK,
                 ModBlockEntities.TESLA_COIL.get(),
-                (blockEntity, side) -> blockEntity.getEnergyStorageCapability(side));
+                (blockEntity, side) -> LegacyTransferAdapters.energyHandler(blockEntity.getEnergyStorageCapability(side)));
 
         event.registerBlockEntity(
-                Capabilities.EnergyStorage.BLOCK,
+                Capabilities.Energy.BLOCK,
                 ModBlockEntities.CRYSTAL_CATALYZER.get(),
-                (blockEntity, side) -> blockEntity.getEnergyStorageCapability(side));
+                (blockEntity, side) -> LegacyTransferAdapters.energyHandler(blockEntity.getEnergyStorageCapability(side)));
 
         event.registerBlockEntity(
-                Capabilities.EnergyStorage.BLOCK,
+                Capabilities.Energy.BLOCK,
                 ModBlockEntities.OVERLOADED_CONTROLLER.get(),
-                (blockEntity, side) -> blockEntity.getEnergyStorageCapability(side));
+                (blockEntity, side) -> LegacyTransferAdapters.energyHandler(blockEntity.getEnergyStorageCapability(side)));
 
         event.registerBlockEntity(
-                Capabilities.EnergyStorage.BLOCK,
+                Capabilities.Energy.BLOCK,
                 ModBlockEntities.WIRELESS_OVERLOADED_CONTROLLER.get(),
-                (blockEntity, side) -> blockEntity.getEnergyStorageCapability(side));
+                (blockEntity, side) -> LegacyTransferAdapters.energyHandler(blockEntity.getEnergyStorageCapability(side)));
 
         event.registerBlockEntity(
-                Capabilities.EnergyStorage.BLOCK,
+                Capabilities.Energy.BLOCK,
                 ModBlockEntities.ADVANCED_WIRELESS_OVERLOADED_CONTROLLER.get(),
-                (blockEntity, side) -> blockEntity.getEnergyStorageCapability(side));
+                (blockEntity, side) -> LegacyTransferAdapters.energyHandler(blockEntity.getEnergyStorageCapability(side)));
 
         // Expose IN_WORLD_GRID_NODE_HOST so ME cables can connect to our block entity
         event.registerBlockEntity(
@@ -649,7 +649,7 @@ public class AE2LightningTech {
 
     private static void registerAppliedFluxInductionCardCompat() {
         var inductionId = Identifier.fromNamespaceAndPath("appflux", "induction_card");
-        Item inductionCard = net.minecraft.core.registries.BuiltInRegistries.ITEM.get(inductionId);
+        Item inductionCard = net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(inductionId);
         if (inductionCard == null || inductionCard == net.minecraft.world.item.Items.AIR) {
             return;
         }
