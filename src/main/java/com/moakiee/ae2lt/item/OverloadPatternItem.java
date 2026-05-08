@@ -34,18 +34,14 @@ public class OverloadPatternItem extends EncodedPatternItem<IPatternDetails> {
     }
 
     public boolean hasPayload(ItemStack stack) {
-        return readRootTag(stack).contains(TAG_OVERLOAD_PATTERN, CompoundTag.TAG_COMPOUND);
+        return readRootTag(stack).getCompound(TAG_OVERLOAD_PATTERN).isPresent();
     }
 
     public Optional<OverloadPatternPayload> readPayload(ItemStack stack) {
         Objects.requireNonNull(stack, "stack");
-        var rootTag = readRootTag(stack);
-        if (!rootTag.contains(TAG_OVERLOAD_PATTERN, CompoundTag.TAG_COMPOUND)) {
-            return Optional.empty();
-        }
-
-        var payloadTag = rootTag.getCompound(TAG_OVERLOAD_PATTERN);
-        return Optional.of(OverloadPatternPayloadTagCodec.readPayload(payloadTag));
+        return readRootTag(stack)
+                .getCompound(TAG_OVERLOAD_PATTERN)
+                .map(OverloadPatternPayloadTagCodec::readPayload);
     }
 
     public Optional<EncodedOverloadPattern> readEncodedPattern(ItemStack stack) {

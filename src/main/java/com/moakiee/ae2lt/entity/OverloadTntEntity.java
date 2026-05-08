@@ -10,8 +10,9 @@ import com.moakiee.ae2lt.registry.ModItems;
 import java.util.List;
 import java.util.UUID;
 import javax.annotation.Nullable;
-import net.minecraft.nbt.CompoundTag;
+import net.minecraft.core.UUIDUtil;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LightningBolt;
 import net.minecraft.world.entity.LivingEntity;
@@ -20,7 +21,10 @@ import net.minecraft.world.entity.item.PrimedTnt;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 
 public class OverloadTntEntity extends PrimedTnt {
     private static final String TAG_OWNER = "Owner";
@@ -48,7 +52,7 @@ public class OverloadTntEntity extends PrimedTnt {
         this.owner = owner;
         this.ownerUuid = owner != null ? owner.getUUID() : null;
 
-        double angle = level.random.nextDouble() * (Math.PI * 2.0D);
+        double angle = level.getRandom().nextDouble() * (Math.PI * 2.0D);
         this.setDeltaMovement(-Math.sin(angle) * 0.02D, 0.2D, -Math.cos(angle) * 0.02D);
         this.xo = x;
         this.yo = y;
@@ -68,18 +72,16 @@ public class OverloadTntEntity extends PrimedTnt {
     }
 
     @Override
-    protected void addAdditionalSaveData(CompoundTag tag) {
-        super.addAdditionalSaveData(tag);
-        if (ownerUuid != null) {
-            tag.putUUID(TAG_OWNER, ownerUuid);
-        }
+    protected void addAdditionalSaveData(ValueOutput output) {
+        super.addAdditionalSaveData(output);
+        output.storeNullable(TAG_OWNER, UUIDUtil.CODEC, ownerUuid);
     }
 
     @Override
-    protected void readAdditionalSaveData(CompoundTag tag) {
-        super.readAdditionalSaveData(tag);
+    protected void readAdditionalSaveData(ValueInput input) {
+        super.readAdditionalSaveData(input);
         owner = null;
-        ownerUuid = tag.hasUUID(TAG_OWNER) ? tag.getUUID(TAG_OWNER) : null;
+        ownerUuid = input.read(TAG_OWNER, UUIDUtil.CODEC).orElse(null);
     }
 
     @Override
@@ -118,16 +120,16 @@ public class OverloadTntEntity extends PrimedTnt {
         }
 
         for (int i = 0; i < EASTER_EGG_LIGHTNING_COUNT; i++) {
-            LightningBolt bolt = EntityType.LIGHTNING_BOLT.create(serverLevel);
+            LightningBolt bolt = EntityType.LIGHTNING_BOLT.create(serverLevel, EntitySpawnReason.TRIGGERED);
             if (bolt == null) {
                 continue;
             }
-            double angle = serverLevel.random.nextDouble() * Math.PI * 2.0D;
-            double dist = serverLevel.random.nextDouble() * EASTER_EGG_LIGHTNING_SPREAD;
-            bolt.moveTo(
+            double angle = serverLevel.getRandom().nextDouble() * Math.PI * 2.0D;
+            double dist = serverLevel.getRandom().nextDouble() * EASTER_EGG_LIGHTNING_SPREAD;
+            bolt.setPos(new Vec3(
                     this.getX() + Math.cos(angle) * dist,
                     this.getY(),
-                    this.getZ() + Math.sin(angle) * dist);
+                    this.getZ() + Math.sin(angle) * dist));
             bolt.setVisualOnly(true);
             serverLevel.addFreshEntity(bolt);
         }
