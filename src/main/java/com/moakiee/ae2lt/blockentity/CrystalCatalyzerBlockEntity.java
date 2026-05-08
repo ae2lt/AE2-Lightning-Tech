@@ -20,11 +20,11 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.Fluids;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
-import net.neoforged.neoforge.energy.IEnergyStorage;
 import net.neoforged.neoforge.fluids.FluidStack;
-import net.neoforged.neoforge.fluids.capability.IFluidHandler;
-import net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction;
-import net.neoforged.neoforge.items.IItemHandlerModifiable;
+import net.neoforged.neoforge.transfer.ResourceHandler;
+import net.neoforged.neoforge.transfer.energy.EnergyHandler;
+import net.neoforged.neoforge.transfer.fluid.FluidResource;
+import net.neoforged.neoforge.transfer.item.ItemResource;
 
 import appeng.api.networking.IGridNode;
 import appeng.api.networking.IGridNodeListener;
@@ -153,7 +153,7 @@ public class CrystalCatalyzerBlockEntity extends AENetworkedBlockEntity
         return inventory;
     }
 
-    public IItemHandlerModifiable getAutomationInventory() {
+    public ResourceHandler<ItemResource> getAutomationInventory() {
         return automationInventory;
     }
 
@@ -192,11 +192,11 @@ public class CrystalCatalyzerBlockEntity extends AENetworkedBlockEntity
         saveChanges();
     }
 
-    public IFluidHandler getFluidHandlerCapability(Direction side) {
+    public ResourceHandler<FluidResource> getFluidHandlerCapability(Direction side) {
         return fluidHandler;
     }
 
-    public IEnergyStorage getEnergyStorageCapability(Direction side) {
+    public EnergyHandler getEnergyStorageCapability(Direction side) {
         return energyStorage;
     }
 
@@ -519,17 +519,17 @@ public class CrystalCatalyzerBlockEntity extends AENetworkedBlockEntity
             return false;
         }
 
-        FluidStack drained = tank.drain(requiredFluid, FluidAction.EXECUTE);
+        FluidStack drained = tank.extractFluid(requiredFluid);
         if (drained.getAmount() != requiredFluid.getAmount()) {
             if (!drained.isEmpty()) {
-                tank.fill(drained, FluidAction.EXECUTE);
+                tank.insertFluid(drained);
             }
             return false;
         }
 
         ItemStack leftover = inventory.insertRecipeOutput(resultStack, false);
         if (!leftover.isEmpty()) {
-            tank.fill(drained, FluidAction.EXECUTE);
+            tank.insertFluid(drained);
             return false;
         }
 
@@ -545,13 +545,13 @@ public class CrystalCatalyzerBlockEntity extends AENetworkedBlockEntity
     }
 
     @Override
-    public IEnergyStorage getMachineEnergyStorage() {
+    public EnergyHandler getMachineEnergyStorage() {
         return energyStorage;
     }
 
     @Override
     public int extractMachineEnergy(long amount) {
-        return energyStorage.extractInternal(amount, false);
+        return energyStorage.extractInternal(amount);
     }
 
     @Override

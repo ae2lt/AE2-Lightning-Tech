@@ -18,8 +18,9 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
-import net.neoforged.neoforge.energy.IEnergyStorage;
-import net.neoforged.neoforge.items.IItemHandlerModifiable;
+import net.neoforged.neoforge.transfer.ResourceHandler;
+import net.neoforged.neoforge.transfer.energy.EnergyHandler;
+import net.neoforged.neoforge.transfer.item.ItemResource;
 
 import appeng.api.config.Actionable;
 import appeng.api.networking.IGridNode;
@@ -146,11 +147,11 @@ public class LightningSimulationChamberBlockEntity extends AENetworkedBlockEntit
         return inventory;
     }
 
-    public IItemHandlerModifiable getAutomationInventory() {
+    public ResourceHandler<ItemResource> getAutomationInventory() {
         return automationInventory;
     }
 
-    public IEnergyStorage getEnergyStorageCapability(Direction side) {
+    public EnergyHandler getEnergyStorageCapability(Direction side) {
         return energyStorage;
     }
 
@@ -629,13 +630,13 @@ public class LightningSimulationChamberBlockEntity extends AENetworkedBlockEntit
     }
 
     @Override
-    public IEnergyStorage getMachineEnergyStorage() {
+    public EnergyHandler getMachineEnergyStorage() {
         return energyStorage;
     }
 
     @Override
     public int extractMachineEnergy(long amount) {
-        return energyStorage.extractInternal(amount, false);
+        return energyStorage.extractInternal(amount);
     }
 
     @Override

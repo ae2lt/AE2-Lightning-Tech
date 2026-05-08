@@ -15,8 +15,8 @@ import appeng.api.stacks.GenericStack;
  * the capability system. Automation (pipes, hoppers) sees every slot as empty
  * and can freely push items in; extraction is blocked.
  * <p>
- * AE2's {@code registerGenericAdapters} bridge automatically converts this
- * into {@code IItemHandler} and {@code IFluidHandler}.
+ * AE2's native generic inventory bridge exposes this to NeoForge transfer
+ * automation without leaking the real return inventory contents.
  * <p>
  * The real inventory data (for GUI, {@code injectIntoNetwork}, {@code addDrops})
  * is accessed directly through {@code logic.getReturnInv()}, bypassing this wrapper.

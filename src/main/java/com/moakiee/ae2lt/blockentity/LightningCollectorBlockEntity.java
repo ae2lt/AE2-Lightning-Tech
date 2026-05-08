@@ -44,7 +44,8 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import net.neoforged.neoforge.common.NeoForge;
-import net.neoforged.neoforge.items.IItemHandlerModifiable;
+import net.neoforged.neoforge.transfer.ResourceHandler;
+import net.neoforged.neoforge.transfer.item.ItemResource;
 
 public class LightningCollectorBlockEntity extends AENetworkedBlockEntity implements IActionHost, FrequencyBindingHost {
     private static final Logger LOG = com.mojang.logging.LogUtils.getLogger();
@@ -57,7 +58,7 @@ public class LightningCollectorBlockEntity extends AENetworkedBlockEntity implem
     private static boolean warnedInvalidExtremeVoltageBaseRange;
 
     private final LightningCollectorInventory inventory = new LightningCollectorInventory(this::onInventoryChanged);
-    private final IItemHandlerModifiable automationInventory = new InsertOnlyAutomationInventory(inventory);
+    private final ResourceHandler<ItemResource> automationInventory = new InsertOnlyAutomationInventory(inventory);
     private final FrequencyBindingHelper frequencyBinding = new FrequencyBindingHelper(this);
 
     private int cooldownTicks;
@@ -120,7 +121,7 @@ public class LightningCollectorBlockEntity extends AENetworkedBlockEntity implem
         frequencyBinding.onMainNodeStateChanged(reason);
     }
 
-    public IItemHandlerModifiable getAutomationInventory() {
+    public ResourceHandler<ItemResource> getAutomationInventory() {
         return automationInventory;
     }
 

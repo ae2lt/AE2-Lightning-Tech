@@ -2,9 +2,8 @@ package com.moakiee.ae2lt.logic.energy;
 
 /**
  * Stable AE2LT-owned abstraction over the heterogeneous "block accepts FE"
- * capabilities the mod can talk to (Forge {@code IEnergyStorage}, Mekanism
- * {@code IStrictEnergyHandler}, GrandPower {@code ILongEnergyStorage},
- * FluxNetworks {@code IFNEnergyStorage}). Public so hot-path callers in
+ * endpoints the mod can talk to (native NeoForge energy transfer plus optional
+ * third-party energy APIs). Public so hot-path callers in
  * {@code OverloadedPowerSupplyLogic} and {@code OverloadedInterfaceBlockEntity}
  * can hold a typed reference and skip the {@code Object → instanceof → cast}
  * trampoline that the bridge layer used to do on every simulate/send call.

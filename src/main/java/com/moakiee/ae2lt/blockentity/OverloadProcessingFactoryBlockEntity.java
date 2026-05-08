@@ -17,11 +17,11 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
-import net.neoforged.neoforge.energy.IEnergyStorage;
 import net.neoforged.neoforge.fluids.FluidStack;
-import net.neoforged.neoforge.fluids.capability.IFluidHandler;
-import net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction;
-import net.neoforged.neoforge.items.IItemHandlerModifiable;
+import net.neoforged.neoforge.transfer.ResourceHandler;
+import net.neoforged.neoforge.transfer.energy.EnergyHandler;
+import net.neoforged.neoforge.transfer.fluid.FluidResource;
+import net.neoforged.neoforge.transfer.item.ItemResource;
 
 import appeng.api.config.Actionable;
 import appeng.api.networking.IGridNode;
@@ -161,15 +161,15 @@ public class OverloadProcessingFactoryBlockEntity extends AENetworkedBlockEntity
         return inventory;
     }
 
-    public IItemHandlerModifiable getAutomationInventory() {
+    public ResourceHandler<ItemResource> getAutomationInventory() {
         return automationInventory;
     }
 
-    public IFluidHandler getFluidHandlerCapability(Direction side) {
+    public ResourceHandler<FluidResource> getFluidHandlerCapability(Direction side) {
         return fluidHandler;
     }
 
-    public IEnergyStorage getEnergyStorageCapability(Direction side) {
+    public EnergyHandler getEnergyStorageCapability(Direction side) {
         return energyStorage;
     }
 
@@ -484,11 +484,11 @@ public class OverloadProcessingFactoryBlockEntity extends AENetworkedBlockEntity
 
         FluidStack drainedInput = inputFluidCost <= 0
                 ? FluidStack.EMPTY
-                : inputTank.drain(inputFluidCost, FluidAction.EXECUTE);
+                : inputTank.extractFluid(inputFluidCost);
         if (inputFluidCost > 0 && drainedInput.getAmount() != inputFluidCost) {
             rollbackInputs(extractedInputs);
             if (!drainedInput.isEmpty()) {
-                inputTank.fill(drainedInput, FluidAction.EXECUTE);
+                inputTank.insertFluid(drainedInput);
             }
             return false;
         }
@@ -497,7 +497,7 @@ public class OverloadProcessingFactoryBlockEntity extends AENetworkedBlockEntity
         if (extractedPrimary < plan.primaryAmount()) {
             rollbackInputs(extractedInputs);
             if (!drainedInput.isEmpty()) {
-                inputTank.fill(drainedInput, FluidAction.EXECUTE);
+                inputTank.insertFluid(drainedInput);
             }
             if (extractedPrimary > 0L) {
                 insertLightning(plan.primaryKey(), extractedPrimary);
@@ -512,7 +512,7 @@ public class OverloadProcessingFactoryBlockEntity extends AENetworkedBlockEntity
                 insertLightning(plan.primaryKey(), extractedPrimary);
                 rollbackInputs(extractedInputs);
                 if (!drainedInput.isEmpty()) {
-                    inputTank.fill(drainedInput, FluidAction.EXECUTE);
+                    inputTank.insertFluid(drainedInput);
                 }
                 if (extractedSecondary > 0L) {
                     insertLightning(plan.secondaryKey(), extractedSecondary);
@@ -527,23 +527,23 @@ public class OverloadProcessingFactoryBlockEntity extends AENetworkedBlockEntity
                 insertLightning(plan.secondaryKey(), extractedSecondary);
             }
             if (!drainedInput.isEmpty()) {
-                inputTank.fill(drainedInput, FluidAction.EXECUTE);
+                inputTank.insertFluid(drainedInput);
             }
             rollbackInputs(extractedInputs);
             return false;
         }
 
-        int filledFluid = scaledOutputFluid.isEmpty() ? 0 : outputTank.fill(scaledOutputFluid, FluidAction.EXECUTE);
+        int filledFluid = scaledOutputFluid.isEmpty() ? 0 : outputTank.insertFluid(scaledOutputFluid);
         if (!scaledOutputFluid.isEmpty() && filledFluid != scaledOutputFluid.getAmount()) {
             if (filledFluid > 0) {
-                outputTank.drain(filledFluid, FluidAction.EXECUTE);
+                outputTank.extractFluid(scaledOutputFluid.copyWithAmount(filledFluid));
             }
             insertLightning(plan.primaryKey(), extractedPrimary);
             if (extractedSecondary > 0L) {
                 insertLightning(plan.secondaryKey(), extractedSecondary);
             }
             if (!drainedInput.isEmpty()) {
-                inputTank.fill(drainedInput, FluidAction.EXECUTE);
+                inputTank.insertFluid(drainedInput);
             }
             rollbackItemOutputs(candidate.recipe().value().getScaledItemResults(candidate.parallel()));
             rollbackInputs(extractedInputs);
@@ -738,13 +738,13 @@ public class OverloadProcessingFactoryBlockEntity extends AENetworkedBlockEntity
     }
 
     @Override
-    public IEnergyStorage getMachineEnergyStorage() {
+    public EnergyHandler getMachineEnergyStorage() {
         return energyStorage;
     }
 
     @Override
     public int extractMachineEnergy(long amount) {
-        return energyStorage.extractInternal(amount, false);
+        return energyStorage.extractInternal(amount);
     }
 
     @Override

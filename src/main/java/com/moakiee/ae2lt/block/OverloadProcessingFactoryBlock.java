@@ -16,7 +16,7 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.level.redstone.Orientation;
 import net.minecraft.world.phys.BlockHitResult;
-import net.neoforged.neoforge.fluids.FluidUtil;
+import net.neoforged.neoforge.transfer.fluid.FluidUtil;
 
 import appeng.api.orientation.IOrientationStrategy;
 import appeng.api.orientation.OrientationStrategies;
@@ -97,6 +97,7 @@ public class OverloadProcessingFactoryBlock extends AEBaseEntityBlock<OverloadPr
         return FluidUtil.interactWithFluidHandler(
                 player,
                 hand,
+                pos,
                 blockEntity.getFluidHandlerCapability(hit.getDirection()));
     }
 }

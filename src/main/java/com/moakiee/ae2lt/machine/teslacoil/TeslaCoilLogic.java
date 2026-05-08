@@ -78,7 +78,7 @@ public final class TeslaCoilLogic implements IGridTickable {
             return TickRateModulation.SLOWER;
         }
 
-        int extracted = host.getEnergyStorage().extractInternal(required, false);
+        int extracted = host.getEnergyStorage().extractInternal(required);
         if (extracted < required) {
             return TickRateModulation.SLOWER;
         }

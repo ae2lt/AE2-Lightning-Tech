@@ -45,7 +45,8 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.neoforge.items.IItemHandlerModifiable;
+import net.neoforged.neoforge.transfer.ResourceHandler;
+import net.neoforged.neoforge.transfer.item.ItemResource;
 
 public class AtmosphericIonizerBlockEntity extends AENetworkedBlockEntity implements IActionHost, FrequencyBindingHost {
     private static final Logger LOG = LogUtils.getLogger();
@@ -60,7 +61,7 @@ public class AtmosphericIonizerBlockEntity extends AENetworkedBlockEntity implem
     private static final String TAG_LOCKED_TYPE = "LockedType";
 
     private final AtmosphericIonizerInventory inventory = new AtmosphericIonizerInventory(this::onInventoryChanged);
-    private final IItemHandlerModifiable automationInventory = new InsertOnlyAutomationInventory(inventory);
+    private final ResourceHandler<ItemResource> automationInventory = new InsertOnlyAutomationInventory(inventory);
     private final AtmosphericIonizerLogic logic;
     private final FrequencyBindingHelper frequencyBinding = new FrequencyBindingHelper(this);
 
@@ -113,7 +114,7 @@ public class AtmosphericIonizerBlockEntity extends AENetworkedBlockEntity implem
         return inventory;
     }
 
-    public IItemHandlerModifiable getAutomationInventory() {
+    public ResourceHandler<ItemResource> getAutomationInventory() {
         return automationInventory;
     }
 

@@ -2,10 +2,12 @@ package com.moakiee.ae2lt.machine.overloadfactory;
 
 import java.util.Objects;
 
-import net.neoforged.neoforge.fluids.FluidStack;
-import net.neoforged.neoforge.fluids.capability.IFluidHandler;
+import net.neoforged.neoforge.transfer.ResourceHandler;
+import net.neoforged.neoforge.transfer.TransferPreconditions;
+import net.neoforged.neoforge.transfer.fluid.FluidResource;
+import net.neoforged.neoforge.transfer.transaction.TransactionContext;
 
-public final class OverloadProcessingFactoryFluidHandler implements IFluidHandler {
+public final class OverloadProcessingFactoryFluidHandler implements ResourceHandler<FluidResource> {
     private final NotifyingFluidTank inputTank;
     private final NotifyingFluidTank outputTank;
 
@@ -15,45 +17,56 @@ public final class OverloadProcessingFactoryFluidHandler implements IFluidHandle
     }
 
     @Override
-    public int getTanks() {
+    public int size() {
         return 2;
     }
 
     @Override
-    public FluidStack getFluidInTank(int tank) {
-        return switch (tank) {
-            case 0 -> inputTank.getFluid();
-            case 1 -> outputTank.getFluid();
-            default -> FluidStack.EMPTY;
+    public FluidResource getResource(int index) {
+        return tank(index).getResource(0);
+    }
+
+    @Override
+    public long getAmountAsLong(int index) {
+        return tank(index).getAmountAsLong(0);
+    }
+
+    @Override
+    public long getCapacityAsLong(int index, FluidResource resource) {
+        if (index == 1 && !resource.isEmpty()) {
+            return 0;
+        }
+        return tank(index).getCapacityAsLong(0, resource);
+    }
+
+    @Override
+    public boolean isValid(int index, FluidResource resource) {
+        return index == 0 && inputTank.isValid(0, resource);
+    }
+
+    @Override
+    public int insert(int index, FluidResource resource, int amount, TransactionContext transaction) {
+        TransferPreconditions.checkNonEmptyNonNegative(resource, amount);
+        if (index != 0) {
+            return 0;
+        }
+        return inputTank.insert(0, resource, amount, transaction);
+    }
+
+    @Override
+    public int extract(int index, FluidResource resource, int amount, TransactionContext transaction) {
+        TransferPreconditions.checkNonEmptyNonNegative(resource, amount);
+        if (index != 1) {
+            return 0;
+        }
+        return outputTank.extract(0, resource, amount, transaction);
+    }
+
+    private NotifyingFluidTank tank(int index) {
+        return switch (index) {
+            case 0 -> inputTank;
+            case 1 -> outputTank;
+            default -> throw new IndexOutOfBoundsException(index);
         };
-    }
-
-    @Override
-    public int getTankCapacity(int tank) {
-        return switch (tank) {
-            case 0 -> inputTank.getCapacity();
-            case 1 -> outputTank.getCapacity();
-            default -> 0;
-        };
-    }
-
-    @Override
-    public boolean isFluidValid(int tank, FluidStack stack) {
-        return tank == 0 && inputTank.isFluidValid(stack);
-    }
-
-    @Override
-    public int fill(FluidStack resource, FluidAction action) {
-        return inputTank.fill(resource, action);
-    }
-
-    @Override
-    public FluidStack drain(FluidStack resource, FluidAction action) {
-        return outputTank.drain(resource, action);
-    }
-
-    @Override
-    public FluidStack drain(int maxDrain, FluidAction action) {
-        return outputTank.drain(maxDrain, action);
     }
 }

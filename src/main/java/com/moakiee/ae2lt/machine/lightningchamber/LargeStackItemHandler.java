@@ -12,8 +12,6 @@ import net.minecraft.nbt.NbtOps;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
-import net.neoforged.neoforge.items.IItemHandlerModifiable;
-
 import appeng.api.inventories.BaseInternalInventory;
 
 /**
@@ -26,7 +24,7 @@ import appeng.api.inventories.BaseInternalInventory;
  * size, which means automation commonly stops at 64 even when the slot says
  * 1024.</p>
  */
-public abstract class LargeStackItemHandler extends BaseInternalInventory implements IItemHandlerModifiable {
+public abstract class LargeStackItemHandler extends BaseInternalInventory {
     private static final String TAG_SLOT = "Slot";
     private static final String TAG_COUNT_INT = "CountInt";
     private static final String TAG_STACK = "Stack";
@@ -43,7 +41,6 @@ public abstract class LargeStackItemHandler extends BaseInternalInventory implem
         this.changeListener = changeListener;
     }
 
-    @Override
     public final int getSlots() {
         return stacks.size();
     }
@@ -62,7 +59,6 @@ public abstract class LargeStackItemHandler extends BaseInternalInventory implem
         return stacks.get(slot);
     }
 
-    @Override
     public void setStackInSlot(int slot, ItemStack stack) {
         setStackInSlotInternal(slot, stack, true);
     }
