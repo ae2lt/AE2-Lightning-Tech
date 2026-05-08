@@ -252,13 +252,14 @@ public abstract class AdvCraftingCpuLogicMixin {
         if (!AE2LT_ADV_AVAILABLE) return;
         OverloadCpuStateManager.INSTANCE.clear(this);
         var job = ae2lt$getJob();
-        if (job != null && data.contains("ae2ltOverloadState", CompoundTag.TAG_COMPOUND)) {
+        var overloadStateTag = data.getCompound("ae2ltOverloadState").orElse(null);
+        if (job != null && overloadStateTag != null) {
             CraftingLink link = ae2lt$getJobLink(job);
             if (link != null) {
                 OverloadCpuStateManager.INSTANCE.readFromTag(
                         this,
                         link.getCraftingID(),
-                        data.getCompound("ae2ltOverloadState"),
+                        overloadStateTag,
                         registries);
             }
         }

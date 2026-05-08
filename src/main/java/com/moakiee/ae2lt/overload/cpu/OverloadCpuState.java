@@ -15,6 +15,9 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.resources.Identifier;
+import net.minecraft.util.ProblemReporter;
+import net.minecraft.world.level.storage.TagValueInput;
+import net.minecraft.world.level.storage.TagValueOutput;
 
 import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.AEKey;
@@ -197,7 +200,7 @@ public final class OverloadCpuState {
             pendingTag.put(TAG_SOURCE_PATTERN, pending.patternReference().sourcePattern().toTag());
             pendingTag.putInt(TAG_OUTPUT_SLOT, pending.key().outputSlotIndex());
             pendingTag.putString(TAG_ITEM_ID, pending.itemId().toString());
-            pendingTag.put(TAG_EXACT_TEMPLATE, pending.exactExpectedKey().toTagGeneric(registries));
+            pendingTag.put(TAG_EXACT_TEMPLATE, writeExactExpectedKey(pending.exactExpectedKey(), registries));
             pendingTag.putLong(TAG_REMAINING, pending.remainingAmount());
             pendingTag.putBoolean(TAG_ROUTES_TO_REQUESTER, pending.routesToRequester());
             pendingTag.putLong(TAG_REGISTERED_ORDER, pending.registeredOrder());
@@ -213,28 +216,30 @@ public final class OverloadCpuState {
         Objects.requireNonNull(registries, "registries");
 
         var state = new OverloadCpuState(owner);
-        state.nextSequence = Math.max(1L, tag.getLong(TAG_NEXT_SEQUENCE));
+        state.nextSequence = Math.max(1L, tag.getLongOr(TAG_NEXT_SEQUENCE, 1L));
 
-        var pendingList = tag.getList(TAG_PENDING, CompoundTag.TAG_COMPOUND);
+        var pendingList = tag.getListOrEmpty(TAG_PENDING);
         for (int i = 0; i < pendingList.size(); i++) {
-            var pendingTag = pendingList.getCompound(i);
+            var pendingTag = pendingList.getCompoundOrEmpty(i);
+            var patternIdentity = pendingTag.getStringOr(TAG_PATTERN_IDENTITY, "");
             var patternReference = new OverloadPatternReference(
-                    pendingTag.getString(TAG_PATTERN_IDENTITY),
+                    patternIdentity,
                     com.moakiee.ae2lt.overload.pattern.SourcePatternSnapshot.fromTag(
-                            pendingTag.getCompound(TAG_SOURCE_PATTERN)));
+                            pendingTag.getCompoundOrEmpty(TAG_SOURCE_PATTERN)));
             var key = new PendingOverloadOutputKey(
                     owner.craftingId(),
-                    pendingTag.getString(TAG_PATTERN_IDENTITY),
-                    pendingTag.getInt(TAG_OUTPUT_SLOT));
+                    patternIdentity,
+                    pendingTag.getIntOr(TAG_OUTPUT_SLOT, 0));
+            long registeredOrder = pendingTag.getLong(TAG_REGISTERED_ORDER).orElse(state.nextSequence);
             var pending = new PendingOverloadOutput(
                     key,
                     owner,
                     patternReference,
-                    Identifier.parse(pendingTag.getString(TAG_ITEM_ID)),
+                    Identifier.parse(pendingTag.getStringOr(TAG_ITEM_ID, "")),
                     loadExactExpectedKey(pendingTag, registries),
-                    pendingTag.getLong(TAG_REMAINING),
-                    pendingTag.getBoolean(TAG_ROUTES_TO_REQUESTER),
-                    pendingTag.getLong(TAG_REGISTERED_ORDER));
+                    pendingTag.getLongOr(TAG_REMAINING, 0L),
+                    pendingTag.getBooleanOr(TAG_ROUTES_TO_REQUESTER, false),
+                    registeredOrder);
             state.pendingByKey.put(key, pending);
             state.pendingByItemId.computeIfAbsent(pending.itemId(), ignored -> new LinkedHashSet<>()).add(key);
             state.nextSequence = Math.max(state.nextSequence, pending.registeredOrder() + 1);
@@ -243,12 +248,17 @@ public final class OverloadCpuState {
         return state;
     }
 
-    private static AEKey loadExactExpectedKey(CompoundTag pendingTag, HolderLookup.Provider registries) {
-        if (!pendingTag.contains(TAG_EXACT_TEMPLATE, CompoundTag.TAG_COMPOUND)) {
-            throw new IllegalArgumentException("pending overload entry is missing an exact expected key");
-        }
+    private static CompoundTag writeExactExpectedKey(AEKey key, HolderLookup.Provider registries) {
+        var output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, registries);
+        key.toTagGeneric(output);
+        return output.buildResult();
+    }
 
-        var key = AEKey.fromTagGeneric(registries, pendingTag.getCompound(TAG_EXACT_TEMPLATE).copy());
+    private static AEKey loadExactExpectedKey(CompoundTag pendingTag, HolderLookup.Provider registries) {
+        var keyTag = pendingTag.getCompound(TAG_EXACT_TEMPLATE)
+                .orElseThrow(() -> new IllegalArgumentException("pending overload entry is missing an exact expected key"));
+        var input = TagValueInput.create(ProblemReporter.DISCARDING, registries, keyTag.copy());
+        var key = AEKey.fromTagGeneric(input);
         if (key == null) {
             throw new IllegalArgumentException("pending overload entry has an invalid exact expected key");
         }

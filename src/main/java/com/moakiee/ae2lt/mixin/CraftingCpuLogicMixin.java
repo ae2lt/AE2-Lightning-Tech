@@ -166,8 +166,9 @@ public abstract class CraftingCpuLogicMixin {
         var logic = (appeng.crafting.execution.CraftingCpuLogic) (Object) this;
         OverloadCpuStateManager.INSTANCE.clear(logic);
         var job = ((CraftingCpuLogicAccessor) logic).getJob();
-        if (job != null && data.contains("ae2ltOverloadState", CompoundTag.TAG_COMPOUND)) {
-            OverloadCpuStateManager.INSTANCE.readFromTag(logic, data.getCompound("ae2ltOverloadState"), registries);
+        var overloadStateTag = data.getCompound("ae2ltOverloadState").orElse(null);
+        if (job != null && overloadStateTag != null) {
+            OverloadCpuStateManager.INSTANCE.readFromTag(logic, overloadStateTag, registries);
         }
     }
 
