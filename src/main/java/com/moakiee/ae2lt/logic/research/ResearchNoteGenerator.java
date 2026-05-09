@@ -24,10 +24,13 @@ public final class ResearchNoteGenerator {
 
     private static final List<Candidate> CONFIGURED_CANDIDATES = List.of(
             new Candidate(id("ae2omnicells", "quantum_omni_cell_component_256m"), Tier.S, 85, 2),
+            new Candidate(id("mekanism", "pellet_antimatter"), Tier.A, 84, 2),
             new Candidate(id("minecraft", "elytra"), Tier.A, 54, 2),
             new Candidate(id("minecraft", "heavy_core"), Tier.A, 52, 2),
             new Candidate(id("minecraft", "dragon_head"), Tier.A, 46, 2),
             new Candidate(id("ae2", "256k_crafting_storage"), Tier.B, 49, 2),
+            new Candidate(id("mekanism", "ultimate_induction_cell"), Tier.B, 38, 2),
+            new Candidate(id("mekanism", "ultimate_induction_provider"), Tier.B, 38, 2),
             new Candidate(id("minecraft", "dragon_egg"), Tier.B, 35, 2),
             new Candidate(id("minecraft", "heart_of_the_sea"), Tier.B, 28, 2),
             new Candidate(id("minecraft", "echo_shard"), Tier.B, 26, 2),
