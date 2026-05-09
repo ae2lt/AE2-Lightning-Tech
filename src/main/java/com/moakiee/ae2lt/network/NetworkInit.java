@@ -48,10 +48,6 @@ public final class NetworkInit {
 
         // S→C
         registrar.playToClient(
-                EasterEggPacket.TYPE,
-                EasterEggPacket.STREAM_CODEC,
-                EasterEggPacket::handle);
-        registrar.playToClient(
                 SyncFrequencyListPacket.TYPE,
                 SyncFrequencyListPacket.STREAM_CODEC,
                 SyncFrequencyListPacket::handle);
