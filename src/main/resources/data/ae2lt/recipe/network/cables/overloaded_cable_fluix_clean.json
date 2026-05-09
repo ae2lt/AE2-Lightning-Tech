@@ -3,7 +3,7 @@
   "category": "misc",
   "ingredients": [
     {
-      "type": "neoforge:difference",
+      "neoforge:ingredient_type": "neoforge:difference",
       "base": "#ae2lt:overloaded_cable",
       "subtracted": "ae2lt:overloaded_cable"
     },
