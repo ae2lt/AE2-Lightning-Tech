@@ -259,7 +259,10 @@ public final class WirelessFrequencyManager extends SavedData {
 
         ServerLevel targetLevel = server.getLevel(entry.dimension());
         if (targetLevel == null || !targetLevel.isLoaded(entry.pos())) {
-            return entry.cachedNode();
+            if (entry.cachedNode() != null) {
+                updateNode(freqId, null);
+            }
+            return null;
         }
 
         var be = targetLevel.getBlockEntity(entry.pos());
@@ -268,6 +271,7 @@ public final class WirelessFrequencyManager extends SavedData {
             updateNode(freqId, node);
             return node;
         }
+        updateNode(freqId, null);
         return null;
     }
 

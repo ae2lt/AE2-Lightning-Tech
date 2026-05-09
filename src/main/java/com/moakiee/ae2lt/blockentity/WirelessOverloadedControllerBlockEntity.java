@@ -271,6 +271,16 @@ public class WirelessOverloadedControllerBlockEntity extends OverloadedControlle
     }
 
     @Override
+    public void onChunkUnloaded() {
+        var manager = WirelessFrequencyManager.get();
+        if (manager != null && frequencyId > 0) {
+            destroyAllVirtualConnections();
+            manager.updateNode(frequencyId, null);
+        }
+        super.onChunkUnloaded();
+    }
+
+    @Override
     public void clearRemoved() {
         super.clearRemoved();
         updateManagerRegistration();
