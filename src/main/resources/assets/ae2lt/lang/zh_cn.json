@@ -31,6 +31,7 @@
   "item.ae2lt.debug_lightning_rod.tooltip": "调试物品:右键避雷针,在避雷针位置召唤一道自然闪电,非创造模式会被消耗。",
   "item.ae2lt.overload_pattern": "过载样板",
   "item.ae2lt.overload_pattern_encoder": "过载样板编码器",
+  "item.ae2lt.overloaded_wireless_connect_tool": "过载无线连接工具",
   "item.ae2lt.clear_condensate": "晴空凝核",
   "item.ae2lt.rain_condensate": "降雨凝核",
   "item.ae2lt.thunderstorm_condensate": "雷暴凝核",

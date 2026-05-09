@@ -41,6 +41,10 @@ public final class NetworkInit {
                 ChangeMemberPacket.TYPE,
                 ChangeMemberPacket.STREAM_CODEC,
                 ChangeMemberPacket::handle);
+        registrar.playToServer(
+                WirelessConnectorUsePacket.TYPE,
+                WirelessConnectorUsePacket.STREAM_CODEC,
+                WirelessConnectorUsePacket::handle);
 
         // S→C
         registrar.playToClient(
