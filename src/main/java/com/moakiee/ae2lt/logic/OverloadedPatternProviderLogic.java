@@ -589,12 +589,6 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
         outputFilterDirty = true;
         refreshEjectRegistrations();
 
-        // EAP smart-doubling compat: re-apply the eap$allowScaling marker to
-        // every pattern. Vanilla updatePatterns has a TAIL mixin from EAP that
-        // does this; since we fully override updatePatterns without calling
-        // super, we replicate it here.
-        SmartDoublingCompat.applyTo(this, patterns);
-
         ICraftingProvider.requestUpdate(accessor.getMainNode());
         alertGridTick();
     }
@@ -634,7 +628,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
         refreshGlobalBackpressure();
         if (wirelessGlobalBackpressure) return false;
         if (!gridNode.isActive()) return false;
-        if (!SmartDoublingCompat.containsOrUnwrapped(getAvailablePatterns(), pattern)) return false;
+        if (!getAvailablePatterns().contains(pattern)) return false;
         if (getCraftingLockedReason() != LockCraftingMode.NONE) return false;
 
         var level = overloadedHost.getLevel();
@@ -908,13 +902,6 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
         PatternProviderTarget cachedTarget = (targetBe != null)
                 ? getCachedTarget(targetLevel, conn.pos(), targetBe, conn.boundFace(), wirelessSource)
                 : null;
-        // EAP advanced-blocking compat: when ADVANCED_BLOCKING is on and the
-        // target fully covers every input slot, treat the push as not blocked
-        // (mirrors EAP's @Redirect on PatternProviderTarget.containsPatternInput).
-        if (blocking && cachedTarget != null
-                && AdvancedBlockingCompat.shouldBypassBlocking(this, cachedTarget, pattern)) {
-            blocking = false;
-        }
         var result = adapter.pushCopies(
                 targetLevel, conn.pos(), conn.boundFace(),
                 pattern, inputs, 1,
@@ -1009,9 +996,6 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
     }
 
     private static boolean isCompactEligible(IPatternDetails pattern) {
-        if (SmartDoublingCompat.unwrap(pattern) != null) {
-            return false;
-        }
         OverloadPatternDetails overloadDetails = pattern instanceof OverloadedProviderOnlyPatternDetails overload
                 ? overload.overloadPatternDetailsView()
                 : null;
