@@ -239,7 +239,7 @@ public final class ModItems {
     private static void registerStorageCellModel(DeferredItem<? extends Item> item, String modelName) {
         StorageCellModels.registerModel(
                 item.get(),
-                Identifier.fromNamespaceAndPath("ae2", "block/drive/cells/" + modelName));
+                Identifier.fromNamespaceAndPath("ae2", "block/drive_" + modelName));
     }
 
     private static DeferredItem<ColoredPartItem<OverloadedCablePart>> registerOverloadedCable(String id, AEColor color) {
