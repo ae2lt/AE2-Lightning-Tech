@@ -60,7 +60,13 @@ AE2 闪电科技 把闪电变成一种可用的资源。收集自然雷电，精
 
 ## 许可证
 
-AE2 闪电科技 以 [GNU LGPL 3.0](https://www.gnu.org/licenses/lgpl-3.0.html) 协议开源。
+![源码许可证](https://img.shields.io/badge/source-LGPL--3.0-blue)
+![材质许可证](https://img.shields.io/badge/assets-CC%20BY--NC--SA%203.0-lightgrey)
+
+AE2 闪电科技对源码和材质使用不同的许可证：
+
+- 源码以 [GNU LGPL 3.0](https://www.gnu.org/licenses/lgpl-3.0.html) 协议开源。
+- 材质与其他视觉资产以 [CC BY-NC-SA 3.0](https://creativecommons.org/licenses/by-nc-sa/3.0/) 协议授权。
 
 ## 鸣谢
 

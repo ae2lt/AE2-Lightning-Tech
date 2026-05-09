@@ -60,7 +60,13 @@ Found a bug or have a suggestion? Please open an issue on the project tracker wi
 
 ## License
 
-AE2 Lightning Tech is licensed under [GNU LGPL 3.0](https://www.gnu.org/licenses/lgpl-3.0.html).
+![Source License](https://img.shields.io/badge/source-LGPL--3.0-blue)
+![Asset License](https://img.shields.io/badge/assets-CC%20BY--NC--SA%203.0-lightgrey)
+
+AE2 Lightning Tech uses separate licenses for source code and textures:
+
+- Source code is licensed under [GNU LGPL 3.0](https://www.gnu.org/licenses/lgpl-3.0.html).
+- Textures and other visual assets are licensed under [CC BY-NC-SA 3.0](https://creativecommons.org/licenses/by-nc-sa/3.0/).
 
 ## Credits
 
