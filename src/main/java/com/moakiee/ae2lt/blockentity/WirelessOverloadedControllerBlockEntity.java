@@ -154,6 +154,10 @@ public class WirelessOverloadedControllerBlockEntity extends OverloadedControlle
 
         var manager = WirelessFrequencyManager.get();
         if (manager == null) return;
+        if (newFreqId > 0 && !manager.isFrequencyValid(newFreqId)) {
+            markForUpdate();
+            return;
+        }
 
         // validate new frequency is free BEFORE releasing the old one
         if (newFreqId > 0 && level != null

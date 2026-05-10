@@ -57,6 +57,10 @@ public final class FrequencyBindingHelper implements WirelessFrequencyManager.Tr
 
     public void setFrequency(int newFreqId) {
         if (newFreqId == this.frequencyId) return;
+        if (newFreqId > 0 && !isValidFrequencyOnServer(newFreqId)) {
+            host.markFrequencyBindingForUpdate();
+            return;
+        }
 
         detach();
         this.frequencyId = newFreqId;
@@ -340,6 +344,16 @@ public final class FrequencyBindingHelper implements WirelessFrequencyManager.Tr
                     false,
                     host.getFrequencyBindingDeviceName()));
         }
+    }
+
+    private boolean isValidFrequencyOnServer(int freqId) {
+        var be = host.getFrequencyBindingBlockEntity();
+        if (be.getLevel() == null || be.getLevel().isClientSide()) {
+            return true;
+        }
+
+        var manager = WirelessFrequencyManager.get();
+        return manager != null && manager.isFrequencyValid(freqId);
     }
 
     private void tryEstablishConnection() {

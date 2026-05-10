@@ -219,6 +219,9 @@ public final class WirelessFrequencyManager extends SavedData {
 
     public boolean registerTransmitter(int freqId, ResourceKey<Level> dimension, BlockPos pos,
                                         @Nullable IGridNode node, boolean advanced) {
+        if (!isFrequencyValid(freqId)) {
+            return false;
+        }
         if (!canRegisterTransmitter(freqId, dimension, pos)) {
             return false;
         }
@@ -302,7 +305,7 @@ public final class WirelessFrequencyManager extends SavedData {
     // ── Device Registry (controllers + receivers) ──
 
     public void registerDevice(int freqId, DeviceEntry entry) {
-        if (freqId <= 0) return;
+        if (!isFrequencyValid(freqId)) return;
         var set = devices.computeIfAbsent(freqId, k -> new HashSet<>());
         // replace any entry at the same position so flags (advanced, isController) stay current
         set.removeIf(d -> d.dimension().equals(entry.dimension()) && d.pos().equals(entry.pos()));
@@ -344,6 +347,7 @@ public final class WirelessFrequencyManager extends SavedData {
 
     private void read(CompoundTag root) {
         uniqueId = root.getIntOr("uniqueId", 0);
+        boolean skippedInvalidLinks = false;
 
         ListTag freqList = root.getListOrEmpty("frequencies");
         for (int i = 0; i < freqList.size(); i++) {
@@ -362,7 +366,11 @@ public final class WirelessFrequencyManager extends SavedData {
                     Identifier.parse(entry.getStringOr("dim", "minecraft:overworld")));
             BlockPos pos = BlockPos.of(entry.getLongOr("pos", 0L));
             boolean adv = entry.getBooleanOr("advanced", false);
-            transmitters.put(freqId, new TransmitterEntry(dimKey, pos, null, adv));
+            if (isFrequencyValid(freqId)) {
+                transmitters.put(freqId, new TransmitterEntry(dimKey, pos, null, adv));
+            } else {
+                skippedInvalidLinks = true;
+            }
         }
 
         ListTag devList = root.getListOrEmpty("devices");
@@ -375,8 +383,16 @@ public final class WirelessFrequencyManager extends SavedData {
             boolean ctrl = entry.getBooleanOr("controller", false);
             boolean adv = entry.getBooleanOr("advanced", false);
             String deviceName = entry.getStringOr("name", DeviceEntry.defaultDeviceName(ctrl, adv));
-            devices.computeIfAbsent(freqId, k -> new HashSet<>())
-                    .add(new DeviceEntry(dimKey, pos, ctrl, adv, deviceName));
+            if (isFrequencyValid(freqId)) {
+                devices.computeIfAbsent(freqId, k -> new HashSet<>())
+                        .add(new DeviceEntry(dimKey, pos, ctrl, adv, deviceName));
+            } else {
+                skippedInvalidLinks = true;
+            }
+        }
+
+        if (skippedInvalidLinks) {
+            setDirty();
         }
     }
 
