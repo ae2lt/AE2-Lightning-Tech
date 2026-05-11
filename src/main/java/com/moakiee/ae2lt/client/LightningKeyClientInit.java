@@ -7,6 +7,7 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
+import net.neoforged.neoforge.client.extensions.common.RegisterClientExtensionsEvent;
 import net.neoforged.neoforge.client.event.RegisterColorHandlersEvent;
 
 import appeng.api.client.AEKeyRendering;
@@ -15,6 +16,8 @@ import appeng.items.storage.BasicStorageCell;
 import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.item.ElectroChimeCrystalItem;
 import com.moakiee.ae2lt.item.FixedInfiniteCellItem;
+import com.moakiee.ae2lt.client.railgun.RailgunClientExtensions;
+import com.moakiee.ae2lt.item.railgun.ElectromagneticRailgunItem;
 import com.moakiee.ae2lt.me.key.LightningKey;
 import com.moakiee.ae2lt.me.key.LightningKeyType;
 import com.moakiee.ae2lt.registry.ModItems;
@@ -47,7 +50,21 @@ public final class LightningKeyClientInit {
                             default -> 0.0F;
                         };
                     });
+
+            ItemProperties.register(
+                    ModItems.ELECTROMAGNETIC_RAILGUN.get(),
+                    ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "ehv_model"),
+                    (stack, level, entity, seed) -> entity != null
+                            && entity.isUsingItem()
+                            && entity.getUseItem() == stack
+                            && stack.getItem() instanceof ElectromagneticRailgunItem
+                            ? 1.0F : 0.0F);
         });
+    }
+
+    @SubscribeEvent
+    public static void registerClientExtensions(RegisterClientExtensionsEvent event) {
+        event.registerItem(RailgunClientExtensions.INSTANCE, ModItems.ELECTROMAGNETIC_RAILGUN.get());
     }
 
     @SubscribeEvent

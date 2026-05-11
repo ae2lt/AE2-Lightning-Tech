@@ -60,7 +60,7 @@ public class ElectromagneticRailgunItem extends Item implements IMenuItem {
 
     @Override
     public UseAnim getUseAnimation(ItemStack stack) {
-        return UseAnim.BOW;
+        return UseAnim.NONE;
     }
 
     @Override

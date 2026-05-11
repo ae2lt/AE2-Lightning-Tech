@@ -5,9 +5,12 @@ import java.util.UUID;
 import org.jetbrains.annotations.Nullable;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
+
+import com.moakiee.ae2lt.item.railgun.ElectromagneticRailgunItem;
 
 /**
  * Client-side visual utilities shared by railgun renderers. Centralizes the
@@ -26,11 +29,11 @@ public final class RailgunVisuals {
      * Horizontal offset to the right of the player's view for the muzzle.
      * Positive = right hand side; flipped for left-handed players.
      */
-    private static final double SIDE_OFFSET = 0.22D;
+    private static final double SIDE_OFFSET = 0.27D;
     /** How far in front of the eye along the look vector the muzzle sits. */
-    private static final double FORWARD_OFFSET = 0.55D;
+    private static final double FORWARD_OFFSET = 1.02D;
     /** How far below the eye (in the view's up axis) the muzzle sits. */
-    private static final double VERTICAL_OFFSET = -0.18D;
+    private static final double VERTICAL_OFFSET = -0.26D;
 
     private RailgunVisuals() {}
 
@@ -56,12 +59,23 @@ public final class RailgunVisuals {
             right = right.normalize();
         }
         Vec3 up = right.cross(look).normalize();
-        boolean leftHanded = player.getMainArm() == HumanoidArm.LEFT;
-        double sideMul = leftHanded ? -1.0D : 1.0D;
+        double sideMul = holdingArm(player) == HumanoidArm.LEFT ? -1.0D : 1.0D;
         return eye
                 .add(look.scale(FORWARD_OFFSET))
                 .add(right.scale(SIDE_OFFSET * sideMul))
                 .add(up.scale(VERTICAL_OFFSET));
+    }
+
+    private static HumanoidArm holdingArm(Player player) {
+        if (player.getMainHandItem().getItem() instanceof ElectromagneticRailgunItem) {
+            return player.getMainArm();
+        }
+        if (player.getOffhandItem().getItem() instanceof ElectromagneticRailgunItem) {
+            return player.getMainArm().getOpposite();
+        }
+        return player.getUsedItemHand() == InteractionHand.OFF_HAND
+                ? player.getMainArm().getOpposite()
+                : player.getMainArm();
     }
 
     /**

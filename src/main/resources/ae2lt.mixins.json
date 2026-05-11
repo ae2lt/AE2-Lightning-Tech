@@ -26,7 +26,8 @@
   "client": [
     "client.CableBusRenderStateMixin",
     "client.CableBusContainerRenderMixin",
-    "client.CableBusBakedModelMixin"
+    "client.CableBusBakedModelMixin",
+    "client.RailgunHumanoidModelMixin"
   ],
   "injectors": {
     "defaultRequire": 1
