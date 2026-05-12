@@ -1,5 +1,6 @@
 package com.moakiee.ae2lt.item.railgun;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import com.mojang.serialization.Codec;
@@ -9,6 +10,9 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.world.item.ItemStack;
+
+import com.moakiee.ae2lt.device.capability.DeviceCapability;
+import com.moakiee.ae2lt.device.module.OverloadDeviceModuleItem;
 
 /**
  * Persisted per-stack railgun module configuration. Each slot maps to one module
@@ -71,5 +75,25 @@ public record RailgunModules(
             if (!s.isEmpty()) n++;
         }
         return Math.min(n, MAX_ACCELERATION);
+    }
+
+    /**
+     * Capability list contributed by all installed module stacks. Services iterate
+     * this and pattern-match on variants instead of branching on {@link RailgunModuleType}.
+     */
+    public List<DeviceCapability> capabilities() {
+        List<DeviceCapability> out = new ArrayList<>();
+        append(out, core);
+        append(out, energy);
+        for (ItemStack s : compute) append(out, s);
+        for (ItemStack s : acceleration) append(out, s);
+        return out;
+    }
+
+    private static void append(List<DeviceCapability> out, ItemStack stack) {
+        if (stack.isEmpty()) return;
+        if (stack.getItem() instanceof OverloadDeviceModuleItem m) {
+            out.addAll(m.capabilities(stack));
+        }
     }
 }

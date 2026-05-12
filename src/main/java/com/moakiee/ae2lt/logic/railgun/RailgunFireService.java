@@ -30,6 +30,7 @@ import appeng.api.networking.security.IActionSource;
 
 import com.moakiee.ae2lt.config.AE2LTCommonConfig;
 import com.moakiee.ae2lt.config.RailgunDefaults;
+import com.moakiee.ae2lt.device.capability.DeviceCapability;
 import com.moakiee.ae2lt.item.railgun.RailgunChargeTier;
 import com.moakiee.ae2lt.item.railgun.RailgunModules;
 import com.moakiee.ae2lt.item.railgun.RailgunSettings;
@@ -61,9 +62,10 @@ public final class RailgunFireService {
         int t1 = RailgunDefaults.CHARGE_TICKS_TIER1;
         int t2 = RailgunDefaults.CHARGE_TICKS_TIER2;
         int t3 = RailgunDefaults.CHARGE_TICKS_TIER3;
-        if (mods.accelerationCount() > 0) {
+        int accel = countAccelerationFactor(mods);
+        if (accel > 0) {
             // 30% per accel module reduction in time-to-charge; min 20% of original.
-            double mul = Math.max(0.20D, 1.0D - 0.30D * mods.accelerationCount());
+            double mul = Math.max(0.20D, 1.0D - 0.30D * accel);
             t1 = Math.max(1, (int) Math.round(t1 * mul));
             t2 = Math.max(t1 + 1, (int) Math.round(t2 * mul));
             t3 = Math.max(t2 + 1, (int) Math.round(t3 * mul));
@@ -132,10 +134,11 @@ public final class RailgunFireService {
         Vec3 firstHitPos = ehr != null ? ehr.getLocation() : endBlock;
         List<RailgunChainResolver.Hit> hits = new ArrayList<>();
         int primaryId = -1;
+        int chainTuningCount = countChainTuning(mods);
         double effectivePulseRadius = tier.isMax()
-                ? RailgunDefaults.PULSE_RADIUS + 1.5D * mods.computeCount()
+                ? RailgunDefaults.PULSE_RADIUS + 1.5D * chainTuningCount
                 : 0.0D;
-        double effectivePulseRatio = switch (mods.computeCount()) {
+        double effectivePulseRatio = switch (chainTuningCount) {
             case 0 -> RailgunDefaults.PULSE_DAMAGE_RATIO;
             case 1 -> 0.85D;
             default -> 1.0D;
@@ -302,5 +305,21 @@ public final class RailgunFireService {
     public static void sendFail(@Nullable ServerPlayer player, String key) {
         if (player == null) return;
         player.displayClientMessage(Component.translatable(key), true);
+    }
+
+    private static int countAccelerationFactor(RailgunModules mods) {
+        int n = 0;
+        for (var cap : mods.capabilities()) {
+            if (cap instanceof DeviceCapability.AccelerationFactor) n++;
+        }
+        return n;
+    }
+
+    private static int countChainTuning(RailgunModules mods) {
+        int n = 0;
+        for (var cap : mods.capabilities()) {
+            if (cap instanceof DeviceCapability.ChainTuning) n++;
+        }
+        return n;
     }
 }
