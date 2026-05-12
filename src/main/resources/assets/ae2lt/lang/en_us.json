@@ -238,7 +238,6 @@
   "ae2lt.gui.tesla_coil.mode.high_voltage": "High Voltage",
   "ae2lt.gui.tesla_coil.mode.extreme_high_voltage": "Extreme High Voltage",
   "ae2lt.gui.tesla_coil.mode.click_to_switch": "Click to switch to: %s",
-  "ae2lt.gui.tesla_coil.mode.locked": "Cannot change mode while working",
   "ae2lt.gui.tesla_coil.status.label": "Status: %s",
   "ae2lt.gui.tesla_coil.status.idle": "Idle",
   "ae2lt.gui.tesla_coil.status.charging": "Charging",

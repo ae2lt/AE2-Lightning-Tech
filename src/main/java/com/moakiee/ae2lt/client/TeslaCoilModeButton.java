@@ -21,7 +21,6 @@ public class TeslaCoilModeButton extends IconButton {
             AE2LightningTech.MODID, "textures/gui/buttons/lightning_high_voltage.png");
 
     private TeslaCoilMode mode = TeslaCoilMode.HIGH_VOLTAGE;
-    private boolean locked;
 
     public TeslaCoilModeButton(OnPress onPress) {
         super(onPress);
@@ -29,11 +28,6 @@ public class TeslaCoilModeButton extends IconButton {
 
     public void setMode(TeslaCoilMode mode) {
         this.mode = mode;
-    }
-
-    public void setLocked(boolean locked) {
-        this.locked = locked;
-        this.active = !locked;
     }
 
     @Override
@@ -50,11 +44,6 @@ public class TeslaCoilModeButton extends IconButton {
     public List<Component> getTooltipMessage() {
         var current = Component.translatable("ae2lt.gui.tesla_coil.mode."
                 + (mode == TeslaCoilMode.EXTREME_HIGH_VOLTAGE ? "extreme_high_voltage" : "high_voltage"));
-        if (locked) {
-            return List.of(
-                    Component.translatable("ae2lt.gui.tesla_coil.mode.button", current),
-                    Component.translatable("ae2lt.gui.tesla_coil.mode.locked"));
-        }
         var next = Component.translatable("ae2lt.gui.tesla_coil.mode."
                 + (mode == TeslaCoilMode.EXTREME_HIGH_VOLTAGE ? "high_voltage" : "extreme_high_voltage"));
         return List.of(

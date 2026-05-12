@@ -47,7 +47,6 @@ public class TeslaCoilScreen extends AEBaseScreen<TeslaCoilMenu> {
 
         if (modeButton != null) {
             modeButton.setMode(menu.getMode());
-            modeButton.setLocked(menu.isModeLocked());
         }
     }
 

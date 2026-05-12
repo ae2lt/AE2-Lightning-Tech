@@ -141,10 +141,6 @@ public class TeslaCoilBlockEntity extends AENetworkedBlockEntity
     }
 
     public void cycleMode() {
-        if (lockedMode != null) {
-            return;
-        }
-
         selectedMode = selectedMode.next();
         saveChanges();
         markForClientUpdate();

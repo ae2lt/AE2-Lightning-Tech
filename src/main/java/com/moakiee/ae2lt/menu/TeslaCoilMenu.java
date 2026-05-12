@@ -57,9 +57,6 @@ public class TeslaCoilMenu extends AEBaseMenu implements FrequencyBindingMenu {
     @GuiSync(48)
     public boolean matrixInstalled;
 
-    @GuiSync(49)
-    public boolean modeLocked;
-
     private final TeslaCoilBlockEntity host;
     private final Slot dustSlot;
     private final Slot matrixSlot;
@@ -93,7 +90,6 @@ public class TeslaCoilMenu extends AEBaseMenu implements FrequencyBindingMenu {
             highVoltageAvailable = host.getAvailableHighVoltage();
             extremeHighVoltageAvailable = host.getAvailableExtremeHighVoltage();
             matrixInstalled = host.isMatrixInstalled();
-            modeLocked = host.hasLockedMode();
         }
 
         super.broadcastChanges();
@@ -188,10 +184,6 @@ public class TeslaCoilMenu extends AEBaseMenu implements FrequencyBindingMenu {
 
     public boolean isMatrixInstalled() {
         return matrixInstalled;
-    }
-
-    public boolean isModeLocked() {
-        return modeLocked;
     }
 
     public Component getModeButtonMessage() {

@@ -213,7 +213,6 @@
   "ae2lt.gui.tesla_coil.mode.high_voltage": "高压",
   "ae2lt.gui.tesla_coil.mode.extreme_high_voltage": "极高压",
   "ae2lt.gui.tesla_coil.mode.click_to_switch": "点击切换至：%s",
-  "ae2lt.gui.tesla_coil.mode.locked": "工作中无法切换",
   "ae2lt.gui.tesla_coil.status.label": "状态：%s",
   "ae2lt.gui.tesla_coil.status.idle": "待机",
   "ae2lt.gui.tesla_coil.status.charging": "充能中",
