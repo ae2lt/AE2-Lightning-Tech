@@ -245,6 +245,12 @@ public final class ModItems {
                     new Item.Properties().stacksTo(16).rarity(Rarity.RARE),
                     RailgunModuleType.ENERGY));
 
+    public static final DeferredItem<RailgunModuleItem> RAILGUN_MODULE_OVERLOAD_EXECUTION = ITEMS.register(
+            "railgun_module_overload_execution",
+            () -> new RailgunModuleItem(
+                    new Item.Properties().stacksTo(1).rarity(Rarity.EPIC),
+                    RailgunModuleType.OVERLOAD_EXECUTION));
+
     public static final DeferredItem<ColoredPartItem<OverloadedCablePart>> OVERLOADED_CABLE =
             registerOverloadedCable("overloaded_cable", AEColor.TRANSPARENT);
     public static final DeferredItem<ColoredPartItem<OverloadedCablePart>> OVERLOADED_CABLE_WHITE =

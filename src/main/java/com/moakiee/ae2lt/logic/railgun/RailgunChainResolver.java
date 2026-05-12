@@ -200,13 +200,14 @@ public final class RailgunChainResolver {
             Vec3 center,
             double radius,
             double damageRatio,
-            DamageContext ctx) {
+            DamageContext ctx,
+            int excludeId) {
         List<Hit> out = new ArrayList<>();
         if (!ctx.isMaxCharged() || radius <= 0) return out;
         AABB box = new AABB(center, center).inflate(radius);
         double r2 = radius * radius;
         for (LivingEntity ent : level.getEntitiesOfClass(LivingEntity.class, box,
-                e -> e != source && shouldTarget(e, ctx.pvpLock()))) {
+                e -> e != source && e.getId() != excludeId && shouldTarget(e, ctx.pvpLock()))) {
             if (ent.position().distanceToSqr(center) > r2) continue;
             double dmg = ctx.firstDamage() * damageRatio;
             if (ent instanceof Player) {

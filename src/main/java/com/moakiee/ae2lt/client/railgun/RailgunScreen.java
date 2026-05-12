@@ -51,6 +51,7 @@ public class RailgunScreen extends AbstractContainerScreen<RailgunMenu> {
 
     private static final int LBL_CORE_X = 44, LBL_CORE_Y = 28;
     private static final int LBL_ENERGY_X = 44, LBL_ENERGY_Y = 54;
+    private static final int LBL_OVERLOAD_EXEC_X = 44, LBL_OVERLOAD_EXEC_Y = 80;
 
     // Network status (right of inventory title row at y=95)
     private static final int LBL_NETWORK_X = 88, LBL_NETWORK_Y = 95;
@@ -65,7 +66,7 @@ public class RailgunScreen extends AbstractContainerScreen<RailgunMenu> {
     public RailgunScreen(RailgunMenu menu, Inventory inv, Component title) {
         super(menu, inv, title);
         this.imageWidth = 176;
-        this.imageHeight = 189;
+        this.imageHeight = 207;
         this.inventoryLabelY = this.imageHeight - 94;
     }
 
@@ -87,6 +88,8 @@ public class RailgunScreen extends AbstractContainerScreen<RailgunMenu> {
         drawSlotTile(gfx, x + 98, y + 24);
         drawSlotTile(gfx, x + 80, y + 50);
         drawSlotTile(gfx, x + 98, y + 50);
+        // Overload Execution slot (26,76)
+        drawSlotTile(gfx, x + 26, y + 76);
 
         // Toggle buttons (background only — label drawn in renderLabels for proper z-order)
         var settings = menu.host().getSettings();
@@ -94,7 +97,7 @@ public class RailgunScreen extends AbstractContainerScreen<RailgunMenu> {
         drawToggleBg(gfx, x + BTN_X, y + BTN_PVP_Y, settings.pvpLock(), 0xFF4488CC);
 
         // Player inventory backing
-        int invX = x + 8, invY = y + 107;
+        int invX = x + 8, invY = y + 125;
         for (int row = 0; row < 3; row++) {
             for (int col = 0; col < 9; col++) {
                 drawSlotTile(gfx, invX + col * 18, invY + row * 18);
@@ -154,6 +157,9 @@ public class RailgunScreen extends AbstractContainerScreen<RailgunMenu> {
         gfx.drawString(this.font,
                 Component.translatable("ae2lt.railgun.gui.slot.energy"),
                 LBL_ENERGY_X, LBL_ENERGY_Y, COLOR_LABEL, false);
+        gfx.drawString(this.font,
+                Component.translatable("ae2lt.railgun.gui.slot.overload_execution"),
+                LBL_OVERLOAD_EXEC_X, LBL_OVERLOAD_EXEC_Y, COLOR_LABEL, false);
 
         // Toggle button text: "<功能名> <开/关>"
         var settings = menu.host().getSettings();
@@ -316,6 +322,7 @@ public class RailgunScreen extends AbstractContainerScreen<RailgunMenu> {
             case 1 -> typeKey(RailgunModuleType.ENERGY);
             case 2, 3 -> typeKey(RailgunModuleType.COMPUTE);
             case 4, 5 -> typeKey(RailgunModuleType.ACCELERATION);
+            case 6 -> typeKey(RailgunModuleType.OVERLOAD_EXECUTION);
             default -> null;
         };
     }
@@ -326,6 +333,7 @@ public class RailgunScreen extends AbstractContainerScreen<RailgunMenu> {
             case ENERGY -> "ae2lt.railgun.gui.slot.tooltip.energy";
             case COMPUTE -> "ae2lt.railgun.gui.slot.tooltip.compute";
             case ACCELERATION -> "ae2lt.railgun.gui.slot.tooltip.acceleration";
+            case OVERLOAD_EXECUTION -> "ae2lt.railgun.gui.slot.tooltip.overload_execution";
         };
     }
 }

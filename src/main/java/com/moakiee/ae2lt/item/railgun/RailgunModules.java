@@ -28,7 +28,8 @@ public record RailgunModules(
         ItemStack core,
         List<ItemStack> compute,
         List<ItemStack> acceleration,
-        ItemStack energy) {
+        ItemStack energy,
+        ItemStack overloadExecution) {
 
     public static final int MAX_COMPUTE = 2;
     public static final int MAX_ACCELERATION = 2;
@@ -37,13 +38,15 @@ public record RailgunModules(
             ItemStack.EMPTY,
             List.of(),
             List.of(),
+            ItemStack.EMPTY,
             ItemStack.EMPTY);
 
     public static final Codec<RailgunModules> CODEC = RecordCodecBuilder.create(b -> b.group(
             ItemStack.OPTIONAL_CODEC.optionalFieldOf("core", ItemStack.EMPTY).forGetter(RailgunModules::core),
             ItemStack.OPTIONAL_CODEC.listOf().optionalFieldOf("compute", List.of()).forGetter(RailgunModules::compute),
             ItemStack.OPTIONAL_CODEC.listOf().optionalFieldOf("acceleration", List.of()).forGetter(RailgunModules::acceleration),
-            ItemStack.OPTIONAL_CODEC.optionalFieldOf("energy", ItemStack.EMPTY).forGetter(RailgunModules::energy))
+            ItemStack.OPTIONAL_CODEC.optionalFieldOf("energy", ItemStack.EMPTY).forGetter(RailgunModules::energy),
+            ItemStack.OPTIONAL_CODEC.optionalFieldOf("overloadExecution", ItemStack.EMPTY).forGetter(RailgunModules::overloadExecution))
             .apply(b, RailgunModules::new));
 
     public static final StreamCodec<RegistryFriendlyByteBuf, RailgunModules> STREAM_CODEC = StreamCodec.composite(
@@ -51,6 +54,7 @@ public record RailgunModules(
             ItemStack.OPTIONAL_STREAM_CODEC.apply(ByteBufCodecs.list()), RailgunModules::compute,
             ItemStack.OPTIONAL_STREAM_CODEC.apply(ByteBufCodecs.list()), RailgunModules::acceleration,
             ItemStack.OPTIONAL_STREAM_CODEC, RailgunModules::energy,
+            ItemStack.OPTIONAL_STREAM_CODEC, RailgunModules::overloadExecution,
             RailgunModules::new);
 
     public boolean hasCore() {
@@ -59,6 +63,10 @@ public record RailgunModules(
 
     public boolean hasEnergy() {
         return !energy.isEmpty();
+    }
+
+    public boolean hasOverloadExecution() {
+        return !overloadExecution.isEmpty();
     }
 
     public int computeCount() {
@@ -85,6 +93,7 @@ public record RailgunModules(
         List<DeviceCapability> out = new ArrayList<>();
         append(out, core);
         append(out, energy);
+        append(out, overloadExecution);
         for (ItemStack s : compute) append(out, s);
         for (ItemStack s : acceleration) append(out, s);
         return out;

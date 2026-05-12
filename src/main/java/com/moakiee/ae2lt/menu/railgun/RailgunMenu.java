@@ -25,11 +25,12 @@ import com.moakiee.ae2lt.item.railgun.RailgunModules;
  * Railgun module configuration menu. Backed by an in-memory module container
  * synchronized with the host's data component on every server tick.
  *
- * <p>Slot layout (6 slots):
+ * <p>Slot layout (7 slots):
  * <pre>
  *   Left column:     Right area:
  *   slot0 CORE        slot2 COMPUTE  slot3 COMPUTE
  *   slot1 ENERGY      slot4 ACCEL    slot5 ACCEL
+ *   slot6 OVERLOAD_EXEC
  * </pre>
  */
 public class RailgunMenu extends AEBaseMenu {
@@ -45,8 +46,9 @@ public class RailgunMenu extends AEBaseMenu {
     private static final int COMPUTE_X2 = 98, COMPUTE_Y2 = 24;
     private static final int ACCEL_X1 = 80, ACCEL_Y1 = 50;
     private static final int ACCEL_X2 = 98, ACCEL_Y2 = 50;
-    private static final int PLAYER_INV_X = 8, PLAYER_INV_Y = 107;
-    private static final int HOTBAR_X = 8, HOTBAR_Y = 165;
+    private static final int OVERLOAD_EXEC_X = 26, OVERLOAD_EXEC_Y = 76;
+    private static final int PLAYER_INV_X = 8, PLAYER_INV_Y = 125;
+    private static final int HOTBAR_X = 8, HOTBAR_Y = 183;
     private static final int SLOT_SPACING = 18;
 
     private final RailgunHost host;
@@ -70,6 +72,8 @@ public class RailgunMenu extends AEBaseMenu {
         addSlot(new RailgunModuleSlot(moduleContainer, 4, ACCEL_X1, ACCEL_Y1, RailgunModuleType.ACCELERATION),
                 SlotSemantics.MACHINE_INPUT);
         addSlot(new RailgunModuleSlot(moduleContainer, 5, ACCEL_X2, ACCEL_Y2, RailgunModuleType.ACCELERATION),
+                SlotSemantics.MACHINE_INPUT);
+        addSlot(new RailgunModuleSlot(moduleContainer, 6, OVERLOAD_EXEC_X, OVERLOAD_EXEC_Y, RailgunModuleType.OVERLOAD_EXECUTION),
                 SlotSemantics.MACHINE_INPUT);
 
         addPlayerInventorySlots(playerInventory);
@@ -109,6 +113,7 @@ public class RailgunMenu extends AEBaseMenu {
         while (accel.size() < 2) accel.add(ItemStack.EMPTY);
         moduleContainer.setItem(4, accel.get(0).copy());
         moduleContainer.setItem(5, accel.get(1).copy());
+        moduleContainer.setItem(6, m.overloadExecution().copy());
         moduleContainer.dirty = false;
     }
 
@@ -121,7 +126,7 @@ public class RailgunMenu extends AEBaseMenu {
         List<ItemStack> accel = Arrays.asList(
                 sanitize(moduleContainer.getItem(4), RailgunModuleType.ACCELERATION),
                 sanitize(moduleContainer.getItem(5), RailgunModuleType.ACCELERATION));
-        host.setModules(new RailgunModules(core, compute, accel, energy));
+        host.setModules(new RailgunModules(core, compute, accel, energy, sanitize(moduleContainer.getItem(6), RailgunModuleType.OVERLOAD_EXECUTION)));
     }
 
     private static ItemStack sanitize(ItemStack stack, RailgunModuleType expected) {
@@ -174,7 +179,7 @@ public class RailgunMenu extends AEBaseMenu {
         boolean dirty = false;
 
         ModuleContainer() {
-            super(6);
+            super(7);
         }
 
         @Override

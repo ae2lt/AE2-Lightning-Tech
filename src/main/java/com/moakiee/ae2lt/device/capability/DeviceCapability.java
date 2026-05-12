@@ -30,6 +30,9 @@ public sealed interface DeviceCapability {
     /** EMP pulse radius + damage multiplier. */
     record PulseTuning(double radiusMul, double dmgMul) implements DeviceCapability {}
 
+    /** Overload execution: cumulative damage tracker + forced kill sequence. */
+    record OverloadExecutionTuning(double decayRate, int decayDelayTicks, int maxTrackedTargets) implements DeviceCapability {}
+
     // --- armor only ---
 
     /** Damage mitigation: reflect ratio + post-armor resist ratio. */

@@ -152,7 +152,7 @@ public final class RailgunFireService {
                 hits.addAll(RailgunChainResolver.resolvePenetration(level, player, primary, ctx,
                         RailgunDefaults.PENETRATION_MAX_TARGETS));
                 hits.addAll(RailgunChainResolver.resolvePulse(level, player, primary.position(),
-                        effectivePulseRadius, effectivePulseRatio, ctx));
+                        effectivePulseRadius, effectivePulseRatio, ctx, primaryId));
             }
         }
         // Impact splash AOE — fires whether or not we hit a target directly. Skips primary
@@ -187,7 +187,7 @@ public final class RailgunFireService {
                     level, player, splashAnchor, ctx, alreadyHit, firstHitPos));
         }
         if (!hits.isEmpty()) {
-            applyAll(level, player, hits, ctx);
+            applyAll(level, player, hits, ctx, stack);
         }
 
         // 4. Terrain
@@ -212,6 +212,10 @@ public final class RailgunFireService {
     }
 
     public static void applyAll(ServerLevel level, ServerPlayer player, List<RailgunChainResolver.Hit> hits, DamageContext ctx) {
+        applyAll(level, player, hits, ctx, ItemStack.EMPTY);
+    }
+
+    public static void applyAll(ServerLevel level, ServerPlayer player, List<RailgunChainResolver.Hit> hits, DamageContext ctx, ItemStack railgunStack) {
         if (hits.isEmpty()) return;
         Holder<net.minecraft.world.damagesource.DamageType> damageHolder =
                 ModDamageTypes.electromagneticHolder(level);
@@ -241,6 +245,10 @@ public final class RailgunFireService {
                         false,
                         true,
                         true), player);
+            }
+            // Overload execution: accumulate damage and check for forced kill
+            if (!railgunStack.isEmpty()) {
+                OverloadExecutionService.onHit(level, player, railgunStack, target, finalDamage);
             }
         }
     }

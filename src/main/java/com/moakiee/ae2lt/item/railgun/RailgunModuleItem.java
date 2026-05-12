@@ -38,6 +38,7 @@ public class RailgunModuleItem extends Item implements OverloadDeviceModuleItem 
             case COMPUTE -> DeviceSlotType.COMPUTE;
             case ACCELERATION -> DeviceSlotType.ACCELERATION;
             case ENERGY -> DeviceSlotType.ENERGY;
+            case OVERLOAD_EXECUTION -> DeviceSlotType.OVERLOAD_EXECUTION;
         };
     }
 
@@ -52,6 +53,7 @@ public class RailgunModuleItem extends Item implements OverloadDeviceModuleItem 
                     new DeviceCapability.PulseTuning(1.5D, 1.0D));
             case ACCELERATION -> List.of(new DeviceCapability.AccelerationFactor(0.30D));
             case ENERGY -> List.of(new DeviceCapability.EnergyTuning(0.50D, 0L));
+            case OVERLOAD_EXECUTION -> List.of(new DeviceCapability.OverloadExecutionTuning(0.02D, 200, 8));
         };
     }
 }

@@ -193,11 +193,13 @@ public final class RailgunBeamService {
                         RailgunDefaults.PARALYSIS_DURATION_TICKS,
                         0, false, true, true), player);
             }
+            // Overload execution: accumulate damage and check for forced kill
+            OverloadExecutionService.onHit(level, player, stack, primary, finalDamage);
             // Throttled chain
             if (player.tickCount - s.lastChainTick >= chainThrottle) {
                 s.lastChainTick = player.tickCount;
                 List<RailgunChainResolver.Hit> chain = RailgunChainResolver.resolveChain(level, player, primary, ctx);
-                RailgunFireService.applyAll(level, player, chain, ctx);
+                RailgunFireService.applyAll(level, player, chain, ctx, stack);
                 if (!chain.isEmpty()) {
                     broadcastBeamChainFx(level, player, primary, chain);
                 }

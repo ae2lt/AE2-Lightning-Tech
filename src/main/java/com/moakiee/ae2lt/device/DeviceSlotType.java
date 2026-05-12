@@ -6,6 +6,7 @@ public enum DeviceSlotType {
     COMPUTE,
     ACCELERATION,
     ENERGY,
+    OVERLOAD_EXECUTION,
     BUFFER,
     SUBMODULE
 }

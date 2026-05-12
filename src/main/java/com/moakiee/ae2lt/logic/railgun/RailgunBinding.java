@@ -74,12 +74,12 @@ public final class RailgunBinding {
         if (grid == null) {
             return Result.fail(FailReason.NO_AP);
         }
-        // Range check using AP's reported range.
-        double range = ap.getRange();
-        double dist = distance(player, ap);
-        if (dist > range) {
-            return Result.fail(FailReason.OUT_OF_RANGE);
-        }
+        // Range check disabled - railgun works at any distance once bound
+        // double range = ap.getRange();
+        // double dist = distance(player, ap);
+        // if (dist > range) {
+        //     return Result.fail(FailReason.OUT_OF_RANGE);
+        // }
         return Result.ok(grid, ap);
     }
 

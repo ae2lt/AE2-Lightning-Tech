@@ -177,6 +177,12 @@ public final class AE2LTCommonConfig {
     public static boolean railgunTerrainDropItems() { return VALUES.railgunTerrainDropItems.get(); }
     public static int railgunTerrainBlocksPerTick() { return VALUES.railgunTerrainBlocksPerTick.get(); }
 
+    // ── Railgun: Overload Execution module ──────────────────────────────────
+    public static double overloadExecutionDecayRate() { return VALUES.overloadExecutionDecayRate.get(); }
+    public static int overloadExecutionDecayDelayTicks() { return VALUES.overloadExecutionDecayDelayTicks.get(); }
+    public static int overloadExecutionMaxTracked() { return VALUES.overloadExecutionMaxTracked.get(); }
+    public static boolean overloadExecutionEnabled() { return VALUES.overloadExecutionEnabled.get(); }
+
     private static final class Values {
         private final ModConfigSpec.IntValue lightningCollectorCooldownTicks;
         private final ModConfigSpec.IntValue electroChimeMaxCatalysis;
@@ -233,6 +239,12 @@ public final class AE2LTCommonConfig {
         private final ModConfigSpec.BooleanValue railgunParalysisOnPlayers;
         private final ModConfigSpec.BooleanValue railgunTerrainDropItems;
         private final ModConfigSpec.IntValue railgunTerrainBlocksPerTick;
+
+        // Overload Execution
+        private final ModConfigSpec.DoubleValue overloadExecutionDecayRate;
+        private final ModConfigSpec.IntValue overloadExecutionDecayDelayTicks;
+        private final ModConfigSpec.IntValue overloadExecutionMaxTracked;
+        private final ModConfigSpec.BooleanValue overloadExecutionEnabled;
 
         private Values(ModConfigSpec.Builder builder) {
             builder.push("lightningCollector");
@@ -438,6 +450,21 @@ public final class AE2LTCommonConfig {
             railgunTerrainBlocksPerTick = builder
                     .comment("Block break budget per tick across all railgun terrain jobs.")
                     .defineInRange("blocksPerTick", 200, 1, 8192);
+            builder.pop();
+
+            builder.push("overloadExecution");
+            overloadExecutionDecayRate = builder
+                    .comment("Fraction of accumulated damage that decays per tick after the delay period.")
+                    .defineInRange("decayRate", 0.02D, 0.0D, 1.0D);
+            overloadExecutionDecayDelayTicks = builder
+                    .comment("Ticks without hitting a target before decay starts.")
+                    .defineInRange("decayDelayTicks", 200, 0, Integer.MAX_VALUE);
+            overloadExecutionMaxTracked = builder
+                    .comment("Maximum number of targets tracked simultaneously.")
+                    .defineInRange("maxTracked", 8, 1, 64);
+            overloadExecutionEnabled = builder
+                    .comment("Master switch for the Overload Execution module.")
+                    .define("enabled", true);
             builder.pop();
             builder.pop();
         }
