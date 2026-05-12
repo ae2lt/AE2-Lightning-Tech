@@ -653,5 +653,9 @@
   "ae2lt.overload_armor_workbench.screen.modules": "Modules: %s installed, idle overload %s / %s",
   "ae2lt.overload_armor_workbench.screen.slot.module": "Module",
   "ae2lt.overload_armor_workbench.screen.uninstall_one": "Uninstall one to inventory",
-  "ae2lt.overload_armor_workbench.screen.uninstall_all": "Shift-click: uninstall all"
+  "ae2lt.overload_armor_workbench.screen.uninstall_all": "Shift-click: uninstall all",
+  "item.ae2lt.armor_submodule_night_vision": "Night Vision Module",
+  "item.ae2lt.armor_submodule_night_vision.tooltip": "Grants permanent Night Vision while active",
+  "ae2lt.overload_armor.feature.night_vision.name": "Night Vision",
+  "ae2lt.overload_armor.feature.night_vision.desc": "Grants permanent Night Vision while the armor is equipped and active"
 }

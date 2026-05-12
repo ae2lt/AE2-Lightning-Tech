@@ -653,5 +653,9 @@
   "ae2lt.overload_armor_workbench.screen.modules": "已安装模块：%s 个，空载过载 %s / %s",
   "ae2lt.overload_armor_workbench.screen.slot.module": "模块槽",
   "ae2lt.overload_armor_workbench.screen.uninstall_one": "卸载 1 个到背包",
-  "ae2lt.overload_armor_workbench.screen.uninstall_all": "Shift 点击：全部卸载"
+  "ae2lt.overload_armor_workbench.screen.uninstall_all": "Shift 点击：全部卸载",
+  "item.ae2lt.armor_submodule_night_vision": "夜视模块",
+  "item.ae2lt.armor_submodule_night_vision.tooltip": "激活时提供永久夜视效果",
+  "ae2lt.overload_armor.feature.night_vision.name": "夜视",
+  "ae2lt.overload_armor.feature.night_vision.desc": "护甲装备并激活时提供永久夜视效果"
 }
