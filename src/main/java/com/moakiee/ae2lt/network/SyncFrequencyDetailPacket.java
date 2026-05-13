@@ -90,11 +90,9 @@ public record SyncFrequencyDetailPacket(int frequencyId, byte syncType, Compound
         if (manager != null && server != null) {
             for (var d : manager.getDevices(frequencyId)) {
                 ServerLevel lvl = server.getLevel(d.dimension());
-                boolean loaded = lvl != null && lvl.isLoaded(d.pos());
+                boolean loaded = lvl != null
+                        && lvl.getChunkSource().getChunkNow(d.pos().getX() >> 4, d.pos().getZ() >> 4) != null;
                 String deviceName = d.deviceName();
-                if (loaded && lvl != null) {
-                    deviceName = lvl.getBlockState(d.pos()).getBlock().getDescriptionId();
-                }
 
                 CompoundTag e = new CompoundTag();
                 e.putString("dim", d.dimension().location().toString());
@@ -112,6 +110,16 @@ public record SyncFrequencyDetailPacket(int frequencyId, byte syncType, Compound
 
     public static void broadcastConnectionsTo(MinecraftServer server, int frequencyId) {
         if (server == null || frequencyId <= 0) return;
+        boolean hasReceiver = false;
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            if (player.containerMenu instanceof FrequencyMenu fm
+                    && fm.getCurrentFrequencyId() == frequencyId) {
+                hasReceiver = true;
+                break;
+            }
+        }
+        if (!hasReceiver) return;
+
         SyncFrequencyDetailPacket pkt = forConnections(frequencyId, server);
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             if (player.containerMenu instanceof FrequencyMenu fm

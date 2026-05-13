@@ -69,6 +69,7 @@ import com.moakiee.ae2lt.overload.pattern.OverloadPatternDecoder;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.server.ServerStartingEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
 @Mod(AE2LightningTech.MODID)
 public class AE2LightningTech {
@@ -199,6 +200,7 @@ public class AE2LightningTech {
 
         NeoForge.EVENT_BUS.addListener(this::onServerStarting);
         NeoForge.EVENT_BUS.addListener(this::onServerStopped);
+        NeoForge.EVENT_BUS.addListener(this::onServerTickPost);
         NeoForge.EVENT_BUS.register(new ResearchNoteModulationHandler());
     }
 
@@ -696,6 +698,10 @@ public class AE2LightningTech {
         EjectModeRegistry.onServerStop();
         WirelessFrequencyManager.onServerStop();
         ResearchNoteGenerator.onServerStopped();
+    }
+
+    private void onServerTickPost(ServerTickEvent.Post event) {
+        WirelessFrequencyManager.flushPendingDeviceNotifications();
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
