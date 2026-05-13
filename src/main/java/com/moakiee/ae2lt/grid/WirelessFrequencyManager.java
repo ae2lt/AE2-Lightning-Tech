@@ -262,10 +262,13 @@ public final class WirelessFrequencyManager extends SavedData {
             return entry.cachedNode();
         }
 
-        var be = getLoadedBlockEntity(targetLevel, entry.pos());
-        if (be == null) {
+        // Chunk not loaded: fall back to cached node. Loaded but BE missing/wrong type: treat as invalid.
+        var chunk = targetLevel.getChunkSource()
+                .getChunkNow(entry.pos().getX() >> 4, entry.pos().getZ() >> 4);
+        if (chunk == null) {
             return entry.cachedNode();
         }
+        var be = chunk.getBlockEntity(entry.pos());
         if (be instanceof WirelessTransmitterNodeProvider provider) {
             IGridNode node = provider.getWirelessGridNode();
             updateNode(freqId, node);
