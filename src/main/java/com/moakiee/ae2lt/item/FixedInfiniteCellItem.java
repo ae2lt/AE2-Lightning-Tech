@@ -32,6 +32,7 @@ public final class FixedInfiniteCellItem extends Item {
     private static final String TAG_SEED = "CellSeed";
     private static final String TAG_TYPE = "CellType";
     private static final String TAG_RESULT_CONSUMED = "ResultConsumed";
+    private static final String TAG_WORLD_SEED = "WorldSeed";
 
     public enum CellOutcome {
         LIGHTNING_ROD((byte) 0, "lightning_rod"),
@@ -100,6 +101,12 @@ public final class FixedInfiniteCellItem extends Item {
         if (!hasSeed(stack)) {
             setSeed(stack, UUID.randomUUID());
         }
+        if (!hasWorldSeed(stack)) {
+            var server = ServerLifecycleHooks.getCurrentServer();
+            if (server != null) {
+                setWorldSeed(stack, server.overworld().getSeed());
+            }
+        }
     }
 
     @Nullable
@@ -110,6 +117,20 @@ public final class FixedInfiniteCellItem extends Item {
 
     public static boolean hasSeed(ItemStack stack) {
         return getSeed(stack) != null;
+    }
+
+    private static void setWorldSeed(ItemStack stack, long worldSeed) {
+        CustomData.update(DataComponents.CUSTOM_DATA, stack, tag -> tag.putLong(TAG_WORLD_SEED, worldSeed));
+    }
+
+    private static boolean hasWorldSeed(ItemStack stack) {
+        CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+        return tag.contains(TAG_WORLD_SEED);
+    }
+
+    private static long getWorldSeed(ItemStack stack) {
+        CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+        return tag.getLong(TAG_WORLD_SEED);
     }
 
     public static boolean isOuterCell(ItemStack stack) {
@@ -157,10 +178,15 @@ public final class FixedInfiniteCellItem extends Item {
     public static CellOutcome getOutcomeFromSeed(ItemStack stack) {
         UUID seed = getSeed(stack);
         if (seed == null) return CellOutcome.LIGHTNING_ROD;
-        long worldSeed = 0L;
-        var server = ServerLifecycleHooks.getCurrentServer();
-        if (server != null) {
-            worldSeed = server.overworld().getSeed();
+        long worldSeed;
+        if (hasWorldSeed(stack)) {
+            worldSeed = getWorldSeed(stack);
+        } else {
+            worldSeed = 0L;
+            var server = ServerLifecycleHooks.getCurrentServer();
+            if (server != null) {
+                worldSeed = server.overworld().getSeed();
+            }
         }
         return resolveOutcome(seed, worldSeed);
     }
