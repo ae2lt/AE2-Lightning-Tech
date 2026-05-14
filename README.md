@@ -4,7 +4,7 @@
 
 An [Applied Energistics 2](https://github.com/AppliedEnergistics/Applied-Energistics-2) addon that introduces a lightning energy system, advanced machines, and overloaded network components.
 
-> Requires AE2 · Built for Minecraft 1.21.1 / NeoForge
+> Requires AE2 · Built for Minecraft 26.1.2 / NeoForge
 
 ## About
 
@@ -42,7 +42,10 @@ A budding-crystal progression line built on top of AE2's certus quartz tiers —
 - **`AE2LTCapabilities.LIGHTNING_ENERGY_BLOCK`** — block-side capability returning an `ILightningEnergyHandler`. Registered on the five lightning-grid block entities: Lightning Collector, Lightning Simulation Room, Lightning Assembly Chamber, Overload Processing Factory, Tesla Coil. The handler reads/writes the AE2 grid's lightning storage directly — no reflection required.
 - **`LightningTier`** — `HIGH_VOLTAGE` / `EXTREME_HIGH_VOLTAGE`. Serialized names are frozen at `"high_voltage"` / `"extreme_high_voltage"`.
 - **`LightningCollectedEvent`** — a cancellable event posted on `NeoForge.EVENT_BUS` from inside `LightningCollectorBlockEntity.captureLightning(boolean)`, after the amount has been rolled but before it is inserted into the grid. Subscribers can cancel the capture or rewrite the amount.
-- **`AE2LTBlockEntityIds`** / **`AE2LTRecipeIds`** — frozen `ResourceLocation` constants for the public block-entity and recipe types.
+- **`AE2LTBlockEntityIds`** / **`AE2LTRecipeIds`** — frozen `Identifier` constants for the public block-entity and recipe types.
+- **`com.moakiee.ae2lt.api.frequency.FrequencyApi`** — static, server-thread facade for the wireless frequency system. Read-only queries (`getBoundFrequencyId(BlockEntity)`, `getFrequencyInfo(server, id)`, `getTransmitter(server, id)`, `isValidFrequency(server, id)`) return `FrequencyInfo` / `TransmitterInfo` / `FrequencySecurity` snapshots without exposing internal mutable state.
+- **`FrequencyBindingHost`** + **`FrequencyBindingAccess`** — let a third-party block entity join a wireless controller as a receiver. The BE must extend AE2's `AENetworkedBlockEntity`; store one access from `FrequencyApi.createBinding(this)` in a field, return it from `getFrequencyBindingAccess()` (plus the three other host accessors: `getFrequencyBindingBlockEntity` / `saveFrequencyBindingChanges` / `markFrequencyBindingForUpdate`), and forward the lifecycle methods (`onReady` / `setRemoved` / `clearRemoved` / `serverTick` / `save` / `load` / `onMainNodeStateChanged`). The helper handles virtual-connection retry, listener subscription and the bound-devices list automatically. See `package-info.java` for a full reference implementation.
+- **`FrequencyBindingMenuHost`** + **`FrequencyApi.openBindingScreen(menu)`** — let a third-party menu reuse the shared frequency selection / creation / membership UI. Implement the marker on your `AbstractContainerMenu`, draw your own button in your `Screen`, and call the helper from `onPress` — server-side permission checks, list sync, password and member management are all reused.
 
 Anything outside `com.moakiee.ae2lt.api.*` is internal and may change between minor versions. See `package-info.java` for the full contract and the frozen-on-release list.
 
@@ -60,7 +63,13 @@ Found a bug or have a suggestion? Please open an issue on the project tracker wi
 
 ## License
 
-AE2 Lightning Tech is licensed under [GNU LGPL 3.0](https://www.gnu.org/licenses/lgpl-3.0.html).
+[![Source License](https://img.shields.io/badge/Source-LGPL--3.0-blue)](LICENSE)
+[![Assets License](https://img.shields.io/badge/Assets-CC%20BY--NC--SA%203.0-lightgrey)](LICENSE_ASSETS.md)
+
+AE2 Lightning Tech uses separate licenses for source code and textures:
+
+- Source code is licensed under [GNU LGPL 3.0](https://www.gnu.org/licenses/lgpl-3.0.html).
+- Textures and other visual assets are licensed under [CC BY-NC-SA 3.0](https://creativecommons.org/licenses/by-nc-sa/3.0/).
 
 ## Credits
 

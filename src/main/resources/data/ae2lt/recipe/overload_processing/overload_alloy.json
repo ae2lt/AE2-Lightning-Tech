@@ -3,18 +3,34 @@
   "priority": 0,
   "inputs": [
     {
-      "ingredient": "ae2lt:overload_alloy_blank",
+      "ingredient": "minecraft:copper_block",
       "count": 1
     },
     {
-      "ingredient": "ae2lt:overload_crystal_dust",
+      "ingredient": "minecraft:iron_block",
+      "count": 1
+    },
+    {
+      "ingredient": "minecraft:gold_block",
+      "count": 1
+    },
+    {
+      "ingredient": "minecraft:amethyst_block",
+      "count": 1
+    },
+    {
+      "ingredient": "minecraft:ender_eye",
+      "count": 1
+    },
+    {
+      "ingredient": "minecraft:chorus_fruit",
       "count": 1
     }
   ],
   "results": [
     {
       "id": "ae2lt:overload_alloy",
-      "count": 1
+      "count": 27
     }
   ],
   "totalEnergy": 100000,

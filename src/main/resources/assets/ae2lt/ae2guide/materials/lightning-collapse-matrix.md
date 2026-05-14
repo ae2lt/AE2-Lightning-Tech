@@ -22,8 +22,8 @@ The **Lightning Collapse Matrix** is one of the key end-tier components in AE2 L
 |----------|--------|
 | Perfect Electro-Chime Crystal | 1 |
 | Ultimate Overload Core | 16 |
-| **Extreme High Voltage Lightning** | 256 |
-| Energy | 500,000,000 AE |
+| **Extreme High Voltage Lightning** | 128 |
+| Energy | 50,000,000 AE |
 
 Because the cost is already steep, you typically schedule this alongside your Overload Processing Factory and Lightning Assembly Chamber work.
 
@@ -34,7 +34,7 @@ The Lightning Collapse Matrix is **not consumed** during processing, but it must
 * [Lightning Simulation Room](../machines/lightning-simulation-chamber.md) / [Lightning Assembly Chamber](../machines/lightning-assembly-chamber.md) — with a matrix installed, some recipes that would normally require **Extreme High Voltage Lightning** can be fulfilled by consuming several times the amount of **High Voltage Lightning** instead.
 * [Tesla Coil](../lightning/tesla-coil.md) — Extreme High Voltage mode requires a matrix in the slot; without one, HV cannot be upconverted to EHV.
 * [Crystal Catalyzer](../machines/crystal-catalyzer.md) — applies in both Crystal Mode and Dust Mode; with a matrix installed, post-parallel per-operation output is increased to **4×**.
-* [Overload Processing Factory](../machines/overload-processing-factory.md) — multi-matrix parallelism: each additional matrix unlocks another tier of parallelism (up to 64 matrices in the slot, 4 parallel operations per matrix by default).
+* [Overload Processing Factory](../machines/overload-processing-factory.md) — multi-matrix parallelism: each additional matrix unlocks another tier of parallelism (up to 32 matrices in the slot, 8 parallel operations per matrix by default).
 
 ## Field Notes
 

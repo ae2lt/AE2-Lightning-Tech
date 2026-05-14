@@ -4,7 +4,7 @@
 
 一个 [Applied Energistics 2](https://github.com/AppliedEnergistics/Applied-Energistics-2) 的附属模组，添加了一套闪电能源系统、进阶机器以及过载 ME 网络组件。
 
-> 依赖 AE2 · 适用于 Minecraft 1.21.1 / NeoForge
+> 依赖 AE2 · 适用于 Minecraft 26.1.2 / NeoForge
 
 ## 关于
 
@@ -42,7 +42,10 @@ AE2 闪电科技 把闪电变成一种可用的资源。收集自然雷电，精
 - **`AE2LTCapabilities.LIGHTNING_ENERGY_BLOCK`** —— 方块侧 capability，返回 `ILightningEnergyHandler`。已为 5 个接入闪电网格的方块实体注册：闪电收集器、闪电模拟室、闪电装配室、过载处理工厂、特斯拉线圈。Handler 直接桥接到 AE2 网格闪电存储，不需要任何反射。
 - **`LightningTier`** —— `HIGH_VOLTAGE` / `EXTREME_HIGH_VOLTAGE`。序列化名固化为 `"high_voltage"` / `"extreme_high_voltage"`。
 - **`LightningCollectedEvent`** —— 在 `NeoForge.EVENT_BUS` 上发布的可取消事件，于 `LightningCollectorBlockEntity.captureLightning(boolean)` 内部、roll 出数量之后、写入网格之前触发。订阅者可以取消捕获或改写入库数量。
-- **`AE2LTBlockEntityIds`** / **`AE2LTRecipeIds`** —— 公开方块实体与配方类型的固化 `ResourceLocation` 常量。
+- **`AE2LTBlockEntityIds`** / **`AE2LTRecipeIds`** —— 公开方块实体与配方类型的固化 `Identifier` 常量。
+- **`com.moakiee.ae2lt.api.frequency.FrequencyApi`** —— 无线频率系统的静态门面（服务器线程）。提供只读查询：`getBoundFrequencyId(BlockEntity)`、`getFrequencyInfo(server, id)`、`getTransmitter(server, id)`、`isValidFrequency(server, id)`，返回 `FrequencyInfo` / `TransmitterInfo` / `FrequencySecurity` 等不可变快照，不暴露内部可变状态。
+- **`FrequencyBindingHost`** + **`FrequencyBindingAccess`** —— 让第三方方块实体作为接收设备加入无线控制器。BE 必须继承 AE2 的 `AENetworkedBlockEntity`；把 `FrequencyApi.createBinding(this)` 得到的 access 存进一个字段，从 `getFrequencyBindingAccess()` 返回（同时实现另外三个 host 访问器：`getFrequencyBindingBlockEntity` / `saveFrequencyBindingChanges` / `markFrequencyBindingForUpdate`），并把生命周期方法（`onReady` / `setRemoved` / `clearRemoved` / `serverTick` / `save` / `load` / `onMainNodeStateChanged`）转发给句柄。虚拟连接重试、监听订阅、绑定设备列表全部由内部 helper 自动处理。完整可参考实现见 `package-info.java`。
+- **`FrequencyBindingMenuHost`** + **`FrequencyApi.openBindingScreen(menu)`** —— 让第三方菜单复用本 mod 完整的频率选择 / 创建 / 成员管理 UI。在你的 `AbstractContainerMenu` 上实现 Marker，在 `Screen` 上自绘按钮，`onPress` 里调一行辅助函数即可——服务端权限校验、列表同步、密码、成员管理全部复用。
 
 `com.moakiee.ae2lt.api.*` 之外的所有代码都是内部实现，可能在小版本之间变更。完整契约与"发布即冻结"清单见 `package-info.java`。
 
@@ -60,7 +63,13 @@ AE2 闪电科技 把闪电变成一种可用的资源。收集自然雷电，精
 
 ## 许可证
 
-AE2 闪电科技 以 [GNU LGPL 3.0](https://www.gnu.org/licenses/lgpl-3.0.html) 协议开源。
+[![源码许可证](https://img.shields.io/badge/Source-LGPL--3.0-blue)](LICENSE)
+[![材质许可证](https://img.shields.io/badge/Assets-CC%20BY--NC--SA%203.0-lightgrey)](LICENSE_ASSETS.md)
+
+AE2 闪电科技对源码和材质使用不同的许可证：
+
+- 源码以 [GNU LGPL 3.0](https://www.gnu.org/licenses/lgpl-3.0.html) 协议开源。
+- 材质与其他视觉资产以 [CC BY-NC-SA 3.0](https://creativecommons.org/licenses/by-nc-sa/3.0/) 协议授权。
 
 ## 鸣谢
 
