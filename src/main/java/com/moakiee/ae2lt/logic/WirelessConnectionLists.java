@@ -76,9 +76,18 @@ public final class WirelessConnectionLists {
             return;
         }
         var list = data.getList(tagName, Tag.TAG_COMPOUND);
-        for (int i = 0; i < list.size(); i++) {
-            addOrReplace(target, reader.read(list.getCompound(i)), maxConnections);
+        for (int i = 0; i < list.size() && target.size() < maxConnections; i++) {
+            target.add(reader.read(list.getCompound(i)));
         }
+    }
+
+    public static <T extends WirelessConnectionRef> PruneResult pruneInvalid(
+            List<T> connections,
+            int cursor,
+            int maxChecks,
+            ServerLevel hostLevel,
+            BlockPos hostPos) {
+        return pruneInvalidInternal(connections, cursor, maxChecks, hostLevel, hostPos, null);
     }
 
     public static <T extends WirelessConnectionRef> PruneResult pruneInvalid(
@@ -88,6 +97,16 @@ public final class WirelessConnectionLists {
             ServerLevel hostLevel,
             BlockPos hostPos,
             Predicate<T> removalGuard) {
+        return pruneInvalidInternal(connections, cursor, maxChecks, hostLevel, hostPos, removalGuard);
+    }
+
+    private static <T extends WirelessConnectionRef> PruneResult pruneInvalidInternal(
+            List<T> connections,
+            int cursor,
+            int maxChecks,
+            ServerLevel hostLevel,
+            BlockPos hostPos,
+            @Nullable Predicate<T> removalGuard) {
         if (connections.isEmpty()) {
             return new PruneResult(0, 0);
         }
@@ -107,7 +126,7 @@ public final class WirelessConnectionLists {
             var connection = connections.get(index);
             if (WirelessConnectionValidator.validate(hostLevel, hostPos, connection)
                     == WirelessConnectionValidator.Status.REMOVE
-                    && removalGuard.test(connection)) {
+                    && (removalGuard == null || removalGuard.test(connection))) {
                 connections.remove(index);
                 removed++;
             } else {

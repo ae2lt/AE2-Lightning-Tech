@@ -887,7 +887,7 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
 
         var result = WirelessConnectionLists.pruneInvalid(
                 connections, invalidConnectionScanCursor, maxChecks,
-                serverLevel, getBlockPos(), ignored -> true);
+                serverLevel, getBlockPos());
         invalidConnectionScanCursor = result.nextCursor();
         if (result.removed() > 0) {
             invalidateConnectionCache();

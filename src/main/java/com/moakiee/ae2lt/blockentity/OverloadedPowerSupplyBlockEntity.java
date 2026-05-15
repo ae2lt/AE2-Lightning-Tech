@@ -463,7 +463,7 @@ public class OverloadedPowerSupplyBlockEntity extends AENetworkedBlockEntity
 
         var result = WirelessConnectionLists.pruneInvalid(
                 connections, invalidConnectionScanCursor, maxChecks,
-                serverLevel, worldPosition, ignored -> true);
+                serverLevel, worldPosition);
         invalidConnectionScanCursor = result.nextCursor();
         if (result.removed() > 0) {
             notifyConnectionsChanged();
@@ -610,7 +610,6 @@ public class OverloadedPowerSupplyBlockEntity extends AENetworkedBlockEntity
         cachedCellView = null;
         WirelessConnectionLists.readTagList(
                 data, TAG_CONNECTIONS, connections, MAX_WIRELESS_CONNECTIONS, WirelessConnection::fromTag);
-        connections.removeIf(connection -> !isLocalDimension(connection.dimension()));
         invalidConnectionScanCursor = 0;
         connectionVersion++;
 

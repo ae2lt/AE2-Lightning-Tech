@@ -15,7 +15,7 @@ public interface WirelessConnectionRef {
 
     CompoundTag toTag();
 
-    default boolean sameTarget(ResourceKey<Level> dimension, BlockPos pos) {
-        return dimension().equals(dimension) && pos().equals(pos);
+    default boolean sameTarget(ResourceKey<Level> otherDim, BlockPos otherPos) {
+        return dimension().equals(otherDim) && pos().equals(otherPos);
     }
 }
