@@ -3,7 +3,6 @@ package com.moakiee.ae2lt.blockentity;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
-import java.util.Iterator;
 import java.util.List;
 
 import org.jetbrains.annotations.Nullable;
@@ -39,7 +38,7 @@ import com.moakiee.ae2lt.grid.FrequencyBindingHelper;
 import com.moakiee.ae2lt.grid.FrequencyBindingHost;
 import com.moakiee.ae2lt.grid.OverloadedGridNodeOwner;
 import com.moakiee.ae2lt.logic.OverloadedPatternProviderLogic;
-import com.moakiee.ae2lt.logic.WirelessConnectionRange;
+import com.moakiee.ae2lt.logic.WirelessConnectionValidator;
 import com.moakiee.ae2lt.menu.OverloadedPatternProviderMenu;
 import com.moakiee.ae2lt.registry.ModBlockEntities;
 import com.moakiee.ae2lt.registry.ModBlocks;
@@ -93,6 +92,7 @@ public class OverloadedPatternProviderBlockEntity extends PatternProviderBlockEn
 
     /** Active wireless connection records. */
     private final List<WirelessConnection> connections = new ArrayList<>();
+    private int invalidConnectionScanCursor;
     private final FrequencyBindingHelper frequencyBinding = new FrequencyBindingHelper(this);
 
     // -- Wireless connection record --
@@ -146,6 +146,9 @@ public class OverloadedPatternProviderBlockEntity extends PatternProviderBlockEn
     public static void serverTick(Level level, BlockPos pos, BlockState state, OverloadedPatternProviderBlockEntity be) {
         if (!level.isClientSide()) {
             be.frequencyBinding.serverTick();
+            if (level instanceof ServerLevel serverLevel) {
+                be.tickWirelessConnectionCleanup(serverLevel);
+            }
         }
     }
 
@@ -357,6 +360,7 @@ public class OverloadedPatternProviderBlockEntity extends PatternProviderBlockEn
                     return true;
                 }
                 connections.set(i, updated);
+                invalidConnectionScanCursor = 0;
                 notifyLogicStateChanged();
                 saveChanges();
                 markForClientUpdate();
@@ -367,6 +371,7 @@ public class OverloadedPatternProviderBlockEntity extends PatternProviderBlockEn
             return false;
         }
         connections.add(new WirelessConnection(dimension, pos, boundFace));
+        invalidConnectionScanCursor = 0;
         recomputeIdlePower();
         notifyLogicStateChanged();
         saveChanges();
@@ -382,6 +387,7 @@ public class OverloadedPatternProviderBlockEntity extends PatternProviderBlockEn
     public boolean removeConnection(ResourceKey<Level> dimension, BlockPos pos) {
         boolean removed = connections.removeIf(c -> c.sameTarget(dimension, pos));
         if (removed) {
+            invalidConnectionScanCursor = 0;
             recomputeIdlePower();
             notifyLogicStateChanged();
             saveChanges();
@@ -402,42 +408,37 @@ public class OverloadedPatternProviderBlockEntity extends PatternProviderBlockEn
      * @return number of connections removed
      */
     public int clearInvalidConnections() {
+        return pruneInvalidConnections(Integer.MAX_VALUE);
+    }
+
+    public int pruneInvalidConnections(int maxChecks) {
         var hostLevel = getLevel();
-        var server = hostLevel instanceof ServerLevel sl ? sl.getServer() : null;
-        if (server == null) {
+        if (!(hostLevel instanceof ServerLevel serverLevel) || maxChecks <= 0 || connections.isEmpty()) {
             return 0;
         }
+
+        int checksRemaining = Math.min(maxChecks, connections.size());
         int removed = 0;
-        Iterator<WirelessConnection> it = connections.iterator();
-        while (it.hasNext()) {
-            var conn = it.next();
-            if (!conn.dimension().equals(hostLevel.dimension())) {
-                it.remove();
-                removed++;
-                continue;
+        int index = Math.min(invalidConnectionScanCursor, connections.size() - 1);
+
+        while (checksRemaining-- > 0 && !connections.isEmpty()) {
+            if (index >= connections.size()) {
+                index = 0;
             }
-            if (!WirelessConnectionRange.isConnectorLinkInRange(
-                    hostLevel.dimension(), worldPosition, conn.dimension(), conn.pos())) {
-                it.remove();
+
+            var conn = connections.get(index);
+            if (WirelessConnectionValidator.validate(
+                    serverLevel, worldPosition, conn.dimension(), conn.pos())
+                    == WirelessConnectionValidator.Status.REMOVE
+                    && canRemoveInvalidConnection(conn)) {
+                connections.remove(index);
                 removed++;
-                continue;
-            }
-            ServerLevel targetLevel = server.getLevel(conn.dimension());
-            if (targetLevel == null) {
-                it.remove();
-                removed++;
-                continue;
-            }
-            // Only validate loaded chunks to avoid force-loading
-            if (!targetLevel.isLoaded(conn.pos())) {
-                continue;
-            }
-            var state = targetLevel.getBlockState(conn.pos());
-            if (state.isAir() || targetLevel.getBlockEntity(conn.pos()) == null) {
-                it.remove();
-                removed++;
+            } else {
+                index++;
             }
         }
+
+        invalidConnectionScanCursor = connections.isEmpty() ? 0 : index % connections.size();
         if (removed > 0) {
             recomputeIdlePower();
             notifyLogicStateChanged();
@@ -445,6 +446,19 @@ public class OverloadedPatternProviderBlockEntity extends PatternProviderBlockEn
             markForClientUpdate();
         }
         return removed;
+    }
+
+    private void tickWirelessConnectionCleanup(ServerLevel level) {
+        if (connections.isEmpty()
+                || !WirelessConnectionValidator.shouldRunPeriodicPrune(level, worldPosition)) {
+            return;
+        }
+        pruneInvalidConnections(WirelessConnectionValidator.PERIODIC_PRUNE_MAX_CHECKS);
+    }
+
+    private boolean canRemoveInvalidConnection(WirelessConnection conn) {
+        var logic = getOverloadedLogic();
+        return logic == null || logic.prepareInvalidConnectionRemoval(conn);
     }
 
     private boolean isLocalDimension(ResourceKey<Level> dimension) {
@@ -507,6 +521,7 @@ public class OverloadedPatternProviderBlockEntity extends PatternProviderBlockEn
             filteredImport = newFilteredImport;
             connections.clear();
             connections.addAll(newConns);
+            invalidConnectionScanCursor = 0;
             recomputeIdlePower();
             notifyLogicStateChanged();
             changed = true;
@@ -582,6 +597,7 @@ public class OverloadedPatternProviderBlockEntity extends PatternProviderBlockEn
                 connections.add(WirelessConnection.fromTag(connList.getCompound(i)));
             }
         }
+        invalidConnectionScanCursor = 0;
         frequencyBinding.load(data);
         recomputeIdlePower();
         notifyLogicStateChanged();
@@ -674,6 +690,9 @@ public class OverloadedPatternProviderBlockEntity extends PatternProviderBlockEn
 
     @Override
     public void openMenu(Player player, MenuHostLocator locator) {
+        if (level instanceof ServerLevel) {
+            clearInvalidConnections();
+        }
         MenuOpener.open(OverloadedPatternProviderMenu.TYPE, player, locator);
     }
 

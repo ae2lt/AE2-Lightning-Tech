@@ -488,32 +488,15 @@ public class OverloadedPowerSupplyLogic implements IGridTickable {
             nextValidTargets.clear();
             invalidConnections.clear();
 
-            var server = serverLevel.getServer();
             for (int i = 0; i < cachedConnectionTargets.size(); i++) {
                 var target = cachedConnectionTargets.get(i);
-                if (!target.dimension().equals(serverLevel.dimension())) {
-                    invalidConnections.add(cachedConnections.get(i));
-                    continue;
+                switch (WirelessConnectionValidator.validate(
+                        serverLevel, host.getBlockPos(), target.dimension(), target.pos())) {
+                    case REMOVE -> invalidConnections.add(cachedConnections.get(i));
+                    case VALID -> nextValidTargets.add(target);
+                    case UNLOADED -> {
+                    }
                 }
-                if (!WirelessConnectionRange.isConnectorLinkInRange(
-                        serverLevel.dimension(), host.getBlockPos(), target.dimension(), target.pos())) {
-                    invalidConnections.add(cachedConnections.get(i));
-                    continue;
-                }
-                ServerLevel targetLevel = server.getLevel(target.dimension());
-                if (targetLevel == null) {
-                    invalidConnections.add(cachedConnections.get(i));
-                    continue;
-                }
-                if (!targetLevel.isLoaded(target.pos())) {
-                    continue;
-                }
-                if (targetLevel.getBlockEntity(target.pos()) == null) {
-                    invalidConnections.add(cachedConnections.get(i));
-                    continue;
-                }
-
-                nextValidTargets.add(target);
             }
 
             if (!invalidConnections.isEmpty()) {

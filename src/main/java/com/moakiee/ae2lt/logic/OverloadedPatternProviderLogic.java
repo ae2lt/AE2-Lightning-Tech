@@ -1905,6 +1905,89 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
         wirelessDistributor.flushBufferToNetwork();
     }
 
+    public boolean prepareInvalidConnectionRemoval(WirelessConnection conn) {
+        var bucket = pendingOverflowByConn.get(conn);
+        if (bucket == null) {
+            return true;
+        }
+        if (!drainBucketToNetwork(bucket)) {
+            return false;
+        }
+        pendingOverflowByConn.remove(conn);
+        connectionsDirty = true;
+        refreshGlobalBackpressure();
+        alertGridTick();
+        return true;
+    }
+
+    private boolean drainBucketToNetwork(ConnBucket bucket) {
+        if (bucket.compactMode) {
+            return drainCompactBucketToNetwork(bucket);
+        }
+
+        for (int i = 0; i < bucket.fallbackList.size(); ) {
+            var stack = bucket.fallbackList.get(i);
+            long remaining = insertStackToNetwork(stack.what(), stack.amount());
+            if (remaining <= 0) {
+                bucket.fallbackList.remove(i);
+                continue;
+            }
+            bucket.fallbackList.set(i, new GenericStack(stack.what(), remaining));
+            return false;
+        }
+        return true;
+    }
+
+    private boolean drainCompactBucketToNetwork(ConnBucket bucket) {
+        var pattern = patternById.get(Short.toUnsignedInt(bucket.patternId));
+        if (pattern == null) {
+            return true;
+        }
+        var inputs = pattern.getInputs();
+
+        while (bucket.stuckIdx < inputs.length) {
+            var possible = inputs[bucket.stuckIdx].getPossibleInputs();
+            if (possible.length != 1) {
+                return true;
+            }
+
+            long remaining = insertStackToNetwork(possible[0].what(), bucket.remaining);
+            if (remaining > 0) {
+                bucket.remaining = remaining;
+                return false;
+            }
+
+            bucket.stuckIdx++;
+            if (bucket.stuckIdx < inputs.length) {
+                bucket.remaining = inputAmount(inputs[bucket.stuckIdx]);
+            }
+        }
+        return true;
+    }
+
+    private long insertStackToNetwork(AEKey what, long amount) {
+        var grid = gridNode.getGrid();
+        if (grid == null || amount <= 0) {
+            return amount;
+        }
+
+        var storage = grid.getStorageService().getInventory();
+        long remaining = amount;
+        while (remaining > 0) {
+            long affordable = PowerCostUtil.maxAffordable(grid, what, remaining);
+            if (affordable <= 0) {
+                break;
+            }
+            long inserted = storage.insert(what, affordable, Actionable.MODULATE, wirelessSource);
+            if (inserted <= 0) {
+                break;
+            }
+            PowerCostUtil.consume(grid, what, inserted);
+            remaining -= inserted;
+        }
+        return remaining;
+    }
+
     public void onPersistentStateChanged() {
         inductionCardCacheDirty = true;
         alertGridTick();

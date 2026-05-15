@@ -3,7 +3,6 @@ package com.moakiee.ae2lt.blockentity;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
 
 import net.minecraft.core.BlockPos;
@@ -44,6 +43,7 @@ import com.moakiee.ae2lt.grid.FrequencyBindingHelper;
 import com.moakiee.ae2lt.grid.FrequencyBindingHost;
 import com.moakiee.ae2lt.grid.OverloadedGridNodeOwner;
 import com.moakiee.ae2lt.logic.OverloadedPowerSupplyLogic;
+import com.moakiee.ae2lt.logic.WirelessConnectionValidator;
 import com.moakiee.ae2lt.logic.energy.AppFluxBridge;
 import com.moakiee.ae2lt.menu.OverloadedPowerSupplyMenu;
 import com.moakiee.ae2lt.registry.ModBlockEntities;
@@ -118,6 +118,7 @@ public class OverloadedPowerSupplyBlockEntity extends AENetworkedBlockEntity
 
     private final List<WirelessConnection> connections = new ArrayList<>();
     private final List<WirelessConnection> readOnlyConnections = Collections.unmodifiableList(connections);
+    private int invalidConnectionScanCursor;
     /**
      * Monotonic version stamp bumped whenever {@link #connections} is mutated.
      * Lets the supply logic skip an O(n) per-tick {@code List.equals} when the
@@ -145,6 +146,9 @@ public class OverloadedPowerSupplyBlockEntity extends AENetworkedBlockEntity
     public static void serverTick(Level level, BlockPos pos, BlockState state, OverloadedPowerSupplyBlockEntity be) {
         if (!level.isClientSide()) {
             be.frequencyBinding.serverTick();
+            if (level instanceof ServerLevel serverLevel) {
+                be.tickWirelessConnectionCleanup(serverLevel);
+            }
         }
     }
 
@@ -340,6 +344,7 @@ public class OverloadedPowerSupplyBlockEntity extends AENetworkedBlockEntity
                 return false;
             }
             connections.set(index, updated);
+            invalidConnectionScanCursor = 0;
             notifyConnectionsChanged();
             return true;
         }
@@ -348,6 +353,7 @@ public class OverloadedPowerSupplyBlockEntity extends AENetworkedBlockEntity
             return false;
         }
         connections.add(new WirelessConnection(dimension, pos.immutable(), face));
+        invalidConnectionScanCursor = 0;
         notifyConnectionsChanged();
         return true;
     }
@@ -377,10 +383,12 @@ public class OverloadedPowerSupplyBlockEntity extends AENetworkedBlockEntity
                 if (existing.boundFace() == face) {
                     connections.remove(index);
                     disconnected.add(targetPos);
+                    invalidConnectionScanCursor = 0;
                     changed = true;
                 } else {
                     connections.set(index, new WirelessConnection(dimension, targetPos, face));
                     updated.add(targetPos);
+                    invalidConnectionScanCursor = 0;
                     changed = true;
                 }
                 continue;
@@ -393,6 +401,7 @@ public class OverloadedPowerSupplyBlockEntity extends AENetworkedBlockEntity
 
             connections.add(new WirelessConnection(dimension, targetPos, face));
             connected.add(targetPos);
+            invalidConnectionScanCursor = 0;
             changed = true;
         }
 
@@ -411,6 +420,7 @@ public class OverloadedPowerSupplyBlockEntity extends AENetworkedBlockEntity
         int index = findConnectionIndex(connections, dimension, pos);
         if (index >= 0) {
             connections.remove(index);
+            invalidConnectionScanCursor = 0;
             notifyConnectionsChanged();
             return true;
         }
@@ -424,6 +434,7 @@ public class OverloadedPowerSupplyBlockEntity extends AENetworkedBlockEntity
 
         boolean removed = connections.removeIf(removedConnections::contains);
         if (removed) {
+            invalidConnectionScanCursor = 0;
             notifyConnectionsChanged();
         }
         return removed;
@@ -444,43 +455,48 @@ public class OverloadedPowerSupplyBlockEntity extends AENetworkedBlockEntity
     }
 
     public int clearInvalidConnections() {
+        return pruneInvalidConnections(Integer.MAX_VALUE);
+    }
+
+    public int pruneInvalidConnections(int maxChecks) {
         var hostLevel = getLevel();
-        var server = hostLevel instanceof ServerLevel sl ? sl.getServer() : null;
-        if (server == null) {
+        if (!(hostLevel instanceof ServerLevel serverLevel) || maxChecks <= 0 || connections.isEmpty()) {
             return 0;
         }
 
+        int checksRemaining = Math.min(maxChecks, connections.size());
         int removed = 0;
-        Iterator<WirelessConnection> iterator = connections.iterator();
-        while (iterator.hasNext()) {
-            var connection = iterator.next();
-            if (!connection.dimension().equals(hostLevel.dimension())) {
-                iterator.remove();
-                removed++;
-                continue;
-            }
-            ServerLevel targetLevel = server.getLevel(connection.dimension());
-            if (targetLevel == null) {
-                iterator.remove();
-                removed++;
-                continue;
+        int index = Math.min(invalidConnectionScanCursor, connections.size() - 1);
+
+        while (checksRemaining-- > 0 && !connections.isEmpty()) {
+            if (index >= connections.size()) {
+                index = 0;
             }
 
-            if (!targetLevel.isLoaded(connection.pos())) {
-                continue;
-            }
-
-            var state = targetLevel.getBlockState(connection.pos());
-            if (state.isAir() || targetLevel.getBlockEntity(connection.pos()) == null) {
-                iterator.remove();
+            var connection = connections.get(index);
+            if (WirelessConnectionValidator.validate(
+                    serverLevel, worldPosition, connection.dimension(), connection.pos())
+                    == WirelessConnectionValidator.Status.REMOVE) {
+                connections.remove(index);
                 removed++;
+            } else {
+                index++;
             }
         }
 
+        invalidConnectionScanCursor = connections.isEmpty() ? 0 : index % connections.size();
         if (removed > 0) {
             notifyConnectionsChanged();
         }
         return removed;
+    }
+
+    private void tickWirelessConnectionCleanup(ServerLevel level) {
+        if (connections.isEmpty()
+                || !WirelessConnectionValidator.shouldRunPeriodicPrune(level, worldPosition)) {
+            return;
+        }
+        pruneInvalidConnections(WirelessConnectionValidator.PERIODIC_PRUNE_MAX_CHECKS);
     }
 
     private void addLoadedConnection(WirelessConnection connection) {
@@ -647,6 +663,7 @@ public class OverloadedPowerSupplyBlockEntity extends AENetworkedBlockEntity
                 addLoadedConnection(WirelessConnection.fromTag(list.getCompound(i)));
             }
         }
+        invalidConnectionScanCursor = 0;
         connectionVersion++;
 
         frequencyBinding.load(data);
@@ -695,6 +712,7 @@ public class OverloadedPowerSupplyBlockEntity extends AENetworkedBlockEntity
             mode = newMode;
             connections.clear();
             connections.addAll(newConnections);
+            invalidConnectionScanCursor = 0;
             connectionVersion++;
             logic.onStateChanged();
             changed = true;
@@ -704,6 +722,9 @@ public class OverloadedPowerSupplyBlockEntity extends AENetworkedBlockEntity
     }
 
     public void openMenu(Player player, MenuHostLocator locator) {
+        if (level instanceof ServerLevel) {
+            clearInvalidConnections();
+        }
         MenuOpener.open(OverloadedPowerSupplyMenu.TYPE, player, locator);
     }
 }
