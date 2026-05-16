@@ -37,7 +37,7 @@ public class OverloadDeviceWorkbenchMenu extends AEBaseMenu {
     public static final int DEVICE_Y = 20;
     public static final int STRUCTURAL_Y = 46;
     public static final int STRUCTURAL_SPACING = 20;
-    public static final int MAX_STRUCTURAL_SLOTS = 3;
+    public static final int MAX_STRUCTURAL_SLOTS = 2;
 
     public static final int LIST_X = 32;
     public static final int LIST_Y = 20;
