@@ -10,10 +10,10 @@ import net.minecraft.world.phys.BlockHitResult;
 import appeng.block.AEBaseEntityBlock;
 import appeng.menu.locator.MenuLocators;
 
-import com.moakiee.ae2lt.blockentity.OverloadArmorWorkbenchBlockEntity;
+import com.moakiee.ae2lt.blockentity.OverloadDeviceWorkbenchBlockEntity;
 
-public class OverloadArmorWorkbenchBlock extends AEBaseEntityBlock<OverloadArmorWorkbenchBlockEntity> {
-    public OverloadArmorWorkbenchBlock() {
+public class OverloadDeviceWorkbenchBlock extends AEBaseEntityBlock<OverloadDeviceWorkbenchBlockEntity> {
+    public OverloadDeviceWorkbenchBlock() {
         super(metalProps());
     }
 

@@ -9,7 +9,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 
-import com.moakiee.ae2lt.menu.OverloadArmorWorkbenchMenu;
+import com.moakiee.ae2lt.menu.OverloadDeviceWorkbenchMenu;
 
 /**
  * Workbench screen. Left column = armor + core/buffer/terminal (vertical 1+3). Right side = a
@@ -17,8 +17,8 @@ import com.moakiee.ae2lt.menu.OverloadArmorWorkbenchMenu;
  * the player. Beneath the list sits a single "install" slot where the player drops submodule
  * items; the server auto-installs them one at a time while the idle-overload budget allows.
  */
-public class OverloadArmorWorkbenchScreen extends AbstractContainerScreen<OverloadArmorWorkbenchMenu> {
-    private static final Component SCREEN_TITLE = Component.translatable("block.ae2lt.overload_armor_workbench");
+public class OverloadDeviceWorkbenchScreen extends AbstractContainerScreen<OverloadDeviceWorkbenchMenu> {
+    private static final Component SCREEN_TITLE = Component.translatable("block.ae2lt.overload_device_workbench");
 
     private static final int ROW_HEIGHT = 20;
     private static final int REMOVE_BUTTON_SIZE = 12;
@@ -27,12 +27,12 @@ public class OverloadArmorWorkbenchScreen extends AbstractContainerScreen<Overlo
 
     private int scrollOffset = 0;
 
-    public OverloadArmorWorkbenchScreen(OverloadArmorWorkbenchMenu menu, Inventory playerInventory, Component title) {
+    public OverloadDeviceWorkbenchScreen(OverloadDeviceWorkbenchMenu menu, Inventory playerInventory, Component title) {
         super(menu, playerInventory, title);
         this.imageWidth = 198;
         this.imageHeight = 208;
-        this.inventoryLabelX = OverloadArmorWorkbenchMenu.INVENTORY_X;
-        this.inventoryLabelY = OverloadArmorWorkbenchMenu.INVENTORY_Y - 10;
+        this.inventoryLabelX = OverloadDeviceWorkbenchMenu.INVENTORY_X;
+        this.inventoryLabelY = OverloadDeviceWorkbenchMenu.INVENTORY_Y - 10;
     }
 
     @Override
@@ -41,46 +41,47 @@ public class OverloadArmorWorkbenchScreen extends AbstractContainerScreen<Overlo
         graphics.fill(leftPos, topPos, leftPos + imageWidth, topPos + imageHeight, 0xFF1E1E1E);
         graphics.fill(leftPos + 1, topPos + 1, leftPos + imageWidth - 1, topPos + imageHeight - 1, 0xFF313131);
 
-        // Left column (armor + 3 structurals) panel.
+        // Left column (device + structural slots) panel.
         graphics.fill(leftPos + 4, topPos + 14, leftPos + 30, topPos + 108, 0xFF1F1F1F);
 
         // Module list panel.
-        int listLeft = leftPos + OverloadArmorWorkbenchMenu.LIST_X - 2;
-        int listTop = topPos + OverloadArmorWorkbenchMenu.LIST_Y - 2;
-        int listRight = listLeft + OverloadArmorWorkbenchMenu.LIST_WIDTH + 4;
-        int listBottom = listTop + OverloadArmorWorkbenchMenu.LIST_HEIGHT + 4;
+        int listLeft = leftPos + OverloadDeviceWorkbenchMenu.LIST_X - 2;
+        int listTop = topPos + OverloadDeviceWorkbenchMenu.LIST_Y - 2;
+        int listRight = listLeft + OverloadDeviceWorkbenchMenu.LIST_WIDTH + 4;
+        int listBottom = listTop + OverloadDeviceWorkbenchMenu.LIST_HEIGHT + 4;
         graphics.fill(listLeft, listTop, listRight, listBottom, 0xFF1B1B1B);
         graphics.fill(listLeft + 1, listTop + 1, listRight - 1, listBottom - 1, 0xFF262626);
 
         // Player inventory divider.
         graphics.fill(leftPos + 4,
-                topPos + OverloadArmorWorkbenchMenu.INVENTORY_Y - 12,
+                topPos + OverloadDeviceWorkbenchMenu.INVENTORY_Y - 12,
                 leftPos + imageWidth - 4,
                 topPos + imageHeight - 4,
                 0xFF262626);
 
         // Slot frames for the left column.
-        renderSlotFrame(graphics, leftPos + OverloadArmorWorkbenchMenu.LEFT_COL_X - 1,
-                topPos + OverloadArmorWorkbenchMenu.ARMOR_Y - 1);
-        renderSlotFrame(graphics, leftPos + OverloadArmorWorkbenchMenu.LEFT_COL_X - 1,
-                topPos + OverloadArmorWorkbenchMenu.CORE_Y - 1);
-        renderSlotFrame(graphics, leftPos + OverloadArmorWorkbenchMenu.LEFT_COL_X - 1,
-                topPos + OverloadArmorWorkbenchMenu.BUFFER_Y - 1);
-        renderSlotFrame(graphics, leftPos + OverloadArmorWorkbenchMenu.LEFT_COL_X - 1,
-                topPos + OverloadArmorWorkbenchMenu.TERMINAL_Y - 1);
+        renderSlotFrame(graphics, leftPos + OverloadDeviceWorkbenchMenu.LEFT_COL_X - 1,
+                topPos + OverloadDeviceWorkbenchMenu.DEVICE_Y - 1);
+        for (int index = 0; index < menu.getStructuralSlotSpecs().size(); index++) {
+            renderSlotFrame(
+                    graphics,
+                    leftPos + OverloadDeviceWorkbenchMenu.LEFT_COL_X - 1,
+                    topPos + OverloadDeviceWorkbenchMenu.STRUCTURAL_Y
+                            + index * OverloadDeviceWorkbenchMenu.STRUCTURAL_SPACING - 1);
+        }
 
         // Input slot frame.
-        renderSlotFrame(graphics, leftPos + OverloadArmorWorkbenchMenu.INPUT_X - 1,
-                topPos + OverloadArmorWorkbenchMenu.INPUT_Y - 1);
+        renderSlotFrame(graphics, leftPos + OverloadDeviceWorkbenchMenu.INPUT_X - 1,
+                topPos + OverloadDeviceWorkbenchMenu.INPUT_Y - 1);
 
         renderModuleList(graphics, mouseX, mouseY);
     }
 
     private void renderModuleList(GuiGraphics graphics, int mouseX, int mouseY) {
         var modules = menu.getInstalledModuleList();
-        int listLeft = leftPos + OverloadArmorWorkbenchMenu.LIST_X;
-        int listTop = topPos + OverloadArmorWorkbenchMenu.LIST_Y;
-        int listRight = listLeft + OverloadArmorWorkbenchMenu.LIST_WIDTH;
+        int listLeft = leftPos + OverloadDeviceWorkbenchMenu.LIST_X;
+        int listTop = topPos + OverloadDeviceWorkbenchMenu.LIST_Y;
+        int listRight = listLeft + OverloadDeviceWorkbenchMenu.LIST_WIDTH;
 
         scrollOffset = Math.max(0, Math.min(scrollOffset,
                 Math.max(0, modules.size() - VISIBLE_ROWS)));
@@ -101,8 +102,7 @@ public class OverloadArmorWorkbenchScreen extends AbstractContainerScreen<Overlo
             // Module icon + name + ×N (or ×N/Max when the submodule declares a per-type cap)
             graphics.renderItem(stack, listLeft + 2, rowY + 1);
             String name = stack.getHoverName().getString();
-            int cap = com.moakiee.ae2lt.overload.armor.OverloadArmorState
-                    .getSubmoduleMaxInstallAmountForStack(stack);
+            int cap = menu.getModuleMaxInstallAmount(stack);
             String amount = cap > 0
                     ? "×" + stack.getCount() + "/" + cap
                     : "×" + stack.getCount();
@@ -154,9 +154,9 @@ public class OverloadArmorWorkbenchScreen extends AbstractContainerScreen<Overlo
 
     private boolean handleModuleListClick(double mouseX, double mouseY) {
         var modules = menu.getInstalledModuleList();
-        int listLeft = leftPos + OverloadArmorWorkbenchMenu.LIST_X;
-        int listTop = topPos + OverloadArmorWorkbenchMenu.LIST_Y;
-        int listRight = listLeft + OverloadArmorWorkbenchMenu.LIST_WIDTH;
+        int listLeft = leftPos + OverloadDeviceWorkbenchMenu.LIST_X;
+        int listTop = topPos + OverloadDeviceWorkbenchMenu.LIST_Y;
+        int listRight = listLeft + OverloadDeviceWorkbenchMenu.LIST_WIDTH;
 
         for (int i = 0; i < VISIBLE_ROWS; i++) {
             int modIndex = scrollOffset + i;
@@ -179,9 +179,9 @@ public class OverloadArmorWorkbenchScreen extends AbstractContainerScreen<Overlo
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         var modules = menu.getInstalledModuleList();
-        int listLeft = leftPos + OverloadArmorWorkbenchMenu.LIST_X;
-        int listTop = topPos + OverloadArmorWorkbenchMenu.LIST_Y;
-        int listRight = listLeft + OverloadArmorWorkbenchMenu.LIST_WIDTH;
+        int listLeft = leftPos + OverloadDeviceWorkbenchMenu.LIST_X;
+        int listTop = topPos + OverloadDeviceWorkbenchMenu.LIST_Y;
+        int listRight = listLeft + OverloadDeviceWorkbenchMenu.LIST_WIDTH;
         int listBottom = listTop + ROW_HEIGHT * VISIBLE_ROWS;
         if (mouseX >= listLeft && mouseX < listRight + 8
                 && mouseY >= listTop && mouseY < listBottom) {
@@ -200,14 +200,14 @@ public class OverloadArmorWorkbenchScreen extends AbstractContainerScreen<Overlo
     protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
         graphics.drawString(font, SCREEN_TITLE, 8, 6, 0xE0E0E0, false);
         graphics.drawString(font, menu.getStatusText(),
-                OverloadArmorWorkbenchMenu.LIST_X,
-                OverloadArmorWorkbenchMenu.LIST_Y + ROW_HEIGHT * VISIBLE_ROWS + 2,
+                OverloadDeviceWorkbenchMenu.LIST_X,
+                OverloadDeviceWorkbenchMenu.LIST_Y + ROW_HEIGHT * VISIBLE_ROWS + 2,
                 0xF6D365, false);
         graphics.drawString(font,
-                Component.translatable("ae2lt.overload_armor_workbench.screen.modules",
+                Component.translatable("ae2lt.overload_device_workbench.screen.modules",
                         menu.moduleTypeCount, menu.moduleIdleUsed, menu.baseOverload),
-                OverloadArmorWorkbenchMenu.LIST_X,
-                OverloadArmorWorkbenchMenu.LIST_Y + ROW_HEIGHT * VISIBLE_ROWS + 12,
+                OverloadDeviceWorkbenchMenu.LIST_X,
+                OverloadDeviceWorkbenchMenu.LIST_Y + ROW_HEIGHT * VISIBLE_ROWS + 12,
                 0xE0E0E0,
                 false);
         graphics.drawString(font, playerInventoryTitle, inventoryLabelX, inventoryLabelY, 0xE0E0E0, false);
@@ -223,9 +223,9 @@ public class OverloadArmorWorkbenchScreen extends AbstractContainerScreen<Overlo
 
     private void renderModuleRowTooltip(GuiGraphics graphics, int mouseX, int mouseY) {
         List<ItemStack> modules = menu.getInstalledModuleList();
-        int listLeft = leftPos + OverloadArmorWorkbenchMenu.LIST_X;
-        int listTop = topPos + OverloadArmorWorkbenchMenu.LIST_Y;
-        int listRight = listLeft + OverloadArmorWorkbenchMenu.LIST_WIDTH;
+        int listLeft = leftPos + OverloadDeviceWorkbenchMenu.LIST_X;
+        int listTop = topPos + OverloadDeviceWorkbenchMenu.LIST_Y;
+        int listRight = listLeft + OverloadDeviceWorkbenchMenu.LIST_WIDTH;
         for (int i = 0; i < VISIBLE_ROWS; i++) {
             int modIndex = scrollOffset + i;
             if (modIndex >= modules.size()) break;
@@ -242,9 +242,9 @@ public class OverloadArmorWorkbenchScreen extends AbstractContainerScreen<Overlo
                 graphics.renderComponentTooltip(font,
                         List.of(
                                 Component.translatable(
-                                        "ae2lt.overload_armor_workbench.screen.uninstall_one"),
+                                        "ae2lt.overload_device_workbench.screen.uninstall_one"),
                                 Component.translatable(
-                                        "ae2lt.overload_armor_workbench.screen.uninstall_all")),
+                                        "ae2lt.overload_device_workbench.screen.uninstall_all")),
                         mouseX, mouseY);
                 return;
             }

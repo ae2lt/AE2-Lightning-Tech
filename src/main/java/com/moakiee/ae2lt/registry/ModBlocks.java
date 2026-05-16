@@ -10,7 +10,7 @@ import com.moakiee.ae2lt.block.LightningSimulationChamberBlock;
 import com.moakiee.ae2lt.block.OverloadProcessingFactoryBlock;
 import com.moakiee.ae2lt.block.OverloadTntBlock;
 import com.moakiee.ae2lt.block.OverloadCrystalClusterBlock;
-import com.moakiee.ae2lt.block.OverloadArmorWorkbenchBlock;
+import com.moakiee.ae2lt.block.OverloadDeviceWorkbenchBlock;
 import com.moakiee.ae2lt.block.OverloadedControllerBlock;
 import com.moakiee.ae2lt.block.OverloadedInterfaceBlock;
 import com.moakiee.ae2lt.block.OverloadedPatternProviderBlock;
@@ -159,8 +159,8 @@ public final class ModBlocks {
     public static final DeferredBlock<AdvancedWirelessOverloadedControllerBlock> ADVANCED_WIRELESS_OVERLOADED_CONTROLLER =
             registerBlock("advanced_wireless_overloaded_controller", AdvancedWirelessOverloadedControllerBlock::new);
 
-    public static final DeferredBlock<OverloadArmorWorkbenchBlock> OVERLOAD_ARMOR_WORKBENCH =
-            registerBlock("overload_armor_workbench", OverloadArmorWorkbenchBlock::new);
+    public static final DeferredBlock<OverloadDeviceWorkbenchBlock> OVERLOAD_DEVICE_WORKBENCH =
+            registerBlock("overload_device_workbench", OverloadDeviceWorkbenchBlock::new);
 
     private ModBlocks() {
     }

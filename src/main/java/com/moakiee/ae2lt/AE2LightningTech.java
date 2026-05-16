@@ -16,7 +16,7 @@ import com.moakiee.ae2lt.blockentity.AtmosphericIonizerBlockEntity;
 import com.moakiee.ae2lt.blockentity.CrystalCatalyzerBlockEntity;
 import com.moakiee.ae2lt.blockentity.LightningAssemblyChamberBlockEntity;
 import com.moakiee.ae2lt.blockentity.LightningCollectorBlockEntity;
-import com.moakiee.ae2lt.blockentity.OverloadArmorWorkbenchBlockEntity;
+import com.moakiee.ae2lt.blockentity.OverloadDeviceWorkbenchBlockEntity;
 import com.moakiee.ae2lt.blockentity.OverloadedControllerBlockEntity;
 import com.moakiee.ae2lt.blockentity.OverloadedInterfaceBlockEntity;
 import com.moakiee.ae2lt.blockentity.LightningSimulationChamberBlockEntity;
@@ -105,7 +105,7 @@ public class AE2LightningTech {
                         output.accept(ModBlocks.LIGHTNING_SIMULATION_CHAMBER);
                         output.accept(ModBlocks.LIGHTNING_ASSEMBLY_CHAMBER);
                         output.accept(ModBlocks.OVERLOAD_PROCESSING_FACTORY);
-                        output.accept(ModBlocks.OVERLOAD_ARMOR_WORKBENCH);
+                        output.accept(ModBlocks.OVERLOAD_DEVICE_WORKBENCH);
                         output.accept(ModBlocks.CRYSTAL_CATALYZER);
                         // 网络设备
                         output.accept(ModBlocks.OVERLOADED_CONTROLLER);
@@ -316,7 +316,7 @@ public class AE2LightningTech {
 
         event.registerBlockEntity(
                 Capabilities.ItemHandler.BLOCK,
-                ModBlockEntities.OVERLOAD_ARMOR_WORKBENCH.get(),
+                ModBlockEntities.OVERLOAD_DEVICE_WORKBENCH.get(),
                 (blockEntity, side) -> WORKBENCH_REJECTING_ITEM_HANDLER);
 
         event.registerBlockEntity(
@@ -585,11 +585,11 @@ public class AE2LightningTech {
                     null,
                     null);
 
-            var overloadArmorWorkbenchBlock = ModBlocks.OVERLOAD_ARMOR_WORKBENCH.get();
-            var overloadArmorWorkbenchBeType = ModBlockEntities.OVERLOAD_ARMOR_WORKBENCH.get();
-            overloadArmorWorkbenchBlock.setBlockEntity(
-                    OverloadArmorWorkbenchBlockEntity.class,
-                    overloadArmorWorkbenchBeType,
+            var overloadDeviceWorkbenchBlock = ModBlocks.OVERLOAD_DEVICE_WORKBENCH.get();
+            var overloadDeviceWorkbenchBeType = ModBlockEntities.OVERLOAD_DEVICE_WORKBENCH.get();
+            overloadDeviceWorkbenchBlock.setBlockEntity(
+                    OverloadDeviceWorkbenchBlockEntity.class,
+                    overloadDeviceWorkbenchBeType,
                     null,
                     null);
 
@@ -661,8 +661,8 @@ public class AE2LightningTech {
                     atmosphericIonizerBeType,
                     atmosphericIonizerBlock.asItem());
             appeng.blockentity.AEBaseBlockEntity.registerBlockEntityItem(
-                    overloadArmorWorkbenchBeType,
-                    overloadArmorWorkbenchBlock.asItem());
+                    overloadDeviceWorkbenchBeType,
+                    overloadDeviceWorkbenchBlock.asItem());
             appeng.blockentity.AEBaseBlockEntity.registerBlockEntityItem(
                     crystalCatalyzerBeType,
                     crystalCatalyzerBlock.asItem());

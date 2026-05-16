@@ -1,0 +1,227 @@
+package com.moakiee.ae2lt.blockentity.workbench;
+
+import java.util.List;
+import java.util.function.Predicate;
+
+import net.minecraft.core.HolderLookup;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.neoforged.api.distmarker.Dist;
+
+import appeng.menu.SlotSemantic;
+
+import de.mari_023.ae2wtlib.api.terminal.ItemWT;
+
+import com.moakiee.ae2lt.device.DeviceKind;
+import com.moakiee.ae2lt.device.DeviceSlotType;
+import com.moakiee.ae2lt.device.energy.DeviceEnergyBuffer;
+import com.moakiee.ae2lt.device.energy.SelfContainedEnergyBuffer;
+import com.moakiee.ae2lt.device.module.ArmorModuleStorage;
+import com.moakiee.ae2lt.device.module.DeviceModuleStorage;
+import com.moakiee.ae2lt.device.network.ArmorNetworkBinding;
+import com.moakiee.ae2lt.device.network.DeviceNetworkBinding;
+import com.moakiee.ae2lt.item.LightningStorageComponentItem;
+import com.moakiee.ae2lt.overload.armor.OverloadArmorState;
+import com.moakiee.ae2lt.overload.armor.module.OverloadArmorSubmoduleItem;
+import com.moakiee.ae2lt.registry.ModItems;
+
+public final class ArmorWorkbenchAdapter implements DeviceWorkbenchAdapter {
+    public static final ArmorWorkbenchAdapter INSTANCE = new ArmorWorkbenchAdapter();
+
+    private static final List<StructuralSlotSpec> STRUCTURAL_SLOTS = List.of(
+            slot(0, DeviceSlotType.CORE, com.moakiee.ae2lt.menu.Ae2ltSlotSemantics.OVERLOAD_DEVICE_WORKBENCH_CORE),
+            slot(1, DeviceSlotType.BUFFER, com.moakiee.ae2lt.menu.Ae2ltSlotSemantics.OVERLOAD_DEVICE_WORKBENCH_BUFFER),
+            slot(2, DeviceSlotType.TERMINAL, com.moakiee.ae2lt.menu.Ae2ltSlotSemantics.OVERLOAD_DEVICE_WORKBENCH_TERMINAL));
+
+    private ArmorWorkbenchAdapter() {}
+
+    @Override
+    public DeviceKind deviceKind() {
+        return DeviceKind.OVERLOAD_ARMOR;
+    }
+
+    @Override
+    public DeviceModuleStorage moduleStorage() {
+        return ArmorModuleStorage.INSTANCE;
+    }
+
+    @Override
+    public DeviceEnergyBuffer energyBuffer() {
+        return SelfContainedEnergyBuffer.INSTANCE;
+    }
+
+    @Override
+    public DeviceNetworkBinding networkBinding() {
+        return ArmorNetworkBinding.INSTANCE;
+    }
+
+    @Override
+    public List<StructuralSlotSpec> structuralSlots() {
+        return STRUCTURAL_SLOTS;
+    }
+
+    @Override
+    public Predicate<ItemStack> moduleInputValidator(ItemStack device, HolderLookup.Provider registries) {
+        return stack -> stack.getItem() instanceof OverloadArmorSubmoduleItem
+                && OverloadArmorState.canInstallModule(device, registries, stack);
+    }
+
+    @Override
+    public List<ItemStack> listModuleEntries(ItemStack device, HolderLookup.Provider registries) {
+        return OverloadArmorState.loadModuleStacks(device, registries);
+    }
+
+    @Override
+    public boolean canInstallOne(ItemStack device, HolderLookup.Provider registries, ItemStack candidate) {
+        return OverloadArmorState.canInstallModule(device, registries, candidate);
+    }
+
+    @Override
+    public boolean installOne(ItemStack device, HolderLookup.Provider registries, ItemStack candidate) {
+        return OverloadArmorState.installOneModule(device, registries, candidate);
+    }
+
+    @Override
+    public ItemStack uninstallOne(ItemStack device, HolderLookup.Provider registries, String typeId) {
+        return OverloadArmorState.uninstallOneModule(device, registries, typeId);
+    }
+
+    @Override
+    public ItemStack uninstallAll(ItemStack device, HolderLookup.Provider registries, String typeId) {
+        return OverloadArmorState.uninstallAllOfType(device, registries, typeId);
+    }
+
+    @Override
+    public String moduleTypeId(ItemStack stack) {
+        if (stack.isEmpty() || !(stack.getItem() instanceof OverloadArmorSubmoduleItem provider)) {
+            return "";
+        }
+        var ref = new String[]{""};
+        provider.collectSubmodules(stack, submodule -> {
+            if (submodule != null && !submodule.id().isBlank() && ref[0].isEmpty()) {
+                ref[0] = submodule.id();
+            }
+        });
+        return ref[0];
+    }
+
+    @Override
+    public int maxInstallAmount(ItemStack stack) {
+        return OverloadArmorState.getSubmoduleMaxInstallAmountForStack(stack);
+    }
+
+    @Override
+    public int baseOverloadBudget(ItemStack device, HolderLookup.Provider registries) {
+        return OverloadArmorState.getBaseOverload(device, registries);
+    }
+
+    @Override
+    public int currentIdleOverload(ItemStack device, HolderLookup.Provider registries) {
+        return OverloadArmorState.computeTotalIdleOverload(device, registries);
+    }
+
+    @Override
+    public ItemStack getStructuralSlot(ItemStack device, HolderLookup.Provider registries, StructuralSlotSpec spec) {
+        return OverloadArmorState.getSlot(device, registries, toArmorSlot(spec));
+    }
+
+    @Override
+    public void setStructuralSlot(
+            ItemStack device,
+            HolderLookup.Provider registries,
+            StructuralSlotSpec spec,
+            ItemStack stack) {
+        if (spec.slotType() == DeviceSlotType.CORE
+                && !OverloadArmorState.canInstallCore(device, registries, stack)) {
+            return;
+        }
+        OverloadArmorState.ensureArmorId(device);
+        OverloadArmorState.setSlot(device, registries, toArmorSlot(spec), stack.copy());
+    }
+
+    @Override
+    public ItemStack removeStructuralSlot(
+            ItemStack device,
+            HolderLookup.Provider registries,
+            StructuralSlotSpec spec,
+            int amount) {
+        if (amount <= 0) {
+            return ItemStack.EMPTY;
+        }
+        var existing = getStructuralSlot(device, registries, spec);
+        if (existing.isEmpty()) {
+            return ItemStack.EMPTY;
+        }
+        if (amount >= existing.getCount()) {
+            setStructuralSlot(device, registries, spec, ItemStack.EMPTY);
+            return existing;
+        }
+        var remaining = existing.copy();
+        var removed = remaining.split(amount);
+        setStructuralSlot(device, registries, spec, remaining);
+        return removed;
+    }
+
+    @Override
+    public boolean canPlaceStructural(
+            ItemStack device,
+            HolderLookup.Provider registries,
+            StructuralSlotSpec spec,
+            ItemStack stack) {
+        if (device.isEmpty() || stack.isEmpty()) {
+            return false;
+        }
+        return switch (spec.slotType()) {
+            case CORE -> stack.is(ModItems.ULTIMATE_OVERLOAD_CORE.get())
+                    && OverloadArmorState.canInstallCore(device, registries, stack);
+            case BUFFER -> stack.getItem() instanceof LightningStorageComponentItem;
+            case TERMINAL -> stack.getItem() instanceof ItemWT;
+            default -> false;
+        };
+    }
+
+    @Override
+    public boolean mayPickupStructural(
+            ItemStack device,
+            HolderLookup.Provider registries,
+            StructuralSlotSpec spec,
+            Player player,
+            ItemStack carried) {
+        if (device.isEmpty()) {
+            return false;
+        }
+        if (spec.slotType() != DeviceSlotType.CORE) {
+            return true;
+        }
+        if (!OverloadArmorState.hasAnyInstalledModule(device, registries)) {
+            return true;
+        }
+        return !carried.isEmpty()
+                && carried.is(ModItems.ULTIMATE_OVERLOAD_CORE.get())
+                && OverloadArmorState.canInstallCore(device, registries, carried);
+    }
+
+    @Override
+    public void onDeviceInserted(ItemStack device) {
+        OverloadArmorState.ensureArmorId(device);
+    }
+
+    @Override
+    public void onModulesChanged(ItemStack device, HolderLookup.Provider registries, Dist dist) {
+        OverloadArmorState.ensureArmorId(device);
+        OverloadArmorState.reconcileInstalledSubmodules(null, device, registries, dist);
+    }
+
+    private static StructuralSlotSpec slot(int index, DeviceSlotType type, SlotSemantic semantic) {
+        return new StructuralSlotSpec(index, type, semantic);
+    }
+
+    private static int toArmorSlot(StructuralSlotSpec spec) {
+        return switch (spec.slotType()) {
+            case CORE -> OverloadArmorState.SLOT_CORE;
+            case BUFFER -> OverloadArmorState.SLOT_BUFFER;
+            case TERMINAL -> OverloadArmorState.SLOT_TERMINAL;
+            default -> -1;
+        };
+    }
+}
