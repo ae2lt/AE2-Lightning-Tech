@@ -42,13 +42,13 @@ public class OverloadDeviceWorkbenchMenu extends AEBaseMenu {
     public static final int LIST_X = 32;
     public static final int LIST_Y = 20;
     public static final int LIST_WIDTH = 156;
-    public static final int LIST_HEIGHT = 72;
+    public static final int LIST_HEIGHT = 80;
     public static final int INPUT_X = LEFT_COL_X + 26;
-    public static final int INPUT_Y = LIST_Y + LIST_HEIGHT + 12;
+    public static final int INPUT_Y = 140;
 
     public static final int INVENTORY_X = 20;
-    public static final int INVENTORY_Y = 124;
-    public static final int HOTBAR_Y = 182;
+    public static final int INVENTORY_Y = 162;
+    public static final int HOTBAR_Y = 220;
 
     @GuiSync(0)
     public int devicePresent;
@@ -62,6 +62,8 @@ public class OverloadDeviceWorkbenchMenu extends AEBaseMenu {
     public int coreInstalled;
     @GuiSync(5)
     public int bufferInstalled;
+    @GuiSync(6)
+    public long bufferStored;
     @GuiSync(7)
     public int moduleIdleUsed;
 
@@ -294,6 +296,7 @@ public class OverloadDeviceWorkbenchMenu extends AEBaseMenu {
         moduleTypeCount = host.getModuleList(registryAccess()).size();
         baseOverload = host.baseOverloadBudget(registryAccess());
         bufferCapacity = adapter.energyBuffer().capacity(device);
+        bufferStored = adapter.energyBuffer().stored(device);
         moduleIdleUsed = host.currentIdleOverload(registryAccess());
 
         coreInstalled = structuralInstalled(DeviceSlotType.CORE) ? 1 : 0;

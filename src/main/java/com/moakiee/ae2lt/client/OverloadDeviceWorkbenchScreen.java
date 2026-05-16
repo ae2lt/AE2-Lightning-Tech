@@ -23,14 +23,14 @@ public class OverloadDeviceWorkbenchScreen extends AbstractContainerScreen<Overl
     private static final int ROW_HEIGHT = 20;
     private static final int REMOVE_BUTTON_SIZE = 12;
     private static final int REMOVE_BUTTON_MARGIN = 4;
-    private static final int VISIBLE_ROWS = 3;
+    private static final int VISIBLE_ROWS = 4;
 
     private int scrollOffset = 0;
 
     public OverloadDeviceWorkbenchScreen(OverloadDeviceWorkbenchMenu menu, Inventory playerInventory, Component title) {
         super(menu, playerInventory, title);
         this.imageWidth = 198;
-        this.imageHeight = 208;
+        this.imageHeight = 244;
         this.inventoryLabelX = OverloadDeviceWorkbenchMenu.INVENTORY_X;
         this.inventoryLabelY = OverloadDeviceWorkbenchMenu.INVENTORY_Y - 10;
     }
@@ -42,7 +42,8 @@ public class OverloadDeviceWorkbenchScreen extends AbstractContainerScreen<Overl
         graphics.fill(leftPos + 1, topPos + 1, leftPos + imageWidth - 1, topPos + imageHeight - 1, 0xFF313131);
 
         // Left column (device + structural slots) panel.
-        graphics.fill(leftPos + 4, topPos + 14, leftPos + 30, topPos + 108, 0xFF1F1F1F);
+        graphics.fill(leftPos + 4, topPos + 14, leftPos + 30,
+                topPos + OverloadDeviceWorkbenchMenu.INPUT_Y + 20, 0xFF1F1F1F);
 
         // Module list panel.
         int listLeft = leftPos + OverloadDeviceWorkbenchMenu.LIST_X - 2;
@@ -75,6 +76,8 @@ public class OverloadDeviceWorkbenchScreen extends AbstractContainerScreen<Overl
                 topPos + OverloadDeviceWorkbenchMenu.INPUT_Y - 1);
 
         renderModuleList(graphics, mouseX, mouseY);
+        renderOverloadBar(graphics);
+        renderEnergyBar(graphics);
     }
 
     private void renderModuleList(GuiGraphics graphics, int mouseX, int mouseY) {
@@ -201,13 +204,13 @@ public class OverloadDeviceWorkbenchScreen extends AbstractContainerScreen<Overl
         graphics.drawString(font, SCREEN_TITLE, 8, 6, 0xE0E0E0, false);
         graphics.drawString(font, menu.getStatusText(),
                 OverloadDeviceWorkbenchMenu.LIST_X,
-                OverloadDeviceWorkbenchMenu.LIST_Y + ROW_HEIGHT * VISIBLE_ROWS + 2,
+                120,
                 0xF6D365, false);
         graphics.drawString(font,
                 Component.translatable("ae2lt.overload_device_workbench.screen.modules",
                         menu.moduleTypeCount, menu.moduleIdleUsed, menu.baseOverload),
                 OverloadDeviceWorkbenchMenu.LIST_X,
-                OverloadDeviceWorkbenchMenu.LIST_Y + ROW_HEIGHT * VISIBLE_ROWS + 12,
+                130,
                 0xE0E0E0,
                 false);
         graphics.drawString(font, playerInventoryTitle, inventoryLabelX, inventoryLabelY, 0xE0E0E0, false);
@@ -255,5 +258,38 @@ public class OverloadDeviceWorkbenchScreen extends AbstractContainerScreen<Overl
         graphics.fill(x, y, x + 18, y + 18, 0xFF080808);
         graphics.fill(x + 1, y + 1, x + 17, y + 17, 0xFF8B8B8B);
         graphics.fill(x + 2, y + 2, x + 16, y + 16, 0xFF1B1B1B);
+    }
+
+    private void renderOverloadBar(GuiGraphics graphics) {
+        int barX = leftPos + OverloadDeviceWorkbenchMenu.LIST_X;
+        int barY = topPos + OverloadDeviceWorkbenchMenu.LIST_Y + ROW_HEIGHT * VISIBLE_ROWS + 2;
+        int barW = OverloadDeviceWorkbenchMenu.LIST_WIDTH;
+        int barH = 6;
+        graphics.fill(barX - 1, barY - 1, barX + barW + 1, barY + barH + 1, 0xFF080808);
+        graphics.fill(barX, barY, barX + barW, barY + barH, 0xFF1A1A1A);
+        if (menu.baseOverload > 0) {
+            double ratio = Math.min(1.0, (double) menu.moduleIdleUsed / menu.baseOverload);
+            int filled = (int) Math.round(ratio * barW);
+            if (filled > 0) {
+                graphics.fill(barX, barY, barX + filled, barY + barH, 0xFFF6D365);
+            }
+        }
+    }
+
+    private void renderEnergyBar(GuiGraphics graphics) {
+        if (menu.bufferCapacity <= 0L) {
+            return;
+        }
+        int barX = leftPos + OverloadDeviceWorkbenchMenu.LIST_X;
+        int barY = topPos + OverloadDeviceWorkbenchMenu.LIST_Y + ROW_HEIGHT * VISIBLE_ROWS + 12;
+        int barW = OverloadDeviceWorkbenchMenu.LIST_WIDTH;
+        int barH = 6;
+        graphics.fill(barX - 1, barY - 1, barX + barW + 1, barY + barH + 1, 0xFF080808);
+        graphics.fill(barX, barY, barX + barW, barY + barH, 0xFF1F2A22);
+        double ratio = Math.min(1.0, (double) menu.bufferStored / menu.bufferCapacity);
+        int filled = (int) Math.round(ratio * barW);
+        if (filled > 0) {
+            graphics.fill(barX, barY, barX + filled, barY + barH, 0xFF36B65C);
+        }
     }
 }
