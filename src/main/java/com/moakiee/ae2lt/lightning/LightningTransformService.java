@@ -2,7 +2,9 @@ package com.moakiee.ae2lt.lightning;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.LightningBolt;
@@ -55,6 +57,7 @@ public final class LightningTransformService {
         }
 
         List<LightningTransformPlan> executedPlans = new ArrayList<>();
+        List<PendingOutput> pendingOutputs = new ArrayList<>();
 
         for (int round = 0; round < MAX_ROUNDS_PER_STRIKE; round++) {
             List<ItemEntity> candidates = filterStillEligible(candidatePool, gameTime);
@@ -77,13 +80,13 @@ public final class LightningTransformService {
                 break;
             }
 
-            spawnResult(
-                    level,
+            pendingOutputs.add(new PendingOutput(
                     matchedRecipe.get().recipe().value().getResultItem(level.registryAccess()),
-                    plan.spawnPosition(),
-                    gameTime);
+                    plan.spawnPosition()));
             executedPlans.add(plan);
         }
+
+        spawnAccumulatedResults(level, pendingOutputs, gameTime);
 
         for (LightningTransformPlan plan : executedPlans) {
             plan.applyTransformLocks(gameTime);
@@ -136,24 +139,91 @@ public final class LightningTransformService {
         return Optional.empty();
     }
 
-    private static void spawnResult(ServerLevel level, ItemStack result, Vec3 spawnPosition, long gameTime) {
-        if (result.isEmpty()) {
+    private static void spawnAccumulatedResults(ServerLevel level, List<PendingOutput> pendingOutputs, long gameTime) {
+        if (pendingOutputs.isEmpty()) {
             return;
         }
 
-        ItemStack remaining = result.copy();
-        while (!remaining.isEmpty()) {
-            int spawnCount = Math.min(remaining.getCount(), remaining.getMaxStackSize());
-            ItemStack spawnedStack = remaining.copyWithCount(spawnCount);
-            remaining.shrink(spawnCount);
+        Map<ItemStackKey, AccumulatedOutput> accumulated = new LinkedHashMap<>();
+        for (PendingOutput pending : pendingOutputs) {
+            if (pending.result.isEmpty()) {
+                continue;
+            }
+            ItemStackKey key = new ItemStackKey(pending.result);
+            accumulated.computeIfAbsent(key, k -> new AccumulatedOutput(pending.result))
+                    .add(pending.result.getCount(), pending.position);
+        }
 
-            ItemEntity itemEntity = new ItemEntity(level, spawnPosition.x, spawnPosition.y, spawnPosition.z, spawnedStack);
-            itemEntity.setDeltaMovement(Vec3.ZERO);
-            ProtectedItemEntityHelper.applyOutputProtection(itemEntity, gameTime);
-            level.addFreshEntity(itemEntity);
+        for (AccumulatedOutput output : accumulated.values()) {
+            Vec3 position = output.averagePosition();
+            ItemStack remaining = output.stack.copyWithCount(output.totalCount);
+            while (!remaining.isEmpty()) {
+                int spawnCount = Math.min(remaining.getCount(), remaining.getMaxStackSize());
+                ItemStack spawnedStack = remaining.copyWithCount(spawnCount);
+                remaining.shrink(spawnCount);
+
+                ItemEntity itemEntity = new ItemEntity(
+                        level, position.x, position.y, position.z, spawnedStack);
+                itemEntity.setDeltaMovement(Vec3.ZERO);
+                ProtectedItemEntityHelper.applyOutputProtection(itemEntity, gameTime);
+                level.addFreshEntity(itemEntity);
+            }
         }
     }
 
+    private record PendingOutput(ItemStack result, Vec3 position) {
+    }
+
     private record MatchedRecipe(RecipeHolder<LightningTransformRecipe> recipe, LightningTransformPlan plan) {
+    }
+
+    private static final class ItemStackKey {
+        private final ItemStack stack;
+        private final int hash;
+
+        private ItemStackKey(ItemStack stack) {
+            this.stack = stack.copyWithCount(1);
+            this.hash = ItemStack.hashItemAndComponents(this.stack);
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            if (this == other) return true;
+            if (!(other instanceof ItemStackKey key)) return false;
+            return ItemStack.isSameItemSameComponents(this.stack, key.stack);
+        }
+
+        @Override
+        public int hashCode() {
+            return hash;
+        }
+    }
+
+    private static final class AccumulatedOutput {
+        private final ItemStack stack;
+        private int totalCount;
+        private double totalX;
+        private double totalY;
+        private double totalZ;
+        private int positionWeight;
+
+        private AccumulatedOutput(ItemStack stack) {
+            this.stack = stack.copyWithCount(1);
+        }
+
+        private void add(int count, Vec3 position) {
+            totalCount += count;
+            totalX += position.x * count;
+            totalY += position.y * count;
+            totalZ += position.z * count;
+            positionWeight += count;
+        }
+
+        private Vec3 averagePosition() {
+            return new Vec3(
+                    totalX / positionWeight,
+                    totalY / positionWeight,
+                    totalZ / positionWeight);
+        }
     }
 }
