@@ -315,7 +315,10 @@ public class OverloadedInterfaceLogic extends InterfaceLogic {
         public long getCapacity(AEKeyType keyType) {
             // AE2 adapts this to IItemHandler slot limit; keep unbounded so external
             // automation does not re-impose OVERLOADED_CAP on unlimited slots.
+            // Fluid capability consumers such as Jade also use this as the
+            // denominator for progress bars, so it must be unbounded too.
             if (keyType == AEKeyType.items()) return Integer.MAX_VALUE;
+            if (keyType == AEKeyType.fluids()) return Long.MAX_VALUE;
             return super.getCapacity(keyType);
         }
 
