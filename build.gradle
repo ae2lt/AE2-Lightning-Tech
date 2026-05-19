@@ -110,6 +110,8 @@ dependencies {
 
     compileOnly fg.deobf("curse.maven:applied-flux-965012:${appflux_file_id}")
     runtimeOnly fg.deobf("curse.maven:applied-flux-965012:${appflux_file_id}")
+    runtimeOnly fg.deobf("org.appliedenergistics:guideme:${guideme_version}")
+    runtimeOnly fg.deobf("curse.maven:glodium-957920:${glodium_file_id}")
 
     compileOnly fg.deobf("curse.maven:extendedae-892005:${extendedae_file_id}")
     runtimeOnly fg.deobf("curse.maven:extendedae-892005:${extendedae_file_id}")
