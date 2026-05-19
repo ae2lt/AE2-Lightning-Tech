@@ -14,6 +14,7 @@ import appeng.api.networking.security.IActionHost;
 import appeng.api.networking.security.IActionSource;
 import appeng.api.orientation.BlockOrientation;
 import appeng.api.orientation.RelativeSide;
+import appeng.api.stacks.AEFluidKey;
 import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.AEKeyType;
 import appeng.api.storage.MEStorage;
@@ -24,6 +25,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraftforge.fluids.FluidStack;
 
 public final class AdjacentItemAutoExportHelper {
     private static final long WRAPPER_REFRESH_TICKS = 20L;
@@ -130,6 +132,16 @@ public final class AdjacentItemAutoExportHelper {
         @Nullable CompositeStorage resolve(Direction direction);
     }
 
+    @FunctionalInterface
+    public interface FluidTankReader {
+        FluidStack getFluid();
+    }
+
+    @FunctionalInterface
+    public interface FluidDrainer {
+        int drain(int amount);
+    }
+
     public static boolean hasAnyOutput(boolean autoExport, int firstSlot, int slotCount, SlotStackReader stackReader) {
         if (!autoExport) {
             return false;
@@ -198,6 +210,60 @@ public final class AdjacentItemAutoExportHelper {
         }
 
         return false;
+    }
+
+    public static boolean pushOutFluid(
+            IActionHost host,
+            @Nullable BlockOrientation orientation,
+            Set<RelativeSide> allowedOutputs,
+            FluidTankReader tankReader,
+            FluidDrainer drainer,
+            TargetResolver targetResolver) {
+        if (orientation == null || allowedOutputs.isEmpty()) {
+            return false;
+        }
+
+        FluidStack stored = tankReader.getFluid();
+        if (stored.isEmpty()) {
+            return false;
+        }
+
+        var fluidKey = AEFluidKey.of(stored);
+        if (fluidKey == null) {
+            return false;
+        }
+
+        var actionSource = IActionSource.ofMachine(host);
+        int remaining = stored.getAmount();
+        boolean pushed = false;
+        for (var side : allowedOutputs) {
+            if (remaining <= 0) {
+                break;
+            }
+
+            var direction = orientation.getSide(side);
+            if (direction == null) {
+                continue;
+            }
+
+            var target = targetResolver.resolve(direction);
+            if (target == null) {
+                continue;
+            }
+
+            long inserted = target.insert(fluidKey, remaining, Actionable.MODULATE, actionSource);
+            if (inserted <= 0L) {
+                continue;
+            }
+
+            int drained = drainer.drain((int) inserted);
+            if (drained > 0) {
+                pushed = true;
+                remaining -= drained;
+            }
+        }
+
+        return pushed;
     }
 
     @Nullable

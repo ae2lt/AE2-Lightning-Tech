@@ -363,7 +363,13 @@ public class OverloadProcessingFactoryBlockEntity extends AENetworkBlockEntity
     }
 
     public boolean hasAutoExportWork() {
-        return !allowedOutputs.isEmpty() && AdjacentItemAutoExportHelper.hasAnyOutput(
+        if (allowedOutputs.isEmpty() || !autoExport) {
+            return false;
+        }
+        if (!outputTank.getFluid().isEmpty()) {
+            return true;
+        }
+        return AdjacentItemAutoExportHelper.hasAnyOutput(
                 autoExport,
                 OverloadProcessingFactoryInventory.SLOT_OUTPUT_0,
                 OverloadProcessingFactoryInventory.OUTPUT_SLOT_COUNT,
@@ -371,11 +377,11 @@ public class OverloadProcessingFactoryBlockEntity extends AENetworkBlockEntity
     }
 
     public boolean pushOutResult() {
-        if (allowedOutputs.isEmpty() || !hasAutoExportWork() || !(level instanceof ServerLevel serverLevel)) {
+        if (allowedOutputs.isEmpty() || !(level instanceof ServerLevel serverLevel)) {
             return false;
         }
 
-        return AdjacentItemAutoExportHelper.pushOutResult(
+        boolean pushedItem = AdjacentItemAutoExportHelper.pushOutResult(
                 this,
                 getOrientation(),
                 allowedOutputs,
@@ -389,6 +395,19 @@ public class OverloadProcessingFactoryBlockEntity extends AENetworkBlockEntity
                     }
                 },
                 direction -> getExportTarget(serverLevel, direction));
+
+        boolean pushedFluid = AdjacentItemAutoExportHelper.pushOutFluid(
+                this,
+                getOrientation(),
+                allowedOutputs,
+                outputTank::getFluid,
+                amount -> {
+                    FluidStack drained = outputTank.drain(amount, FluidAction.EXECUTE);
+                    return drained.getAmount();
+                },
+                direction -> getExportTarget(serverLevel, direction));
+
+        return pushedItem || pushedFluid;
     }
 
     public void onNeighborChanged(BlockPos changedPos) {
