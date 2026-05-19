@@ -13,8 +13,6 @@ import appeng.api.networking.IGridNode;
 import appeng.api.networking.IGridNodeListener;
 import appeng.api.networking.security.IActionHost;
 import appeng.api.orientation.BlockOrientation;
-import appeng.api.orientation.RelativeSide;
-import appeng.blockentity.grid.AENetworkBlockEntity;
 import appeng.blockentity.grid.AENetworkBlockEntity;
 import appeng.menu.MenuOpener;
 import appeng.menu.locator.MenuLocator;
@@ -436,7 +434,7 @@ public class AtmosphericIonizerBlockEntity extends AENetworkBlockEntity implemen
 
     @Override
     public Set<Direction> getGridConnectableSides(BlockOrientation orientation) {
-        return EnumSet.of(orientation.getSide(RelativeSide.BACK));
+        return EnumSet.of(Direction.DOWN);
     }
 
     private boolean isWeatherAlreadyActive(WeatherCondensateItem.Type type) {
