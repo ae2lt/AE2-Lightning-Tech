@@ -1,16 +1,9 @@
 package com.moakiee.ae2lt.menu;
 
-import net.minecraft.core.BlockPos;
-import net.minecraft.world.inventory.AbstractContainerMenu;
-
 /**
- * Implemented by machine menus whose host can open the shared frequency
- * binding GUI from a toolbar button.
+ * Implemented by AE2LT machine menus whose host can open the shared frequency
+ * binding GUI from a toolbar button. Extends the public API marker so external
+ * menus can use the same open-screen helper.
  */
-public interface FrequencyBindingMenu {
-    BlockPos getFrequencyBindingBlockPos();
-
-    default int getFrequencyBindingToken() {
-        return ((AbstractContainerMenu) this).containerId;
-    }
+public interface FrequencyBindingMenu extends com.moakiee.ae2lt.api.frequency.FrequencyBindingMenuHost {
 }

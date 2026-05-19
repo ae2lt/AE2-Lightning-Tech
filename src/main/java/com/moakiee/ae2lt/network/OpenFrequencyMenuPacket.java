@@ -1,9 +1,9 @@
 package com.moakiee.ae2lt.network;
 
-import com.moakiee.ae2lt.grid.FrequencyBindingHost;
+import com.moakiee.ae2lt.api.frequency.FrequencyBindingHost;
+import com.moakiee.ae2lt.api.frequency.FrequencyBindingMenuHost;
 import com.moakiee.ae2lt.grid.FrequencySecurityLevel;
 import com.moakiee.ae2lt.grid.WirelessFrequencyManager;
-import com.moakiee.ae2lt.menu.FrequencyBindingMenu;
 import com.moakiee.ae2lt.menu.FrequencyMenu;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
@@ -33,7 +33,7 @@ public record OpenFrequencyMenuPacket(int token, BlockPos blockPos) {
             ServerPlayer player = ctx.getSender();
             if (player == null) return;
 
-            if (!(player.containerMenu instanceof FrequencyBindingMenu menu)
+            if (!(player.containerMenu instanceof FrequencyBindingMenuHost menu)
                     || menu.getFrequencyBindingToken() != pkt.token
                     || !menu.getFrequencyBindingBlockPos().equals(pkt.blockPos)
                     || !((AbstractContainerMenu) menu).stillValid(player)) {

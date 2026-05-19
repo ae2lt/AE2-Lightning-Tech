@@ -1,46 +1,25 @@
 package com.moakiee.ae2lt.grid;
 
+import appeng.api.networking.IManagedGridNode;
 import appeng.blockentity.grid.AENetworkBlockEntity;
 
 /**
- * Receiver-side wireless frequency binding for block entities that already own
- * a main AE2 grid node. The helper stores the frequency id and creates the
- * virtual grid connection; the block entity supplies lifecycle callbacks.
+ * Internal receiver-side host contract. Extends the public API host and adds
+ * the helper-typed accessor required by AE2LT's own block entities.
  */
-public interface FrequencyBindingHost {
+public interface FrequencyBindingHost extends com.moakiee.ae2lt.api.frequency.FrequencyBindingHost {
     FrequencyBindingHelper getFrequencyBinding();
 
+    @Override
     AENetworkBlockEntity getFrequencyBindingBlockEntity();
 
-    void saveFrequencyBindingChanges();
-
-    void markFrequencyBindingForUpdate();
-
-    default String getFrequencyBindingDeviceName() {
-        return getFrequencyBindingBlockEntity().getBlockState().getBlock().getDescriptionId();
+    @Override
+    default IManagedGridNode getFrequencyBindingMainNode() {
+        return getFrequencyBindingBlockEntity().getMainNode();
     }
 
-    default int getFrequencyId() {
-        return getFrequencyBinding().getFrequencyId();
-    }
-
-    default void setFrequency(int frequencyId) {
-        getFrequencyBinding().setFrequency(frequencyId);
-    }
-
-    default void clearFrequency() {
-        getFrequencyBinding().clearFrequency();
-    }
-
-    default boolean isFrequencyConnected() {
-        return getFrequencyBinding().isConnected();
-    }
-
-    default int getGridUsedChannels() {
-        return getFrequencyBinding().getGridUsedChannels();
-    }
-
-    default int getGridMaxChannels() {
-        return getFrequencyBinding().getGridMaxChannels();
+    @Override
+    default com.moakiee.ae2lt.api.frequency.FrequencyBindingAccess getFrequencyBindingAccess() {
+        return getFrequencyBinding();
     }
 }

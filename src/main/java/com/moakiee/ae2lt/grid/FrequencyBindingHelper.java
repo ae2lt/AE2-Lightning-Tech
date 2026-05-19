@@ -23,7 +23,9 @@ import com.moakiee.ae2lt.logic.MemoryCardConfigSupport;
  * WirelessReceiver virtual-connection lifecycle, but can be attached to any
  * AE-networked block entity whose main node should join a wireless controller.
  */
-public final class FrequencyBindingHelper implements WirelessFrequencyManager.TransmitterListener {
+public final class FrequencyBindingHelper
+        implements WirelessFrequencyManager.TransmitterListener,
+                   com.moakiee.ae2lt.api.frequency.FrequencyBindingAccess {
     public static final String TAG_FREQUENCY_ID = "FrequencyId";
     public static final String TAG_MEMORY_FREQUENCY = "Frequency";
 
@@ -34,7 +36,7 @@ public final class FrequencyBindingHelper implements WirelessFrequencyManager.Tr
     /** Upper bound for retry backoff; keeps unloaded chunks from causing steady update churn. */
     private static final int MAX_RETRY_COOLDOWN_TICKS = 20 * 10;
 
-    private final FrequencyBindingHost host;
+    private final com.moakiee.ae2lt.api.frequency.FrequencyBindingHost host;
 
     private int frequencyId = -1;
     @Nullable
@@ -44,7 +46,7 @@ public final class FrequencyBindingHelper implements WirelessFrequencyManager.Tr
     private int nextRetryCooldownTicks = INITIAL_RETRY_COOLDOWN_TICKS;
     private int subscribedFrequencyId = -1;
 
-    public FrequencyBindingHelper(FrequencyBindingHost host) {
+    public FrequencyBindingHelper(com.moakiee.ae2lt.api.frequency.FrequencyBindingHost host) {
         this.host = host;
     }
 
@@ -107,7 +109,7 @@ public final class FrequencyBindingHelper implements WirelessFrequencyManager.Tr
             return;
         }
 
-        if (be.getMainNode().getNode() == null) {
+        if (host.getFrequencyBindingMainNode().getNode() == null) {
             scheduleRetry();
             return;
         }
@@ -184,7 +186,7 @@ public final class FrequencyBindingHelper implements WirelessFrequencyManager.Tr
     }
 
     public int getGridUsedChannels() {
-        var grid = host.getFrequencyBindingBlockEntity().getMainNode().getGrid();
+        var grid = host.getFrequencyBindingMainNode().getGrid();
         if (grid == null) return 0;
 
         int count = 0;
@@ -197,7 +199,7 @@ public final class FrequencyBindingHelper implements WirelessFrequencyManager.Tr
     }
 
     public int getGridMaxChannels() {
-        var grid = host.getFrequencyBindingBlockEntity().getMainNode().getGrid();
+        var grid = host.getFrequencyBindingMainNode().getGrid();
         if (grid == null) return 0;
 
         var channelMode = grid.getPathingService().getChannelMode();
@@ -228,7 +230,7 @@ public final class FrequencyBindingHelper implements WirelessFrequencyManager.Tr
     private boolean hasLiveVirtualConnection() {
         if (virtualConnection == null) return false;
 
-        IGridNode myNode = host.getFrequencyBindingBlockEntity().getMainNode().getNode();
+        IGridNode myNode = host.getFrequencyBindingMainNode().getNode();
         if (myNode == null) return false;
         for (var conn : myNode.getConnections()) {
             if (conn == virtualConnection) return true;
@@ -336,7 +338,7 @@ public final class FrequencyBindingHelper implements WirelessFrequencyManager.Tr
         if (frequencyId <= 0 || be.getLevel() == null || be.getLevel().isClientSide()) return;
         if (virtualConnection != null) return;
 
-        IGridNode myNode = be.getMainNode().getNode();
+        IGridNode myNode = host.getFrequencyBindingMainNode().getNode();
         if (myNode == null) {
             scheduleRetry();
             return;
@@ -382,7 +384,7 @@ public final class FrequencyBindingHelper implements WirelessFrequencyManager.Tr
     private void destroyVirtualConnection() {
         if (virtualConnection == null) return;
 
-        IGridNode myNode = host.getFrequencyBindingBlockEntity().getMainNode().getNode();
+        IGridNode myNode = host.getFrequencyBindingMainNode().getNode();
         if (myNode != null) {
             for (var conn : myNode.getConnections()) {
                 if (conn == virtualConnection) {
@@ -399,7 +401,7 @@ public final class FrequencyBindingHelper implements WirelessFrequencyManager.Tr
         if (frequencyId <= 0 || be.getLevel() == null || be.getLevel().isClientSide()) return;
         if (virtualConnection == null) return;
 
-        IGridNode myNode = be.getMainNode().getNode();
+        IGridNode myNode = host.getFrequencyBindingMainNode().getNode();
         if (myNode == null) return;
 
         boolean connectionAlive = false;
