@@ -30,7 +30,6 @@ import appeng.helpers.externalstorage.GenericStackInv;
 import appeng.util.ConfigInventory;
 import appeng.util.ConfigMenuInventory;
 
-import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
