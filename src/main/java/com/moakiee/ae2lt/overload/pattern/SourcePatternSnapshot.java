@@ -4,7 +4,6 @@ import java.util.Objects;
 
 import org.jetbrains.annotations.Nullable;
 
-import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
@@ -37,9 +36,8 @@ public final class SourcePatternSnapshot {
         this.customDataTag = customDataTag == null ? null : customDataTag.copy();
     }
 
-    public static SourcePatternSnapshot fromItemStack(ItemStack stack, HolderLookup.Provider registries) {
+    public static SourcePatternSnapshot fromItemStack(ItemStack stack) {
         Objects.requireNonNull(stack, "stack");
-        Objects.requireNonNull(registries, "registries");
         if (stack.isEmpty()) {
             throw new IllegalArgumentException("source pattern stack must not be empty");
         }
@@ -61,9 +59,7 @@ public final class SourcePatternSnapshot {
     /**
      * Recreates an equivalent plain-pattern stack for future reparsing.
      */
-    public ItemStack toItemStack(HolderLookup.Provider registries) {
-        Objects.requireNonNull(registries, "registries");
-
+    public ItemStack toItemStack() {
         if (serializedStackTag != null && !serializedStackTag.isEmpty()) {
             return ItemStack.of(serializedStackTag.copy());
         }

@@ -5,7 +5,6 @@ import java.util.Objects;
 
 import org.jetbrains.annotations.Nullable;
 
-import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.IntArrayTag;
 import net.minecraft.nbt.Tag;
@@ -101,7 +100,7 @@ public final class LightningAssemblyLockedRecipe {
         return inputConsumptions[slot];
     }
 
-    public CompoundTag toTag(HolderLookup.Provider registries) {
+    public CompoundTag toTag() {
         CompoundTag tag = new CompoundTag();
         tag.putString(TAG_RECIPE_ID, recipeId.toString());
         tag.put(TAG_RESULT, result.save(new CompoundTag()));
@@ -113,7 +112,7 @@ public final class LightningAssemblyLockedRecipe {
     }
 
     @Nullable
-    public static LightningAssemblyLockedRecipe fromTag(CompoundTag tag, HolderLookup.Provider registries) {
+    public static LightningAssemblyLockedRecipe fromTag(CompoundTag tag) {
         if (!tag.contains(TAG_RECIPE_ID) || !tag.contains(TAG_RESULT, Tag.TAG_COMPOUND)) {
             return null;
         }

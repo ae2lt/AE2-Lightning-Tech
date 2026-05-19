@@ -46,13 +46,13 @@ public final class OverloadPatternDecoder implements IPatternDetailsDecoder {
             return null;
         }
 
-        var sourceStack = payload.sourcePattern().toItemStack(level.registryAccess());
+        var sourceStack = payload.sourcePattern().toItemStack();
         var sourceDetails = PatternDetailsHelper.decodePattern(sourceStack, level);
         if (sourceDetails == null || sourceDetails instanceof OverloadedProviderOnlyPatternDetails) {
             return null;
         }
 
-        var parsed = OverloadPatternSupport.toParsedDefinition(sourceStack, sourceDetails, level.registryAccess());
+        var parsed = OverloadPatternSupport.toParsedDefinition(sourceStack, sourceDetails);
         var overloadDetails = new OverloadPatternDetails(parsed, payload.encodedPattern());
         return new Ae2OverloadPatternDetails(what, overloadDetails, sourceDetails);
     }

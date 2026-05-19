@@ -4,7 +4,6 @@ import java.util.Objects;
 
 import org.jetbrains.annotations.Nullable;
 
-import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
@@ -72,7 +71,7 @@ public final class CrystalCatalyzerLockedRecipe {
         return energyPerCycle;
     }
 
-    public CompoundTag toTag(HolderLookup.Provider registries) {
+    public CompoundTag toTag() {
         CompoundTag tag = new CompoundTag();
         tag.putString(TAG_RECIPE_ID, recipeId.toString());
         tag.put(TAG_OUTPUT, output.save(new CompoundTag()));
@@ -82,14 +81,13 @@ public final class CrystalCatalyzerLockedRecipe {
     }
 
     @Nullable
-    public static CrystalCatalyzerLockedRecipe fromTag(CompoundTag tag, HolderLookup.Provider registries) {
-        return fromTag(tag, registries, 1);
+    public static CrystalCatalyzerLockedRecipe fromTag(CompoundTag tag) {
+        return fromTag(tag, 1);
     }
 
     @Nullable
     public static CrystalCatalyzerLockedRecipe fromTag(
             CompoundTag tag,
-            HolderLookup.Provider registries,
             int defaultOutputMultiplier) {
         if (!tag.contains(TAG_RECIPE_ID) || !tag.contains(TAG_OUTPUT, Tag.TAG_COMPOUND)) {
             return null;

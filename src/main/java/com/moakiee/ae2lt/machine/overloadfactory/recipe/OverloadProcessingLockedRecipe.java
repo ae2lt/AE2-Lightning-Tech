@@ -5,7 +5,6 @@ import java.util.Objects;
 
 import org.jetbrains.annotations.Nullable;
 
-import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.IntArrayTag;
 import net.minecraft.nbt.Tag;
@@ -96,7 +95,7 @@ public final class OverloadProcessingLockedRecipe {
         return inputConsumptions[slot];
     }
 
-    public CompoundTag toTag(HolderLookup.Provider registries) {
+    public CompoundTag toTag() {
         CompoundTag tag = new CompoundTag();
         tag.putString(TAG_RECIPE_ID, recipeId.toString());
         tag.putLong(TAG_TOTAL_ENERGY, totalEnergy);
@@ -108,7 +107,7 @@ public final class OverloadProcessingLockedRecipe {
     }
 
     @Nullable
-    public static OverloadProcessingLockedRecipe fromTag(CompoundTag tag, HolderLookup.Provider registries) {
+    public static OverloadProcessingLockedRecipe fromTag(CompoundTag tag) {
         if (!tag.contains(TAG_RECIPE_ID, Tag.TAG_STRING)) {
             return null;
         }

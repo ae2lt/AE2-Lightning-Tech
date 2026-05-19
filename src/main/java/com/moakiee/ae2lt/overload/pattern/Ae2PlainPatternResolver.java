@@ -22,6 +22,6 @@ public final class Ae2PlainPatternResolver implements PlainPatternResolver {
         if (sourceDetails == null) {
             throw new IllegalArgumentException("could not decode source pattern stack: " + sourcePatternStack);
         }
-        return OverloadPatternSupport.toParsedDefinition(sourcePatternStack, sourceDetails, level.registryAccess());
+        return OverloadPatternSupport.toParsedDefinition(sourcePatternStack, sourceDetails);
     }
 }

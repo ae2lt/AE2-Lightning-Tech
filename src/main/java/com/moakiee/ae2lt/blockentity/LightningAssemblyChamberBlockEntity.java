@@ -521,8 +521,7 @@ public class LightningAssemblyChamberBlockEntity extends AENetworkBlockEntity
         }
         data.put(TAG_ALLOWED_OUTPUTS, outputTags);
         if (lockedRecipe != null) {
-            var registries = level != null ? level.registryAccess() : net.minecraft.core.RegistryAccess.EMPTY;
-            data.put(TAG_LOCKED_RECIPE, lockedRecipe.toTag(registries));
+            data.put(TAG_LOCKED_RECIPE, lockedRecipe.toTag());
         } else {
             data.remove(TAG_LOCKED_RECIPE);
         }
@@ -548,8 +547,7 @@ public class LightningAssemblyChamberBlockEntity extends AENetworkBlockEntity
             }
         }
         if (data.contains(TAG_LOCKED_RECIPE, Tag.TAG_COMPOUND)) {
-            var registries = level != null ? level.registryAccess() : net.minecraft.core.RegistryAccess.EMPTY;
-            lockedRecipe = LightningAssemblyLockedRecipe.fromTag(data.getCompound(TAG_LOCKED_RECIPE), registries);
+            lockedRecipe = LightningAssemblyLockedRecipe.fromTag(data.getCompound(TAG_LOCKED_RECIPE));
         } else {
             lockedRecipe = null;
         }
