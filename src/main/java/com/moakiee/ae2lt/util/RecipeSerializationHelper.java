@@ -6,6 +6,7 @@ import com.google.gson.JsonSyntaxException;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.GsonHelper;
+import net.minecraft.util.StringRepresentable;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
@@ -17,7 +18,7 @@ public final class RecipeSerializationHelper {
     }
 
     public static ItemStack itemStackFromJson(JsonObject json) {
-        Item item = itemFromJson(json, "id", "item");
+        Item item = itemFromId(resourceLocationFromJson(json, "id"));
         int count = GsonHelper.getAsInt(json, "count", 1);
         if (count <= 0) {
             throw new JsonSyntaxException("Item stack count must be positive");
@@ -39,7 +40,7 @@ public final class RecipeSerializationHelper {
     }
 
     public static FluidStack fluidStackFromJson(JsonObject json) {
-        ResourceLocation id = new ResourceLocation(readId(json, "id", "fluid"));
+        ResourceLocation id = resourceLocationFromJson(json, "id");
         var fluid = ForgeRegistries.FLUIDS.getValue(id);
         if (fluid == null) {
             throw new JsonSyntaxException("Unknown fluid id: " + id);
@@ -68,19 +69,22 @@ public final class RecipeSerializationHelper {
         return new ResourceLocation(GsonHelper.convertToString(json, "resource_location"));
     }
 
-    private static Item itemFromJson(JsonObject json, String primaryKey, String fallbackKey) {
-        ResourceLocation id = new ResourceLocation(readId(json, primaryKey, fallbackKey));
-        return BuiltInRegistries.ITEM.getOptional(id)
-                .orElseThrow(() -> new JsonSyntaxException("Unknown item id: " + id));
+    public static <T extends StringRepresentable> T enumFromJson(
+            JsonObject json,
+            String key,
+            T defaultValue,
+            T[] values) {
+        String serializedName = GsonHelper.getAsString(json, key, defaultValue.getSerializedName());
+        for (T value : values) {
+            if (value.getSerializedName().equals(serializedName)) {
+                return value;
+            }
+        }
+        throw new JsonSyntaxException("Unknown " + key + " value: " + serializedName);
     }
 
-    private static String readId(JsonObject json, String primaryKey, String fallbackKey) {
-        if (json.has(primaryKey)) {
-            return GsonHelper.getAsString(json, primaryKey);
-        }
-        if (fallbackKey != null && json.has(fallbackKey)) {
-            return GsonHelper.getAsString(json, fallbackKey);
-        }
-        throw new JsonSyntaxException("Missing required field '" + primaryKey + "'");
+    private static Item itemFromId(ResourceLocation id) {
+        return BuiltInRegistries.ITEM.getOptional(id)
+                .orElseThrow(() -> new JsonSyntaxException("Unknown item id: " + id));
     }
 }

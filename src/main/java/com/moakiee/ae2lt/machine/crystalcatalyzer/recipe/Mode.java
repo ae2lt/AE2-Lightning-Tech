@@ -37,15 +37,6 @@ public enum Mode implements StringRepresentable {
         return name;
     }
 
-    public static Mode fromSerializedName(String serializedName) {
-        for (Mode value : values()) {
-            if (value.name.equals(serializedName)) {
-                return value;
-            }
-        }
-        return CRYSTAL;
-    }
-
     public String translationKey() {
         return "ae2lt.gui.crystal_catalyzer.mode." + name;
     }

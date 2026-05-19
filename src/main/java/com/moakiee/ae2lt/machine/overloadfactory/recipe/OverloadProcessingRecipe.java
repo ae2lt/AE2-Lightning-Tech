@@ -424,8 +424,11 @@ public final class OverloadProcessingRecipe implements Recipe<OverloadProcessing
                     RecipeSerializationHelper.optionalFluidStackFromJson(json, "resultFluid"),
                     GsonHelper.getAsLong(json, "totalEnergy"),
                     GsonHelper.getAsInt(json, "lightningCost", DEFAULT_LIGHTNING_COST),
-                    LightningKey.Tier.fromSerializedName(
-                            GsonHelper.getAsString(json, "lightningTier", DEFAULT_LIGHTNING_TIER.getSerializedName())));
+                    RecipeSerializationHelper.enumFromJson(
+                            json,
+                            "lightningTier",
+                            DEFAULT_LIGHTNING_TIER,
+                            LightningKey.Tier.values()));
         }
 
         @Override

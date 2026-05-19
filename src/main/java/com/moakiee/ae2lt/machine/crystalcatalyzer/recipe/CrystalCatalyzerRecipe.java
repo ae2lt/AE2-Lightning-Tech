@@ -16,6 +16,7 @@ import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.Level;
 
 import com.moakiee.ae2lt.registry.ModRecipeTypes;
+import com.moakiee.ae2lt.util.RecipeSerializationHelper;
 
 /**
  * Crystal catalyzer recipe.
@@ -163,7 +164,11 @@ public final class CrystalCatalyzerRecipe implements Recipe<CrystalCatalyzerReci
                     : Optional.empty();
             int catalystCount = GsonHelper.getAsInt(json, "catalystCount", 0);
             int energyPerCycle = GsonHelper.getAsInt(json, "energyPerCycle");
-            Mode mode = Mode.fromSerializedName(GsonHelper.getAsString(json, "mode", Mode.CRYSTAL.getSerializedName()));
+            Mode mode = RecipeSerializationHelper.enumFromJson(
+                    json,
+                    "mode",
+                    Mode.CRYSTAL,
+                    Mode.values());
 
             return new CrystalCatalyzerRecipe(
                     recipeId,
