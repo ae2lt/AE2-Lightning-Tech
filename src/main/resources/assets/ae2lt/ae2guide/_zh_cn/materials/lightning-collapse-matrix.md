@@ -34,7 +34,7 @@ item_ids:
 * [闪电模拟室](../machines/lightning-simulation-chamber.md) / [闪电装配室](../machines/lightning-assembly-chamber.md) — 安装矩阵后，部分原本要求**极高压闪电**的配方可以用数倍量的**高压闪电**代偿
 * [特斯拉线圈](../lightning/tesla-coil.md) — 极高压模式必须在槽中安装矩阵，否则无法从高压闪电升压到极高压
 * [水晶催化器](../machines/crystal-catalyzer.md) — 水晶模式与粉化模式均可生效；安装矩阵后，并行后的单次产出再提升至 **4 倍**
-* [过载处理工厂](../machines/overload-processing-factory.md) — 多矩阵并行：每多一枚矩阵解锁一档并行度（槽位最多 64 枚，默认每枚提供 4 并行）
+* [过载处理工厂](../machines/overload-processing-factory.md) — 多矩阵并行：每多一枚矩阵解锁一档并行度（槽位最多 32 枚，默认每枚提供 8 并行）
 
 ## 观测备忘
 

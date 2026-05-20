@@ -280,7 +280,7 @@ public final class AE2LTCommonConfig {
             builder.push("overloadProcessingFactory");
             overloadFactoryParallelPerMatrix = builder
                     .comment("Parallel operations provided by each Lightning Collapse Matrix.")
-                    .defineInRange("parallelPerMatrix", 4, 0, Integer.MAX_VALUE / 64);
+                    .defineInRange("parallelPerMatrix", 8, 0, Integer.MAX_VALUE / 32);
             overloadFactoryEnergyCapacity = builder
                     .comment("Internal FE buffer capacity of the Overload Processing Factory.")
                     .defineInRange("energyCapacity", 640_000_000L, 1L, Long.MAX_VALUE);
