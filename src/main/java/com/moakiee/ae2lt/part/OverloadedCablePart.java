@@ -28,8 +28,8 @@ public class OverloadedCablePart extends CoveredDenseCablePart
 
     @Override
     protected IManagedGridNode createMainNode() {
-        // AE2 1.21.1 uses IManagedGridNode#setTagName here.
-        // If your target AE2/MC version renames this API, adjust this override accordingly.
+        // AE2 1.20.1 exposes setTagName on IManagedGridNode; keep the marker stable
+        // for diagnostics and saved node data.
         return super.createMainNode().setTagName("overloaded_cable");
     }
 

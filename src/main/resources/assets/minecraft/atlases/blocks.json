@@ -1,16 +1,21 @@
 {
   "sources": [
     {
-      "type": "minecraft:directory",
+      "type": "directory",
+      "source": "part/cable/overload",
+      "prefix": "part/cable/overload/"
+    },
+    {
+      "type": "directory",
       "source": "part/cable/core/overload",
       "prefix": "part/cable/core/overload/"
     },
     {
-      "type": "minecraft:single",
+      "type": "single",
       "resource": "ae2lt:item/high_voltage_lightning"
     },
     {
-      "type": "minecraft:single",
+      "type": "single",
       "resource": "ae2lt:item/extreme_high_voltage_lightning"
     }
   ]
