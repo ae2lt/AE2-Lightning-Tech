@@ -13,7 +13,7 @@ item_ids:
   <BlockImage id="ae2lt:crystal_catalyzer" scale="4" />
 </Row>
 
-The **Crystal Catalyzer** is a specialty processing machine that uses water, FE, and the item in its catalyst slot. It has two operating modes: **Crystal Mode** and **Dust Mode**.
+The **Crystal Catalyzer** is a specialty processing machine that uses water, FE, lightning from the ME network, and the item in its catalyst slot. It has two operating modes: **Crystal Mode** and **Dust Mode**.
 
 ## Slots and Capacity
 
@@ -27,10 +27,10 @@ The **Crystal Catalyzer** is a specialty processing machine that uses water, FE,
 
 ## Operating Modes
 
-| Mode | Purpose | Example inputs | Example outputs |
-|------|---------|----------------|-----------------|
-| Crystal Mode | Extract crystals from matching crystal blocks | Certus Quartz Block, Fluix Block, Overload Crystal Block | Certus Quartz Crystal, Fluix Crystal, Overload Crystal |
-| Dust Mode | Extract crystal dust from matching crystal blocks | Certus Quartz Block, Fluix Block, Overload Crystal Block | Certus Quartz Dust, Fluix Dust, Overload Crystal Dust |
+| Mode | Purpose | Processing Time | Example inputs | Example outputs |
+|------|---------|-----------------|----------------|-----------------|
+| Crystal Mode | Extract crystals from matching crystal blocks | 1 second | Certus Quartz Block, Fluix Block, Overload Crystal Block | Certus Quartz Crystal, Fluix Crystal, Overload Crystal |
+| Dust Mode | Extract crystal dust from matching crystal blocks | 2 seconds | Certus Quartz Block, Fluix Block, Overload Crystal Block | Certus Quartz Dust, Fluix Dust, Overload Crystal Dust |
 
 Both modes share the same catalyst slot, fluid slot, and output slot. The item in the catalyst slot is used for recipe matching and parallel count calculation, but it is not consumed.
 
@@ -40,8 +40,15 @@ Both modes share the same catalyst slot, fluid slot, and output slot. The item i
 2. Feed water into the fluid slot through pipes
 3. Put an item matching the selected mode into the catalyst slot
 4. Supply FE
-5. Once a recipe matches, the machine processes automatically
-6. Finished output goes into the output slot
+5. Connect the machine to an ME network with lightning storage
+6. Once a recipe matches, the machine processes automatically
+7. Finished output goes into the output slot
+
+## Lightning Consumption
+
+The Crystal Catalyzer consumes lightning from the ME network each time it completes an operation. The type (High Voltage or Extreme High Voltage) and amount of lightning required are defined per recipe.
+
+If the network does not have enough lightning when the operation is ready to complete, the machine will pause and wait until lightning becomes available. No water or FE is wasted during this wait.
 
 ## Parallel Output and Water
 
@@ -62,6 +69,8 @@ Final output = base output × parallel count × matrix multiplier.
 ## Notes
 
 * The Crystal Catalyzer is powered by **external FE** on its sides, not by AE from the ME network
+* Lightning is consumed from the **ME network storage**, so the machine must be connected to a network with lightning available
 * The machine itself is also an ME network device — connecting it to the network lets you feed it through AE2 Interfaces or Pattern Providers
 * Supports Auto Export; output sides can be configured in the GUI
 * The Crystal Catalyzer **does not** support Speed Cards
+* Crystal Mode completes in **1 second** minimum; Dust Mode completes in **2 seconds** minimum (with sufficient FE)

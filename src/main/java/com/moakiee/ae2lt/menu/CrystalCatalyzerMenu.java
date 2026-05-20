@@ -56,6 +56,10 @@ public class CrystalCatalyzerMenu extends AEBaseMenu implements FrequencyBinding
     public int outputSideMask;
     @GuiSync(28)
     public int modeOrdinal;
+    @GuiSync(29)
+    public long highVoltageAvailable;
+    @GuiSync(30)
+    public long extremeHighVoltageAvailable;
 
     private static final RelativeSide[] OUTPUT_SIDES = RelativeSide.values();
 
@@ -106,6 +110,8 @@ public class CrystalCatalyzerMenu extends AEBaseMenu implements FrequencyBinding
             autoExport = host.isAutoExportEnabled();
             outputSideMask = toOutputSideMask(host.getAllowedOutputs());
             modeOrdinal = host.getMode().ordinal();
+            highVoltageAvailable = host.getAvailableHighVoltage();
+            extremeHighVoltageAvailable = host.getAvailableExtremeHighVoltage();
         }
         super.broadcastChanges();
     }
@@ -234,6 +240,14 @@ public class CrystalCatalyzerMenu extends AEBaseMenu implements FrequencyBinding
     public Mode getMode() {
         Mode[] values = Mode.values();
         return modeOrdinal >= 0 && modeOrdinal < values.length ? values[modeOrdinal] : Mode.CRYSTAL;
+    }
+
+    public long getHighVoltageAvailable() {
+        return highVoltageAvailable;
+    }
+
+    public long getExtremeHighVoltageAvailable() {
+        return extremeHighVoltageAvailable;
     }
 
     public void clientCycleMode() {

@@ -78,7 +78,9 @@ public class CrystalCatalyzerScreen extends AEBaseScreen<CrystalCatalyzerMenu> {
                 LightningStatusLines.title(),
                 LightningStatusLines.status(menu.isWorking()),
                 LightningStatusLines.progress(menu.getProgress()),
-                LightningStatusLines.energy(menu.getStoredEnergy(), menu.getEnergyCapacity()))));
+                LightningStatusLines.energy(menu.getStoredEnergy(), menu.getEnergyCapacity()),
+                LightningStatusLines.highVoltage(menu.getHighVoltageAvailable()),
+                LightningStatusLines.extremeHighVoltage(menu.getExtremeHighVoltageAvailable()))));
     }
 
     @Override

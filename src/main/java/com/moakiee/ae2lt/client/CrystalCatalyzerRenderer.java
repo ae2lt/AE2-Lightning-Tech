@@ -17,7 +17,7 @@ import com.moakiee.ae2lt.machine.crystalcatalyzer.CrystalCatalyzerInventory;
 public class CrystalCatalyzerRenderer implements BlockEntityRenderer<CrystalCatalyzerBlockEntity> {
     private static final double CAVITY_CENTER_Y = 8.0D / 16.0D;
     private static final float ITEM_SCALE = 0.50F;
-    private static final float WORKING_ROTATION_SPEED = 4.0F;
+    private static final float ROTATION_SPEED = 2.0F;
 
     public CrystalCatalyzerRenderer(BlockEntityRendererProvider.Context context) {
     }
@@ -36,8 +36,8 @@ public class CrystalCatalyzerRenderer implements BlockEntityRenderer<CrystalCata
         poseStack.pushPose();
         poseStack.translate(0.5D, CAVITY_CENTER_Y, 0.5D);
 
-        if (level != null && blockEntity.isWorking()) {
-            float rotation = (level.getGameTime() + partialTick) * WORKING_ROTATION_SPEED;
+        if (level != null) {
+            float rotation = (level.getGameTime() + partialTick) * ROTATION_SPEED;
             poseStack.mulPose(Axis.YP.rotationDegrees(rotation));
         }
 
