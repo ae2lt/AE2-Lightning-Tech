@@ -474,7 +474,7 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         /**
          * Resolve cached storage wrappers (MEStorage facades from ExternalStorageStrategy).
          * Supports both insert (export) and extract (import) on the same wrappers.
-         * Strategy objects are stable (they hold internal BlockCapabilityCache);
+         * Strategy objects are stable (they own AE2's external-storage lookup state);
          * wrappers are rebuilt every {@link #WRAPPER_REFRESH_TICKS}.
          */
         @Nullable

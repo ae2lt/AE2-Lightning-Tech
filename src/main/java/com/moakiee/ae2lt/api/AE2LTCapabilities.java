@@ -12,8 +12,8 @@ import com.moakiee.ae2lt.api.lightning.ILightningEnergyHandler;
  *
  * <p>Forge 1.20.1 keys capabilities by interface token rather than by
  * {@link net.minecraft.resources.ResourceLocation}. To keep the addon-facing API
- * source-compatible with the newer NeoForge branch, block and item access keep
- * separate field names while aliasing the same underlying Forge capability token.
+ * source-compatible with the newer branch, block and item access keep separate
+ * field names while aliasing the same underlying Forge capability token.
  *
  * <p>The historical API names remain:
  * <ul>

@@ -50,7 +50,7 @@ final class AE2NativeMachineAdapter implements MachineAdapter {
 
     /**
      * How many ticks a cached wrapper (facade) set stays valid before
-     * being rebuilt from the strategy's {@code BlockCapabilityCache}.
+     * being rebuilt from the strategy's external-storage lookup state.
      * The wrapper holds a handler reference captured at creation time;
      * periodic refresh ensures we pick up handler replacements that
      * don't trigger a block-entity swap (rare, but some mods do this).
@@ -68,7 +68,7 @@ final class AE2NativeMachineAdapter implements MachineAdapter {
 
     /**
      * Per-target cache entry.  Caches both the {@link ExternalStorageStrategy}
-     * map (stable, holds internal {@code BlockCapabilityCache}) and the
+     * map (stable, owns AE2's external-storage lookup state) and the
      * MEStorage wrappers (facades) derived from them.
      * <p>
      * Wrappers are lazily created and kept alive until either:
@@ -158,7 +158,7 @@ final class AE2NativeMachineAdapter implements MachineAdapter {
             return PushResult.REJECTED;
         }
 
-        // 优先用调用方预取的 target，避免重复触发 BlockCapability 查询
+        // 优先用调用方预取的 target，避免重复触发外部存储能力查询
         final PatternProviderTarget target;
         if (cachedTarget != null) {
             target = cachedTarget;

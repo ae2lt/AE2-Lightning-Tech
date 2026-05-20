@@ -44,7 +44,7 @@ public interface MachineAdapter {
      *
      * @param blocking      if {@code true}, refuse when the target already holds pattern inputs
      * @param patternInputs the union of all input keys (secondary dropped); used only when blocking
-     * @param cachedTarget  调用方预取的 target（命中缓存可避免重复 BlockCapability 查询）；
+     * @param cachedTarget  调用方预取的 target（命中缓存可避免重复外部存储能力查询）；
      *                      为 null 时实现需自行解析。仅 generic inventory 路径会用到。
      * @return a {@link PushResult} containing the number of accepted copies and any overflow items
      */
