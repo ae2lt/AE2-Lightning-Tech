@@ -14,6 +14,7 @@ import com.moakiee.ae2lt.blockentity.OverloadedInterfaceBlockEntity;
 import com.moakiee.ae2lt.blockentity.OverloadedPatternProviderBlockEntity;
 import com.moakiee.ae2lt.blockentity.OverloadedPowerSupplyBlockEntity;
 import com.moakiee.ae2lt.blockentity.TeslaCoilBlockEntity;
+import com.moakiee.ae2lt.blockentity.TeslaCoilUpperBlockEntity;
 import com.moakiee.ae2lt.blockentity.AdvancedWirelessOverloadedControllerBlockEntity;
 import com.moakiee.ae2lt.blockentity.WirelessOverloadedControllerBlockEntity;
 import com.moakiee.ae2lt.blockentity.WirelessReceiverBlockEntity;
@@ -72,6 +73,14 @@ public final class ModBlockEntities {
                     "tesla_coil",
                     () -> BlockEntityType.Builder.of(
                             TeslaCoilBlockEntity::new,
+                            ModBlocks.TESLA_COIL.get())
+                            .build(null));
+
+    public static final RegistryObject<BlockEntityType<TeslaCoilUpperBlockEntity>>
+            TESLA_COIL_UPPER = BLOCK_ENTITY_TYPES.register(
+                    "tesla_coil_upper",
+                    () -> BlockEntityType.Builder.of(
+                            TeslaCoilUpperBlockEntity::new,
                             ModBlocks.TESLA_COIL.get())
                             .build(null));
 

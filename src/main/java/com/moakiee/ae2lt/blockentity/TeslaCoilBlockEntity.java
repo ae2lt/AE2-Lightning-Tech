@@ -346,6 +346,9 @@ public class TeslaCoilBlockEntity extends AENetworkBlockEntity
         super.onReady();
         frequencyBinding.onReady();
         setWorking(hasLockedMode());
+        if (level != null) {
+            TeslaCoilUpperBlockEntity.ensurePresent(level, worldPosition);
+        }
     }
 
     @Override

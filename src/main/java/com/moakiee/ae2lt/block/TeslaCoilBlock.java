@@ -18,6 +18,8 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityTicker;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
@@ -37,6 +39,7 @@ import appeng.api.orientation.OrientationStrategies;
 import appeng.menu.locator.MenuLocators;
 
 import com.moakiee.ae2lt.blockentity.TeslaCoilBlockEntity;
+import com.moakiee.ae2lt.blockentity.TeslaCoilUpperBlockEntity;
 
 public class TeslaCoilBlock extends AE2LTBaseEntityBlock<TeslaCoilBlockEntity> {
     public static final BooleanProperty WORKING = BooleanProperty.create("working");
@@ -93,9 +96,22 @@ public class TeslaCoilBlock extends AE2LTBaseEntityBlock<TeslaCoilBlockEntity> {
     @Override
     public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
         if (state.getValue(HALF) == DoubleBlockHalf.UPPER) {
-            return null;
+            return new TeslaCoilUpperBlockEntity(pos, state);
         }
         return super.newBlockEntity(pos, state);
+    }
+
+    @Override
+    public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState blockState,
+            BlockEntityType<T> type) {
+        if (blockState.getValue(HALF) == DoubleBlockHalf.UPPER) {
+            return null;
+        }
+        return super.getTicker(level, blockState, type);
+    }
+
+    public static BlockPos getCapabilityHostPos(DoubleBlockHalf half, BlockPos pos) {
+        return TeslaCoilHalfHelper.getCapabilityHostPos(half, pos);
     }
 
     @Override
