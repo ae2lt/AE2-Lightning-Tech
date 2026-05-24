@@ -12,6 +12,8 @@ import appeng.api.networking.IGridNode;
 import appeng.blockentity.networking.ControllerBlockEntity;
 import appeng.me.Grid;
 
+import com.moakiee.ae2lt.grid.ControllerMachineNodeLookup;
+
 @Mixin(Grid.class)
 public abstract class GridGetMachineNodesMixin {
 

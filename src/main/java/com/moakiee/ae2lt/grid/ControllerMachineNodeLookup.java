@@ -1,4 +1,4 @@
-package com.moakiee.ae2lt.mixin;
+package com.moakiee.ae2lt.grid;
 
 import java.util.Collection;
 import java.util.LinkedHashSet;
@@ -11,12 +11,12 @@ import appeng.blockentity.networking.ControllerBlockEntity;
 
 import com.moakiee.ae2lt.blockentity.OverloadedControllerBlockEntity;
 
-final class ControllerMachineNodeLookup {
+public final class ControllerMachineNodeLookup {
 
     private ControllerMachineNodeLookup() {
     }
 
-    static boolean hasOverloadedControllerNodes(Map<Class<?>, ? extends Collection<?>> machines) {
+    public static boolean hasOverloadedControllerNodes(Map<Class<?>, ? extends Collection<?>> machines) {
         return hasMatchingControllerNodes(machines, ControllerMachineNodeLookup::isOverloadedControllerClass);
     }
 
@@ -30,7 +30,7 @@ final class ControllerMachineNodeLookup {
         return false;
     }
 
-    static Set<Class<?>> normalizedMachineClasses(Map<Class<?>, ? extends Collection<?>> machines) {
+    public static Set<Class<?>> normalizedMachineClasses(Map<Class<?>, ? extends Collection<?>> machines) {
         return normalizedMachineClasses(
                 machines,
                 ControllerMachineNodeLookup::isOverloadedControllerClass,
@@ -58,7 +58,7 @@ final class ControllerMachineNodeLookup {
         return classes;
     }
 
-    static <T> List<T> controllerNodes(Map<Class<?>, ? extends Collection<T>> machines) {
+    public static <T> List<T> controllerNodes(Map<Class<?>, ? extends Collection<T>> machines) {
         return controllerNodes(
                 machines,
                 ControllerMachineNodeLookup::isOverloadedControllerClass,
