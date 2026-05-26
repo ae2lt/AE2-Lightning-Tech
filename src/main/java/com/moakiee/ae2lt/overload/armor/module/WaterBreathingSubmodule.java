@@ -12,8 +12,6 @@ public final class WaterBreathingSubmodule extends AbstractOverloadArmorSubmodul
 
     public static final WaterBreathingSubmodule INSTANCE = new WaterBreathingSubmodule();
 
-    private static final int IDLE_LOAD = 4;
-
     private WaterBreathingSubmodule() {}
 
     @Override
@@ -38,7 +36,7 @@ public final class WaterBreathingSubmodule extends AbstractOverloadArmorSubmodul
 
     @Override
     public int getIdleOverloaded(@Nullable Player player, Dist dist, ItemStack armor) {
-        return IDLE_LOAD;
+        return 0;
     }
 
     @Override

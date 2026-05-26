@@ -21,6 +21,10 @@ import com.moakiee.ae2lt.item.ResistanceSubmoduleItem;
 import com.moakiee.ae2lt.item.ReflectSubmoduleItem;
 import com.moakiee.ae2lt.item.DashSubmoduleItem;
 import com.moakiee.ae2lt.item.FlightSubmoduleItem;
+import com.moakiee.ae2lt.item.CleanseSubmoduleItem;
+import com.moakiee.ae2lt.item.AutoFeedSubmoduleItem;
+import com.moakiee.ae2lt.item.DigAffinitySubmoduleItem;
+import com.moakiee.ae2lt.item.PhaseFlightSubmoduleItem;
 import com.moakiee.ae2lt.item.PerfectElectroChimeCrystalItem;
 import com.moakiee.ae2lt.item.ResearchNoteItem;
 import com.moakiee.ae2lt.item.WeatherCondensateItem;
@@ -221,6 +225,26 @@ public final class ModItems {
     public static final DeferredItem<FlightSubmoduleItem> ARMOR_SUBMODULE_FLIGHT = ITEMS.registerItem(
             "module_creative_flight",
             FlightSubmoduleItem::new,
+            new Item.Properties().stacksTo(1));
+
+    public static final DeferredItem<CleanseSubmoduleItem> ARMOR_SUBMODULE_CLEANSE = ITEMS.registerItem(
+            "module_cleanse",
+            CleanseSubmoduleItem::new,
+            new Item.Properties().stacksTo(1));
+
+    public static final DeferredItem<AutoFeedSubmoduleItem> ARMOR_SUBMODULE_AUTO_FEED = ITEMS.registerItem(
+            "module_auto_feed",
+            AutoFeedSubmoduleItem::new,
+            new Item.Properties().stacksTo(1));
+
+    public static final DeferredItem<DigAffinitySubmoduleItem> ARMOR_SUBMODULE_DIG_AFFINITY = ITEMS.registerItem(
+            "module_dig_affinity",
+            DigAffinitySubmoduleItem::new,
+            new Item.Properties().stacksTo(1));
+
+    public static final DeferredItem<PhaseFlightSubmoduleItem> ARMOR_SUBMODULE_PHASE_FLIGHT = ITEMS.registerItem(
+            "module_phase_flight",
+            PhaseFlightSubmoduleItem::new,
             new Item.Properties().stacksTo(1));
 
     public static final DeferredItem<ArmorEnergyModuleItem> ARMOR_ENERGY_MODULE_T1 = ITEMS.register(

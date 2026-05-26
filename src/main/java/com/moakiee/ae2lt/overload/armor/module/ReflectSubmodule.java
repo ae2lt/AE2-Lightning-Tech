@@ -10,8 +10,6 @@ public final class ReflectSubmodule extends AbstractOverloadArmorSubmodule {
 
     public static final ReflectSubmodule INSTANCE = new ReflectSubmodule();
 
-    private static final int IDLE_LOAD = 16;
-
     private ReflectSubmodule() {}
 
     @Override
@@ -36,7 +34,7 @@ public final class ReflectSubmodule extends AbstractOverloadArmorSubmodule {
 
     @Override
     public int getIdleOverloaded(@Nullable Player player, Dist dist, ItemStack armor) {
-        return IDLE_LOAD;
+        return 0;
     }
 
     @Override

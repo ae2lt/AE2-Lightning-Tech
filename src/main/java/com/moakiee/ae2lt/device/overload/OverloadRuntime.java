@@ -10,14 +10,34 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class OverloadRuntime {
     private static final Map<UUID, OverloadRuntime> RUNTIMES = new ConcurrentHashMap<>();
 
-    private final LoadBucket bucket = new LoadBucket();
-    private final OverloadDynamics dynamics = new OverloadDynamics();
+    private final LoadBucket bucket;
+    private final OverloadDynamics dynamics;
 
     private OverloadRuntime() {
+        this(new LoadBucket(), new OverloadDynamics());
+    }
+
+    private OverloadRuntime(LoadBucket bucket, OverloadDynamics dynamics) {
+        this.bucket = bucket;
+        this.dynamics = dynamics;
     }
 
     public static OverloadRuntime get(UUID deviceId) {
         return RUNTIMES.computeIfAbsent(deviceId, ignored -> new OverloadRuntime());
+    }
+
+    public static OverloadRuntime get(
+            UUID deviceId,
+            double pulseDecay,
+            int pulseMaxTicks,
+            double pulseEpsilon,
+            int lockTriggerTicks,
+            int lockDurationTicks) {
+        return RUNTIMES.computeIfAbsent(
+                deviceId,
+                ignored -> new OverloadRuntime(
+                        new LoadBucket(pulseDecay, pulseMaxTicks, pulseEpsilon),
+                        new OverloadDynamics(lockTriggerTicks, lockDurationTicks)));
     }
 
     public static void reset(UUID deviceId) {

@@ -152,6 +152,32 @@ public final class AE2LTCommonConfig {
         return VALUES.pigmeeFumoGiftOnFirstJoin.get();
     }
 
+    public static double overloadArmorPulseDecay() { return VALUES.overloadArmorPulseDecay.get(); }
+    public static int overloadArmorPulseMaxTicks() { return VALUES.overloadArmorPulseMaxTicks.get(); }
+    public static double overloadArmorPulseEpsilon() { return VALUES.overloadArmorPulseEpsilon.get(); }
+    public static double overloadArmorCurveExponent() { return VALUES.overloadArmorCurveExponent.get(); }
+    public static double overloadArmorPowerDemandScale() { return VALUES.overloadArmorPowerDemandScale.get(); }
+    public static int overloadArmorLockTriggerTicks() { return VALUES.overloadArmorLockTriggerTicks.get(); }
+    public static int overloadArmorLockDurationTicks() { return VALUES.overloadArmorLockDurationTicks.get(); }
+    public static int overloadArmorFlightHoverLoad() { return VALUES.overloadArmorFlightHoverLoad.get(); }
+    public static int overloadArmorFlightMovingLoad() { return VALUES.overloadArmorFlightMovingLoad.get(); }
+    public static int overloadArmorDashPulseLoad() { return VALUES.overloadArmorDashPulseLoad.get(); }
+    public static int overloadArmorElytraBoostPulseLoad() { return VALUES.overloadArmorElytraBoostPulseLoad.get(); }
+    public static int overloadArmorMitigationLoadPerDamage() { return VALUES.overloadArmorMitigationLoadPerDamage.get(); }
+    public static int overloadArmorReflectLoadPerDamage() { return VALUES.overloadArmorReflectLoadPerDamage.get(); }
+    public static int overloadArmorCleansePeriodTicks() { return VALUES.overloadArmorCleansePeriodTicks.get(); }
+    public static int overloadArmorCleanseLoadPerEffect() { return VALUES.overloadArmorCleanseLoadPerEffect.get(); }
+    public static int overloadArmorAutoFeedThreshold() { return VALUES.overloadArmorAutoFeedThreshold.get(); }
+    public static int overloadArmorAutoFeedCooldownTicks() { return VALUES.overloadArmorAutoFeedCooldownTicks.get(); }
+    public static int overloadArmorAutoFeedPulseLoad() { return VALUES.overloadArmorAutoFeedPulseLoad.get(); }
+    public static double overloadArmorUnderwaterDigMultiplier() { return VALUES.overloadArmorUnderwaterDigMultiplier.get(); }
+    public static double overloadArmorAirborneDigMultiplier() { return VALUES.overloadArmorAirborneDigMultiplier.get(); }
+    public static int overloadArmorDigPulseLoad() { return VALUES.overloadArmorDigPulseLoad.get(); }
+    public static boolean overloadArmorPhaseFlightEnabled() { return VALUES.overloadArmorPhaseFlightEnabled.get(); }
+    public static int overloadArmorPhaseFlightBaseLoad() { return VALUES.overloadArmorPhaseFlightBaseLoad.get(); }
+    public static int overloadArmorPhaseFlightInsideBlockLoad() { return VALUES.overloadArmorPhaseFlightInsideBlockLoad.get(); }
+    public static double overloadArmorPhaseFlightSpeedMultiplier() { return VALUES.overloadArmorPhaseFlightSpeedMultiplier.get(); }
+
     // ── Railgun: damage (per-tier base + beam settle, HV/EHV beam split) ──────
     public static int railgunBeamHvDamagePerSettle() { return VALUES.railgunBeamHvDamagePerSettle.get(); }
     public static int railgunBeamEhvDamagePerSettle() { return VALUES.railgunBeamEhvDamagePerSettle.get(); }
@@ -222,6 +248,32 @@ public final class AE2LTCommonConfig {
         private final ModConfigSpec.IntValue teslaCoilExtremeHighVoltageInput;
         private final ModConfigSpec.IntValue teslaCoilExtremeHighVoltageFe;
         private final ModConfigSpec.BooleanValue pigmeeFumoGiftOnFirstJoin;
+
+        private final ModConfigSpec.DoubleValue overloadArmorPulseDecay;
+        private final ModConfigSpec.IntValue overloadArmorPulseMaxTicks;
+        private final ModConfigSpec.DoubleValue overloadArmorPulseEpsilon;
+        private final ModConfigSpec.DoubleValue overloadArmorCurveExponent;
+        private final ModConfigSpec.DoubleValue overloadArmorPowerDemandScale;
+        private final ModConfigSpec.IntValue overloadArmorLockTriggerTicks;
+        private final ModConfigSpec.IntValue overloadArmorLockDurationTicks;
+        private final ModConfigSpec.IntValue overloadArmorFlightHoverLoad;
+        private final ModConfigSpec.IntValue overloadArmorFlightMovingLoad;
+        private final ModConfigSpec.IntValue overloadArmorDashPulseLoad;
+        private final ModConfigSpec.IntValue overloadArmorElytraBoostPulseLoad;
+        private final ModConfigSpec.IntValue overloadArmorMitigationLoadPerDamage;
+        private final ModConfigSpec.IntValue overloadArmorReflectLoadPerDamage;
+        private final ModConfigSpec.IntValue overloadArmorCleansePeriodTicks;
+        private final ModConfigSpec.IntValue overloadArmorCleanseLoadPerEffect;
+        private final ModConfigSpec.IntValue overloadArmorAutoFeedThreshold;
+        private final ModConfigSpec.IntValue overloadArmorAutoFeedCooldownTicks;
+        private final ModConfigSpec.IntValue overloadArmorAutoFeedPulseLoad;
+        private final ModConfigSpec.DoubleValue overloadArmorUnderwaterDigMultiplier;
+        private final ModConfigSpec.DoubleValue overloadArmorAirborneDigMultiplier;
+        private final ModConfigSpec.IntValue overloadArmorDigPulseLoad;
+        private final ModConfigSpec.BooleanValue overloadArmorPhaseFlightEnabled;
+        private final ModConfigSpec.IntValue overloadArmorPhaseFlightBaseLoad;
+        private final ModConfigSpec.IntValue overloadArmorPhaseFlightInsideBlockLoad;
+        private final ModConfigSpec.DoubleValue overloadArmorPhaseFlightSpeedMultiplier;
 
         // ── Railgun fields ────────────────────────────────────────────────
         private final ModConfigSpec.IntValue railgunBeamHvDamagePerSettle;
@@ -385,6 +437,98 @@ public final class AE2LTCommonConfig {
             pigmeeFumoGiftOnFirstJoin = builder
                     .comment("Controls whether players receive a Pigmee Fumo as a gift on their first login.")
                     .define("giftOnFirstJoin", true);
+            builder.pop();
+
+            builder.push("overloadArmor");
+            builder.push("dynamic");
+            builder.push("pulse");
+            overloadArmorPulseDecay = builder
+                    .comment("Default geometric decay multiplier for armor dynamic load pulses.")
+                    .defineInRange("defaultDecay", 0.8D, 0.0D, 1.0D);
+            overloadArmorPulseMaxTicks = builder
+                    .comment("Default maximum lifetime in ticks for armor dynamic load pulses.")
+                    .defineInRange("defaultMaxTicks", 10, 1, 20 * 60);
+            overloadArmorPulseEpsilon = builder
+                    .comment("Pulse values below this threshold are discarded.")
+                    .defineInRange("epsilon", 0.5D, 0.0D, 1024.0D);
+            builder.pop();
+
+            overloadArmorCurveExponent = builder
+                    .comment("Exponent for overload power demand: pow(currentLoad - cap, exponent).")
+                    .defineInRange("overloadCurveExponent", 1.2D, 1.0D, 4.0D);
+            overloadArmorPowerDemandScale = builder
+                    .comment("Multiplier for armor overload FE demand per tick.")
+                    .defineInRange("powerDemandScale", 1.0D, 0.0D, 1_000_000.0D);
+            overloadArmorLockTriggerTicks = builder
+                    .comment("Ticks spent above dynamic budget before armor locks.")
+                    .defineInRange("lockTriggerTicks", 60, 1, 20 * 60 * 60);
+            overloadArmorLockDurationTicks = builder
+                    .comment("Ticks armor stays locked after sustained overload.")
+                    .defineInRange("lockDurationTicks", 600, 1, 20 * 60 * 60);
+
+            builder.push("movement");
+            overloadArmorFlightHoverLoad = builder
+                    .comment("Dynamic state load while creative flight is enabled and hovering.")
+                    .defineInRange("flightHoverLoad", 8, 0, Integer.MAX_VALUE);
+            overloadArmorFlightMovingLoad = builder
+                    .comment("Dynamic state load while creative flight is enabled and moving.")
+                    .defineInRange("flightMovingLoad", 24, 0, Integer.MAX_VALUE);
+            overloadArmorDashPulseLoad = builder
+                    .comment("Pulse load injected when dash triggers.")
+                    .defineInRange("dashPulseLoad", 24, 0, Integer.MAX_VALUE);
+            overloadArmorElytraBoostPulseLoad = builder
+                    .comment("Pulse load injected when creative-flight module boosts elytra movement.")
+                    .defineInRange("elytraBoostPulseLoad", 32, 0, Integer.MAX_VALUE);
+            overloadArmorPhaseFlightEnabled = builder
+                    .comment("Master switch for phase flight.")
+                    .define("phaseFlightEnabled", true);
+            overloadArmorPhaseFlightBaseLoad = builder
+                    .comment("Dynamic state load while phase flight is active.")
+                    .defineInRange("phaseFlightBaseLoad", 40, 0, Integer.MAX_VALUE);
+            overloadArmorPhaseFlightInsideBlockLoad = builder
+                    .comment("Additional dynamic state load while phase flight is inside solid blocks.")
+                    .defineInRange("phaseFlightInsideBlockLoad", 40, 0, Integer.MAX_VALUE);
+            overloadArmorPhaseFlightSpeedMultiplier = builder
+                    .comment("Movement multiplier applied while phase flight is active.")
+                    .defineInRange("phaseFlightSpeedMultiplier", 0.35D, 0.0D, 4.0D);
+            builder.pop();
+
+            builder.push("defense");
+            overloadArmorMitigationLoadPerDamage = builder
+                    .comment("Dynamic pulse load per point of damage prevented by mitigation.")
+                    .defineInRange("mitigationLoadPerDamage", 2, 0, Integer.MAX_VALUE);
+            overloadArmorReflectLoadPerDamage = builder
+                    .comment("Dynamic pulse load per point of reflected damage.")
+                    .defineInRange("reflectLoadPerDamage", 2, 0, Integer.MAX_VALUE);
+            overloadArmorCleansePeriodTicks = builder
+                    .comment("Ticks between automatic negative effect cleanse attempts.")
+                    .defineInRange("cleansePeriodTicks", 100, 1, 20 * 60 * 60);
+            overloadArmorCleanseLoadPerEffect = builder
+                    .comment("Dynamic pulse load per cleansed negative effect.")
+                    .defineInRange("cleanseLoadPerEffect", 12, 0, Integer.MAX_VALUE);
+            builder.pop();
+
+            builder.push("utility");
+            overloadArmorAutoFeedThreshold = builder
+                    .comment("Auto-feed triggers when food level is at or below this value.")
+                    .defineInRange("autoFeedThreshold", 14, 0, 20);
+            overloadArmorAutoFeedCooldownTicks = builder
+                    .comment("Cooldown after auto-feed consumes one food item.")
+                    .defineInRange("autoFeedCooldownTicks", 60, 1, 20 * 60 * 60);
+            overloadArmorAutoFeedPulseLoad = builder
+                    .comment("Dynamic pulse load injected when auto-feed triggers.")
+                    .defineInRange("autoFeedPulseLoad", 8, 0, Integer.MAX_VALUE);
+            overloadArmorUnderwaterDigMultiplier = builder
+                    .comment("Break-speed multiplier applied by underwater dig affinity.")
+                    .defineInRange("underwaterDigMultiplier", 5.0D, 1.0D, 64.0D);
+            overloadArmorAirborneDigMultiplier = builder
+                    .comment("Break-speed multiplier applied by airborne dig affinity.")
+                    .defineInRange("airborneDigMultiplier", 5.0D, 1.0D, 64.0D);
+            overloadArmorDigPulseLoad = builder
+                    .comment("Small pulse load injected while dig affinity is correcting a penalty.")
+                    .defineInRange("digPulseLoad", 2, 0, Integer.MAX_VALUE);
+            builder.pop();
+            builder.pop();
             builder.pop();
 
             builder.push("railgun");

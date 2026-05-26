@@ -12,7 +12,6 @@ import net.minecraft.world.item.ItemStack;
 import com.moakiee.ae2lt.config.AE2LTCommonConfig;
 import com.moakiee.ae2lt.device.DeviceKind;
 import com.moakiee.ae2lt.device.overload.LockState;
-import com.moakiee.ae2lt.device.overload.OverloadRuntime;
 import com.moakiee.ae2lt.item.railgun.RailgunModuleStorage;
 import com.moakiee.ae2lt.item.railgun.RailgunOverloadBudget;
 import com.moakiee.ae2lt.item.railgun.RailgunSettings;
@@ -81,23 +80,11 @@ public record DeviceStatusModel(
         long capacity = ArmorEnergyBuffer.capacity(armor);
 
         // Overload
-        var armorId = OverloadArmorState.getArmorId(armor);
-        int dynamicLoad = 0;
-        int lockStateVal = 0;
-        int lockValue = 0;
-        if (armorId != null) {
-            var runtime = OverloadRuntime.get(armorId);
-            dynamicLoad = runtime.currentLoad();
-            LockState ls = runtime.dynamics().state();
-            if (ls instanceof LockState.Locked locked) {
-                lockStateVal = 2;
-                lockValue = locked.ticksRemaining();
-            } else if (ls instanceof LockState.Debt debt) {
-                lockStateVal = 1;
-                lockValue = debt.ticksRemaining();
-            }
-        }
-        int cap = part.dynamicCap();
+        var snapshot = OverloadArmorState.snapshot(player, armor, player.registryAccess(), true);
+        int dynamicLoad = snapshot.currentLoad();
+        int lockStateVal = snapshot.lockedTicks() > 0 ? 2 : snapshot.debtTicks() > 0 ? 1 : 0;
+        int lockValue = snapshot.lockedTicks() > 0 ? snapshot.lockedTicks() : snapshot.debtTicks();
+        int cap = snapshot.baseOverload();
         boolean powered = stored > 0 || gridReachable;
 
         // Modules

@@ -11,6 +11,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
 
 import com.moakiee.ae2lt.AE2LightningTech;
+import com.moakiee.ae2lt.config.AE2LTCommonConfig;
 import com.moakiee.ae2lt.device.capability.DeviceCapability;
 import com.moakiee.ae2lt.device.module.OverloadDeviceModuleItem;
 import com.moakiee.ae2lt.overload.armor.module.OverloadArmorSubmoduleItem;
@@ -34,8 +35,9 @@ public final class OverloadArmorDamageHandler {
         double passRate = collectPassRate(capabilities);
         if (passRate < 1.0D) {
             float incoming = event.getNewDamage();
-            event.setNewDamage(incoming * (float) passRate);
-            applyMitigationLoad(capabilities);
+            float afterMitigation = incoming * (float) passRate;
+            event.setNewDamage(afterMitigation);
+            applyMitigationLoad(capabilities, incoming - afterMitigation);
         }
     }
 
@@ -59,10 +61,16 @@ public final class OverloadArmorDamageHandler {
         return passRate;
     }
 
-    private static void applyMitigationLoad(java.util.List<ActiveCapability> capabilities) {
+    private static void applyMitigationLoad(java.util.List<ActiveCapability> capabilities, float preventedDamage) {
+        int totalLoad = ArmorDynamicLoadRules.pulseFromAmount(
+                preventedDamage,
+                AE2LTCommonConfig.overloadArmorMitigationLoadPerDamage());
+        if (totalLoad <= 0) {
+            return;
+        }
         for (var active : capabilities) {
             if (active.capability() instanceof DeviceCapability.StagedMitigation mitigation) {
-                OverloadArmorState.addPulseLoad(active.armor(), Math.max(0, mitigation.loadPerHit()));
+                OverloadArmorState.addPulseLoad(active.armor(), "resistance", totalLoad);
             }
         }
     }
@@ -96,7 +104,10 @@ public final class OverloadArmorDamageHandler {
                 }
             }
             reflected += amount;
-            OverloadArmorState.addPulseLoad(active.armor(), Math.max(0, (int) Math.ceil(amount * reflect.loadPerDamage())));
+            int load = ArmorDynamicLoadRules.pulseFromAmount(
+                    amount,
+                    Math.max(reflect.loadPerDamage(), AE2LTCommonConfig.overloadArmorReflectLoadPerDamage()));
+            OverloadArmorState.addPulseLoad(active.armor(), "reflect", load);
             if (reflected >= damage) {
                 break;
             }

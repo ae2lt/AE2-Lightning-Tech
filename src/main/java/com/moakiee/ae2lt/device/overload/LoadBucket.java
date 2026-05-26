@@ -15,7 +15,8 @@ public final class LoadBucket {
     private final int defaultMaxTicks;
     private final double epsilon;
     private final Map<String, Integer> states = new HashMap<>();
-    private final List<Pulse> pulses = new ArrayList<>();
+    private final Map<String, List<Pulse>> pulses = new HashMap<>();
+    private final Map<String, Integer> currentByKey = new HashMap<>();
     private int current;
 
     public LoadBucket() {
@@ -42,14 +43,38 @@ public final class LoadBucket {
     public void clearState(String key) {
         if (key != null) {
             states.remove(key);
+            currentByKey.remove(key);
         }
+    }
+
+    public void clear(String key) {
+        if (key != null) {
+            states.remove(key);
+            pulses.remove(key);
+            currentByKey.remove(key);
+        }
+    }
+
+    public void addPulse(String key, int base, double decay, int maxTicks) {
+        if (key == null || key.isBlank()) {
+            addPulse(base, decay, maxTicks);
+            return;
+        }
+        if (base <= 0 || maxTicks <= 0) {
+            return;
+        }
+        pulses.computeIfAbsent(key, ignored -> new ArrayList<>()).add(new Pulse(base, decay, maxTicks));
+    }
+
+    public void addPulse(String key, int base) {
+        addPulse(key, base, defaultDecay, defaultMaxTicks);
     }
 
     public void addPulse(int base, double decay, int maxTicks) {
         if (base <= 0 || maxTicks <= 0) {
             return;
         }
-        pulses.add(new Pulse(base, decay, maxTicks));
+        pulses.computeIfAbsent("", ignored -> new ArrayList<>()).add(new Pulse(base, decay, maxTicks));
     }
 
     public void addPulse(int base) {
@@ -58,17 +83,33 @@ public final class LoadBucket {
 
     public int tick() {
         int total = 0;
-        for (int stateLoad : states.values()) {
-            total += Math.max(0, stateLoad);
+        currentByKey.clear();
+        for (var entry : states.entrySet()) {
+            int stateLoad = Math.max(0, entry.getValue());
+            total += stateLoad;
+            currentByKey.merge(entry.getKey(), stateLoad, Integer::sum);
         }
-        Iterator<Pulse> it = pulses.iterator();
-        while (it.hasNext()) {
-            Pulse pulse = it.next();
-            total += Math.max(0, (int) Math.round(pulse.value));
-            pulse.ticksRemaining--;
-            pulse.value *= pulse.decay;
-            if (pulse.ticksRemaining <= 0 || pulse.value < epsilon) {
-                it.remove();
+        Iterator<Map.Entry<String, List<Pulse>>> groupIt = pulses.entrySet().iterator();
+        while (groupIt.hasNext()) {
+            var group = groupIt.next();
+            int groupTotal = 0;
+            Iterator<Pulse> it = group.getValue().iterator();
+            while (it.hasNext()) {
+                Pulse pulse = it.next();
+                int load = Math.max(0, (int) Math.round(pulse.value));
+                total += load;
+                groupTotal += load;
+                pulse.ticksRemaining--;
+                pulse.value *= pulse.decay;
+                if (pulse.ticksRemaining <= 0 || pulse.value < epsilon) {
+                    it.remove();
+                }
+            }
+            if (groupTotal > 0 && !group.getKey().isBlank()) {
+                currentByKey.merge(group.getKey(), groupTotal, Integer::sum);
+            }
+            if (group.getValue().isEmpty()) {
+                groupIt.remove();
             }
         }
         current = total;
@@ -77,6 +118,19 @@ public final class LoadBucket {
 
     public int current() {
         return current;
+    }
+
+    public int currentFor(String key) {
+        if (key == null || key.isBlank()) {
+            return 0;
+        }
+        return currentByKey.getOrDefault(key, 0);
+    }
+
+    public void clear() {
+        states.clear();
+        pulses.clear();
+        current = 0;
     }
 
     private static final class Pulse {

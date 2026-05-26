@@ -186,6 +186,10 @@ public class AE2LightningTech {
                         output.accept(ModItems.ARMOR_SUBMODULE_REFLECT);
                         output.accept(ModItems.ARMOR_SUBMODULE_DASH);
                         output.accept(ModItems.ARMOR_SUBMODULE_FLIGHT);
+                        output.accept(ModItems.ARMOR_SUBMODULE_CLEANSE);
+                        output.accept(ModItems.ARMOR_SUBMODULE_AUTO_FEED);
+                        output.accept(ModItems.ARMOR_SUBMODULE_DIG_AFFINITY);
+                        output.accept(ModItems.ARMOR_SUBMODULE_PHASE_FLIGHT);
                         // 电磁炮 + 模块
                         output.accept(ModItems.ELECTROMAGNETIC_RAILGUN);
                         output.accept(ModItems.RAILGUN_MODULE_CORE);

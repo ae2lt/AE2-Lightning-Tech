@@ -190,6 +190,7 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
         // ── Module list ──
         List<String> moduleNameKeys = menu.getModuleNameKeys();
         List<Integer> moduleCounts = menu.getModuleCounts();
+        List<Integer> moduleLoads = menu.getModuleLoads();
         int moduleCount = menu.data.get(DeviceHubMenu.DATA_MODULE_COUNT);
         int moduleSlotCount = menu.data.get(DeviceHubMenu.DATA_MODULE_SLOT_COUNT);
         int moduleMask = menu.data.get(DeviceHubMenu.DATA_MODULE_MASK);
@@ -206,9 +207,15 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
             int rowY = moduleListY + i * MODULE_ROW_H;
             boolean enabled = (moduleMask & (1 << idx)) != 0;
             int count = idx < moduleCounts.size() ? moduleCounts.get(idx) : 1;
+            int moduleLoad = idx < moduleLoads.size() ? moduleLoads.get(idx) : 0;
 
             // Module name
             gfx.drawString(font, moduleName(moduleNameKeys.get(idx), count), x, rowY, TEXT_PRIMARY, false);
+            Component loadLabel = Component.translatable("ae2lt.device_hub.module.load", moduleLoad);
+            int loadTextX = selectedTab != DeviceHubMenu.TAB_RAILGUN
+                    ? leftPos + imageWidth - 56 - font.width(loadLabel)
+                    : leftPos + imageWidth - 12 - font.width(loadLabel);
+            gfx.drawString(font, loadLabel, loadTextX, rowY, moduleLoad > 0 ? LOAD_GOLD : TEXT_SECONDARY, false);
 
             // Toggle button (only for armor modules, not railgun)
             if (selectedTab != DeviceHubMenu.TAB_RAILGUN) {

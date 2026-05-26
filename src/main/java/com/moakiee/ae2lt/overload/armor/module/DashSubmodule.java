@@ -10,6 +10,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.api.distmarker.Dist;
 
+import com.moakiee.ae2lt.config.AE2LTCommonConfig;
 import com.moakiee.ae2lt.overload.armor.ArmorEnergyBuffer;
 import com.moakiee.ae2lt.overload.armor.ArmorOverloadRules;
 import com.moakiee.ae2lt.overload.armor.OverloadArmorState;
@@ -18,7 +19,6 @@ public final class DashSubmodule extends AbstractOverloadArmorSubmodule {
 
     public static final DashSubmodule INSTANCE = new DashSubmodule();
 
-    private static final int IDLE_LOAD = 20;
     private static final double IMPULSE = 1.8D;
     private static final int COOLDOWN_TICKS = 60;
     private static final String TAG_COOLDOWN = "DashCooldown";
@@ -47,7 +47,7 @@ public final class DashSubmodule extends AbstractOverloadArmorSubmodule {
 
     @Override
     public int getIdleOverloaded(@Nullable Player player, Dist dist, ItemStack armor) {
-        return IDLE_LOAD;
+        return 0;
     }
 
     @Override
@@ -90,6 +90,7 @@ public final class DashSubmodule extends AbstractOverloadArmorSubmodule {
                 player.getDeltaMovement().z + look.z * IMPULSE);
         player.hurtMarked = true;
         player.resetFallDistance();
+        OverloadArmorState.addPulseLoad(armor, sub.id(), AE2LTCommonConfig.overloadArmorDashPulseLoad());
         setCooldown(armor, COOLDOWN_TICKS);
     }
 

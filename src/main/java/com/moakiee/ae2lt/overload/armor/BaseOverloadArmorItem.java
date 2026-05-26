@@ -23,6 +23,7 @@ import com.moakiee.ae2lt.device.DeviceItem;
 import com.moakiee.ae2lt.device.DeviceKind;
 import com.moakiee.ae2lt.device.capability.DeviceCapability;
 import com.moakiee.ae2lt.device.module.OverloadDeviceModuleItem;
+import com.moakiee.ae2lt.config.AE2LTCommonConfig;
 import com.moakiee.ae2lt.overload.armor.module.OverloadArmorSubmoduleItem;
 import com.moakiee.ae2lt.util.EnergyText;
 
@@ -158,7 +159,10 @@ public abstract class BaseOverloadArmorItem extends ArmorItem implements ICurioI
             }
         }
         OverloadArmorState.tickActiveSubmodules(player, stack, registries, dist);
-        OverloadArmorState.tickEquipped(player, stack, registries);
+        var snapshot = OverloadArmorState.tickEquipped(player, stack, registries);
+        if (player instanceof ServerPlayer serverPlayer) {
+            consumeOverloadDemand(serverPlayer, stack, snapshot);
+        }
     }
 
     private static void refillFromBoundNetwork(ItemStack armor, ServerPlayer player) {
@@ -198,6 +202,25 @@ public abstract class BaseOverloadArmorItem extends ArmorItem implements ICurioI
                 player,
                 Math.max(0L, adjusted - ArmorEnergyBuffer.read(armor)));
         return ArmorEnergyBuffer.tryConsume(armor, player, adjusted);
+    }
+
+    private static void consumeOverloadDemand(
+            ServerPlayer player,
+            ItemStack armor,
+            OverloadArmorState.Snapshot snapshot) {
+        long demand = ArmorDynamicLoadRules.overloadDemand(
+                snapshot.currentLoad(),
+                snapshot.baseOverload(),
+                AE2LTCommonConfig.overloadArmorCurveExponent(),
+                AE2LTCommonConfig.overloadArmorPowerDemandScale());
+        if (demand <= 0L) {
+            return;
+        }
+        ArmorEnergyBuffer.refillFromNetwork(
+                armor,
+                player,
+                Math.max(0L, demand - ArmorEnergyBuffer.read(armor)));
+        ArmorEnergyBuffer.tryConsume(armor, player, demand);
     }
 
     private static boolean moduleRuntimeActive(ItemStack armor, ItemStack module) {

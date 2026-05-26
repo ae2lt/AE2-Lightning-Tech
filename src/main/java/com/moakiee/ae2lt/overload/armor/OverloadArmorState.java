@@ -17,6 +17,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
 import net.neoforged.api.distmarker.Dist;
 
+import com.moakiee.ae2lt.config.AE2LTCommonConfig;
 import com.moakiee.ae2lt.device.overload.OverloadRuntime;
 import com.moakiee.ae2lt.overload.armor.module.OverloadArmorSubmodule;
 import com.moakiee.ae2lt.overload.armor.module.OverloadArmorSubmoduleItem;
@@ -159,14 +160,6 @@ public final class OverloadArmorState {
         }
         if (current == 0 && loadModuleStacks(armor, registries).size() >= MAX_MODULE_TYPES) {
             return false;
-        }
-        int cap = getBaseOverload(armor, registries);
-        if (cap > 0) {
-            int nextLoad = computeTotalIdleOverload(armor, registries)
-                    + computeStackIdleOverload(armor, candidate, 1, Dist.DEDICATED_SERVER);
-            if (nextLoad > cap) {
-                return false;
-            }
         }
         return true;
     }
@@ -318,13 +311,7 @@ public final class OverloadArmorState {
     }
 
     public static int computeTotalIdleOverload(ItemStack armor, HolderLookup.Provider registries) {
-        int total = 0;
-        for (var entry : collectInstalledSubmoduleEntries(armor, registries)) {
-            if (isSubmoduleEnabled(armor, entry.submodule())) {
-                total += idleLoadFor(null, armor, entry, Dist.DEDICATED_SERVER);
-            }
-        }
-        return total;
+        return 0;
     }
 
     public static List<OverloadArmorSubmodule> collectSubmodules(ItemStack armor, HolderLookup.Provider registries) {
@@ -461,7 +448,7 @@ public final class OverloadArmorState {
             if (active) {
                 submodule.onActivated(player, dist, armor);
             } else {
-                OverloadRuntime.get(armorId).bucket().clearState(submodule.id());
+                armorRuntime(armorId).bucket().clear(submodule.id());
                 submodule.onDeactivated(player, dist, armor);
             }
         }
@@ -495,7 +482,7 @@ public final class OverloadArmorState {
 
     public static Snapshot tickEquipped(Player player, ItemStack armor, HolderLookup.Provider registries) {
         UUID id = ensureArmorId(armor);
-        var runtime = OverloadRuntime.get(id);
+        var runtime = armorRuntime(id);
         var entries = collectInstalledSubmoduleEntries(armor, registries);
         var installedIds = new HashSet<String>();
         for (var entry : entries) {
@@ -505,8 +492,7 @@ public final class OverloadArmorState {
         for (var entry : entries) {
             var submodule = entry.submodule();
             int load = isSubmoduleRuntimeActive(armor, submodule.id())
-                    ? idleLoadFor(player, armor, entry, Dist.DEDICATED_SERVER)
-                            + getSubmoduleDynamicLoadFor(armor, submodule.id())
+                    ? getSubmoduleDynamicLoadFor(armor, submodule.id())
                     : 0;
             if (load > 0) {
                 runtime.bucket().setState(submodule.id(), load);
@@ -515,6 +501,13 @@ public final class OverloadArmorState {
             }
         }
         runtime.tick(getBaseOverload(armor, registries));
+        for (var entry : entries) {
+            var submodule = entry.submodule();
+            int load = isSubmoduleRuntimeActive(armor, submodule.id())
+                    ? runtime.bucket().currentFor(submodule.id())
+                    : 0;
+            setSubmoduleRuntimeDynamicLoad(armor, submodule.id(), load);
+        }
         return snapshot(player, armor, registries, true);
     }
 
@@ -528,7 +521,7 @@ public final class OverloadArmorState {
             HolderLookup.Provider registries,
             boolean equipped) {
         UUID id = getArmorId(armor);
-        var runtime = id == null ? null : OverloadRuntime.get(id);
+        var runtime = id == null ? null : armorRuntime(id);
         int currentLoad = runtime == null ? 0 : runtime.currentLoad();
         int lockedTicks = runtime == null ? 0 : runtime.dynamics().lockTicksRemaining();
         int debtTicks = runtime == null ? 0 : runtime.dynamics().debtTicks();
@@ -537,7 +530,7 @@ public final class OverloadArmorState {
         boolean hasCore = hasCore(armor, registries);
         boolean hasEnergy = !getSlot(armor, registries, SLOT_ENERGY).isEmpty();
         int cap = getBaseOverload(armor, registries);
-        int moduleLoad = computeTotalIdleOverload(armor, registries);
+        int moduleLoad = 0;
         return new Snapshot(
                 equipped,
                 hasCore,
@@ -564,10 +557,14 @@ public final class OverloadArmorState {
     }
 
     public static void addPulseLoad(ItemStack armor, int load) {
+        addPulseLoad(armor, "", load);
+    }
+
+    public static void addPulseLoad(ItemStack armor, String submoduleId, int load) {
         if (armor == null || armor.isEmpty() || load <= 0) {
             return;
         }
-        OverloadRuntime.get(ensureArmorId(armor)).bucket().addPulse(load);
+        armorRuntime(ensureArmorId(armor)).bucket().addPulse(submoduleId, load);
     }
 
     public static void flushRuntimeToNbt(ItemStack armor) {
@@ -641,17 +638,7 @@ public final class OverloadArmorState {
             ItemStack stack,
             int count,
             Dist dist) {
-        if (stack == null || stack.isEmpty() || !(stack.getItem() instanceof OverloadArmorSubmoduleItem provider)) {
-            return 0;
-        }
-        int multiplier = Math.max(1, count);
-        int[] total = {0};
-        provider.collectSubmodules(stack.copyWithCount(multiplier), submodule -> {
-            if (submodule != null && isSubmoduleEnabled(armor, submodule.id(), submodule.defaultEnabled())) {
-                total[0] += Math.max(0, submodule.getIdleOverloaded(null, dist, armor)) * multiplier;
-            }
-        });
-        return total[0];
+        return 0;
     }
 
     private static void pruneRemovedRuntime(UUID armorId, java.util.Set<String> installedIds, OverloadRuntime runtime) {
@@ -664,11 +651,21 @@ public final class OverloadArmorState {
             if (installedIds.contains(submoduleId)) {
                 continue;
             }
-            runtime.bucket().clearState(submoduleId);
+            runtime.bucket().clear(submoduleId);
             SUBMODULE_RUNTIME_CACHE.remove(key);
             SERVER_ACTIVE_CACHE.remove(key);
             CLIENT_ACTIVE_CACHE.remove(key);
         }
+    }
+
+    private static OverloadRuntime armorRuntime(UUID armorId) {
+        return OverloadRuntime.get(
+                armorId,
+                AE2LTCommonConfig.overloadArmorPulseDecay(),
+                AE2LTCommonConfig.overloadArmorPulseMaxTicks(),
+                AE2LTCommonConfig.overloadArmorPulseEpsilon(),
+                AE2LTCommonConfig.overloadArmorLockTriggerTicks(),
+                AE2LTCommonConfig.overloadArmorLockDurationTicks());
     }
 
     private static void setSubmoduleRuntimeActive(ItemStack armor, String submoduleId, boolean active) {

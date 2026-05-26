@@ -12,8 +12,6 @@ public final class NightVisionSubmodule extends AbstractOverloadArmorSubmodule {
 
     public static final NightVisionSubmodule INSTANCE = new NightVisionSubmodule();
 
-    private static final int IDLE_LOAD = 4;
-
     private NightVisionSubmodule() {}
 
     @Override
@@ -38,7 +36,7 @@ public final class NightVisionSubmodule extends AbstractOverloadArmorSubmodule {
 
     @Override
     public int getIdleOverloaded(@Nullable Player player, Dist dist, ItemStack armor) {
-        return IDLE_LOAD;
+        return 0;
     }
 
     @Override

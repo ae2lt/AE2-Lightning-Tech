@@ -18,7 +18,8 @@ public record DeviceHubSyncPacket(
         String boundDim,
         List<String> moduleIds,
         List<String> moduleNameKeys,
-        List<Integer> moduleCounts
+        List<Integer> moduleCounts,
+        List<Integer> moduleLoads
 ) implements CustomPacketPayload {
 
     public static final Type<DeviceHubSyncPacket> TYPE =
@@ -40,24 +41,29 @@ public record DeviceHubSyncPacket(
         List<String> ids = new ArrayList<>(count);
         List<String> nameKeys = new ArrayList<>(count);
         List<Integer> counts = new ArrayList<>(count);
+        List<Integer> loads = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
             ids.add(buf.readUtf(256));
             nameKeys.add(buf.readUtf(256));
             counts.add(buf.readVarInt());
+            loads.add(buf.readVarInt());
         }
-        return new DeviceHubSyncPacket(containerId, deviceName, boundDim, ids, nameKeys, counts);
+        return new DeviceHubSyncPacket(containerId, deviceName, boundDim, ids, nameKeys, counts, loads);
     }
 
     public void write(RegistryFriendlyByteBuf buf) {
         buf.writeVarInt(containerId);
         buf.writeUtf(deviceName, 256);
         buf.writeUtf(boundDim, 256);
-        int count = Math.min(Math.min(moduleIds.size(), moduleNameKeys.size()), moduleCounts.size());
+        int count = Math.min(
+                Math.min(moduleIds.size(), moduleNameKeys.size()),
+                Math.min(moduleCounts.size(), moduleLoads.size()));
         buf.writeVarInt(count);
         for (int i = 0; i < count; i++) {
             buf.writeUtf(moduleIds.get(i), 256);
             buf.writeUtf(moduleNameKeys.get(i), 256);
             buf.writeVarInt(moduleCounts.get(i));
+            buf.writeVarInt(moduleLoads.get(i));
         }
     }
 
@@ -70,7 +76,8 @@ public record DeviceHubSyncPacket(
                         pkt.boundDim(),
                         pkt.moduleIds(),
                         pkt.moduleNameKeys(),
-                        pkt.moduleCounts());
+                        pkt.moduleCounts(),
+                        pkt.moduleLoads());
             }
         });
     }

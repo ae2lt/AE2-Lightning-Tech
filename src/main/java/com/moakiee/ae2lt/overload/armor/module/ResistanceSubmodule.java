@@ -12,8 +12,6 @@ public final class ResistanceSubmodule extends AbstractOverloadArmorSubmodule {
 
     public static final ResistanceSubmodule INSTANCE = new ResistanceSubmodule();
 
-    private static final int IDLE_LOAD = 12;
-
     private ResistanceSubmodule() {}
 
     @Override
@@ -38,7 +36,7 @@ public final class ResistanceSubmodule extends AbstractOverloadArmorSubmodule {
 
     @Override
     public int getIdleOverloaded(@Nullable Player player, Dist dist, ItemStack armor) {
-        return IDLE_LOAD;
+        return 0;
     }
 
     @Override
