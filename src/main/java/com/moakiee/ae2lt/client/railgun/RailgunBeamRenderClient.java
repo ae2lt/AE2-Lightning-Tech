@@ -81,6 +81,7 @@ public final class RailgunBeamRenderClient {
     private static final double SPIN_CORE = 0.55D;
     /** Tick spacing between auto-spawned crackle arcs per beam. */
     private static final long ARC_INTERVAL_TICKS = 3L;
+    private static volatile boolean localRequestedFiring = false;
     private static volatile boolean localFiring = false;
 
     /** Per-shooter beam state (mutable; updated in place by packet handler). */
@@ -114,7 +115,14 @@ public final class RailgunBeamRenderClient {
 
     private RailgunBeamRenderClient() {}
 
-    public static void setLocalFiring(boolean firing) {
+    public static void setLocalRequestedFiring(boolean firing) {
+        localRequestedFiring = firing;
+        if (!firing) {
+            setLocalFiring(false);
+        }
+    }
+
+    private static void setLocalFiring(boolean firing) {
         localFiring = firing;
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) return;
@@ -141,6 +149,7 @@ public final class RailgunBeamRenderClient {
         if (!p.active()) {
             ACTIVE.remove(p.shooterId());
             if (mc.player != null && p.shooterId().equals(mc.player.getUUID())) {
+                localRequestedFiring = false;
                 localFiring = false;
             }
             return;
@@ -150,7 +159,10 @@ public final class RailgunBeamRenderClient {
         // render frame with current camera data); overwriting from/to with server
         // eye-position values causes length drift during fast head rotation.
         if (isLocal) {
-            if (!localFiring) return;
+            if (!localRequestedFiring) return;
+            if (!localFiring) {
+                setLocalFiring(true);
+            }
             // Keep lastUpdateTick fresh so the stale-check doesn't kill the beam,
             // but do NOT touch from/to — those belong to refreshLocalBeam.
             ACTIVE.computeIfPresent(p.shooterId(), (k, prev) -> {

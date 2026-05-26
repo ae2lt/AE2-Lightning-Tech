@@ -37,7 +37,7 @@ public final class RailgunBeamInput {
         boolean attackPressed = mc.options.keyAttack.isDown() && mc.screen == null && holdingGun;
         if (attackPressed != firing) {
             firing = attackPressed;
-            RailgunBeamRenderClient.setLocalFiring(firing);
+            RailgunBeamRenderClient.setLocalRequestedFiring(firing);
             PacketDistributor.sendToServer(new RailgunBeamTogglePacket(firing, InteractionHand.MAIN_HAND));
         }
     }
