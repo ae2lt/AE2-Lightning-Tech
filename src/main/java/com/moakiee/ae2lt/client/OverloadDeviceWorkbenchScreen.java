@@ -1,10 +1,13 @@
 package com.moakiee.ae2lt.client;
 
+import java.util.List;
+
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.ItemStack;
 
 import com.moakiee.ae2lt.menu.OverloadDeviceWorkbenchMenu;
 
@@ -267,6 +270,7 @@ public class OverloadDeviceWorkbenchScreen extends AbstractContainerScreen<Overl
     public void render(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
         renderBackground(gfx, mouseX, mouseY, partialTick);
         super.render(gfx, mouseX, mouseY, partialTick);
+        renderModuleRowTooltip(gfx, mouseX, mouseY);
         renderTooltip(gfx, mouseX, mouseY);
     }
 
@@ -321,6 +325,33 @@ public class OverloadDeviceWorkbenchScreen extends AbstractContainerScreen<Overl
             return true;
         }
         return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+    }
+
+    private void renderModuleRowTooltip(GuiGraphics gfx, int mouseX, int mouseY) {
+        List<ItemStack> modules = menu.getInstalledModuleList();
+        int listLeft = leftPos + MODULE_LIST_X;
+        int listTop = topPos + MODULE_LIST_Y;
+        int listRight = listLeft + MODULE_LIST_WIDTH;
+        for (int i = 0; i < VISIBLE_ROWS; i++) {
+            int modIndex = scrollOffset + i;
+            if (modIndex >= modules.size()) break;
+            int rowY = listTop + i * ROW_HEIGHT;
+            if (mouseX >= listLeft && mouseX < listRight - REMOVE_BUTTON_SIZE - REMOVE_BUTTON_MARGIN
+                    && mouseY >= rowY && mouseY < rowY + ROW_HEIGHT - 2) {
+                gfx.renderTooltip(font, modules.get(modIndex), mouseX, mouseY);
+                return;
+            }
+            int btnX = listRight - REMOVE_BUTTON_SIZE - REMOVE_BUTTON_MARGIN;
+            int btnY = rowY + (ROW_HEIGHT - 2 - REMOVE_BUTTON_SIZE) / 2;
+            if (mouseX >= btnX && mouseX < btnX + REMOVE_BUTTON_SIZE
+                    && mouseY >= btnY && mouseY < btnY + REMOVE_BUTTON_SIZE) {
+                gfx.renderComponentTooltip(font, List.of(
+                        Component.translatable("ae2lt.overload_device_workbench.screen.uninstall_one"),
+                        Component.translatable("ae2lt.overload_device_workbench.screen.uninstall_all")),
+                        mouseX, mouseY);
+                return;
+            }
+        }
     }
 
 }
