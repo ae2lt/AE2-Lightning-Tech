@@ -155,10 +155,6 @@ public final class RailgunBeamService {
             return false;
         }
         RailgunModuleEntries mods = stack.getOrDefault(ModDataComponents.RAILGUN_MODULE_ENTRIES.get(), RailgunModuleEntries.EMPTY);
-        if (!mods.hasCore()) {
-            RailgunFireService.sendFail(player, "ae2lt.railgun.core_required");
-            return false;
-        }
         if (RailgunOverloadBudget.INSTANCE.isLocked(stack)) {
             RailgunFireService.sendFail(player, "ae2lt.railgun.fail.overload_locked");
             return false;

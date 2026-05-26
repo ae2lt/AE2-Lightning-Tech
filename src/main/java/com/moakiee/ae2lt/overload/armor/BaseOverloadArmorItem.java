@@ -18,7 +18,6 @@ import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.Level;
 import net.neoforged.api.distmarker.Dist;
 
-import com.moakiee.ae2lt.config.AE2LTCommonConfig;
 import com.moakiee.ae2lt.device.DeviceItem;
 import com.moakiee.ae2lt.device.DeviceKind;
 import com.moakiee.ae2lt.device.capability.DeviceCapability;
@@ -160,13 +159,7 @@ public abstract class BaseOverloadArmorItem extends ArmorItem implements ICurioI
     }
 
     private static void refillFromBoundNetwork(ItemStack armor, ServerPlayer player) {
-        int interval = Math.max(1, AE2LTCommonConfig.railgunBufferRefillIntervalTicks());
-        long rate = Math.max(0L, AE2LTCommonConfig.railgunBufferRefillRatePerTick());
-        if (rate <= 0L || player.tickCount % interval != 0) {
-            return;
-        }
-        long request = rate > Long.MAX_VALUE / interval ? Long.MAX_VALUE : rate * interval;
-        ArmorEnergyBuffer.refillFromNetwork(armor, player, request);
+        ArmorEnergyBuffer.refillFromNetwork(armor, player, Long.MAX_VALUE);
     }
 
     private static boolean passiveDrain(ServerPlayer player, ItemStack armor) {

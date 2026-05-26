@@ -25,7 +25,6 @@ import appeng.api.implementations.menuobjects.IMenuItem;
 import appeng.api.implementations.menuobjects.ItemMenuHost;
 import appeng.menu.locator.ItemMenuHostLocator;
 
-import com.moakiee.ae2lt.config.AE2LTCommonConfig;
 import com.moakiee.ae2lt.config.RailgunDefaults;
 import com.moakiee.ae2lt.device.DeviceItem;
 import com.moakiee.ae2lt.device.DeviceKind;
@@ -232,13 +231,7 @@ public class ElectromagneticRailgunItem extends Item implements IMenuItem, Devic
     }
 
     private static void refillFromBoundNetwork(ItemStack stack, ServerPlayer player) {
-        int interval = Math.max(1, AE2LTCommonConfig.railgunBufferRefillIntervalTicks());
-        long rate = Math.max(0L, AE2LTCommonConfig.railgunBufferRefillRatePerTick());
-        if (rate <= 0L || player.tickCount % interval != 0) {
-            return;
-        }
-        long request = rate > Long.MAX_VALUE / interval ? Long.MAX_VALUE : rate * interval;
-        RailgunEnergyBuffer.refillFromNetwork(stack, player, request);
+        RailgunEnergyBuffer.refillFromNetwork(stack, player, Long.MAX_VALUE);
     }
 
     private static void refillMissingFe(ItemStack stack, ServerPlayer player, long required) {
