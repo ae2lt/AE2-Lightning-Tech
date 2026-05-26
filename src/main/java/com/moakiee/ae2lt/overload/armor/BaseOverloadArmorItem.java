@@ -16,6 +16,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
 
 import com.moakiee.ae2lt.device.DeviceItem;
@@ -174,9 +175,15 @@ public abstract class BaseOverloadArmorItem extends ArmorItem implements ICurioI
             if (!moduleRuntimeActive(armor, module)) {
                 continue;
             }
-            for (var capability : provider.capabilities(module)) {
+            var capabilities = provider.capabilities(module);
+            boolean movingFlight = hasFlightMode(capabilities) && isMovingInFlight(player);
+            for (var capability : capabilities) {
                 if (capability instanceof DeviceCapability.PassiveDrain passiveDrain) {
-                    drain += Math.max(0L, passiveDrain.fePerTick()) * Math.max(1, module.getCount());
+                    long fePerTick = Math.max(0L, passiveDrain.fePerTick());
+                    if (movingFlight) {
+                        fePerTick = Math.max(fePerTick, ArmorOverloadRules.FLIGHT_MOVING_DRAIN_FE);
+                    }
+                    drain += fePerTick * Math.max(1, module.getCount());
                 } else if (capability instanceof DeviceCapability.EnergyEfficiency efficiency) {
                     multiplier *= Math.max(0.0D, efficiency.drainMul());
                 }
@@ -204,6 +211,23 @@ public abstract class BaseOverloadArmorItem extends ArmorItem implements ICurioI
             }
         });
         return active[0];
+    }
+
+    private static boolean hasFlightMode(List<DeviceCapability> capabilities) {
+        for (var capability : capabilities) {
+            if (capability instanceof DeviceCapability.FlightMode) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean isMovingInFlight(ServerPlayer player) {
+        if (!player.getAbilities().flying) {
+            return false;
+        }
+        Vec3 motion = player.getDeltaMovement();
+        return motion.lengthSqr() > 1.0E-4D;
     }
 
     private static Dist resolveDist(Level level) {

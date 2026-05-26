@@ -8,6 +8,7 @@ import appeng.api.config.Actionable;
 import appeng.api.networking.IGrid;
 import appeng.api.networking.security.IActionSource;
 
+import com.moakiee.ae2lt.config.AE2LTCommonConfig;
 import com.moakiee.ae2lt.item.railgun.RailgunEnergyRules;
 import com.moakiee.ae2lt.logic.energy.AppFluxBridge;
 import com.moakiee.ae2lt.registry.ModDataComponents;
@@ -30,7 +31,7 @@ public final class RailgunEnergyBuffer {
 
     /** Capacity of the railgun's built-in FE buffer. */
     public static long capacity(ItemStack stack) {
-        return RailgunEnergyRules.BASE_CAPACITY_FE;
+        return AE2LTCommonConfig.railgunBufferCapacity();
     }
 
     /** Write the new buffer level, clamping to [0, capacity]. */
