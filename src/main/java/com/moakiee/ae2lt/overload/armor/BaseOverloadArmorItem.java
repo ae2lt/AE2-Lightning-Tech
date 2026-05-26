@@ -18,12 +18,11 @@ import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.Level;
 import net.neoforged.api.distmarker.Dist;
 
-import appeng.core.localization.Tooltips;
-
 import com.moakiee.ae2lt.device.DeviceItem;
 import com.moakiee.ae2lt.device.DeviceKind;
 import com.moakiee.ae2lt.device.capability.DeviceCapability;
 import com.moakiee.ae2lt.device.module.OverloadDeviceModuleItem;
+import com.moakiee.ae2lt.util.EnergyText;
 
 import top.theillusivec4.curios.api.SlotContext;
 import top.theillusivec4.curios.api.type.capability.ICurioItem;
@@ -104,7 +103,7 @@ public abstract class BaseOverloadArmorItem extends ArmorItem implements ICurioI
         super.appendHoverText(stack, context, tooltip, tooltipFlag);
         long current = ArmorEnergyBuffer.read(stack);
         long capacity = ArmorEnergyBuffer.capacity(stack);
-        tooltip.add(Tooltips.energyStorageComponent((double) current, (double) capacity));
+        tooltip.add(EnergyText.storedFe(current, capacity));
 
         var level = context.level();
         if (level != null) {

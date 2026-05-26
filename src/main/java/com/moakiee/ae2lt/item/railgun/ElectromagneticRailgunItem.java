@@ -23,7 +23,6 @@ import net.minecraft.world.phys.BlockHitResult;
 
 import appeng.api.implementations.menuobjects.IMenuItem;
 import appeng.api.implementations.menuobjects.ItemMenuHost;
-import appeng.core.localization.Tooltips;
 import appeng.menu.locator.ItemMenuHostLocator;
 
 import com.moakiee.ae2lt.config.RailgunDefaults;
@@ -34,6 +33,7 @@ import com.moakiee.ae2lt.logic.railgun.RailgunEnergyBuffer;
 import com.moakiee.ae2lt.logic.railgun.RailgunFireService;
 import com.moakiee.ae2lt.menu.railgun.RailgunHost;
 import com.moakiee.ae2lt.registry.ModDataComponents;
+import com.moakiee.ae2lt.util.EnergyText;
 
 public class ElectromagneticRailgunItem extends Item implements IMenuItem, DeviceItem {
 
@@ -181,7 +181,7 @@ public class ElectromagneticRailgunItem extends Item implements IMenuItem, Devic
         super.appendHoverText(stack, context, tooltip, tooltipFlag);
         long current = RailgunEnergyBuffer.read(stack);
         long capacity = RailgunEnergyBuffer.capacity(stack);
-        tooltip.add(Tooltips.energyStorageComponent((double) current, (double) capacity));
+        tooltip.add(EnergyText.storedFe(current, capacity));
     }
 
     @Override
