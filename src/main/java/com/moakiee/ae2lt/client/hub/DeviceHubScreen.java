@@ -54,6 +54,9 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
     private static final int BAR_HEIGHT = 8;
     private static final int TOGGLE_W = 30;
     private static final int TOGGLE_H = 12;
+    private static final int MODULE_CONFIG_RESERVED_H = 48;
+    private static final int CONFIG_BUTTON_W = 56;
+    private static final int CONFIG_BUTTON_H = 12;
 
     private static final String[] TAB_LABEL_KEYS = {
             "ae2lt.device_hub.tab.helmet",
@@ -222,13 +225,17 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
                 x, topPos + modulesY, TEXT_PRIMARY, false);
 
         int moduleListY = topPos + modulesY + 14;
-        int maxVisible = (topPos + imageHeight - 30 - moduleListY) / MODULE_ROW_H;
+        int maxVisible = visibleModuleRows(railgunTab, moduleListY);
         scrollOffset = DeviceHubDisplayRules.clampScrollOffset(scrollOffset, moduleNameKeys.size(), maxVisible);
+        int selectedModuleIndex = menu.getSelectedModuleIndex();
         for (int i = 0; i < Math.min(moduleNameKeys.size(), maxVisible); i++) {
             int idx = i + scrollOffset;
             if (idx >= moduleNameKeys.size()) break;
 
             int rowY = moduleListY + i * MODULE_ROW_H;
+            if (!railgunTab && idx == selectedModuleIndex) {
+                gfx.fill(x - 2, rowY - 2, leftPos + imageWidth - 6, rowY + MODULE_ROW_H - 2, BG_DEEP);
+            }
             boolean enabled = idx < moduleEnabled.size() && moduleEnabled.get(idx);
             boolean active = idx < moduleActive.size() && moduleActive.get(idx);
             int count = idx < moduleCounts.size() ? moduleCounts.get(idx) : 1;
@@ -253,6 +260,11 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
                 int toggleX = leftPos + imageWidth - 48;
                 drawToggleButton(gfx, toggleX, rowY - 1, enabled);
             }
+        }
+
+        if (!railgunTab) {
+            int configY = moduleListY + Math.min(moduleNameKeys.size(), maxVisible) * MODULE_ROW_H + 8;
+            renderModuleConfig(gfx, x, configY);
         }
 
         // ── Railgun settings toggles ──
@@ -318,8 +330,13 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
         if (selectedTab != DeviceHubMenu.TAB_RAILGUN) {
             List<String> moduleNames = menu.getModuleNameKeys();
             int moduleListY = topPos + MODULES_Y + 14;
-            int maxVisible = (topPos + imageHeight - 30 - moduleListY) / MODULE_ROW_H;
+            int maxVisible = visibleModuleRows(false, moduleListY);
             scrollOffset = DeviceHubDisplayRules.clampScrollOffset(scrollOffset, moduleNames.size(), maxVisible);
+            int configY = moduleListY + Math.min(moduleNames.size(), maxVisible) * MODULE_ROW_H + 8;
+            if (mouseClickedModuleConfig(mouseX, mouseY, configY)) {
+                playClick();
+                return true;
+            }
             for (int i = 0; i < Math.min(moduleNames.size(), maxVisible); i++) {
                 int idx = i + scrollOffset;
                 if (idx >= moduleNames.size()) break;
@@ -331,6 +348,13 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
                     playClick();
                     return true;
                 }
+                if (mouseX >= leftPos + 8 && mouseX <= leftPos + imageWidth - 8
+                        && mouseY >= rowY && mouseY <= rowY + MODULE_ROW_H) {
+                    PacketDistributor.sendToServer(new DeviceHubActionPacket(
+                            DeviceHubActionPacket.ACTION_SELECT_MODULE, idx));
+                    playClick();
+                    return true;
+                }
             }
         }
 
@@ -338,7 +362,7 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
         if (selectedTab == DeviceHubMenu.TAB_RAILGUN) {
             List<String> moduleNames = menu.getModuleNameKeys();
             int moduleListY = topPos + STATE_LINE_Y + 14;
-            int maxVisible = (topPos + imageHeight - 30 - moduleListY) / MODULE_ROW_H;
+            int maxVisible = visibleModuleRows(true, moduleListY);
             scrollOffset = DeviceHubDisplayRules.clampScrollOffset(scrollOffset, moduleNames.size(), maxVisible);
             int toggleY = moduleListY + Math.min(moduleNames.size(), maxVisible) * MODULE_ROW_H + 8 + 14;
             int toggleX = leftPos + imageWidth - 48;
@@ -386,7 +410,7 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
         List<String> moduleNames = menu.getModuleNameKeys();
         boolean railgunTab = menu.getSelectedTab() == DeviceHubMenu.TAB_RAILGUN;
         int moduleListY = topPos + (railgunTab ? STATE_LINE_Y : MODULES_Y) + 14;
-        int maxVisible = (topPos + imageHeight - 30 - moduleListY) / MODULE_ROW_H;
+        int maxVisible = visibleModuleRows(railgunTab, moduleListY);
         if (scrollY > 0 && scrollOffset > 0) {
             scrollOffset--;
         } else if (scrollY < 0) {
@@ -454,6 +478,80 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
         int textColor = on ? TEXT_PRIMARY : TEXT_SECONDARY;
         int tw = font.width(text);
         gfx.drawString(font, Component.literal(text), x + (TOGGLE_W - tw) / 2, y + 2, textColor, false);
+    }
+
+    private void renderModuleConfig(GuiGraphics gfx, int x, int y) {
+        int count = moduleConfigCount();
+        if (count <= 0) {
+            return;
+        }
+        gfx.fill(leftPos + 6, y - 4, leftPos + imageWidth - 6, y - 3, BG_DEEP);
+        gfx.drawString(font, Component.translatable("ae2lt.overload_armor.screen.module_options"), x, y, TEXT_PRIMARY, false);
+        int rowY = y + 14;
+        for (int i = 0; i < Math.min(count, 2); i++) {
+            String value = menu.getModuleConfigValues().get(i);
+            boolean editable = menu.getModuleConfigEditable().get(i);
+            gfx.drawString(font, Component.literal("  ").append(moduleConfigLabel(i)), x, rowY + 1, TEXT_PRIMARY, false);
+            drawConfigValueButton(gfx, configButtonX(), rowY - 1, value, editable);
+            rowY += MODULE_ROW_H;
+        }
+    }
+
+    private void drawConfigValueButton(GuiGraphics gfx, int x, int y, String value, boolean editable) {
+        int borderColor = editable ? HIGHLIGHT_GOLD : TAB_DISABLED;
+        int fillColor = editable ? darken(HIGHLIGHT_GOLD) : 0xFF2A2A2A;
+        gfx.fill(x - 1, y - 1, x + CONFIG_BUTTON_W + 1, y + CONFIG_BUTTON_H + 1, borderColor);
+        gfx.fill(x, y, x + CONFIG_BUTTON_W, y + CONFIG_BUTTON_H, fillColor);
+        int textColor = editable ? TEXT_PRIMARY : TEXT_SECONDARY;
+        int tw = font.width(value);
+        gfx.drawString(font, Component.literal(value), x + (CONFIG_BUTTON_W - tw) / 2, y + 2, textColor, false);
+    }
+
+    private boolean mouseClickedModuleConfig(double mouseX, double mouseY, int y) {
+        int count = moduleConfigCount();
+        if (count <= 0) {
+            return false;
+        }
+        int rowY = y + 14;
+        int buttonX = configButtonX();
+        for (int i = 0; i < Math.min(count, 2); i++) {
+            boolean editable = menu.getModuleConfigEditable().get(i);
+            if (editable
+                    && mouseX >= buttonX
+                    && mouseX <= buttonX + CONFIG_BUTTON_W
+                    && mouseY >= rowY - 1
+                    && mouseY <= rowY - 1 + CONFIG_BUTTON_H) {
+                PacketDistributor.sendToServer(new DeviceHubActionPacket(
+                        DeviceHubActionPacket.ACTION_CYCLE_MODULE_CONFIG, i));
+                return true;
+            }
+            rowY += MODULE_ROW_H;
+        }
+        return false;
+    }
+
+    private int moduleConfigCount() {
+        return Math.min(
+                Math.min(Math.min(menu.getModuleConfigKeys().size(), menu.getModuleConfigLabels().size()),
+                        menu.getModuleConfigValues().size()),
+                Math.min(menu.getModuleConfigKinds().size(), menu.getModuleConfigEditable().size()));
+    }
+
+    private int configButtonX() {
+        return leftPos + imageWidth - 70;
+    }
+
+    private Component moduleConfigLabel(int index) {
+        String key = menu.getModuleConfigKeys().get(index);
+        if (key != null && !key.isBlank()) {
+            return Component.translatable("ae2lt.overload_armor.config." + key);
+        }
+        return Component.literal(menu.getModuleConfigLabels().get(index));
+    }
+
+    private int visibleModuleRows(boolean railgunTab, int moduleListY) {
+        int reserved = railgunTab ? 30 : 30 + MODULE_CONFIG_RESERVED_H;
+        return Math.max(1, (topPos + imageHeight - reserved - moduleListY) / MODULE_ROW_H);
     }
 
     private static Component moduleName(String nameKey, int count) {

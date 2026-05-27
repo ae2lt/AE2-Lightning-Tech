@@ -607,6 +607,8 @@
   "ae2lt.overload_armor.screen.action.click_toggle": "点击启用或停用模块。",
   "ae2lt.overload_armor.config.enabled": "启用",
   "ae2lt.overload_armor.config.enabled.hint": "切换该模块是否允许进入 active 状态。",
+  "ae2lt.overload_armor.config.speed_multiplier": "速度倍率",
+  "ae2lt.overload_armor.config.speed_multiplier.hint": "点击循环切换该模块的移动速度。",
   "ae2lt.overload_armor.config.toggle_hint": "左键点击开关切换此设置。",
   "ae2lt.overload_armor.config.cycle_hint": "点击左右箭头或直接左/右键在取值间循环。",
   "ae2lt.overload_armor.screen.equipped": "穿戴：%s",

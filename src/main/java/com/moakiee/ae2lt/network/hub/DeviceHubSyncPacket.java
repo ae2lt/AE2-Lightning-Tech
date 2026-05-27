@@ -39,7 +39,13 @@ public record DeviceHubSyncPacket(
         List<Boolean> moduleEnabled,
         List<Boolean> moduleActive,
         List<Integer> moduleLoads,
-        List<Integer> moduleCooldowns
+        List<Integer> moduleCooldowns,
+        int selectedModuleIndex,
+        List<String> moduleConfigKeys,
+        List<String> moduleConfigLabels,
+        List<String> moduleConfigValues,
+        List<String> moduleConfigKinds,
+        List<Boolean> moduleConfigEditable
 ) implements CustomPacketPayload {
 
     public static final Type<DeviceHubSyncPacket> TYPE =
@@ -96,6 +102,20 @@ public record DeviceHubSyncPacket(
             loads.add(buf.readVarInt());
             cooldowns.add(buf.readVarInt());
         }
+        int selectedModuleIndex = buf.readVarInt();
+        int configCount = buf.readVarInt();
+        List<String> moduleConfigKeys = new ArrayList<>(configCount);
+        List<String> moduleConfigLabels = new ArrayList<>(configCount);
+        List<String> moduleConfigValues = new ArrayList<>(configCount);
+        List<String> moduleConfigKinds = new ArrayList<>(configCount);
+        List<Boolean> moduleConfigEditable = new ArrayList<>(configCount);
+        for (int i = 0; i < configCount; i++) {
+            moduleConfigKeys.add(buf.readUtf(128));
+            moduleConfigLabels.add(buf.readUtf(256));
+            moduleConfigValues.add(buf.readUtf(256));
+            moduleConfigKinds.add(buf.readUtf(64));
+            moduleConfigEditable.add(buf.readBoolean());
+        }
         return new DeviceHubSyncPacket(
                 containerId,
                 deviceName,
@@ -123,7 +143,13 @@ public record DeviceHubSyncPacket(
                 enabled,
                 active,
                 loads,
-                cooldowns);
+                cooldowns,
+                selectedModuleIndex,
+                moduleConfigKeys,
+                moduleConfigLabels,
+                moduleConfigValues,
+                moduleConfigKinds,
+                moduleConfigEditable);
     }
 
     public void write(RegistryFriendlyByteBuf buf) {
@@ -164,6 +190,18 @@ public record DeviceHubSyncPacket(
             buf.writeVarInt(moduleLoads.get(i));
             buf.writeVarInt(moduleCooldowns.get(i));
         }
+        buf.writeVarInt(selectedModuleIndex);
+        int configCount = Math.min(
+                Math.min(Math.min(moduleConfigKeys.size(), moduleConfigLabels.size()), moduleConfigValues.size()),
+                Math.min(moduleConfigKinds.size(), moduleConfigEditable.size()));
+        buf.writeVarInt(configCount);
+        for (int i = 0; i < configCount; i++) {
+            buf.writeUtf(moduleConfigKeys.get(i), 128);
+            buf.writeUtf(moduleConfigLabels.get(i), 256);
+            buf.writeUtf(moduleConfigValues.get(i), 256);
+            buf.writeUtf(moduleConfigKinds.get(i), 64);
+            buf.writeBoolean(moduleConfigEditable.get(i));
+        }
     }
 
     public static void handle(DeviceHubSyncPacket pkt, IPayloadContext ctx) {
@@ -196,7 +234,13 @@ public record DeviceHubSyncPacket(
                         pkt.moduleEnabled(),
                         pkt.moduleActive(),
                         pkt.moduleLoads(),
-                        pkt.moduleCooldowns());
+                        pkt.moduleCooldowns(),
+                        pkt.selectedModuleIndex(),
+                        pkt.moduleConfigKeys(),
+                        pkt.moduleConfigLabels(),
+                        pkt.moduleConfigValues(),
+                        pkt.moduleConfigKinds(),
+                        pkt.moduleConfigEditable());
             }
         });
     }

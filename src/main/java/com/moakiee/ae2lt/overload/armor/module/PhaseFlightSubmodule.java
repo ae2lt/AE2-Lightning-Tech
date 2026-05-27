@@ -2,8 +2,12 @@ package com.moakiee.ae2lt.overload.armor.module;
 
 import org.jetbrains.annotations.Nullable;
 
+import java.util.List;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.Tag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
@@ -23,6 +27,7 @@ public final class PhaseFlightSubmodule extends AbstractOverloadArmorSubmodule {
     private static final String PLAYER_PHASE_TAG = "ae2lt.phase_flight.active";
     private static final String PLAYER_ESCAPE_TICKS_TAG = "ae2lt.phase_flight.escape_ticks";
     private static final float DEFAULT_FLYING_SPEED = 0.05F;
+    private static final double SPRINT_SPEED_MULTIPLIER = 1.5D;
     private static final int ESCAPE_PHASE_TICKS = 40;
 
     private PhaseFlightSubmodule() {
@@ -78,12 +83,62 @@ public final class PhaseFlightSubmodule extends AbstractOverloadArmorSubmodule {
 
         grantPhaseFlight(player, armor);
         applyTransientPhaseState(player);
-        applyPhaseMotion(player);
+        applyPhaseMotion(player, armor);
         return ArmorDynamicLoadRules.phaseFlightStateLoad(
                 true,
                 player.isInWall(),
                 AE2LTCommonConfig.overloadArmorPhaseFlightBaseLoad(),
                 AE2LTCommonConfig.overloadArmorPhaseFlightInsideBlockLoad());
+    }
+
+    @Override
+    public List<OverloadArmorSubmoduleConfig> getConfigs(ItemStack armor) {
+        return List.of(speedConfig(armor));
+    }
+
+    @Override
+    public boolean setConfig(ItemStack armor, String key, @Nullable Tag value) {
+        if (!FlightSpeedOption.CONFIG_KEY.equals(key)) {
+            return false;
+        }
+        var option = FlightSpeedOption.fromTag(value);
+        var options = getOptions(armor);
+        if (option == FlightSpeedOption.ONE) {
+            options.remove(FlightSpeedOption.CONFIG_KEY);
+        } else {
+            options.put(FlightSpeedOption.CONFIG_KEY, option.toTag());
+        }
+        setOptions(armor, options);
+        return true;
+    }
+
+    public static double phaseSpeed(ItemStack armor) {
+        return selectedSpeed(armor).flyingSpeed();
+    }
+
+    public static FlightSpeedOption selectedSpeed(ItemStack armor) {
+        return INSTANCE.getSelectedSpeed(armor);
+    }
+
+    private OverloadArmorSubmoduleConfig speedConfig(ItemStack armor) {
+        return config(
+                FlightSpeedOption.CONFIG_KEY,
+                Component.translatable("ae2lt.overload_armor.config.speed_multiplier"),
+                getSelectedSpeed(armor).toTag(),
+                speedChoices(),
+                Component.translatable("ae2lt.overload_armor.config.speed_multiplier.hint"));
+    }
+
+    private List<OverloadArmorSubmoduleConfigChoice> speedChoices() {
+        return List.of(
+                choice(FlightSpeedOption.ONE.toTag(), Component.literal(FlightSpeedOption.ONE.label())),
+                choice(FlightSpeedOption.TWO.toTag(), Component.literal(FlightSpeedOption.TWO.label())),
+                choice(FlightSpeedOption.FOUR.toTag(), Component.literal(FlightSpeedOption.FOUR.label())));
+    }
+
+    private FlightSpeedOption getSelectedSpeed(ItemStack armor) {
+        var options = getOptions(armor);
+        return FlightSpeedOption.fromTag(options.get(FlightSpeedOption.CONFIG_KEY));
     }
 
     private static void grantPhaseFlight(Player player, ItemStack armor) {
@@ -99,9 +154,7 @@ public final class PhaseFlightSubmodule extends AbstractOverloadArmorSubmodule {
         }
         abilities.mayfly = true;
         abilities.flying = true;
-        abilities.setFlyingSpeed((float) Math.max(
-                DEFAULT_FLYING_SPEED,
-                DEFAULT_FLYING_SPEED * AE2LTCommonConfig.overloadArmorPhaseFlightSpeedMultiplier()));
+        abilities.setFlyingSpeed((float) Math.max(DEFAULT_FLYING_SPEED, phaseSpeed(armor)));
         player.onUpdateAbilities();
     }
 
@@ -144,8 +197,11 @@ public final class PhaseFlightSubmodule extends AbstractOverloadArmorSubmodule {
         player.onUpdateAbilities();
     }
 
-    private static void applyPhaseMotion(Player player) {
-        double speed = AE2LTCommonConfig.overloadArmorPhaseFlightSpeedMultiplier();
+    private static void applyPhaseMotion(Player player, ItemStack armor) {
+        double speed = phaseSpeed(armor);
+        if (player.isSprinting()) {
+            speed *= SPRINT_SPEED_MULTIPLIER;
+        }
         if (speed <= 0.0D) {
             return;
         }

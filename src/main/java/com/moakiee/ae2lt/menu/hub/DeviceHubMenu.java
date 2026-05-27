@@ -76,6 +76,12 @@ public class DeviceHubMenu extends AbstractContainerMenu {
     private List<Boolean> moduleActive = List.of();
     private List<Integer> moduleLoads = List.of();
     private List<Integer> moduleCooldowns = List.of();
+    private int selectedModuleIndex = -1;
+    private List<String> moduleConfigKeys = List.of();
+    private List<String> moduleConfigLabels = List.of();
+    private List<String> moduleConfigValues = List.of();
+    private List<String> moduleConfigKinds = List.of();
+    private List<Boolean> moduleConfigEditable = List.of();
 
     // ── Server-side state ──
     private int selectedTab;
@@ -145,7 +151,7 @@ public class DeviceHubMenu extends AbstractContainerMenu {
         } else if (selectedTab == TAB_RAILGUN) {
             status = DeviceStatusModel.fromRailgunStack(deviceStack, serverPlayer);
         } else {
-            status = DeviceStatusModel.fromArmorStack(deviceStack, serverPlayer);
+            status = DeviceStatusModel.fromArmorStack(deviceStack, serverPlayer, selectedModuleIndex);
         }
         // Update ContainerData
         ServerData sd = (ServerData) data;
@@ -172,6 +178,11 @@ public class DeviceHubMenu extends AbstractContainerMenu {
         List<Integer> cooldowns = status.modules().stream().map(DeviceStatusModel.ModuleInfo::cooldownTicks).toList();
         List<String> recentIds = status.recentLoadEvents().stream().map(DeviceStatusModel.LoadEventInfo::id).toList();
         List<Integer> recentLoads = status.recentLoadEvents().stream().map(DeviceStatusModel.LoadEventInfo::load).toList();
+        List<String> moduleConfigKeys = status.moduleConfigs().stream().map(DeviceStatusModel.ModuleConfigInfo::key).toList();
+        List<String> moduleConfigLabels = status.moduleConfigs().stream().map(DeviceStatusModel.ModuleConfigInfo::label).toList();
+        List<String> moduleConfigValues = status.moduleConfigs().stream().map(DeviceStatusModel.ModuleConfigInfo::value).toList();
+        List<String> moduleConfigKinds = status.moduleConfigs().stream().map(DeviceStatusModel.ModuleConfigInfo::kind).toList();
+        List<Boolean> moduleConfigEditable = status.moduleConfigs().stream().map(DeviceStatusModel.ModuleConfigInfo::editable).toList();
         return new DeviceHubSyncPacket(
                 containerId,
                 status.displayName(),
@@ -199,7 +210,13 @@ public class DeviceHubMenu extends AbstractContainerMenu {
                 enabled,
                 active,
                 loads,
-                cooldowns);
+                cooldowns,
+                status.selectedModuleIndex(),
+                moduleConfigKeys,
+                moduleConfigLabels,
+                moduleConfigValues,
+                moduleConfigKinds,
+                moduleConfigEditable);
     }
 
     @Nullable
@@ -249,7 +266,13 @@ public class DeviceHubMenu extends AbstractContainerMenu {
             List<Boolean> enabled,
             List<Boolean> active,
             List<Integer> loads,
-            List<Integer> cooldowns) {
+            List<Integer> cooldowns,
+            int selectedModuleIndex,
+            List<String> moduleConfigKeys,
+            List<String> moduleConfigLabels,
+            List<String> moduleConfigValues,
+            List<String> moduleConfigKinds,
+            List<Boolean> moduleConfigEditable) {
         this.deviceName = name;
         this.boundDim = dim;
         this.energyStored = storedFe;
@@ -276,6 +299,12 @@ public class DeviceHubMenu extends AbstractContainerMenu {
         this.moduleActive = List.copyOf(active);
         this.moduleLoads = List.copyOf(loads);
         this.moduleCooldowns = List.copyOf(cooldowns);
+        this.selectedModuleIndex = selectedModuleIndex;
+        this.moduleConfigKeys = List.copyOf(moduleConfigKeys);
+        this.moduleConfigLabels = List.copyOf(moduleConfigLabels);
+        this.moduleConfigValues = List.copyOf(moduleConfigValues);
+        this.moduleConfigKinds = List.copyOf(moduleConfigKinds);
+        this.moduleConfigEditable = List.copyOf(moduleConfigEditable);
     }
 
     // ── Client-side accessors ──
@@ -395,10 +424,43 @@ public class DeviceHubMenu extends AbstractContainerMenu {
         return moduleCooldowns;
     }
 
+    public int getSelectedModuleIndex() {
+        return selectedModuleIndex;
+    }
+
+    public List<String> getModuleConfigKeys() {
+        return moduleConfigKeys;
+    }
+
+    public List<String> getModuleConfigLabels() {
+        return moduleConfigLabels;
+    }
+
+    public List<String> getModuleConfigValues() {
+        return moduleConfigValues;
+    }
+
+    public List<String> getModuleConfigKinds() {
+        return moduleConfigKinds;
+    }
+
+    public List<Boolean> getModuleConfigEditable() {
+        return moduleConfigEditable;
+    }
+
     // ── Server-side actions ──
     public void selectTab(int tab) {
         if (tab >= 0 && tab < TAB_COUNT) {
+            if (this.selectedTab != tab) {
+                this.selectedModuleIndex = -1;
+            }
             this.selectedTab = tab;
+        }
+    }
+
+    public void selectModule(int moduleIndex) {
+        if (moduleIndex >= 0) {
+            this.selectedModuleIndex = moduleIndex;
         }
     }
 
@@ -434,6 +496,22 @@ public class DeviceHubMenu extends AbstractContainerMenu {
         if (railgun.isEmpty()) return;
         RailgunSettings s = railgun.getOrDefault(ModDataComponents.RAILGUN_SETTINGS.get(), RailgunSettings.DEFAULT);
         railgun.set(ModDataComponents.RAILGUN_SETTINGS.get(), s.withPvpLock(!s.pvpLock()));
+    }
+
+    public void cycleSelectedModuleConfig(int optionIndex) {
+        if (!(getPlayer() instanceof ServerPlayer player)) return;
+        if (selectedTab == TAB_RAILGUN) return;
+        ItemStack deviceStack = findDevice(player, selectedTab);
+        if (deviceStack.isEmpty()) return;
+        var submodules = OverloadArmorState.collectSubmodules(deviceStack, player.registryAccess());
+        if (selectedModuleIndex < 0 || selectedModuleIndex >= submodules.size()) return;
+        var submodule = submodules.get(selectedModuleIndex);
+        var configs = submodule.getConfigs(deviceStack);
+        if (optionIndex < 0 || optionIndex >= configs.size()) return;
+        var config = configs.get(optionIndex);
+        var next = config.nextValue();
+        if (next == null) return;
+        submodule.setConfig(deviceStack, config.key(), next);
     }
 
     // ── Device lookup ──

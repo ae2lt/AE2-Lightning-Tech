@@ -2,6 +2,11 @@ package com.moakiee.ae2lt.overload.armor.module;
 
 import org.jetbrains.annotations.Nullable;
 
+import java.util.List;
+
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.Tag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
@@ -15,6 +20,9 @@ public final class FlightSubmodule extends AbstractOverloadArmorSubmodule {
 
     public static final FlightSubmodule INSTANCE = new FlightSubmodule();
 
+    private static final String TAG_HAD_MAYFLY = "FlightHadMayfly";
+    private static final String TAG_WAS_FLYING = "FlightWasFlying";
+    private static final String TAG_PREVIOUS_SPEED = "FlightPreviousFlyingSpeed";
     private static final int ELYTRA_BOOST_INTERVAL_TICKS = 10;
 
     private FlightSubmodule() {}
@@ -47,14 +55,14 @@ public final class FlightSubmodule extends AbstractOverloadArmorSubmodule {
     @Override
     public void onActivated(@Nullable Player player, Dist dist, ItemStack armor) {
         if (player != null && dist == Dist.DEDICATED_SERVER) {
-            grantFlight(player);
+            grantFlight(player, armor);
         }
     }
 
     @Override
     public void onDeactivated(@Nullable Player player, Dist dist, ItemStack armor) {
         if (player != null && dist == Dist.DEDICATED_SERVER) {
-            revokeFlight(player);
+            revokeFlight(player, armor);
         }
     }
 
@@ -62,7 +70,10 @@ public final class FlightSubmodule extends AbstractOverloadArmorSubmodule {
     public int tickActive(@Nullable Player player, Dist dist, ItemStack armor) {
         if (player != null && dist == Dist.DEDICATED_SERVER) {
             if (!player.getAbilities().mayfly) {
-                grantFlight(player);
+                grantFlight(player, armor);
+            } else {
+                player.getAbilities().setFlyingSpeed(flightSpeed(armor));
+                player.onUpdateAbilities();
             }
             if (player.isFallFlying() && player.isSprinting()) {
                 tickElytraBoost(player, armor);
@@ -75,6 +86,56 @@ public final class FlightSubmodule extends AbstractOverloadArmorSubmodule {
                     AE2LTCommonConfig.overloadArmorFlightMovingLoad());
         }
         return 0;
+    }
+
+    @Override
+    public List<OverloadArmorSubmoduleConfig> getConfigs(ItemStack armor) {
+        return List.of(speedConfig(armor));
+    }
+
+    @Override
+    public boolean setConfig(ItemStack armor, String key, @Nullable Tag value) {
+        if (!FlightSpeedOption.CONFIG_KEY.equals(key)) {
+            return false;
+        }
+        var option = FlightSpeedOption.fromTag(value);
+        var options = getOptions(armor);
+        if (option == FlightSpeedOption.ONE) {
+            options.remove(FlightSpeedOption.CONFIG_KEY);
+        } else {
+            options.put(FlightSpeedOption.CONFIG_KEY, option.toTag());
+        }
+        setOptions(armor, options);
+        return true;
+    }
+
+    public static float flightSpeed(ItemStack armor) {
+        return selectedSpeed(armor).flyingSpeed();
+    }
+
+    public static FlightSpeedOption selectedSpeed(ItemStack armor) {
+        return INSTANCE.getSelectedSpeed(armor);
+    }
+
+    private OverloadArmorSubmoduleConfig speedConfig(ItemStack armor) {
+        return config(
+                FlightSpeedOption.CONFIG_KEY,
+                Component.translatable("ae2lt.overload_armor.config.speed_multiplier"),
+                getSelectedSpeed(armor).toTag(),
+                speedChoices(),
+                Component.translatable("ae2lt.overload_armor.config.speed_multiplier.hint"));
+    }
+
+    private List<OverloadArmorSubmoduleConfigChoice> speedChoices() {
+        return List.of(
+                choice(FlightSpeedOption.ONE.toTag(), Component.literal(FlightSpeedOption.ONE.label())),
+                choice(FlightSpeedOption.TWO.toTag(), Component.literal(FlightSpeedOption.TWO.label())),
+                choice(FlightSpeedOption.FOUR.toTag(), Component.literal(FlightSpeedOption.FOUR.label())));
+    }
+
+    private FlightSpeedOption getSelectedSpeed(ItemStack armor) {
+        var options = getOptions(armor);
+        return FlightSpeedOption.fromTag(options.get(FlightSpeedOption.CONFIG_KEY));
     }
 
     private static boolean isMoving(Player player) {
@@ -100,16 +161,46 @@ public final class FlightSubmodule extends AbstractOverloadArmorSubmodule {
         }
     }
 
-    private static void grantFlight(Player player) {
+    private static void grantFlight(Player player, ItemStack armor) {
         var abilities = player.getAbilities();
+        var data = OverloadArmorState.getSubmoduleData(armor, INSTANCE);
+        if (!data.contains(TAG_HAD_MAYFLY, CompoundTag.TAG_BYTE)) {
+            data.putBoolean(TAG_HAD_MAYFLY, abilities.mayfly);
+            data.putBoolean(TAG_WAS_FLYING, abilities.flying);
+            data.putFloat(TAG_PREVIOUS_SPEED, abilities.getFlyingSpeed());
+            OverloadArmorState.setSubmoduleData(armor, INSTANCE, data);
+        }
         abilities.mayfly = true;
+        abilities.setFlyingSpeed(flightSpeed(armor));
         player.onUpdateAbilities();
     }
 
-    private static void revokeFlight(Player player) {
+    private static void revokeFlight(Player player, ItemStack armor) {
+        restoreStoredAbilities(player, armor);
+    }
+
+    private static void restoreStoredAbilities(Player player, ItemStack armor) {
+        var data = OverloadArmorState.getSubmoduleData(armor, INSTANCE);
+        boolean hadMayfly = data.contains(TAG_HAD_MAYFLY, CompoundTag.TAG_BYTE) && data.getBoolean(TAG_HAD_MAYFLY);
+        boolean wasFlying = data.contains(TAG_WAS_FLYING, CompoundTag.TAG_BYTE) && data.getBoolean(TAG_WAS_FLYING);
+        float previousSpeed = data.contains(TAG_PREVIOUS_SPEED, CompoundTag.TAG_FLOAT)
+                ? data.getFloat(TAG_PREVIOUS_SPEED)
+                : FlightSpeedOption.VANILLA_FLYING_SPEED;
+        data.remove(TAG_HAD_MAYFLY);
+        data.remove(TAG_WAS_FLYING);
+        data.remove(TAG_PREVIOUS_SPEED);
+        OverloadArmorState.setSubmoduleData(armor, INSTANCE, data);
+
         var abilities = player.getAbilities();
-        abilities.mayfly = false;
-        abilities.flying = false;
+        if (player.isCreative() || player.isSpectator()) {
+            abilities.setFlyingSpeed(previousSpeed > 0.0F ? previousSpeed : FlightSpeedOption.VANILLA_FLYING_SPEED);
+            player.onUpdateAbilities();
+            return;
+        }
+        boolean phaseFlightActive = OverloadArmorState.isSubmoduleRuntimeActive(armor, PhaseFlightSubmodule.INSTANCE.id());
+        abilities.mayfly = hadMayfly || phaseFlightActive;
+        abilities.flying = (wasFlying || phaseFlightActive) && abilities.mayfly;
+        abilities.setFlyingSpeed(previousSpeed > 0.0F ? previousSpeed : FlightSpeedOption.VANILLA_FLYING_SPEED);
         player.onUpdateAbilities();
     }
 }

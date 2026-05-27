@@ -23,6 +23,7 @@ import com.moakiee.ae2lt.overload.armor.BaseOverloadArmorItem;
 import com.moakiee.ae2lt.overload.armor.OverloadArmorState;
 import com.moakiee.ae2lt.overload.armor.module.AutoFeedSubmodule;
 import com.moakiee.ae2lt.overload.armor.module.DashSubmodule;
+import com.moakiee.ae2lt.overload.armor.module.OverloadArmorSubmoduleOptionUi;
 import com.moakiee.ae2lt.overload.armor.module.OverloadArmorSubmoduleItem;
 import com.moakiee.ae2lt.overload.armor.module.UndyingSubmodule;
 import com.moakiee.ae2lt.device.network.ArmorNetworkBinding;
@@ -47,6 +48,8 @@ public record DeviceStatusModel(
         List<LoadEventInfo> recentLoadEvents,
         // modules
         List<ModuleInfo> modules,
+        int selectedModuleIndex,
+        List<ModuleConfigInfo> moduleConfigs,
         int moduleSlotCount,
         // railgun specific
         boolean terrainDestruction, boolean pvpLock, boolean terrainDestructionAllowed
@@ -57,13 +60,21 @@ public record DeviceStatusModel(
     public record ModuleInfo(String id, String nameKey, int count, boolean enabled, boolean active, int load, int cooldownTicks) {
     }
 
+    public record ModuleConfigInfo(String key, String label, String value, String kind, boolean editable) {
+    }
+
     public static final DeviceStatusModel EMPTY = new DeviceStatusModel(
             DeviceKind.CELESTWEAVE_OCULUS, "", false, "", 0, 0, 0, false, false,
-            0, 0, 0, 0, 0, 0, "", false, false, List.of(), List.of(), 0,
+            0, 0, 0, 0, 0, 0, "", false, false, List.of(), List.of(), -1, List.of(), 0,
             false, false, false);
 
     /** Build status snapshot from an armor stack worn by the player. */
     public static DeviceStatusModel fromArmorStack(ItemStack armor, ServerPlayer player) {
+        return fromArmorStack(armor, player, 0);
+    }
+
+    /** Build status snapshot from an armor stack worn by the player. */
+    public static DeviceStatusModel fromArmorStack(ItemStack armor, ServerPlayer player, int selectedModuleIndex) {
         if (armor == null || armor.isEmpty() || !(armor.getItem() instanceof BaseOverloadArmorItem armorItem)) {
             return EMPTY;
         }
@@ -113,11 +124,15 @@ public record DeviceStatusModel(
                 modules.add(new ModuleInfo(sub.id(), sub.nameKey(), count, enabled, active, load, cooldown));
             });
         }
+        int clampedModuleIndex = modules.isEmpty()
+                ? -1
+                : Math.clamp(selectedModuleIndex, 0, modules.size() - 1);
+        List<ModuleConfigInfo> moduleConfigs = moduleConfigs(armor, player, clampedModuleIndex);
 
         return new DeviceStatusModel(
                 kind, name, hasBound, boundDim, bx, by, bz, gridReachable, appFlux,
                 stored, capacity, dynamicLoad, cap, lockStateVal, lockValue, debtReason, snapshot.hasCore(), powered,
-                recentLoadEvents, modules, part.moduleSlotCount(),
+                recentLoadEvents, modules, clampedModuleIndex, moduleConfigs, part.moduleSlotCount(),
                 false, false, false);
     }
 
@@ -190,8 +205,27 @@ public record DeviceStatusModel(
         return new DeviceStatusModel(
                 DeviceKind.RAILGUN, name, hasBound, boundDim, bx, by, bz, gridReachable, appFlux,
                 stored, capacity, 0, 0, 0, 0, "", hasStructuralCore, powered,
-                List.of(), modules, DeviceHubDisplayRules.railgunModuleSlotCount(),
+                List.of(), modules, -1, List.of(), DeviceHubDisplayRules.railgunModuleSlotCount(),
                 terrainAllowed && settings.terrainDestruction(), settings.pvpLock(), terrainAllowed);
+    }
+
+    private static List<ModuleConfigInfo> moduleConfigs(ItemStack armor, ServerPlayer player, int selectedModuleIndex) {
+        var submodules = OverloadArmorState.collectSubmodules(armor, player.registryAccess());
+        if (selectedModuleIndex < 0 || selectedModuleIndex >= submodules.size()) {
+            return List.of();
+        }
+        return submodules.get(selectedModuleIndex).getConfigUI(armor).stream()
+                .map(DeviceStatusModel::moduleConfigInfo)
+                .toList();
+    }
+
+    private static ModuleConfigInfo moduleConfigInfo(OverloadArmorSubmoduleOptionUi option) {
+        return new ModuleConfigInfo(
+                option.key(),
+                option.label().getString(),
+                option.value().getString(),
+                option.kind().name(),
+                option.editable());
     }
 
     private static int cooldownTicks(ItemStack armor, String submoduleId) {
