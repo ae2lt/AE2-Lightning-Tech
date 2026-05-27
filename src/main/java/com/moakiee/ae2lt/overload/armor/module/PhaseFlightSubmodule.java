@@ -5,6 +5,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.List;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.ByteTag;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
@@ -21,6 +22,8 @@ import com.moakiee.ae2lt.overload.armor.OverloadArmorState;
 public final class PhaseFlightSubmodule extends AbstractOverloadArmorSubmodule {
 
     public static final PhaseFlightSubmodule INSTANCE = new PhaseFlightSubmodule();
+
+    public static final String INERTIA_CONFIG_KEY = "flight_inertia";
 
     private static final String TAG_HAD_MAYFLY = "PhaseHadMayfly";
     private static final String TAG_WAS_FLYING = "PhaseWasFlying";
@@ -92,19 +95,25 @@ public final class PhaseFlightSubmodule extends AbstractOverloadArmorSubmodule {
 
     @Override
     public List<OverloadArmorSubmoduleConfig> getConfigs(ItemStack armor) {
-        return List.of(speedConfig(armor));
+        return List.of(speedConfig(armor), inertiaConfig(armor));
     }
 
     @Override
     public boolean setConfig(ItemStack armor, String key, @Nullable Tag value) {
-        if (!FlightSpeedOption.CONFIG_KEY.equals(key)) {
-            return false;
+        if (FlightSpeedOption.CONFIG_KEY.equals(key)) {
+            var option = FlightSpeedOption.fromTag(value);
+            var options = getOptions(armor);
+            options.put(FlightSpeedOption.CONFIG_KEY, option.toTag());
+            setOptions(armor, options);
+            return true;
         }
-        var option = FlightSpeedOption.fromTag(value);
-        var options = getOptions(armor);
-        options.put(FlightSpeedOption.CONFIG_KEY, option.toTag());
-        setOptions(armor, options);
-        return true;
+        if (INERTIA_CONFIG_KEY.equals(key)) {
+            var options = getOptions(armor);
+            options.put(INERTIA_CONFIG_KEY, value instanceof ByteTag bt ? bt : ByteTag.valueOf(true));
+            setOptions(armor, options);
+            return true;
+        }
+        return false;
     }
 
     public static double phaseSpeed(ItemStack armor) {
@@ -129,6 +138,23 @@ public final class PhaseFlightSubmodule extends AbstractOverloadArmorSubmodule {
                 choice(FlightSpeedOption.ONE.toTag(), Component.literal(FlightSpeedOption.ONE.label())),
                 choice(FlightSpeedOption.TWO.toTag(), Component.literal(FlightSpeedOption.TWO.label())),
                 choice(FlightSpeedOption.FOUR.toTag(), Component.literal(FlightSpeedOption.FOUR.label())));
+    }
+
+    private OverloadArmorSubmoduleConfig inertiaConfig(ItemStack armor) {
+        return config(
+                INERTIA_CONFIG_KEY,
+                Component.translatable("ae2lt.overload_armor.config.flight_inertia"),
+                ByteTag.valueOf(isInertiaEnabled(armor)),
+                booleanChoices(),
+                Component.translatable("ae2lt.overload_armor.config.flight_inertia.hint"));
+    }
+
+    public static boolean isInertiaEnabled(ItemStack armor) {
+        var options = INSTANCE.getOptions(armor);
+        if (!options.contains(INERTIA_CONFIG_KEY, Tag.TAG_BYTE)) {
+            return true;
+        }
+        return options.getBoolean(INERTIA_CONFIG_KEY);
     }
 
     private FlightSpeedOption getSelectedSpeed(ItemStack armor) {

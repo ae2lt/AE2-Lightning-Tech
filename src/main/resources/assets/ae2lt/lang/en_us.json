@@ -609,6 +609,8 @@
   "ae2lt.overload_armor.config.enabled.hint": "Toggle whether this module is allowed to enter the active state.",
   "ae2lt.overload_armor.config.speed_multiplier": "Speed Multiplier",
   "ae2lt.overload_armor.config.speed_multiplier.hint": "Click to cycle this module's movement speed.",
+  "ae2lt.overload_armor.config.flight_inertia": "Flight Inertia",
+  "ae2lt.overload_armor.config.flight_inertia.hint": "Keep momentum after releasing movement keys.",
   "ae2lt.overload_armor.config.toggle_hint": "Left-click the ON/OFF pill to flip this setting.",
   "ae2lt.overload_armor.config.cycle_hint": "Click the arrows (or left/right click) to cycle through values.",
   "ae2lt.overload_armor.screen.equipped": "Equipped: %s",

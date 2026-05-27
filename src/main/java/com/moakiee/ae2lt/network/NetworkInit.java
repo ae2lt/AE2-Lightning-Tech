@@ -76,6 +76,10 @@ public final class NetworkInit {
                 ArmorSubmoduleActivePacket.TYPE,
                 ArmorSubmoduleActivePacket.STREAM_CODEC,
                 ArmorSubmoduleActivePacket::handle);
+        registrar.playToClient(
+                FlightInertiaSyncPacket.TYPE,
+                FlightInertiaSyncPacket.STREAM_CODEC,
+                FlightInertiaSyncPacket::handle);
 
         // Railgun: C→S (RailgunOpenGuiPacket removed — replaced by OpenDeviceHubPacket)
         registrar.playToServer(

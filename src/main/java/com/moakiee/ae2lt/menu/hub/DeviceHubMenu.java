@@ -23,6 +23,7 @@ import com.moakiee.ae2lt.item.railgun.RailgunSettings;
 import com.moakiee.ae2lt.network.hub.DeviceHubSyncPacket;
 import com.moakiee.ae2lt.overload.armor.BaseOverloadArmorItem;
 import com.moakiee.ae2lt.overload.armor.OverloadArmorState;
+import com.moakiee.ae2lt.overload.armor.module.FlightSpeedOption;
 import com.moakiee.ae2lt.registry.ModDataComponents;
 
 /**
@@ -513,6 +514,11 @@ public class DeviceHubMenu extends AbstractContainerMenu {
         var next = config.nextValue();
         if (next == null) return;
         submodule.setConfig(deviceStack, config.key(), next);
+        // sync inertia to client when flight module config changes
+        if ("flight_inertia".equals(config.key())
+                || FlightSpeedOption.CONFIG_KEY.equals(config.key())) {
+            OverloadArmorState.syncFlightInertiaToClientIfFlight(player, deviceStack);
+        }
     }
 
     // ── Device lookup ──

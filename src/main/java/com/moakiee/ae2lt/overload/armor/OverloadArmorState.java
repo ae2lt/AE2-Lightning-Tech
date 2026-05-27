@@ -25,6 +25,9 @@ import com.moakiee.ae2lt.device.module.OverloadDeviceModuleItem;
 import com.moakiee.ae2lt.device.overload.OverloadRuntime;
 import com.moakiee.ae2lt.overload.armor.ArmorEnergyModuleItem;
 import com.moakiee.ae2lt.network.ArmorSubmoduleActivePacket;
+import com.moakiee.ae2lt.network.FlightInertiaSyncPacket;
+import com.moakiee.ae2lt.overload.armor.module.FlightSubmodule;
+import com.moakiee.ae2lt.overload.armor.module.PhaseFlightSubmodule;
 import com.moakiee.ae2lt.overload.armor.module.OverloadArmorSubmodule;
 import com.moakiee.ae2lt.overload.armor.module.OverloadArmorSubmoduleItem;
 import com.moakiee.ae2lt.registry.ModDataComponents;
@@ -53,6 +56,8 @@ public final class OverloadArmorState {
             new java.util.concurrent.ConcurrentHashMap<>();
     private static final java.util.Map<String, SubmoduleRuntime> SUBMODULE_RUNTIME_CACHE =
             new java.util.concurrent.ConcurrentHashMap<>();
+    private static volatile boolean CLIENT_FLIGHT_INERTIA = true;
+    private static volatile UUID CLIENT_FLIGHT_INERTIA_ARMOR_ID = null;
 
     private OverloadArmorState() {
     }
@@ -535,6 +540,10 @@ public final class OverloadArmorState {
                 PacketDistributor.sendToPlayer(
                         serverPlayer,
                         new ArmorSubmoduleActivePacket(armorId, submodule.id(), active));
+                if (active && (submodule.id().equals(FlightSubmodule.INSTANCE.id())
+                        || submodule.id().equals("phase_flight"))) {
+                    syncFlightInertiaToClient(serverPlayer, armor, armorId);
+                }
             }
             if (!changed) {
                 continue;
@@ -709,6 +718,8 @@ public final class OverloadArmorState {
 
     public static void clearClientActiveCache() {
         CLIENT_ACTIVE_CACHE.clear();
+        CLIENT_FLIGHT_INERTIA = true;
+        CLIENT_FLIGHT_INERTIA_ARMOR_ID = null;
     }
 
     public static void forgetSubmoduleActiveCache(UUID armorId) {
@@ -892,6 +903,33 @@ public final class OverloadArmorState {
             }
             root.put(TAG_ROOT, armorTag);
         });
+    }
+
+    public static void setClientFlightInertia(UUID armorId, boolean inertiaEnabled) {
+        CLIENT_FLIGHT_INERTIA = inertiaEnabled;
+        CLIENT_FLIGHT_INERTIA_ARMOR_ID = armorId;
+    }
+
+    public static boolean getClientFlightInertia() {
+        return CLIENT_FLIGHT_INERTIA;
+    }
+
+    private static void syncFlightInertiaToClient(ServerPlayer player, ItemStack armor, UUID armorId) {
+        boolean phaseFlightActive = isSubmoduleRuntimeActive(armor, PhaseFlightSubmodule.INSTANCE.id());
+        boolean inertia = phaseFlightActive
+                ? PhaseFlightSubmodule.isInertiaEnabled(armor)
+                : FlightSubmodule.isInertiaEnabled(armor);
+        PacketDistributor.sendToPlayer(player, new FlightInertiaSyncPacket(armorId, inertia));
+    }
+
+    public static void syncFlightInertiaToClientIfFlight(ServerPlayer player, ItemStack armor) {
+        UUID armorId = getArmorId(armor);
+        if (armorId == null) return;
+        boolean flightActive = isSubmoduleRuntimeActive(armor, FlightSubmodule.INSTANCE.id())
+                || isSubmoduleRuntimeActive(armor, "phase_flight");
+        if (flightActive) {
+            syncFlightInertiaToClient(player, armor, armorId);
+        }
     }
 
     private static CompoundTag rootTag(ItemStack stack) {
