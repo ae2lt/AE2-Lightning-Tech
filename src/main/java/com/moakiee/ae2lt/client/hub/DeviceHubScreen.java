@@ -12,6 +12,7 @@ import net.minecraft.world.entity.player.Inventory;
 import net.neoforged.neoforge.network.PacketDistributor;
 
 import com.moakiee.ae2lt.menu.hub.DeviceHubMenu;
+import com.moakiee.ae2lt.menu.hub.DeviceHubDisplayRules;
 import com.moakiee.ae2lt.network.hub.DeviceHubActionPacket;
 
 /**
@@ -122,8 +123,7 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
 
         // ── Binding ──
         String boundDim = menu.getBoundDim();
-        boolean gridReachable = menu.data.get(DeviceHubMenu.DATA_GRID_REACHABLE) != 0;
-        int bx = 0, by = 0, bz = 0; // Not exposed in data slots; use boundDim presence
+        boolean gridReachable = menu.isGridReachable();
         if (!boundDim.isEmpty()) {
             int bindColor = gridReachable ? FLUX_ONLINE : WARNING_RED;
             gfx.drawString(font, Component.translatable(
@@ -137,7 +137,7 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
         }
 
         // ── AppFlux ──
-        boolean appFlux = menu.data.get(DeviceHubMenu.DATA_APP_FLUX_ONLINE) != 0;
+        boolean appFlux = menu.isAppFluxOnline();
         int fluxColor = appFlux ? FLUX_ONLINE : FLUX_MISSING;
         gfx.drawString(font, Component.translatable(
                         appFlux ? "ae2lt.device_hub.appflux.online" : "ae2lt.device_hub.appflux.missing"),
@@ -158,8 +158,8 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
 
         // ── Load bar ──
         if (!railgunTab) {
-            int load = menu.data.get(DeviceHubMenu.DATA_DYNAMIC_LOAD);
-            int cap = menu.data.get(DeviceHubMenu.DATA_OVERLOAD_CAP);
+            int load = menu.getDynamicLoad();
+            int cap = menu.getOverloadCap();
             gfx.drawString(font, Component.translatable("ae2lt.device_hub.load"), x, topPos + LOAD_BAR_Y - 1, TEXT_PRIMARY, false);
             int loadColor = load > cap ? LOCK_RED : LOAD_GOLD;
             drawBar(gfx, barX, topPos + LOAD_BAR_Y, BAR_WIDTH, BAR_HEIGHT,
@@ -169,17 +169,27 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
         }
 
         // ── Status line ──
-        int lockState = menu.data.get(DeviceHubMenu.DATA_LOCK_STATE);
-        int lockValue = menu.data.get(DeviceHubMenu.DATA_LOCK_VALUE);
-        boolean powered = menu.data.get(DeviceHubMenu.DATA_POWERED) != 0;
+        int lockState = menu.getLockState();
+        int lockValue = menu.getLockValue();
+        boolean powered = menu.isPowered();
         Component statusText;
         int statusColor;
-        if (!railgunTab && lockState == 2) {
-            statusText = Component.translatable("ae2lt.device_hub.status.locked", lockValue / 20);
-            statusColor = LOCK_RED;
-        } else if (!railgunTab && lockState == 1) {
-            statusText = Component.translatable("ae2lt.device_hub.status.overloaded", lockValue);
-            statusColor = FLUX_MISSING;
+        if (!railgunTab) {
+            String statusKey = DeviceHubDisplayRules.armorStatusKey(
+                    menu.hasCore(),
+                    lockState == 2,
+                    lockState == 1,
+                    powered);
+            if ("ae2lt.device_hub.status.locked".equals(statusKey)) {
+                statusText = Component.translatable(statusKey, lockValue / 20);
+                statusColor = LOCK_RED;
+            } else if ("ae2lt.device_hub.status.overloaded".equals(statusKey)) {
+                statusText = Component.translatable(statusKey, lockValue);
+                statusColor = FLUX_MISSING;
+            } else {
+                statusText = Component.translatable(statusKey);
+                statusColor = statusColor(statusKey);
+            }
         } else if (!powered) {
             statusText = Component.translatable("ae2lt.device_hub.status.unpowered");
             statusColor = FLUX_MISSING;
@@ -196,21 +206,24 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
         List<String> moduleNameKeys = menu.getModuleNameKeys();
         List<Integer> moduleCounts = menu.getModuleCounts();
         List<Integer> moduleLoads = menu.getModuleLoads();
-        int moduleCount = menu.data.get(DeviceHubMenu.DATA_MODULE_COUNT);
-        int moduleSlotCount = menu.data.get(DeviceHubMenu.DATA_MODULE_SLOT_COUNT);
-        int moduleMask = menu.data.get(DeviceHubMenu.DATA_MODULE_MASK);
+        List<Boolean> moduleEnabled = menu.getModuleEnabled();
+        List<Boolean> moduleActive = menu.getModuleActive();
+        int moduleCount = DeviceHubDisplayRules.countModuleUnits(moduleCounts);
+        int moduleSlotCount = menu.getModuleSlotCount();
 
         gfx.drawString(font, Component.translatable("ae2lt.device_hub.modules", moduleCount, moduleSlotCount),
                 x, topPos + modulesY, TEXT_PRIMARY, false);
 
         int moduleListY = topPos + modulesY + 14;
         int maxVisible = (topPos + imageHeight - 30 - moduleListY) / MODULE_ROW_H;
+        scrollOffset = DeviceHubDisplayRules.clampScrollOffset(scrollOffset, moduleNameKeys.size(), maxVisible);
         for (int i = 0; i < Math.min(moduleNameKeys.size(), maxVisible); i++) {
             int idx = i + scrollOffset;
             if (idx >= moduleNameKeys.size()) break;
 
             int rowY = moduleListY + i * MODULE_ROW_H;
-            boolean enabled = (moduleMask & (1 << idx)) != 0;
+            boolean enabled = idx < moduleEnabled.size() && moduleEnabled.get(idx);
+            boolean active = idx < moduleActive.size() && moduleActive.get(idx);
             int count = idx < moduleCounts.size() ? moduleCounts.get(idx) : 1;
             int moduleLoad = idx < moduleLoads.size() ? moduleLoads.get(idx) : 0;
 
@@ -219,7 +232,8 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
 
             // Toggle button (only for armor modules, not railgun)
             if (!railgunTab) {
-                Component loadLabel = Component.translatable("ae2lt.device_hub.module.load", moduleLoad);
+                Component stateLabel = Component.translatable(DeviceHubDisplayRules.moduleStateKey(enabled, active));
+                Component loadLabel = Component.translatable("ae2lt.device_hub.module.state_load", stateLabel, moduleLoad);
                 int loadTextX = leftPos + imageWidth - 56 - font.width(loadLabel);
                 gfx.drawString(font, loadLabel, loadTextX, rowY, moduleLoad > 0 ? LOAD_GOLD : TEXT_SECONDARY, false);
                 int toggleX = leftPos + imageWidth - 48;
@@ -230,9 +244,9 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
         // ── Railgun settings toggles ──
         if (railgunTab) {
             int toggleY = moduleListY + Math.min(moduleNameKeys.size(), maxVisible) * MODULE_ROW_H + 8;
-            boolean terrain = menu.data.get(DeviceHubMenu.DATA_RAILGUN_TERRAIN) != 0;
-            boolean terrainAllowed = menu.data.get(DeviceHubMenu.DATA_RAILGUN_TERRAIN_ALLOWED) != 0;
-            boolean pvp = menu.data.get(DeviceHubMenu.DATA_RAILGUN_PVP) != 0;
+            boolean terrain = menu.isTerrainDestruction();
+            boolean terrainAllowed = menu.isTerrainDestructionAllowed();
+            boolean pvp = menu.isPvpLock();
 
             gfx.fill(leftPos + 6, toggleY - 4, leftPos + imageWidth - 6, toggleY - 3, BG_DEEP);
             gfx.drawString(font, Component.translatable("ae2lt.device_hub.settings"), x, toggleY, TEXT_PRIMARY, false);
@@ -291,6 +305,7 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
             List<String> moduleNames = menu.getModuleNameKeys();
             int moduleListY = topPos + MODULES_Y + 14;
             int maxVisible = (topPos + imageHeight - 30 - moduleListY) / MODULE_ROW_H;
+            scrollOffset = DeviceHubDisplayRules.clampScrollOffset(scrollOffset, moduleNames.size(), maxVisible);
             for (int i = 0; i < Math.min(moduleNames.size(), maxVisible); i++) {
                 int idx = i + scrollOffset;
                 if (idx >= moduleNames.size()) break;
@@ -310,6 +325,7 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
             List<String> moduleNames = menu.getModuleNameKeys();
             int moduleListY = topPos + STATE_LINE_Y + 14;
             int maxVisible = (topPos + imageHeight - 30 - moduleListY) / MODULE_ROW_H;
+            scrollOffset = DeviceHubDisplayRules.clampScrollOffset(scrollOffset, moduleNames.size(), maxVisible);
             int toggleY = moduleListY + Math.min(moduleNames.size(), maxVisible) * MODULE_ROW_H + 8 + 14;
             int toggleX = leftPos + imageWidth - 48;
 
@@ -353,11 +369,16 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        List<String> moduleNames = menu.getModuleNameKeys();
+        boolean railgunTab = menu.getSelectedTab() == DeviceHubMenu.TAB_RAILGUN;
+        int moduleListY = topPos + (railgunTab ? STATE_LINE_Y : MODULES_Y) + 14;
+        int maxVisible = (topPos + imageHeight - 30 - moduleListY) / MODULE_ROW_H;
         if (scrollY > 0 && scrollOffset > 0) {
             scrollOffset--;
         } else if (scrollY < 0) {
             scrollOffset++;
         }
+        scrollOffset = DeviceHubDisplayRules.clampScrollOffset(scrollOffset, moduleNames.size(), maxVisible);
         return true;
     }
 
@@ -461,6 +482,16 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
             minecraft.getSoundManager().play(
                     SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.value(), 1.0F));
         }
+    }
+
+    private static int statusColor(String statusKey) {
+        return switch (statusKey) {
+            case "ae2lt.device_hub.status.missing_core",
+                    "ae2lt.device_hub.status.unpowered" -> FLUX_MISSING;
+            case "ae2lt.device_hub.status.locked" -> LOCK_RED;
+            case "ae2lt.device_hub.status.overloaded" -> FLUX_MISSING;
+            default -> FLUX_ONLINE;
+        };
     }
 
     private static int darken(int argb) {

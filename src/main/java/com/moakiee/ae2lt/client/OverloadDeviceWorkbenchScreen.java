@@ -96,7 +96,7 @@ public class OverloadDeviceWorkbenchScreen extends AbstractContainerScreen<Overl
         renderInstallProgress(gfx);
         renderModuleList(gfx, mouseX, mouseY);
         renderEnergyBar(gfx);
-        renderOverloadBar(gfx);
+        renderArmorBudgetInfo(gfx);
     }
 
     private void renderStatusArea(GuiGraphics gfx) {
@@ -120,10 +120,14 @@ public class OverloadDeviceWorkbenchScreen extends AbstractContainerScreen<Overl
 
         // Structural info
         if (menu.hasCoreInstalled()) {
-            String coreInfo = menu.isRailgunDevice()
-                    ? "模块:" + menu.moduleTypeCount
-                    : "模块槽:" + menu.moduleTypeCount + "  cap:" + menu.baseOverload;
-            gfx.drawString(font, Component.literal(coreInfo), x, y + 24, TEXT_SECONDARY, false);
+            Component coreInfo = menu.isRailgunDevice()
+                    ? Component.translatable("ae2lt.overload_device_workbench.screen.railgun_modules", menu.moduleUnitCount)
+                    : Component.translatable(
+                            "ae2lt.overload_device_workbench.screen.armor_summary",
+                            menu.moduleUnitCount,
+                            menu.moduleSlotCount,
+                            menu.baseOverload);
+            gfx.drawString(font, coreInfo, x, y + 24, TEXT_SECONDARY, false);
         } else {
             gfx.drawString(font, Component.translatable("ae2lt.overload_armor.status.missing_core"),
                     x, y + 24, GRID_OFFLINE, false);
@@ -159,8 +163,13 @@ public class OverloadDeviceWorkbenchScreen extends AbstractContainerScreen<Overl
 
         scrollOffset = Math.max(0, Math.min(scrollOffset, Math.max(0, modules.size() - VISIBLE_ROWS)));
 
-        String header = "模块 (" + modules.size() + ")";
-        gfx.drawString(font, Component.literal(header), listLeft, listTop - 10, TEXT_PRIMARY, false);
+        Component header = menu.isRailgunDevice()
+                ? Component.translatable("ae2lt.overload_device_workbench.screen.module_types", modules.size())
+                : Component.translatable(
+                        "ae2lt.overload_device_workbench.screen.module_units",
+                        menu.moduleUnitCount,
+                        menu.moduleSlotCount);
+        gfx.drawString(font, header, listLeft, listTop - 10, TEXT_PRIMARY, false);
 
         for (int i = 0; i < VISIBLE_ROWS; i++) {
             int modIndex = scrollOffset + i;
@@ -229,25 +238,22 @@ public class OverloadDeviceWorkbenchScreen extends AbstractContainerScreen<Overl
         gfx.drawString(font, Component.literal(text), bx + bw + 4, barY - 1, TEXT_SECONDARY, false);
     }
 
-    private void renderOverloadBar(GuiGraphics gfx) {
+    private void renderArmorBudgetInfo(GuiGraphics gfx) {
         if (menu.isRailgunDevice()) return;
         if (menu.baseOverload <= 0) return;
-        int barX = leftPos + MODULE_LIST_X;
-        int barY = topPos + MODULE_LIST_Y + ROW_HEIGHT * VISIBLE_ROWS + 16;
-        int barW = MODULE_LIST_WIDTH;
-
-        gfx.drawString(font, Component.literal("负载"), barX, barY - 1, TEXT_PRIMARY, false);
-        int bx = barX + 24;
-        int bw = barW - 24;
-        gfx.fill(bx - 1, barY - 1, bx + bw + 1, barY + BAR_HEIGHT + 1, SLOT_BORDER_DARK);
-        gfx.fill(bx, barY, bx + bw, barY + BAR_HEIGHT, PROGRESS_BG);
-        double ratio = Math.min(1.0, (double) menu.moduleLoadUsed / menu.baseOverload);
-        int filled = (int) (ratio * bw);
-        if (filled > 0) {
-            gfx.fill(bx, barY, bx + filled, barY + BAR_HEIGHT, HIGHLIGHT_GOLD);
-        }
-        String text = menu.moduleLoadUsed + "/" + menu.baseOverload;
-        gfx.drawString(font, Component.literal(text), bx + bw + 4, barY - 1, TEXT_SECONDARY, false);
+        int x = leftPos + MODULE_LIST_X;
+        int y = topPos + MODULE_LIST_Y + ROW_HEIGHT * VISIBLE_ROWS + 18;
+        gfx.drawString(
+                font,
+                Component.translatable(
+                        "ae2lt.overload_device_workbench.screen.runtime_budget",
+                        menu.baseOverload,
+                        menu.moduleUnitCount,
+                        menu.moduleSlotCount),
+                x,
+                y,
+                TEXT_SECONDARY,
+                false);
     }
 
     private static String truncate(Font font, String text, int maxWidth) {

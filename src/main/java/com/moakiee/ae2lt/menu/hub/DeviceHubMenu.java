@@ -1,6 +1,5 @@
 package com.moakiee.ae2lt.menu.hub;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import org.jetbrains.annotations.Nullable;
@@ -19,7 +18,6 @@ import net.neoforged.neoforge.common.extensions.IMenuTypeExtension;
 import net.neoforged.neoforge.network.PacketDistributor;
 
 import com.moakiee.ae2lt.config.AE2LTCommonConfig;
-import com.moakiee.ae2lt.device.DeviceKind;
 import com.moakiee.ae2lt.item.railgun.ElectromagneticRailgunItem;
 import com.moakiee.ae2lt.item.railgun.RailgunSettings;
 import com.moakiee.ae2lt.network.hub.DeviceHubSyncPacket;
@@ -30,32 +28,15 @@ import com.moakiee.ae2lt.registry.ModDataComponents;
 /**
  * Unified device hub menu — no item slots, pure status viewer + configuration.
  * <p>
- * Numeric data syncs via {@link ContainerData}. String data (module names, device
- * name, bound dimension) syncs via {@link DeviceHubSyncPacket}.
+ * Tab selection syncs via {@link ContainerData}. Full device status syncs via
+ * {@link DeviceHubSyncPacket}, because vanilla menu data is short-sized on the wire.
  */
 public class DeviceHubMenu extends AbstractContainerMenu {
 
     // ── Data slot indices ──
     public static final int DATA_SELECTED_TAB = 0;
     public static final int DATA_TAB_AVAILABILITY = 1;
-    public static final int DATA_ENERGY_STORED_HI = 2;
-    public static final int DATA_ENERGY_STORED_LO = 3;
-    public static final int DATA_ENERGY_CAPACITY_HI = 4;
-    public static final int DATA_ENERGY_CAPACITY_LO = 5;
-    public static final int DATA_DYNAMIC_LOAD = 6;
-    public static final int DATA_OVERLOAD_CAP = 7;
-    public static final int DATA_LOCK_STATE = 8;
-    public static final int DATA_LOCK_VALUE = 9;
-    public static final int DATA_POWERED = 10;
-    public static final int DATA_GRID_REACHABLE = 11;
-    public static final int DATA_APP_FLUX_ONLINE = 12;
-    public static final int DATA_MODULE_COUNT = 13;
-    public static final int DATA_MODULE_SLOT_COUNT = 14;
-    public static final int DATA_MODULE_MASK = 15;
-    public static final int DATA_RAILGUN_TERRAIN = 16;
-    public static final int DATA_RAILGUN_PVP = 17;
-    public static final int DATA_RAILGUN_TERRAIN_ALLOWED = 18;
-    public static final int DATA_COUNT = 19;
+    public static final int DATA_COUNT = 2;
 
     public static final int TAB_HELMET = 0;
     public static final int TAB_CHESTPLATE = 1;
@@ -68,21 +49,35 @@ public class DeviceHubMenu extends AbstractContainerMenu {
 
     public final ContainerData data;
 
-    // ── Client-side synced string data ──
+    // ── Client-side synced status data ──
     private String deviceName = "";
     private String boundDim = "";
+    private long energyStored;
+    private long energyCapacity;
+    private int dynamicLoad;
+    private int overloadCap;
+    private int lockState;
+    private int lockValue;
+    private boolean hasCore;
+    private boolean powered;
+    private boolean gridReachable;
+    private boolean appFluxOnline;
+    private int moduleSlotCount;
+    private boolean terrainDestruction;
+    private boolean pvpLock;
+    private boolean terrainDestructionAllowed;
     private List<String> moduleIds = List.of();
     private List<String> moduleNameKeys = List.of();
     private List<Integer> moduleCounts = List.of();
+    private List<Boolean> moduleEnabled = List.of();
+    private List<Boolean> moduleActive = List.of();
     private List<Integer> moduleLoads = List.of();
 
     // ── Server-side state ──
     private int selectedTab;
+    private int lastSyncedTab = -1;
     @Nullable
-    private DeviceStatusModel lastStatus;
-    private List<String> lastModuleNameKeys = List.of();
-    private List<Integer> lastModuleCounts = List.of();
-    private List<Integer> lastModuleLoads = List.of();
+    private DeviceHubSyncPacket lastSyncPacket;
 
     // ── Client constructor ──
     public DeviceHubMenu(int containerId, Inventory inv, FriendlyByteBuf buf) {
@@ -148,60 +143,52 @@ public class DeviceHubMenu extends AbstractContainerMenu {
         } else {
             status = DeviceStatusModel.fromArmorStack(deviceStack, serverPlayer);
         }
-        lastStatus = status;
-
         // Update ContainerData
         ServerData sd = (ServerData) data;
         sd.values[DATA_SELECTED_TAB] = selectedTab;
         sd.values[DATA_TAB_AVAILABILITY] = tabMask;
-        sd.values[DATA_ENERGY_STORED_HI] = (int) (status.storedFe() >> 32);
-        sd.values[DATA_ENERGY_STORED_LO] = (int) status.storedFe();
-        sd.values[DATA_ENERGY_CAPACITY_HI] = (int) (status.capacityFe() >> 32);
-        sd.values[DATA_ENERGY_CAPACITY_LO] = (int) status.capacityFe();
-        sd.values[DATA_DYNAMIC_LOAD] = status.dynamicLoad();
-        sd.values[DATA_OVERLOAD_CAP] = status.overloadCap();
-        sd.values[DATA_LOCK_STATE] = status.lockState();
-        sd.values[DATA_LOCK_VALUE] = status.lockValue();
-        sd.values[DATA_POWERED] = status.powered() ? 1 : 0;
-        sd.values[DATA_GRID_REACHABLE] = status.gridReachable() ? 1 : 0;
-        sd.values[DATA_APP_FLUX_ONLINE] = status.appFluxOnline() ? 1 : 0;
-        sd.values[DATA_MODULE_COUNT] = status.modules().size();
-        sd.values[DATA_MODULE_SLOT_COUNT] = status.moduleSlotCount();
-        int moduleMask = 0;
-        for (int i = 0; i < status.modules().size() && i < 32; i++) {
-            if (status.modules().get(i).enabled()) {
-                moduleMask |= (1 << i);
-            }
-        }
-        sd.values[DATA_MODULE_MASK] = moduleMask;
-        sd.values[DATA_RAILGUN_TERRAIN] = status.terrainDestruction() ? 1 : 0;
-        sd.values[DATA_RAILGUN_PVP] = status.pvpLock() ? 1 : 0;
-        sd.values[DATA_RAILGUN_TERRAIN_ALLOWED] = status.terrainDestructionAllowed() ? 1 : 0;
 
         super.broadcastChanges();
 
-        // Sync string data if changed
-        List<String> currentNameKeys = status.modules().stream().map(DeviceStatusModel.ModuleInfo::nameKey).toList();
-        List<Integer> currentCounts = status.modules().stream().map(DeviceStatusModel.ModuleInfo::count).toList();
-        List<Integer> currentLoads = status.modules().stream().map(DeviceStatusModel.ModuleInfo::load).toList();
-        List<String> currentIds = status.modules().stream().map(DeviceStatusModel.ModuleInfo::id).toList();
-        if (!currentNameKeys.equals(lastModuleNameKeys)
-                || !currentCounts.equals(lastModuleCounts)
-                || !currentLoads.equals(lastModuleLoads)
-                || !status.displayName().equals(deviceName)) {
-            lastModuleNameKeys = currentNameKeys;
-            lastModuleCounts = currentCounts;
-            lastModuleLoads = currentLoads;
-            PacketDistributor.sendToPlayer(serverPlayer,
-                    new DeviceHubSyncPacket(
-                            containerId,
-                            status.displayName(),
-                            status.boundDim(),
-                            currentIds,
-                            currentNameKeys,
-                            currentCounts,
-                            currentLoads));
+        DeviceHubSyncPacket syncPacket = toSyncPacket(status);
+        if (selectedTab != lastSyncedTab || !syncPacket.equals(lastSyncPacket)) {
+            lastSyncedTab = selectedTab;
+            lastSyncPacket = syncPacket;
+            PacketDistributor.sendToPlayer(serverPlayer, syncPacket);
         }
+    }
+
+    private DeviceHubSyncPacket toSyncPacket(DeviceStatusModel status) {
+        List<String> ids = status.modules().stream().map(DeviceStatusModel.ModuleInfo::id).toList();
+        List<String> nameKeys = status.modules().stream().map(DeviceStatusModel.ModuleInfo::nameKey).toList();
+        List<Integer> counts = status.modules().stream().map(DeviceStatusModel.ModuleInfo::count).toList();
+        List<Boolean> enabled = status.modules().stream().map(DeviceStatusModel.ModuleInfo::enabled).toList();
+        List<Boolean> active = status.modules().stream().map(DeviceStatusModel.ModuleInfo::active).toList();
+        List<Integer> loads = status.modules().stream().map(DeviceStatusModel.ModuleInfo::load).toList();
+        return new DeviceHubSyncPacket(
+                containerId,
+                status.displayName(),
+                status.boundDim(),
+                status.storedFe(),
+                status.capacityFe(),
+                status.dynamicLoad(),
+                status.overloadCap(),
+                status.lockState(),
+                status.lockValue(),
+                status.hasCore(),
+                status.powered(),
+                status.gridReachable(),
+                status.appFluxOnline(),
+                status.moduleSlotCount(),
+                status.terrainDestruction(),
+                status.pvpLock(),
+                status.terrainDestructionAllowed(),
+                ids,
+                nameKeys,
+                counts,
+                enabled,
+                active,
+                loads);
     }
 
     @Nullable
@@ -228,16 +215,48 @@ public class DeviceHubMenu extends AbstractContainerMenu {
     public void receiveSync(
             String name,
             String dim,
+            long storedFe,
+            long capacityFe,
+            int dynamicLoad,
+            int overloadCap,
+            int lockState,
+            int lockValue,
+            boolean hasCore,
+            boolean powered,
+            boolean gridReachable,
+            boolean appFluxOnline,
+            int moduleSlotCount,
+            boolean terrainDestruction,
+            boolean pvpLock,
+            boolean terrainDestructionAllowed,
             List<String> ids,
             List<String> nameKeys,
             List<Integer> counts,
+            List<Boolean> enabled,
+            List<Boolean> active,
             List<Integer> loads) {
         this.deviceName = name;
         this.boundDim = dim;
-        this.moduleIds = ids;
-        this.moduleNameKeys = nameKeys;
-        this.moduleCounts = counts;
-        this.moduleLoads = loads;
+        this.energyStored = storedFe;
+        this.energyCapacity = capacityFe;
+        this.dynamicLoad = dynamicLoad;
+        this.overloadCap = overloadCap;
+        this.lockState = lockState;
+        this.lockValue = lockValue;
+        this.hasCore = hasCore;
+        this.powered = powered;
+        this.gridReachable = gridReachable;
+        this.appFluxOnline = appFluxOnline;
+        this.moduleSlotCount = moduleSlotCount;
+        this.terrainDestruction = terrainDestruction;
+        this.pvpLock = pvpLock;
+        this.terrainDestructionAllowed = terrainDestructionAllowed;
+        this.moduleIds = List.copyOf(ids);
+        this.moduleNameKeys = List.copyOf(nameKeys);
+        this.moduleCounts = List.copyOf(counts);
+        this.moduleEnabled = List.copyOf(enabled);
+        this.moduleActive = List.copyOf(active);
+        this.moduleLoads = List.copyOf(loads);
     }
 
     // ── Client-side accessors ──
@@ -250,11 +269,11 @@ public class DeviceHubMenu extends AbstractContainerMenu {
     }
 
     public long getEnergyStored() {
-        return ((long) data.get(DATA_ENERGY_STORED_HI) << 32) | (data.get(DATA_ENERGY_STORED_LO) & 0xFFFFFFFFL);
+        return energyStored;
     }
 
     public long getEnergyCapacity() {
-        return ((long) data.get(DATA_ENERGY_CAPACITY_HI) << 32) | (data.get(DATA_ENERGY_CAPACITY_LO) & 0xFFFFFFFFL);
+        return energyCapacity;
     }
 
     public String getDeviceName() {
@@ -281,8 +300,64 @@ public class DeviceHubMenu extends AbstractContainerMenu {
         return moduleCounts;
     }
 
+    public List<Boolean> getModuleEnabled() {
+        return moduleEnabled;
+    }
+
+    public List<Boolean> getModuleActive() {
+        return moduleActive;
+    }
+
     public List<Integer> getModuleLoads() {
         return moduleLoads;
+    }
+
+    public int getDynamicLoad() {
+        return dynamicLoad;
+    }
+
+    public int getOverloadCap() {
+        return overloadCap;
+    }
+
+    public int getLockState() {
+        return lockState;
+    }
+
+    public int getLockValue() {
+        return lockValue;
+    }
+
+    public boolean hasCore() {
+        return hasCore;
+    }
+
+    public boolean isPowered() {
+        return powered;
+    }
+
+    public boolean isGridReachable() {
+        return gridReachable;
+    }
+
+    public boolean isAppFluxOnline() {
+        return appFluxOnline;
+    }
+
+    public int getModuleSlotCount() {
+        return moduleSlotCount;
+    }
+
+    public boolean isTerrainDestruction() {
+        return terrainDestruction;
+    }
+
+    public boolean isPvpLock() {
+        return pvpLock;
+    }
+
+    public boolean isTerrainDestructionAllowed() {
+        return terrainDestructionAllowed;
     }
 
     // ── Server-side actions ──

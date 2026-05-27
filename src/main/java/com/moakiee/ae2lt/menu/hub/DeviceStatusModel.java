@@ -13,6 +13,7 @@ import com.moakiee.ae2lt.config.AE2LTCommonConfig;
 import com.moakiee.ae2lt.device.DeviceKind;
 import com.moakiee.ae2lt.item.railgun.RailgunModuleStorage;
 import com.moakiee.ae2lt.item.railgun.RailgunSettings;
+import com.moakiee.ae2lt.item.railgun.RailgunStructuralCore;
 import com.moakiee.ae2lt.logic.energy.AppFluxBridge;
 import com.moakiee.ae2lt.logic.railgun.RailgunBinding;
 import com.moakiee.ae2lt.logic.railgun.RailgunEnergyBuffer;
@@ -38,19 +39,19 @@ public record DeviceStatusModel(
         // overload
         int dynamicLoad, int overloadCap,
         int lockState, int lockValue, // 0=OK, 1=debt(ticks), 2=locked(remaining)
-        boolean powered,
+        boolean hasCore, boolean powered,
         // modules
         List<ModuleInfo> modules,
         int moduleSlotCount,
         // railgun specific
         boolean terrainDestruction, boolean pvpLock, boolean terrainDestructionAllowed
 ) {
-    public record ModuleInfo(String id, String nameKey, int count, boolean enabled, int load) {
+    public record ModuleInfo(String id, String nameKey, int count, boolean enabled, boolean active, int load) {
     }
 
     public static final DeviceStatusModel EMPTY = new DeviceStatusModel(
             DeviceKind.CELESTWEAVE_OCULUS, "", false, "", 0, 0, 0, false, false,
-            0, 0, 0, 0, 0, 0, false, List.of(), 0,
+            0, 0, 0, 0, 0, 0, false, false, List.of(), 0,
             false, false, false);
 
     /** Build status snapshot from an armor stack worn by the player. */
@@ -83,7 +84,7 @@ public record DeviceStatusModel(
         int lockStateVal = snapshot.lockedTicks() > 0 ? 2 : snapshot.debtTicks() > 0 ? 1 : 0;
         int lockValue = snapshot.lockedTicks() > 0 ? snapshot.lockedTicks() : snapshot.debtTicks();
         int cap = snapshot.baseOverload();
-        boolean powered = stored > 0 || gridReachable;
+        boolean powered = DeviceHubDisplayRules.powerAvailable(stored, gridReachable, appFlux);
 
         // Modules
         List<ModuleInfo> modules = new ArrayList<>();
@@ -94,14 +95,15 @@ public record DeviceStatusModel(
             int count = Math.max(1, stack.getCount());
             provider.collectSubmodules(stack, sub -> {
                 boolean enabled = OverloadArmorState.isSubmoduleEnabled(armor, sub);
+                boolean active = OverloadArmorState.isSubmoduleRuntimeActive(armor, sub.id());
                 int load = OverloadArmorState.getSubmoduleDynamicLoad(armor, sub);
-                modules.add(new ModuleInfo(sub.id(), sub.nameKey(), count, enabled, load));
+                modules.add(new ModuleInfo(sub.id(), sub.nameKey(), count, enabled, active, load));
             });
         }
 
         return new DeviceStatusModel(
                 kind, name, hasBound, boundDim, bx, by, bz, gridReachable, appFlux,
-                stored, capacity, dynamicLoad, cap, lockStateVal, lockValue, powered,
+                stored, capacity, dynamicLoad, cap, lockStateVal, lockValue, snapshot.hasCore(), powered,
                 modules, part.moduleSlotCount(),
                 false, false, false);
     }
@@ -128,19 +130,21 @@ public record DeviceStatusModel(
         long stored = RailgunEnergyBuffer.read(railgun);
         long capacity = RailgunEnergyBuffer.capacity(railgun);
 
-        boolean powered = stored > 0 || gridReachable;
+        boolean powered = DeviceHubDisplayRules.powerAvailable(stored, gridReachable, appFlux);
 
         // Modules
         var entries = RailgunModuleStorage.entryData(railgun);
+        boolean hasStructuralCore = RailgunStructuralCore.hasCore(railgun);
         List<ModuleInfo> modules = new ArrayList<>();
         if (entries.hasCore()) {
-            modules.add(new ModuleInfo("core", "ae2lt.device_hub.module.railgun.core", 1, true, 0));
+            modules.add(new ModuleInfo("core", "ae2lt.device_hub.module.railgun.core", 1, true, true, 0));
         }
         if (entries.computeCount() > 0) {
             modules.add(new ModuleInfo(
                     "compute",
                     "ae2lt.device_hub.module.railgun.compute",
                     entries.computeCount(),
+                    true,
                     true,
                     0));
         }
@@ -150,6 +154,7 @@ public record DeviceStatusModel(
                     "ae2lt.device_hub.module.railgun.acceleration",
                     entries.accelerationCount(),
                     true,
+                    true,
                     0));
         }
         if (entries.hasOverloadExecution()) {
@@ -157,6 +162,7 @@ public record DeviceStatusModel(
                     "overload_execution",
                     "ae2lt.device_hub.module.railgun.overload_execution",
                     1,
+                    true,
                     true,
                     0));
         }
@@ -167,8 +173,8 @@ public record DeviceStatusModel(
 
         return new DeviceStatusModel(
                 DeviceKind.RAILGUN, name, hasBound, boundDim, bx, by, bz, gridReachable, appFlux,
-                stored, capacity, 0, 0, 0, 0, powered,
-                modules, 5,
+                stored, capacity, 0, 0, 0, 0, hasStructuralCore, powered,
+                modules, DeviceHubDisplayRules.railgunModuleSlotCount(),
                 terrainAllowed && settings.terrainDestruction(), settings.pvpLock(), terrainAllowed);
     }
 }

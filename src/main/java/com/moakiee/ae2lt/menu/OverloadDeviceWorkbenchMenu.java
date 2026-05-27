@@ -26,6 +26,8 @@ import com.moakiee.ae2lt.blockentity.workbench.StructuralSlotSpec;
 import com.moakiee.ae2lt.device.DeviceItem;
 import com.moakiee.ae2lt.device.DeviceKind;
 import com.moakiee.ae2lt.device.DeviceSlotType;
+import com.moakiee.ae2lt.menu.hub.DeviceHubDisplayRules;
+import com.moakiee.ae2lt.overload.armor.BaseOverloadArmorItem;
 
 public class OverloadDeviceWorkbenchMenu extends AEBaseMenu {
     public static final MenuType<OverloadDeviceWorkbenchMenu> TYPE = MenuTypeBuilder
@@ -66,13 +68,15 @@ public class OverloadDeviceWorkbenchMenu extends AEBaseMenu {
     @GuiSync(6)
     public long energyStored;
     @GuiSync(7)
-    public int moduleLoadUsed;
-    @GuiSync(8)
     public int installProgress;
-    @GuiSync(9)
+    @GuiSync(8)
     public int gridConnected;
-    @GuiSync(10)
+    @GuiSync(9)
     public int railgunDevice;
+    @GuiSync(10)
+    public int moduleUnitCount;
+    @GuiSync(11)
+    public int moduleSlotCount;
 
     public static final int INSTALL_TICKS = 20;
 
@@ -305,17 +309,23 @@ public class OverloadDeviceWorkbenchMenu extends AEBaseMenu {
             coreInstalled = 0;
             energyModuleInstalled = 0;
             energyStored = 0L;
-            moduleLoadUsed = 0;
             railgunDevice = 0;
+            moduleUnitCount = 0;
+            moduleSlotCount = 0;
             return;
         }
 
         railgunDevice = adapter.deviceKind() == DeviceKind.RAILGUN ? 1 : 0;
-        moduleTypeCount = host.getModuleList(registryAccess()).size();
+        var modules = host.getModuleList(registryAccess());
+        moduleTypeCount = modules.size();
+        moduleUnitCount = DeviceHubDisplayRules.countModuleUnits(
+                modules.stream().map(ItemStack::getCount).toList());
+        moduleSlotCount = adapter.deviceKind() == DeviceKind.RAILGUN
+                ? 0
+                : armorModuleSlotCount(device);
         baseOverload = host.baseOverloadBudget(registryAccess());
         energyCapacity = adapter.energyBuffer().capacity(device);
         energyStored = adapter.energyBuffer().stored(device);
-        moduleLoadUsed = host.currentIdleOverload(registryAccess());
 
         coreInstalled = structuralInstalled(DeviceSlotType.CORE) ? 1 : 0;
         energyModuleInstalled = hasStructuralSlot(DeviceSlotType.ENERGY)
@@ -330,6 +340,12 @@ public class OverloadDeviceWorkbenchMenu extends AEBaseMenu {
             }
         }
         return false;
+    }
+
+    private static int armorModuleSlotCount(ItemStack device) {
+        return device.getItem() instanceof BaseOverloadArmorItem armorItem
+                ? armorItem.armorPart().moduleSlotCount()
+                : 0;
     }
 
     private boolean structuralInstalled(DeviceSlotType type) {
