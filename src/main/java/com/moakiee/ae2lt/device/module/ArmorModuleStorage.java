@@ -39,39 +39,37 @@ public final class ArmorModuleStorage implements DeviceModuleStorage {
 
     @Override
     public List<ItemStack> listEntries(ItemStack device) {
-        return OverloadArmorState.loadModuleStacks(device, null).stream()
-                .map(ItemStack::copy)
-                .toList();
+        return List.of();
     }
 
     @Override
     public int getCount(ItemStack device, String typeId) {
-        return OverloadArmorState.getInstalledAmount(device, null, typeId);
+        return 0;
     }
 
     @Override
     public boolean canInstallOne(ItemStack device, ItemStack candidate) {
-        return OverloadArmorState.canInstallModule(device, null, candidate);
+        return false;
     }
 
     @Override
     public boolean installOne(ItemStack device, ItemStack candidate) {
-        return OverloadArmorState.installOneModule(device, null, candidate);
+        return false;
     }
 
     @Override
     public ItemStack uninstallOne(ItemStack device, String typeId) {
-        return OverloadArmorState.uninstallOneModule(device, null, typeId);
+        return ItemStack.EMPTY;
     }
 
     @Override
     public ItemStack uninstallAll(ItemStack device, String typeId) {
-        return OverloadArmorState.uninstallAllOfType(device, null, typeId);
+        return ItemStack.EMPTY;
     }
 
     @Override
     public boolean hasAnyInstalled(ItemStack device) {
-        return OverloadArmorState.hasAnyInstalledModule(device, null);
+        return false;
     }
 
     @Override

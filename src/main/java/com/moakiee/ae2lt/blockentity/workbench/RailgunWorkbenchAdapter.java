@@ -16,10 +16,10 @@ import com.moakiee.ae2lt.device.module.DeviceModuleStorage;
 import com.moakiee.ae2lt.device.network.DeviceNetworkBinding;
 import com.moakiee.ae2lt.device.network.RailgunNetworkBinding;
 import com.moakiee.ae2lt.item.railgun.RailgunModuleEntries;
-import com.moakiee.ae2lt.item.railgun.RailgunEnergyModuleStorage;
 import com.moakiee.ae2lt.item.railgun.RailgunModuleItem;
 import com.moakiee.ae2lt.item.railgun.RailgunModuleStorage;
 import com.moakiee.ae2lt.item.railgun.RailgunStructuralCore;
+import com.moakiee.ae2lt.overload.armor.ArmorEnergyModuleItem;
 import com.moakiee.ae2lt.registry.ModItems;
 
 public final class RailgunWorkbenchAdapter implements DeviceWorkbenchAdapter {
@@ -27,9 +27,7 @@ public final class RailgunWorkbenchAdapter implements DeviceWorkbenchAdapter {
 
     private static final List<StructuralSlotSpec> STRUCTURAL_SLOTS = List.of(
             slot(0, com.moakiee.ae2lt.device.DeviceSlotType.CORE,
-                    com.moakiee.ae2lt.menu.Ae2ltSlotSemantics.OVERLOAD_DEVICE_WORKBENCH_CORE),
-            slot(1, com.moakiee.ae2lt.device.DeviceSlotType.ENERGY,
-                    com.moakiee.ae2lt.menu.Ae2ltSlotSemantics.OVERLOAD_DEVICE_WORKBENCH_ENERGY));
+                    com.moakiee.ae2lt.menu.Ae2ltSlotSemantics.OVERLOAD_DEVICE_WORKBENCH_CORE));
 
     private RailgunWorkbenchAdapter() {}
 
@@ -60,7 +58,8 @@ public final class RailgunWorkbenchAdapter implements DeviceWorkbenchAdapter {
 
     @Override
     public Predicate<ItemStack> moduleInputValidator(ItemStack device, HolderLookup.Provider registries) {
-        return stack -> stack.getItem() instanceof RailgunModuleItem
+        return stack -> (stack.getItem() instanceof RailgunModuleItem
+                || stack.getItem() instanceof ArmorEnergyModuleItem)
                 && RailgunModuleStorage.INSTANCE.canInstallOne(device, stack);
     }
 
@@ -96,6 +95,9 @@ public final class RailgunWorkbenchAdapter implements DeviceWorkbenchAdapter {
 
     @Override
     public int maxInstallAmount(ItemStack stack) {
+        if (stack.getItem() instanceof ArmorEnergyModuleItem) {
+            return 1;
+        }
         return stack.getItem() instanceof RailgunModuleItem module
                 ? module.getMaxInstallAmount()
                 : 0;
@@ -115,7 +117,6 @@ public final class RailgunWorkbenchAdapter implements DeviceWorkbenchAdapter {
     public ItemStack getStructuralSlot(ItemStack device, HolderLookup.Provider registries, StructuralSlotSpec spec) {
         return switch (spec.slotType()) {
             case CORE -> RailgunStructuralCore.getCore(device);
-            case ENERGY -> RailgunEnergyModuleStorage.get(device);
             default -> ItemStack.EMPTY;
         };
     }
@@ -131,7 +132,6 @@ public final class RailgunWorkbenchAdapter implements DeviceWorkbenchAdapter {
         }
         switch (spec.slotType()) {
             case CORE -> RailgunStructuralCore.setCore(device, stack);
-            case ENERGY -> RailgunEnergyModuleStorage.set(device, stack);
             default -> {
             }
         }
@@ -145,7 +145,6 @@ public final class RailgunWorkbenchAdapter implements DeviceWorkbenchAdapter {
             int amount) {
         return switch (spec.slotType()) {
             case CORE -> RailgunStructuralCore.removeCore(device, amount);
-            case ENERGY -> RailgunEnergyModuleStorage.remove(device, amount);
             default -> ItemStack.EMPTY;
         };
     }
@@ -162,7 +161,6 @@ public final class RailgunWorkbenchAdapter implements DeviceWorkbenchAdapter {
         return switch (spec.slotType()) {
             case CORE -> stack.is(ModItems.ULTIMATE_OVERLOAD_CORE.get())
                     && RailgunStructuralCore.canInstallCore(device, stack);
-            case ENERGY -> RailgunEnergyModuleStorage.canInstall(stack);
             default -> false;
         };
     }

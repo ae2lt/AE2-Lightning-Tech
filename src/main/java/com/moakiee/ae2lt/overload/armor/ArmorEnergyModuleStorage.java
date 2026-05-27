@@ -1,44 +1,33 @@
 package com.moakiee.ae2lt.overload.armor;
 
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.core.HolderLookup;
 
-import com.moakiee.ae2lt.registry.ModDataComponents;
+import com.moakiee.ae2lt.device.capability.DeviceCapability;
+import com.moakiee.ae2lt.device.module.OverloadDeviceModuleItem;
 
 public final class ArmorEnergyModuleStorage {
     private ArmorEnergyModuleStorage() {
     }
 
-    public static ItemStack get(ItemStack armor) {
-        if (armor == null || armor.isEmpty()) {
-            return ItemStack.EMPTY;
+    public static long capacityFe(ItemStack armor, HolderLookup.Provider registries) {
+        if (registries == null) {
+            return 0L;
         }
-        return armor.getOrDefault(ModDataComponents.ARMOR_STRUCTURAL_ENERGY_MODULE.get(), ItemStack.EMPTY)
-                .copyWithCount(1);
-    }
-
-    public static void set(ItemStack armor, ItemStack energyModule) {
-        if (armor == null || armor.isEmpty()) {
-            return;
+        long capacity = 0L;
+        for (ItemStack module : OverloadArmorState.loadModuleStacks(armor, registries)) {
+            if (module.getItem() instanceof ArmorEnergyModuleItem energyModule) {
+                capacity = Math.max(capacity, energyModule.capacityFe());
+                continue;
+            }
+            if (module.getItem() instanceof OverloadDeviceModuleItem provider) {
+                for (var capability : provider.capabilities(module.copyWithCount(1))) {
+                    if (capability instanceof DeviceCapability.EnergyCapacity energyCapacity) {
+                        capacity = Math.max(capacity, energyCapacity.fe());
+                    }
+                }
+            }
         }
-        if (energyModule == null || energyModule.isEmpty()) {
-            armor.remove(ModDataComponents.ARMOR_STRUCTURAL_ENERGY_MODULE.get());
-        } else {
-            armor.set(ModDataComponents.ARMOR_STRUCTURAL_ENERGY_MODULE.get(), energyModule.copyWithCount(1));
-        }
-        ArmorEnergyBuffer.clamp(armor);
-    }
-
-    public static long capacityFe(ItemStack armor) {
-        ItemStack module = get(armor);
-        if (module.getItem() instanceof ArmorEnergyModuleItem energyModule) {
-            return energyModule.capacityFe();
-        }
-        return 0L;
-    }
-
-    public static boolean canInstall(ItemStack candidate) {
-        return candidate != null
-                && !candidate.isEmpty()
-                && candidate.getItem() instanceof ArmorEnergyModuleItem;
+        return Math.max(0L, capacity);
     }
 }

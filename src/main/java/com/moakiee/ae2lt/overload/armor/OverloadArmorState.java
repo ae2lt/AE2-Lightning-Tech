@@ -21,6 +21,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
 
 import com.moakiee.ae2lt.config.AE2LTCommonConfig;
 import com.moakiee.ae2lt.device.overload.OverloadRuntime;
+import com.moakiee.ae2lt.overload.armor.ArmorEnergyModuleItem;
 import com.moakiee.ae2lt.network.ArmorSubmoduleActivePacket;
 import com.moakiee.ae2lt.overload.armor.module.OverloadArmorSubmodule;
 import com.moakiee.ae2lt.overload.armor.module.OverloadArmorSubmoduleItem;
@@ -29,8 +30,7 @@ import com.moakiee.ae2lt.registry.ModItems;
 
 public final class OverloadArmorState {
     public static final int SLOT_CORE = 0;
-    public static final int SLOT_ENERGY = 1;
-    public static final int SLOT_COUNT = 2;
+    public static final int SLOT_COUNT = 1;
     public static final int LOCK_TRIGGER_TICKS = 60;
     public static final int LOCK_DURATION_TICKS = 600;
 
@@ -85,19 +85,12 @@ public final class OverloadArmorState {
         if (slot == SLOT_CORE) {
             return armor.getOrDefault(ModDataComponents.ARMOR_STRUCTURAL_CORE.get(), ItemStack.EMPTY).copyWithCount(1);
         }
-        if (slot == SLOT_ENERGY) {
-            return armor.getOrDefault(ModDataComponents.ARMOR_STRUCTURAL_ENERGY_MODULE.get(), ItemStack.EMPTY)
-                    .copyWithCount(1);
-        }
         return ItemStack.EMPTY;
     }
 
     public static void setSlot(ItemStack armor, HolderLookup.Provider registries, int slot, ItemStack stack) {
         if (slot == SLOT_CORE) {
             setComponentSlot(armor, ModDataComponents.ARMOR_STRUCTURAL_CORE.get(), stack);
-        } else if (slot == SLOT_ENERGY) {
-            setComponentSlot(armor, ModDataComponents.ARMOR_STRUCTURAL_ENERGY_MODULE.get(), stack);
-            ArmorEnergyBuffer.clamp(armor);
         }
     }
 
@@ -141,6 +134,17 @@ public final class OverloadArmorState {
     public static boolean canInstallModule(ItemStack armor, HolderLookup.Provider registries, ItemStack candidate) {
         if (candidate == null || candidate.isEmpty()) {
             return false;
+        }
+        if (candidate.getItem() instanceof ArmorEnergyModuleItem energyModule) {
+            ArmorPart part = armorPart(armor);
+            if (!energyModule.acceptableDevices().contains(part.deviceKind())
+                    || ArmorEnergyModuleItem.acceptableSlotFor(part.deviceKind()) != part.moduleSlot()) {
+                return false;
+            }
+            if (getInstalledAmount(armor, registries, ArmorEnergyModuleItem.MODULE_TYPE_ID) >= 1) {
+                return false;
+            }
+            return getInstalledUnitCount(armor, registries) < part.moduleSlotCount();
         }
         if (!(candidate.getItem() instanceof OverloadArmorSubmoduleItem provider)) {
             return false;
@@ -349,6 +353,9 @@ public final class OverloadArmorState {
     }
 
     public static int getSubmoduleMaxInstallAmountForStack(ItemStack stack) {
+        if (stack != null && stack.getItem() instanceof ArmorEnergyModuleItem) {
+            return 1;
+        }
         int max = 0;
         if (stack != null && stack.getItem() instanceof OverloadArmorSubmoduleItem provider) {
             var values = new ArrayList<Integer>();
@@ -558,10 +565,10 @@ public final class OverloadArmorState {
         int currentLoad = runtime == null ? 0 : runtime.currentLoad();
         int lockedTicks = runtime == null ? 0 : runtime.dynamics().lockTicksRemaining();
         int debtTicks = runtime == null ? 0 : runtime.dynamics().debtTicks();
-        long stored = ArmorEnergyBuffer.read(armor);
-        long capacity = ArmorEnergyBuffer.capacity(armor);
+        long stored = ArmorEnergyBuffer.read(armor, registries);
+        long capacity = ArmorEnergyBuffer.capacity(armor, registries);
         boolean hasCore = hasCore(armor, registries);
-        boolean hasEnergy = !getSlot(armor, registries, SLOT_ENERGY).isEmpty();
+        boolean hasEnergy = ArmorEnergyModuleStorage.capacityFe(armor, registries) > 0L;
         int cap = getBaseOverload(armor, registries);
         int moduleLoad = 0;
         return new Snapshot(
@@ -586,7 +593,7 @@ public final class OverloadArmorState {
     }
 
     public static long addStoredEnergy(ItemStack armor, HolderLookup.Provider registries, long amount) {
-        return ArmorEnergyBuffer.receiveFe(armor, (int) Math.min(Integer.MAX_VALUE, amount), false);
+        return ArmorEnergyBuffer.receiveFe(armor, registries, (int) Math.min(Integer.MAX_VALUE, amount), false);
     }
 
     public static void markEnergyUnpaid(ItemStack armor, String reason) {
@@ -678,6 +685,9 @@ public final class OverloadArmorState {
     }
 
     private static String resolveSubmoduleId(ItemStack stack) {
+        if (stack != null && !stack.isEmpty() && stack.getItem() instanceof ArmorEnergyModuleItem) {
+            return ArmorEnergyModuleItem.MODULE_TYPE_ID;
+        }
         if (stack == null || stack.isEmpty() || !(stack.getItem() instanceof OverloadArmorSubmoduleItem provider)) {
             return "";
         }
@@ -691,6 +701,9 @@ public final class OverloadArmorState {
     }
 
     private static String resolveSubmoduleGroupId(ItemStack stack) {
+        if (stack != null && !stack.isEmpty() && stack.getItem() instanceof ArmorEnergyModuleItem) {
+            return ArmorEnergyModuleItem.MODULE_TYPE_ID;
+        }
         if (stack == null || stack.isEmpty() || !(stack.getItem() instanceof OverloadArmorSubmoduleItem provider)) {
             return "";
         }

@@ -83,8 +83,8 @@ public record DeviceStatusModel(
         boolean appFlux = AppFluxBridge.isAvailable();
 
         // Energy
-        long stored = ArmorEnergyBuffer.read(armor);
-        long capacity = ArmorEnergyBuffer.capacity(armor);
+        long stored = ArmorEnergyBuffer.read(armor, player.registryAccess());
+        long capacity = ArmorEnergyBuffer.capacity(armor, player.registryAccess());
 
         // Overload
         var snapshot = OverloadArmorState.snapshot(player, armor, player.registryAccess(), true);

@@ -70,8 +70,6 @@ public final class Ae2ltSlotSemantics {
             SlotSemantics.register("AE2LT_OVERLOAD_DEVICE_WORKBENCH_DEVICE", false);
     public static final SlotSemantic OVERLOAD_DEVICE_WORKBENCH_CORE =
             SlotSemantics.register("AE2LT_OVERLOAD_DEVICE_WORKBENCH_CORE", false);
-    public static final SlotSemantic OVERLOAD_DEVICE_WORKBENCH_ENERGY =
-            SlotSemantics.register("AE2LT_OVERLOAD_DEVICE_WORKBENCH_ENERGY", false);
     public static final SlotSemantic OVERLOAD_DEVICE_WORKBENCH_MODULE =
             SlotSemantics.register("AE2LT_OVERLOAD_DEVICE_WORKBENCH_MODULE", false);
 

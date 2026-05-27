@@ -18,6 +18,7 @@ import com.moakiee.ae2lt.util.EnergyText;
 
 public final class ArmorEnergyModuleItem extends Item implements OverloadDeviceModuleItem {
     private static final Set<DeviceKind> ACCEPTS = RailgunEnergyModuleRules.acceptedDeviceKinds();
+    public static final String MODULE_TYPE_ID = "energy";
 
     private final long capacityFe;
 
@@ -37,7 +38,17 @@ public final class ArmorEnergyModuleItem extends Item implements OverloadDeviceM
 
     @Override
     public DeviceSlotType acceptableSlot() {
-        return DeviceSlotType.ENERGY;
+        return DeviceSlotType.OVERLOAD_EXECUTION;
+    }
+
+    public static DeviceSlotType acceptableSlotFor(DeviceKind kind) {
+        return switch (kind) {
+            case CELESTWEAVE_OCULUS -> DeviceSlotType.HEAD_MODULE;
+            case CELESTWEAVE_CORE -> DeviceSlotType.CHEST_MODULE;
+            case CELESTWEAVE_CONDUIT -> DeviceSlotType.LEGS_MODULE;
+            case CELESTWEAVE_STRIDE -> DeviceSlotType.FEET_MODULE;
+            case RAILGUN -> DeviceSlotType.OVERLOAD_EXECUTION;
+        };
     }
 
     @Override

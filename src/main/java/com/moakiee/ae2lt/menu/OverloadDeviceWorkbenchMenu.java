@@ -40,7 +40,7 @@ public class OverloadDeviceWorkbenchMenu extends AEBaseMenu {
     public static final int DEVICE_Y = 20;
     public static final int STRUCTURAL_Y = 46;
     public static final int STRUCTURAL_SPACING = 20;
-    public static final int MAX_STRUCTURAL_SLOTS = 2;
+    public static final int MAX_STRUCTURAL_SLOTS = 1;
 
     public static final int LIST_X = 32;
     public static final int LIST_Y = 20;
@@ -64,25 +64,22 @@ public class OverloadDeviceWorkbenchMenu extends AEBaseMenu {
     @GuiSync(4)
     public int coreInstalled;
     @GuiSync(5)
-    public int energyModuleInstalled;
-    @GuiSync(6)
     public long energyStored;
-    @GuiSync(7)
+    @GuiSync(6)
     public int installProgress;
-    @GuiSync(8)
+    @GuiSync(7)
     public int gridConnected;
-    @GuiSync(9)
+    @GuiSync(8)
     public int railgunDevice;
-    @GuiSync(10)
+    @GuiSync(9)
     public int moduleUnitCount;
-    @GuiSync(11)
+    @GuiSync(10)
     public int moduleSlotCount;
 
     public static final int INSTALL_TICKS = 20;
 
     private static final List<SlotSemantic> STRUCTURAL_SEMANTICS = List.of(
-            Ae2ltSlotSemantics.OVERLOAD_DEVICE_WORKBENCH_CORE,
-            Ae2ltSlotSemantics.OVERLOAD_DEVICE_WORKBENCH_ENERGY);
+            Ae2ltSlotSemantics.OVERLOAD_DEVICE_WORKBENCH_CORE);
 
     private final OverloadDeviceWorkbenchBlockEntity host;
     private final Slot deviceSlot;
@@ -201,10 +198,6 @@ public class OverloadDeviceWorkbenchMenu extends AEBaseMenu {
         return coreInstalled != 0;
     }
 
-    public boolean hasEnergyModuleInstalled() {
-        return energyModuleInstalled != 0;
-    }
-
     public boolean isRailgunDevice() {
         return railgunDevice != 0;
     }
@@ -307,7 +300,6 @@ public class OverloadDeviceWorkbenchMenu extends AEBaseMenu {
             baseOverload = 0;
             energyCapacity = 0L;
             coreInstalled = 0;
-            energyModuleInstalled = 0;
             energyStored = 0L;
             railgunDevice = 0;
             moduleUnitCount = 0;
@@ -328,18 +320,6 @@ public class OverloadDeviceWorkbenchMenu extends AEBaseMenu {
         energyStored = adapter.energyBuffer().stored(device);
 
         coreInstalled = structuralInstalled(DeviceSlotType.CORE) ? 1 : 0;
-        energyModuleInstalled = hasStructuralSlot(DeviceSlotType.ENERGY)
-                ? (structuralInstalled(DeviceSlotType.ENERGY) ? 1 : 0)
-                : 1;
-    }
-
-    private boolean hasStructuralSlot(DeviceSlotType type) {
-        for (var spec : host.getStructuralSlots()) {
-            if (spec.slotType() == type) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private static int armorModuleSlotCount(ItemStack device) {

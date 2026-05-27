@@ -2,58 +2,29 @@ package com.moakiee.ae2lt.item.railgun;
 
 import net.minecraft.world.item.ItemStack;
 
-import com.moakiee.ae2lt.logic.railgun.RailgunEnergyBuffer;
+import com.moakiee.ae2lt.device.capability.DeviceCapability;
+import com.moakiee.ae2lt.device.module.OverloadDeviceModuleItem;
 import com.moakiee.ae2lt.overload.armor.ArmorEnergyModuleItem;
-import com.moakiee.ae2lt.registry.ModDataComponents;
 
 public final class RailgunEnergyModuleStorage {
     private RailgunEnergyModuleStorage() {
     }
 
-    public static ItemStack get(ItemStack railgun) {
-        if (railgun == null || railgun.isEmpty()) {
-            return ItemStack.EMPTY;
-        }
-        return railgun
-                .getOrDefault(ModDataComponents.RAILGUN_STRUCTURAL_ENERGY_MODULE.get(), ItemStack.EMPTY)
-                .copyWithCount(1);
-    }
-
-    public static void set(ItemStack railgun, ItemStack energyModule) {
-        if (railgun == null || railgun.isEmpty()) {
-            return;
-        }
-        if (energyModule == null || energyModule.isEmpty()) {
-            railgun.remove(ModDataComponents.RAILGUN_STRUCTURAL_ENERGY_MODULE.get());
-        } else {
-            railgun.set(ModDataComponents.RAILGUN_STRUCTURAL_ENERGY_MODULE.get(), energyModule.copyWithCount(1));
-        }
-        RailgunEnergyBuffer.clamp(railgun);
-    }
-
-    public static ItemStack remove(ItemStack railgun, int amount) {
-        if (amount <= 0) {
-            return ItemStack.EMPTY;
-        }
-        ItemStack existing = get(railgun);
-        if (existing.isEmpty()) {
-            return ItemStack.EMPTY;
-        }
-        set(railgun, ItemStack.EMPTY);
-        return existing;
-    }
-
     public static long capacityFe(ItemStack railgun) {
-        ItemStack module = get(railgun);
-        if (module.getItem() instanceof ArmorEnergyModuleItem energyModule) {
-            return Math.max(0L, energyModule.capacityFe());
+        long capacity = 0L;
+        for (ItemStack module : RailgunModuleStorage.INSTANCE.listEntries(railgun)) {
+            if (module.getItem() instanceof ArmorEnergyModuleItem energyModule) {
+                capacity = Math.max(capacity, energyModule.capacityFe());
+                continue;
+            }
+            if (module.getItem() instanceof OverloadDeviceModuleItem provider) {
+                for (var capability : provider.capabilities(module.copyWithCount(1))) {
+                    if (capability instanceof DeviceCapability.EnergyCapacity energyCapacity) {
+                        capacity = Math.max(capacity, energyCapacity.fe());
+                    }
+                }
+            }
         }
-        return 0L;
-    }
-
-    public static boolean canInstall(ItemStack candidate) {
-        return candidate != null
-                && !candidate.isEmpty()
-                && candidate.getItem() instanceof ArmorEnergyModuleItem;
+        return Math.max(0L, capacity);
     }
 }

@@ -70,11 +70,11 @@ public abstract class BaseOverloadArmorItem extends ArmorItem implements DeviceI
             List<Component> tooltip,
             TooltipFlag tooltipFlag) {
         super.appendHoverText(stack, context, tooltip, tooltipFlag);
-        long current = ArmorEnergyBuffer.read(stack);
-        long capacity = ArmorEnergyBuffer.capacity(stack);
+        var level = context.level();
+        long current = ArmorEnergyBuffer.read(stack, level == null ? null : level.registryAccess());
+        long capacity = ArmorEnergyBuffer.capacity(stack, level == null ? null : level.registryAccess());
         tooltip.add(EnergyText.storedFe(current, capacity));
 
-        var level = context.level();
         if (level != null) {
             var snapshot = OverloadArmorState.snapshot(stack, level.registryAccess(), false);
             tooltip.add(Component.translatable(
@@ -167,7 +167,7 @@ public abstract class BaseOverloadArmorItem extends ArmorItem implements DeviceI
         ArmorEnergyBuffer.refillFromNetwork(
                 armor,
                 player,
-                Math.max(0L, adjusted - ArmorEnergyBuffer.read(armor)));
+                Math.max(0L, adjusted - ArmorEnergyBuffer.read(armor, player.registryAccess())));
         boolean paid = ArmorEnergyBuffer.tryConsume(armor, player, adjusted);
         if (!paid) {
             OverloadArmorState.markEnergyUnpaid(armor, "energy");
@@ -190,7 +190,7 @@ public abstract class BaseOverloadArmorItem extends ArmorItem implements DeviceI
         ArmorEnergyBuffer.refillFromNetwork(
                 armor,
                 player,
-                Math.max(0L, demand - ArmorEnergyBuffer.read(armor)));
+                Math.max(0L, demand - ArmorEnergyBuffer.read(armor, player.registryAccess())));
         if (!ArmorEnergyBuffer.tryConsume(armor, player, demand)) {
             OverloadArmorState.markEnergyUnpaid(armor, "energy");
         }

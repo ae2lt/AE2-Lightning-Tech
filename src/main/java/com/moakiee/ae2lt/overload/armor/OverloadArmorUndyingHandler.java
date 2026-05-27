@@ -128,7 +128,7 @@ public final class OverloadArmorUndyingHandler {
         ArmorEnergyBuffer.refillFromNetwork(
                 armor,
                 player,
-                Math.max(0L, cost - ArmorEnergyBuffer.read(armor)));
+                Math.max(0L, cost - ArmorEnergyBuffer.read(armor, player.registryAccess())));
         return ArmorEnergyBuffer.tryConsume(armor, player, cost);
     }
 

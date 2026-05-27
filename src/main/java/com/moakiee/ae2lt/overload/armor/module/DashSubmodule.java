@@ -77,7 +77,7 @@ public final class DashSubmodule extends AbstractOverloadArmorSubmodule {
         ArmorEnergyBuffer.refillFromNetwork(
                 armor,
                 player,
-                Math.max(0L, feCost - ArmorEnergyBuffer.read(armor)));
+                Math.max(0L, feCost - ArmorEnergyBuffer.read(armor, player.registryAccess())));
         if (!ArmorEnergyBuffer.tryConsume(armor, player, feCost)) {
             OverloadArmorState.markEnergyUnpaid(armor, "energy");
             player.displayClientMessage(Component.translatable("ae2lt.overload_armor.fail.no_fe"), true);

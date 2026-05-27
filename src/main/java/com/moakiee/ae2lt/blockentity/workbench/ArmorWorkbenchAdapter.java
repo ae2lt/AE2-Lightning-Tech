@@ -18,7 +18,7 @@ import com.moakiee.ae2lt.device.module.DeviceModuleStorage;
 import com.moakiee.ae2lt.device.network.ArmorNetworkBinding;
 import com.moakiee.ae2lt.device.network.DeviceNetworkBinding;
 import com.moakiee.ae2lt.overload.armor.ArmorDeviceEnergyBuffer;
-import com.moakiee.ae2lt.overload.armor.ArmorEnergyModuleStorage;
+import com.moakiee.ae2lt.overload.armor.ArmorEnergyModuleItem;
 import com.moakiee.ae2lt.overload.armor.ArmorPart;
 import com.moakiee.ae2lt.overload.armor.OverloadArmorState;
 import com.moakiee.ae2lt.overload.armor.module.OverloadArmorSubmoduleItem;
@@ -31,8 +31,7 @@ public final class ArmorWorkbenchAdapter implements DeviceWorkbenchAdapter {
     public static final ArmorWorkbenchAdapter BOOTS = new ArmorWorkbenchAdapter(ArmorPart.FEET);
 
     private static final List<StructuralSlotSpec> STRUCTURAL_SLOTS = List.of(
-            slot(0, DeviceSlotType.CORE, com.moakiee.ae2lt.menu.Ae2ltSlotSemantics.OVERLOAD_DEVICE_WORKBENCH_CORE),
-            slot(1, DeviceSlotType.ENERGY, com.moakiee.ae2lt.menu.Ae2ltSlotSemantics.OVERLOAD_DEVICE_WORKBENCH_ENERGY));
+            slot(0, DeviceSlotType.CORE, com.moakiee.ae2lt.menu.Ae2ltSlotSemantics.OVERLOAD_DEVICE_WORKBENCH_CORE));
 
     private final ArmorPart part;
     private final ArmorModuleStorage moduleStorage;
@@ -69,7 +68,8 @@ public final class ArmorWorkbenchAdapter implements DeviceWorkbenchAdapter {
 
     @Override
     public Predicate<ItemStack> moduleInputValidator(ItemStack device, HolderLookup.Provider registries) {
-        return stack -> stack.getItem() instanceof OverloadArmorSubmoduleItem
+        return stack -> (stack.getItem() instanceof OverloadArmorSubmoduleItem
+                || stack.getItem() instanceof ArmorEnergyModuleItem)
                 && OverloadArmorState.canInstallModule(device, registries, stack);
     }
 
@@ -183,7 +183,6 @@ public final class ArmorWorkbenchAdapter implements DeviceWorkbenchAdapter {
         return switch (spec.slotType()) {
             case CORE -> stack.is(ModItems.ULTIMATE_OVERLOAD_CORE.get())
                     && OverloadArmorState.canInstallCore(device, registries, stack);
-            case ENERGY -> ArmorEnergyModuleStorage.canInstall(stack);
             default -> false;
         };
     }
@@ -219,7 +218,6 @@ public final class ArmorWorkbenchAdapter implements DeviceWorkbenchAdapter {
     private static int toArmorSlot(StructuralSlotSpec spec) {
         return switch (spec.slotType()) {
             case CORE -> OverloadArmorState.SLOT_CORE;
-            case ENERGY -> OverloadArmorState.SLOT_ENERGY;
             default -> -1;
         };
     }

@@ -9,6 +9,7 @@ import net.minecraft.world.item.ItemStack;
 import com.moakiee.ae2lt.device.DeviceKind;
 import com.moakiee.ae2lt.device.capability.DeviceCapability;
 import com.moakiee.ae2lt.device.module.DeviceModuleStorage;
+import com.moakiee.ae2lt.overload.armor.ArmorEnergyModuleItem;
 import com.moakiee.ae2lt.registry.ModDataComponents;
 
 public final class RailgunModuleStorage implements DeviceModuleStorage {
@@ -47,6 +48,11 @@ public final class RailgunModuleStorage implements DeviceModuleStorage {
     public boolean canInstallOne(ItemStack device, ItemStack candidate) {
         if (candidate == null || candidate.isEmpty()) {
             return false;
+        }
+        if (candidate.getItem() instanceof ArmorEnergyModuleItem energyModule) {
+            var entries = entryData(device);
+            return energyModule.acceptableDevices().contains(DeviceKind.RAILGUN)
+                    && entries.getCount(ArmorEnergyModuleItem.MODULE_TYPE_ID) < 1;
         }
         if (!(candidate.getItem() instanceof RailgunModuleItem module)) {
             return false;
