@@ -11,7 +11,6 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-import com.moakiee.ae2lt.client.railgun.RailgunBeamChainFx;
 import com.moakiee.ae2lt.network.NetworkInit;
 
 /**
@@ -69,7 +68,7 @@ public record RailgunBeamChainFxPacket(UUID shooterId, Vec3 firstHit, List<Vec3>
     }
 
     public static void handle(RailgunBeamChainFxPacket p, IPayloadContext ctx) {
-        ctx.enqueueWork(() -> RailgunBeamChainFx.play(p));
+        ctx.enqueueWork(() -> RailgunClientBridge.beamChainFx(p));
     }
 
     /** Compile-time guard. */

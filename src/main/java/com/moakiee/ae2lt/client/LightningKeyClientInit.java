@@ -13,6 +13,7 @@ import appeng.api.client.AEKeyRendering;
 import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.item.ElectroChimeCrystalItem;
 import com.moakiee.ae2lt.item.FixedInfiniteCellItem;
+import com.moakiee.ae2lt.client.railgun.RailgunClientBootstrap;
 import com.moakiee.ae2lt.client.railgun.RailgunClientExtensions;
 import com.moakiee.ae2lt.item.railgun.ElectromagneticRailgunItem;
 import com.moakiee.ae2lt.me.key.LightningKey;
@@ -27,6 +28,7 @@ public final class LightningKeyClientInit {
     @SubscribeEvent
     public static void onClientSetup(FMLClientSetupEvent event) {
         event.enqueueWork(() -> {
+            RailgunClientBootstrap.install();
             AEKeyRendering.register(LightningKeyType.INSTANCE, LightningKey.class, LightningKeyRenderHandler.INSTANCE);
 
             ItemProperties.register(

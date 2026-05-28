@@ -1,6 +1,5 @@
 package com.moakiee.ae2lt.overload.armor;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import net.minecraft.core.component.DataComponents;
@@ -19,10 +18,10 @@ import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.config.AE2LTCommonConfig;
 import com.moakiee.ae2lt.device.capability.DeviceCapability;
-import com.moakiee.ae2lt.device.module.OverloadDeviceModuleItem;
 import com.moakiee.ae2lt.overload.armor.module.AutoFeedSubmodule;
-import com.moakiee.ae2lt.overload.armor.module.OverloadArmorSubmoduleItem;
 import com.moakiee.ae2lt.overload.armor.module.PhaseFlightSubmodule;
+import com.moakiee.ae2lt.overload.armor.service.ArmorCapabilityCollector;
+import com.moakiee.ae2lt.overload.armor.service.ArmorCapabilityCollector.ActiveCapability;
 
 @EventBusSubscriber(modid = AE2LightningTech.MODID)
 public final class OverloadArmorUtilityHandler {
@@ -36,7 +35,7 @@ public final class OverloadArmorUtilityHandler {
         if (!(event.getEntity() instanceof ServerPlayer player)) {
             return;
         }
-        var capabilities = collectActiveCapabilities(player);
+        var capabilities = ArmorCapabilityCollector.collectPerInstalledStack(player);
         tickCleanse(player, capabilities);
         tickAutoFeed(player, capabilities);
         if (hasActivePhaseFlight(capabilities)) {
@@ -66,7 +65,7 @@ public final class OverloadArmorUtilityHandler {
         if (!(player instanceof ServerPlayer serverPlayer)) {
             return;
         }
-        var capabilities = collectActiveCapabilities(serverPlayer);
+        var capabilities = ArmorCapabilityCollector.collectPerInstalledStack(serverPlayer);
         double underwaterMultiplier = 1.0D;
         double airborneMultiplier = 1.0D;
         ActiveCapability pulseSource = null;
@@ -231,41 +230,4 @@ public final class OverloadArmorUtilityHandler {
         }
     }
 
-    private static List<ActiveCapability> collectActiveCapabilities(Player player) {
-        var out = new ArrayList<ActiveCapability>();
-        for (EquipmentSlot slot : List.of(
-                EquipmentSlot.HEAD,
-                EquipmentSlot.CHEST,
-                EquipmentSlot.LEGS,
-                EquipmentSlot.FEET)) {
-            ItemStack armor = player.getItemBySlot(slot);
-            if (armor.isEmpty() || !(armor.getItem() instanceof BaseOverloadArmorItem)) {
-                continue;
-            }
-            var snapshot = OverloadArmorState.snapshot(player, armor, player.level().registryAccess(), true);
-            if (!snapshot.hasCore() || snapshot.locked()) {
-                continue;
-            }
-            for (ItemStack module : OverloadArmorState.loadModuleStacks(armor, player.level().registryAccess())) {
-                if (!(module.getItem() instanceof OverloadDeviceModuleItem provider)
-                        || !(module.getItem() instanceof OverloadArmorSubmoduleItem submoduleProvider)) {
-                    continue;
-                }
-                ItemStack unit = module.copyWithCount(1);
-                submoduleProvider.collectSubmodules(unit, submodule -> {
-                    if (submodule == null
-                            || !OverloadArmorState.isSubmoduleRuntimeActive(armor, submodule.id())) {
-                        return;
-                    }
-                    for (var capability : provider.capabilities(unit)) {
-                        out.add(new ActiveCapability(armor, submodule.id(), capability));
-                    }
-                });
-            }
-        }
-        return List.copyOf(out);
-    }
-
-    private record ActiveCapability(ItemStack armor, String submoduleId, DeviceCapability capability) {
-    }
 }

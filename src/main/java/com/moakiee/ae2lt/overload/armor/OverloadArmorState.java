@@ -2,20 +2,15 @@ package com.moakiee.ae2lt.overload.armor;
 
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.UUID;
 import org.jetbrains.annotations.Nullable;
 
 import net.minecraft.core.HolderLookup;
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.Tag;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.component.CustomData;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.neoforge.network.PacketDistributor;
 
@@ -30,32 +25,16 @@ import com.moakiee.ae2lt.overload.armor.module.FlightSubmodule;
 import com.moakiee.ae2lt.overload.armor.module.PhaseFlightSubmodule;
 import com.moakiee.ae2lt.overload.armor.module.OverloadArmorSubmodule;
 import com.moakiee.ae2lt.overload.armor.module.OverloadArmorSubmoduleItem;
-import com.moakiee.ae2lt.registry.ModDataComponents;
 import com.moakiee.ae2lt.registry.ModItems;
+import com.moakiee.ae2lt.overload.armor.state.ArmorPersistentData;
+import com.moakiee.ae2lt.overload.armor.state.ArmorRuntimeRegistry;
 
 public final class OverloadArmorState {
     public static final int SLOT_CORE = 0;
     public static final int SLOT_COUNT = 1;
     public static final int LOCK_TRIGGER_TICKS = 60;
     public static final int LOCK_DURATION_TICKS = 600;
-
     private static final int MAX_MODULE_TYPES = 32;
-    private static final String TAG_ROOT = "OverloadArmor";
-    private static final String TAG_ARMOR_ID = "ArmorId";
-    private static final String TAG_INSTALLED_SUBMODULES = "InstalledSubmodules";
-    private static final String TAG_SUBMODULE_DATA = "SubmoduleData";
-    private static final String TAG_SUBMODULE_RUNTIME = "SubmoduleRuntime";
-    private static final String TAG_FEATURE_TOGGLES = "FeatureToggles";
-    private static final String TAG_RUNTIME_ACTIVE = "Active";
-    private static final String TAG_RUNTIME_DYNAMIC_LOAD = "DynamicLoad";
-    private static final String TAG_ENERGY_MODULE_CAPACITY_FE = "EnergyModuleCapacityFe";
-
-    private static final java.util.Map<String, Boolean> SERVER_ACTIVE_CACHE =
-            new java.util.concurrent.ConcurrentHashMap<>();
-    private static final java.util.Map<String, Boolean> CLIENT_ACTIVE_CACHE =
-            new java.util.concurrent.ConcurrentHashMap<>();
-    private static final java.util.Map<String, SubmoduleRuntime> SUBMODULE_RUNTIME_CACHE =
-            new java.util.concurrent.ConcurrentHashMap<>();
     private static volatile boolean CLIENT_FLIGHT_INERTIA = true;
     private static volatile UUID CLIENT_FLIGHT_INERTIA_ARMOR_ID = null;
 
@@ -63,80 +42,32 @@ public final class OverloadArmorState {
     }
 
     public static UUID ensureArmorId(ItemStack armor) {
-        UUID existing = getArmorId(armor);
-        if (existing != null) {
-            return existing;
-        }
-        UUID created = UUID.randomUUID();
-        CustomData.update(DataComponents.CUSTOM_DATA, armor, root -> {
-            var armorTag = armorTag(root);
-            armorTag.putUUID(TAG_ARMOR_ID, created);
-            root.put(TAG_ROOT, armorTag);
-        });
-        return created;
+        return ArmorPersistentData.ensureArmorId(armor);
     }
 
     @Nullable
     public static UUID getArmorId(ItemStack armor) {
-        if (armor == null || armor.isEmpty()) {
-            return null;
-        }
-        var root = rootTag(armor);
-        if (!root.contains(TAG_ROOT, CompoundTag.TAG_COMPOUND)) {
-            return null;
-        }
-        var armorTag = root.getCompound(TAG_ROOT);
-        return armorTag.hasUUID(TAG_ARMOR_ID) ? armorTag.getUUID(TAG_ARMOR_ID) : null;
+        return ArmorPersistentData.armorId(armor).orElse(null);
     }
 
     public static long getCachedEnergyModuleCapacityFe(ItemStack armor) {
-        var root = rootTag(armor);
-        if (!root.contains(TAG_ROOT, CompoundTag.TAG_COMPOUND)) {
-            return 0L;
-        }
-        var armorTag = root.getCompound(TAG_ROOT);
-        return Math.max(0L, armorTag.getLong(TAG_ENERGY_MODULE_CAPACITY_FE));
+        return ArmorPersistentData.getCachedEnergyModuleCapacityFe(armor);
     }
 
     public static void setCachedEnergyModuleCapacityFe(ItemStack armor, long capacityFe) {
-        if (armor == null || armor.isEmpty()) {
-            return;
-        }
-        CustomData.update(DataComponents.CUSTOM_DATA, armor, root -> {
-            var armorTag = armorTag(root);
-            if (capacityFe > 0L) {
-                armorTag.putLong(TAG_ENERGY_MODULE_CAPACITY_FE, capacityFe);
-            } else {
-                armorTag.remove(TAG_ENERGY_MODULE_CAPACITY_FE);
-            }
-            root.put(TAG_ROOT, armorTag);
-        });
+        ArmorPersistentData.setCachedEnergyModuleCapacityFe(armor, capacityFe);
     }
 
     public static ItemStack getSlot(ItemStack armor, HolderLookup.Provider registries, int slot) {
         if (slot == SLOT_CORE) {
-            return armor.getOrDefault(ModDataComponents.ARMOR_STRUCTURAL_CORE.get(), ItemStack.EMPTY).copyWithCount(1);
+            return ArmorPersistentData.structuralCore(armor);
         }
         return ItemStack.EMPTY;
     }
 
     public static void setSlot(ItemStack armor, HolderLookup.Provider registries, int slot, ItemStack stack) {
         if (slot == SLOT_CORE) {
-            setComponentSlot(armor, ModDataComponents.ARMOR_STRUCTURAL_CORE.get(), stack);
-        }
-    }
-
-    private static void setComponentSlot(
-            ItemStack armor,
-            net.minecraft.core.component.DataComponentType<ItemStack> component,
-            ItemStack stack) {
-        if (armor == null || armor.isEmpty()) {
-            return;
-        }
-        if (stack == null || stack.isEmpty()) {
-            armor.remove(component);
-        } else {
-            armor.set(component, stack.copyWithCount(1));
+            ArmorPersistentData.setStructuralCore(armor, stack);
         }
     }
 
@@ -153,7 +84,7 @@ public final class OverloadArmorState {
     }
 
     public static boolean hasCore(ItemStack armor, HolderLookup.Provider registries) {
-        return !getSlot(armor, registries, SLOT_CORE).isEmpty();
+        return ArmorPersistentData.hasStructuralCore(armor);
     }
 
     public static ArmorPart armorPart(ItemStack armor) {
@@ -272,93 +203,11 @@ public final class OverloadArmorState {
     }
 
     public static List<ItemStack> loadModuleStacks(ItemStack armor, HolderLookup.Provider registries) {
-        var root = rootTag(armor);
-        if (!root.contains(TAG_ROOT, CompoundTag.TAG_COMPOUND)) {
-            return List.of();
-        }
-        var armorTag = root.getCompound(TAG_ROOT);
-        if (!armorTag.contains(TAG_INSTALLED_SUBMODULES, CompoundTag.TAG_LIST)) {
-            return List.of();
-        }
-        var list = armorTag.getList(TAG_INSTALLED_SUBMODULES, CompoundTag.TAG_COMPOUND);
-        var result = new ArrayList<ItemStack>(list.size());
-        for (int i = 0; i < list.size(); i++) {
-            ItemStack stack = ItemStack.parseOptional(registries, list.getCompound(i).copy());
-            if (!stack.isEmpty()) {
-                result.add(stack);
-            }
-        }
-        return List.copyOf(result);
+        return ArmorPersistentData.loadModuleStacks(armor, registries);
     }
 
     private static void saveModuleStacks(ItemStack armor, HolderLookup.Provider registries, List<ItemStack> stacks) {
-        CustomData.update(DataComponents.CUSTOM_DATA, armor, root -> {
-            var armorTag = armorTag(root);
-            var out = new ListTag();
-            var merged = new LinkedHashMap<String, ItemStack>();
-            for (var stack : stacks) {
-                if (stack == null || stack.isEmpty()) {
-                    continue;
-                }
-                String id = resolveSubmoduleId(stack);
-                if (id.isBlank()) {
-                    continue;
-                }
-                merged.compute(id, (ignored, existing) -> {
-                    if (existing == null) {
-                        return stack.copy();
-                    }
-                    existing.grow(stack.getCount());
-                    return existing;
-                });
-            }
-            int writtenTypes = 0;
-            int writtenUnits = 0;
-            long energyCapacityFe = 0L;
-            int maxUnits = armorPart(armor).moduleSlotCount();
-            for (var stack : merged.values()) {
-                if (writtenTypes >= MAX_MODULE_TYPES || writtenUnits >= maxUnits) {
-                    break;
-                }
-                int count = Math.min(Math.max(1, stack.getCount()), maxUnits - writtenUnits);
-                ItemStack writtenStack = stack.copyWithCount(count);
-                out.add(writtenStack.saveOptional(registries));
-                energyCapacityFe = Math.max(energyCapacityFe, energyCapacityFe(writtenStack));
-                writtenTypes++;
-                writtenUnits += count;
-            }
-            if (out.isEmpty()) {
-                armorTag.remove(TAG_INSTALLED_SUBMODULES);
-                armorTag.remove(TAG_ENERGY_MODULE_CAPACITY_FE);
-            } else {
-                armorTag.put(TAG_INSTALLED_SUBMODULES, out);
-                if (energyCapacityFe > 0L) {
-                    armorTag.putLong(TAG_ENERGY_MODULE_CAPACITY_FE, energyCapacityFe);
-                } else {
-                    armorTag.remove(TAG_ENERGY_MODULE_CAPACITY_FE);
-                }
-            }
-            root.put(TAG_ROOT, armorTag);
-        });
-    }
-
-    private static long energyCapacityFe(ItemStack stack) {
-        if (stack.isEmpty()) {
-            return 0L;
-        }
-        if (stack.getItem() instanceof ArmorEnergyModuleItem energyModule) {
-            return energyModule.capacityFe();
-        }
-        if (stack.getItem() instanceof OverloadDeviceModuleItem provider) {
-            long capacity = 0L;
-            for (var capability : provider.capabilities(stack.copyWithCount(1))) {
-                if (capability instanceof DeviceCapability.EnergyCapacity energyCapacity) {
-                    capacity = Math.max(capacity, energyCapacity.fe());
-                }
-            }
-            return capacity;
-        }
-        return 0L;
+        ArmorPersistentData.saveModuleStacks(armor, registries, stacks);
     }
 
     public static boolean hasAnyInstalledModule(ItemStack armor, HolderLookup.Provider registries) {
@@ -442,12 +291,7 @@ public final class OverloadArmorState {
     }
 
     public static boolean isSubmoduleEnabled(ItemStack armor, String submoduleId, boolean defaultEnabled) {
-        var tag = armorTag(rootTag(armor));
-        if (!tag.contains(TAG_FEATURE_TOGGLES, CompoundTag.TAG_COMPOUND)) {
-            return defaultEnabled;
-        }
-        var toggles = tag.getCompound(TAG_FEATURE_TOGGLES);
-        return toggles.contains(submoduleId, Tag.TAG_BYTE) ? toggles.getBoolean(submoduleId) : defaultEnabled;
+        return ArmorPersistentData.getToggle(armor, submoduleId, defaultEnabled);
     }
 
     public static void setSubmoduleEnabled(ItemStack armor, OverloadArmorSubmodule submodule, boolean enabled) {
@@ -457,26 +301,7 @@ public final class OverloadArmorState {
     }
 
     public static void setSubmoduleEnabled(ItemStack armor, String submoduleId, boolean enabled, boolean defaultEnabled) {
-        if (submoduleId == null || submoduleId.isBlank()) {
-            return;
-        }
-        CustomData.update(DataComponents.CUSTOM_DATA, armor, root -> {
-            var tag = armorTag(root);
-            var toggles = tag.contains(TAG_FEATURE_TOGGLES, CompoundTag.TAG_COMPOUND)
-                    ? tag.getCompound(TAG_FEATURE_TOGGLES)
-                    : new CompoundTag();
-            if (enabled == defaultEnabled) {
-                toggles.remove(submoduleId);
-            } else {
-                toggles.putBoolean(submoduleId, enabled);
-            }
-            if (toggles.isEmpty()) {
-                tag.remove(TAG_FEATURE_TOGGLES);
-            } else {
-                tag.put(TAG_FEATURE_TOGGLES, toggles);
-            }
-            root.put(TAG_ROOT, tag);
-        });
+        ArmorPersistentData.setToggle(armor, submoduleId, enabled, defaultEnabled);
     }
 
     public static int buildSubmoduleMask(ItemStack armor, List<OverloadArmorSubmodule> submodules) {
@@ -529,14 +354,15 @@ public final class OverloadArmorState {
                     && hasCore(armor, registries)
                     && powered
                     && isSubmoduleEnabled(armor, submodule);
-            String key = cacheKey(armorId, submodule.id());
-            var cache = dist == Dist.CLIENT ? CLIENT_ACTIVE_CACHE : SERVER_ACTIVE_CACHE;
-            Boolean previous = cache.put(key, active);
+            Boolean previous = dist == Dist.CLIENT
+                    ? ArmorRuntimeRegistry.setClientSubmoduleActive(armorId, submodule.id(), active)
+                    : ArmorRuntimeRegistry.setServerSubmoduleActive(armorId, submodule.id(), active);
             setSubmoduleRuntimeActive(armor, submodule.id(), active);
             boolean changed = previous == null || previous != active;
+            boolean predictiveMovement = PhaseFlightSubmodule.INSTANCE.id().equals(submodule.id());
             if (dist == Dist.DEDICATED_SERVER
                     && player instanceof ServerPlayer serverPlayer
-                    && ArmorPhaseFlightRules.shouldSyncClientActiveState(active, changed)) {
+                    && ArmorPhaseFlightRules.shouldSyncClientActiveState(active, changed, predictiveMovement)) {
                 PacketDistributor.sendToPlayer(
                         serverPlayer,
                         new ArmorSubmoduleActivePacket(armorId, submodule.id(), active));
@@ -691,45 +517,25 @@ public final class OverloadArmorState {
     }
 
     public static void markClientActive(UUID armorId, String submoduleId, boolean active) {
-        if (armorId != null && submoduleId != null && !submoduleId.isBlank()) {
-            CLIENT_ACTIVE_CACHE.put(cacheKey(armorId, submoduleId), active);
-        }
+        ArmorRuntimeRegistry.setClientSubmoduleActive(armorId, submoduleId, active);
     }
 
     public static boolean isClientSubmoduleActive(UUID armorId, String submoduleId) {
-        if (armorId == null || submoduleId == null || submoduleId.isBlank()) {
-            return false;
-        }
-        return CLIENT_ACTIVE_CACHE.getOrDefault(cacheKey(armorId, submoduleId), false);
+        return ArmorRuntimeRegistry.isClientSubmoduleActive(armorId, submoduleId);
     }
 
     public static boolean isAnyClientSubmoduleActive(String submoduleId) {
-        if (submoduleId == null || submoduleId.isBlank()) {
-            return false;
-        }
-        String suffix = "#" + submoduleId;
-        for (var entry : CLIENT_ACTIVE_CACHE.entrySet()) {
-            if (entry.getKey().endsWith(suffix) && entry.getValue()) {
-                return true;
-            }
-        }
-        return false;
+        return ArmorRuntimeRegistry.isAnyClientSubmoduleActive(submoduleId);
     }
 
     public static void clearClientActiveCache() {
-        CLIENT_ACTIVE_CACHE.clear();
+        ArmorRuntimeRegistry.clearClientActiveCache();
         CLIENT_FLIGHT_INERTIA = true;
         CLIENT_FLIGHT_INERTIA_ARMOR_ID = null;
     }
 
     public static void forgetSubmoduleActiveCache(UUID armorId) {
-        if (armorId == null) {
-            return;
-        }
-        String prefix = armorId + "#";
-        SERVER_ACTIVE_CACHE.keySet().removeIf(key -> key.startsWith(prefix));
-        CLIENT_ACTIVE_CACHE.keySet().removeIf(key -> key.startsWith(prefix));
-        SUBMODULE_RUNTIME_CACHE.keySet().removeIf(key -> key.startsWith(prefix));
+        ArmorRuntimeRegistry.clear(armorId);
     }
 
     public static void clearTransientRuntime(ItemStack armor) {
@@ -817,19 +623,12 @@ public final class OverloadArmorState {
     }
 
     private static void pruneRemovedRuntime(UUID armorId, java.util.Set<String> installedIds, OverloadRuntime runtime) {
-        String prefix = armorId + "#";
-        for (String key : List.copyOf(SUBMODULE_RUNTIME_CACHE.keySet())) {
-            if (!key.startsWith(prefix)) {
-                continue;
-            }
-            String submoduleId = key.substring(prefix.length());
+        for (String submoduleId : List.copyOf(ArmorRuntimeRegistry.submoduleIds(armorId))) {
             if (installedIds.contains(submoduleId)) {
                 continue;
             }
             runtime.bucket().clear(submoduleId);
-            SUBMODULE_RUNTIME_CACHE.remove(key);
-            SERVER_ACTIVE_CACHE.remove(key);
-            CLIENT_ACTIVE_CACHE.remove(key);
+            ArmorRuntimeRegistry.removeSubmodule(armorId, submoduleId);
         }
     }
 
@@ -845,64 +644,29 @@ public final class OverloadArmorState {
 
     private static void setSubmoduleRuntimeActive(ItemStack armor, String submoduleId, boolean active) {
         UUID id = ensureArmorId(armor);
-        String key = cacheKey(id, submoduleId);
-        var previous = SUBMODULE_RUNTIME_CACHE.get(key);
-        int load = active && previous != null ? previous.dynamicLoad() : 0;
-        SUBMODULE_RUNTIME_CACHE.put(key, new SubmoduleRuntime(active, load));
+        ArmorRuntimeRegistry.setSubmoduleRuntimeActive(id, submoduleId, active);
     }
 
     private static void setSubmoduleRuntimeDynamicLoad(ItemStack armor, String submoduleId, int dynamicLoad) {
         UUID id = ensureArmorId(armor);
-        String key = cacheKey(id, submoduleId);
-        var previous = SUBMODULE_RUNTIME_CACHE.get(key);
-        boolean active = previous != null && previous.active();
-        SUBMODULE_RUNTIME_CACHE.put(key, new SubmoduleRuntime(active, Math.max(0, dynamicLoad)));
+        ArmorRuntimeRegistry.setSubmoduleRuntimeDynamicLoad(id, submoduleId, dynamicLoad);
     }
 
     private static SubmoduleRuntime getSubmoduleRuntime(ItemStack armor, String submoduleId) {
         UUID id = getArmorId(armor);
-        if (id != null) {
-            var cached = SUBMODULE_RUNTIME_CACHE.get(cacheKey(id, submoduleId));
-            if (cached != null) {
-                return cached;
-            }
+        if (id == null) {
+            return new SubmoduleRuntime(false, 0);
         }
-        return new SubmoduleRuntime(false, 0);
+        var cached = ArmorRuntimeRegistry.getSubmoduleRuntime(id, submoduleId);
+        return new SubmoduleRuntime(cached.active(), cached.dynamicLoad());
     }
 
     private static CompoundTag getStoredSubmoduleData(ItemStack armor, String submoduleId) {
-        var root = rootTag(armor);
-        if (!root.contains(TAG_ROOT, CompoundTag.TAG_COMPOUND)) {
-            return new CompoundTag();
-        }
-        var armorTag = root.getCompound(TAG_ROOT);
-        if (!armorTag.contains(TAG_SUBMODULE_DATA, CompoundTag.TAG_COMPOUND)) {
-            return new CompoundTag();
-        }
-        var data = armorTag.getCompound(TAG_SUBMODULE_DATA);
-        return data.contains(submoduleId, CompoundTag.TAG_COMPOUND)
-                ? data.getCompound(submoduleId).copy()
-                : new CompoundTag();
+        return ArmorPersistentData.getSubmoduleData(armor, submoduleId);
     }
 
     private static void setStoredSubmoduleData(ItemStack armor, String submoduleId, CompoundTag data) {
-        CustomData.update(DataComponents.CUSTOM_DATA, armor, root -> {
-            var armorTag = armorTag(root);
-            var allData = armorTag.contains(TAG_SUBMODULE_DATA, CompoundTag.TAG_COMPOUND)
-                    ? armorTag.getCompound(TAG_SUBMODULE_DATA)
-                    : new CompoundTag();
-            if (data == null || data.isEmpty()) {
-                allData.remove(submoduleId);
-            } else {
-                allData.put(submoduleId, data.copy());
-            }
-            if (allData.isEmpty()) {
-                armorTag.remove(TAG_SUBMODULE_DATA);
-            } else {
-                armorTag.put(TAG_SUBMODULE_DATA, allData);
-            }
-            root.put(TAG_ROOT, armorTag);
-        });
+        ArmorPersistentData.setSubmoduleData(armor, submoduleId, data);
     }
 
     public static void setClientFlightInertia(UUID armorId, boolean inertiaEnabled) {
@@ -930,23 +694,6 @@ public final class OverloadArmorState {
         if (flightActive) {
             syncFlightInertiaToClient(player, armor, armorId);
         }
-    }
-
-    private static CompoundTag rootTag(ItemStack stack) {
-        if (stack == null || stack.isEmpty()) {
-            return new CompoundTag();
-        }
-        return stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
-    }
-
-    private static CompoundTag armorTag(CompoundTag root) {
-        return root.contains(TAG_ROOT, CompoundTag.TAG_COMPOUND)
-                ? root.getCompound(TAG_ROOT)
-                : new CompoundTag();
-    }
-
-    private static String cacheKey(UUID armorId, String submoduleId) {
-        return armorId + "#" + submoduleId;
     }
 
     private record SubmoduleRuntime(boolean active, int dynamicLoad) {

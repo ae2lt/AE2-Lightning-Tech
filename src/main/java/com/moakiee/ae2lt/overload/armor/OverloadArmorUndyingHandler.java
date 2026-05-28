@@ -1,6 +1,5 @@
 package com.moakiee.ae2lt.overload.armor;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import org.jetbrains.annotations.Nullable;
@@ -8,7 +7,6 @@ import org.jetbrains.annotations.Nullable;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffectCategory;
-import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.bus.api.EventPriority;
@@ -20,9 +18,8 @@ import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 
 import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.device.capability.DeviceCapability;
-import com.moakiee.ae2lt.device.module.OverloadDeviceModuleItem;
-import com.moakiee.ae2lt.overload.armor.module.OverloadArmorSubmoduleItem;
 import com.moakiee.ae2lt.overload.armor.module.UndyingSubmodule;
+import com.moakiee.ae2lt.overload.armor.service.ArmorCapabilityCollector;
 
 @EventBusSubscriber(modid = AE2LightningTech.MODID)
 public final class OverloadArmorUndyingHandler {
@@ -163,40 +160,17 @@ public final class OverloadArmorUndyingHandler {
     }
 
     private static List<ActiveLastStand> collectActiveLastStand(ServerPlayer player) {
-        var out = new ArrayList<ActiveLastStand>();
-        for (EquipmentSlot slot : List.of(
-                EquipmentSlot.HEAD,
-                EquipmentSlot.CHEST,
-                EquipmentSlot.LEGS,
-                EquipmentSlot.FEET)) {
-            ItemStack armor = player.getItemBySlot(slot);
-            if (armor.isEmpty() || !(armor.getItem() instanceof BaseOverloadArmorItem)) {
-                continue;
-            }
-            var snapshot = OverloadArmorState.snapshot(player, armor, player.level().registryAccess(), true);
-            if (!snapshot.hasCore() || snapshot.locked()) {
-                continue;
-            }
-            for (ItemStack moduleStack : OverloadArmorState.loadModuleStacks(armor, player.level().registryAccess())) {
-                if (!(moduleStack.getItem() instanceof OverloadDeviceModuleItem module)
-                        || !(moduleStack.getItem() instanceof OverloadArmorSubmoduleItem submoduleProvider)) {
-                    continue;
-                }
-                ItemStack unit = moduleStack.copyWithCount(1);
-                submoduleProvider.collectSubmodules(unit, submodule -> {
-                    if (submodule == null
-                            || !OverloadArmorState.isSubmoduleRuntimeActive(armor, submodule.id())) {
-                        return;
+        return ArmorCapabilityCollector.collectPerInstalledStack(player).stream()
+                .flatMap(active -> {
+                    if (active.capability() instanceof DeviceCapability.LastStandTuning tuning) {
+                        return java.util.stream.Stream.of(new ActiveLastStand(
+                                active.armor(),
+                                active.submoduleId(),
+                                tuning));
                     }
-                    for (var capability : module.capabilities(unit)) {
-                        if (capability instanceof DeviceCapability.LastStandTuning tuning) {
-                            out.add(new ActiveLastStand(armor, submodule.id(), tuning));
-                        }
-                    }
-                });
-            }
-        }
-        return List.copyOf(out);
+                    return java.util.stream.Stream.empty();
+                })
+                .toList();
     }
 
     private static long scaledCost(long baseCost, int comboIndex) {

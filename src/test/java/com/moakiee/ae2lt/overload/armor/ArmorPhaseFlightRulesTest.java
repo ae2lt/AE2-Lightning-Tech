@@ -9,9 +9,15 @@ final class ArmorPhaseFlightRulesTest {
 
     @Test
     void activeStateSyncsOnlyWhenItChanges() {
-        assertTrue(ArmorPhaseFlightRules.shouldSyncClientActiveState(true, true));
-        assertTrue(ArmorPhaseFlightRules.shouldSyncClientActiveState(false, true));
-        assertFalse(ArmorPhaseFlightRules.shouldSyncClientActiveState(true, false));
-        assertFalse(ArmorPhaseFlightRules.shouldSyncClientActiveState(false, false));
+        assertTrue(ArmorPhaseFlightRules.shouldSyncClientActiveState(true, true, false));
+        assertTrue(ArmorPhaseFlightRules.shouldSyncClientActiveState(false, true, false));
+        assertFalse(ArmorPhaseFlightRules.shouldSyncClientActiveState(true, false, false));
+        assertFalse(ArmorPhaseFlightRules.shouldSyncClientActiveState(false, false, false));
+    }
+
+    @Test
+    void activePredictiveMovementSyncsEvenWhenUnchanged() {
+        assertTrue(ArmorPhaseFlightRules.shouldSyncClientActiveState(true, false, true));
+        assertFalse(ArmorPhaseFlightRules.shouldSyncClientActiveState(false, false, true));
     }
 }

@@ -6,7 +6,6 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-import com.moakiee.ae2lt.client.railgun.RailgunCameraShake;
 import com.moakiee.ae2lt.network.NetworkInit;
 
 /** Server to client: apply visual recoil after a charged shot. */
@@ -27,6 +26,6 @@ public record RailgunRecoilFxPacket(float pitchUp, int tierOrdinal) implements C
     }
 
     public static void handle(RailgunRecoilFxPacket p, IPayloadContext ctx) {
-        ctx.enqueueWork(() -> RailgunCameraShake.applyRecoil(p.pitchUp(), p.tierOrdinal()));
+        ctx.enqueueWork(() -> RailgunClientBridge.recoil(p));
     }
 }

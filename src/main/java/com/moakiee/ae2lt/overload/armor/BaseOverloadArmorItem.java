@@ -16,15 +16,12 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
 
 import com.moakiee.ae2lt.device.DeviceItem;
 import com.moakiee.ae2lt.device.DeviceKind;
-import com.moakiee.ae2lt.device.capability.DeviceCapability;
-import com.moakiee.ae2lt.device.module.OverloadDeviceModuleItem;
-import com.moakiee.ae2lt.config.AE2LTCommonConfig;
 import com.moakiee.ae2lt.overload.armor.module.OverloadArmorSubmoduleItem;
+import com.moakiee.ae2lt.overload.armor.service.ArmorTickService;
 import com.moakiee.ae2lt.util.EnergyText;
 
 public abstract class BaseOverloadArmorItem extends ArmorItem implements DeviceItem {
@@ -60,7 +57,7 @@ public abstract class BaseOverloadArmorItem extends ArmorItem implements DeviceI
             return;
         }
         boolean equipped = player.getItemBySlot(equipmentSlot(armorPart)) == stack;
-        tickServer(player, stack, equipped, resolveDist(level));
+        ArmorTickService.tickEquipped(player, stack, equipped, player.level().registryAccess(), resolveDist(level));
     }
 
     @Override
@@ -108,122 +105,6 @@ public abstract class BaseOverloadArmorItem extends ArmorItem implements DeviceI
     @Override
     public int getBarColor(ItemStack stack) {
         return Mth.hsvToRgb(1 / 3.0F, 1.0F, 1.0F);
-    }
-
-    private static void tickServer(Player player, ItemStack stack, boolean equipped, Dist dist) {
-        var registries = player.level().registryAccess();
-        OverloadArmorState.syncSubmoduleActiveState(player, stack, registries, equipped, dist);
-        if (!equipped) {
-            OverloadArmorState.clearTransientRuntime(stack);
-            return;
-        }
-        if (player instanceof ServerPlayer serverPlayer) {
-            refillFromBoundNetwork(stack, serverPlayer);
-            if (!passiveDrain(serverPlayer, stack)) {
-                OverloadArmorState.syncSubmoduleActiveState(player, stack, registries, false, dist);
-                OverloadArmorState.tickEquipped(player, stack, registries);
-                return;
-            }
-        }
-        OverloadArmorState.tickActiveSubmodules(player, stack, registries, dist);
-        var snapshot = OverloadArmorState.tickEquipped(player, stack, registries);
-        if (player instanceof ServerPlayer serverPlayer) {
-            consumeOverloadDemand(serverPlayer, stack, snapshot);
-        }
-    }
-
-    private static void refillFromBoundNetwork(ItemStack armor, ServerPlayer player) {
-        ArmorEnergyBuffer.refillFromNetwork(armor, player, Long.MAX_VALUE);
-    }
-
-    private static boolean passiveDrain(ServerPlayer player, ItemStack armor) {
-        long drain = 0L;
-        double multiplier = 1.0D;
-        for (ItemStack module : OverloadArmorState.loadModuleStacks(armor, player.level().registryAccess())) {
-            if (!(module.getItem() instanceof OverloadDeviceModuleItem provider)) {
-                continue;
-            }
-            if (!moduleRuntimeActive(armor, module)) {
-                continue;
-            }
-            var capabilities = provider.capabilities(module);
-            boolean movingFlight = hasFlightMode(capabilities) && isMovingInFlight(player);
-            for (var capability : capabilities) {
-                if (capability instanceof DeviceCapability.PassiveDrain passiveDrain) {
-                    long fePerTick = Math.max(0L, passiveDrain.fePerTick());
-                    if (movingFlight) {
-                        fePerTick = Math.max(fePerTick, ArmorOverloadRules.FLIGHT_MOVING_DRAIN_FE);
-                    }
-                    drain += fePerTick * Math.max(1, module.getCount());
-                } else if (capability instanceof DeviceCapability.EnergyEfficiency efficiency) {
-                    multiplier *= Math.max(0.0D, efficiency.drainMul());
-                }
-            }
-        }
-        long adjusted = (long) Math.ceil(drain * multiplier);
-        if (adjusted <= 0L) {
-            return true;
-        }
-        ArmorEnergyBuffer.refillFromNetwork(
-                armor,
-                player,
-                Math.max(0L, adjusted - ArmorEnergyBuffer.read(armor, player.registryAccess())));
-        boolean paid = ArmorEnergyBuffer.tryConsume(armor, player, adjusted);
-        if (!paid) {
-            OverloadArmorState.markEnergyUnpaid(armor, "energy");
-        }
-        return paid;
-    }
-
-    private static void consumeOverloadDemand(
-            ServerPlayer player,
-            ItemStack armor,
-            OverloadArmorState.Snapshot snapshot) {
-        long demand = ArmorDynamicLoadRules.overloadDemand(
-                snapshot.currentLoad(),
-                snapshot.baseOverload(),
-                AE2LTCommonConfig.overloadArmorCurveExponent(),
-                AE2LTCommonConfig.overloadArmorPowerDemandScale());
-        if (demand <= 0L) {
-            return;
-        }
-        ArmorEnergyBuffer.refillFromNetwork(
-                armor,
-                player,
-                Math.max(0L, demand - ArmorEnergyBuffer.read(armor, player.registryAccess())));
-        if (!ArmorEnergyBuffer.tryConsume(armor, player, demand)) {
-            OverloadArmorState.markEnergyUnpaid(armor, "energy");
-        }
-    }
-
-    private static boolean moduleRuntimeActive(ItemStack armor, ItemStack module) {
-        if (!(module.getItem() instanceof OverloadArmorSubmoduleItem provider)) {
-            return false;
-        }
-        boolean[] active = {false};
-        provider.collectSubmodules(module, submodule -> {
-            if (submodule != null && OverloadArmorState.isSubmoduleRuntimeActive(armor, submodule.id())) {
-                active[0] = true;
-            }
-        });
-        return active[0];
-    }
-
-    private static boolean hasFlightMode(List<DeviceCapability> capabilities) {
-        for (var capability : capabilities) {
-            if (capability instanceof DeviceCapability.FlightMode) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static boolean isMovingInFlight(ServerPlayer player) {
-        if (!player.getAbilities().flying) {
-            return false;
-        }
-        Vec3 motion = player.getDeltaMovement();
-        return motion.lengthSqr() > 1.0E-4D;
     }
 
     private static Dist resolveDist(Level level) {

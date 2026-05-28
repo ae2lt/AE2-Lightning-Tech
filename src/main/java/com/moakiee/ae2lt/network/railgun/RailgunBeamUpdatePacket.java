@@ -9,7 +9,6 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-import com.moakiee.ae2lt.client.railgun.RailgunBeamRenderClient;
 import com.moakiee.ae2lt.network.NetworkInit;
 
 /**
@@ -46,7 +45,7 @@ public record RailgunBeamUpdatePacket(UUID shooterId, Vec3 from, Vec3 to, boolea
     }
 
     public static void handle(RailgunBeamUpdatePacket p, IPayloadContext ctx) {
-        ctx.enqueueWork(() -> RailgunBeamRenderClient.applyUpdate(p));
+        ctx.enqueueWork(() -> RailgunClientBridge.beamUpdate(p));
     }
 
     /** Compile-time guard. */

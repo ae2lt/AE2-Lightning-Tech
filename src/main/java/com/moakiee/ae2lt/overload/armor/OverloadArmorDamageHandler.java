@@ -3,11 +3,9 @@ package com.moakiee.ae2lt.overload.armor;
 import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageTypes;
-import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.item.ItemStack;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -16,8 +14,8 @@ import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
 import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.config.AE2LTCommonConfig;
 import com.moakiee.ae2lt.device.capability.DeviceCapability;
-import com.moakiee.ae2lt.device.module.OverloadDeviceModuleItem;
-import com.moakiee.ae2lt.overload.armor.module.OverloadArmorSubmoduleItem;
+import com.moakiee.ae2lt.overload.armor.service.ArmorCapabilityCollector;
+import com.moakiee.ae2lt.overload.armor.service.ArmorCapabilityCollector.ActiveCapability;
 import com.moakiee.ae2lt.registry.ModDamageTypes;
 
 /**
@@ -35,7 +33,7 @@ public final class OverloadArmorDamageHandler {
     @SubscribeEvent(priority = EventPriority.HIGH)
     public static void onPre(LivingDamageEvent.Pre event) {
         if (!(event.getEntity() instanceof Player player) || player.level().isClientSide()) return;
-        var capabilities = collectActiveCapabilities(player);
+        var capabilities = ArmorCapabilityCollector.collectPerInstalledUnit(player);
         ActiveCapability mitigation = collectMitigation(capabilities);
         if (mitigation != null
                 && mitigation.capability() instanceof DeviceCapability.StagedMitigation staged) {
@@ -146,7 +144,7 @@ public final class OverloadArmorDamageHandler {
             return 0.0F;
         }
         float reflected = 0.0F;
-        for (var active : collectActiveCapabilities(player)) {
+        for (var active : ArmorCapabilityCollector.collectPerInstalledUnit(player)) {
             if (!(active.capability() instanceof DeviceCapability.ReflectTuning reflect)
                     || reflect.reflectPct() <= 0.0D) {
                 continue;
@@ -177,69 +175,6 @@ public final class OverloadArmorDamageHandler {
             }
         }
         return reflected;
-    }
-
-    private static java.util.List<ActiveCapability> collectActiveCapabilities(Player player) {
-        var out = new java.util.ArrayList<ActiveCapability>();
-        for (EquipmentSlot slot : java.util.List.of(
-                EquipmentSlot.HEAD,
-                EquipmentSlot.CHEST,
-                EquipmentSlot.LEGS,
-                EquipmentSlot.FEET)) {
-            ItemStack armor = player.getItemBySlot(slot);
-            if (armor.isEmpty() || !(armor.getItem() instanceof BaseOverloadArmorItem)) {
-                continue;
-            }
-            var snapshot = OverloadArmorState.snapshot(player, armor, player.level().registryAccess(), true);
-            if (!snapshot.hasCore() || snapshot.locked()) {
-                continue;
-            }
-            var stacks = OverloadArmorState.loadModuleStacks(armor, player.level().registryAccess());
-            for (ItemStack s : stacks) {
-                if (!s.isEmpty() && s.getItem() instanceof OverloadDeviceModuleItem m && moduleRuntimeActive(armor, s)) {
-                    int count = Math.max(1, s.getCount());
-                    for (int i = 0; i < count; i++) {
-                        ItemStack unit = s.copyWithCount(1);
-                        collectActiveCapabilitiesForUnit(armor, unit, m, out);
-                    }
-                }
-            }
-        }
-        return out;
-    }
-
-    private static void collectActiveCapabilitiesForUnit(
-            ItemStack armor,
-            ItemStack unit,
-            OverloadDeviceModuleItem module,
-            java.util.List<ActiveCapability> out) {
-        if (!(unit.getItem() instanceof OverloadArmorSubmoduleItem provider)) {
-            return;
-        }
-        provider.collectSubmodules(unit, submodule -> {
-            if (submodule == null || !OverloadArmorState.isSubmoduleRuntimeActive(armor, submodule.id())) {
-                return;
-            }
-            for (var capability : module.capabilities(unit)) {
-                out.add(new ActiveCapability(armor, submodule.id(), capability));
-            }
-        });
-    }
-
-    private static boolean moduleRuntimeActive(ItemStack armor, ItemStack module) {
-        if (!(module.getItem() instanceof OverloadArmorSubmoduleItem provider)) {
-            return false;
-        }
-        boolean[] active = {false};
-        provider.collectSubmodules(module, submodule -> {
-            if (submodule != null && OverloadArmorState.isSubmoduleRuntimeActive(armor, submodule.id())) {
-                active[0] = true;
-            }
-        });
-        return active[0];
-    }
-
-    private record ActiveCapability(ItemStack armor, String submoduleId, DeviceCapability capability) {
     }
 
 }

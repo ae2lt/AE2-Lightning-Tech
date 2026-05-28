@@ -11,7 +11,6 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-import com.moakiee.ae2lt.client.railgun.RailgunClientFx;
 import com.moakiee.ae2lt.network.NetworkInit;
 
 /**
@@ -78,7 +77,7 @@ public record RailgunFirePacket(
     }
 
     public static void handle(RailgunFirePacket p, IPayloadContext ctx) {
-        ctx.enqueueWork(() -> RailgunClientFx.playCharged(p));
+        ctx.enqueueWork(() -> RailgunClientBridge.fire(p));
     }
 
     /** Compile-time guard on unused imports. */
