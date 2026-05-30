@@ -21,10 +21,10 @@ import com.moakiee.ae2lt.overload.armor.ArmorEnergyBuffer;
 import com.moakiee.ae2lt.overload.armor.ArmorPart;
 import com.moakiee.ae2lt.overload.armor.BaseOverloadArmorItem;
 import com.moakiee.ae2lt.overload.armor.OverloadArmorState;
-import com.moakiee.ae2lt.overload.armor.module.AutoFeedSubmodule;
 import com.moakiee.ae2lt.overload.armor.module.DashSubmodule;
 import com.moakiee.ae2lt.overload.armor.module.OverloadArmorSubmoduleOptionUi;
 import com.moakiee.ae2lt.overload.armor.module.OverloadArmorSubmoduleItem;
+import com.moakiee.ae2lt.overload.armor.module.SaturationSubmodule;
 import com.moakiee.ae2lt.device.network.ArmorNetworkBinding;
 import com.moakiee.ae2lt.registry.ModDataComponents;
 
@@ -211,8 +211,8 @@ public record DeviceStatusModel(
         if (DashSubmodule.INSTANCE.id().equals(submoduleId)) {
             return DashSubmodule.getCooldown(armor);
         }
-        if (AutoFeedSubmodule.INSTANCE.id().equals(submoduleId)) {
-            return AutoFeedSubmodule.getCooldown(armor);
+        if (SaturationSubmodule.INSTANCE.id().equals(submoduleId)) {
+            return SaturationSubmodule.getCooldown(armor);
         }
         return 0;
     }

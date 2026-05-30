@@ -2,13 +2,12 @@ package com.moakiee.ae2lt.overload.armor;
 
 import java.util.List;
 
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffectCategory;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.food.FoodData;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.food.FoodProperties;
 import net.minecraft.tags.FluidTags;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -18,8 +17,8 @@ import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.config.AE2LTCommonConfig;
 import com.moakiee.ae2lt.device.capability.DeviceCapability;
-import com.moakiee.ae2lt.overload.armor.module.AutoFeedSubmodule;
 import com.moakiee.ae2lt.overload.armor.module.PhaseFlightSubmodule;
+import com.moakiee.ae2lt.overload.armor.module.SaturationSubmodule;
 import com.moakiee.ae2lt.overload.armor.service.ArmorCapabilityCollector;
 import com.moakiee.ae2lt.overload.armor.service.ArmorCapabilityCollector.ActiveCapability;
 import com.moakiee.ae2lt.overload.armor.service.ArmorInteractionRangeService;
@@ -38,7 +37,7 @@ public final class OverloadArmorUtilityHandler {
         var capabilities = ArmorCapabilityCollector.collectPerInstalledStack(player);
         ArmorInteractionRangeService.tick(player, capabilities);
         tickCleanse(player, capabilities);
-        tickAutoFeed(player, capabilities);
+        tickFoodSustain(player, capabilities);
         if (hasActivePhaseFlight(capabilities)) {
             PhaseFlightSubmodule.applyTransientPhaseState(player);
         } else if (PhaseFlightSubmodule.hasTransientPhaseState(player)) {
@@ -157,51 +156,44 @@ public final class OverloadArmorUtilityHandler {
         return removed;
     }
 
-    private static void tickAutoFeed(ServerPlayer player, List<ActiveCapability> capabilities) {
+    private static void tickFoodSustain(ServerPlayer player, List<ActiveCapability> capabilities) {
+        if (player.isCreative() || player.isSpectator()) {
+            return;
+        }
         for (var active : capabilities) {
-            if (!(active.capability() instanceof DeviceCapability.AutoFeed autoFeed)) {
+            if (!(active.capability() instanceof DeviceCapability.FoodSustain foodSustain)) {
                 continue;
             }
-            if (AutoFeedSubmodule.getCooldown(active.armor()) > 0) {
+            if (SaturationSubmodule.getCooldown(active.armor()) > 0) {
                 continue;
             }
-            int threshold = Math.clamp(autoFeed.hungerThreshold(), 0, 20);
-            if (player.getFoodData().getFoodLevel() > threshold || !player.canEat(false)) {
-                continue;
+            int intervalTicks = Math.max(1, foodSustain.checkIntervalTicks());
+            int targetFood = Math.clamp(foodSustain.targetFood(), 0, 20);
+            float targetSaturation = Math.clamp(foodSustain.targetSaturation(), 0.0F, 20.0F);
+            FoodData foodData = player.getFoodData();
+            int currentFood = foodData.getFoodLevel();
+            float currentSaturation = foodData.getSaturationLevel();
+            if (currentFood >= targetFood && currentSaturation >= targetSaturation) {
+                SaturationSubmodule.setCooldown(active.armor(), intervalTicks);
+                return;
             }
             if (!ArmorLightningService.consume(
                     player,
                     active.armor(),
                     com.moakiee.ae2lt.me.key.LightningKey.HIGH_VOLTAGE,
-                    AE2LTCommonConfig.overloadArmorAutoFeedHvCost())) {
+                    AE2LTCommonConfig.overloadArmorSaturationHvCost())) {
+                SaturationSubmodule.setCooldown(active.armor(), intervalTicks);
                 return;
             }
-            if (consumeFoodFromInventory(player)) {
-                AutoFeedSubmodule.setCooldown(
-                        active.armor(),
-                        AE2LTCommonConfig.overloadArmorAutoFeedCooldownTicks());
-                return;
+            if (currentFood < targetFood) {
+                foodData.setFoodLevel(Math.max(currentFood, targetFood));
             }
+            if (currentSaturation < targetSaturation) {
+                foodData.setSaturation(Math.max(currentSaturation, targetSaturation));
+            }
+            SaturationSubmodule.setCooldown(active.armor(), intervalTicks);
+            return;
         }
-    }
-
-    private static boolean consumeFoodFromInventory(ServerPlayer player) {
-        var inventory = player.getInventory();
-        for (int slot = 0; slot < inventory.items.size(); slot++) {
-            ItemStack stack = inventory.items.get(slot);
-            if (stack.isEmpty()) {
-                continue;
-            }
-            FoodProperties food = stack.get(DataComponents.FOOD);
-            if (food == null || !player.canEat(food.canAlwaysEat())) {
-                continue;
-            }
-            ItemStack result = player.eat(player.level(), stack, food);
-            inventory.setItem(slot, result);
-            inventory.setChanged();
-            return true;
-        }
-        return false;
     }
 
     private static boolean hasActivePhaseFlight(List<ActiveCapability> capabilities) {

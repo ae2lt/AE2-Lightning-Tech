@@ -23,7 +23,7 @@ import com.moakiee.ae2lt.item.UndyingSubmoduleItem;
 import com.moakiee.ae2lt.item.DashSubmoduleItem;
 import com.moakiee.ae2lt.item.FlightSubmoduleItem;
 import com.moakiee.ae2lt.item.CleanseSubmoduleItem;
-import com.moakiee.ae2lt.item.AutoFeedSubmoduleItem;
+import com.moakiee.ae2lt.item.SaturationSubmoduleItem;
 import com.moakiee.ae2lt.item.DigAffinitySubmoduleItem;
 import com.moakiee.ae2lt.item.ReachSubmoduleItem;
 import com.moakiee.ae2lt.item.PhaseFlightSubmoduleItem;
@@ -256,9 +256,9 @@ public final class ModItems {
             CleanseSubmoduleItem::new,
             new Item.Properties().stacksTo(1));
 
-    public static final DeferredItem<AutoFeedSubmoduleItem> ARMOR_SUBMODULE_AUTO_FEED = ITEMS.registerItem(
-            "module_auto_feed",
-            AutoFeedSubmoduleItem::new,
+    public static final DeferredItem<SaturationSubmoduleItem> ARMOR_SUBMODULE_SATURATION = ITEMS.registerItem(
+            "module_saturation",
+            SaturationSubmoduleItem::new,
             new Item.Properties().stacksTo(1));
 
     public static final DeferredItem<DigAffinitySubmoduleItem> ARMOR_SUBMODULE_DIG_AFFINITY = ITEMS.registerItem(

@@ -61,8 +61,8 @@ public sealed interface DeviceCapability {
     /** Generic status effect grant (night vision / water breathing / ...). */
     record StatusEffectGrant(Holder<MobEffect> effect, int amplifier) implements DeviceCapability {}
 
-    /** Passive auto-feed threshold. */
-    record AutoFeed(int hungerThreshold) implements DeviceCapability {}
+    /** Periodic hunger and saturation sustain targets. */
+    record FoodSustain(int targetFood, float targetSaturation, int checkIntervalTicks) implements DeviceCapability {}
 
     /** Digging speed compensation in difficult environments. */
     record DigAffinity(String env, double speedMul) implements DeviceCapability {}

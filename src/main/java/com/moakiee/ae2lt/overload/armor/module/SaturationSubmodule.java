@@ -9,28 +9,28 @@ import net.neoforged.api.distmarker.Dist;
 
 import com.moakiee.ae2lt.overload.armor.OverloadArmorState;
 
-public final class AutoFeedSubmodule extends AbstractOverloadArmorSubmodule {
+public final class SaturationSubmodule extends AbstractOverloadArmorSubmodule {
 
-    public static final AutoFeedSubmodule INSTANCE = new AutoFeedSubmodule();
+    public static final SaturationSubmodule INSTANCE = new SaturationSubmodule();
 
-    private static final String TAG_COOLDOWN = "AutoFeedCooldown";
+    private static final String TAG_COOLDOWN = "SaturationCheckCooldown";
 
-    private AutoFeedSubmodule() {
+    private SaturationSubmodule() {
     }
 
     @Override
     public String id() {
-        return "auto_feed";
+        return "saturation";
     }
 
     @Override
     public String nameKey() {
-        return "ae2lt.overload_armor.feature.auto_feed.name";
+        return "ae2lt.overload_armor.feature.saturation.name";
     }
 
     @Override
     public String descriptionKey() {
-        return "ae2lt.overload_armor.feature.auto_feed.desc";
+        return "ae2lt.overload_armor.feature.saturation.desc";
     }
 
     @Override

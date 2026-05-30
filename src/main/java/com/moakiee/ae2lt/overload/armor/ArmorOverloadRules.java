@@ -10,7 +10,7 @@ public final class ArmorOverloadRules {
     public static final long FLIGHT_HOVER_DRAIN_FE = 5_000L;
     public static final long FLIGHT_MOVING_DRAIN_FE = 20_000L;
     public static final long CLEANSE_PASSIVE_DRAIN_FE = 600L;
-    public static final long AUTO_FEED_PASSIVE_DRAIN_FE = 120L;
+    public static final long SATURATION_PASSIVE_DRAIN_FE = 120L;
     public static final long DIG_AFFINITY_PASSIVE_DRAIN_FE = 180L;
     public static final long REACH_EXTENSION_PASSIVE_DRAIN_FE = 250L;
     public static final long PHASE_FLIGHT_PASSIVE_DRAIN_FE = 40_000L;

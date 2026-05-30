@@ -153,8 +153,7 @@ public final class AE2LTCommonConfig {
     }
 
     public static int overloadArmorCleansePeriodTicks() { return VALUES.overloadArmorCleansePeriodTicks.get(); }
-    public static int overloadArmorAutoFeedThreshold() { return VALUES.overloadArmorAutoFeedThreshold.get(); }
-    public static int overloadArmorAutoFeedCooldownTicks() { return VALUES.overloadArmorAutoFeedCooldownTicks.get(); }
+    public static int overloadArmorSaturationCheckIntervalTicks() { return VALUES.overloadArmorSaturationCheckIntervalTicks.get(); }
     public static double overloadArmorUnderwaterDigMultiplier() { return VALUES.overloadArmorUnderwaterDigMultiplier.get(); }
     public static double overloadArmorAirborneDigMultiplier() { return VALUES.overloadArmorAirborneDigMultiplier.get(); }
     public static boolean overloadArmorPhaseFlightEnabled() { return VALUES.overloadArmorPhaseFlightEnabled.get(); }
@@ -167,7 +166,7 @@ public final class AE2LTCommonConfig {
     public static long overloadArmorMitigationHvPerDamage() { return VALUES.overloadArmorMitigationHvPerDamage.get(); }
     public static long overloadArmorPhaseShieldEhvPerDamage() { return VALUES.overloadArmorPhaseShieldEhvPerDamage.get(); }
     public static long overloadArmorCleanseHvPerEffect() { return VALUES.overloadArmorCleanseHvPerEffect.get(); }
-    public static long overloadArmorAutoFeedHvCost() { return VALUES.overloadArmorAutoFeedHvCost.get(); }
+    public static long overloadArmorSaturationHvCost() { return VALUES.overloadArmorSaturationHvCost.get(); }
     public static long overloadArmorDigAffinityHvPerUse() { return VALUES.overloadArmorDigAffinityHvPerUse.get(); }
     public static long overloadArmorUndyingEhvCost() { return VALUES.overloadArmorUndyingEhvCost.get(); }
 
@@ -243,8 +242,7 @@ public final class AE2LTCommonConfig {
         private final ModConfigSpec.BooleanValue pigmeeFumoGiftOnFirstJoin;
 
         private final ModConfigSpec.IntValue overloadArmorCleansePeriodTicks;
-        private final ModConfigSpec.IntValue overloadArmorAutoFeedThreshold;
-        private final ModConfigSpec.IntValue overloadArmorAutoFeedCooldownTicks;
+        private final ModConfigSpec.IntValue overloadArmorSaturationCheckIntervalTicks;
         private final ModConfigSpec.DoubleValue overloadArmorUnderwaterDigMultiplier;
         private final ModConfigSpec.DoubleValue overloadArmorAirborneDigMultiplier;
         private final ModConfigSpec.BooleanValue overloadArmorPhaseFlightEnabled;
@@ -257,7 +255,7 @@ public final class AE2LTCommonConfig {
         private final ModConfigSpec.LongValue overloadArmorMitigationHvPerDamage;
         private final ModConfigSpec.LongValue overloadArmorPhaseShieldEhvPerDamage;
         private final ModConfigSpec.LongValue overloadArmorCleanseHvPerEffect;
-        private final ModConfigSpec.LongValue overloadArmorAutoFeedHvCost;
+        private final ModConfigSpec.LongValue overloadArmorSaturationHvCost;
         private final ModConfigSpec.LongValue overloadArmorDigAffinityHvPerUse;
         private final ModConfigSpec.LongValue overloadArmorUndyingEhvCost;
 
@@ -442,12 +440,9 @@ public final class AE2LTCommonConfig {
             builder.pop();
 
             builder.push("utility");
-            overloadArmorAutoFeedThreshold = builder
-                    .comment("Auto-feed triggers when food level is at or below this value.")
-                    .defineInRange("autoFeedThreshold", 14, 0, 20);
-            overloadArmorAutoFeedCooldownTicks = builder
-                    .comment("Cooldown after auto-feed consumes one food item.")
-                    .defineInRange("autoFeedCooldownTicks", 60, 1, 20 * 60 * 60);
+            overloadArmorSaturationCheckIntervalTicks = builder
+                    .comment("Ticks between saturation sustain checks.")
+                    .defineInRange("saturationCheckIntervalTicks", 20, 1, 20 * 60 * 60);
             overloadArmorUnderwaterDigMultiplier = builder
                     .comment("Break-speed multiplier applied by underwater dig affinity.")
                     .defineInRange("underwaterDigMultiplier", 5.0D, 1.0D, 64.0D);
@@ -481,9 +476,9 @@ public final class AE2LTCommonConfig {
             overloadArmorCleanseHvPerEffect = builder
                     .comment("HV lightning consumed per cleansed harmful effect.")
                     .defineInRange("cleanseHvPerEffect", 8L, 0L, Long.MAX_VALUE);
-            overloadArmorAutoFeedHvCost = builder
-                    .comment("HV lightning consumed when auto-feed consumes food.")
-                    .defineInRange("autoFeedHvCost", 4L, 0L, Long.MAX_VALUE);
+            overloadArmorSaturationHvCost = builder
+                    .comment("HV lightning consumed when saturation sustain restores hunger or saturation.")
+                    .defineInRange("saturationHvCost", 4L, 0L, Long.MAX_VALUE);
             overloadArmorDigAffinityHvPerUse = builder
                     .comment("HV lightning consumed when dig affinity corrects mining speed for one tick.")
                     .defineInRange("digAffinityHvPerUse", 1L, 0L, Long.MAX_VALUE);
