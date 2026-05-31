@@ -327,17 +327,17 @@ public final class BorrowedCapacityCalculator {
     /**
      * Relay capacity for flow-network node-split.
      * REQUIRE_CHANNEL + CANNOT_CARRY devices get cap=1 (consume one channel).
+     * Delegates to GridNode.getMaxChannels() to respect mixin overrides.
      */
     private static int nodeCap(IGridNode node, ChannelMode mode) {
         if (OverloadedChannelOwnerHelper.is128ChannelOwner(node.getOwner())) return INF;
-        int f = mode.getCableCapacityFactor();
         if (node instanceof GridNode gn) {
             if (gn.hasFlag(GridFlags.CANNOT_CARRY)) {
                 return gn.hasFlag(GridFlags.REQUIRE_CHANNEL) ? 1 : 0;
             }
-            if (gn.hasFlag(GridFlags.DENSE_CAPACITY)) return 32 * f;
+            return gn.getMaxChannels();
         }
-        return 8 * f;
+        return 8 * mode.getCableCapacityFactor();
     }
 
     /**

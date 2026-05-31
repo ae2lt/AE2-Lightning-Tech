@@ -17,6 +17,7 @@ import com.moakiee.ae2lt.block.TeslaCoilBlock;
 import com.moakiee.ae2lt.block.AdvancedWirelessOverloadedControllerBlock;
 import com.moakiee.ae2lt.block.WirelessOverloadedControllerBlock;
 import com.moakiee.ae2lt.block.WirelessReceiverBlock;
+import com.moakiee.ae2lt.blockentity.OverloadedPatternProviderBlockEntity;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import net.minecraft.world.level.block.Block;
@@ -155,9 +156,11 @@ public final class ModBlocks {
                     new OverloadCrystalClusterBlock(7, 3,
                             properties.apply(clusterProperties()).sound(SoundType.AMETHYST_CLUSTER).lightLevel(s -> 5)));
 
-    public static final DeferredBlock<OverloadedPatternProviderBlock> OVERLOADED_PATTERN_PROVIDER =
+    public static final DeferredBlock<OverloadedPatternProviderBlock<OverloadedPatternProviderBlockEntity>>
+            OVERLOADED_PATTERN_PROVIDER =
             registerBlock("overloaded_pattern_provider", properties ->
-                    new OverloadedPatternProviderBlock(properties.apply(BlockBehaviour.Properties.of())));
+                    new OverloadedPatternProviderBlock<OverloadedPatternProviderBlockEntity>(
+                            properties.apply(BlockBehaviour.Properties.of())));
 
     public static final DeferredBlock<OverloadedInterfaceBlock> OVERLOADED_INTERFACE =
             registerBlock("overloaded_interface", properties ->

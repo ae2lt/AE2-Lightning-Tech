@@ -456,6 +456,18 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
         accessor.setReturnInv(this.fullReturnInv);
     }
 
+    protected OverloadedPatternProviderBlockEntity getOverloadedHost() {
+        return overloadedHost;
+    }
+
+    protected IManagedGridNode getGridNode() {
+        return gridNode;
+    }
+
+    protected IActionSource getActionSource() {
+        return wirelessSource;
+    }
+
     @Override
     public PatternProviderReturnInventory getReturnInv() {
         return returnPageView;
@@ -1189,7 +1201,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
         return false;
     }
 
-    private AllowedOutputFilter getOrBuildOutputFilter() {
+    protected AllowedOutputFilter getOrBuildOutputFilter() {
         if (!outputFilterDirty && cachedOutputFilter != null) {
             return cachedOutputFilter;
         }
@@ -1357,7 +1369,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
         insertOutputsToReturnInv(outputs);
     }
 
-    private void insertOutputsToReturnInv(List<GenericStack> outputs) {
+    protected void insertOutputsToReturnInv(List<GenericStack> outputs) {
         var grid = gridNode.getGrid();
         for (var stack : outputs) {
             long affordable = PowerCostUtil.maxAffordable(grid, stack.what(), stack.amount());
@@ -1411,7 +1423,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
         return true;
     }
 
-    private void syncPendingUnlockRule(IPatternDetails pattern) {
+    protected void syncPendingUnlockRule(IPatternDetails pattern) {
         clearPendingUnlockRule();
         if (getCraftingLockedReason() != LockCraftingMode.LOCK_UNTIL_RESULT) {
             return;
@@ -1522,6 +1534,10 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
      * Returns a cached list of valid wireless connections.
      * The cache is refreshed at most once per {@link #VALIDATE_INTERVAL} ticks.
      */
+    protected List<WirelessConnection> getValidConnections(ServerLevel providerLevel, long gameTick) {
+        return getOrRefreshValidConnections(providerLevel, gameTick);
+    }
+
     private List<WirelessConnection> getOrRefreshValidConnections(ServerLevel providerLevel, long gameTick) {
         if (!connectionsDirty && gameTick - validConnectionsCacheTick < VALIDATE_INTERVAL) {
             return validConnectionsCache;
@@ -1725,7 +1741,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
         return nextPollTick;
     }
 
-    private void alertGridTick() {
+    protected void alertGridTick() {
         gridNode.ifPresent((grid, node) -> grid.getTickManager().alertDevice(node));
     }
 

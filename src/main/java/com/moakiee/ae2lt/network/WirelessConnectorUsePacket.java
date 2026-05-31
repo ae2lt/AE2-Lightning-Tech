@@ -5,6 +5,7 @@ import com.moakiee.ae2lt.block.OverloadedPatternProviderBlock;
 import com.moakiee.ae2lt.blockentity.OverloadedInterfaceBlockEntity;
 import com.moakiee.ae2lt.blockentity.OverloadedPatternProviderBlockEntity;
 import com.moakiee.ae2lt.item.OverloadedWirelessConnectorItem;
+import com.moakiee.ae2lt.logic.WirelessConnectionBatchEdit;
 import com.moakiee.ae2lt.logic.WirelessConnectionRange;
 import com.moakiee.ae2lt.logic.WirelessConnectorTargetHelper;
 import java.util.ArrayList;
@@ -167,38 +168,42 @@ public record WirelessConnectorUsePacket(
         int skippedDueToLimit = 0;
         int skippedOutOfRange = 0;
 
-        for (var targetPos : targets) {
-            var existing = provider.getConnections().stream()
-                    .filter(c -> c.sameTarget(targetDim, targetPos))
-                    .findFirst()
-                    .orElse(null);
+        var plan = WirelessConnectionBatchEdit.planSingleFacePerTarget(
+                targets,
+                targetDim,
+                provider.getConnections(),
+                face,
+                OverloadedPatternProviderBlockEntity.WirelessConnection::dimension,
+                OverloadedPatternProviderBlockEntity.WirelessConnection::pos,
+                OverloadedPatternProviderBlockEntity.WirelessConnection::boundFace);
 
-            if (existing != null) {
-                if (existing.boundFace() == face) {
-                    if (provider.removeConnection(targetDim, targetPos)) {
-                        disconnected.add(targetPos.immutable());
-                    }
-                } else {
-                    if (!WirelessConnectionRange.isConnectorLinkInRange(
-                            level, provider.getBlockPos(), targetPos)) {
-                        skippedOutOfRange++;
-                        continue;
-                    }
-                    if (provider.addOrUpdateConnection(targetDim, targetPos, face)) {
-                        updated.add(targetPos.immutable());
-                    }
-                }
+        for (var targetPos : plan.disconnect()) {
+            if (provider.removeConnection(targetDim, targetPos)) {
+                disconnected.add(targetPos.immutable());
+            }
+        }
+
+        for (var targetPos : plan.update()) {
+            if (!WirelessConnectionRange.isConnectorLinkInRange(
+                    level, provider.getBlockPos(), targetPos)) {
+                skippedOutOfRange++;
+                continue;
+            }
+            if (provider.addOrUpdateConnection(targetDim, targetPos, face)) {
+                updated.add(targetPos.immutable());
+            }
+        }
+
+        for (var targetPos : plan.connect()) {
+            if (!WirelessConnectionRange.isConnectorLinkInRange(
+                    level, provider.getBlockPos(), targetPos)) {
+                skippedOutOfRange++;
+                continue;
+            }
+            if (provider.addOrUpdateConnection(targetDim, targetPos, face)) {
+                connected.add(targetPos.immutable());
             } else {
-                if (!WirelessConnectionRange.isConnectorLinkInRange(
-                        level, provider.getBlockPos(), targetPos)) {
-                    skippedOutOfRange++;
-                    continue;
-                }
-                if (provider.addOrUpdateConnection(targetDim, targetPos, face)) {
-                    connected.add(targetPos.immutable());
-                } else {
-                    skippedDueToLimit++;
-                }
+                skippedDueToLimit++;
             }
         }
 
@@ -302,40 +307,32 @@ public record WirelessConnectorUsePacket(
         int skippedDueToLimit = 0;
         int skippedOutOfRange = 0;
 
-        for (var targetPos : targets) {
-            var existing = iface.getConnections().stream()
-                    .filter(c -> c.sameTarget(targetDim, targetPos))
-                    .findFirst()
-                    .orElse(null);
+        var plan = WirelessConnectionBatchEdit.planMultiFacePerTarget(
+                targets,
+                targetDim,
+                iface.getConnections(),
+                face,
+                OverloadedInterfaceBlockEntity.WirelessConnection::dimension,
+                OverloadedInterfaceBlockEntity.WirelessConnection::pos,
+                OverloadedInterfaceBlockEntity.WirelessConnection::boundFace);
 
-            if (existing != null) {
-                if (existing.boundFace() == face) {
-                    if (iface.removeConnection(targetDim, targetPos)) {
-                        disconnected.add(targetPos.immutable());
-                    }
-                } else {
-                    if (!WirelessConnectionRange.isConnectorLinkInRange(
-                            level, iface.getBlockPos(), targetPos)) {
-                        skippedOutOfRange++;
-                        continue;
-                    }
-                    if (iface.addOrUpdateConnection(
-                            new OverloadedInterfaceBlockEntity.WirelessConnection(targetDim, targetPos, face))) {
-                        updated.add(targetPos.immutable());
-                    }
-                }
+        for (var targetPos : plan.disconnect()) {
+            if (iface.removeConnection(targetDim, targetPos, face)) {
+                disconnected.add(targetPos.immutable());
+            }
+        }
+
+        for (var targetPos : plan.connect()) {
+            if (!WirelessConnectionRange.isConnectorLinkInRange(
+                    level, iface.getBlockPos(), targetPos)) {
+                skippedOutOfRange++;
+                continue;
+            }
+            if (iface.addOrUpdateConnection(
+                    new OverloadedInterfaceBlockEntity.WirelessConnection(targetDim, targetPos, face))) {
+                connected.add(targetPos.immutable());
             } else {
-                if (!WirelessConnectionRange.isConnectorLinkInRange(
-                        level, iface.getBlockPos(), targetPos)) {
-                    skippedOutOfRange++;
-                    continue;
-                }
-                if (iface.addOrUpdateConnection(
-                        new OverloadedInterfaceBlockEntity.WirelessConnection(targetDim, targetPos, face))) {
-                    connected.add(targetPos.immutable());
-                } else {
-                    skippedDueToLimit++;
-                }
+                skippedDueToLimit++;
             }
         }
 

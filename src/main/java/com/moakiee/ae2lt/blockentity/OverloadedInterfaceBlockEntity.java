@@ -19,6 +19,7 @@ import com.moakiee.ae2lt.grid.FrequencyBindingHelper;
 import com.moakiee.ae2lt.grid.FrequencyBindingHost;
 import com.moakiee.ae2lt.grid.OverloadedGridNodeOwner;
 import com.moakiee.ae2lt.item.OverloadedFilterComponentItem;
+import com.moakiee.ae2lt.logic.ConnectionEndpoints;
 import com.moakiee.ae2lt.logic.DirectMEInsertInventory;
 import com.moakiee.ae2lt.logic.EjectModeRegistry;
 import com.moakiee.ae2lt.logic.OverloadedInterfaceLogic;
@@ -816,7 +817,7 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         if (!isLocalDimension(conn.dimension())) {
             return false;
         }
-        int index = WirelessConnectionLists.indexOf(connections, conn.dimension(), conn.pos());
+        int index = indexOfConnectionEndpoint(conn.dimension(), conn.pos(), conn.boundFace());
         if (index >= 0) {
             if (connections.get(index).equals(conn)) {
                 return true;
@@ -839,6 +840,19 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         return true;
     }
 
+    public boolean removeConnection(ResourceKey<Level> dim, BlockPos pos, Direction face) {
+        int index = indexOfConnectionEndpoint(dim, pos, face);
+        if (index < 0) {
+            return false;
+        }
+        connections.remove(index);
+        invalidConnectionScanCursor = 0;
+        invalidateConnectionCache(); refreshEjectRegistrations();
+        recomputeIdlePower();
+        saveChanges(); markForUpdate();
+        return true;
+    }
+
     public boolean removeConnection(ResourceKey<Level> dim, BlockPos pos) {
         int index = WirelessConnectionLists.indexOf(connections, dim, pos);
         if (index < 0) {
@@ -850,6 +864,17 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         recomputeIdlePower();
         saveChanges(); markForUpdate();
         return true;
+    }
+
+    private int indexOfConnectionEndpoint(ResourceKey<Level> dimension, BlockPos pos, Direction face) {
+        return ConnectionEndpoints.indexOfEndpoint(
+                connections,
+                dimension,
+                pos,
+                face,
+                WirelessConnection::dimension,
+                WirelessConnection::pos,
+                WirelessConnection::boundFace);
     }
 
     public int clearInvalidConnections() {
@@ -1738,8 +1763,18 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
                     data.readIdentifier());
             var pos = data.readBlockPos();
             var face = Direction.from3DDataValue(data.readByte());
-            WirelessConnectionLists.addOrReplace(
-                    newConnections, new WirelessConnection(dim, pos, face), MAX_WIRELESS_CONNECTIONS);
+            var connection = new WirelessConnection(dim, pos, face);
+            if (ConnectionEndpoints.indexOfEndpoint(
+                    newConnections,
+                    connection.dimension(),
+                    connection.pos(),
+                    connection.boundFace(),
+                    WirelessConnection::dimension,
+                    WirelessConnection::pos,
+                    WirelessConnection::boundFace) < 0
+                    && newConnections.size() < MAX_WIRELESS_CONNECTIONS) {
+                newConnections.add(connection);
+            }
         }
 
         boolean unlimitedChanged = false;
@@ -1822,6 +1857,7 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
                 d, TAG_CONNECTIONS, connections, MAX_WIRELESS_CONNECTIONS, WirelessConnection::fromInput);
         invalidConnectionScanCursor = 0;
         filterInv.readFromNBT(d, TAG_FILTER_INV);
+        rebuildFilter();
         importBuffer.clear();
         for (var stackInput : d.childrenListOrEmpty(TAG_IMPORT_BUFFER)) {
             var stack = GenericStack.readTag(stackInput);

@@ -51,8 +51,8 @@ public class OverloadPatternEncoderMenu extends AEBaseMenu {
 
     public static final int SOURCE_X = 17;
     public static final int SOURCE_Y = 21;
-    public static final int RESULT_X = 16;
-    public static final int RESULT_Y = 68;
+    public static final int RESULT_X = 17;
+    public static final int RESULT_Y = 69;
     public static final int PLAYER_INV_X = 8;
     public static final int PLAYER_INV_Y = 107;
     public static final int HOTBAR_X = 8;

@@ -45,10 +45,10 @@ public class ModScreens {
         event.register(CrystalCatalyzerMenu.TYPE, ModScreens::createCrystalCatalyzerScreen);
     }
 
-    private static OverloadedPatternProviderScreen createOverloadedPatternProviderScreen(
+    private static OverloadedPatternProviderScreen<OverloadedPatternProviderMenu> createOverloadedPatternProviderScreen(
             OverloadedPatternProviderMenu menu, Inventory inv, Component title) {
         var style = StyleManager.loadStyleDoc("/screens/overloaded_pattern_provider.json");
-        return new OverloadedPatternProviderScreen(menu, inv, title, style);
+        return new OverloadedPatternProviderScreen<>(menu, inv, title, style);
     }
 
     private static OverloadedInterfaceScreen createOverloadedInterfaceScreen(

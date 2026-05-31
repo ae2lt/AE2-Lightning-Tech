@@ -307,6 +307,13 @@ public class CrystalCatalyzerBlockEntity extends AENetworkedBlockEntity
         return !getLockedRecipeOutputStack(lockedRecipe).isEmpty();
     }
 
+    public boolean canAdvanceLockedRecipe(CrystalCatalyzerLockedRecipe lockedRecipe) {
+        LightningKey lightningKey = LightningKey.of(lockedRecipe.lightningTier());
+        long lightningCost = lockedRecipe.lightningCost();
+        return hasEnoughFixedFluid()
+                && simulateLightningExtract(lightningKey, lightningCost) >= lightningCost;
+    }
+
     private boolean canAcceptRecipeOutput(ItemStack template, int multiplier) {
         long outputCount = (long) template.getCount() * multiplier;
         if (outputCount <= 0 || outputCount > Integer.MAX_VALUE) {

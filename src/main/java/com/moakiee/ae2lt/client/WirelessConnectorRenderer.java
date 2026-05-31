@@ -129,8 +129,9 @@ public final class WirelessConnectorRenderer {
         var selectedHostType = selectedHost != null ? selectedHost.hostType() : null;
         boolean hasSelection = selectedPos != null
                 && selectedDim != null
-                && selectedHostType != null
-                && mc.level.dimension().equals(selectedDim);
+                && selectedHostType != null;
+        boolean selectionInCurrentDimension = hasSelection && mc.level.dimension().equals(selectedDim);
+        long selectedPosLong = selectedPos != null ? selectedPos.asLong() : 0L;
         boolean selectedRendered = false;
 
         long gameTime = mc.level.getGameTime();
@@ -154,8 +155,18 @@ public final class WirelessConnectorRenderer {
                     continue;
                 }
                 boolean selected = hasSelection
+                        && selectionInCurrentDimension
                         && OverloadedWirelessConnectorItem.HOST_PROVIDER.equals(selectedHostType)
                         && bePos.equals(selectedPos);
+                if (!WirelessConnectorRenderFilter.shouldRenderHost(
+                        hasSelection,
+                        selectionInCurrentDimension,
+                        selectedPosLong,
+                        selectedHostType,
+                        OverloadedWirelessConnectorItem.HOST_PROVIDER,
+                        bePos.asLong())) {
+                    continue;
+                }
                 renderProviderHost(poseStack, buffer, mc.level, bePos, provider, selected);
                 selectedRendered |= selected;
             } else if (be instanceof OverloadedInterfaceBlockEntity iface) {
@@ -163,14 +174,24 @@ public final class WirelessConnectorRenderer {
                     continue;
                 }
                 boolean selected = hasSelection
+                        && selectionInCurrentDimension
                         && OverloadedWirelessConnectorItem.HOST_INTERFACE.equals(selectedHostType)
                         && bePos.equals(selectedPos);
+                if (!WirelessConnectorRenderFilter.shouldRenderHost(
+                        hasSelection,
+                        selectionInCurrentDimension,
+                        selectedPosLong,
+                        selectedHostType,
+                        OverloadedWirelessConnectorItem.HOST_INTERFACE,
+                        bePos.asLong())) {
+                    continue;
+                }
                 renderInterfaceHost(poseStack, buffer, mc.level, bePos, iface, selected);
                 selectedRendered |= selected;
             }
         }
 
-        if (hasSelection && !selectedRendered && mc.level.isLoaded(selectedPos)) {
+        if (selectionInCurrentDimension && !selectedRendered && mc.level.isLoaded(selectedPos)) {
             var selectedBe = mc.level.getBlockEntity(selectedPos);
             if (OverloadedWirelessConnectorItem.HOST_PROVIDER.equals(selectedHostType)
                     && selectedBe instanceof OverloadedPatternProviderBlockEntity provider
@@ -183,7 +204,7 @@ public final class WirelessConnectorRenderer {
             }
         }
 
-        if (hasSelection) {
+        if (selectionInCurrentDimension) {
             renderPreview(poseStack, buffer, mc, selectedPos, selectedHostType);
         }
 

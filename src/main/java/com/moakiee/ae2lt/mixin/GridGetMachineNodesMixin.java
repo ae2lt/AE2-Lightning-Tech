@@ -1,9 +1,6 @@
 package com.moakiee.ae2lt.mixin;
 
-import java.util.LinkedHashSet;
-
 import com.google.common.collect.SetMultimap;
-import com.moakiee.ae2lt.blockentity.OverloadedControllerBlockEntity;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -15,6 +12,8 @@ import appeng.api.networking.IGridNode;
 import appeng.blockentity.networking.ControllerBlockEntity;
 import appeng.me.Grid;
 
+import com.moakiee.ae2lt.grid.ControllerMachineNodeLookup;
+
 @Mixin(Grid.class)
 public abstract class GridGetMachineNodesMixin {
 
@@ -24,22 +23,12 @@ public abstract class GridGetMachineNodesMixin {
 
     @Inject(method = "getMachineClasses", at = @At("HEAD"), cancellable = true)
     private void ae2lt$normalizeControllerMachineClasses(CallbackInfoReturnable<Iterable<Class<?>>> cir) {
-        boolean hasOverloadedControllerClass = false;
-        var machineClasses = new LinkedHashSet<Class<?>>(this.machines.keySet());
-
-        for (var machineClass : this.machines.keySet()) {
-            if (OverloadedControllerBlockEntity.class.isAssignableFrom(machineClass)) {
-                hasOverloadedControllerClass = true;
-                machineClasses.remove(machineClass);
-            }
-        }
-
-        if (!hasOverloadedControllerClass) {
+        var machineMap = this.machines.asMap();
+        if (!ControllerMachineNodeLookup.hasOverloadedControllerNodes(machineMap)) {
             return;
         }
 
-        machineClasses.add(ControllerBlockEntity.class);
-        cir.setReturnValue(machineClasses);
+        cir.setReturnValue(ControllerMachineNodeLookup.normalizedMachineClasses(machineMap));
     }
 
     @Inject(method = "getMachineNodes", at = @At("HEAD"), cancellable = true)
@@ -49,15 +38,8 @@ public abstract class GridGetMachineNodesMixin {
             return;
         }
 
-        var controllerNodes = new LinkedHashSet<IGridNode>(this.machines.get(ControllerBlockEntity.class));
-
-        for (var candidateClass : this.machines.keySet()) {
-            if (OverloadedControllerBlockEntity.class.isAssignableFrom(candidateClass)) {
-                controllerNodes.addAll(this.machines.get(candidateClass));
-            }
-        }
-
-        if (controllerNodes.size() == this.machines.get(ControllerBlockEntity.class).size()) {
+        var machineMap = this.machines.asMap();
+        if (!ControllerMachineNodeLookup.hasOverloadedControllerNodes(machineMap)) {
             return;
         }
 
@@ -66,6 +48,6 @@ public abstract class GridGetMachineNodesMixin {
         // ControllerBlockEntity.class would miss our subclass otherwise.
         // This only affects controller-class queries and appends AE2LT's
         // overloaded controller subtype family, leaving vanilla lookups intact.
-        cir.setReturnValue(controllerNodes);
+        cir.setReturnValue(ControllerMachineNodeLookup.controllerNodes(machineMap));
     }
 }
