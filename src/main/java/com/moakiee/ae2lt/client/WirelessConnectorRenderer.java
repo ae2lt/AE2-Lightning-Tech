@@ -42,8 +42,9 @@ import com.moakiee.ae2lt.logic.WirelessConnectorTargetHelper;
 /**
  * Client-side renderer for the Overloaded Wireless Connector.
  * <p>
- * When the player holds the connector, all wireless-capable hosts within range
- * are highlighted with their connections. A preview overlay is shown for the selected host.
+ * When the player holds the connector, wireless-capable hosts within range are
+ * highlighted with their connections. If a host is selected, only that host is rendered.
+ * A preview overlay is shown for the selected host.
  * <p>
  * Performance notes (matches the optimization-report guidance):
  * <ul>
@@ -113,8 +114,9 @@ public class WirelessConnectorRenderer {
         var selectedHostType = selectedHost != null ? selectedHost.hostType() : null;
         boolean hasSelection = selectedPos != null
                 && selectedDim != null
-                && selectedHostType != null
-                && mc.level.dimension().equals(selectedDim);
+                && selectedHostType != null;
+        boolean selectionInCurrentDimension = hasSelection && mc.level.dimension().equals(selectedDim);
+        long selectedPosLong = selectedPos != null ? selectedPos.asLong() : 0L;
         boolean selectedRendered = false;
 
         // Refresh the cached host position list at most every RESCAN_INTERVAL_TICKS,
@@ -130,9 +132,8 @@ public class WirelessConnectorRenderer {
             lastScanDimension = currentDim;
         }
 
-        // Render every cached host. We re-fetch the BlockEntity from the level so
-        // that connection state (added/removed since the last scan) is always live;
-        // only the *which positions to consider* part is cached.
+        // Render eligible cached hosts. We re-fetch the BlockEntity from the level
+        // so connection state stays live; only which positions to consider is cached.
         for (BlockPos bePos : cachedHostPositions) {
             if (!mc.level.isLoaded(bePos)) continue;
             var be = mc.level.getBlockEntity(bePos);
@@ -141,8 +142,18 @@ public class WirelessConnectorRenderer {
                     continue;
                 }
                 boolean isSelected = hasSelection
+                        && selectionInCurrentDimension
                         && OverloadedWirelessConnectorItem.HOST_PROVIDER.equals(selectedHostType)
                         && bePos.equals(selectedPos);
+                if (!WirelessConnectorRenderFilter.shouldRenderHost(
+                        hasSelection,
+                        selectionInCurrentDimension,
+                        selectedPosLong,
+                        selectedHostType,
+                        OverloadedWirelessConnectorItem.HOST_PROVIDER,
+                        bePos.asLong())) {
+                    continue;
+                }
                 renderProviderHost(poseStack, buffer, cam, mc.level, bePos, provider, isSelected);
                 selectedRendered |= isSelected;
             } else if (be instanceof OverloadedInterfaceBlockEntity iface) {
@@ -150,20 +161,40 @@ public class WirelessConnectorRenderer {
                     continue;
                 }
                 boolean isSelected = hasSelection
+                        && selectionInCurrentDimension
                         && OverloadedWirelessConnectorItem.HOST_INTERFACE.equals(selectedHostType)
                         && bePos.equals(selectedPos);
+                if (!WirelessConnectorRenderFilter.shouldRenderHost(
+                        hasSelection,
+                        selectionInCurrentDimension,
+                        selectedPosLong,
+                        selectedHostType,
+                        OverloadedWirelessConnectorItem.HOST_INTERFACE,
+                        bePos.asLong())) {
+                    continue;
+                }
                 renderInterfaceHost(poseStack, buffer, cam, mc.level, bePos, iface, isSelected);
                 selectedRendered |= isSelected;
             } else if (be instanceof OverloadedPowerSupplyBlockEntity powerSupply) {
                 boolean isSelected = hasSelection
+                        && selectionInCurrentDimension
                         && OverloadedWirelessConnectorItem.HOST_POWER_SUPPLY.equals(selectedHostType)
                         && bePos.equals(selectedPos);
+                if (!WirelessConnectorRenderFilter.shouldRenderHost(
+                        hasSelection,
+                        selectionInCurrentDimension,
+                        selectedPosLong,
+                        selectedHostType,
+                        OverloadedWirelessConnectorItem.HOST_POWER_SUPPLY,
+                        bePos.asLong())) {
+                    continue;
+                }
                 renderPowerSupplyHost(poseStack, buffer, cam, mc.level, bePos, powerSupply, isSelected);
                 selectedRendered |= isSelected;
             }
         }
 
-        if (hasSelection && !selectedRendered && mc.level.isLoaded(selectedPos)) {
+        if (selectionInCurrentDimension && !selectedRendered && mc.level.isLoaded(selectedPos)) {
             var selectedBe = mc.level.getBlockEntity(selectedPos);
             if (OverloadedWirelessConnectorItem.HOST_PROVIDER.equals(selectedHostType)
                     && selectedBe instanceof OverloadedPatternProviderBlockEntity provider
@@ -180,7 +211,7 @@ public class WirelessConnectorRenderer {
         }
 
         // Preview face overlay (only for the selected wireless host).
-        if (hasSelection) {
+        if (selectionInCurrentDimension) {
             var selectedBe = mc.level.getBlockEntity(selectedPos);
             if (OverloadedWirelessConnectorItem.HOST_PROVIDER.equals(selectedHostType)
                     && selectedBe instanceof OverloadedPatternProviderBlockEntity selectedProvider

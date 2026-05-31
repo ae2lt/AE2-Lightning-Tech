@@ -14,6 +14,7 @@ import appeng.menu.implementations.PatternProviderMenu;
 import appeng.menu.slot.AppEngSlot;
 
 import com.moakiee.ae2lt.AE2LightningTech;
+import com.moakiee.ae2lt.api.pattern.PatternProviderUiProfile;
 import com.moakiee.ae2lt.blockentity.OverloadedPatternProviderBlockEntity;
 import com.moakiee.ae2lt.blockentity.OverloadedPatternProviderBlockEntity.ProviderMode;
 import com.moakiee.ae2lt.blockentity.OverloadedPatternProviderBlockEntity.ReturnMode;
@@ -25,11 +26,21 @@ public class OverloadedPatternProviderMenu extends PatternProviderMenu implement
 
     public static final MenuType<OverloadedPatternProviderMenu> TYPE = Ae2ltMenuBuilder.buildUnregistered(
             MenuTypeBuilder
-                    .create(OverloadedPatternProviderMenu::new, PatternProviderLogicHost.class),
+                    .create((id, playerInventory, host) ->
+                            new OverloadedPatternProviderMenu(id, playerInventory, host), PatternProviderLogicHost.class),
             new ResourceLocation(
                     AE2LightningTech.MODID, "overloaded_pattern_provider"));
 
     private static final int SLOTS_PER_PAGE = 36;
+    private static final int PROFILE_PACKAGED = 1;
+    private static final int PROFILE_MODE_SWITCH = 1 << 1;
+    private static final int PROFILE_FILTERED_IMPORT = 1 << 2;
+    private static final int PROFILE_WIRELESS_TUNING = 1 << 3;
+    private static final int PROFILE_BLOCKING_MODE = 1 << 4;
+    private static final int DEFAULT_PROFILE_FLAGS = PROFILE_MODE_SWITCH
+            | PROFILE_FILTERED_IMPORT
+            | PROFILE_WIRELESS_TUNING
+            | PROFILE_BLOCKING_MODE;
 
     @GuiSync(10)
     public int providerMode;
@@ -46,6 +57,12 @@ public class OverloadedPatternProviderMenu extends PatternProviderMenu implement
     @GuiSync(16)
     public int wirelessSpeedMode;
 
+    @GuiSync(17)
+    public int uiProfileFlags = DEFAULT_PROFILE_FLAGS;
+
+    @GuiSync(18)
+    public String titleTranslationKey = PatternProviderUiProfile.DEFAULT_TITLE_TRANSLATION_KEY;
+
     @GuiSync(14)
     public int currentPage;
 
@@ -56,7 +73,14 @@ public class OverloadedPatternProviderMenu extends PatternProviderMenu implement
     private int lastShownPage = -1;
 
     public OverloadedPatternProviderMenu(int id, Inventory playerInventory, PatternProviderLogicHost host) {
-        super(TYPE, id, playerInventory, host);
+        this(TYPE, id, playerInventory, host);
+    }
+
+    protected OverloadedPatternProviderMenu(MenuType<? extends OverloadedPatternProviderMenu> menuType,
+                                            int id,
+                                            Inventory playerInventory,
+                                            PatternProviderLogicHost host) {
+        super(menuType, id, playerInventory, host);
         this.host = host;
 
         registerClientAction("toggleMode", this::toggleMode);
@@ -98,6 +122,7 @@ public class OverloadedPatternProviderMenu extends PatternProviderMenu implement
             filteredImport = be.isFilteredImport() ? 1 : 0;
             wirelessDispatchMode = be.getWirelessDispatchMode().ordinal();
             wirelessSpeedMode = be.getWirelessSpeedMode().ordinal();
+            syncUiProfile(be);
             var logic = (OverloadedPatternProviderLogic) be.getLogic();
             currentPage = logic.getCurrentPage();
             totalPages = logic.getTotalPages();
@@ -111,6 +136,7 @@ public class OverloadedPatternProviderMenu extends PatternProviderMenu implement
 
     private void toggleMode() {
         if (isServerSide() && host instanceof OverloadedPatternProviderBlockEntity be) {
+            if (!isModeSwitchVisible(be)) return;
             var current = be.getProviderMode();
             be.setProviderMode(current == ProviderMode.NORMAL ? ProviderMode.WIRELESS : ProviderMode.NORMAL);
         }
@@ -126,6 +152,7 @@ public class OverloadedPatternProviderMenu extends PatternProviderMenu implement
 
     private void toggleWirelessDispatchMode() {
         if (isServerSide() && host instanceof OverloadedPatternProviderBlockEntity be) {
+            if (!isWirelessTuningVisible(be)) return;
             var values = WirelessDispatchMode.values();
             var current = be.getWirelessDispatchMode();
             be.setWirelessDispatchMode(values[(current.ordinal() + 1) % values.length]);
@@ -134,6 +161,7 @@ public class OverloadedPatternProviderMenu extends PatternProviderMenu implement
 
     private void toggleWirelessSpeedMode() {
         if (isServerSide() && host instanceof OverloadedPatternProviderBlockEntity be) {
+            if (!isWirelessTuningVisible(be)) return;
             var values = WirelessSpeedMode.values();
             var current = be.getWirelessSpeedMode();
             be.setWirelessSpeedMode(values[(current.ordinal() + 1) % values.length]);
@@ -142,8 +170,38 @@ public class OverloadedPatternProviderMenu extends PatternProviderMenu implement
 
     private void toggleFilteredImport() {
         if (isServerSide() && host instanceof OverloadedPatternProviderBlockEntity be) {
+            if (!isFilteredImportVisible(be)) return;
             be.setFilteredImport(!be.isFilteredImport());
         }
+    }
+
+    private void syncUiProfile(OverloadedPatternProviderBlockEntity be) {
+        var profile = be instanceof PatternProviderUiProfile uiProfile ? uiProfile : null;
+        int flags = 0;
+        if (profile != null && profile.ae2lt$isPackagedProviderUi()) flags |= PROFILE_PACKAGED;
+        if (profile == null || profile.ae2lt$isModeSwitchVisible()) flags |= PROFILE_MODE_SWITCH;
+        if (profile == null || profile.ae2lt$isFilteredImportVisible()) flags |= PROFILE_FILTERED_IMPORT;
+        if (profile == null || profile.ae2lt$isWirelessTuningVisible()) flags |= PROFILE_WIRELESS_TUNING;
+        if (profile == null || profile.ae2lt$isBlockingModeVisible()) flags |= PROFILE_BLOCKING_MODE;
+        uiProfileFlags = flags;
+        titleTranslationKey = profile == null
+                ? PatternProviderUiProfile.DEFAULT_TITLE_TRANSLATION_KEY
+                : profile.ae2lt$titleTranslationKey();
+        if (titleTranslationKey == null || titleTranslationKey.isBlank()) {
+            titleTranslationKey = PatternProviderUiProfile.DEFAULT_TITLE_TRANSLATION_KEY;
+        }
+    }
+
+    private static boolean isModeSwitchVisible(OverloadedPatternProviderBlockEntity be) {
+        return !(be instanceof PatternProviderUiProfile profile) || profile.ae2lt$isModeSwitchVisible();
+    }
+
+    private static boolean isFilteredImportVisible(OverloadedPatternProviderBlockEntity be) {
+        return !(be instanceof PatternProviderUiProfile profile) || profile.ae2lt$isFilteredImportVisible();
+    }
+
+    private static boolean isWirelessTuningVisible(OverloadedPatternProviderBlockEntity be) {
+        return !(be instanceof PatternProviderUiProfile profile) || profile.ae2lt$isWirelessTuningVisible();
     }
 
     private void nextPage() {
@@ -197,7 +255,7 @@ public class OverloadedPatternProviderMenu extends PatternProviderMenu implement
     }
 
     public boolean isFilteredImport() {
-        return filteredImport != 0;
+        return isFilteredImportVisible() && filteredImport != 0;
     }
 
     public boolean isEvenDistributionMode() {
@@ -205,7 +263,31 @@ public class OverloadedPatternProviderMenu extends PatternProviderMenu implement
     }
 
     public boolean isFastSpeedMode() {
-        return wirelessSpeedMode == WirelessSpeedMode.FAST.ordinal();
+        return isWirelessTuningVisible() && wirelessSpeedMode == WirelessSpeedMode.FAST.ordinal();
+    }
+
+    public boolean isPackagedProviderUi() {
+        return (uiProfileFlags & PROFILE_PACKAGED) != 0;
+    }
+
+    public boolean isModeSwitchVisible() {
+        return (uiProfileFlags & PROFILE_MODE_SWITCH) != 0;
+    }
+
+    public boolean isFilteredImportVisible() {
+        return (uiProfileFlags & PROFILE_FILTERED_IMPORT) != 0;
+    }
+
+    public boolean isWirelessTuningVisible() {
+        return (uiProfileFlags & PROFILE_WIRELESS_TUNING) != 0;
+    }
+
+    public boolean isBlockingModeVisible() {
+        return (uiProfileFlags & PROFILE_BLOCKING_MODE) != 0;
+    }
+
+    public String getTitleTranslationKey() {
+        return titleTranslationKey;
     }
 
     public void clientNextPage() {

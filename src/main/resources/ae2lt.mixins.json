@@ -29,7 +29,8 @@
   "client": [
     "client.CableBusRenderStateMixin",
     "client.CableBusContainerRenderMixin",
-    "client.CableBusBakedModelMixin"
+    "client.CableBusBakedModelMixin",
+    "client.PatternProviderScreenAccessor"
   ],
   "injectors": {
     "defaultRequire": 1
