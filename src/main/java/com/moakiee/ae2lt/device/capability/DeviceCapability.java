@@ -49,8 +49,8 @@ public sealed interface DeviceCapability {
     /** Last-stand fatal damage interception. */
     record LastStandTuning(long feCost, int comboWindowTicks) implements DeviceCapability {}
 
-    /** Periodic negative-effect cleansing. */
-    record CleanseTuning(int periodTicks, int strength) implements DeviceCapability {}
+    /** Periodic status-effect purification. */
+    record PurificationTuning(int periodTicks, int strength) implements DeviceCapability {}
 
     /** Dash impulse + cooldown ticks. */
     record DashEffect(double impulse, int cooldownTicks) implements DeviceCapability {}

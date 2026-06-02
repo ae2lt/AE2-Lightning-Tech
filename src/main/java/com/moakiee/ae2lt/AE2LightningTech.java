@@ -194,7 +194,7 @@ public class AE2LightningTech {
                         output.accept(ModItems.ARMOR_SUBMODULE_UNDYING);
                         output.accept(ModItems.ARMOR_SUBMODULE_DASH);
                         output.accept(ModItems.ARMOR_SUBMODULE_FLIGHT);
-                        output.accept(ModItems.ARMOR_SUBMODULE_CLEANSE);
+                        output.accept(ModItems.ARMOR_SUBMODULE_PURIFICATION);
                         output.accept(ModItems.ARMOR_SUBMODULE_SATURATION);
                         output.accept(ModItems.ARMOR_SUBMODULE_DIG_AFFINITY);
                         output.accept(ModItems.ARMOR_SUBMODULE_PHASE_FLIGHT);

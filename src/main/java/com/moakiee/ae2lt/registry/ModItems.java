@@ -22,7 +22,7 @@ import com.moakiee.ae2lt.item.ReflectSubmoduleItem;
 import com.moakiee.ae2lt.item.UndyingSubmoduleItem;
 import com.moakiee.ae2lt.item.DashSubmoduleItem;
 import com.moakiee.ae2lt.item.FlightSubmoduleItem;
-import com.moakiee.ae2lt.item.CleanseSubmoduleItem;
+import com.moakiee.ae2lt.item.PurificationSubmoduleItem;
 import com.moakiee.ae2lt.item.SaturationSubmoduleItem;
 import com.moakiee.ae2lt.item.DigAffinitySubmoduleItem;
 import com.moakiee.ae2lt.item.ReachSubmoduleItem;
@@ -251,9 +251,9 @@ public final class ModItems {
             FlightSubmoduleItem::new,
             new Item.Properties().stacksTo(1));
 
-    public static final DeferredItem<CleanseSubmoduleItem> ARMOR_SUBMODULE_CLEANSE = ITEMS.registerItem(
-            "module_cleanse",
-            CleanseSubmoduleItem::new,
+    public static final DeferredItem<PurificationSubmoduleItem> ARMOR_SUBMODULE_PURIFICATION = ITEMS.registerItem(
+            "module_purification",
+            PurificationSubmoduleItem::new,
             new Item.Properties().stacksTo(1));
 
     public static final DeferredItem<SaturationSubmoduleItem> ARMOR_SUBMODULE_SATURATION = ITEMS.registerItem(

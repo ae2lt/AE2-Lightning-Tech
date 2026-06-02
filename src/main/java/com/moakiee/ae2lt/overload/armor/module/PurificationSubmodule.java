@@ -6,26 +6,26 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.api.distmarker.Dist;
 
-public final class CleanseSubmodule extends AbstractOverloadArmorSubmodule {
+public final class PurificationSubmodule extends AbstractOverloadArmorSubmodule {
 
-    public static final CleanseSubmodule INSTANCE = new CleanseSubmodule();
+    public static final PurificationSubmodule INSTANCE = new PurificationSubmodule();
 
-    private CleanseSubmodule() {
+    private PurificationSubmodule() {
     }
 
     @Override
     public String id() {
-        return "cleanse";
+        return "purification";
     }
 
     @Override
     public String nameKey() {
-        return "ae2lt.overload_armor.feature.cleanse.name";
+        return "ae2lt.overload_armor.feature.purification.name";
     }
 
     @Override
     public String descriptionKey() {
-        return "ae2lt.overload_armor.feature.cleanse.desc";
+        return "ae2lt.overload_armor.feature.purification.desc";
     }
 
     @Override

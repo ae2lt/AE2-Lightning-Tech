@@ -158,7 +158,10 @@ public final class AE2LTCommonConfig {
         return VALUES.pigmeeFumoGiftOnFirstJoin.get();
     }
 
-    public static int overloadArmorCleansePeriodTicks() { return VALUES.overloadArmorCleansePeriodTicks.get(); }
+    public static int overloadArmorPurificationPeriodTicks() { return VALUES.overloadArmorPurificationPeriodTicks.get(); }
+    public static boolean overloadArmorPurificationBeneficialEffects() { return VALUES.overloadArmorPurificationBeneficialEffects.get(); }
+    public static boolean overloadArmorPurificationNeutralEffects() { return VALUES.overloadArmorPurificationNeutralEffects.get(); }
+    public static boolean overloadArmorPurificationHarmfulEffects() { return VALUES.overloadArmorPurificationHarmfulEffects.get(); }
     public static int overloadArmorSaturationCheckIntervalTicks() { return VALUES.overloadArmorSaturationCheckIntervalTicks.get(); }
     public static double overloadArmorUnderwaterDigMultiplier() { return VALUES.overloadArmorUnderwaterDigMultiplier.get(); }
     public static double overloadArmorAirborneDigMultiplier() { return VALUES.overloadArmorAirborneDigMultiplier.get(); }
@@ -171,7 +174,7 @@ public final class AE2LTCommonConfig {
     public static long overloadArmorReflectHvPerDamage() { return VALUES.overloadArmorReflectHvPerDamage.get(); }
     public static long overloadArmorMitigationHvPerDamage() { return VALUES.overloadArmorMitigationHvPerDamage.get(); }
     public static long overloadArmorPhaseShieldEhvPerDamage() { return VALUES.overloadArmorPhaseShieldEhvPerDamage.get(); }
-    public static long overloadArmorCleanseHvPerEffect() { return VALUES.overloadArmorCleanseHvPerEffect.get(); }
+    public static long overloadArmorPurificationHvPerEffect() { return VALUES.overloadArmorPurificationHvPerEffect.get(); }
     public static long overloadArmorSaturationHvCost() { return VALUES.overloadArmorSaturationHvCost.get(); }
     public static long overloadArmorDigAffinityHvPerUse() { return VALUES.overloadArmorDigAffinityHvPerUse.get(); }
     public static long overloadArmorUndyingEhvCost() { return VALUES.overloadArmorUndyingEhvCost.get(); }
@@ -249,7 +252,10 @@ public final class AE2LTCommonConfig {
         private final ModConfigSpec.IntValue teslaCoilExtremeHighVoltageFe;
         private final ModConfigSpec.BooleanValue pigmeeFumoGiftOnFirstJoin;
 
-        private final ModConfigSpec.IntValue overloadArmorCleansePeriodTicks;
+        private final ModConfigSpec.IntValue overloadArmorPurificationPeriodTicks;
+        private final ModConfigSpec.BooleanValue overloadArmorPurificationBeneficialEffects;
+        private final ModConfigSpec.BooleanValue overloadArmorPurificationNeutralEffects;
+        private final ModConfigSpec.BooleanValue overloadArmorPurificationHarmfulEffects;
         private final ModConfigSpec.IntValue overloadArmorSaturationCheckIntervalTicks;
         private final ModConfigSpec.DoubleValue overloadArmorUnderwaterDigMultiplier;
         private final ModConfigSpec.DoubleValue overloadArmorAirborneDigMultiplier;
@@ -262,7 +268,7 @@ public final class AE2LTCommonConfig {
         private final ModConfigSpec.LongValue overloadArmorReflectHvPerDamage;
         private final ModConfigSpec.LongValue overloadArmorMitigationHvPerDamage;
         private final ModConfigSpec.LongValue overloadArmorPhaseShieldEhvPerDamage;
-        private final ModConfigSpec.LongValue overloadArmorCleanseHvPerEffect;
+        private final ModConfigSpec.LongValue overloadArmorPurificationHvPerEffect;
         private final ModConfigSpec.LongValue overloadArmorSaturationHvCost;
         private final ModConfigSpec.LongValue overloadArmorDigAffinityHvPerUse;
         private final ModConfigSpec.LongValue overloadArmorUndyingEhvCost;
@@ -453,9 +459,18 @@ public final class AE2LTCommonConfig {
             builder.pop();
 
             builder.push("defense");
-            overloadArmorCleansePeriodTicks = builder
-                    .comment("Ticks between automatic negative effect cleanse attempts.")
-                    .defineInRange("cleansePeriodTicks", 40, 1, 20 * 60 * 60);
+            overloadArmorPurificationPeriodTicks = builder
+                    .comment("Ticks between automatic status effect purification attempts.")
+                    .defineInRange("purificationPeriodTicks", 40, 1, 20 * 60 * 60);
+            overloadArmorPurificationBeneficialEffects = builder
+                    .comment("Whether purification can remove beneficial effects.")
+                    .define("purificationBeneficialEffects", false);
+            overloadArmorPurificationNeutralEffects = builder
+                    .comment("Whether purification can remove neutral effects.")
+                    .define("purificationNeutralEffects", false);
+            overloadArmorPurificationHarmfulEffects = builder
+                    .comment("Whether purification can remove harmful effects.")
+                    .define("purificationHarmfulEffects", true);
             builder.pop();
 
             builder.push("utility");
@@ -492,9 +507,9 @@ public final class AE2LTCommonConfig {
             overloadArmorPhaseShieldEhvPerDamage = builder
                     .comment("EHV lightning consumed per damage point prevented by phase shield.")
                     .defineInRange("phaseShieldEhvPerDamage", 1L, 0L, Long.MAX_VALUE);
-            overloadArmorCleanseHvPerEffect = builder
-                    .comment("HV lightning consumed per cleansed harmful effect.")
-                    .defineInRange("cleanseHvPerEffect", 8L, 0L, Long.MAX_VALUE);
+            overloadArmorPurificationHvPerEffect = builder
+                    .comment("HV lightning consumed per purified status effect.")
+                    .defineInRange("purificationHvPerEffect", 8L, 0L, Long.MAX_VALUE);
             overloadArmorSaturationHvCost = builder
                     .comment("HV lightning consumed when saturation sustain restores hunger or saturation.")
                     .defineInRange("saturationHvCost", 4L, 0L, Long.MAX_VALUE);

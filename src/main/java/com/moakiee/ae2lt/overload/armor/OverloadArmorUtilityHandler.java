@@ -3,7 +3,6 @@ package com.moakiee.ae2lt.overload.armor;
 import java.util.List;
 
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.effect.MobEffectCategory;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.food.FoodData;
@@ -11,6 +10,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.tags.FluidTags;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.entity.living.MobEffectEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 
@@ -36,7 +36,7 @@ public final class OverloadArmorUtilityHandler {
         }
         var capabilities = ArmorCapabilityCollector.collectPerInstalledStack(player);
         ArmorInteractionRangeService.tick(player, capabilities);
-        tickCleanse(player, capabilities);
+        tickPurification(player, capabilities);
         tickFoodSustain(player, capabilities);
         if (hasActivePhaseFlight(capabilities)) {
             PhaseFlightSubmodule.applyTransientPhaseState(player);
@@ -102,48 +102,62 @@ public final class OverloadArmorUtilityHandler {
         event.setNewSpeed((float) (event.getNewSpeed() * multiplier));
     }
 
-    private static void tickCleanse(ServerPlayer player, List<ActiveCapability> capabilities) {
+    @SubscribeEvent
+    public static void onMobEffectApplicable(MobEffectEvent.Applicable event) {
+        if (!(event.getEntity() instanceof ServerPlayer player)
+                || !PurificationEffectRules.canPurify(event.getEffectInstance())) {
+            return;
+        }
+        for (var active : ArmorCapabilityCollector.collectPerInstalledStack(player)) {
+            if (active.capability() instanceof DeviceCapability.PurificationTuning) {
+                event.setResult(MobEffectEvent.Applicable.Result.DO_NOT_APPLY);
+                return;
+            }
+        }
+    }
+
+    private static void tickPurification(ServerPlayer player, List<ActiveCapability> capabilities) {
         for (var active : capabilities) {
-            if (!(active.capability() instanceof DeviceCapability.CleanseTuning cleanse)) {
+            if (!(active.capability() instanceof DeviceCapability.PurificationTuning purification)) {
                 continue;
             }
-            int period = Math.max(1, cleanse.periodTicks());
+            int period = Math.max(1, purification.periodTicks());
             if (player.tickCount % period != 0) {
                 continue;
             }
-            int limit = Math.max(1, cleanse.strength());
-            int removable = countHarmfulEffects(player, limit);
+            int limit = Math.max(1, purification.strength());
+            int removable = countPurifiableEffects(player, limit);
             if (removable > 0 && !ArmorLightningService.consume(
                     player,
                     active.armor(),
                     com.moakiee.ae2lt.me.key.LightningKey.HIGH_VOLTAGE,
-                    AE2LTCommonConfig.overloadArmorCleanseHvPerEffect() * removable)) {
+                    AE2LTCommonConfig.overloadArmorPurificationHvPerEffect() * removable)) {
                 return;
             }
-            cleanseHarmfulEffects(player, limit);
+            purifyEffects(player, limit);
         }
     }
 
-    private static int countHarmfulEffects(ServerPlayer player, int maxEffects) {
+    private static int countPurifiableEffects(ServerPlayer player, int maxEffects) {
         int count = 0;
         for (var effect : List.copyOf(player.getActiveEffects())) {
             if (count >= maxEffects) {
                 break;
             }
-            if (effect.getEffect().value().getCategory() == MobEffectCategory.HARMFUL) {
+            if (PurificationEffectRules.canPurify(effect)) {
                 count++;
             }
         }
         return count;
     }
 
-    private static int cleanseHarmfulEffects(ServerPlayer player, int maxEffects) {
+    private static int purifyEffects(ServerPlayer player, int maxEffects) {
         int removed = 0;
         for (var effect : List.copyOf(player.getActiveEffects())) {
             if (removed >= maxEffects) {
                 break;
             }
-            if (effect.getEffect().value().getCategory() != MobEffectCategory.HARMFUL) {
+            if (!PurificationEffectRules.canPurify(effect)) {
                 continue;
             }
             if (player.removeEffect(effect.getEffect())) {
