@@ -24,6 +24,7 @@ import net.neoforged.neoforge.items.IItemHandlerModifiable;
 
 import appeng.api.config.Actionable;
 import appeng.api.config.PowerMultiplier;
+import appeng.api.networking.GridFlags;
 import appeng.api.networking.IGridNode;
 import appeng.api.networking.IGridNodeListener;
 import appeng.api.networking.IStackWatcher;
@@ -112,7 +113,8 @@ public class LightningAssemblyChamberBlockEntity extends AENetworkedBlockEntity
                     public void onStackChange(AEKey what, long amount) {
                         onLightningStackChanged(what);
                     }
-                });
+                })
+                .setFlags(GridFlags.REQUIRE_CHANNEL);
     }
 
     public static void serverTick(Level level, BlockPos pos, BlockState state, LightningAssemblyChamberBlockEntity be) {

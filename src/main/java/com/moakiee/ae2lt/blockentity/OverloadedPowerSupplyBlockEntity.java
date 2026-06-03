@@ -22,8 +22,9 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 
-import appeng.api.networking.IManagedGridNode;
+import appeng.api.networking.GridFlags;
 import appeng.api.networking.IGridNodeListener;
+import appeng.api.networking.IManagedGridNode;
 import appeng.api.storage.MEStorage;
 import appeng.api.storage.StorageCells;
 import appeng.api.storage.cells.ISaveProvider;
@@ -136,7 +137,8 @@ public class OverloadedPowerSupplyBlockEntity extends AENetworkedBlockEntity
         this.logic = new OverloadedPowerSupplyLogic(this);
         getMainNode()
                 .setIdlePowerUsage(0.0D)
-                .addService(appeng.api.networking.ticking.IGridTickable.class, logic);
+                .addService(appeng.api.networking.ticking.IGridTickable.class, logic)
+                .setFlags(GridFlags.REQUIRE_CHANNEL);
     }
 
     public static void serverTick(Level level, BlockPos pos, BlockState state, OverloadedPowerSupplyBlockEntity be) {

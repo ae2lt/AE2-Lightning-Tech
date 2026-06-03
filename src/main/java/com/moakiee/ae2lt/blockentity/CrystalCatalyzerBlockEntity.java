@@ -27,6 +27,7 @@ import net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction;
 import net.neoforged.neoforge.items.IItemHandlerModifiable;
 
 import appeng.api.config.Actionable;
+import appeng.api.networking.GridFlags;
 import appeng.api.networking.IGridNode;
 import appeng.api.networking.IGridNodeListener;
 import appeng.api.networking.IStackWatcher;
@@ -131,7 +132,8 @@ public class CrystalCatalyzerBlockEntity extends AENetworkedBlockEntity
                     public void onStackChange(AEKey what, long amount) {
                         onLightningStackChanged(what);
                     }
-                });
+                })
+                .setFlags(GridFlags.REQUIRE_CHANNEL);
     }
 
     public static void serverTick(Level level, BlockPos pos, BlockState state, CrystalCatalyzerBlockEntity be) {
