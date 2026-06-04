@@ -6,7 +6,9 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
+import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
 import net.neoforged.neoforge.client.extensions.common.RegisterClientExtensionsEvent;
+import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
 
 import appeng.api.client.AEKeyRendering;
 
@@ -64,6 +66,14 @@ public final class LightningKeyClientInit {
     @SubscribeEvent
     public static void registerClientExtensions(RegisterClientExtensionsEvent event) {
         event.registerItem(RailgunClientExtensions.INSTANCE, ModItems.ELECTROMAGNETIC_RAILGUN.get());
+    }
+
+    @SubscribeEvent
+    public static void registerOverlays(RegisterGuiLayersEvent event) {
+        event.registerAbove(
+                VanillaGuiLayers.ARMOR_LEVEL,
+                ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "celestweave_energy_level"),
+                CelestweaveArmorEnergyLevel.INSTANCE);
     }
 
 }
