@@ -36,22 +36,19 @@ public class OverloadDeviceWorkbenchMenu extends AEBaseMenu {
             .buildUnregistered(ResourceLocation.fromNamespaceAndPath(
                     AE2LightningTech.MODID, "overload_device_workbench"));
 
-    public static final int LEFT_COL_X = 8;
+    public static final int DEVICE_X = 13;
     public static final int DEVICE_Y = 20;
-    public static final int STRUCTURAL_Y = 46;
+    public static final int STRUCTURAL_X = 13;
+    public static final int STRUCTURAL_Y = 48;
     public static final int STRUCTURAL_SPACING = 20;
     public static final int MAX_STRUCTURAL_SLOTS = 1;
 
-    public static final int LIST_X = 32;
-    public static final int LIST_Y = 20;
-    public static final int LIST_WIDTH = 156;
-    public static final int LIST_HEIGHT = 80;
-    public static final int INPUT_X = LEFT_COL_X + 26;
-    public static final int INPUT_Y = 140;
+    public static final int INPUT_X = 13;
+    public static final int INPUT_Y = 74;
 
-    public static final int INVENTORY_X = 20;
-    public static final int INVENTORY_Y = 162;
-    public static final int HOTBAR_Y = 220;
+    public static final int INVENTORY_X = 8;
+    public static final int INVENTORY_Y = 161;
+    public static final int HOTBAR_Y = 219;
 
     @GuiSync(0)
     public int devicePresent;
@@ -91,7 +88,7 @@ public class OverloadDeviceWorkbenchMenu extends AEBaseMenu {
 
         var structuralContainer = new StructuralSlotContainer();
         deviceSlot = addSlot(
-                new WorkbenchDeviceSlot(host.getDeviceInventory(), 0, LEFT_COL_X, DEVICE_Y),
+                new WorkbenchDeviceSlot(host.getDeviceInventory(), 0, DEVICE_X, DEVICE_Y),
                 Ae2ltSlotSemantics.OVERLOAD_DEVICE_WORKBENCH_DEVICE);
 
         for (int i = 0; i < MAX_STRUCTURAL_SLOTS; i++) {
@@ -99,7 +96,7 @@ public class OverloadDeviceWorkbenchMenu extends AEBaseMenu {
                     new StructuralSlot(
                             structuralContainer,
                             i,
-                            LEFT_COL_X,
+                            STRUCTURAL_X,
                             STRUCTURAL_Y + i * STRUCTURAL_SPACING),
                     STRUCTURAL_SEMANTICS.get(i));
             structuralSlots.add(slot);
