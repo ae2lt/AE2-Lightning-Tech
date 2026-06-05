@@ -169,7 +169,7 @@ public final class AE2LTCommonConfig {
     public static double overloadArmorPhaseFlightSpeedMultiplier() { return VALUES.overloadArmorPhaseFlightSpeedMultiplier.get(); }
     public static long overloadArmorPassiveHvPerTick() { return VALUES.overloadArmorPassiveHvPerTick.get(); }
     public static long overloadArmorFlightHvPerTick() { return VALUES.overloadArmorFlightHvPerTick.get(); }
-    public static long overloadArmorPhaseFlightEhvPerTick() { return VALUES.overloadArmorPhaseFlightEhvPerTick.get(); }
+    public static long overloadArmorPhaseFlightHvPerTick() { return VALUES.overloadArmorPhaseFlightHvPerTick.get(); }
     public static long overloadArmorDashHvCost() { return VALUES.overloadArmorDashHvCost.get(); }
     public static long overloadArmorReflectHvPerDamage() { return VALUES.overloadArmorReflectHvPerDamage.get(); }
     public static long overloadArmorMitigationHvPerDamage() { return VALUES.overloadArmorMitigationHvPerDamage.get(); }
@@ -263,7 +263,7 @@ public final class AE2LTCommonConfig {
         private final ModConfigSpec.DoubleValue overloadArmorPhaseFlightSpeedMultiplier;
         private final ModConfigSpec.LongValue overloadArmorPassiveHvPerTick;
         private final ModConfigSpec.LongValue overloadArmorFlightHvPerTick;
-        private final ModConfigSpec.LongValue overloadArmorPhaseFlightEhvPerTick;
+        private final ModConfigSpec.LongValue overloadArmorPhaseFlightHvPerTick;
         private final ModConfigSpec.LongValue overloadArmorDashHvCost;
         private final ModConfigSpec.LongValue overloadArmorReflectHvPerDamage;
         private final ModConfigSpec.LongValue overloadArmorMitigationHvPerDamage;
@@ -492,9 +492,9 @@ public final class AE2LTCommonConfig {
             overloadArmorFlightHvPerTick = builder
                     .comment("HV lightning consumed each tick while creative flight is active.")
                     .defineInRange("flightHvPerTick", 2L, 0L, Long.MAX_VALUE);
-            overloadArmorPhaseFlightEhvPerTick = builder
-                    .comment("EHV lightning consumed each tick while phase flight is active.")
-                    .defineInRange("phaseFlightEhvPerTick", 1L, 0L, Long.MAX_VALUE);
+            overloadArmorPhaseFlightHvPerTick = builder
+                    .comment("HV lightning consumed each tick while phase flight is active.")
+                    .defineInRange("phaseFlightHvPerTick", 8L, 0L, Long.MAX_VALUE);
             overloadArmorDashHvCost = builder
                     .comment("HV lightning consumed when dash triggers.")
                     .defineInRange("dashHvCost", 256L, 0L, Long.MAX_VALUE);

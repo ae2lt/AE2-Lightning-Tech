@@ -234,7 +234,7 @@ public final class ArmorEnergyService {
             }
         }
         if (phaseFlight) {
-            cost = cost.plus(LightningCost.ehv(AE2LTCommonConfig.overloadArmorPhaseFlightEhvPerTick()));
+            cost = cost.plus(LightningCost.hv(AE2LTCommonConfig.overloadArmorPhaseFlightHvPerTick()));
         } else if (flight) {
             cost = cost.plus(LightningCost.hv(AE2LTCommonConfig.overloadArmorFlightHvPerTick()));
             if (movingFlight) {
