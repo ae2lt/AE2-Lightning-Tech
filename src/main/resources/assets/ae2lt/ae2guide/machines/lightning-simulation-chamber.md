@@ -29,12 +29,12 @@ The **Lightning Simulation Room** is one of the core processing machines of this
 1. Put up to 3 different ingredients into the input slots (recipes may only need 1~2)
 2. The machine matches the current inputs against registered recipes
 3. Once a recipe is matched and the ME network has enough Lightning and FE, the machine locks in the recipe and starts processing
-4. Lightning and FE are consumed during processing
+4. FE is spent during processing, and the required Lightning is consumed when the operation completes
 5. The output goes to the output slot when processing finishes
 
 ## Lightning Consumption
 
-Every recipe defines the required Lightning type (HV or EHV) and amount. Lightning is pulled from the ME network in one shot at the start of processing. If the network does not have enough Lightning, the GUI shows "Lightning insufficient" and processing pauses until supply recovers.
+Every recipe defines the required Lightning type (HV or EHV) and amount. The machine checks Lightning availability before starting and consumes the required amount when the operation completes. If the network cannot supply enough Lightning, the GUI shows "Lightning insufficient" and the machine waits until supply recovers.
 
 ## Matrix Substitution
 

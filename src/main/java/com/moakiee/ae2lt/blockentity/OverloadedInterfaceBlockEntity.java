@@ -17,7 +17,6 @@ import org.jetbrains.annotations.Nullable;
 import com.google.common.util.concurrent.Runnables;
 import com.moakiee.ae2lt.grid.FrequencyBindingHelper;
 import com.moakiee.ae2lt.grid.FrequencyBindingHost;
-import com.moakiee.ae2lt.grid.OverloadedGridNodeOwner;
 import com.moakiee.ae2lt.item.OverloadedFilterComponentItem;
 import com.moakiee.ae2lt.logic.AppFluxHelper;
 import com.moakiee.ae2lt.logic.ConnectionEndpoints;
@@ -76,7 +75,7 @@ import appeng.menu.locator.MenuLocator;
 import appeng.parts.automation.StackWorldBehaviors;
 
 public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
-        implements OverloadedGridNodeOwner, FrequencyBindingHost {
+        implements FrequencyBindingHost {
 
     public static final int SLOT_COUNT = 36;
     public static final int MAX_WIRELESS_CONNECTIONS = 1024;

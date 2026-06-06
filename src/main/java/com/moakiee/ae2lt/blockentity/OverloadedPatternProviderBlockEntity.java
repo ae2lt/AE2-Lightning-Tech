@@ -21,6 +21,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 
+import appeng.api.implementations.blockentities.PatternContainerGroup;
 import appeng.api.inventories.InternalInventory;
 import appeng.api.networking.IGridNodeListener;
 import appeng.api.stacks.AEItemKey;
@@ -32,11 +33,11 @@ import appeng.menu.MenuOpener;
 import appeng.menu.locator.MenuLocator;
 import com.moakiee.ae2lt.grid.FrequencyBindingHelper;
 import com.moakiee.ae2lt.grid.FrequencyBindingHost;
-import com.moakiee.ae2lt.grid.OverloadedGridNodeOwner;
 import com.moakiee.ae2lt.logic.OverloadedPatternProviderLogic;
 import com.moakiee.ae2lt.logic.WirelessConnectionLists;
 import com.moakiee.ae2lt.logic.WirelessConnectionRef;
 import com.moakiee.ae2lt.logic.WirelessConnectionValidator;
+import com.moakiee.ae2lt.logic.WirelessPatternContainerGroupSelector;
 import com.moakiee.ae2lt.menu.OverloadedPatternProviderMenu;
 import com.moakiee.ae2lt.registry.ModBlockEntities;
 import com.moakiee.ae2lt.registry.ModBlocks;
@@ -53,7 +54,7 @@ import com.moakiee.ae2lt.registry.ModBlocks;
  * wireless dispatch or auto-return — those use wireless connector records instead.
  */
 public class OverloadedPatternProviderBlockEntity extends PatternProviderBlockEntity
-        implements FrequencyBindingHost, OverloadedGridNodeOwner {
+        implements FrequencyBindingHost {
 
     /** Pattern slots displayed per GUI page. */
     public static final int SLOTS_PER_PAGE = 36;
@@ -671,6 +672,51 @@ public class OverloadedPatternProviderBlockEntity extends PatternProviderBlockEn
     @Override
     public AEItemKey getTerminalIcon() {
         return AEItemKey.of(ModBlocks.OVERLOADED_PATTERN_PROVIDER.get());
+    }
+
+    @Override
+    public PatternContainerGroup getTerminalGroup() {
+        if (providerMode != ProviderMode.WIRELESS || hasCustomTerminalName()) {
+            return super.getTerminalGroup();
+        }
+
+        var wirelessGroup = findMostFrequentWirelessTerminalGroup();
+        return wirelessGroup != null ? wirelessGroup : super.getTerminalGroup();
+    }
+
+    private boolean hasCustomTerminalName() {
+        return hasCustomName();
+    }
+
+    @Nullable
+    private PatternContainerGroup findMostFrequentWirelessTerminalGroup() {
+        if (!(level instanceof ServerLevel hostLevel) || connections.isEmpty()) {
+            return null;
+        }
+
+        var groups = new ArrayList<PatternContainerGroup>(connections.size());
+        for (var connection : connections) {
+            var targetLevel = resolveTerminalGroupTargetLevel(hostLevel, connection);
+            if (targetLevel == null) {
+                continue;
+            }
+            var group = PatternContainerGroup.fromMachine(
+                    targetLevel, connection.pos(), connection.boundFace());
+            if (group != null) {
+                groups.add(group);
+            }
+        }
+        return WirelessPatternContainerGroupSelector.selectMostFrequent(groups).orElse(null);
+    }
+
+    @Nullable
+    private ServerLevel resolveTerminalGroupTargetLevel(ServerLevel hostLevel, WirelessConnection connection) {
+        if (WirelessConnectionValidator.validate(hostLevel, worldPosition, connection)
+                != WirelessConnectionValidator.Status.VALID) {
+            return null;
+        }
+        var targetLevel = hostLevel.getServer().getLevel(connection.dimension());
+        return targetLevel != null && targetLevel.isLoaded(connection.pos()) ? targetLevel : null;
     }
 
     @Override

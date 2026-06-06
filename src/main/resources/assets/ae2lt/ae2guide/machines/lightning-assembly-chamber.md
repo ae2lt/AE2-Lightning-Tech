@@ -29,8 +29,12 @@ The **Lightning Assembly Chamber** handles advanced recipes with larger input co
 1. Put the ingredients into the 9 input slots
 2. The machine matches the current inputs against registered recipes
 3. Once a recipe is matched and the ME network has enough Lightning and FE, the machine locks in the recipe and starts processing
-4. Lightning (HV or EHV, depending on the recipe) and FE are consumed during processing
+4. FE is spent during processing, and the required Lightning is consumed when the operation completes
 5. The output goes to the output slot when processing finishes
+
+## Lightning Consumption
+
+Every recipe defines its required Lightning tier and amount. If the ME network cannot supply enough Lightning when the operation is ready to complete, the machine waits until supply recovers.
 
 ## Compared to the Lightning Simulation Room
 

@@ -43,6 +43,8 @@ Use the **Overloaded Wireless Connect Tool** to establish wireless connections:
 2. Right-click a specific face of a target machine to connect
 3. One interface can bind to multiple remote machines
 
+Wireless links must be in the same dimension and within **128 blocks** by default. The distance limit is configurable; setting it to 0 disables the limit. One interface can store up to **1,024** wireless face connections, and different faces of the same target can be bound separately. Hold **Ctrl** while right-clicking a target to batch-toggle contiguous machines of the same type.
+
 ## Import / Export Modes
 
 | Mode | Description |
@@ -83,5 +85,5 @@ With an AppFlux Induction Card installed (requires AppFlux), the Overloaded ME I
 
 * A single interface can manage I/O for many machines wirelessly, replacing a lot of pipework
 * Combined with unlimited-mode slots, it can keep a remote machine continuously supplied with a specific material
-* With energy transfer, you can drop dedicated power lines
+* With energy transfer, dedicated power lines are no longer required
 * Enable the Fast probe tier to reduce processing response latency

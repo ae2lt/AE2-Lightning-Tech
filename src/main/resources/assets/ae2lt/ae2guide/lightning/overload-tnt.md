@@ -14,15 +14,15 @@ item_ids:
   <BlockImage id="ae2lt:overload_tnt" scale="4" />
 </Row>
 
-**Overload TNT** is a firework with an Overload Singularity crammed inside. It is not a routine consumable on a production line — lighting it off feels more like a **controlled natural disaster**: lightning rains down from the sky and scours the area around the blast, rather than producing a single loud explosion.
+**Overload TNT** is a high-risk explosive built around an Overload Singularity. Instead of producing a normal blast, it calls down repeated lightning strikes around the detonation point and scorches terrain over a wide area.
 
-Most of the time you use it to mine specific terrain, clear out stretches of hard rock, or demonstrate to visitors exactly why researchers around here need handrails.
+It is mainly used for terrain excavation, hard-rock clearing, or controlled destructive testing.
 
 ## Crafting
 
 <RecipeFor id="ae2lt:overload_tnt" />
 
-The **Overload Singularity** at the center is what actually does the work; the gunpowder in the corners is just there to give it an excuse to go off.
+The **Overload Singularity** is the active component; the gunpowder provides the explosive trigger.
 
 ## Detonation Behavior
 
@@ -33,9 +33,9 @@ After ignition or activation, Overload TNT has a fuse of roughly **4 seconds**. 
 3. After the first wave, a period of **aftershocks** continues for several seconds, dropping random additional strikes across the area.
 4. A short burst of **thunderstorm weather** is forced into the area around the blast center, reverting after about 8 seconds.
 
-Overload TNT has good manners when it comes to cleanup: **bedrock, barrier blocks, end portal frames, and command blocks** are not broken, and area-protected zones are respected.
+Overload TNT respects cleanup safeguards: **bedrock, barrier blocks, end portal frames, and command blocks** are not broken, and area-protected zones are respected.
 
-> Once Overload TNT detonates, it cannot be put back. Treat it the way you would treat a thunderstorm.
+> Once Overload TNT detonates, it cannot be recovered. Treat it as a high-risk lightning event.
 
 ## Configuration and Disabling
 
@@ -46,8 +46,8 @@ The config option `overloadTnt.enableTerrainDamage` in `ae2lt-common.toml` (defa
 
 ## Usage Tips
 
-* Place it on top of a **solid block**, give yourself plenty of distance, and prefer using it in open terrain. The blast radius is large enough that standing on the same map can still get you caught up in it.
-* If you only want it to break terrain and not wipe nearby mobs, move anything you want to keep away first.
+* Place it on top of a **solid block**, keep a large safety distance, and prefer open terrain. The blast radius is large enough to catch players who remain near the detonation area.
+* If you want terrain damage without killing nearby mobs, move anything you want to preserve outside the blast area first.
 
 ## Field Log: An Anomalous Drop
 

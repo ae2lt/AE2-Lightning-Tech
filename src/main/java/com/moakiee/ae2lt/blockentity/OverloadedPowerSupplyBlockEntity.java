@@ -21,8 +21,9 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 
-import appeng.api.networking.IManagedGridNode;
+import appeng.api.networking.GridFlags;
 import appeng.api.networking.IGridNodeListener;
+import appeng.api.networking.IManagedGridNode;
 import appeng.api.inventories.InternalInventory;
 import appeng.api.storage.MEStorage;
 import appeng.api.storage.StorageCells;
@@ -39,7 +40,6 @@ import org.jetbrains.annotations.Nullable;
 import com.moakiee.ae2lt.block.OverloadedPowerSupplyBlock;
 import com.moakiee.ae2lt.grid.FrequencyBindingHelper;
 import com.moakiee.ae2lt.grid.FrequencyBindingHost;
-import com.moakiee.ae2lt.grid.OverloadedGridNodeOwner;
 import com.moakiee.ae2lt.logic.OverloadedPowerSupplyLogic;
 import com.moakiee.ae2lt.logic.WirelessConnectionLists;
 import com.moakiee.ae2lt.logic.WirelessConnectionRef;
@@ -50,7 +50,7 @@ import com.moakiee.ae2lt.registry.ModBlockEntities;
 import com.moakiee.ae2lt.registry.ModBlocks;
 
 public class OverloadedPowerSupplyBlockEntity extends AENetworkBlockEntity
-        implements InternalInventoryHost, FrequencyBindingHost, OverloadedGridNodeOwner {
+        implements InternalInventoryHost, FrequencyBindingHost {
 
     public static final int MAX_WIRELESS_CONNECTIONS = 64;
 
@@ -136,7 +136,8 @@ public class OverloadedPowerSupplyBlockEntity extends AENetworkBlockEntity
         this.logic = new OverloadedPowerSupplyLogic(this);
         getMainNode()
                 .setIdlePowerUsage(0.0D)
-                .addService(appeng.api.networking.ticking.IGridTickable.class, logic);
+                .addService(appeng.api.networking.ticking.IGridTickable.class, logic)
+                .setFlags(GridFlags.REQUIRE_CHANNEL);
     }
 
     public static void serverTick(Level level, BlockPos pos, BlockState state, OverloadedPowerSupplyBlockEntity be) {

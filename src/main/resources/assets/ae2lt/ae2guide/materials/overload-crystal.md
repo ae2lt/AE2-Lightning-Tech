@@ -37,14 +37,14 @@ There are four tiers of Budding Overload Crystal:
 
 | Tier | Name | Decay |
 |------|------|-------|
-| Flawless | Flawless Budding Overload Crystal | Never decays |
+| Flawless | Flawless Budding Overload Crystal | Does not decay while growing |
 | Flawed | Flawed Budding Overload Crystal | Low decay chance |
 | Cracked | Cracked Budding Overload Crystal | Medium decay chance |
 | Damaged | Damaged Budding Overload Crystal | High decay chance |
 
 Every time a bud grows on an imperfect budding block, there is a chance the budding block decays one tier. When a Damaged budding block decays further, it becomes a regular Overload Crystal Block.
 
-> **Silk Touch** prevents an imperfect budding block from decaying when broken. **Flawless Budding Overload Crystal** never decays.
+> When mined, **Silk Touch** preserves Flawed, Cracked, and Damaged budding blocks. **Flawless Budding Overload Crystal** drops as Flawed when mined.
 
 ### Bud Growth Stages
 
@@ -90,7 +90,7 @@ Once built, wait for a **natural lightning strike** on the Lightning Rod. The ou
 
 ### Simple Structure (Any Lightning, Output Drops One Tier)
 
-If you're short on Overload Crystal Blocks, the simple structure can still produce the three non-flawless tiers:
+If Overload Crystal Blocks are limited, the simple structure can still produce the three non-flawless tiers:
 
 * Place the matching tier of AE2 Budding Certus Quartz in the center
 * Place a <ItemLink id="ae2:quartz_block" /> (Certus Quartz Block) on each of the four corners

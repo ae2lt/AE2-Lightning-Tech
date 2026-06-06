@@ -13,7 +13,7 @@ item_ids:
   <BlockImage id="ae2lt:overloaded_power_supply" scale="4" />
 </Row>
 
-The **Overloaded Power Supply** is a wireless FE distributor for the Overloaded ME network. It pulls FE energy stored in the ME network and delivers it to up to **64 wireless-bound machines** at once — no cables, no power lines. With an **AppFlux Flux Cell** installed, it can also switch into a high-throughput **Overload Mode** that buffers and bursts energy directly from the cell.
+The **Overloaded Power Supply** is a wireless FE distributor for the Overloaded ME network. It pulls FE energy stored in the ME network and delivers it to up to **64 wireless-bound machines** at once, without dedicated FE cables. With an **AppFlux Flux Cell** installed, it can also switch into a high-throughput **Overload Mode** that buffers and bursts energy directly from the cell.
 
 > Requires **Applied Flux**. The block is only registered when AppFlux is present.
 
@@ -54,11 +54,13 @@ Overload Mode requires a Flux Cell in the cell slot. The cell becomes the active
    2. **Right-click the face** of each target machine to bind it as an FE recipient
 4. Open the supply's GUI and choose Normal or Overload Mode
 
+Wireless links must be in the same dimension and within **128 blocks** by default. The distance limit is configurable; setting it to 0 disables the limit. One supply can store up to **64** wireless connections. Hold **Ctrl** while right-clicking a target to batch-toggle contiguous machines of the same type.
+
 The same wireless connect tool used for the Overloaded ME Interface and the Overloaded Pattern Provider works here — one tool, three hosts.
 
 ## Tips
 
-* For most bases, Normal Mode is enough — it is "always-on" and zero-overhead per FE
-* Use Overload Mode when you need to hammer FE into a cluster of high-draw machines (e.g. mass-crafting setups) and accept the 2× cost
+* For most bases, Normal Mode is enough — it runs continuously and has no extra cost multiplier
+* Use Overload Mode for clusters of high-draw machines, such as mass-crafting setups, when the 2× cost is acceptable
 * A higher-tier Flux Cell gives a larger burst buffer, which smooths short ME-network FE shortages
-* You can mix the supply with the Overloaded ME Interface and Overloaded Pattern Provider — all three share the same per-target scheduler, so binding the same target to several hosts will not cause cap-listener thrashing
+* You can mix the supply with the Overloaded ME Interface and Overloaded Pattern Provider; all three share the same per-target scheduler

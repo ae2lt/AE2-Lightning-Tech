@@ -37,7 +37,7 @@ navigation:
 * <ItemLink id="ae2:growth_accelerator" />（水晶生长加速器）对过载水晶同样有效
 * 破坏**未完全长成**的水晶芽会掉落**过载水晶粉**
 * 破坏**完全长成**的过载水晶簇会掉落**过载水晶**，时运附魔生效
-* 不完美的母岩每次生长都可能衰减一个等级；精准采集可以避免被破坏时的衰减
+* 不完美的母岩每次生长都可能衰减一个等级；挖掘时，精准采集可保留有瑕、开裂、损坏等级，无瑕母岩会掉落为有瑕母岩
 
 更多细节请参阅 [过载水晶](materials/overload-crystal.md)。
 
@@ -64,7 +64,7 @@ navigation:
 
 <ItemImage id="ae2lt:flawless_budding_overload_crystal" scale="2" float="left" />
 
-**无瑕的过载水晶母岩**不会衰减，是大规模产线的基础。只有**精制结构 + 自然雷击**能产出无瑕母岩：
+**无瑕的过载水晶母岩**生长时不会衰减，是大规模产线的基础。只有**精制结构 + 自然雷击**能产出无瑕母岩：
 
 <GameScene zoom="4" background="transparent">
   <ImportStructure src="assets/assemblies/flawless_budding_overload.snbt" />
@@ -86,7 +86,7 @@ navigation:
 
 1. **收集**：在空旷处放置一台**闪电收集器**并接入 ME 网络。雷电命中时，收集器会将闪电能量直接注入 ME 网络
 2. **存储**：将**闪电存储组件 I** 放入 <ItemLink id="ae2:drive" />；闪电将与物品、流体一样出现在 ME 终端中
-3. **消耗**：**闪电模拟室**与**闪电装配室**在加工时会从 ME 网络中自动提取闪电
+3. **消耗**：**闪电模拟室**与**闪电装配室**在配方完成时会消耗 ME 网络中的闪电
 
 此外常用的辅助设备：
 

@@ -87,7 +87,8 @@ public class OverloadTntEntity extends PrimedTnt {
     @Override
     protected void explode() {
         if (this.level() instanceof ServerLevel serverLevel) {
-            if (tryTriggerEasterEgg(serverLevel)) {
+            if (AE2LTCommonConfig.overloadTntEnableMysteriousCellEasterEgg()
+                    && tryTriggerEasterEgg(serverLevel)) {
                 return;
             }
             if (AE2LTCommonConfig.overloadTntEnableTerrainDamage()) {

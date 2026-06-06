@@ -42,6 +42,8 @@ In Wireless Mode, the Overloaded Pattern Provider can dispatch materials to remo
 2. Right-click a specific face of a target machine to connect
 3. One provider can bind to multiple remote machines
 
+Wireless links must be in the same dimension and within **128 blocks** by default. The distance limit is configurable; setting it to 0 disables the limit. One provider can store up to **1,024** wireless connections. Hold **Ctrl** while right-clicking a target to batch-toggle contiguous machines of the same type.
+
 Once connections are in place, the provider dispatches materials to the remote machines according to the selected distribution strategy.
 
 ### Distribution Strategies
@@ -90,6 +92,6 @@ The Overload Pattern Encoder supports:
 ## Automation Tips
 
 * In large automated crafting systems, Wireless Mode can dramatically reduce pipe complexity
-* Combined with the Balanced Distribution strategy and multiple processing machines, you get parallel crafting for free
+* Combined with the Balanced Distribution strategy and multiple processing machines, it enables parallel crafting without extra item pipes
 * Enable the Fast speed tier for better responsiveness
 * Pick the return mode that matches the specific automation scenario
