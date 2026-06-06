@@ -23,6 +23,7 @@ import appeng.api.stacks.AEKeyTypes;
 import appeng.api.stacks.GenericStack;
 import appeng.api.stacks.KeyCounter;
 import appeng.api.storage.AEKeySlotFilter;
+import appeng.api.storage.MEStorage;
 import appeng.api.upgrades.UpgradeInventories;
 import appeng.core.definitions.AEItems;
 import appeng.helpers.InterfaceLogic;
@@ -348,16 +349,29 @@ public class OverloadedInterfaceLogic extends InterfaceLogic {
             return key != null ? key.getType().getAmountPerUnit() : Long.MAX_VALUE;
         }
 
-        private long networkAmount(AEKey key) {
-            var grid = logic.mainNode.getGrid();
-            if (grid == null) return 0;
-            return grid.getStorageService().getCachedInventory().get(key);
+        private long displayAmount(int slot, AEKey key) {
+            long cap = capForSlot(slot);
+            return visibleNetworkAmount(key, cap);
         }
 
-        private long displayAmount(int slot, AEKey key) {
-            long netAmt = networkAmount(key);
-            long cap = capForSlot(slot);
-            return (cap == Long.MAX_VALUE) ? netAmt : Math.min(cap, netAmt);
+        private long visibleNetworkAmount(AEKey key, long cap) {
+            var grid = logic.mainNode.getGrid();
+            if (grid == null || key == null) return 0;
+            var storageService = grid.getStorageService();
+            long reported = storageService.getCachedInventory().get(key);
+            long simulated = simulateNetworkExtraction(storageService.getInventory(), key, cap);
+            return OverloadedAmountMath.mergeReportedAndSimulatedAmount(reported, simulated, cap);
+        }
+
+        private long simulateNetworkExtraction(MEStorage network, AEKey key, long cap) {
+            if (network == null || key == null || cap <= 0) return 0;
+            boolean wasProxying = proxying;
+            proxying = true;
+            try {
+                return network.extract(key, cap, Actionable.SIMULATE, src());
+            } finally {
+                proxying = wasProxying;
+            }
         }
 
         private boolean matchesConfiguredSlot(int slot, AEKey what) {
@@ -373,13 +387,11 @@ public class OverloadedInterfaceLogic extends InterfaceLogic {
         private long exposedAmount(AEKey what) {
             var grid = logic.mainNode.getGrid();
             if (grid == null) return 0;
-            var cache = grid.getStorageService().getCachedInventory();
             long total = 0;
             for (int i = 0; i < size(); i++) {
                 if (!matchesConfiguredSlot(i, what)) continue;
-                long netAmt = cache.get(what);
                 long cap = capForSlot(i);
-                long amount = (cap == Long.MAX_VALUE) ? netAmt : Math.min(cap, netAmt);
+                long amount = visibleNetworkAmount(what, cap);
                 if (Long.MAX_VALUE - total < amount) return Long.MAX_VALUE;
                 total += amount;
             }
@@ -459,6 +471,7 @@ public class OverloadedInterfaceLogic extends InterfaceLogic {
 
         @Override
         public long extract(AEKey what, long amount, Actionable mode, IActionSource source) {
+            if (proxying) return 0;
             if (what == null || amount <= 0) return 0;
             long exposed = exposedAmount(what);
             if (exposed <= 0) return 0;
@@ -473,6 +486,7 @@ public class OverloadedInterfaceLogic extends InterfaceLogic {
 
         @Override
         public long insert(AEKey what, long amount, Actionable mode, IActionSource source) {
+            if (proxying) return 0;
             if (what == null || amount <= 0) return 0;
             return proxyInsert(what, amount, mode);
         }
@@ -552,16 +566,17 @@ public class OverloadedInterfaceLogic extends InterfaceLogic {
                     if (key == null) continue;
 
                     long cap = capForSlot(slot);
+                    long configuredAmount = visibleNetworkAmount(key, cap);
+                    if (configuredAmount > 0) availableStacksCache.add(key, configuredAmount);
+
                     if (fuzzy && key.supportsFuzzyRangeSearch()) {
                         for (var entry : cache.findFuzzy(key, fuzzyMode)) {
+                            if (entry.getKey().equals(key)) continue;
                             long amount = cap == Long.MAX_VALUE
                                     ? entry.getLongValue()
                                     : Math.min(cap, entry.getLongValue());
                             if (amount > 0) availableStacksCache.add(entry.getKey(), amount);
                         }
-                    } else {
-                        long amount = displayAmount(slot, key);
-                        if (amount > 0) availableStacksCache.add(key, amount);
                     }
                 }
                 availableStacksCacheTick = now;

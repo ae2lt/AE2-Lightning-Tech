@@ -31,8 +31,8 @@ The **Overload Processing Factory** is the largest and highest-throughput proces
 
 1. Feed in the item and fluid inputs
 2. The machine matches the current inputs against registered recipes
-3. Once a recipe is matched and enough Lightning and FE are available, processing starts
-4. Lightning and FE are consumed throughout processing
+3. Once a recipe is matched and the required Lightning and FE are available, processing starts
+4. FE is spent during processing; item inputs, fluid inputs, and Lightning are consumed when the operation completes
 5. Item and fluid outputs go to their respective output slots
 
 ## Parallel Processing
@@ -44,7 +44,7 @@ The factory's parallelism is determined by the number of **Lightning Collapse Ma
 * With no matrices installed, the factory cannot parallelize
 * Installing more matrices linearly raises the parallel ceiling
 * Effective parallelism is also constrained by available input materials and each recipe's per-operation cost
-* Higher parallelism means more output per cycle, with a linear increase in FE consumption
+* Higher parallelism means more output per cycle and higher total FE cost. The total FE cost uses the factory's parallel scaling formula, not a simple linear multiplier
 
 ## Speed Cards and Energy Consumption
 

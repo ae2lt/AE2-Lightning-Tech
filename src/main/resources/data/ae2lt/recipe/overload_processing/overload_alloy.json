@@ -3,16 +3,16 @@
   "priority": 0,
   "inputs": [
     {
-      "ingredient": "minecraft:copper_block",
-      "count": 1
+      "ingredient": "minecraft:copper_ingot",
+      "count": 9
     },
     {
-      "ingredient": "minecraft:iron_block",
-      "count": 1
+      "ingredient": "minecraft:iron_ingot",
+      "count": 9
     },
     {
-      "ingredient": "minecraft:gold_block",
-      "count": 1
+      "ingredient": "minecraft:gold_ingot",
+      "count": 9
     },
     {
       "ingredient": "minecraft:amethyst_block",

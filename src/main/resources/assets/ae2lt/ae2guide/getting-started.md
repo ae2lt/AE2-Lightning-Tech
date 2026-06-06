@@ -37,7 +37,7 @@ Budding Overload Crystal behaves the same way as Budding Certus Quartz:
 * The <ItemLink id="ae2:growth_accelerator" /> works on Overload Crystal buds as well
 * Breaking a **not yet fully grown** bud drops **Overload Crystal Dust**
 * Breaking a **fully grown** Overload Crystal Cluster drops **Overload Crystals**, and Fortune applies
-* Imperfect budding blocks may decay one tier each time a bud grows on them; Silk Touch prevents decay on break
+* Imperfect budding blocks may decay one tier each time a bud grows. When mined, Silk Touch preserves Flawed, Cracked, and Damaged tiers; Flawless drops as Flawed
 
 See [Overload Crystal](materials/overload-crystal.md) for the full details.
 
@@ -64,7 +64,7 @@ There are two ways to trigger lightning transmutation:
 
 <ItemImage id="ae2lt:flawless_budding_overload_crystal" scale="2" float="left" />
 
-**Flawless Budding Overload Crystal** never decays, and is the backbone of any large-scale production line. It can only be produced through the **rich structure** variant with a **natural lightning strike**:
+**Flawless Budding Overload Crystal** does not decay while growing, and is the backbone of any large-scale production line. It can only be produced through the **rich structure** variant with a **natural lightning strike**:
 
 <GameScene zoom="4" background="transparent">
   <ImportStructure src="assets/assemblies/flawless_budding_overload.snbt" />
@@ -86,7 +86,7 @@ Once you have starter materials and basic machines, you can put together the min
 
 1. **Collect**: place a **Lightning Collector** out in the open and connect it to your ME network. When lightning strikes, the collector injects Lightning energy directly into the network
 2. **Store**: put a **Lightning Storage Cell I** into a <ItemLink id="ae2:drive" />; Lightning will appear in the ME terminal alongside items and fluids
-3. **Consume**: the **Lightning Simulation Room** and **Lightning Assembly Chamber** automatically pull Lightning from the ME network while processing
+3. **Consume**: the **Lightning Simulation Room** and **Lightning Assembly Chamber** use Lightning stored in the ME network when completing recipes
 
 Useful supporting devices:
 

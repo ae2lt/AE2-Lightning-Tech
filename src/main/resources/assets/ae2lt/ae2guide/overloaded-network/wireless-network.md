@@ -32,6 +32,7 @@ The **Wireless Overloaded Controller** is an [Overloaded ME Controller](overload
 * Supplies the same extra channels and energy as a regular Overloaded Controller
 * Each controller can only broadcast on **one frequency** at a time
 * A frequency can only be occupied by one transmitter at a time
+* Same-dimension only; each receiver link has a limited channel capacity (**32 channels** in the default AE2 channel mode)
 
 ### Advanced Wireless Overloaded Controller
 
@@ -80,4 +81,5 @@ Unbound controllers and receivers are always accessible regardless of security l
 ## Tips
 
 * Use the Advanced variant when you need to bridge networks across dimensions
+* Use the Advanced variant when one receiver must serve more channels than the ordinary wireless link allows
 * A single controller can serve many receivers — each receiver creates its own virtual connection

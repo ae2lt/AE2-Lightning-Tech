@@ -34,6 +34,8 @@ In Normal Mode, the Overloaded ME Interface behaves like the vanilla interface â
 
 In Wireless Mode, the Overloaded ME Interface can manage input and output for multiple machines remotely. Bind remote machines via the interface's in-game UI; one interface can bind to multiple remote machines.
 
+Wireless links must be in the same dimension and within **128 blocks** by default. The distance limit is configurable; setting it to 0 disables the limit. One interface can store up to **1,024** wireless face connections, and different faces of the same target can be bound separately. Hold **Ctrl** while right-clicking a target to batch-toggle contiguous machines of the same type.
+
 ## Import / Export Modes
 
 | Mode | Description |
