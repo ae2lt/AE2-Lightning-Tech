@@ -16,8 +16,13 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.neoforged.neoforge.common.extensions.IMenuTypeExtension;
 import net.neoforged.neoforge.network.PacketDistributor;
 
+import appeng.menu.locator.ItemMenuHostLocator;
+
 import com.moakiee.ae2lt.api.frequency.FrequencyBindingHost;
 import com.moakiee.ae2lt.blockentity.WirelessOverloadedControllerBlockEntity;
+import com.moakiee.ae2lt.grid.WirelessFrequencyManager;
+import com.moakiee.ae2lt.item.OverloadedFrequencyCardData;
+import com.moakiee.ae2lt.item.TerminalCardAccess;
 import com.moakiee.ae2lt.network.SyncFrequencyDetailPacket;
 import com.moakiee.ae2lt.network.SyncFrequencyListPacket;
 
@@ -38,10 +43,23 @@ public class FrequencyMenu extends AbstractContainerMenu {
     @Nullable
     private final BlockEntity backingBlockEntity;
 
+    /**
+     * Card mode: the menu targets an overloaded frequency card installed in a
+     * wireless terminal's upgrade slot (located via {@link #terminalLocator})
+     * instead of a block entity. The whole frequency screen and the registry /
+     * sync packets are reused; only open + select are routed differently.
+     */
+    private final boolean cardMode;
+    @Nullable
+    private final ItemMenuHostLocator terminalLocator;
+    @Nullable
+    private final ServerPlayer cardPlayer;
+
     private final DataSlot freqIdSlot = DataSlot.standalone();
     private final DataSlot linkActiveSlot = DataSlot.standalone();
     private final DataSlot usedChannelsSlot = DataSlot.standalone();
     private final DataSlot maxChannelsSlot = DataSlot.standalone();
+    private final DataSlot autoConnectSlot = DataSlot.standalone();
 
     // channel counts iterate all grid nodes; throttle to once per 10 server ticks
     private static final int CHANNEL_REFRESH_INTERVAL = 10;
@@ -52,6 +70,9 @@ public class FrequencyMenu extends AbstractContainerMenu {
         super(TYPE, containerId);
         this.blockPos = be.getBlockPos();
         this.backingBlockEntity = be;
+        this.cardMode = false;
+        this.terminalLocator = null;
+        this.cardPlayer = null;
 
         if (be instanceof WirelessOverloadedControllerBlockEntity ctrl) {
             this.isController = true;
@@ -80,11 +101,9 @@ public class FrequencyMenu extends AbstractContainerMenu {
             this.usedChannelsSlot.set(0);
             this.maxChannelsSlot.set(0);
         }
+        this.autoConnectSlot.set(0);
 
-        addDataSlot(freqIdSlot);
-        addDataSlot(linkActiveSlot);
-        addDataSlot(usedChannelsSlot);
-        addDataSlot(maxChannelsSlot);
+        registerDataSlots();
 
         // initial sync to the player who just opened this menu
         if (playerInv.player instanceof ServerPlayer sp) {
@@ -94,8 +113,38 @@ public class FrequencyMenu extends AbstractContainerMenu {
         }
     }
 
+    // server constructor (card mode: targets a frequency card in a terminal upgrade slot)
+    public FrequencyMenu(int containerId, Inventory playerInv, ItemMenuHostLocator terminalLocator) {
+        super(TYPE, containerId);
+        this.blockPos = BlockPos.ZERO;
+        this.backingBlockEntity = null;
+        this.cardMode = true;
+        this.terminalLocator = terminalLocator;
+        this.cardPlayer = playerInv.player instanceof ServerPlayer sp ? sp : null;
+        this.isController = false;
+        this.isAdvanced = false;
+        this.deviceName = "item.ae2lt.overloaded_frequency_card";
+
+        var cardData = readCardData();
+        int freqId = cardData.isBound() ? cardData.frequencyId() : -1;
+        this.freqIdSlot.set(freqId);
+        this.linkActiveSlot.set(readCardLinkActive(freqId));
+        this.usedChannelsSlot.set(0);
+        this.maxChannelsSlot.set(0);
+        this.autoConnectSlot.set(cardData.autoConnect() ? 1 : 0);
+
+        registerDataSlots();
+
+        if (cardPlayer != null) {
+            PacketDistributor.sendToPlayer(cardPlayer, SyncFrequencyListPacket.fromServer());
+            SyncFrequencyDetailPacket.sendInitialMembersIfNeeded(cardPlayer, freqId);
+            SyncFrequencyDetailPacket.sendInitialConnectionsIfNeeded(cardPlayer, freqId);
+        }
+    }
+
     // client constructor (from network)
     private static FrequencyMenu clientCreate(int containerId, Inventory playerInv, FriendlyByteBuf buf) {
+        boolean cardMode = buf.readBoolean();
         BlockPos pos = buf.readBlockPos();
         boolean controller = buf.readBoolean();
         boolean advanced = buf.readBoolean();
@@ -104,29 +153,41 @@ public class FrequencyMenu extends AbstractContainerMenu {
         boolean linkActive = buf.readBoolean();
         int used = buf.readInt();
         int max = buf.readInt();
-        return new FrequencyMenu(containerId, pos, controller, advanced, deviceName, freqId, linkActive, used, max);
+        boolean autoConnect = buf.readBoolean();
+        return new FrequencyMenu(containerId, cardMode, pos, controller, advanced, deviceName,
+                freqId, linkActive, used, max, autoConnect);
     }
 
     // client-side constructor
-    private FrequencyMenu(int containerId, BlockPos pos, boolean isController, boolean isAdvanced, String deviceName,
-                          int freqId, boolean linkActive, int used, int max) {
+    private FrequencyMenu(int containerId, boolean cardMode, BlockPos pos, boolean isController, boolean isAdvanced,
+                          String deviceName, int freqId, boolean linkActive, int used, int max, boolean autoConnect) {
         super(TYPE, containerId);
         this.blockPos = pos;
         this.isController = isController;
         this.isAdvanced = isAdvanced;
         this.deviceName = deviceName;
         this.backingBlockEntity = null;
+        this.cardMode = cardMode;
+        this.terminalLocator = null;
+        this.cardPlayer = null;
         this.freqIdSlot.set(freqId);
         this.linkActiveSlot.set(linkActive ? 1 : 0);
         this.usedChannelsSlot.set(used);
         this.maxChannelsSlot.set(max);
+        this.autoConnectSlot.set(autoConnect ? 1 : 0);
+        registerDataSlots();
+    }
+
+    private void registerDataSlots() {
         addDataSlot(freqIdSlot);
         addDataSlot(linkActiveSlot);
         addDataSlot(usedChannelsSlot);
         addDataSlot(maxChannelsSlot);
+        addDataSlot(autoConnectSlot);
     }
 
     public static void writeExtraData(FriendlyByteBuf buf, BlockEntity be) {
+        buf.writeBoolean(false);
         buf.writeBlockPos(be.getBlockPos());
         if (be instanceof WirelessOverloadedControllerBlockEntity ctrl) {
             buf.writeBoolean(true);
@@ -155,10 +216,55 @@ public class FrequencyMenu extends AbstractContainerMenu {
             buf.writeInt(0);
             buf.writeInt(0);
         }
+        buf.writeBoolean(false);
+    }
+
+    /**
+     * Writes the open-menu payload for card mode. The data is read from the
+     * frequency card currently installed in {@code terminalStack}'s upgrade
+     * inventory.
+     */
+    public static void writeCardExtraData(FriendlyByteBuf buf, ItemStack terminalStack) {
+        var cardData = TerminalCardAccess.readCardData(terminalStack);
+        int freqId = cardData.isBound() ? cardData.frequencyId() : -1;
+        buf.writeBoolean(true);
+        buf.writeBlockPos(BlockPos.ZERO);
+        buf.writeBoolean(false);
+        buf.writeBoolean(false);
+        buf.writeUtf("item.ae2lt.overloaded_frequency_card", 256);
+        buf.writeInt(freqId);
+        buf.writeBoolean(false);
+        buf.writeInt(0);
+        buf.writeInt(0);
+        buf.writeBoolean(cardData.autoConnect());
     }
 
     @Override
     public void broadcastChanges() {
+        if (cardMode) {
+            var cardData = readCardData();
+            int real = cardData.isBound() ? cardData.frequencyId() : -1;
+            if (freqIdSlot.get() != real) {
+                freqIdSlot.set(real);
+                if (cardPlayer != null && cardPlayer.containerMenu == this) {
+                    SyncFrequencyDetailPacket.sendInitialMembersIfNeeded(cardPlayer, real);
+                    SyncFrequencyDetailPacket.sendInitialConnectionsIfNeeded(cardPlayer, real);
+                }
+            }
+            int autoConnect = cardData.autoConnect() ? 1 : 0;
+            if (autoConnectSlot.get() != autoConnect) {
+                autoConnectSlot.set(autoConnect);
+            }
+            if (--channelRefreshCountdown <= 0) {
+                channelRefreshCountdown = CHANNEL_REFRESH_INTERVAL;
+                int active = readCardLinkActive(real);
+                if (linkActiveSlot.get() != active) {
+                    linkActiveSlot.set(active);
+                }
+            }
+            super.broadcastChanges();
+            return;
+        }
         if (backingBlockEntity != null) {
             int real = readFreqIdFromBE();
             if (freqIdSlot.get() != real) {
@@ -237,6 +343,9 @@ public class FrequencyMenu extends AbstractContainerMenu {
 
     @Override
     public boolean stillValid(@Nonnull Player player) {
+        if (cardMode) {
+            return TerminalCardAccess.hasCard(resolveTerminalStack());
+        }
         if (backingBlockEntity != null) {
             if (backingBlockEntity.isRemoved() || backingBlockEntity.getLevel() == null) {
                 return false;
@@ -281,8 +390,42 @@ public class FrequencyMenu extends AbstractContainerMenu {
         return freqIdSlot.get();
     }
 
+    public boolean isCardMode() {
+        return cardMode;
+    }
+
+    public boolean isAutoConnect() {
+        return autoConnectSlot.get() != 0;
+    }
+
     public boolean isLinkActive() {
         return linkActiveSlot.get() != 0;
+    }
+
+    /**
+     * Server-side: resolves the wireless terminal item stack this card menu is
+     * bound to, or {@link ItemStack#EMPTY} when unavailable.
+     */
+    public ItemStack resolveTerminalStack() {
+        if (terminalLocator == null || cardPlayer == null) {
+            return ItemStack.EMPTY;
+        }
+        return terminalLocator.locateItem(cardPlayer);
+    }
+
+    private OverloadedFrequencyCardData readCardData() {
+        return TerminalCardAccess.readCardData(resolveTerminalStack());
+    }
+
+    private int readCardLinkActive(int freqId) {
+        if (freqId <= 0 || cardPlayer == null) {
+            return 0;
+        }
+        var manager = WirelessFrequencyManager.get();
+        if (manager == null) {
+            return 0;
+        }
+        return manager.resolveNode(freqId, cardPlayer.serverLevel().getServer()) != null ? 1 : 0;
     }
 
     public int getUsedChannels() {

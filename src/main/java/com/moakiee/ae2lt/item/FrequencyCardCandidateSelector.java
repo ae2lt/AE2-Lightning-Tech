@@ -34,7 +34,8 @@ public final class FrequencyCardCandidateSelector {
         OFF_HAND(1),
         CURIOS(2),
         HOTBAR(3),
-        BACKPACK(4);
+        BACKPACK(4),
+        WIRELESS_TERMINAL(5);
 
         private final int priority;
 

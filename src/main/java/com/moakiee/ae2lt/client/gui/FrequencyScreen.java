@@ -791,6 +791,24 @@ public class FrequencyScreen extends AbstractContainerScreen<FrequencyMenu> {
         // (shelf y=39..111, chassis bottom y=156). Centring vertically
         // around y=132 keeps it clear of both the shelf bevel above and
         // the chassis bottom bevel below.
+        if (freqMenu().isCardMode()) {
+            // Card mode adds an auto-link toggle alongside disconnect, so the
+            // two share the strip side by side instead of one centred button.
+            boolean auto = freqMenu().isAutoConnect();
+            addRenderableWidget(new AE2Button(
+                    x0 + 8, y0 + 124, 88, 18,
+                    Component.translatable(auto
+                            ? "ae2lt.gui.button.auto_link_on"
+                            : "ae2lt.gui.button.auto_link_off"),
+                    btn -> PacketDistributor.sendToServer(
+                            new ToggleFrequencyCardMenuAutoConnectPacket(token()))));
+            addRenderableWidget(new AE2Button(
+                    x0 + 99, y0 + 124, 88, 18,
+                    Component.translatable("ae2lt.gui.button.disconnect"),
+                    btn -> PacketDistributor.sendToServer(
+                            new SelectFrequencyPacket(token(), freqMenu().getBlockPos(), -1, ""))));
+            return;
+        }
         addRenderableWidget(new AE2Button(
                 x0 + (GUI_WIDTH - 96) / 2, y0 + 124, 96, 18,
                 Component.translatable("ae2lt.gui.button.disconnect"),

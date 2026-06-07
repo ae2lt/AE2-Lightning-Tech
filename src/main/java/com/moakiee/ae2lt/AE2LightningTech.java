@@ -147,6 +147,7 @@ public class AE2LightningTech {
                         output.accept(ModItems.OVERLOAD_SINGULARITY);
                         output.accept(ModItems.ULTIMATE_OVERLOAD_CORE);
                         output.accept(ModItems.LIGHTNING_COLLAPSE_MATRIX);
+                        output.accept(ModItems.FLOATING_MATTER);
                         output.accept(ModItems.UNOVERLOADED_CIRCUIT_BOARD);
                         output.accept(ModItems.OVERLOAD_CIRCUIT_BOARD);
                         output.accept(ModItems.OVERLOAD_PROCESSOR);
@@ -730,6 +731,13 @@ public class AE2LightningTech {
 
             registerAppliedFluxInductionCardCompat();
             registerOverloadTntDispenseBehavior();
+
+            // ae2wtlib: make the overloaded frequency card installable into
+            // wireless terminal upgrade slots. Guarded so the integration class
+            // (which references ae2wtlib API types) is only loaded when present.
+            if (net.neoforged.fml.ModList.get().isLoaded("ae2wtlib")) {
+                com.moakiee.ae2lt.integration.ae2wtlib.Ae2wtlibIntegration.register();
+            }
 
             // Railgun: wireless link handler so AE2 wireless access points can bind it.
             GridLinkables.register(

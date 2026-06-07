@@ -4,6 +4,7 @@ import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.item.DebugLightningRodItem;
 import com.moakiee.ae2lt.item.ElectroChimeCrystalItem;
 import com.moakiee.ae2lt.item.FixedInfiniteCellItem;
+import com.moakiee.ae2lt.item.FloatingMatterItem;
 import com.moakiee.ae2lt.item.InfiniteStorageCellItem;
 import com.moakiee.ae2lt.item.LightningStorageComponentItem;
 import com.moakiee.ae2lt.item.CelestweaveConduitItem;
@@ -88,6 +89,11 @@ public final class ModItems {
 
     public static final DeferredItem<Item> LIGHTNING_COLLAPSE_MATRIX =
             ITEMS.registerSimpleItem("lightning_collapse_matrix", new Item.Properties());
+
+    public static final DeferredItem<FloatingMatterItem> FLOATING_MATTER = ITEMS.registerItem(
+            "floating_matter",
+            FloatingMatterItem::new,
+            new Item.Properties());
 
     public static final DeferredItem<DebugLightningRodItem> DEBUG_LIGHTNING_ROD = ITEMS.registerItem(
             "debug_lightning_rod",

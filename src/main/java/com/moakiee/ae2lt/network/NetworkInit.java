@@ -39,6 +39,14 @@ public final class NetworkInit {
                 OpenFrequencyMenuPacket.TYPE,
                 OpenFrequencyMenuPacket.STREAM_CODEC,
                 OpenFrequencyMenuPacket::handle);
+        registrar.playToServer(
+                OpenFrequencyCardMenuPacket.TYPE,
+                OpenFrequencyCardMenuPacket.STREAM_CODEC,
+                OpenFrequencyCardMenuPacket::handle);
+        registrar.playToServer(
+                ToggleFrequencyCardMenuAutoConnectPacket.TYPE,
+                ToggleFrequencyCardMenuAutoConnectPacket.STREAM_CODEC,
+                ToggleFrequencyCardMenuAutoConnectPacket::handle);
 
         // frequency system: C→S
         registrar.playToServer(

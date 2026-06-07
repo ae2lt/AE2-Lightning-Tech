@@ -42,6 +42,18 @@ public final class AE2LTCommonConfig {
         return VALUES.overloadTntGlobalLightningBudgetPerTick.get();
     }
 
+    public static boolean shulkerBulletCollectionEnabled() {
+        return VALUES.shulkerBulletCollectionEnabled.get();
+    }
+
+    public static double floatingMatterRiseSpeed() {
+        return VALUES.floatingMatterRiseSpeed.get();
+    }
+
+    public static double floatingMatterDespawnHeightMultiplier() {
+        return VALUES.floatingMatterDespawnHeightMultiplier.get();
+    }
+
     public static int overloadedControllerChannelsPerController() {
         return VALUES.overloadedControllerChannelsPerController.get();
     }
@@ -237,6 +249,9 @@ public final class AE2LTCommonConfig {
         private final ModConfigSpec.BooleanValue overloadTntEnableMysteriousCellEasterEgg;
         private final ModConfigSpec.IntValue overloadTntGlobalBlockBudgetPerTick;
         private final ModConfigSpec.IntValue overloadTntGlobalLightningBudgetPerTick;
+        private final ModConfigSpec.BooleanValue shulkerBulletCollectionEnabled;
+        private final ModConfigSpec.DoubleValue floatingMatterRiseSpeed;
+        private final ModConfigSpec.DoubleValue floatingMatterDespawnHeightMultiplier;
         private final ModConfigSpec.IntValue overloadedControllerChannelsPerController;
         private final ModConfigSpec.DoubleValue overloadedControllerPassiveAePerTick;
         private final ModConfigSpec.IntValue wirelessConnectorMaxDistance;
@@ -387,6 +402,20 @@ public final class AE2LTCommonConfig {
             overloadTntGlobalLightningBudgetPerTick = builder
                     .comment("Maximum lightning strikes processed per tick across all overload TNT tasks.")
                     .defineInRange("globalLightningBudgetPerTick", 8, 0, Integer.MAX_VALUE);
+            builder.pop();
+
+            builder.push("floatingMatter");
+            shulkerBulletCollectionEnabled = builder
+                    .comment("Whether a Silk Touch enchanted AE2 Annihilation Plane collects vanilla Shulker bullets",
+                            "that reach it, consuming the bullet and inserting one Floating Matter into the ME network.",
+                            "The bullet does not need to be shot down; reaching the plane is enough.")
+                    .define("shulkerBulletCollection", true);
+            floatingMatterRiseSpeed = builder
+                    .comment("Blocks per tick that a dropped Floating Matter item rises.")
+                    .defineInRange("riseSpeed", 0.08D, 0.001D, 2.0D);
+            floatingMatterDespawnHeightMultiplier = builder
+                    .comment("Floating Matter despawns once it climbs above this multiple of the world max build height.")
+                    .defineInRange("despawnHeightMultiplier", 2.0D, 1.0D, 16.0D);
             builder.pop();
 
             builder.push("network");

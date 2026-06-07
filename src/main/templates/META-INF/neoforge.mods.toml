@@ -38,6 +38,11 @@ description = '''${mod_description}'''
 [[mixins]]
 config = "${mod_id}.mixins.json"
 
+# Optional ae2wtlib integration mixins. The config's plugin disables every
+# mixin in it when ae2wtlib is absent, so this is safe to always declare.
+[[mixins]]
+config = "${mod_id}.ae2wtlib.mixins.json"
+
 # The [[accessTransformers]] block allows you to declare where your AT file is.
 # If this block is omitted, a fallback attempt will be made to load an AT from META-INF/accesstransformer.cfg
 #[[accessTransformers]]
@@ -148,6 +153,13 @@ type = "optional"
 versionRange = "[0,)"
 ordering = "AFTER"
 side = "CLIENT"
+
+[[dependencies."${mod_id}"]]
+modId = "ae2wtlib"
+type = "optional"
+versionRange = "[0,)"
+ordering = "AFTER"
+side = "BOTH"
 
 # Features are specific properties of the game environment, that you may want to declare you require. This example declares
 # that your mod requires GL version 3.2 or higher. Other features will be added. They are side aware so declaring this won't

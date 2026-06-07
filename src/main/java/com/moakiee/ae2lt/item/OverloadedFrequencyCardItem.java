@@ -201,6 +201,18 @@ public class OverloadedFrequencyCardItem extends Item {
             addCandidate(candidates, FrequencyCardCandidateSelector.Source.BACKPACK, stack, playerUuid, requireAutoConnect);
         }
 
+        // Cards installed inside a wireless terminal's upgrade slot only feed the
+        // read-only auto-connect path: their auto-connect flag and frequency are
+        // read, never mutated here (mutations would be lost because the upgrade
+        // inventory returns deserialized snapshots). Configuration of a
+        // terminal-installed card happens through the in-terminal GUI instead.
+        if (requireAutoConnect) {
+            for (var stack : TerminalFrequencyCardFinder.findFrequencyCards(player)) {
+                addCandidate(candidates, FrequencyCardCandidateSelector.Source.WIRELESS_TERMINAL,
+                        stack, playerUuid, requireAutoConnect);
+            }
+        }
+
         return FrequencyCardCandidateSelector.select(candidates);
     }
 

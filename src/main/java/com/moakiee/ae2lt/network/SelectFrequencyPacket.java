@@ -5,8 +5,11 @@ import com.moakiee.ae2lt.blockentity.WirelessOverloadedControllerBlockEntity;
 import com.moakiee.ae2lt.grid.FrequencySecurityLevel;
 import com.moakiee.ae2lt.grid.WirelessFrequency;
 import com.moakiee.ae2lt.grid.WirelessFrequencyManager;
+import com.moakiee.ae2lt.item.OverloadedFrequencyCardData;
+import com.moakiee.ae2lt.item.TerminalCardAccess;
 import com.moakiee.ae2lt.menu.FrequencyMenu;
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
@@ -51,7 +54,19 @@ public record SelectFrequencyPacket(
             if (!(ctx.player() instanceof ServerPlayer player)) return;
 
             FrequencyMenu menu = FrequencyMenu.validateToken(player, pkt.token);
-            if (menu == null || !menu.getBlockPos().equals(pkt.blockPos)) {
+            if (menu == null) {
+                PacketDistributor.sendToPlayer(player, new FrequencyResponsePacket(FrequencyResponsePacket.REJECTED));
+                return;
+            }
+
+            // Card mode: the menu targets a frequency card installed in a
+            // wireless terminal's upgrade slot rather than a block entity.
+            if (menu.isCardMode()) {
+                handleCardSelect(player, menu, pkt.frequencyId, pkt.password);
+                return;
+            }
+
+            if (!menu.getBlockPos().equals(pkt.blockPos)) {
                 PacketDistributor.sendToPlayer(player, new FrequencyResponsePacket(FrequencyResponsePacket.REJECTED));
                 return;
             }
@@ -161,5 +176,76 @@ public record SelectFrequencyPacket(
             }
             // DataSlot handles freqId sync; members may have been updated above
         });
+    }
+
+    /**
+     * Card-mode variant of the block-entity selection flow above: reuses the
+     * same permission / password / auto-enroll gating, but binds (or clears) the
+     * frequency card installed in the player's open terminal instead of a block
+     * entity. The card's bound frequency is then synced back to the screen via
+     * the menu's DataSlot.
+     */
+    private static void handleCardSelect(ServerPlayer player, FrequencyMenu menu, int targetFreqId, String password) {
+        ItemStack terminal = menu.resolveTerminalStack();
+        if (!TerminalCardAccess.hasCard(terminal)) {
+            PacketDistributor.sendToPlayer(player, new FrequencyResponsePacket(FrequencyResponsePacket.REJECTED));
+            return;
+        }
+
+        var manager = WirelessFrequencyManager.get();
+        if (manager == null) return;
+
+        int currentFreqId = TerminalCardAccess.readCardData(terminal).frequencyId();
+        boolean changingBinding = targetFreqId != currentFreqId;
+        if (changingBinding && currentFreqId > 0) {
+            var currentFreq = manager.getFrequency(currentFreqId);
+            if (currentFreq != null && !currentFreq.canPlayerAccess(player, "")) {
+                PacketDistributor.sendToPlayer(player,
+                        new FrequencyResponsePacket(FrequencyResponsePacket.NO_PERMISSION));
+                return;
+            }
+        }
+
+        // disconnect
+        if (targetFreqId <= 0) {
+            TerminalCardAccess.updateCard(terminal, OverloadedFrequencyCardData::clearFrequency);
+            return;
+        }
+
+        WirelessFrequency freq = manager.getFrequency(targetFreqId);
+        if (freq == null) {
+            PacketDistributor.sendToPlayer(player,
+                    new FrequencyResponsePacket(FrequencyResponsePacket.INVALID_FREQUENCY));
+            return;
+        }
+
+        if (!freq.canPlayerAccess(player, password)) {
+            if (freq.getSecurity() == FrequencySecurityLevel.ENCRYPTED
+                    && !freq.getPlayerAccess(player).canUse()
+                    && password.isBlank()) {
+                PacketDistributor.sendToPlayer(player,
+                        new FrequencyResponsePacket(FrequencyResponsePacket.REQUIRE_PASSWORD));
+            } else if (freq.getSecurity() == FrequencySecurityLevel.ENCRYPTED
+                    && !freq.getPlayerAccess(player).canUse()) {
+                PacketDistributor.sendToPlayer(player,
+                        new FrequencyResponsePacket(FrequencyResponsePacket.REJECTED));
+            } else {
+                PacketDistributor.sendToPlayer(player,
+                        new FrequencyResponsePacket(FrequencyResponsePacket.NO_PERMISSION));
+            }
+            return;
+        }
+
+        if (!freq.isMember(player) && freq.enrollAsUser(player)) {
+            manager.markModified();
+            SyncFrequencyDetailPacket.broadcastMembersTo(player.getServer(), targetFreqId);
+        }
+
+        final int boundId = targetFreqId;
+        TerminalCardAccess.updateCard(terminal, data -> data.bindFrequency(
+                boundId,
+                player.level().dimension().location().toString(),
+                player.blockPosition().asLong(),
+                player.getUUID()));
     }
 }
