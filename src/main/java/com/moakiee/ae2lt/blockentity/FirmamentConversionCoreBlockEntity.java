@@ -41,6 +41,8 @@ public class FirmamentConversionCoreBlockEntity extends BlockEntity {
             new FirmamentConversionAutomationInventory(inventory);
     private FirmamentConversionLockedRecipe lockedRecipe;
     private int progress;
+    // Structure membership is fixed for a placed block; cache after first lookup.
+    private Boolean insideStarship;
 
     public FirmamentConversionCoreBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.FIRMAMENT_CONVERSION_CORE.get(), pos, state);
@@ -62,6 +64,10 @@ public class FirmamentConversionCoreBlockEntity extends BlockEntity {
 
     public int getProgress() {
         return progress;
+    }
+
+    public int getProcessTime() {
+        return lockedRecipe != null ? lockedRecipe.processTime() : 0;
     }
 
     public boolean insertHeldItem(Player player, InteractionHand hand) {
@@ -173,6 +179,14 @@ public class FirmamentConversionCoreBlockEntity extends BlockEntity {
     }
 
     private boolean canProcessHere() {
+        if (insideStarship != null) {
+            return insideStarship;
+        }
+        insideStarship = computeInsideStarship();
+        return insideStarship;
+    }
+
+    private boolean computeInsideStarship() {
         if (!(level instanceof ServerLevel serverLevel)) {
             return false;
         }
