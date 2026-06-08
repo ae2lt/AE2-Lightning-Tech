@@ -19,6 +19,8 @@ import com.moakiee.ae2lt.client.ae2wtlib.FrequencyTerminalButton;
 public abstract class AEBaseScreenFrequencyTerminalButtonMixin {
     @Unique
     private boolean ae2lt$frequencyTerminalButtonAdded;
+    @Unique
+    private FrequencyTerminalButton.ToolbarButtons ae2lt$frequencyTerminalButtons;
 
     @Inject(
             method = "init",
@@ -32,8 +34,16 @@ public abstract class AEBaseScreenFrequencyTerminalButtonMixin {
 
         var screen = (AEBaseScreen<?>) (Object) this;
         if (FrequencyTerminalButton.shouldInject(screen)) {
-            FrequencyTerminalButton.addToToolbar(screen);
+            ae2lt$frequencyTerminalButtons = FrequencyTerminalButton.addToToolbar(screen);
             ae2lt$frequencyTerminalButtonAdded = true;
+        }
+    }
+
+    @Inject(method = "updateBeforeRender", at = @At("TAIL"))
+    private void ae2lt$updateFrequencyTerminalButtons(CallbackInfo ci) {
+        var screen = (AEBaseScreen<?>) (Object) this;
+        if (ae2lt$frequencyTerminalButtons != null) {
+            ae2lt$frequencyTerminalButtons.update(screen);
         }
     }
 }

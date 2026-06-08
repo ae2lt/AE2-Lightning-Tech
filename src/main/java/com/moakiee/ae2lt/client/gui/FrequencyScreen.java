@@ -823,8 +823,8 @@ public class FrequencyScreen extends AbstractContainerScreen<FrequencyMenu> {
             addRenderableWidget(new AE2Button(
                     x0 + 8, y0 + 124, 88, 18,
                     Component.translatable(auto
-                            ? "ae2lt.gui.button.auto_link_on"
-                            : "ae2lt.gui.button.auto_link_off"),
+                            ? "ae2lt.gui.button.auto_connect_on"
+                            : "ae2lt.gui.button.auto_connect_off"),
                     btn -> freqMenu().clientToggleAutoConnect()));
             addRenderableWidget(new AE2Button(
                     x0 + 99, y0 + 124, 88, 18,
