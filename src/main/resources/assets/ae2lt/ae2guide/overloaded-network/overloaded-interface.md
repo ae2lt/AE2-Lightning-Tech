@@ -39,7 +39,7 @@ In Wireless Mode, the Overloaded ME Interface can manage input, output, and ener
 
 Use the **Overloaded Wireless Connect Tool** to establish wireless connections:
 
-1. Hold the tool and **Shift + right-click** the Overloaded ME Interface to select it
+1. Hold the tool and **right-click** the Overloaded ME Interface to select it
 2. Right-click a specific face of a target machine to connect
 3. One interface can bind to multiple remote machines
 

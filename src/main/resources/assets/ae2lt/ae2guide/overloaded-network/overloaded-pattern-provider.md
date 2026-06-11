@@ -38,7 +38,7 @@ In Normal Mode, the Overloaded Pattern Provider pushes materials into **physical
 
 In Wireless Mode, the Overloaded Pattern Provider can dispatch materials to remote machines across a distance. Use the **Overloaded Wireless Connect Tool** to establish wireless connections:
 
-1. Hold the Overloaded Wireless Connect Tool and **Shift + right-click** the Overloaded Pattern Provider to select it
+1. Hold the Overloaded Wireless Connect Tool and **right-click** the Overloaded Pattern Provider to select it
 2. Right-click a specific face of a target machine to connect
 3. One provider can bind to multiple remote machines
 
