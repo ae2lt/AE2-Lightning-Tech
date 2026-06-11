@@ -32,6 +32,17 @@ public class InsertOnlyReturnInvWrapper implements GenericInternalInventory {
         this.delegate = delegate;
     }
 
+    /**
+     * Compatibility overload for callers built against the main-branch API
+     * (e.g. the Packaged Pattern Provider addon). The logic parameter is
+     * ignored: under the unified power model, external return inserts are
+     * free and power is charged at the network-injection stage instead.
+     */
+    public InsertOnlyReturnInvWrapper(UnlimitedReturnInventory delegate,
+                                      OverloadedPatternProviderLogic logic) {
+        this(delegate);
+    }
+
     @Override
     public int size() {
         return delegate.size();
