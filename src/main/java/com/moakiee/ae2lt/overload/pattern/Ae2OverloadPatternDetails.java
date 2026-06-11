@@ -6,11 +6,9 @@ import java.util.Objects;
 
 import org.jetbrains.annotations.Nullable;
 
-import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.Level;
 
 import appeng.api.crafting.IPatternDetails;
-import appeng.api.crafting.PatternDetailsTooltip;
 import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.GenericStack;
@@ -75,14 +73,6 @@ public final class Ae2OverloadPatternDetails implements IPatternDetails, Overloa
         }
 
         IPatternDetails.super.pushInputsToExternalInventory(inputHolder, inputSink);
-    }
-
-    @Override
-    public PatternDetailsTooltip getTooltip(Level level, TooltipFlag flags) {
-        var tooltip = sourceDetails.getTooltip(level, flags);
-        tooltip.addProperty(net.minecraft.network.chat.Component.translatable(
-                "tooltip.ae2lt.overload_pattern.provider_only"));
-        return tooltip;
     }
 
     @Override
