@@ -32,6 +32,6 @@
     "count": 1
   },
   "totalEnergy": 8000000,
-  "lightningCost": 16,
+  "lightningCost": 256,
   "lightningTier": "extreme_high_voltage"
 }
