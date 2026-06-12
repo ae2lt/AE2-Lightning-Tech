@@ -1,0 +1,31 @@
+{
+  "type": "ae2lt:lightning_assembly",
+  "priority": 0,
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "ae2lt:ultimate_overload_core"
+      },
+      "count": 2
+    },
+    {
+      "ingredient": {
+        "item": "ae2lt:firmament_alloy_ingot"
+      },
+      "count": 96
+    },
+    {
+      "ingredient": {
+        "item": "ae2lt:overload_alloy_plate"
+      },
+      "count": 48
+    }
+  ],
+  "result": {
+    "id": "ae2lt:electromagnetic_railgun",
+    "count": 1
+  },
+  "totalEnergy": 40000000,
+  "lightningCost": 512,
+  "lightningTier": "extreme_high_voltage"
+}

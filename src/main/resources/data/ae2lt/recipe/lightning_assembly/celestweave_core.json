@@ -1,0 +1,37 @@
+{
+  "type": "ae2lt:lightning_assembly",
+  "priority": 0,
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "ae2lt:firmament_spirit_core_core"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "ae2lt:firmament_alloy_ingot"
+      },
+      "count": 64
+    },
+    {
+      "ingredient": {
+        "item": "ae2lt:firmament_superconducting_wire"
+      },
+      "count": 56
+    },
+    {
+      "ingredient": {
+        "item": "ae2lt:overload_alloy_plate"
+      },
+      "count": 24
+    }
+  ],
+  "result": {
+    "id": "ae2lt:celestweave_core",
+    "count": 1
+  },
+  "totalEnergy": 24000000,
+  "lightningCost": 64,
+  "lightningTier": "extreme_high_voltage"
+}
