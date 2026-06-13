@@ -60,7 +60,9 @@ class MatrixCraftingProfileTest {
 
     @Test
     void detectsMissingAndConflictingCores() {
-        assertFalse(MatrixCraftingProfile.fromUnits(List.of(MatrixCraftingUnit.t2Threader())).isValid());
+        var missing = MatrixCraftingProfile.fromUnits(List.of(MatrixCraftingUnit.t2Threader()));
+        assertFalse(missing.isValid());
+        assertTrue(missing.hasIssue(MatrixProfileIssue.MISSING_CORE));
 
         var conflict = MatrixCraftingProfile.fromUnits(List.of(
                 MatrixCraftingUnit.quantumCore(),
@@ -69,6 +71,27 @@ class MatrixCraftingProfileTest {
         assertEquals(MatrixCoreMode.CONFLICT, conflict.mode());
         assertEquals(2, conflict.coreCount());
         assertFalse(conflict.isValid());
+        assertTrue(conflict.hasIssue(MatrixProfileIssue.CONFLICTING_CORES));
+    }
+
+    @Test
+    void exposesMultiplierLimitAsProfileIssue() {
+        var profile = MatrixCraftingProfile.fromUnits(List.of(
+                MatrixCraftingUnit.quantumCore(),
+                MatrixCraftingUnit.t2Multiplier(),
+                MatrixCraftingUnit.t2Multiplier(),
+                MatrixCraftingUnit.t2Multiplier(),
+                MatrixCraftingUnit.t2Multiplier(),
+                MatrixCraftingUnit.t2Multiplier(),
+                MatrixCraftingUnit.t2Multiplier(),
+                MatrixCraftingUnit.t2Multiplier(),
+                MatrixCraftingUnit.t2Multiplier(),
+                MatrixCraftingUnit.t2Multiplier(),
+                MatrixCraftingUnit.t2Multiplier(),
+                MatrixCraftingUnit.t2Multiplier()));
+
+        assertFalse(profile.isValid());
+        assertTrue(profile.hasIssue(MatrixProfileIssue.MULTIPLIER_LIMIT_EXCEEDED));
     }
 
     @Test

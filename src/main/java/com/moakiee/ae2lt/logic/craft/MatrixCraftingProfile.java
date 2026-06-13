@@ -1,6 +1,7 @@
 package com.moakiee.ae2lt.logic.craft;
 
 import java.util.List;
+import java.util.Set;
 
 public record MatrixCraftingProfile(
         MatrixCoreMode mode,
@@ -75,9 +76,32 @@ public record MatrixCraftingProfile(
     }
 
     public boolean isValid() {
-        return coreCount == 1
-                && (mode == MatrixCoreMode.QUANTUM || mode == MatrixCoreMode.OVERLOAD)
-                && !multiplierLimitExceeded;
+        return issues().isEmpty();
+    }
+
+    public boolean hasIssue(MatrixProfileIssue issue) {
+        return issues().contains(issue);
+    }
+
+    public Set<MatrixProfileIssue> issues() {
+        var issues = java.util.EnumSet.noneOf(MatrixProfileIssue.class);
+        if (coreCount == 0) {
+            issues.add(MatrixProfileIssue.MISSING_CORE);
+        }
+        if (coreCount > 1 || mode == MatrixCoreMode.CONFLICT) {
+            issues.add(MatrixProfileIssue.CONFLICTING_CORES);
+        }
+        if (multiplierLimitExceeded) {
+            issues.add(MatrixProfileIssue.MULTIPLIER_LIMIT_EXCEEDED);
+        }
+        if (mode != MatrixCoreMode.QUANTUM && mode != MatrixCoreMode.OVERLOAD) {
+            if (coreCount == 0) {
+                issues.add(MatrixProfileIssue.MISSING_CORE);
+            } else {
+                issues.add(MatrixProfileIssue.CONFLICTING_CORES);
+            }
+        }
+        return issues.isEmpty() ? Set.of() : Set.copyOf(issues);
     }
 
     public MatrixCraftingMath.Snapshot snapshot(double heat) {

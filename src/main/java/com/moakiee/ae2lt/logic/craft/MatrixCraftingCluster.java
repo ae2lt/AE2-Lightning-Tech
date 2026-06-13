@@ -29,7 +29,9 @@ public final class MatrixCraftingCluster {
     private final MatrixHost host;
     private final CraftingCore engine;
     private double heat;
-    private long lastLimiterTick;
+    private long lastLimiterTick = Long.MIN_VALUE;
+    private int limiterRemaining;
+    private MatrixCraftingMath.Snapshot lastLimiterSnapshot = MatrixCraftingMath.idleSnapshot(0.0D, 0.0D);
 
     public MatrixCraftingCluster(BooleanSupplier formed,
                                  List<? extends MatrixPatternCore> patternCores,
@@ -106,6 +108,7 @@ public final class MatrixCraftingCluster {
         int copies = Math.min(maxCraft, availableCapacity());
         if (copies <= 0) return maxCraft;
         int accepted = engine.pushBatch(details, oneCopyTemplate, copies, MatrixCraftingMath.MATRIX_DELAY_TICKS);
+        limiterRemaining = Math.max(0, limiterRemaining - accepted);
         return maxCraft - accepted;
     }
 
@@ -115,7 +118,8 @@ public final class MatrixCraftingCluster {
 
     public int availableCapacity() {
         if (!formed.getAsBoolean()) return 0;
-        return Math.max(0, totalThreadCapacity() - engine.liveThreads());
+        refreshLimiterBudget();
+        return limiterRemaining;
     }
 
     public int threadsInFlight() {
@@ -135,10 +139,8 @@ public final class MatrixCraftingCluster {
     }
 
     public MatrixCraftingMath.Snapshot tickLimiter() {
-        var snapshot = craftingProfile().snapshot(heat);
-        heat = snapshot.heat();
-        lastLimiterTick = host.getGameTime();
-        return snapshot;
+        refreshLimiterBudget();
+        return lastLimiterSnapshot;
     }
 
     public double heat() {
@@ -147,6 +149,10 @@ public final class MatrixCraftingCluster {
 
     public long lastLimiterTick() {
         return lastLimiterTick;
+    }
+
+    public MatrixCraftingMath.Snapshot lastLimiterSnapshot() {
+        return lastLimiterSnapshot;
     }
 
     public void writeEngineTo(CompoundTag tag, HolderLookup.Provider registries) {
@@ -158,7 +164,9 @@ public final class MatrixCraftingCluster {
     public void readEngineFrom(CompoundTag tag, HolderLookup.Provider registries) {
         engine.readFrom(tag, registries);
         heat = tag.contains(NBT_HEAT, Tag.TAG_DOUBLE) ? tag.getDouble(NBT_HEAT) : 0.0D;
-        lastLimiterTick = tag.contains(NBT_LAST_LIMITER_TICK, Tag.TAG_LONG) ? tag.getLong(NBT_LAST_LIMITER_TICK) : 0L;
+        lastLimiterTick = tag.contains(NBT_LAST_LIMITER_TICK, Tag.TAG_LONG) ? tag.getLong(NBT_LAST_LIMITER_TICK) : Long.MIN_VALUE;
+        limiterRemaining = 0;
+        lastLimiterSnapshot = MatrixCraftingMath.idleSnapshot(heat, 0.0D);
     }
 
     public int totalThreadCapacity() {
@@ -174,6 +182,21 @@ public final class MatrixCraftingCluster {
             }
         }
         return (int) total;
+    }
+
+    private void refreshLimiterBudget() {
+        long now = host.getGameTime();
+        if (lastLimiterTick == now) return;
+
+        lastLimiterSnapshot = craftingProfile().snapshot(heat);
+        heat = lastLimiterSnapshot.heat();
+        limiterRemaining = saturateToInt(lastLimiterSnapshot.operationsPerTick());
+        lastLimiterTick = now;
+    }
+
+    private static int saturateToInt(long value) {
+        if (value <= 0L) return 0;
+        return value >= Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) value;
     }
 
     private final class MatrixHost implements CraftingCoreHost {
