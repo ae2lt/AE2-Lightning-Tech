@@ -78,7 +78,6 @@
   "item.ae2lt.lightning_item_cell_housing": "闪电存储元件外壳",
   "itemGroup.ae2lt": "AE2 闪电科技",
   "item.ae2lt.floating_matter": "漂浮物质",
-  "item.ae2lt.floating_matter.desc": "丢出后会向上漂浮，升至两倍世界高度时消散；可被破坏面板收入 ME 网络",
   "entity.ae2lt.floating_matter": "漂浮物质",
   "item.ae2lt.overload_crystal": "过载水晶",
   "item.ae2lt.overload_crystal_dust": "过载水晶粉",

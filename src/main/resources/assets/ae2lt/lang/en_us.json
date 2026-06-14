@@ -78,7 +78,6 @@
   "item.ae2lt.lightning_cell_component_v": "Lightning Storage Component V",
   "item.ae2lt.lightning_item_cell_housing": "Lightning Item Cell Housing",
   "item.ae2lt.floating_matter": "Floating Matter",
-  "item.ae2lt.floating_matter.desc": "Drifts upward when dropped and vanishes at twice the world height; an Annihilation Plane can capture it into the ME network",
   "entity.ae2lt.floating_matter": "Floating Matter",
   "item.ae2lt.overload_crystal": "Overload Crystal",
   "item.ae2lt.overload_crystal_dust": "Overload Crystal Dust",
