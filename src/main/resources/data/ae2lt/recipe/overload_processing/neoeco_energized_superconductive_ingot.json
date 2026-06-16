@@ -10,13 +10,13 @@
   "inputs": [
     {
       "ingredient": {
-        "tag": "c:gems/energized_fluix_crystal"
+        "tag": "c:dusts/energized_fluix_crystal"
       },
       "count": 4
     },
     {
       "ingredient": {
-        "tag": "c:ingots/aluminum"
+        "tag": "c:dusts/aluminum"
       },
       "count": 4
     },

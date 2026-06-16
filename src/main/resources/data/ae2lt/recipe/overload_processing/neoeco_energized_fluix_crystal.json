@@ -10,7 +10,7 @@
   "inputs": [
     {
       "ingredient": {
-        "tag": "c:gems/energized_crystal"
+        "tag": "c:dusts/energized_crystal"
       },
       "count": 64
     },

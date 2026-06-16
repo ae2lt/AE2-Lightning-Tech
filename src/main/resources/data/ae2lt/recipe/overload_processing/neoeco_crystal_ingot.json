@@ -10,19 +10,19 @@
   "inputs": [
     {
       "ingredient": {
-        "tag": "c:gems/certus_quartz"
+        "tag": "c:dusts/certus_quartz"
       },
       "count": 4
     },
     {
       "ingredient": {
-        "tag": "c:gems/fluix"
+        "tag": "c:dusts/fluix"
       },
       "count": 4
     },
     {
       "ingredient": {
-        "tag": "c:gems/energized_crystal"
+        "tag": "c:dusts/energized_crystal"
       },
       "count": 4
     },
