@@ -1,0 +1,37 @@
+{
+  "type": "ae2lt:lightning_assembly",
+  "priority": 0,
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "ae2lt:overload_module_base"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "ae2lt:overload_singularity"
+      },
+      "count": 64
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:cactus"
+      },
+      "count": 256
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:magma_cream"
+      },
+      "count": 128
+    }
+  ],
+  "result": {
+    "id": "ae2lt:module_reflect",
+    "count": 1
+  },
+  "totalEnergy": 4000000,
+  "lightningCost": 16,
+  "lightningTier": "high_voltage"
+}

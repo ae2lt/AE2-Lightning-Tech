@@ -1,0 +1,31 @@
+{
+  "type": "ae2lt:lightning_assembly",
+  "priority": 0,
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "ae2lt:overload_module_base"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:beacon"
+      },
+      "count": 2
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:diamond_block"
+      },
+      "count": 64
+    }
+  ],
+  "result": {
+    "id": "ae2lt:module_dig_affinity",
+    "count": 1
+  },
+  "totalEnergy": 3000000,
+  "lightningCost": 12,
+  "lightningTier": "high_voltage"
+}

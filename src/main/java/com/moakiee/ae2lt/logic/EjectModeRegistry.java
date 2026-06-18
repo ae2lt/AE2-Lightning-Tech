@@ -231,7 +231,10 @@ public final class EjectModeRegistry {
             BlockPos hostPos) {
         var ref = e.getHost();
         if (ref == host) return true;
-        if (ref == null && hostDim != null) {
+        // Match by position as well: only one BE can exist per position, so any
+        // entry registered there belongs to this host (possibly a stale instance
+        // from before a chunk reload that has not been GC'd yet).
+        if (hostDim != null) {
             return e.hostDim().equals(hostDim)
                     && e.hostPos().equals(hostPos);
         }

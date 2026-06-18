@@ -1,0 +1,39 @@
+{
+  "type": "ae2lt:overload_processing",
+  "priority": 0,
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "ae2lt:overload_crystal_dust"
+      },
+      "count": 1024
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:string"
+      },
+      "count": 128
+    },
+    {
+      "ingredient": {
+        "item": "ae2lt:firmament_essence"
+      },
+      "count": 2
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:phantom_membrane"
+      },
+      "count": 4
+    }
+  ],
+  "results": [
+    {
+      "id": "ae2lt:firmament_superconducting_wire",
+      "count": 1
+    }
+  ],
+  "totalEnergy": 100000,
+  "lightningCost": 1,
+  "lightningTier": "high_voltage"
+}

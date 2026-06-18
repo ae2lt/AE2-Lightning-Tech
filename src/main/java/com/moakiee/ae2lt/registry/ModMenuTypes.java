@@ -8,11 +8,13 @@ import com.moakiee.ae2lt.menu.LightningCollectorMenu;
 import com.moakiee.ae2lt.menu.LightningSimulationChamberMenu;
 import com.moakiee.ae2lt.menu.OverloadPatternEncoderMenu;
 import com.moakiee.ae2lt.menu.OverloadProcessingFactoryMenu;
+import com.moakiee.ae2lt.menu.OverloadDeviceWorkbenchMenu;
 import com.moakiee.ae2lt.menu.OverloadedInterfaceMenu;
 import com.moakiee.ae2lt.menu.OverloadedPatternProviderMenu;
 import com.moakiee.ae2lt.menu.OverloadedPowerSupplyMenu;
 import com.moakiee.ae2lt.menu.TeslaCoilMenu;
 import com.moakiee.ae2lt.menu.FrequencyMenu;
+import com.moakiee.ae2lt.menu.hub.DeviceHubMenu;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.inventory.MenuType;
 import net.neoforged.neoforge.registries.DeferredHolder;
@@ -83,6 +85,16 @@ public final class ModMenuTypes {
             CRYSTAL_CATALYZER = MENU_TYPES.register(
                     "crystal_catalyzer",
                     () -> CrystalCatalyzerMenu.TYPE);
+
+    public static final DeferredHolder<MenuType<?>, MenuType<DeviceHubMenu>>
+            DEVICE_HUB = MENU_TYPES.register(
+                    "device_hub",
+                    () -> DeviceHubMenu.TYPE);
+
+    public static final DeferredHolder<MenuType<?>, MenuType<OverloadDeviceWorkbenchMenu>>
+            OVERLOAD_DEVICE_WORKBENCH = MENU_TYPES.register(
+                    "overload_device_workbench",
+                    () -> OverloadDeviceWorkbenchMenu.TYPE);
 
     private ModMenuTypes() {
     }

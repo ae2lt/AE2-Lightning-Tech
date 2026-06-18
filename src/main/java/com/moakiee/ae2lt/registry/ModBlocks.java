@@ -4,12 +4,14 @@ import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.block.AtmosphericIonizerBlock;
 import com.moakiee.ae2lt.block.BuddingOverloadCrystalBlock;
 import com.moakiee.ae2lt.block.CrystalCatalyzerBlock;
+import com.moakiee.ae2lt.block.FirmamentConversionCoreBlock;
 import com.moakiee.ae2lt.block.LightningAssemblyChamberBlock;
 import com.moakiee.ae2lt.block.LightningCollectorBlock;
 import com.moakiee.ae2lt.block.LightningSimulationChamberBlock;
 import com.moakiee.ae2lt.block.OverloadProcessingFactoryBlock;
 import com.moakiee.ae2lt.block.OverloadTntBlock;
 import com.moakiee.ae2lt.block.OverloadCrystalClusterBlock;
+import com.moakiee.ae2lt.block.OverloadDeviceWorkbenchBlock;
 import com.moakiee.ae2lt.block.OverloadedControllerBlock;
 import com.moakiee.ae2lt.block.OverloadedInterfaceBlock;
 import com.moakiee.ae2lt.block.OverloadedPatternProviderBlock;
@@ -27,6 +29,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.material.MapColor;
+import net.minecraft.world.level.material.PushReaction;
 import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.registries.DeferredBlock;
 import net.neoforged.neoforge.registries.DeferredRegister;
@@ -71,6 +74,14 @@ public final class ModBlocks {
             .forceSolidOn()
             .requiresCorrectToolForDrops();
 
+    private static final BlockBehaviour.Properties FIRMAMENT_CONVERSION_CORE_PROPERTIES = BlockBehaviour.Properties.of()
+            .mapColor(MapColor.COLOR_CYAN)
+            .strength(-1.0F, 3600000.0F)
+            .sound(SoundType.METAL)
+            .forceSolidOn()
+            .pushReaction(PushReaction.BLOCK)
+            .noLootTable();
+
     public static final DeferredBlock<Block> OVERLOAD_CRYSTAL_BLOCK =
             registerBlock("overload_crystal_block", () -> new Block(OVERLOAD_CRYSTAL_BLOCK_PROPERTIES));
 
@@ -79,6 +90,11 @@ public final class ModBlocks {
 
     public static final DeferredBlock<Block> OVERLOAD_MACHINE_FRAME =
             registerBlock("overload_machine_frame", () -> new Block(OVERLOAD_MACHINE_FRAME_PROPERTIES));
+
+    public static final DeferredBlock<FirmamentConversionCoreBlock> FIRMAMENT_CONVERSION_CORE =
+            registerBlock(
+                    "firmament_conversion_core",
+                    () -> new FirmamentConversionCoreBlock(FIRMAMENT_CONVERSION_CORE_PROPERTIES));
 
     public static final DeferredBlock<OverloadTntBlock> OVERLOAD_TNT =
             registerBlock("overload_tnt", () -> new OverloadTntBlock(BlockBehaviour.Properties.ofFullCopy(net.minecraft.world.level.block.Blocks.TNT)));
@@ -164,6 +180,9 @@ public final class ModBlocks {
 
     public static final DeferredBlock<AdvancedWirelessOverloadedControllerBlock> ADVANCED_WIRELESS_OVERLOADED_CONTROLLER =
             registerBlock("advanced_wireless_overloaded_controller", AdvancedWirelessOverloadedControllerBlock::new);
+
+    public static final DeferredBlock<OverloadDeviceWorkbenchBlock> OVERLOAD_DEVICE_WORKBENCH =
+            registerBlock("overload_device_workbench", OverloadDeviceWorkbenchBlock::new);
 
     private ModBlocks() {
     }

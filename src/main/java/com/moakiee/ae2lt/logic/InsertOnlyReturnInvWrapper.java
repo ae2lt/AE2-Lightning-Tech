@@ -18,16 +18,29 @@ import appeng.api.stacks.GenericStack;
  * <p>
  * The real inventory data (for GUI, {@code injectIntoNetwork}, {@code addDrops})
  * is accessed directly through {@code logic.getReturnInv()}, bypassing this wrapper.
+ * <p>
+ * EJECT pricing: inserts here are free — the machine pushes the items itself,
+ * and the network-injection stage (1 AE/op) is charged by AE2's powered insert
+ * when the return inventory drains into the grid. Active auto-return pays an
+ * additional 1 AE/op extraction fee, making eject the cheaper of the two.
  */
 public class InsertOnlyReturnInvWrapper implements GenericInternalInventory {
 
     private final UnlimitedReturnInventory delegate;
-    private final OverloadedPatternProviderLogic logic;
 
+    public InsertOnlyReturnInvWrapper(UnlimitedReturnInventory delegate) {
+        this.delegate = delegate;
+    }
+
+    /**
+     * Compatibility overload for callers built against the main-branch API
+     * (e.g. the Packaged Pattern Provider addon). The logic parameter is
+     * ignored: under the unified power model, external return inserts are
+     * free and power is charged at the network-injection stage instead.
+     */
     public InsertOnlyReturnInvWrapper(UnlimitedReturnInventory delegate,
                                       OverloadedPatternProviderLogic logic) {
-        this.delegate = delegate;
-        this.logic = logic;
+        this(delegate);
     }
 
     @Override
@@ -83,13 +96,7 @@ public class InsertOnlyReturnInvWrapper implements GenericInternalInventory {
     @Override
     public long insert(int slot, AEKey what, long amount, Actionable mode) {
         if (what == null || amount <= 0) return 0;
-        long affordable = logic.maxAffordableExternalReturn(what, amount);
-        if (affordable <= 0) return 0;
-        long inserted = delegate.insert(slot, what, affordable, mode);
-        if (inserted > 0 && mode == Actionable.MODULATE) {
-            logic.consumeExternalReturnPower(what, inserted);
-        }
-        return inserted;
+        return delegate.insert(slot, what, amount, mode);
     }
 
     @Override

@@ -631,15 +631,13 @@ public class OverloadedPatternProviderBlockEntity extends PatternProviderBlockEn
     @Override
     public void setRemoved() {
         frequencyBinding.setRemoved();
-        if (!unloadingChunk) {
+        if (!unloadingChunk && level instanceof net.minecraft.server.level.ServerLevel sl) {
             var removed = com.moakiee.ae2lt.logic.EjectModeRegistry.unregisterAll(this, true);
-            if (level instanceof net.minecraft.server.level.ServerLevel sl) {
-                var server = sl.getServer();
-                for (var dp : removed) {
-                    var targetLevel = server.getLevel(dp.dimension());
-                    if (targetLevel != null) {
-                        targetLevel.invalidateCapabilities(dp.pos());
-                    }
+            var server = sl.getServer();
+            for (var dp : removed) {
+                var targetLevel = server.getLevel(dp.dimension());
+                if (targetLevel != null) {
+                    targetLevel.invalidateCapabilities(dp.pos());
                 }
             }
         }

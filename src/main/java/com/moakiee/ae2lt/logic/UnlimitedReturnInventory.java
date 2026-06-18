@@ -10,8 +10,10 @@ import appeng.api.storage.AEKeySlotFilter;
 import appeng.helpers.patternprovider.PatternProviderReturnInventory;
 
 /**
- * 18-slot return inventory with unlimited per-type capacity and automatic
- * same-type merging. Replaces the vanilla 9-slot return inventory.
+ * Return inventory with unlimited per-type capacity and automatic
+ * same-type merging. Slot count defaults to AE2's
+ * {@code PatternProviderReturnInventory.NUMBER_OF_SLOTS} unless the sized
+ * factory overload is used.
  * <p>
  * Insert-only: extraction is blocked to prevent players from using it
  * as storage. Items leave via {@link #injectIntoNetwork} (AE2 doWork)

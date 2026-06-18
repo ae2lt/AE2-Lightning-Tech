@@ -5,6 +5,7 @@
   "compatibilityLevel": "JAVA_21",
   "mixins": [
     "ServerLevelMixin",
+    "AnnihilationPlaneFirmamentDustMixin",
     "PatternProviderLogicAccessor",
     "PatternProviderLogicMixin",
     "CraftingCpuLogicAccessor",
@@ -19,18 +20,26 @@
     "GridConnectionMaxChannelsMixin",
     "GridGetMachineNodesMixin",
     "PathingCalculationCapMixin",
+    "LivingEntityUndyingMixin",
+    "LivingEntityShieldHitFeedbackMixin",
+    "ServerPlayerUndyingMixin",
+    "PlayerPhaseFlightMixin",
     "ControllerValidatorMixin",
     "EjectCapabilityMixin",
-    "EjectGhostBEMixin"
+    "EjectGhostBEMixin",
+    "AnnihilationPlaneShulkerMixin"
   ],
   "client": [
     "client.CableBusRenderStateMixin",
     "client.CableBusContainerRenderMixin",
     "client.CableBusBakedModelMixin",
     "client.PatternProviderScreenAccessor",
+    "client.RailgunHumanoidModelMixin",
     "client.AEBaseScreenAccessor",
     "client.VerticalButtonBarAccessor",
-    "client.AEBaseScreenFrequencyTerminalButtonMixin"
+    "client.AEBaseScreenFrequencyTerminalButtonMixin",
+    "client.ClientPacketListenerShieldHitFeedbackMixin",
+    "client.LocalPlayerShieldHitFeedbackMixin"
   ],
   "injectors": {
     "defaultRequire": 1

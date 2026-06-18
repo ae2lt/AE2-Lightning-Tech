@@ -1,0 +1,31 @@
+{
+  "type": "ae2lt:lightning_assembly",
+  "priority": 0,
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "ae2lt:overload_module_base"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:glowstone_dust"
+      },
+      "count": 128
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:golden_carrot"
+      },
+      "count": 32
+    }
+  ],
+  "result": {
+    "id": "ae2lt:module_night_vision",
+    "count": 1
+  },
+  "totalEnergy": 1000000,
+  "lightningCost": 4,
+  "lightningTier": "high_voltage"
+}

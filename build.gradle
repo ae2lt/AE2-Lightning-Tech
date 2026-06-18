@@ -14,14 +14,10 @@ repositories {
     maven {
         url = "https://modmaven.dev/"
         content {
-            includeGroup "de.mari_023"
             includeGroup "dev.technici4n"
             includeGroup "mekanism"
+            includeGroup "de.mari_023"
         }
-    }
-    maven {
-        name = "Curios"
-        url = "https://maven.theillusivec4.top/"
     }
     maven {
         url = "https://raw.githubusercontent.com/Fuzss/modresources/main/maven/"
@@ -35,6 +31,13 @@ repositories {
             includeGroup "curse.maven"
         }
     }
+    maven {
+        name = "Curios"
+        url = uri("https://maven.theillusivec4.top/")
+        content {
+            includeGroup "top.theillusivec4.curios"
+        }
+    }
 }
 
 base {
@@ -42,6 +45,10 @@ base {
 }
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
 
 neoForge {
     // Specify the version of NeoForge to use.
@@ -150,13 +157,10 @@ neoForge {
 sourceSets.main.resources { srcDir 'src/generated/resources' }
 
 dependencies {
+    testImplementation platform('org.junit:junit-bom:5.10.2')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+
     implementation "curse.maven:applied-energistics-2-223794:7027323"
-    implementation "de.mari_023:ae2wtlib_api:${ae2wtlib_version}"
-    compileOnly "top.theillusivec4.curios:curios-neoforge:${curios_version}:api"
-    runtimeOnly "top.theillusivec4.curios:curios-neoforge:${curios_version}"
-    runtimeOnly("de.mari_023:ae2wtlib:${ae2wtlib_version}") {
-        transitive = false
-    }
     runtimeOnly "org.appliedenergistics:guideme:${guideme_version}"
     compileOnly "curse.maven:jei-238222:7391682"
     runtimeOnly "curse.maven:jei-238222:7391682"
@@ -190,6 +194,14 @@ dependencies {
     runtimeOnly "curse.maven:toms-storage-378609:7659872"
     runtimeOnly "curse.maven:kubejs-238086:7278501"
     runtimeOnly "curse.maven:rhino-416294:7104526"
+    compileOnly "top.theillusivec4.curios:curios-neoforge:9.5.1+1.21.1:api"
+    runtimeOnly "top.theillusivec4.curios:curios-neoforge:9.5.1+1.21.1"
+
+    // AE2 Wireless Terminal Library (ae2wtlib) — optional integration.
+    // Compile against the API only; the full mod is pulled at runtime so the
+    // frequency card can be installed into wireless terminals when present.
+    compileOnly "de.mari_023:ae2wtlib_api:19.5.0"
+    runtimeOnly "de.mari_023:ae2wtlib:19.5.0"
 
     runtimeOnly files("libs/observable-5.4.4.jar")
     runtimeOnly "curse.maven:kotlin-for-forge-351264:7471280"

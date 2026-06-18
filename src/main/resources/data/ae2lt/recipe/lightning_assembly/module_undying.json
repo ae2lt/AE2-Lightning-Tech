@@ -1,0 +1,31 @@
+{
+  "type": "ae2lt:lightning_assembly",
+  "priority": 0,
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "ae2lt:overload_module_base"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "ae2lt:lightning_collapse_matrix"
+      },
+      "count": 64
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:totem_of_undying"
+      },
+      "count": 1024
+    }
+  ],
+  "result": {
+    "id": "ae2lt:module_undying",
+    "count": 1
+  },
+  "totalEnergy": 16000000,
+  "lightningCost": 64,
+  "lightningTier": "extreme_high_voltage"
+}

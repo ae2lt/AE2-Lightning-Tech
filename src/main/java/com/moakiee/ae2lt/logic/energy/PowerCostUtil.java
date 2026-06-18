@@ -72,10 +72,23 @@ public final class PowerCostUtil {
      * consuming the power via {@link #consume} after the transfer succeeds.
      */
     public static long maxAffordable(@Nullable IGrid grid, AEKey key, long requested) {
+        return maxAffordable(grid, key, requested, 1.0);
+    }
+
+    /**
+     * Like {@link #maxAffordable(IGrid, AEKey, long)} but with a per-operation
+     * cost multiplier. Used by transfer paths that bill multiple logical
+     * stages in a single code step (e.g. active auto-return = extraction
+     * 1 AE + network injection 1 AE → multiplier 2).
+     */
+    public static long maxAffordable(@Nullable IGrid grid, AEKey key, long requested, double costMultiplier) {
         if (grid == null || key == null || requested <= 0) {
             return 0;
         }
-        double need = cost(key, requested);
+        if (costMultiplier <= 0.0) {
+            return requested;
+        }
+        double need = cost(key, requested) * costMultiplier;
         if (need <= 0.0) {
             return requested;
         }
@@ -87,7 +100,7 @@ public final class PowerCostUtil {
         if (usable + 1.0e-6 >= need) {
             return requested;
         }
-        long affordableOps = (long) Math.floor(usable / AE_PER_OPERATION);
+        long affordableOps = (long) Math.floor(usable / (AE_PER_OPERATION * costMultiplier));
         if (affordableOps <= 0) {
             return 0;
         }
@@ -111,10 +124,15 @@ public final class PowerCostUtil {
      * to have at least this much power.
      */
     public static void consume(@Nullable IGrid grid, AEKey key, long amount) {
-        if (grid == null || key == null || amount <= 0) {
+        consume(grid, key, amount, 1.0);
+    }
+
+    /** Multiplier variant of {@link #consume(IGrid, AEKey, long)} — see {@link #maxAffordable(IGrid, AEKey, long, double)}. */
+    public static void consume(@Nullable IGrid grid, AEKey key, long amount, double costMultiplier) {
+        if (grid == null || key == null || amount <= 0 || costMultiplier <= 0.0) {
             return;
         }
-        double need = cost(key, amount);
+        double need = cost(key, amount) * costMultiplier;
         if (need <= 0.0) {
             return;
         }

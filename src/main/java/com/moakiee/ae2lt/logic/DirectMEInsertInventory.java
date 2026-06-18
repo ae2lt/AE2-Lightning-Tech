@@ -12,6 +12,8 @@ import appeng.api.stacks.AEKey;
 import appeng.api.stacks.AEKeyType;
 import appeng.api.stacks.GenericStack;
 
+import com.moakiee.ae2lt.logic.energy.PowerCostUtil;
+
 /**
  * A virtual inventory that inserts items directly into the ME network.
  * Extraction is blocked — output is handled separately via config-based proxy.
@@ -87,7 +89,16 @@ public class DirectMEInsertInventory implements GenericInternalInventory {
         if (filter != null && !filter.test(what)) return 0;
         var grid = mainNode.getGrid();
         if (grid == null) return 0;
-        return grid.getStorageService().getInventory().insert(what, amount, mode, actionSource);
+        // EJECT pricing: the machine pushes items itself, so only the
+        // network-injection stage (1 AE/op) is charged here. Active import
+        // additionally pays 1 AE/op at extraction (2 AE/op total).
+        long affordable = PowerCostUtil.maxAffordable(grid, what, amount);
+        if (affordable <= 0) return 0;
+        long inserted = grid.getStorageService().getInventory().insert(what, affordable, mode, actionSource);
+        if (inserted > 0 && mode == Actionable.MODULATE) {
+            PowerCostUtil.consume(grid, what, inserted);
+        }
+        return inserted;
     }
 
     @Override

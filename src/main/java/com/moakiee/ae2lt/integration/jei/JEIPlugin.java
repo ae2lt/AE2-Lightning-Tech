@@ -10,6 +10,7 @@ import com.moakiee.ae2lt.client.LightningSimulationChamberScreen;
 import com.moakiee.ae2lt.client.OverloadProcessingFactoryScreen;
 import com.moakiee.ae2lt.client.TeslaCoilScreen;
 import com.moakiee.ae2lt.integration.jei.category.CrystalCatalyzerCategory;
+import com.moakiee.ae2lt.integration.jei.category.FirmamentConversionCategory;
 import com.moakiee.ae2lt.integration.jei.category.LightningAssemblyCategory;
 import com.moakiee.ae2lt.integration.jei.category.LightningSimulationCategory;
 import com.moakiee.ae2lt.integration.jei.category.LightningStrikeCategory;
@@ -73,7 +74,8 @@ public class JEIPlugin implements IModPlugin {
                 new LightningStrikeCategory(guiHelper),
                 new OverloadProcessingCategory(guiHelper),
                 new TeslaCoilCategory(guiHelper),
-                new CrystalCatalyzerCategory(guiHelper));
+                new CrystalCatalyzerCategory(guiHelper),
+                new FirmamentConversionCategory(guiHelper));
     }
 
     @Override
@@ -129,6 +131,13 @@ public class JEIPlugin implements IModPlugin {
                         .stream()
                         .map(RecipeHolder::value)
                         .toList());
+        registration.addRecipes(
+                FirmamentConversionCategory.TYPE,
+                level.getRecipeManager()
+                        .getAllRecipesFor(com.moakiee.ae2lt.registry.ModRecipeTypes.FIRMAMENT_CONVERSION_TYPE.get())
+                        .stream()
+                        .map(RecipeHolder::value)
+                        .toList());
     }
 
     @Override
@@ -138,6 +147,7 @@ public class JEIPlugin implements IModPlugin {
         registration.addRecipeCatalyst(ModBlocks.OVERLOAD_PROCESSING_FACTORY.toStack(), OverloadProcessingCategory.TYPE);
         registration.addRecipeCatalyst(ModBlocks.TESLA_COIL.toStack(), TeslaCoilCategory.TYPE);
         registration.addRecipeCatalyst(ModBlocks.CRYSTAL_CATALYZER.toStack(), CrystalCatalyzerCategory.TYPE);
+        registration.addRecipeCatalyst(ModBlocks.FIRMAMENT_CONVERSION_CORE.toStack(), FirmamentConversionCategory.TYPE);
     }
 
     @Override

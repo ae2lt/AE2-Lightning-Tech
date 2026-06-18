@@ -4,6 +4,7 @@ import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.lightning.LightningTransformRecipe;
 import com.moakiee.ae2lt.lightning.strike.LightningStrikeRecipe;
 import com.moakiee.ae2lt.machine.crystalcatalyzer.recipe.CrystalCatalyzerRecipe;
+import com.moakiee.ae2lt.machine.firmament.recipe.FirmamentConversionRecipe;
 import com.moakiee.ae2lt.machine.lightningassembly.recipe.LightningAssemblyRecipe;
 import com.moakiee.ae2lt.machine.lightningchamber.recipe.LightningSimulationRecipe;
 import com.moakiee.ae2lt.machine.overloadfactory.recipe.OverloadProcessingRecipe;
@@ -30,6 +31,17 @@ public final class ModRecipeTypes {
                     () -> RecipeType.simple(ResourceLocation.fromNamespaceAndPath(
                             AE2LightningTech.MODID,
                             "lightning_transform")));
+
+    public static final DeferredHolder<RecipeSerializer<?>, RecipeSerializer<FirmamentConversionRecipe>>
+            FIRMAMENT_CONVERSION_SERIALIZER =
+                    RECIPE_SERIALIZERS.register("firmament_conversion", FirmamentConversionRecipe.Serializer::new);
+
+    public static final DeferredHolder<RecipeType<?>, RecipeType<FirmamentConversionRecipe>> FIRMAMENT_CONVERSION_TYPE =
+            RECIPE_TYPES.register(
+                    "firmament_conversion",
+                    () -> RecipeType.simple(ResourceLocation.fromNamespaceAndPath(
+                            AE2LightningTech.MODID,
+                            "firmament_conversion")));
 
     public static final DeferredHolder<RecipeSerializer<?>, RecipeSerializer<LightningSimulationRecipe>>
             LIGHTNING_SIMULATION_SERIALIZER =

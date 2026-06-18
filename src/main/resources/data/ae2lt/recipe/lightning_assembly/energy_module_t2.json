@@ -1,0 +1,31 @@
+{
+  "type": "ae2lt:lightning_assembly",
+  "priority": 0,
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "ae2lt:overload_module_base"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "ae2lt:energy_module_t1"
+      },
+      "count": 4
+    },
+    {
+      "ingredient": {
+        "item": "ae2lt:overload_processor"
+      },
+      "count": 256
+    }
+  ],
+  "result": {
+    "id": "ae2lt:energy_module_t2",
+    "count": 1
+  },
+  "totalEnergy": 5000000,
+  "lightningCost": 20,
+  "lightningTier": "high_voltage"
+}

@@ -1715,6 +1715,7 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         }
         importBufferLastFlushTick = now;
 
+        var grid = getMainNode().getGrid();
         var typeProgressed = new IdentityHashMap<AEKeyType, Boolean>();
         var typeFullyRejected = new IdentityHashMap<AEKeyType, Boolean>();
         boolean changed = false;
@@ -1730,7 +1731,17 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
                 continue;
             }
 
-            long inserted = me.insert(key, amount, Actionable.MODULATE, src);
+            // Network-injection stage of active import: 1 AE/op on top of the
+            // 1 AE/op already paid at extraction (active pull = 2 AE/op total,
+            // eject = injection only = 1 AE/op).
+            long affordable = PowerCostUtil.maxAffordable(grid, key, amount);
+            long inserted = 0;
+            if (affordable > 0) {
+                inserted = me.insert(key, affordable, Actionable.MODULATE, src);
+                if (inserted > 0) {
+                    PowerCostUtil.consume(grid, key, inserted);
+                }
+            }
             var type = key.getType();
             if (inserted >= amount) {
                 it.remove();
@@ -1873,11 +1884,14 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
     // ══════════════════════════════════════════════════════════════════════
 
     public void refreshEjectRegistrations() {
+        // Server-only static registry — never touch it from the client thread
+        // (integrated server shares the statics).
+        if (level != null && level.isClientSide()) return;
         unregisterEject();
         if (!OverloadedInterfaceTickDecider.shouldRegisterEjectPorts(
                 interfaceMode == InterfaceMode.WIRELESS,
                 importMode == ImportMode.EJECT)
-                || level==null || level.isClientSide()) return;
+                || level==null) return;
         var srv = level.getServer(); if (srv==null) return;
         for (var c : connections) {
             if (!c.dimension().equals(level.dimension())) continue;
@@ -1898,7 +1912,7 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
     }
 
     private void unregisterEject() {
-        if (level==null) return;
+        if (level==null || level.isClientSide()) return;
         var removed = EjectModeRegistry.unregisterAll(this, true);
         if (level instanceof ServerLevel sl) {
             var srv = sl.getServer();
@@ -2156,15 +2170,8 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
                     tag, TAG_IO_SPEED_MODE, IOSpeedMode.class, this.ioSpeedMode);
             this.exportMode = com.moakiee.ae2lt.logic.MemoryCardConfigSupport.readEnum(
                     tag, TAG_EXPORT_MODE, ExportMode.class, this.exportMode);
-            var newImportMode = com.moakiee.ae2lt.logic.MemoryCardConfigSupport.readEnum(
+            this.importMode = com.moakiee.ae2lt.logic.MemoryCardConfigSupport.readEnum(
                     tag, TAG_IMPORT_MODE, ImportMode.class, this.importMode);
-            if (newImportMode != this.importMode) {
-                var old = this.importMode;
-                this.importMode = newImportMode;
-                if ((old == ImportMode.EJECT) != (newImportMode == ImportMode.EJECT)) {
-                    refreshEjectRegistrations();
-                }
-            }
             if (tag.contains(TAG_ENERGY_DIR)) {
                 this.energyOutputDir = com.moakiee.ae2lt.logic.MemoryCardConfigSupport.readDirection(tag, TAG_ENERGY_DIR);
             }
@@ -2175,7 +2182,11 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
                 }
             }
             FrequencyBindingHelper.importMemoryFrequency(tag, this::setFrequency);
+            invalidateExportConfigCache();
             invalidateConnectionCache();
+            // Eject ports depend on both interfaceMode and importMode — refresh
+            // unconditionally so stale registrations never survive a paste.
+            refreshEjectRegistrations();
             recomputeIdlePower();
             saveChanges();
             markForUpdate();

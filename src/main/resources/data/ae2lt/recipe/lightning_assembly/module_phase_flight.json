@@ -1,0 +1,37 @@
+{
+  "type": "ae2lt:lightning_assembly",
+  "priority": 0,
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "ae2lt:overload_module_base"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "ae2lt:module_creative_flight"
+      },
+      "count": 2
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:end_crystal"
+      },
+      "count": 1024
+    },
+    {
+      "ingredient": {
+        "item": "ae2lt:floating_matter"
+      },
+      "count": 32
+    }
+  ],
+  "result": {
+    "id": "ae2lt:module_phase_flight",
+    "count": 1
+  },
+  "totalEnergy": 12000000,
+  "lightningCost": 48,
+  "lightningTier": "high_voltage"
+}

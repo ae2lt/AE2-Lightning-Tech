@@ -1,0 +1,37 @@
+{
+  "type": "ae2lt:lightning_assembly",
+  "priority": 0,
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "ae2lt:overload_module_base"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:heart_of_the_sea"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:pufferfish"
+      },
+      "count": 64
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:sponge"
+      },
+      "count": 64
+    }
+  ],
+  "result": {
+    "id": "ae2lt:module_water_breathing",
+    "count": 1
+  },
+  "totalEnergy": 2000000,
+  "lightningCost": 8,
+  "lightningTier": "high_voltage"
+}
