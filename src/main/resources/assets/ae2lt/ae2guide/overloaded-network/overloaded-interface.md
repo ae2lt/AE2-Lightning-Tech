@@ -69,4 +69,5 @@ The Overloaded ME Interface accepts an **Overloaded Filter Component** to restri
 
 * A single interface can manage I/O for many machines wirelessly, replacing a lot of pipework
 * Combined with unlimited-mode slots, it can keep a remote machine continuously supplied with a specific material
+* With energy transfer, dedicated power lines are no longer required
 * Enable the Fast probe tier to reduce processing response latency

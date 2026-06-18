@@ -37,6 +37,8 @@ In Wireless Mode, the Overloaded Pattern Provider can dispatch materials to remo
 
 Wireless links must be in the same dimension and within **128 blocks** by default. The distance limit is configurable; setting it to 0 disables the limit. One provider can store up to **1,024** wireless connections. Hold **Ctrl** while right-clicking a target to batch-toggle contiguous machines of the same type.
 
+Wireless links must be in the same dimension and within **128 blocks** by default. The distance limit is configurable; setting it to 0 disables the limit. One provider can store up to **1,024** wireless connections. Hold **Ctrl** while right-clicking a target to batch-toggle contiguous machines of the same type.
+
 Once connections are in place, the provider dispatches materials to the remote machines according to the selected distribution strategy.
 
 ### Distribution Strategies
