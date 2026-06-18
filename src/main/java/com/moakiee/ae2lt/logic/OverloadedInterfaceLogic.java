@@ -311,7 +311,8 @@ public class OverloadedInterfaceLogic extends InterfaceLogic {
     public static class ProxiedStorageInv extends OverloadedConfigInv {
         private final OverloadedInterfaceLogic logic;
         private boolean proxying = false;
-        private final KeyCounter availableStacksCache = new KeyCounter();
+        /** Rebuilt instead of reset: KeyCounter.reset() keeps zeroed keys. */
+        private KeyCounter availableStacksCache = new KeyCounter();
         private long availableStacksCacheTick = Long.MIN_VALUE;
 
         ProxiedStorageInv(OverloadedInterfaceLogic logic,
@@ -557,7 +558,7 @@ public class OverloadedInterfaceLogic extends InterfaceLogic {
             }
             proxying = true;
             try {
-                availableStacksCache.reset();
+                var fresh = new KeyCounter();
                 var cache = grid.getStorageService().getCachedInventory();
                 boolean fuzzy = logic.ourUpgrades.isInstalled(AEItems.FUZZY_CARD);
                 var fuzzyMode = fuzzy ? logic.getConfigManager().getSetting(Settings.FUZZY_MODE) : null;
@@ -567,7 +568,7 @@ public class OverloadedInterfaceLogic extends InterfaceLogic {
 
                     long cap = capForSlot(slot);
                     long configuredAmount = visibleNetworkAmount(key, cap);
-                    if (configuredAmount > 0) availableStacksCache.add(key, configuredAmount);
+                    if (configuredAmount > 0) fresh.add(key, configuredAmount);
 
                     if (fuzzy && key.supportsFuzzyRangeSearch()) {
                         for (var entry : cache.findFuzzy(key, fuzzyMode)) {
@@ -575,12 +576,13 @@ public class OverloadedInterfaceLogic extends InterfaceLogic {
                             long amount = cap == Long.MAX_VALUE
                                     ? entry.getLongValue()
                                     : Math.min(cap, entry.getLongValue());
-                            if (amount > 0) availableStacksCache.add(entry.getKey(), amount);
+                            if (amount > 0) fresh.add(entry.getKey(), amount);
                         }
                     }
                 }
+                availableStacksCache = fresh;
                 availableStacksCacheTick = now;
-                for (var entry : availableStacksCache) {
+                for (var entry : fresh) {
                     out.add(entry.getKey(), entry.getLongValue());
                 }
             } finally {
