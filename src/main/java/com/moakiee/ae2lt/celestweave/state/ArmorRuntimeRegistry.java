@@ -7,8 +7,8 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class ArmorRuntimeRegistry {
-    private static final java.util.Map<String, Boolean> SERVER_SUBMODULE_ACTIVE =
-            new ConcurrentHashMap<>();
+    // Only active==true entries are stored; absence means inactive. This keeps the maps from
+    // accumulating stale false entries for unequipped/idle armor (no per-stack removal hook).
     private static final java.util.Map<String, Boolean> CLIENT_SUBMODULE_ACTIVE =
             new ConcurrentHashMap<>();
     private static final java.util.Map<String, Boolean> SUBMODULE_RUNTIME_ACTIVE =
@@ -17,16 +17,13 @@ public final class ArmorRuntimeRegistry {
     private ArmorRuntimeRegistry() {
     }
 
-    public static Boolean setServerSubmoduleActive(UUID armorId, String submoduleId, boolean active) {
-        return armorId == null ? null : SERVER_SUBMODULE_ACTIVE.put(cacheKey(armorId, submoduleId), active);
-    }
-
-    public static boolean isServerSubmoduleActive(UUID armorId, String submoduleId) {
-        return armorId != null && SERVER_SUBMODULE_ACTIVE.getOrDefault(cacheKey(armorId, submoduleId), false);
-    }
-
+    // Returns the previous value (null when absent, i.e. was inactive).
     public static Boolean setClientSubmoduleActive(UUID armorId, String submoduleId, boolean active) {
-        return armorId == null ? null : CLIENT_SUBMODULE_ACTIVE.put(cacheKey(armorId, submoduleId), active);
+        if (armorId == null) {
+            return null;
+        }
+        String key = cacheKey(armorId, submoduleId);
+        return active ? CLIENT_SUBMODULE_ACTIVE.put(key, Boolean.TRUE) : CLIENT_SUBMODULE_ACTIVE.remove(key);
     }
 
     public static boolean isClientSubmoduleActive(UUID armorId, String submoduleId) {
@@ -56,8 +53,8 @@ public final class ArmorRuntimeRegistry {
             return;
         }
         activeStates.forEach((submoduleId, active) -> {
-            if (submoduleId != null && !submoduleId.isBlank()) {
-                CLIENT_SUBMODULE_ACTIVE.put(cacheKey(armorId, submoduleId), Boolean.TRUE.equals(active));
+            if (submoduleId != null && !submoduleId.isBlank() && Boolean.TRUE.equals(active)) {
+                CLIENT_SUBMODULE_ACTIVE.put(cacheKey(armorId, submoduleId), Boolean.TRUE);
             }
         });
     }
@@ -66,11 +63,13 @@ public final class ArmorRuntimeRegistry {
         CLIENT_SUBMODULE_ACTIVE.clear();
     }
 
-    public static void setSubmoduleRuntimeActive(UUID armorId, String submoduleId, boolean active) {
+    // Returns the previous value (null when absent, i.e. was inactive).
+    public static Boolean setSubmoduleRuntimeActive(UUID armorId, String submoduleId, boolean active) {
         if (armorId == null) {
-            return;
+            return null;
         }
-        SUBMODULE_RUNTIME_ACTIVE.put(cacheKey(armorId, submoduleId), active);
+        String key = cacheKey(armorId, submoduleId);
+        return active ? SUBMODULE_RUNTIME_ACTIVE.put(key, Boolean.TRUE) : SUBMODULE_RUNTIME_ACTIVE.remove(key);
     }
 
     public static boolean isSubmoduleRuntimeActive(UUID armorId, String submoduleId) {
@@ -97,7 +96,6 @@ public final class ArmorRuntimeRegistry {
         }
         String key = cacheKey(armorId, submoduleId);
         SUBMODULE_RUNTIME_ACTIVE.remove(key);
-        SERVER_SUBMODULE_ACTIVE.remove(key);
         CLIENT_SUBMODULE_ACTIVE.remove(key);
     }
 
@@ -106,7 +104,6 @@ public final class ArmorRuntimeRegistry {
             return;
         }
         String prefix = armorId + "#";
-        SERVER_SUBMODULE_ACTIVE.keySet().removeIf(key -> key.startsWith(prefix));
         CLIENT_SUBMODULE_ACTIVE.keySet().removeIf(key -> key.startsWith(prefix));
         SUBMODULE_RUNTIME_ACTIVE.keySet().removeIf(key -> key.startsWith(prefix));
     }

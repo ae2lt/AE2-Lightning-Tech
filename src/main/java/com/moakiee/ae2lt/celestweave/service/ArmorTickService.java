@@ -22,7 +22,7 @@ public final class ArmorTickService {
         var installedSubmodules = CelestweaveArmorState.collectInstalledSubmoduleEntries(armor, registries);
         CelestweaveArmorState.syncSubmoduleActiveState(player, armor, installedSubmodules, equipped, dist);
         if (!equipped) {
-            CelestweaveArmorState.clearTransientRuntime(armor);
+            // sync(equipped=false) above already drops this armor's active entries from the runtime maps.
             return;
         }
 

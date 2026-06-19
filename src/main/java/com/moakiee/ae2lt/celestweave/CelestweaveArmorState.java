@@ -376,11 +376,16 @@ public final class CelestweaveArmorState {
         for (var entry : installedSubmodules) {
             var submodule = entry.submodule();
             boolean active = hasCore && isSubmoduleEnabled(armor, submodule);
-            Boolean previous = dist == Dist.CLIENT
-                    ? ArmorRuntimeRegistry.setClientSubmoduleActive(armorId, submodule.id(), active)
-                    : ArmorRuntimeRegistry.setServerSubmoduleActive(armorId, submodule.id(), active);
-            setSubmoduleRuntimeActive(armor, submodule.id(), active);
-            boolean changed = previous == null || previous != active;
+            Boolean previous;
+            if (dist == Dist.CLIENT) {
+                previous = ArmorRuntimeRegistry.setClientSubmoduleActive(armorId, submodule.id(), active);
+                // Runtime cache is read side-agnostically (isActive), so keep it in sync on the client too.
+                setSubmoduleRuntimeActive(armor, submodule.id(), active);
+            } else {
+                previous = setSubmoduleRuntimeActive(armor, submodule.id(), active);
+            }
+            // Stored maps hold only active entries, so absent (null) means previously inactive.
+            boolean changed = (previous != null && previous) != active;
             boolean predictiveMovement = PhaseFlightSubmodule.INSTANCE.id().equals(submodule.id());
             if (dist == Dist.DEDICATED_SERVER
                     && player instanceof ServerPlayer serverPlayer
@@ -476,19 +481,12 @@ public final class CelestweaveArmorState {
                 capacity);
     }
 
-    public static boolean isSubmodulePowered(ItemStack armor) {
-        return true;
-    }
-
     public static long readPersistedStoredEnergy(ItemStack armor) {
         return ArmorEnergyBuffer.read(armor);
     }
 
     public static long addStoredEnergy(ItemStack armor, HolderLookup.Provider registries, long amount) {
         return ArmorEnergyBuffer.receiveFe(armor, registries, (int) Math.min(Integer.MAX_VALUE, amount), false);
-    }
-
-    public static void flushRuntimeToNbt(ItemStack armor) {
     }
 
     public static void markClientActive(UUID armorId, String submoduleId, boolean active) {
@@ -542,13 +540,6 @@ public final class CelestweaveArmorState {
                         armorId,
                         activeStates,
                         buildClientFlightInertiaSnapshot(armor, activeStates)));
-    }
-
-    public static void clearTransientRuntime(ItemStack armor) {
-        UUID armorId = getArmorId(armor);
-        if (armorId == null) {
-            return;
-        }
     }
 
     public static void clearTransientRuntimeAndCaches(ItemStack armor) {
@@ -654,9 +645,9 @@ public final class CelestweaveArmorState {
                 : FlightSubmodule.isInertiaEnabled(armor);
     }
 
-    private static void setSubmoduleRuntimeActive(ItemStack armor, String submoduleId, boolean active) {
+    private static Boolean setSubmoduleRuntimeActive(ItemStack armor, String submoduleId, boolean active) {
         UUID id = ensureArmorId(armor);
-        ArmorRuntimeRegistry.setSubmoduleRuntimeActive(id, submoduleId, active);
+        return ArmorRuntimeRegistry.setSubmoduleRuntimeActive(id, submoduleId, active);
     }
 
     private static CompoundTag getStoredSubmoduleData(ItemStack armor, String submoduleId) {
