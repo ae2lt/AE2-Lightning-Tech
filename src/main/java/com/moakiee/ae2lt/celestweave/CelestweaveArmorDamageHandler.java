@@ -18,7 +18,6 @@ import net.neoforged.neoforge.network.PacketDistributor;
 import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.config.AE2LTCommonConfig;
 import com.moakiee.ae2lt.device.capability.DeviceCapability;
-import com.moakiee.ae2lt.celestweave.module.PhaseFlightSubmodule;
 import com.moakiee.ae2lt.celestweave.module.ResistanceSubmodule;
 import com.moakiee.ae2lt.celestweave.service.ArmorCapabilityCollector;
 import com.moakiee.ae2lt.celestweave.service.ArmorCapabilityCollector.ActiveCapability;
@@ -47,10 +46,6 @@ public final class CelestweaveArmorDamageHandler {
     @SubscribeEvent(priority = EventPriority.HIGH)
     public static void onPre(LivingDamageEvent.Pre event) {
         if (!(event.getEntity() instanceof Player player) || player.level().isClientSide()) return;
-        if (isPhaseFlightWallDamage(player, event.getSource())) {
-            event.setNewDamage(0.0F);
-            return;
-        }
         float incoming = event.getNewDamage();
         float originalIncoming = event.getOriginalDamage();
         var capabilities = ArmorCapabilityCollector.collectPerInstalledUnit(player);
@@ -71,10 +66,6 @@ public final class CelestweaveArmorDamageHandler {
         if (!isReflectingDamage()) {
             reflectIncomingDamage(player, event.getSource(), originalIncoming);
         }
-    }
-
-    private static boolean isPhaseFlightWallDamage(Player player, DamageSource source) {
-        return source.is(DamageTypes.IN_WALL) && PhaseFlightSubmodule.hasTransientPhaseState(player);
     }
 
     private static ActiveCapability collectMitigation(java.util.List<ActiveCapability> capabilities) {
