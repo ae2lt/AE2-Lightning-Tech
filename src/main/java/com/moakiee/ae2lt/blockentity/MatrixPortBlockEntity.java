@@ -44,7 +44,6 @@ import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.KeyCounter;
 import appeng.api.util.AECableType;
 import appeng.blockentity.grid.AENetworkedBlockEntity;
-import appeng.core.definitions.AEBlocks;
 import appeng.helpers.patternprovider.PatternContainer;
 import appeng.me.helpers.MachineSource;
 
@@ -178,7 +177,7 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
     @Override
     public PatternContainerGroup getTerminalGroup() {
         return new PatternContainerGroup(
-                AEItemKey.of(AEBlocks.MOLECULAR_ASSEMBLER),
+                AEItemKey.of(ModBlocks.MATTER_WARPING_MATRIX_PORT.get()),
                 ModBlocks.MATTER_WARPING_MATRIX_PORT.get().getName(),
                 List.of(Component.translatable(
                         "ae2lt.matrix.terminal.tooltip",
