@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "ae2lt:item/matter_warping_matrix_pattern_storage_upgrade"
+  }
+}

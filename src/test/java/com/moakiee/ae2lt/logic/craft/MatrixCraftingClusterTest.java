@@ -69,7 +69,7 @@ class MatrixCraftingClusterTest {
         var host = new FakeHost();
         var assembler = new FakeAssembler();
         var cluster = cluster(host, List.of(new FakeCraftCore(
-                MatrixCraftingUnit.quantumCore(),
+                MatrixCraftingUnit.stableCore(),
                 MatrixCraftingUnit.threadPower(160),
                 MatrixCraftingUnit.multiplierPower(20))), assembler);
 

@@ -7,6 +7,10 @@ import com.moakiee.ae2lt.block.CrystalCatalyzerBlock;
 import com.moakiee.ae2lt.block.LightningAssemblyChamberBlock;
 import com.moakiee.ae2lt.block.LightningCollectorBlock;
 import com.moakiee.ae2lt.block.LightningSimulationChamberBlock;
+import com.moakiee.ae2lt.block.MatrixControllerBlock;
+import com.moakiee.ae2lt.block.MatrixMultiblockSimpleBlock;
+import com.moakiee.ae2lt.block.MatrixPatternStorageBlock;
+import com.moakiee.ae2lt.block.MatrixPortBlock;
 import com.moakiee.ae2lt.block.OverloadProcessingFactoryBlock;
 import com.moakiee.ae2lt.block.OverloadTntBlock;
 import com.moakiee.ae2lt.block.OverloadCrystalClusterBlock;
@@ -20,6 +24,7 @@ import com.moakiee.ae2lt.block.AdvancedWirelessOverloadedControllerBlock;
 import com.moakiee.ae2lt.block.WirelessOverloadedControllerBlock;
 import com.moakiee.ae2lt.block.WirelessReceiverBlock;
 import com.moakiee.ae2lt.blockentity.OverloadedPatternProviderBlockEntity;
+import com.moakiee.ae2lt.logic.craft.MatrixMultiblockComponent;
 import java.util.function.Supplier;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
@@ -69,6 +74,20 @@ public final class ModBlocks {
             .strength(5.0F, 6.0F)
             .sound(SoundType.METAL)
             .forceSolidOn()
+            .requiresCorrectToolForDrops();
+
+    private static final BlockBehaviour.Properties MATRIX_MACHINE_PROPERTIES = BlockBehaviour.Properties.of()
+            .mapColor(MapColor.METAL)
+            .strength(5.0F, 6.0F)
+            .sound(SoundType.METAL)
+            .forceSolidOn()
+            .requiresCorrectToolForDrops();
+
+    private static final BlockBehaviour.Properties MATRIX_GLASS_PROPERTIES = BlockBehaviour.Properties.of()
+            .mapColor(MapColor.COLOR_CYAN)
+            .strength(3.0F, 6.0F)
+            .sound(SoundType.GLASS)
+            .noOcclusion()
             .requiresCorrectToolForDrops();
 
     public static final DeferredBlock<Block> OVERLOAD_CRYSTAL_BLOCK =
@@ -163,6 +182,72 @@ public final class ModBlocks {
 
     public static final DeferredBlock<TestBatchCraftingCoreBlock> TEST_BATCH_CRAFTING_CORE =
             registerBlock("test_batch_crafting_core", TestBatchCraftingCoreBlock::new);
+
+    public static final DeferredBlock<MatrixMultiblockSimpleBlock> MATTER_WARPING_MATRIX_CASING =
+            registerBlock("matter_warping_matrix_casing", () -> new MatrixMultiblockSimpleBlock(
+                    MATRIX_MACHINE_PROPERTIES, MatrixMultiblockComponent.MATRIX_CASING));
+
+    public static final DeferredBlock<MatrixMultiblockSimpleBlock> MATTER_WARPING_MATRIX_CONSTRAINT_FRAME =
+            registerBlock("matter_warping_matrix_constraint_frame", () -> new MatrixMultiblockSimpleBlock(
+                    MATRIX_MACHINE_PROPERTIES, MatrixMultiblockComponent.MATRIX_CONSTRAINT_FRAME));
+
+    public static final DeferredBlock<MatrixMultiblockSimpleBlock> MATTER_WARPING_MATRIX_GLASS =
+            registerBlock("matter_warping_matrix_glass", () -> new MatrixMultiblockSimpleBlock(
+                    MATRIX_GLASS_PROPERTIES, MatrixMultiblockComponent.MATRIX_GLASS));
+
+    public static final DeferredBlock<MatrixControllerBlock> MATTER_WARPING_MATRIX_CONTROLLER =
+            registerBlock("matter_warping_matrix_controller", () -> new MatrixControllerBlock(MATRIX_MACHINE_PROPERTIES));
+
+    public static final DeferredBlock<MatrixPortBlock> MATTER_WARPING_MATRIX_PORT =
+            registerBlock("matter_warping_matrix_port", () -> new MatrixPortBlock(MATRIX_MACHINE_PROPERTIES));
+
+    public static final DeferredBlock<MatrixMultiblockSimpleBlock> MATTER_WARPING_MATRIX_STABLE_MAIN_CORE =
+            registerBlock("matter_warping_matrix_stable_main_core", () -> new MatrixMultiblockSimpleBlock(
+                    MATRIX_MACHINE_PROPERTIES, MatrixMultiblockComponent.STABLE_MAIN_CORE));
+
+    public static final DeferredBlock<MatrixMultiblockSimpleBlock> MATTER_WARPING_MATRIX_QUANTUM_MAIN_CORE =
+            registerBlock("matter_warping_matrix_quantum_main_core", () -> new MatrixMultiblockSimpleBlock(
+                    MATRIX_MACHINE_PROPERTIES, MatrixMultiblockComponent.QUANTUM_MAIN_CORE));
+
+    public static final DeferredBlock<MatrixMultiblockSimpleBlock> MATTER_WARPING_MATRIX_OVERLOAD_MAIN_CORE =
+            registerBlock("matter_warping_matrix_overload_main_core", () -> new MatrixMultiblockSimpleBlock(
+                    MATRIX_MACHINE_PROPERTIES, MatrixMultiblockComponent.OVERLOAD_MAIN_CORE));
+
+    public static final DeferredBlock<MatrixMultiblockSimpleBlock> MATTER_WARPING_MATRIX_BLANK_SUB_CORE =
+            registerBlock("matter_warping_matrix_blank_sub_core", () -> new MatrixMultiblockSimpleBlock(
+                    MATRIX_MACHINE_PROPERTIES, MatrixMultiblockComponent.BLANK_SUB_CORE));
+
+    public static final DeferredBlock<MatrixMultiblockSimpleBlock> MATTER_WARPING_MATRIX_THREAD_SUB_CORE_T1 =
+            registerBlock("matter_warping_matrix_thread_sub_core_t1", () -> new MatrixMultiblockSimpleBlock(
+                    MATRIX_MACHINE_PROPERTIES, MatrixMultiblockComponent.THREAD_SUB_CORE_T1));
+
+    public static final DeferredBlock<MatrixMultiblockSimpleBlock> MATTER_WARPING_MATRIX_THREAD_SUB_CORE_T2 =
+            registerBlock("matter_warping_matrix_thread_sub_core_t2", () -> new MatrixMultiblockSimpleBlock(
+                    MATRIX_MACHINE_PROPERTIES, MatrixMultiblockComponent.THREAD_SUB_CORE_T2));
+
+    public static final DeferredBlock<MatrixMultiblockSimpleBlock> MATTER_WARPING_MATRIX_MULTIPLIER_SUB_CORE_T1 =
+            registerBlock("matter_warping_matrix_multiplier_sub_core_t1", () -> new MatrixMultiblockSimpleBlock(
+                    MATRIX_MACHINE_PROPERTIES, MatrixMultiblockComponent.MULTIPLIER_SUB_CORE_T1));
+
+    public static final DeferredBlock<MatrixMultiblockSimpleBlock> MATTER_WARPING_MATRIX_MULTIPLIER_SUB_CORE_T2 =
+            registerBlock("matter_warping_matrix_multiplier_sub_core_t2", () -> new MatrixMultiblockSimpleBlock(
+                    MATRIX_MACHINE_PROPERTIES, MatrixMultiblockComponent.MULTIPLIER_SUB_CORE_T2));
+
+    public static final DeferredBlock<MatrixMultiblockSimpleBlock> MATTER_WARPING_MATRIX_COOLING_SUB_CORE_T1 =
+            registerBlock("matter_warping_matrix_cooling_sub_core_t1", () -> new MatrixMultiblockSimpleBlock(
+                    MATRIX_MACHINE_PROPERTIES, MatrixMultiblockComponent.COOLING_SUB_CORE_T1));
+
+    public static final DeferredBlock<MatrixMultiblockSimpleBlock> MATTER_WARPING_MATRIX_COOLING_SUB_CORE_T2 =
+            registerBlock("matter_warping_matrix_cooling_sub_core_t2", () -> new MatrixMultiblockSimpleBlock(
+                    MATRIX_MACHINE_PROPERTIES, MatrixMultiblockComponent.COOLING_SUB_CORE_T2));
+
+    public static final DeferredBlock<MatrixPatternStorageBlock> MATTER_WARPING_MATRIX_PATTERN_STORAGE_T1 =
+            registerBlock("matter_warping_matrix_pattern_storage_t1", () -> new MatrixPatternStorageBlock(
+                    MATRIX_MACHINE_PROPERTIES, MatrixMultiblockComponent.PATTERN_STORAGE_T1));
+
+    public static final DeferredBlock<MatrixPatternStorageBlock> MATTER_WARPING_MATRIX_PATTERN_STORAGE_T2 =
+            registerBlock("matter_warping_matrix_pattern_storage_t2", () -> new MatrixPatternStorageBlock(
+                    MATRIX_MACHINE_PROPERTIES, MatrixMultiblockComponent.PATTERN_STORAGE_T2));
 
     private ModBlocks() {
     }

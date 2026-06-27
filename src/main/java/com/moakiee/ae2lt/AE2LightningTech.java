@@ -15,6 +15,7 @@ import com.moakiee.ae2lt.blockentity.AtmosphericIonizerBlockEntity;
 import com.moakiee.ae2lt.blockentity.CrystalCatalyzerBlockEntity;
 import com.moakiee.ae2lt.blockentity.LightningAssemblyChamberBlockEntity;
 import com.moakiee.ae2lt.blockentity.LightningCollectorBlockEntity;
+import com.moakiee.ae2lt.blockentity.MatrixPortBlockEntity;
 import com.moakiee.ae2lt.blockentity.OverloadedControllerBlockEntity;
 import com.moakiee.ae2lt.blockentity.OverloadedInterfaceBlockEntity;
 import com.moakiee.ae2lt.blockentity.LightningSimulationChamberBlockEntity;
@@ -111,6 +112,23 @@ public class AE2LightningTech {
                         output.accept(ModBlocks.OVERLOADED_PATTERN_PROVIDER);
                         output.accept(ModBlocks.OVERLOADED_INTERFACE);
                         output.accept(ModBlocks.TEST_BATCH_CRAFTING_CORE);
+                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_CASING);
+                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_CONSTRAINT_FRAME);
+                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_GLASS);
+                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_CONTROLLER);
+                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_PORT);
+                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_STABLE_MAIN_CORE);
+                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_QUANTUM_MAIN_CORE);
+                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_OVERLOAD_MAIN_CORE);
+                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_BLANK_SUB_CORE);
+                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_THREAD_SUB_CORE_T1);
+                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_THREAD_SUB_CORE_T2);
+                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_MULTIPLIER_SUB_CORE_T1);
+                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_MULTIPLIER_SUB_CORE_T2);
+                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_COOLING_SUB_CORE_T1);
+                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_COOLING_SUB_CORE_T2);
+                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_PATTERN_STORAGE_T1);
+                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_PATTERN_STORAGE_T2);
                         if (ModBlocks.hasOverloadedPowerSupply()) {
                             output.accept(ModBlocks.OVERLOADED_POWER_SUPPLY);
                         }
@@ -175,6 +193,7 @@ public class AE2LightningTech {
                         output.accept(ModItems.OVERLOAD_PATTERN_ENCODER);
                         output.accept(ModItems.OVERLOADED_WIRELESS_CONNECT_TOOL);
                         output.accept(ModItems.OVERLOADED_FILTER_COMPONENT);
+                        output.accept(ModItems.MATTER_WARPING_MATRIX_PATTERN_STORAGE_UPGRADE);
                         // 水晶生长
                         output.accept(ModBlocks.FLAWLESS_BUDDING_OVERLOAD_CRYSTAL);
                         output.accept(ModBlocks.FLAWED_BUDDING_OVERLOAD_CRYSTAL);
@@ -265,6 +284,11 @@ public class AE2LightningTech {
                 Capabilities.ItemHandler.BLOCK,
                 ModBlockEntities.CRYSTAL_CATALYZER.get(),
                 (blockEntity, side) -> blockEntity.getAutomationInventory());
+
+        event.registerBlockEntity(
+                Capabilities.ItemHandler.BLOCK,
+                ModBlockEntities.MATRIX_PORT.get(),
+                (blockEntity, side) -> blockEntity.getPatternItemHandler());
 
         event.registerBlockEntity(
                 Capabilities.FluidHandler.BLOCK,
@@ -365,6 +389,11 @@ public class AE2LightningTech {
         event.registerBlockEntity(
                 AECapabilities.IN_WORLD_GRID_NODE_HOST,
                 ModBlockEntities.TEST_BATCH_CRAFTING_CORE.get(),
+                (blockEntity, context) -> (IInWorldGridNodeHost) blockEntity);
+
+        event.registerBlockEntity(
+                AECapabilities.IN_WORLD_GRID_NODE_HOST,
+                ModBlockEntities.MATRIX_PORT.get(),
                 (blockEntity, context) -> (IInWorldGridNodeHost) blockEntity);
 
         event.registerBlockEntity(
@@ -561,6 +590,14 @@ public class AE2LightningTech {
                     null,
                     null);
 
+            var matrixPortBlock = ModBlocks.MATTER_WARPING_MATRIX_PORT.get();
+            var matrixPortBeType = ModBlockEntities.MATRIX_PORT.get();
+            matrixPortBlock.setBlockEntity(
+                    MatrixPortBlockEntity.class,
+                    matrixPortBeType,
+                    null,
+                    null);
+
             var interfaceBlock = ModBlocks.OVERLOADED_INTERFACE.get();
             var interfaceBeType = ModBlockEntities.OVERLOADED_INTERFACE.get();
             interfaceBlock.setBlockEntity(
@@ -591,6 +628,9 @@ public class AE2LightningTech {
             appeng.blockentity.AEBaseBlockEntity.registerBlockEntityItem(
                     testBatchCraftingCoreBeType,
                     testBatchCraftingCoreBlock.asItem());
+            appeng.blockentity.AEBaseBlockEntity.registerBlockEntityItem(
+                    matrixPortBeType,
+                    matrixPortBlock.asItem());
             appeng.blockentity.AEBaseBlockEntity.registerBlockEntityItem(
                     interfaceBeType,
                     interfaceBlock.asItem());

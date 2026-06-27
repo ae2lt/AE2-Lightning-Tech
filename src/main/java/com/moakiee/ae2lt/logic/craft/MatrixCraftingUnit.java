@@ -14,6 +14,10 @@ public record MatrixCraftingUnit(Kind kind, MatrixCoreMode coreMode, int power, 
         return new MatrixCraftingUnit(Kind.CORE, MatrixCoreMode.QUANTUM, 0, 0);
     }
 
+    public static MatrixCraftingUnit stableCore() {
+        return new MatrixCraftingUnit(Kind.CORE, MatrixCoreMode.STABLE, 0, 0);
+    }
+
     public static MatrixCraftingUnit overloadCore() {
         return new MatrixCraftingUnit(Kind.CORE, MatrixCoreMode.OVERLOAD, 0, 0);
     }

@@ -156,6 +156,9 @@ public final class ModItems {
             OverloadedFilterComponentItem::new,
             new Item.Properties().stacksTo(1));
 
+    public static final DeferredItem<Item> MATTER_WARPING_MATRIX_PATTERN_STORAGE_UPGRADE =
+            ITEMS.registerSimpleItem("matter_warping_matrix_pattern_storage_upgrade", new Item.Properties());
+
     public static final DeferredItem<ColoredPartItem<OverloadedCablePart>> OVERLOADED_CABLE =
             registerOverloadedCable("overloaded_cable", AEColor.TRANSPARENT);
     public static final DeferredItem<ColoredPartItem<OverloadedCablePart>> OVERLOADED_CABLE_WHITE =

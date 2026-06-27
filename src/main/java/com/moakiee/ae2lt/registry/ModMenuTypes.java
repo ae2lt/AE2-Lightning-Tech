@@ -6,6 +6,7 @@ import com.moakiee.ae2lt.menu.CrystalCatalyzerMenu;
 import com.moakiee.ae2lt.menu.LightningAssemblyChamberMenu;
 import com.moakiee.ae2lt.menu.LightningCollectorMenu;
 import com.moakiee.ae2lt.menu.LightningSimulationChamberMenu;
+import com.moakiee.ae2lt.menu.MatrixControllerMenu;
 import com.moakiee.ae2lt.menu.OverloadPatternEncoderMenu;
 import com.moakiee.ae2lt.menu.OverloadProcessingFactoryMenu;
 import com.moakiee.ae2lt.menu.OverloadedInterfaceMenu;
@@ -83,6 +84,11 @@ public final class ModMenuTypes {
             CRYSTAL_CATALYZER = MENU_TYPES.register(
                     "crystal_catalyzer",
                     () -> CrystalCatalyzerMenu.TYPE);
+
+    public static final DeferredHolder<MenuType<?>, MenuType<MatrixControllerMenu>>
+            MATRIX_CONTROLLER = MENU_TYPES.register(
+                    "matter_warping_matrix_controller",
+                    () -> MatrixControllerMenu.TYPE);
 
     private ModMenuTypes() {
     }

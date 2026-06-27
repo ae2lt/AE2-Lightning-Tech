@@ -14,8 +14,8 @@ class MatrixCraftingMathTest {
     }
 
     @Test
-    void quantumSnapshotUsesColdFactorAsBatchMultiplier() {
-        var snapshot = MatrixCraftingMath.quantumSnapshot(0, 160, 20, 0);
+    void stableSnapshotUsesColdFactorAsBatchMultiplier() {
+        var snapshot = MatrixCraftingMath.stableSnapshot(0, 160, 20, 0);
 
         assertEquals(384.0D, snapshot.dispatchBase(), 0.0001D);
         assertEquals(12.0D, snapshot.baseBatch(), 0.0001D);

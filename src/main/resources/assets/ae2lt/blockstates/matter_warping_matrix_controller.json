@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "ae2lt:block/matter_warping_matrix_controller"
+    },
+    "facing=east": {
+      "model": "ae2lt:block/matter_warping_matrix_controller",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "ae2lt:block/matter_warping_matrix_controller",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "ae2lt:block/matter_warping_matrix_controller",
+      "y": 270
+    }
+  }
+}

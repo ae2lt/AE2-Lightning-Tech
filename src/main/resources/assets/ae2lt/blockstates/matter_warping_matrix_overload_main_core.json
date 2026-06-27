@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "ae2lt:block/matter_warping_matrix_overload_main_core"
+    }
+  }
+}

@@ -19,6 +19,7 @@ public final class MatrixCraftingMath {
     private static final double COOLING_PER_COOL_UNIT = 0.000025D;
     private static final double QUANTUM_HEAT_GAIN = 0.002D;
     private static final double QUANTUM_COLD_FACTOR_FLOOR = 0.45D;
+    private static final double QUANTUM_BATCH_FACTOR = 64.0D;
     private static final double OVERLOAD_HEAT_GAIN = 0.0094D;
     private static final double OVERLOAD_FACTOR_RANGE = 1250.0D;
 
@@ -74,13 +75,23 @@ public final class MatrixCraftingMath {
                 0.0D);
     }
 
-    public static Snapshot quantumSnapshot(double heat, double threadPower, double multiPower, double coolPower) {
+    public static Snapshot stableSnapshot(double heat, double threadPower, double multiPower, double coolPower) {
         double dispatchBase = dispatchBase(threadPower);
         double baseBatch = baseBatch(multiPower);
         double nextHeat = advanceHeat(heat, dispatchBase * QUANTUM_HEAT_GAIN, coolPower);
         double normalizedHeat = normalizedHeat(nextHeat, coolPower);
         double coldFactor = clamp(1.0D - normalizedHeat, QUANTUM_COLD_FACTOR_FLOOR, 1.0D);
         return snapshot(nextHeat, normalizedHeat, dispatchBase, baseBatch, baseBatch * coldFactor, coldFactor);
+    }
+
+    public static Snapshot quantumSnapshot(double heat, double threadPower, double multiPower, double coolPower) {
+        double dispatchBase = dispatchBase(threadPower);
+        double baseBatch = baseBatch(multiPower);
+        double nextHeat = advanceHeat(heat, dispatchBase * QUANTUM_HEAT_GAIN, coolPower);
+        double normalizedHeat = normalizedHeat(nextHeat, coolPower);
+        double coldFactor = clamp(1.0D - normalizedHeat, QUANTUM_COLD_FACTOR_FLOOR, 1.0D);
+        double quantumFactor = QUANTUM_BATCH_FACTOR * coldFactor;
+        return snapshot(nextHeat, normalizedHeat, dispatchBase, baseBatch, baseBatch * quantumFactor, quantumFactor);
     }
 
     public static Snapshot overloadSnapshot(double heat, double threadPower, double multiPower, double coolPower) {
