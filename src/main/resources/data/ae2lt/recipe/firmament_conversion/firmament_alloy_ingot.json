@@ -1,0 +1,30 @@
+{
+  "type": "ae2lt:firmament_conversion",
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "ae2lt:overload_alloy"
+      },
+      "count": 4
+    },
+    {
+      "ingredient": {
+        "item": "ae2lt:firmament_mixture"
+      },
+      "count": 2
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:netherite_scrap"
+      },
+      "count": 4
+    }
+  ],
+  "results": [
+    {
+      "id": "ae2lt:firmament_alloy_ingot",
+      "count": 1
+    }
+  ],
+  "processTime": 40
+}

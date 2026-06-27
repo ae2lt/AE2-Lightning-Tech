@@ -1,0 +1,43 @@
+{
+  "type": "ae2lt:lightning_assembly",
+  "priority": 0,
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "ae2lt:overload_module_base"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "ae2lt:overload_alloy_plate"
+      },
+      "count": 32
+    },
+    {
+      "ingredient": {
+        "item": "ae2lt:overload_singularity"
+      },
+      "count": 64
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:obsidian"
+      },
+      "count": 128
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:crying_obsidian"
+      },
+      "count": 16
+    }
+  ],
+  "result": {
+    "id": "ae2lt:module_matrix_shield",
+    "count": 1
+  },
+  "totalEnergy": 8000000,
+  "lightningCost": 32,
+  "lightningTier": "high_voltage"
+}

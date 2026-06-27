@@ -1,0 +1,14 @@
+{
+  "structures": [
+    {
+      "structure": "ae2lt:alien_starship",
+      "weight": 1
+    }
+  ],
+  "placement": {
+    "type": "minecraft:random_spread",
+    "spacing": 72,
+    "separation": 24,
+    "salt": 73140629
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "type": "ae2lt:lightning_assembly",
+  "priority": 0,
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "ae2lt:overload_module_base"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "ae2lt:module_matrix_shield"
+      },
+      "count": 2
+    },
+    {
+      "ingredient": {
+        "item": "ae2lt:overload_singularity"
+      },
+      "count": 128
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:amethyst_shard"
+      },
+      "count": 1024
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:shulker_shell"
+      },
+      "count": 1024
+    }
+  ],
+  "result": {
+    "id": "ae2lt:module_phase_shield",
+    "count": 1
+  },
+  "totalEnergy": 16000000,
+  "lightningCost": 64,
+  "lightningTier": "extreme_high_voltage"
+}

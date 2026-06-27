@@ -1,0 +1,37 @@
+{
+  "type": "ae2lt:lightning_assembly",
+  "priority": 0,
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "ae2lt:firmament_spirit_core_oculus"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "ae2lt:firmament_alloy_ingot"
+      },
+      "count": 32
+    },
+    {
+      "ingredient": {
+        "item": "ae2lt:firmament_superconducting_wire"
+      },
+      "count": 24
+    },
+    {
+      "ingredient": {
+        "item": "ae2lt:overload_alloy_plate"
+      },
+      "count": 8
+    }
+  ],
+  "result": {
+    "id": "ae2lt:celestweave_oculus",
+    "count": 1
+  },
+  "totalEnergy": 16000000,
+  "lightningCost": 512,
+  "lightningTier": "extreme_high_voltage"
+}

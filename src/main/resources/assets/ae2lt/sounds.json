@@ -1,0 +1,45 @@
+{
+  "railgun.fire.charged": {
+    "subtitle": "subtitles.ae2lt.railgun.fire.charged",
+    "sounds": [
+      { "name": "ae2lt:railgun/fire", "stream": false }
+    ]
+  },
+  "railgun.fire.max": {
+    "subtitle": "subtitles.ae2lt.railgun.fire.max",
+    "sounds": [
+      { "name": "ae2lt:railgun/fire", "stream": false }
+    ]
+  },
+  "railgun.fire.impact": {
+    "subtitle": "subtitles.ae2lt.railgun.fire.impact",
+    "sounds": [
+      { "name": "minecraft:entity.generic.explode", "type": "event" }
+    ]
+  },
+  "railgun.beam.chain": {
+    "subtitle": "subtitles.ae2lt.railgun.beam.chain",
+    "sounds": [
+      { "name": "minecraft:block.amethyst_block.chime", "type": "event", "volume": 0.75, "pitch": 1.8 },
+      { "name": "minecraft:entity.lightning_bolt.impact", "type": "event", "volume": 0.25, "pitch": 2.0 }
+    ]
+  },
+  "railgun.beam.loop": {
+    "subtitle": "subtitles.ae2lt.railgun.beam.loop",
+    "sounds": [
+      { "name": "ae2lt:railgun/beam_loop", "stream": false }
+    ]
+  },
+  "railgun.charge.loop": {
+    "subtitle": "subtitles.ae2lt.railgun.charge.loop",
+    "sounds": [
+      { "name": "ae2lt:railgun/charge_loop", "stream": false }
+    ]
+  },
+  "railgun.charge.ramp": {
+    "subtitle": "subtitles.ae2lt.railgun.charge.ramp",
+    "sounds": [
+      { "name": "ae2lt:railgun/charge_ramp", "stream": false }
+    ]
+  }
+}

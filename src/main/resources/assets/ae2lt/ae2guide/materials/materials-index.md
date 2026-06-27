@@ -12,6 +12,24 @@ AE2 Lightning Tech introduces a large set of new materials. The pages below cove
 
 <SubPages />
 
+## Firmament Materials
+
+Firmament materials are the End-tier line: starting from Firmament Dust (obtainable only in the End), they are refined through the Firmament Conversion Core and the Overload Processing Factory into the core components of the Celestweave armor set and the Electromagnetic Railgun. See [Firmament Materials](firmament-materials.md).
+
+<ItemGrid>
+  <ItemIcon id="ae2lt:firmament_dust" />
+  <ItemIcon id="ae2lt:firmament_alloy_ingot" />
+  <ItemIcon id="ae2lt:firmament_spirit_core_core" />
+</ItemGrid>
+
+## Floating Matter
+
+Floating Matter is a Shulker-projectile capture material. A Silk Touch <ItemLink id="ae2:annihilation_plane" /> connected to an active ME network can consume Shulker projectiles that reach it and insert <ItemLink id="ae2lt:floating_matter" /> into storage. See [Floating Matter](floating-matter.md).
+
+<ItemGrid>
+  <ItemIcon id="ae2lt:floating_matter" />
+</ItemGrid>
+
 ## Weather Condensate
 
 Weather Condensate items are consumed by the [Atmospheric Ionizer](../machines/atmospheric-ionizer.md) to control the world's weather. They are produced in the Lightning Simulation Room, Lightning Assembly Chamber, or Overload Processing Factory.

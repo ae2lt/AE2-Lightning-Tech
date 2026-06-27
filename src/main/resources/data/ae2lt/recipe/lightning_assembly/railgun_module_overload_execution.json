@@ -1,0 +1,43 @@
+{
+  "type": "ae2lt:lightning_assembly",
+  "priority": 0,
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "ae2lt:overload_module_base"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "ae2lt:lightning_collapse_matrix"
+      },
+      "count": 64
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:nether_star"
+      },
+      "count": 1024
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:dragon_egg"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:heavy_core"
+      },
+      "count": 1
+    }
+  ],
+  "result": {
+    "id": "ae2lt:railgun_module_overload_execution",
+    "count": 1
+  },
+  "totalEnergy": 200000000,
+  "lightningCost": 1024,
+  "lightningTier": "extreme_high_voltage"
+}

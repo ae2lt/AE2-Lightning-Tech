@@ -1,0 +1,30 @@
+{
+  "type": "ae2lt:firmament_conversion",
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "ae2lt:firmament_essence"
+      },
+      "count": 4
+    },
+    {
+      "ingredient": {
+        "item": "ae2lt:firmament_alloy_ingot"
+      },
+      "count": 4
+    },
+    {
+      "ingredient": {
+        "item": "ae2lt:overload_alloy_plate"
+      },
+      "count": 2
+    }
+  ],
+  "results": [
+    {
+      "id": "ae2lt:overload_module_base",
+      "count": 1
+    }
+  ],
+  "processTime": 100
+}
