@@ -13,6 +13,9 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
+import net.minecraft.network.protocol.Packet;
+import net.minecraft.network.protocol.game.ClientGamePacketListener;
+import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.core.NonNullList;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -207,6 +210,20 @@ public class MatrixPatternStorageBlockEntity extends BlockEntity implements Matr
             var stack = ItemStack.parseOptional(registries, itemTag.getCompound(TAG_STACK));
             inventory.setStackInSlotInternal(slot, stack, false);
         }
+    }
+
+    @Override
+    public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
+        var tag = new CompoundTag();
+        if (controllerPos != null) {
+            tag.putLong("ControllerPos", controllerPos.asLong());
+        }
+        return tag;
+    }
+
+    @Override
+    public Packet<ClientGamePacketListener> getUpdatePacket() {
+        return ClientboundBlockEntityDataPacket.create(this);
     }
 
     public final class PatternInventory implements IItemHandlerModifiable {
