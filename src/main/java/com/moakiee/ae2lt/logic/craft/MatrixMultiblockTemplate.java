@@ -36,11 +36,11 @@ public final class MatrixMultiblockTemplate {
             },
             {
                     "SSSSSSS",
-                    "SGGPGGS",
-                    "SGPPPGS",
                     "SPPPPPS",
-                    "SGPPPGS",
-                    "SGGPGGS",
+                    "SPPPPPS",
+                    "SPPPPPS",
+                    "SPPPPPS",
+                    "SPPPPPS",
                     "SSSSSSS"
             },
             {
@@ -90,11 +90,11 @@ public final class MatrixMultiblockTemplate {
             },
             {
                     "SSSSSSS",
-                    "SGGPGGS",
-                    "SGPPPGS",
                     "SPPPPPS",
-                    "SGPPPGS",
-                    "SGGPGGS",
+                    "SPPPPPS",
+                    "SPPPPPS",
+                    "SPPPPPS",
+                    "SPPPPPS",
                     "SSSSSSS"
             },
             {
