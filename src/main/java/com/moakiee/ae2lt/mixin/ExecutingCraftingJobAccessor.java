@@ -1,8 +1,11 @@
 package com.moakiee.ae2lt.mixin;
 
+import java.util.Map;
+
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
 
+import appeng.api.crafting.IPatternDetails;
 import appeng.api.stacks.GenericStack;
 import appeng.crafting.CraftingLink;
 import appeng.crafting.execution.ElapsedTimeTracker;
@@ -27,4 +30,7 @@ public interface ExecutingCraftingJobAccessor {
 
     @Accessor("link")
     CraftingLink getLink();
+
+    @Accessor("tasks")
+    Map<IPatternDetails, ?> getTasks();
 }

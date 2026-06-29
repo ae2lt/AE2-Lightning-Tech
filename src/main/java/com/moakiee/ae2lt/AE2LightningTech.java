@@ -20,6 +20,7 @@ import com.moakiee.ae2lt.blockentity.CrystalCatalyzerBlockEntity;
 import com.moakiee.ae2lt.blockentity.FirmamentConversionCoreBlockEntity;
 import com.moakiee.ae2lt.blockentity.LightningAssemblyChamberBlockEntity;
 import com.moakiee.ae2lt.blockentity.LightningCollectorBlockEntity;
+import com.moakiee.ae2lt.blockentity.MatrixPortBlockEntity;
 import com.moakiee.ae2lt.blockentity.OverloadDeviceWorkbenchBlockEntity;
 import com.moakiee.ae2lt.blockentity.OverloadedControllerBlockEntity;
 import com.moakiee.ae2lt.blockentity.ExtendedOverloadedPatternProviderBlockEntity;
@@ -74,6 +75,7 @@ import com.moakiee.ae2lt.me.cell.InfiniteCellHandler;
 
 import com.moakiee.ae2lt.logic.EjectModeRegistry;
 import com.moakiee.ae2lt.logic.MachineAdapterRegistry;
+import com.moakiee.ae2lt.logic.craft.CraftingCoreRegistry;
 import com.moakiee.ae2lt.logic.railgun.RailgunEnergyBuffer;
 import com.moakiee.ae2lt.logic.research.ResearchNoteGenerator;
 import com.moakiee.ae2lt.logic.research.ResearchNoteModulationHandler;
@@ -89,9 +91,14 @@ import net.neoforged.neoforge.event.tick.ServerTickEvent;
 @Mod(AE2LightningTech.MODID)
 public class AE2LightningTech {
     public static final String MODID = "ae2lt";
+    private static final CraftingCoreRegistry CRAFTING_CORE_REGISTRY = new CraftingCoreRegistry();
 
     public static final DeferredRegister<CreativeModeTab> CREATIVE_MODE_TABS =
             DeferredRegister.create(Registries.CREATIVE_MODE_TAB, MODID);
+
+    public static CraftingCoreRegistry craftingCoreRegistry() {
+        return CRAFTING_CORE_REGISTRY;
+    }
 
     public static final DeferredHolder<CreativeModeTab, CreativeModeTab> MAIN_TAB =
             CREATIVE_MODE_TABS.register("main", () -> CreativeModeTab.builder()
@@ -119,6 +126,23 @@ public class AE2LightningTech {
                         output.accept(ModBlocks.OVERLOADED_PATTERN_PROVIDER);
                         output.accept(ModBlocks.EXTENDED_OVERLOADED_PATTERN_PROVIDER);
                         output.accept(ModBlocks.OVERLOADED_INTERFACE);
+                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_CASING);
+                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_CONSTRAINT_FRAME);
+                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_GLASS);
+                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_CONTROLLER);
+                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_PORT);
+                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_STABLE_MAIN_CORE);
+                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_QUANTUM_MAIN_CORE);
+                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_OVERLOAD_MAIN_CORE);
+                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_BLANK_SUB_CORE);
+                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_THREAD_SUB_CORE_T1);
+                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_THREAD_SUB_CORE_T2);
+                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_MULTIPLIER_SUB_CORE_T1);
+                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_MULTIPLIER_SUB_CORE_T2);
+                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_COOLING_SUB_CORE_T1);
+                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_COOLING_SUB_CORE_T2);
+                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_PATTERN_STORAGE_T1);
+                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_PATTERN_STORAGE_T2);
                         if (ModBlocks.hasOverloadedPowerSupply()) {
                             output.accept(ModBlocks.OVERLOADED_POWER_SUPPLY);
                         }
@@ -196,6 +220,7 @@ public class AE2LightningTech {
                         output.accept(ModItems.OVERLOADED_FREQUENCY_CARD);
                         output.accept(ModItems.OVERLOADED_PATTERN_PROVIDER_UPGRADE);
                         output.accept(ModItems.OVERLOADED_FILTER_COMPONENT);
+                        output.accept(ModItems.MATTER_WARPING_MATRIX_PATTERN_STORAGE_UPGRADE);
                         // 苍穹织雷装备 + 模块
                         output.accept(ModItems.OVERLOAD_MODULE_BASE);
                         output.accept(ModItems.CELESTWEAVE_OCULUS);
@@ -355,6 +380,11 @@ public class AE2LightningTech {
                 ModItems.CELESTWEAVE_STRIDE.get());
 
         event.registerBlockEntity(
+                Capabilities.ItemHandler.BLOCK,
+                ModBlockEntities.MATRIX_PORT.get(),
+                (blockEntity, side) -> blockEntity.getPatternItemHandler());
+
+        event.registerBlockEntity(
                 Capabilities.FluidHandler.BLOCK,
                 ModBlockEntities.OVERLOAD_PROCESSING_FACTORY.get(),
                 (blockEntity, side) -> blockEntity.getFluidHandlerCapability(side));
@@ -458,6 +488,11 @@ public class AE2LightningTech {
         event.registerBlockEntity(
                 AECapabilities.IN_WORLD_GRID_NODE_HOST,
                 ModBlockEntities.EXTENDED_OVERLOADED_PATTERN_PROVIDER.get(),
+                (blockEntity, context) -> (IInWorldGridNodeHost) blockEntity);
+
+        event.registerBlockEntity(
+                AECapabilities.IN_WORLD_GRID_NODE_HOST,
+                ModBlockEntities.MATRIX_PORT.get(),
                 (blockEntity, context) -> (IInWorldGridNodeHost) blockEntity);
 
         event.registerBlockEntity(
@@ -664,6 +699,14 @@ public class AE2LightningTech {
                     ExtendedOverloadedPatternProviderBlockEntity::serverTick
             );
 
+            var matrixPortBlock = ModBlocks.MATTER_WARPING_MATRIX_PORT.get();
+            var matrixPortBeType = ModBlockEntities.MATRIX_PORT.get();
+            matrixPortBlock.setBlockEntity(
+                    MatrixPortBlockEntity.class,
+                    matrixPortBeType,
+                    null,
+                    null);
+
             var interfaceBlock = ModBlocks.OVERLOADED_INTERFACE.get();
             var interfaceBeType = ModBlockEntities.OVERLOADED_INTERFACE.get();
             interfaceBlock.setBlockEntity(
@@ -694,6 +737,9 @@ public class AE2LightningTech {
             appeng.blockentity.AEBaseBlockEntity.registerBlockEntityItem(
                     ModBlockEntities.EXTENDED_OVERLOADED_PATTERN_PROVIDER.get(),
                     ModBlocks.EXTENDED_OVERLOADED_PATTERN_PROVIDER.get().asItem());
+            appeng.blockentity.AEBaseBlockEntity.registerBlockEntityItem(
+                    matrixPortBeType,
+                    matrixPortBlock.asItem());
             appeng.blockentity.AEBaseBlockEntity.registerBlockEntityItem(
                     interfaceBeType,
                     interfaceBlock.asItem());
@@ -845,11 +891,13 @@ public class AE2LightningTech {
         EjectModeRegistry.onServerStop();
         WirelessLinkRegistry.onServerStop();
         WirelessFrequencyManager.onServerStop();
+        CRAFTING_CORE_REGISTRY.clear();
         ResearchNoteGenerator.onServerStopped();
         com.moakiee.ae2lt.registry.ModDamageTypes.clearCache();
     }
 
     private void onServerTickPost(ServerTickEvent.Post event) {
+        CRAFTING_CORE_REGISTRY.tickAll();
         WirelessFrequencyManager.flushPendingDeviceNotifications();
         var registry = WirelessLinkRegistry.get();
         if (registry != null) {

@@ -9,4 +9,7 @@ import appeng.api.stacks.AEKeyType;
 public interface ElapsedTimeTrackerAccessor {
     @Invoker("decrementItems")
     void invokeDecrementItems(long amount, AEKeyType keyType);
+
+    @Invoker("addMaxItems")
+    void invokeAddMaxItems(long amount, AEKeyType keyType);
 }

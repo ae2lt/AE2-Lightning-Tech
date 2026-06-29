@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "formed=false": {
+      "model": "ae2lt:block/matter_warping_matrix_constraint_frame"
+    },
+    "formed=true": {
+      "model": "ae2lt:block/matter_warping_matrix_constraint_frame_formed"
+    }
+  }
+}

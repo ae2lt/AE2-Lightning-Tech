@@ -1,0 +1,13 @@
+{
+  "loader": "ae2lt:connected_texture",
+  "render_type": "minecraft:translucent",
+  "ambientocclusion": false,
+  "gui3d": false,
+  "uses_block_light": false,
+  "connection": "ae2lt:matrix_formed_same_block",
+  "textures": {
+    "base": "ae2lt:block/matter_warping_matrix/matter_warping_matrix_glass",
+    "ctm": "ae2lt:block/matter_warping_matrix/matter_warping_matrix_glass_ctm",
+    "particle": "ae2lt:block/matter_warping_matrix/matter_warping_matrix_glass"
+  }
+}

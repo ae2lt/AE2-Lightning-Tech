@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "formed=false": {
+      "model": "ae2lt:block/matter_warping_matrix_blank_sub_core"
+    },
+    "formed=true": {
+      "model": "ae2lt:block/matter_warping_matrix_blank_sub_core_formed"
+    }
+  }
+}
