@@ -279,7 +279,7 @@ public final class Ae2LtTimeWheelCraftingCpuLogic {
                     cpu.markDirty();
                     postPatternOutputsChange(details);
                 });
-        if (!result.sawBatchProvider()) {
+        if (!result.shouldRetryBatchThisTick()) {
             nonBatchTasksThisTick.add(details);
         }
         return result;

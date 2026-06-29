@@ -198,5 +198,9 @@ public final class BatchExecutor {
 
     public record BatchRunResult(int dispatchedCopies, int consumedCpuOps, boolean sawBatchProvider) {
         public static final BatchRunResult EMPTY = new BatchRunResult(0, 0, false);
+
+        public boolean shouldRetryBatchThisTick() {
+            return dispatchedCopies > 0;
+        }
     }
 }
