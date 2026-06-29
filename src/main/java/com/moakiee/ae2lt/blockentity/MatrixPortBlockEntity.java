@@ -56,7 +56,17 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
     private final IActionSource actionSource = new MachineSource(getMainNode()::getNode);
     private final PortPatternItemHandler itemHandler = new PortPatternItemHandler();
     private final MatrixTerminalPatternInventory terminalPatternInventory = new MatrixTerminalPatternInventory();
-    private final MatrixPatternCore patternCore = this::collectAvailablePatterns;
+    private final MatrixPatternCore patternCore = new MatrixPatternCore() {
+        @Override
+        public List<IPatternDetails> getAvailablePatterns() {
+            return collectAvailablePatterns();
+        }
+
+        @Override
+        public boolean hasPattern(IPatternDetails details) {
+            return hasAvailablePattern(details);
+        }
+    };
     private final MatrixCraftCore craftCore = new MatrixCraftCore() {
         @Override
         public List<MatrixCraftingUnit> craftingUnits() {
@@ -284,6 +294,18 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
             result.addAll(storage.getAvailablePatterns());
         }
         return List.copyOf(result);
+    }
+
+    private boolean hasAvailablePattern(IPatternDetails details) {
+        if (details == null || !formed || level == null) {
+            return false;
+        }
+        for (var storage : getPatternStorages()) {
+            if (storage.hasPattern(details)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private List<MatrixCraftingUnit> collectCraftingUnits() {
