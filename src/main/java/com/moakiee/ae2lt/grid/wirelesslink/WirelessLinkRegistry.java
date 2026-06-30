@@ -13,7 +13,7 @@ import com.moakiee.ae2lt.blockentity.OverloadedControllerBlockEntity;
 import com.moakiee.ae2lt.blockentity.WirelessOverloadedControllerBlockEntity;
 import com.moakiee.ae2lt.config.AE2LTCommonConfig;
 import com.moakiee.ae2lt.grid.FrequencyAccessLevel;
-import com.moakiee.ae2lt.grid.OverloadedChannelOwnerHelper;
+import com.qianchang.ae2lt_core.ae2.channel.OverloadedChannelOwnerHelper;
 import com.moakiee.ae2lt.grid.WirelessFrequencyManager;
 import com.moakiee.ae2lt.item.OverloadedFrequencyCardItem;
 import java.util.ArrayList;

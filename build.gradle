@@ -152,6 +152,11 @@ sourceSets.test.compileClasspath += sourceSets.main.compileClasspath
 sourceSets.test.runtimeClasspath += sourceSets.main.runtimeClasspath
 
 dependencies {
+    // Thunderbolt Core (ae2lt_core) — the extracted AE2 infrastructure layer (fast crafting planner,
+    // channel/batch/cell/matrix algorithms). Provided at runtime as a separate mod jar in the modpack,
+    // so compileOnly here. Published to mavenLocal via `./gradlew publishToMavenLocal` in Thunderbolt_lib.
+    compileOnly "com.qianchang.ae2lt_core:ae2lt_core:2.0.0-alpha.1"
+
     implementation "curse.maven:applied-energistics-2-223794:7027323"
     implementation "de.mari_023:ae2wtlib_api:${ae2wtlib_version}"
     compileOnly "top.theillusivec4.curios:curios-neoforge:${curios_version}:api"

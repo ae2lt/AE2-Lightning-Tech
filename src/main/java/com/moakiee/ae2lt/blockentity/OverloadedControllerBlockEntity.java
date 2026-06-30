@@ -1,7 +1,7 @@
 package com.moakiee.ae2lt.blockentity;
 
 import com.moakiee.ae2lt.config.AE2LTCommonConfig;
-import com.moakiee.ae2lt.grid.OverloadedGridNodeOwner;
+import com.qianchang.ae2lt_core.ae2.channel.OverloadedGridNodeOwner;
 import com.moakiee.ae2lt.logic.PassiveAeCharger;
 import com.moakiee.ae2lt.registry.ModBlockEntities;
 import com.moakiee.ae2lt.registry.ModBlocks;

@@ -19,6 +19,8 @@ import net.neoforged.neoforge.server.ServerLifecycleHooks;
 
 import org.jetbrains.annotations.Nullable;
 
+import com.qianchang.ae2lt_core.core.cell.ByteTracker;
+
 /**
  * Lightweight wrapper around a shared {@link IndexedStorage} cached in
  * {@link InfiniteCellSavedData}. Each wrapper owns its own {@link ByteTracker}

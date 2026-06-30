@@ -19,7 +19,7 @@ import net.minecraft.world.level.block.state.BlockState;
 
 import com.moakiee.ae2lt.grid.FrequencyBindingHelper;
 import com.moakiee.ae2lt.grid.FrequencyBindingHost;
-import com.moakiee.ae2lt.grid.OverloadedGridNodeOwner;
+import com.qianchang.ae2lt_core.ae2.channel.OverloadedGridNodeOwner;
 import com.moakiee.ae2lt.registry.ModBlockEntities;
 import com.moakiee.ae2lt.registry.ModBlocks;
 

@@ -42,9 +42,9 @@ import appeng.crafting.CraftingLink;
 import appeng.me.service.CraftingService;
 
 import com.moakiee.ae2lt.blockentity.TestTimeWheelCraftingCpuBlockEntity;
-import com.moakiee.ae2lt.logic.timewheelcpu.FastCraftingCalculation;
 import com.moakiee.ae2lt.logic.timewheelcpu.TimeWheelCraftingCPU;
 import com.moakiee.ae2lt.logic.timewheelcpu.TimeWheelFastPlanningGate;
+import com.qianchang.ae2lt_core.ae2.crafting.FastCraftingControl;
 
 @Mixin(value = CraftingService.class, remap = false)
 public abstract class TimeWheelCraftingServiceMixin {
@@ -89,7 +89,7 @@ public abstract class TimeWheelCraftingServiceMixin {
                                                         CallbackInfoReturnable<Future<ICraftingPlan>> cir,
                                                         @Local CraftingCalculation job) {
         boolean enabled = TimeWheelFastPlanningGate.shouldEnableFastPlanning(this.ae2lt$timeWheelCpus);
-        ((FastCraftingCalculation) job).ae2lt$setFastPlanningEnabled(enabled);
+        ((FastCraftingControl) job).ae2lt$setFastPlanningEnabled(enabled);
     }
 
     @Inject(

@@ -18,7 +18,7 @@ import appeng.api.networking.IManagedGridNode;
 import appeng.api.networking.pathing.ChannelMode;
 import appeng.me.GridConnection;
 
-import com.moakiee.ae2lt.grid.WirelessConnectionCapProvider;
+import com.qianchang.ae2lt_core.ae2.channel.WirelessConnectionCapProvider;
 import com.moakiee.ae2lt.grid.FrequencyBindingHelper;
 import com.moakiee.ae2lt.grid.WirelessFrequencyManager;
 import com.moakiee.ae2lt.registry.ModBlockEntities;
@@ -93,7 +93,7 @@ public class WirelessOverloadedControllerBlockEntity extends OverloadedControlle
     public int getGridUsedChannels() {
         var grid = getMainNode().getGrid();
         if (grid == null) return 0;
-        return com.moakiee.ae2lt.grid.OverloadedChannelOwnerHelper.countUsedChannels(grid);
+        return com.qianchang.ae2lt_core.ae2.channel.OverloadedChannelOwnerHelper.countUsedChannels(grid);
     }
 
     /**
@@ -111,7 +111,7 @@ public class WirelessOverloadedControllerBlockEntity extends OverloadedControlle
 
         int overloadedCount = 0;
         int vanillaCount = 0;
-        for (var node : com.moakiee.ae2lt.grid.OverloadedChannelOwnerHelper.getAllControllerNodes(grid)) {
+        for (var node : com.qianchang.ae2lt_core.ae2.channel.OverloadedChannelOwnerHelper.getAllControllerNodes(grid)) {
             if (node.getOwner() instanceof OverloadedControllerBlockEntity) {
                 overloadedCount++;
             } else {
@@ -120,7 +120,7 @@ public class WirelessOverloadedControllerBlockEntity extends OverloadedControlle
         }
         int factor = Math.max(1, channelMode.getCableCapacityFactor());
         long cap = (long) overloadedCount
-                * com.moakiee.ae2lt.grid.OverloadedChannelOwnerHelper.channelsPerController() * factor
+                * com.qianchang.ae2lt_core.ae2.channel.OverloadedChannelOwnerHelper.channelsPerController() * factor
                 + (long) vanillaCount * 32L * factor;
         return (int) Math.min(Integer.MAX_VALUE, cap);
     }

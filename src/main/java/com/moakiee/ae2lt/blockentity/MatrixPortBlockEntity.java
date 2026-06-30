@@ -4,15 +4,15 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.moakiee.ae2lt.AE2LightningTech;
-import com.moakiee.ae2lt.api.crafting.IBatchCraftingProvider;
-import com.moakiee.ae2lt.logic.craft.CraftingCoreHost;
+import com.qianchang.ae2lt_core.ae2.api.crafting.IBatchCraftingProvider;
+import com.qianchang.ae2lt_core.core.craft.CraftingCoreHost;
 import com.moakiee.ae2lt.logic.craft.MatrixCraftCore;
 import com.moakiee.ae2lt.logic.craft.MatrixCraftingMath;
 import com.moakiee.ae2lt.logic.craft.MatrixCraftingCluster;
 import com.moakiee.ae2lt.logic.craft.MatrixCraftingProfile;
 import com.moakiee.ae2lt.logic.craft.MatrixCraftingUnit;
 import com.moakiee.ae2lt.logic.craft.MatrixPatternCore;
-import com.moakiee.ae2lt.logic.craft.MolecularCopyAssembler;
+import com.qianchang.ae2lt_core.core.craft.MolecularCopyAssembler;
 import com.moakiee.ae2lt.registry.ModBlockEntities;
 import com.moakiee.ae2lt.registry.ModBlocks;
 

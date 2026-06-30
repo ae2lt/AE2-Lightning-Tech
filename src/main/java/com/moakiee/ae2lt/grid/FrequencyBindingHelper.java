@@ -15,6 +15,7 @@ import net.minecraft.core.component.DataComponentMap;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 
+import com.qianchang.ae2lt_core.ae2.channel.OverloadedChannelOwnerHelper;
 import com.moakiee.ae2lt.blockentity.OverloadedControllerBlockEntity;
 import com.moakiee.ae2lt.grid.wirelesslink.MultiblockLinkReadiness;
 import com.moakiee.ae2lt.grid.wirelesslink.WirelessLinkOps;

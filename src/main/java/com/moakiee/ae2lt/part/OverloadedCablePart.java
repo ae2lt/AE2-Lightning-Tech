@@ -1,6 +1,6 @@
 package com.moakiee.ae2lt.part;
 
-import com.moakiee.ae2lt.grid.OverloadedGridNodeOwner;
+import com.qianchang.ae2lt_core.ae2.channel.OverloadedGridNodeOwner;
 import com.moakiee.ae2lt.registry.ModItems;
 import net.minecraft.world.entity.player.Player;
 import appeng.api.networking.IGridNode;

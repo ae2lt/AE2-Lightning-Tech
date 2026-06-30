@@ -25,6 +25,8 @@ import appeng.crafting.execution.ExecutingCraftingJob;
 import appeng.crafting.inv.ListCraftingInventory;
 import appeng.me.cluster.implementations.CraftingCPUCluster;
 
+import com.qianchang.ae2lt_core.ae2.mixin.ElapsedTimeTrackerAccessor;
+import com.qianchang.ae2lt_core.ae2.mixin.ExecutingCraftingJobAccessor;
 import com.moakiee.ae2lt.overload.cpu.InsertContext;
 import com.moakiee.ae2lt.overload.cpu.OverloadClaimResult;
 import com.moakiee.ae2lt.overload.cpu.OverloadCpuStateManager;

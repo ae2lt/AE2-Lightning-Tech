@@ -76,7 +76,7 @@ import com.moakiee.ae2lt.me.cell.InfiniteCellHandler;
 
 import com.moakiee.ae2lt.logic.EjectModeRegistry;
 import com.moakiee.ae2lt.logic.MachineAdapterRegistry;
-import com.moakiee.ae2lt.logic.craft.CraftingCoreRegistry;
+import com.qianchang.ae2lt_core.core.craft.CraftingCoreRegistry;
 import com.moakiee.ae2lt.logic.railgun.RailgunEnergyBuffer;
 import com.moakiee.ae2lt.logic.research.ResearchNoteGenerator;
 import com.moakiee.ae2lt.logic.research.ResearchNoteModulationHandler;

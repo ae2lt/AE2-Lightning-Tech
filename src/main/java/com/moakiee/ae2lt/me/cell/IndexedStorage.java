@@ -16,6 +16,8 @@ import net.minecraft.nbt.Tag;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
 
+import com.qianchang.ae2lt_core.core.cell.DualLong126;
+
 /**
  * Array-indexed storage engine for the infinite cell.
  * <p>

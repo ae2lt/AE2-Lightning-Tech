@@ -51,10 +51,10 @@ import appeng.crafting.inv.ListCraftingInventory;
 import appeng.hooks.ticking.TickHandler;
 import appeng.me.service.CraftingService;
 
-import com.moakiee.ae2lt.logic.batch.BatchExecutor;
-import com.moakiee.ae2lt.logic.batch.BatchJobView;
-import com.moakiee.ae2lt.logic.batch.BatchTaskHandle;
-import com.moakiee.ae2lt.mixin.ElapsedTimeTrackerAccessor;
+import com.qianchang.ae2lt_core.ae2.batch.BatchExecutor;
+import com.qianchang.ae2lt_core.ae2.batch.BatchJobView;
+import com.qianchang.ae2lt_core.ae2.batch.BatchTaskHandle;
+import com.qianchang.ae2lt_core.ae2.mixin.ElapsedTimeTrackerAccessor;
 import com.moakiee.ae2lt.overload.cpu.OverloadClaimResult;
 import com.moakiee.ae2lt.overload.cpu.OverloadCpuStateManager;
 import com.moakiee.ae2lt.overload.cpu.OverloadPatternReference;

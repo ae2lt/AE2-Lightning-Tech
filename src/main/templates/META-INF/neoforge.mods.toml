@@ -84,6 +84,15 @@ versionRange = "[0,)"
 ordering = "AFTER"
 side = "BOTH"
 
+# Thunderbolt Core hosts the extracted AE2 infrastructure (fast crafting planner, channel/batch/cell/
+# matrix algorithms). Required: ae2lt's mixins and logic depend on its classes at runtime.
+[[dependencies."${mod_id}"]]
+modId = "ae2lt_core"
+type = "required"
+versionRange = "[2.0,)"
+ordering = "AFTER"
+side = "BOTH"
+
 [[dependencies."${mod_id}"]]
 modId = "flywheel"
 type = "optional"

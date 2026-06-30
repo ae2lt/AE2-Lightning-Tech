@@ -14,6 +14,11 @@ import appeng.api.crafting.IPatternDetails;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.KeyCounter;
 
+import com.qianchang.ae2lt_core.core.craft.CopyAssembler;
+import com.qianchang.ae2lt_core.core.craft.CraftingCore;
+import com.qianchang.ae2lt_core.core.craft.CraftingCoreHost;
+import com.qianchang.ae2lt_core.core.craft.CraftingCoreRegistry;
+
 /**
  * Multiblock-side rate limiter that wraps a shared {@link CraftingCore} engine: it aggregates the
  * pattern units and thread units of a formed structure, caps batch copies by the structure's thread

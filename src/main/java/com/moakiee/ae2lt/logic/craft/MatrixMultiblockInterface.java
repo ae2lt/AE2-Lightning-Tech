@@ -3,7 +3,7 @@ package com.moakiee.ae2lt.logic.craft;
 import java.util.List;
 import java.util.Objects;
 
-import com.moakiee.ae2lt.api.crafting.IBatchCraftingProvider;
+import com.qianchang.ae2lt_core.ae2.api.crafting.IBatchCraftingProvider;
 
 import appeng.api.crafting.IPatternDetails;
 import appeng.api.stacks.KeyCounter;
