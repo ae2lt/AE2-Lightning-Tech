@@ -59,6 +59,11 @@ final class AE2NativeMachineAdapter implements MachineAdapter {
 
     private final Map<TargetFaceKey, StorageCacheEntry> storageCache = new HashMap<>();
 
+    /** Ticks an ICraftingMachine probe stays cached. The probe (getBlockEntity +
+     *  capability/instanceof) used to run on every single push; cache it per target. */
+    private static final int MACHINE_CACHE_TTL_TICKS = 20;
+    private final Map<TargetFaceKey, MachineCacheEntry> machineCache = new HashMap<>();
+
     /** Sweep interval for dropping cache entries whose block entity is gone. */
     private static final int SWEEP_INTERVAL_TICKS = 600;
     /** Negative init so the first call sweeps immediately without long overflow. */
@@ -119,6 +124,25 @@ final class AE2NativeMachineAdapter implements MachineAdapter {
         }
     }
 
+    /** Caches the ICraftingMachine adaptation (null = probed, not a crafting machine)
+     *  for a target, keyed by block-entity identity with a short TTL. */
+    private static final class MachineCacheEntry {
+        private final WeakReference<BlockEntity> beRef;
+        @Nullable
+        private final ICraftingMachine machine;
+        private final long createdTick;
+
+        MachineCacheEntry(BlockEntity be, @Nullable ICraftingMachine machine, long tick) {
+            this.beRef = new WeakReference<>(be);
+            this.machine = machine;
+            this.createdTick = tick;
+        }
+
+        boolean isValid(BlockEntity currentBE, long now) {
+            return beRef.get() == currentBE && now - createdTick < MACHINE_CACHE_TTL_TICKS;
+        }
+    }
+
     // ---- supports ---------------------------------------------------------------
 
     @Override
@@ -146,8 +170,12 @@ final class AE2NativeMachineAdapter implements MachineAdapter {
                                  boolean blocking, Set<AEKey> patternInputs,
                                  IActionSource source,
                                  @Nullable PatternProviderTarget cachedTarget) {
+        long now = level.getGameTime();
+        sweepStaleEntries(now);
+        var be = level.getBlockEntity(pos);
+
         // 1. ICraftingMachine path — all-or-nothing
-        var machine = ICraftingMachine.of(level, pos, face);
+        var machine = (be != null) ? resolveCraftingMachine(level, pos, face, be, now) : null;
         if (machine != null && machine.acceptsPlans()) {
             if (machine.pushPattern(pattern, inputs, face)) {
                 return new PushResult(1, List.of());
@@ -165,7 +193,6 @@ final class AE2NativeMachineAdapter implements MachineAdapter {
         if (cachedTarget != null) {
             target = cachedTarget;
         } else {
-            var be = level.getBlockEntity(pos);
             target = PatternProviderTarget.get(level, pos, be, face, source);
         }
         if (target == null) {
@@ -242,6 +269,19 @@ final class AE2NativeMachineAdapter implements MachineAdapter {
 
     // ---- helpers ----------------------------------------------------------------
 
+    @Nullable
+    private ICraftingMachine resolveCraftingMachine(ServerLevel level, BlockPos pos,
+                                                    Direction face, BlockEntity be, long now) {
+        var key = new TargetFaceKey(level.dimension(), pos.asLong(), face);
+        var cached = machineCache.get(key);
+        if (cached != null && cached.isValid(be, now)) {
+            return cached.machine;
+        }
+        var machine = ICraftingMachine.of(level, pos, face);
+        machineCache.put(key, new MachineCacheEntry(be, machine, now));
+        return machine;
+    }
+
     private static boolean adapterAcceptsAll(PatternProviderTarget target, KeyCounter[] inputHolder) {
         for (var inputList : inputHolder) {
             for (var input : inputList) {
@@ -295,6 +335,10 @@ final class AE2NativeMachineAdapter implements MachineAdapter {
         lastSweepTick = gameTick;
         storageCache.values().removeIf(entry -> {
             var be = entry.blockEntityRef.get();
+            return be == null || be.isRemoved();
+        });
+        machineCache.values().removeIf(entry -> {
+            var be = entry.beRef.get();
             return be == null || be.isRemoved();
         });
     }

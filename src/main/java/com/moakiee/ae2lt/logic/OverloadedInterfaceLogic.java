@@ -36,6 +36,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
+import java.util.Arrays;
 import java.util.List;
 
 public class OverloadedInterfaceLogic extends InterfaceLogic {
@@ -315,6 +316,11 @@ public class OverloadedInterfaceLogic extends InterfaceLogic {
         /** Rebuilt (not reset) each refresh: KeyCounter.reset() keeps zeroed keys, which would leak 0-amount entries to callers. */
         private KeyCounter availableStacksCache = new KeyCounter();
         private long availableStacksCacheTick = Long.MIN_VALUE;
+        /** Per-slot tick cache for the getStack/getAmount display path. External
+         *  IItemHandler pollers hit these every tick; without caching each call
+         *  re-simulates the whole ME network. -1 = not yet computed this tick. */
+        private final long[] displayAmountCache;
+        private long displayAmountCacheTick = Long.MIN_VALUE;
 
         ProxiedStorageInv(OverloadedInterfaceLogic logic,
                           Set<AEKeyType> supportedTypes,
@@ -322,6 +328,7 @@ public class OverloadedInterfaceLogic extends InterfaceLogic {
                           int size, @Nullable Runnable listener) {
             super(supportedTypes, slotFilter, GenericStackInv.Mode.STORAGE, size, listener);
             this.logic = logic;
+            this.displayAmountCache = new long[size];
         }
 
         @Override
@@ -349,8 +356,21 @@ public class OverloadedInterfaceLogic extends InterfaceLogic {
         }
 
         private long displayAmount(int slot, AEKey key) {
-            long cap = capForSlot(slot);
-            return visibleNetworkAmount(key, cap);
+            var be = logic.host.getBlockEntity();
+            var level = be != null ? be.getLevel() : null;
+            long now = level != null ? level.getGameTime() : Long.MIN_VALUE;
+            boolean cacheable = level != null && slot >= 0 && slot < displayAmountCache.length;
+            if (cacheable) {
+                if (now != displayAmountCacheTick) {
+                    Arrays.fill(displayAmountCache, -1L);
+                    displayAmountCacheTick = now;
+                }
+                long cached = displayAmountCache[slot];
+                if (cached >= 0) return cached;
+            }
+            long amt = visibleNetworkAmount(key, capForSlot(slot));
+            if (cacheable) displayAmountCache[slot] = amt;
+            return amt;
         }
 
         private long visibleNetworkAmount(AEKey key, long cap) {
