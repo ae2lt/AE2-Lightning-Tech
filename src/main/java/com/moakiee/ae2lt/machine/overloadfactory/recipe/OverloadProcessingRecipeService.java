@@ -27,23 +27,39 @@ public final class OverloadProcessingRecipeService {
                     (RecipeHolder<OverloadProcessingRecipe> holder) -> holder.value().totalInputCount()).reversed())
             .thenComparing(holder -> holder.id().toString());
 
-    private static Object cachedRawRecipeList;
     private static RecipeManager cachedRecipeManager;
     private static List<RecipeHolder<OverloadProcessingRecipe>> sortedRecipeCache;
+    private static int cachedRecipeOrderFingerprint;
 
     private OverloadProcessingRecipeService() {
     }
 
-    private static List<RecipeHolder<OverloadProcessingRecipe>> getSortedRecipes(Level level) {
+    private static synchronized List<RecipeHolder<OverloadProcessingRecipe>> getSortedRecipes(Level level) {
         RecipeManager recipeManager = level.getRecipeManager();
         var raw = recipeManager.getAllRecipesFor(ModRecipeTypes.OVERLOAD_PROCESSING_TYPE.get());
-        if (recipeManager != cachedRecipeManager || raw != cachedRawRecipeList || sortedRecipeCache == null) {
+        int orderFingerprint = computeRecipeOrderFingerprint(raw);
+        if (recipeManager != cachedRecipeManager
+                || orderFingerprint != cachedRecipeOrderFingerprint
+                || sortedRecipeCache == null) {
             sortedRecipeCache = new ArrayList<>(raw);
             sortedRecipeCache.sort(RECIPE_ORDER);
             cachedRecipeManager = recipeManager;
-            cachedRawRecipeList = raw;
+            cachedRecipeOrderFingerprint = orderFingerprint;
         }
         return sortedRecipeCache;
+    }
+
+    private static int computeRecipeOrderFingerprint(List<RecipeHolder<OverloadProcessingRecipe>> recipes) {
+        int hash = 1;
+        for (var holder : recipes) {
+            var recipe = holder.value();
+            hash = 31 * hash + holder.id().hashCode();
+            hash = 31 * hash + System.identityHashCode(recipe);
+            hash = 31 * hash + recipe.priority();
+            hash = 31 * hash + recipe.itemInputs().size();
+            hash = 31 * hash + recipe.totalInputCount();
+        }
+        return hash;
     }
 
     public static Optional<OverloadProcessingRecipeCandidate> findFirstProcessable(
@@ -63,31 +79,28 @@ public final class OverloadProcessingRecipeService {
         }
 
         List<RecipeHolder<OverloadProcessingRecipe>> recipes = getSortedRecipes(level);
+        int parallelCapacity = inventory.getInstalledParallelCapacity();
 
         for (RecipeHolder<OverloadProcessingRecipe> recipe : recipes) {
-            int parallel = findMaxParallel(
+            Optional<ParallelMatch> parallelMatch = findMaxParallel(
                     recipe.value(),
                     input,
                     inventory,
                     outputFluid,
-                    inventory.getInstalledParallelCapacity(),
+                    parallelCapacity,
                     availableHighVoltage,
                     availableExtremeHighVoltage);
-            if (parallel <= 0) {
+            if (parallelMatch.isEmpty()) {
                 continue;
             }
-
-            Optional<OverloadProcessingRecipeMatch> match = recipe.value().planMatch(input, parallel);
-            if (match.isEmpty()) {
-                continue;
-            }
+            var match = parallelMatch.get();
 
             return Optional.of(new OverloadProcessingRecipeCandidate(
                     recipe,
-                    match.get(),
-                    parallel,
-                    computeTotalEnergy(recipe.value().totalEnergy(), parallel),
-                    (long) recipe.value().lightningCost() * parallel));
+                    match.match(),
+                    match.parallel(),
+                    computeTotalEnergy(recipe.value().totalEnergy(), match.parallel()),
+                    (long) recipe.value().lightningCost() * match.parallel()));
         }
 
         return Optional.empty();
@@ -98,14 +111,16 @@ public final class OverloadProcessingRecipeService {
             return Optional.empty();
         }
 
-        for (RecipeHolder<OverloadProcessingRecipe> recipe
-                : level.getRecipeManager().getAllRecipesFor(ModRecipeTypes.OVERLOAD_PROCESSING_TYPE.get())) {
-            if (recipe.id().equals(recipeId)) {
-                return Optional.of(recipe);
-            }
-        }
-
-        return Optional.empty();
+        return level.getRecipeManager()
+                .byKey(recipeId)
+                .flatMap(holder -> {
+                    var recipe = holder.value();
+                    if (!(recipe instanceof OverloadProcessingRecipe overloadRecipe)
+                            || recipe.getType() != ModRecipeTypes.OVERLOAD_PROCESSING_TYPE.get()) {
+                        return Optional.empty();
+                    }
+                    return Optional.of(new RecipeHolder<>(holder.id(), overloadRecipe));
+                });
     }
 
     public static Optional<OverloadProcessingRecipeCandidate> findLockedRecipeMatch(
@@ -130,10 +145,6 @@ public final class OverloadProcessingRecipeService {
             return Optional.empty();
         }
 
-        Optional<OverloadProcessingRecipeMatch> match = recipe.get().value().planMatch(input, lockedRecipe.parallel());
-        if (match.isEmpty()) {
-            return Optional.empty();
-        }
         if (computeTotalEnergy(recipe.get().value().totalEnergy(), lockedRecipe.parallel()) != lockedRecipe.totalEnergy()) {
             return Optional.empty();
         }
@@ -146,6 +157,10 @@ public final class OverloadProcessingRecipeService {
             return Optional.empty();
         }
         if (!canAcceptOutputs(inventory, recipe.get().value(), outputFluid, lockedRecipe.parallel())) {
+            return Optional.empty();
+        }
+        Optional<OverloadProcessingRecipeMatch> match = recipe.get().value().planMatch(input, lockedRecipe.parallel());
+        if (match.isEmpty()) {
             return Optional.empty();
         }
 
@@ -226,7 +241,7 @@ public final class OverloadProcessingRecipeService {
                 : lightningCost;
     }
 
-    private static int findMaxParallel(
+    private static Optional<ParallelMatch> findMaxParallel(
             OverloadProcessingRecipe recipe,
             OverloadProcessingRecipeInput input,
             OverloadProcessingFactoryInventory inventory,
@@ -236,38 +251,48 @@ public final class OverloadProcessingRecipeService {
             long availableExtremeHighVoltage) {
         int upper = parallelCapacity;
         if (upper <= 0) {
-            return 0;
+            return Optional.empty();
         }
 
         FluidStack requiredInputFluid = recipe.fluidInput();
         if (!requiredInputFluid.isEmpty()) {
             if (input.inputFluid().isEmpty()
                     || !FluidStack.isSameFluidSameComponents(requiredInputFluid, input.inputFluid())) {
-                return 0;
+                return Optional.empty();
             }
             upper = Math.min(upper, input.inputFluid().getAmount() / requiredInputFluid.getAmount());
         }
 
         upper = Math.min(upper, maxLightningParallel(recipe, inventory, availableHighVoltage, availableExtremeHighVoltage));
         if (upper <= 0) {
-            return 0;
+            return Optional.empty();
         }
 
         int low = 1;
         int high = upper;
         int best = 0;
+        OverloadProcessingRecipeMatch bestMatch = null;
         while (low <= high) {
             int mid = (low + high) >>> 1;
-            if (recipe.planMatch(input, mid).isPresent()
-                    && canAcceptOutputs(inventory, recipe, outputFluid, mid)
-                    && recipe.hasRequiredFluid(input.inputFluid(), mid)) {
+            if (!recipe.hasRequiredFluid(input.inputFluid(), mid)
+                    || !canAcceptOutputs(inventory, recipe, outputFluid, mid)) {
+                high = mid - 1;
+                continue;
+            }
+
+            Optional<OverloadProcessingRecipeMatch> match = recipe.planMatch(input, mid);
+            if (match.isPresent()) {
                 best = mid;
+                bestMatch = match.get();
                 low = mid + 1;
             } else {
                 high = mid - 1;
             }
         }
-        return best;
+        return bestMatch == null ? Optional.empty() : Optional.of(new ParallelMatch(best, bestMatch));
+    }
+
+    private record ParallelMatch(int parallel, OverloadProcessingRecipeMatch match) {
     }
 
     private static int maxLightningParallel(

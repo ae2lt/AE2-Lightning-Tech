@@ -186,17 +186,10 @@ public class LightningAssemblyChamberBlockEntity extends AENetworkedBlockEntity
     }
 
     public void addConsumedEnergy(long amount) {
-        if (amount <= 0) {
-            return;
+        if (addConsumedEnergyUnchecked(amount)) {
+            saveChanges();
+            markForClientUpdate();
         }
-
-        if (amount > Long.MAX_VALUE - this.consumedEnergy) {
-            this.consumedEnergy = Long.MAX_VALUE;
-        } else {
-            this.consumedEnergy += amount;
-        }
-        saveChanges();
-        markForClientUpdate();
     }
 
     public void incrementProcessingTicksSpent() {
@@ -683,8 +676,26 @@ public class LightningAssemblyChamberBlockEntity extends AENetworkedBlockEntity
 
     @Override
     public void onEnergyConsumed(int consumed) {
-        addConsumedEnergy(consumed);
-        incrementProcessingTicksSpent();
+        if (consumed <= 0) {
+            return;
+        }
+        addConsumedEnergyUnchecked(consumed);
+        this.processingTicksSpent++;
+        saveChanges();
+        markForClientUpdate();
+    }
+
+    private boolean addConsumedEnergyUnchecked(long amount) {
+        if (amount <= 0) {
+            return false;
+        }
+
+        if (amount > Long.MAX_VALUE - this.consumedEnergy) {
+            this.consumedEnergy = Long.MAX_VALUE;
+        } else {
+            this.consumedEnergy += amount;
+        }
+        return true;
     }
 
     private long simulateLightningExtract(LightningKey key, long amount) {
