@@ -116,6 +116,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
     /** Per-target wireless overflow buckets. A bucketed connection is not eligible for new pushes. */
     private final Object2ObjectOpenHashMap<WirelessConnection, ConnBucket> pendingOverflowByConn =
             new Object2ObjectOpenHashMap<>();
+    private long lastWirelessOverflowFlushTick = Long.MIN_VALUE;
 
     /** Runtime-local pattern id tables used by compact overflow buckets. */
     private final Object2IntOpenHashMap<IPatternDetails> patternTable = new Object2IntOpenHashMap<>();
@@ -1361,6 +1362,9 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
         if (pendingOverflowByConn.isEmpty()) return;
         var level = overloadedHost.getLevel();
         if (!(level instanceof ServerLevel sl)) return;
+        long gameTick = sl.getGameTime();
+        if (lastWirelessOverflowFlushTick == gameTick) return;
+        lastWirelessOverflowFlushTick = gameTick;
         var server = sl.getServer();
 
         var iter = pendingOverflowByConn.object2ObjectEntrySet().iterator();
