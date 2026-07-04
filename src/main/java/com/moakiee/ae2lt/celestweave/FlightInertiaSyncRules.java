@@ -9,6 +9,20 @@ final class FlightInertiaSyncRules {
             boolean active,
             boolean forceClientSync,
             boolean flightModule) {
-        return active && flightModule && (changed || forceClientSync);
+        return flightModule && (changed || active && forceClientSync);
+    }
+
+    static boolean targetInertia(
+            boolean flightActive,
+            boolean flightInertiaEnabled,
+            boolean phaseFlightActive,
+            boolean phaseInertiaEnabled) {
+        if (phaseFlightActive) {
+            return phaseInertiaEnabled;
+        }
+        if (flightActive) {
+            return flightInertiaEnabled;
+        }
+        return true;
     }
 }

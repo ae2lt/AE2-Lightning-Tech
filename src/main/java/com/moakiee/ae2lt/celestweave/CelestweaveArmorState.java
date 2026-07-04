@@ -648,9 +648,12 @@ public final class CelestweaveArmorState {
 
     private static void syncFlightInertiaToClient(ServerPlayer player, ItemStack armor, UUID armorId) {
         boolean phaseFlightActive = isSubmoduleRuntimeActive(armor, PhaseFlightSubmodule.INSTANCE.id());
-        boolean inertia = phaseFlightActive
-                ? PhaseFlightSubmodule.isInertiaEnabled(armor)
-                : FlightSubmodule.isInertiaEnabled(armor);
+        boolean flightActive = isSubmoduleRuntimeActive(armor, FlightSubmodule.INSTANCE.id());
+        boolean inertia = FlightInertiaSyncRules.targetInertia(
+                flightActive,
+                FlightSubmodule.isInertiaEnabled(armor),
+                phaseFlightActive,
+                PhaseFlightSubmodule.isInertiaEnabled(armor));
         PacketDistributor.sendToPlayer(player, new FlightInertiaSyncPacket(armorId, inertia));
     }
 
