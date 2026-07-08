@@ -29,8 +29,8 @@ import com.moakiee.ae2lt.registry.ModBlockEntities;
 import com.moakiee.ae2lt.registry.ModBlocks;
 
 public class TestTimeWheelCraftingCpuBlockEntity extends AENetworkedBlockEntity implements TimeWheelCraftingCpuHost {
-    public static final long STORAGE_BYTES = 100L * 1024L * 1024L * 1024L;
-    public static final int PARALLELISM = 50_000;
+    public static final long STORAGE_BYTES = Long.MAX_VALUE;
+    public static final int PARALLELISM = 16_384;
 
     private static final String TAG_CPU = "cpu";
 
