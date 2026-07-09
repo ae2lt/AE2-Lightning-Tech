@@ -17,7 +17,7 @@ import net.minecraft.world.level.Level;
 
 import com.moakiee.ae2lt.celestweave.CelestweaveArmorDamageHandler;
 
-@Mixin(LivingEntity.class)
+@Mixin(value = LivingEntity.class, priority = 900)
 public abstract class LivingEntityShieldHitFeedbackMixin {
     @Shadow
     protected abstract void playHurtSound(DamageSource source);
@@ -26,7 +26,8 @@ public abstract class LivingEntityShieldHitFeedbackMixin {
             method = "hurt",
             at = @At(
                     value = "INVOKE",
-                    target = "Lnet/minecraft/world/level/Level;broadcastDamageEvent(Lnet/minecraft/world/entity/Entity;Lnet/minecraft/world/damagesource/DamageSource;)V"))
+                    target = "Lnet/minecraft/world/level/Level;broadcastDamageEvent(Lnet/minecraft/world/entity/Entity;Lnet/minecraft/world/damagesource/DamageSource;)V"),
+            require = 0)
     private void ae2lt$skipShieldDamageEvent(Level level, Entity entity, DamageSource source) {
         if (entity instanceof LivingEntity living
                 && CelestweaveArmorDamageHandler.shouldSuppressShieldHitFeedback(living)) {
@@ -67,7 +68,8 @@ public abstract class LivingEntityShieldHitFeedbackMixin {
             method = "hurt",
             at = @At(
                     value = "INVOKE",
-                    target = "Lnet/minecraft/world/entity/LivingEntity;playHurtSound(Lnet/minecraft/world/damagesource/DamageSource;)V"))
+                    target = "Lnet/minecraft/world/entity/LivingEntity;playHurtSound(Lnet/minecraft/world/damagesource/DamageSource;)V"),
+            require = 0)
     private void ae2lt$skipShieldHurtSound(LivingEntity entity, DamageSource source) {
         if (CelestweaveArmorDamageHandler.shouldSuppressShieldHitFeedback(entity)) {
             return;
