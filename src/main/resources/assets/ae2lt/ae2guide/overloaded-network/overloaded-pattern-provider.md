@@ -70,6 +70,10 @@ The return mode determines how processed output is recovered from remote machine
 | Normal | Standard cooldown (5 ~ 80 ticks) |
 | Fast (Probe) | Adaptive cooldown; uses a probe mechanic to detect readiness early (1 ~ 40 ticks) |
 
+## ME Power Cost
+
+Dispatching materials and returning products consumes ME network power. For large crafting batches, make sure the network has a large enough AE energy buffer; if power is insufficient, the provider waits until more power is available.
+
 ## Import Filter
 
 With "Filtered Import" enabled, the provider only accepts items listed as outputs on the current pattern when returning products — this prevents unrelated items from entering the network.

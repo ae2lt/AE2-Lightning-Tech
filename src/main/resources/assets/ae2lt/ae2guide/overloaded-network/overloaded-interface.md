@@ -68,6 +68,10 @@ The interface uses an adaptive cooldown — the cooldown shortens when items are
 
 Shift-clicking a configuration slot switches it to **Unlimited Mode**. In this mode, the slot continuously supplies the configured item to remote machines in unlimited quantity.
 
+## ME Power Cost
+
+Transfers consume ME network power. For large imports or exports, make sure the network has a large enough AE energy buffer; if power is insufficient, transfer pauses or moves only what the network can support.
+
 ## Import Filter
 
 <ItemImage id="ae2lt:overloaded_filter_component" scale="2" float="left" />
