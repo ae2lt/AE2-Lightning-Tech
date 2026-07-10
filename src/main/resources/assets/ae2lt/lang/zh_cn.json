@@ -8,7 +8,6 @@
   "key.ae2lt.extreme_high_voltage_lightning": "极高压闪电",
   "key.ae2lt.open_config": "打开过载设备配置",
   "ae2lt.tooltip.open_device_hub": "按 %s 打开配置界面",
-  "tooltip.ae2lt.infinite": "无限",
   "key.ae2lt.toggle_frequency_card_auto_connect": "切换频率卡自动连接",
   "gui.ae2lt.device_hub": "过载设备中枢",
   "curios.identifier.overloaded_frequency_card": "过载频率卡",

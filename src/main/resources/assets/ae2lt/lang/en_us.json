@@ -6,7 +6,6 @@
   "key.categories.ae2lt": "AE2 Lightning Tech",
   "key.ae2lt.open_config": "Open Overload Device Config",
   "ae2lt.tooltip.open_device_hub": "Press %s to open Overload Device Config",
-  "tooltip.ae2lt.infinite": "Infinite",
   "key.ae2lt.toggle_frequency_card_auto_connect": "Toggle Frequency Card Auto Connect",
   "gui.ae2lt.device_hub": "Overload Device Hub",
   "curios.identifier.overloaded_frequency_card": "Overloaded Frequency Card",
