@@ -6,6 +6,7 @@ package com.moakiee.ae2lt.logic.craft;
  */
 public final class MatrixCraftingMath {
     public static final int MATRIX_DELAY_TICKS = 5;
+    public static final int CREATIVE_DELAY_TICKS = 1;
 
     private static final double THREAD_SOFT_CAP = 80.0D;
     private static final double DISPATCH_MIN = 128.0D;
@@ -73,6 +74,18 @@ public final class MatrixCraftingMath {
                 0.0D,
                 0L,
                 0.0D);
+    }
+
+    public static Snapshot creativeSnapshot() {
+        return new Snapshot(
+                0.0D,
+                0.0D,
+                0.0D,
+                0.0D,
+                Integer.MAX_VALUE,
+                1.0D,
+                Integer.MAX_VALUE,
+                1.0D);
     }
 
     public static Snapshot stableSnapshot(double heat, double threadPower, double multiPower, double coolPower) {

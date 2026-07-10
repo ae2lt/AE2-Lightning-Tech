@@ -5,6 +5,7 @@ import java.util.List;
 
 import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.thunderbolt.ae2.api.crafting.IBatchCraftingProvider;
+import com.moakiee.thunderbolt.ae2.api.crafting.BatchDispatchMode;
 import com.moakiee.thunderbolt.core.craft.CraftingCoreHost;
 import com.moakiee.ae2lt.logic.craft.MatrixCraftCore;
 import com.moakiee.ae2lt.logic.craft.MatrixCraftingMath;
@@ -212,6 +213,11 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
     @Override
     public int getBatchCapacity(IPatternDetails details) {
         return cluster.getBatchCapacity(details);
+    }
+
+    @Override
+    public BatchDispatchMode getBatchDispatchMode(IPatternDetails details) {
+        return cluster.batchDispatchMode();
     }
 
     @Override

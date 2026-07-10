@@ -65,6 +65,17 @@ public record MatrixCraftingProfile(
             mode = MatrixCoreMode.CONFLICT;
         }
 
+        if (coreCount == 1 && mode == MatrixCoreMode.CREATIVE) {
+            return new MatrixCraftingProfile(
+                    MatrixCoreMode.CREATIVE,
+                    1,
+                    0.0D,
+                    0.0D,
+                    0.0D,
+                    0,
+                    false);
+        }
+
         return new MatrixCraftingProfile(
                 mode,
                 coreCount,
@@ -91,7 +102,8 @@ public record MatrixCraftingProfile(
                 || mode == MatrixCoreMode.CONFLICT
                 || (mode != MatrixCoreMode.STABLE
                         && mode != MatrixCoreMode.QUANTUM
-                        && mode != MatrixCoreMode.OVERLOAD)) {
+                        && mode != MatrixCoreMode.OVERLOAD
+                        && mode != MatrixCoreMode.CREATIVE)) {
             // has core(s) but not a single valid mode
             issues.add(MatrixProfileIssue.CONFLICTING_CORES);
         }
@@ -108,6 +120,7 @@ public record MatrixCraftingProfile(
         return switch (mode) {
             case STABLE -> MatrixCraftingMath.stableSnapshot(heat, threadPower, multiPower, coolPower);
             case OVERLOAD -> MatrixCraftingMath.overloadSnapshot(heat, threadPower, multiPower, coolPower);
+            case CREATIVE -> MatrixCraftingMath.creativeSnapshot();
             default -> MatrixCraftingMath.quantumSnapshot(heat, threadPower, multiPower, coolPower);
         };
     }

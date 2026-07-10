@@ -18,6 +18,7 @@ import com.moakiee.thunderbolt.core.craft.CopyAssembler;
 import com.moakiee.thunderbolt.core.craft.CraftingCore;
 import com.moakiee.thunderbolt.core.craft.CraftingCoreHost;
 import com.moakiee.thunderbolt.core.craft.CraftingCoreRegistry;
+import com.moakiee.thunderbolt.ae2.api.crafting.BatchDispatchMode;
 
 /**
  * Multiblock-side rate limiter that wraps a shared {@link CraftingCore} engine: it aggregates the
@@ -110,9 +111,19 @@ public final class MatrixCraftingCluster {
         if (!hasPattern(details)) return maxCraft;
         int copies = Math.min(maxCraft, availableCapacity());
         if (copies <= 0) return maxCraft;
-        int accepted = engine.pushBatch(details, oneCopyTemplate, copies, MatrixCraftingMath.MATRIX_DELAY_TICKS);
+        int delay = craftingProfile().mode() == MatrixCoreMode.CREATIVE
+                ? MatrixCraftingMath.CREATIVE_DELAY_TICKS
+                : MatrixCraftingMath.MATRIX_DELAY_TICKS;
+        int accepted = engine.pushBatch(details, oneCopyTemplate, copies, delay);
         limiterRemaining = Math.max(0, limiterRemaining - accepted);
         return maxCraft - accepted;
+    }
+
+    public BatchDispatchMode batchDispatchMode() {
+        var profile = craftingProfile();
+        return profile.isValid() && profile.mode() == MatrixCoreMode.CREATIVE
+                ? BatchDispatchMode.UNBOUNDED
+                : BatchDispatchMode.NORMAL;
     }
 
     public boolean isBusy() {

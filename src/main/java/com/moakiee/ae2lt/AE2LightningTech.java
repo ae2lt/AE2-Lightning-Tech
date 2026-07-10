@@ -137,6 +137,7 @@ public class AE2LightningTech {
                         output.accept(ModBlocks.MATTER_WARPING_MATRIX_STABLE_MAIN_CORE);
                         output.accept(ModBlocks.MATTER_WARPING_MATRIX_QUANTUM_MAIN_CORE);
                         output.accept(ModBlocks.MATTER_WARPING_MATRIX_OVERLOAD_MAIN_CORE);
+                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_CREATIVE_MAIN_CORE);
                         output.accept(ModBlocks.MATTER_WARPING_MATRIX_BLANK_SUB_CORE);
                         output.accept(ModBlocks.MATTER_WARPING_MATRIX_THREAD_SUB_CORE_T1);
                         output.accept(ModBlocks.MATTER_WARPING_MATRIX_THREAD_SUB_CORE_T2);

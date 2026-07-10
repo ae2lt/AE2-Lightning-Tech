@@ -57,6 +57,7 @@ public final class MatrixMultiblockScanner {
         int portCount = 0;
         int multiplierCount = 0;
         boolean hasMainCoreAtCenter = false;
+        MatrixMultiblockComponent mainCoreAtCenter = null;
         boolean hasMainCoreOutsideCenter = false;
 
         int minX = Integer.MAX_VALUE;
@@ -91,6 +92,9 @@ public final class MatrixMultiblockScanner {
             if (role == MatrixMultiblockRole.CRAFTING_BAY) {
                 if (localPos.equals(MatrixMultiblockTemplate.CRAFTING_CENTER_LOCAL)) {
                     hasMainCoreAtCenter = component.isMainCore();
+                    if (hasMainCoreAtCenter) {
+                        mainCoreAtCenter = component;
+                    }
                 } else if (component.isMainCore()) {
                     hasMainCoreOutsideCenter = true;
                 }
@@ -124,7 +128,8 @@ public final class MatrixMultiblockScanner {
         if (hasMainCoreOutsideCenter) {
             addIssue(issues, MatrixMultiblockScanIssue.MAIN_CORE_OUTSIDE_CENTER);
         }
-        if (multiplierCount > MatrixCraftingProfile.MULTIPLIER_LIMIT) {
+        if (mainCoreAtCenter != MatrixMultiblockComponent.CREATIVE_MAIN_CORE
+                && multiplierCount > MatrixCraftingProfile.MULTIPLIER_LIMIT) {
             addIssue(issues, MatrixMultiblockScanIssue.MULTIPLIER_LIMIT_EXCEEDED);
         }
 

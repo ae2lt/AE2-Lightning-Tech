@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Objects;
 
 import com.moakiee.thunderbolt.ae2.api.crafting.IBatchCraftingProvider;
+import com.moakiee.thunderbolt.ae2.api.crafting.BatchDispatchMode;
 
 import appeng.api.crafting.IPatternDetails;
 import appeng.api.stacks.KeyCounter;
@@ -62,6 +63,11 @@ public final class MatrixMultiblockInterface implements IBatchCraftingProvider {
     @Override
     public int getBatchCapacity(IPatternDetails details) {
         return cluster.getBatchCapacity(details);
+    }
+
+    @Override
+    public BatchDispatchMode getBatchDispatchMode(IPatternDetails details) {
+        return cluster.batchDispatchMode();
     }
 
     @Override

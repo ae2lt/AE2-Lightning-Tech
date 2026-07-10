@@ -53,6 +53,7 @@ public class MatrixFormedBlock extends MatrixMultiblockSimpleBlock {
             case STABLE_MAIN_CORE,
                     QUANTUM_MAIN_CORE,
                     OVERLOAD_MAIN_CORE,
+                    CREATIVE_MAIN_CORE,
                     BLANK_SUB_CORE,
                     THREAD_SUB_CORE_T1,
                     THREAD_SUB_CORE_T2,

@@ -12,6 +12,7 @@ public enum MatrixMultiblockComponent {
     STABLE_MAIN_CORE,
     QUANTUM_MAIN_CORE,
     OVERLOAD_MAIN_CORE,
+    CREATIVE_MAIN_CORE,
     BLANK_SUB_CORE,
     THREAD_SUB_CORE_T1,
     THREAD_SUB_CORE_T2,
@@ -26,7 +27,10 @@ public enum MatrixMultiblockComponent {
     }
 
     public boolean isMainCore() {
-        return this == STABLE_MAIN_CORE || this == QUANTUM_MAIN_CORE || this == OVERLOAD_MAIN_CORE;
+        return this == STABLE_MAIN_CORE
+                || this == QUANTUM_MAIN_CORE
+                || this == OVERLOAD_MAIN_CORE
+                || this == CREATIVE_MAIN_CORE;
     }
 
     public boolean isCraftingSubCore() {
@@ -59,6 +63,7 @@ public enum MatrixMultiblockComponent {
             case STABLE_MAIN_CORE -> MatrixCraftingUnit.stableCore();
             case QUANTUM_MAIN_CORE -> MatrixCraftingUnit.quantumCore();
             case OVERLOAD_MAIN_CORE -> MatrixCraftingUnit.overloadCore();
+            case CREATIVE_MAIN_CORE -> MatrixCraftingUnit.creativeCore();
             case THREAD_SUB_CORE_T1 -> MatrixCraftingUnit.t1Threader();
             case THREAD_SUB_CORE_T2 -> MatrixCraftingUnit.t2Threader();
             case MULTIPLIER_SUB_CORE_T1 -> MatrixCraftingUnit.t1Multiplier();

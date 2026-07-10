@@ -2,6 +2,7 @@ package com.moakiee.ae2lt.client;
 
 import com.moakiee.ae2lt.menu.MatrixControllerMenu;
 import com.moakiee.ae2lt.network.MatrixControllerActionPacket;
+import com.moakiee.ae2lt.logic.craft.MatrixCoreMode;
 
 import java.util.Locale;
 
@@ -50,21 +51,38 @@ public class MatrixControllerScreen extends AbstractContainerScreen<MatrixContro
         drawLine(guiGraphics, Component.translatable("ae2lt.matrix.gui.storage",
                 menu.getPatternStorageCount(), menu.getPatternSlotCount()), 12, y, 0xB7C5D3);
 
+        boolean creative = menu.getMode() == MatrixCoreMode.CREATIVE;
         y = 70;
-        drawLine(guiGraphics, Component.translatable("ae2lt.matrix.gui.throughput",
-                compact(menu.getOperationsPerTick())), 12, y, 0xE6EEF5);
+        drawLine(guiGraphics, creative
+                ? Component.translatable("ae2lt.matrix.gui.throughput_unbounded")
+                : Component.translatable("ae2lt.matrix.gui.throughput", compact(menu.getOperationsPerTick())),
+                12, y, 0xE6EEF5);
         y += 12;
-        drawLine(guiGraphics, Component.translatable("ae2lt.matrix.gui.heat",
-                percent(menu.getNormalizedHeat()), Component.translatable(heatStateKey())), 12, y, heatColor());
-        drawHeatBar(guiGraphics, 12, 94, imageWidth - 24, 4);
+        drawLine(guiGraphics, creative
+                ? Component.translatable("ae2lt.matrix.gui.heat_ignored")
+                : Component.translatable("ae2lt.matrix.gui.heat",
+                        percent(menu.getNormalizedHeat()), Component.translatable(heatStateKey())),
+                12, y, creative ? 0xFF80C6FF : heatColor());
+        if (!creative) {
+            drawHeatBar(guiGraphics, 12, 94, imageWidth - 24, 4);
+        }
 
         y = 110;
-        drawLine(guiGraphics, factorLine(), 12, y, 0xE6EEF5);
-        y += 12;
-        drawLine(guiGraphics, Component.translatable("ae2lt.matrix.gui.dispatches",
-                fixed(menu.getDispatches())), 12, y, 0xB7C5D3);
-        drawLine(guiGraphics, Component.translatable("ae2lt.matrix.gui.batch",
-                fixed(menu.getBaseBatch()), compact(menu.getBatchSize())), 118, y, 0xB7C5D3);
+        if (creative) {
+            drawLine(guiGraphics, Component.translatable("ae2lt.matrix.gui.creative_subcores"), 12, y, 0xE6EEF5);
+            y += 12;
+            drawLine(guiGraphics, Component.translatable("ae2lt.matrix.gui.creative_cpu_cost"),
+                    12, y, 0xB7C5D3);
+            drawLine(guiGraphics, Component.translatable("ae2lt.matrix.gui.creative_delay"),
+                    138, y, 0xB7C5D3);
+        } else {
+            drawLine(guiGraphics, factorLine(), 12, y, 0xE6EEF5);
+            y += 12;
+            drawLine(guiGraphics, Component.translatable("ae2lt.matrix.gui.dispatches",
+                    fixed(menu.getDispatches())), 12, y, 0xB7C5D3);
+            drawLine(guiGraphics, Component.translatable("ae2lt.matrix.gui.batch",
+                    fixed(menu.getBaseBatch()), compact(menu.getBatchSize())), 118, y, 0xB7C5D3);
+        }
     }
 
     @Override

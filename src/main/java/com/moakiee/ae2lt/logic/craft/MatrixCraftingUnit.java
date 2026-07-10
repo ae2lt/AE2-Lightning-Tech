@@ -22,6 +22,10 @@ public record MatrixCraftingUnit(Kind kind, MatrixCoreMode coreMode, int power, 
         return new MatrixCraftingUnit(Kind.CORE, MatrixCoreMode.OVERLOAD, 0, 0);
     }
 
+    public static MatrixCraftingUnit creativeCore() {
+        return new MatrixCraftingUnit(Kind.CORE, MatrixCoreMode.CREATIVE, 0, 0);
+    }
+
     public static MatrixCraftingUnit t1Threader() {
         return threadPower(2);
     }
