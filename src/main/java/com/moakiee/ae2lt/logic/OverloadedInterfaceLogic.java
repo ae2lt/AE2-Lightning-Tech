@@ -2,7 +2,6 @@ package com.moakiee.ae2lt.logic;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.util.HashMap;
 import java.util.Set;
 
 import org.jetbrains.annotations.Nullable;
@@ -11,7 +10,6 @@ import com.moakiee.ae2lt.blockentity.OverloadedInterfaceBlockEntity;
 import com.moakiee.ae2lt.logic.energy.PowerCostUtil;
 
 import appeng.api.config.Actionable;
-import appeng.api.config.FuzzyMode;
 import appeng.api.config.Settings;
 import appeng.api.networking.IGridNode;
 import appeng.api.networking.IManagedGridNode;
@@ -84,21 +82,13 @@ public class OverloadedInterfaceLogic extends InterfaceLogic {
     private final int slotCount;
     private final appeng.api.upgrades.IUpgradeInventory ourUpgrades;
     private final appeng.helpers.MultiCraftingTracker craftingTrackerRef;
-    private final AEKey[] limitedSelections;
-    private final List<AEKey>[] orderedCandidateCache;
-    private long candidateCacheTick = Long.MIN_VALUE;
-    private boolean candidateCacheFuzzyEnabled;
-    private FuzzyMode candidateCacheFuzzyMode = FuzzyMode.IGNORE_ALL;
 
-    @SuppressWarnings("unchecked")
     public OverloadedInterfaceLogic(IManagedGridNode gridNode,
                                     OverloadedInterfaceBlockEntity host,
                                     Item is, int slots) {
         super(gridNode, host, is, slots);
         this.owner = host;
         this.slotCount = slots;
-        this.limitedSelections = new AEKey[slots];
-        this.orderedCandidateCache = (List<AEKey>[]) new List<?>[slots];
 
         try {
             this.craftingTrackerRef = (appeng.helpers.MultiCraftingTracker) F_CRAFTING_TRACKER.get(this);
@@ -109,7 +99,7 @@ public class OverloadedInterfaceLogic extends InterfaceLogic {
         var newConfig = new OverloadedConfigInv(
                 AEKeyTypes.getAll(), null,
                 GenericStackInv.Mode.CONFIG_STACKS, slots,
-                this::onOverloadedConfigChanged);
+                () -> invokeQuietly(M_ON_CONFIG_CHANGED, this));
         newConfig.owner = host;
         setField(F_CONFIG, newConfig);
         newConfig.useRegisteredCapacities();
@@ -127,7 +117,6 @@ public class OverloadedInterfaceLogic extends InterfaceLogic {
 
         var newUpgrades = UpgradeInventories.forMachine(is, 4, () -> {
             invokeQuietly(M_ON_UPGRADES_CHANGED, this);
-            invalidateFuzzyState();
             host.invalidateInductionCardCache();
         });
         setField(F_UPGRADES, newUpgrades);
@@ -142,114 +131,6 @@ public class OverloadedInterfaceLogic extends InterfaceLogic {
 
     public ProxiedStorageInv getProxiedStorage() {
         return proxiedStorage;
-    }
-
-    private void onOverloadedConfigChanged() {
-        invokeQuietly(M_ON_CONFIG_CHANGED, this);
-        invalidateFuzzyState();
-    }
-
-    private boolean isFuzzyEnabled() {
-        return ourUpgrades.isInstalled(AEItems.FUZZY_CARD);
-    }
-
-    private FuzzyMode fuzzyMode() {
-        return getConfigManager().getSetting(Settings.FUZZY_MODE);
-    }
-
-    private void prepareCandidateCache() {
-        var level = host.getBlockEntity().getLevel();
-        long now = level != null ? level.getGameTime() : Long.MIN_VALUE;
-        boolean fuzzyEnabled = isFuzzyEnabled();
-        FuzzyMode fuzzyMode = fuzzyMode();
-        boolean fuzzyStateChanged = fuzzyEnabled != candidateCacheFuzzyEnabled
-                || fuzzyMode != candidateCacheFuzzyMode;
-        if (now != candidateCacheTick || fuzzyStateChanged) {
-            Arrays.fill(orderedCandidateCache, null);
-            candidateCacheTick = now;
-        }
-        if (fuzzyStateChanged) {
-            Arrays.fill(limitedSelections, null);
-            candidateCacheFuzzyEnabled = fuzzyEnabled;
-            candidateCacheFuzzyMode = fuzzyMode;
-            proxiedStorage.invalidateCaches();
-        }
-    }
-
-    private void invalidateFuzzyState() {
-        Arrays.fill(limitedSelections, null);
-        Arrays.fill(orderedCandidateCache, null);
-        candidateCacheTick = Long.MIN_VALUE;
-        if (proxiedStorage != null) {
-            proxiedStorage.invalidateCaches();
-        }
-    }
-
-    public void onSlotModeChanged(int slot) {
-        if (slot >= 0 && slot < slotCount) {
-            limitedSelections[slot] = null;
-            orderedCandidateCache[slot] = null;
-        }
-        proxiedStorage.invalidateCaches();
-    }
-
-    public boolean matchesConfiguredSlot(int slot, AEKey candidate) {
-        if (slot < 0 || slot >= slotCount || candidate == null) {
-            return false;
-        }
-        var configured = getConfig().getKey(slot);
-        return configured != null && OverloadedInterfaceFuzzyResolver.matches(
-                configured, candidate, isFuzzyEnabled(), fuzzyMode());
-    }
-
-    private List<AEKey> orderedCandidates(int slot) {
-        prepareCandidateCache();
-        if (slot < 0 || slot >= slotCount) {
-            return List.of();
-        }
-        var configured = getConfig().getKey(slot);
-        var grid = mainNode.getGrid();
-        if (configured == null || grid == null) {
-            limitedSelections[slot] = null;
-            return List.of();
-        }
-        var cached = orderedCandidateCache[slot];
-        if (cached == null) {
-            cached = OverloadedInterfaceFuzzyResolver.orderedCandidates(
-                    configured,
-                    grid.getStorageService().getCachedInventory(),
-                    isFuzzyEnabled(),
-                    fuzzyMode());
-            orderedCandidateCache[slot] = cached;
-        }
-        return cached;
-    }
-
-    /**
-     * Resolves the real network keys represented by a configuration slot.
-     * Limited slots return at most one sticky key; unlimited slots return all
-     * currently available matching keys.
-     */
-    public List<AEKey> resolveCandidatesForSlot(int slot, boolean unlimited) {
-        var ordered = orderedCandidates(slot);
-        if (ordered.isEmpty()) {
-            return List.of();
-        }
-        var configured = getConfig().getKey(slot);
-        if (configured == null) {
-            return List.of();
-        }
-        if (unlimited) {
-            return OverloadedInterfaceFuzzyResolver.selectUnlimited(
-                    ordered, key -> proxiedStorage.visibleNetworkAmount(key, 1));
-        }
-
-        var selected = OverloadedInterfaceFuzzyResolver.selectLimited(
-                limitedSelections[slot], configured, ordered,
-                isFuzzyEnabled(), fuzzyMode(),
-                key -> proxiedStorage.visibleNetworkAmount(key, 1));
-        limitedSelections[slot] = selected;
-        return selected != null ? List.of(selected) : List.of();
     }
 
     /**
@@ -310,13 +191,9 @@ public class OverloadedInterfaceLogic extends InterfaceLogic {
         var cfg = getConfig();
         for (int i = 0; i < slotCount; i++) {
             var key = cfg.getKey(i);
-            if (key == null || !matchesConfiguredSlot(i, what)) continue;
-            boolean unlimited = owner.isSlotUnlimited(i);
-            if (!resolveCandidatesForSlot(i, unlimited).isEmpty()) return;
-            long cap = unlimited ? overloadedCap(key) : cfg.getAmount(i);
-            if (cap > 0) {
-                invokeCrafting(i, key, cap);
-            }
+            if (key == null || !key.equals(what)) continue;
+            long cap = owner.isSlotUnlimited(i) ? overloadedCap(what) : cfg.getAmount(i);
+            invokeCrafting(i, what, cap);
             break;
         }
     }
@@ -369,16 +246,20 @@ public class OverloadedInterfaceLogic extends InterfaceLogic {
             var grid = mainNode.getGrid();
             if (grid == null) return TickRateModulation.IDLE;
 
+            var cache = grid.getStorageService().getCachedInventory();
             var cfg = getConfig();
             boolean didWork = false;
             for (int i = 0; i < slotCount; i++) {
                 var cfgStack = cfg.getStack(i);
                 if (cfgStack == null) continue;
-                boolean unlimited = owner.isSlotUnlimited(i);
-                if (!resolveCandidatesForSlot(i, unlimited).isEmpty()) continue;
-                long batch = unlimited ? overloadedCap(cfgStack.what()) : cfgStack.amount();
-                if (batch > 0) {
-                    didWork |= invokeCrafting(i, cfgStack.what(), batch);
+                long cap = owner.isSlotUnlimited(i) ? Long.MAX_VALUE : cfgStack.amount();
+                if (cap == Long.MAX_VALUE) {
+                    didWork |= invokeCrafting(i, cfgStack.what(), overloadedCap(cfgStack.what()));
+                } else {
+                    long deficit = cap - cache.get(cfgStack.what());
+                    if (deficit > 0) {
+                        didWork |= invokeCrafting(i, cfgStack.what(), deficit);
+                    }
                 }
             }
             return didWork ? TickRateModulation.URGENT : TickRateModulation.SLOWER;
@@ -435,9 +316,10 @@ public class OverloadedInterfaceLogic extends InterfaceLogic {
         /** Rebuilt (not reset) each refresh: KeyCounter.reset() keeps zeroed keys, which would leak 0-amount entries to callers. */
         private KeyCounter availableStacksCache = new KeyCounter();
         private long availableStacksCacheTick = Long.MIN_VALUE;
-        /** Per-slot tick cache for the getStack/getAmount display path. */
-        private final GenericStack[] displayStackCache;
-        private final boolean[] displayStackComputed;
+        /** Per-slot tick cache for the getStack/getAmount display path. External
+         *  IItemHandler pollers hit these every tick; without caching each call
+         *  re-simulates the whole ME network. -1 = not yet computed this tick. */
+        private final long[] displayAmountCache;
         private long displayAmountCacheTick = Long.MIN_VALUE;
 
         ProxiedStorageInv(OverloadedInterfaceLogic logic,
@@ -446,15 +328,7 @@ public class OverloadedInterfaceLogic extends InterfaceLogic {
                           int size, @Nullable Runnable listener) {
             super(supportedTypes, slotFilter, GenericStackInv.Mode.STORAGE, size, listener);
             this.logic = logic;
-            this.displayStackCache = new GenericStack[size];
-            this.displayStackComputed = new boolean[size];
-        }
-
-        void invalidateCaches() {
-            availableStacksCacheTick = Long.MIN_VALUE;
-            displayAmountCacheTick = Long.MIN_VALUE;
-            Arrays.fill(displayStackComputed, false);
-            Arrays.fill(displayStackCache, null);
+            this.displayAmountCache = new long[size];
         }
 
         @Override
@@ -481,30 +355,22 @@ public class OverloadedInterfaceLogic extends InterfaceLogic {
             return key != null ? key.getType().getAmountPerUnit() : Long.MAX_VALUE;
         }
 
-        private @Nullable GenericStack displayStack(int slot) {
+        private long displayAmount(int slot, AEKey key) {
             var be = logic.host.getBlockEntity();
             var level = be != null ? be.getLevel() : null;
             long now = level != null ? level.getGameTime() : Long.MIN_VALUE;
-            boolean cacheable = level != null && slot >= 0 && slot < displayStackCache.length;
+            boolean cacheable = level != null && slot >= 0 && slot < displayAmountCache.length;
             if (cacheable) {
                 if (now != displayAmountCacheTick) {
-                    Arrays.fill(displayStackComputed, false);
-                    Arrays.fill(displayStackCache, null);
+                    Arrays.fill(displayAmountCache, -1L);
                     displayAmountCacheTick = now;
                 }
-                if (displayStackComputed[slot]) return displayStackCache[slot];
+                long cached = displayAmountCache[slot];
+                if (cached >= 0) return cached;
             }
-
-            var candidates = logic.resolveCandidatesForSlot(
-                    slot, logic.owner.isSlotUnlimited(slot));
-            var key = candidates.isEmpty() ? null : candidates.getFirst();
-            long amount = key != null ? visibleNetworkAmount(key, capForSlot(slot)) : 0;
-            var result = key != null && amount > 0 ? new GenericStack(key, amount) : null;
-            if (cacheable) {
-                displayStackComputed[slot] = true;
-                displayStackCache[slot] = result;
-            }
-            return result;
+            long amt = visibleNetworkAmount(key, capForSlot(slot));
+            if (cacheable) displayAmountCache[slot] = amt;
+            return amt;
         }
 
         private long visibleNetworkAmount(AEKey key, long cap) {
@@ -527,34 +393,28 @@ public class OverloadedInterfaceLogic extends InterfaceLogic {
             }
         }
 
+        private boolean matchesConfiguredSlot(int slot, AEKey what) {
+            var configured = cfg().getKey(slot);
+            if (configured == null) return false;
+            if (configured.equals(what)) return true;
+            if (!logic.ourUpgrades.isInstalled(AEItems.FUZZY_CARD)) return false;
+            if (!configured.supportsFuzzyRangeSearch()) return false;
+            var fuzzyMode = logic.getConfigManager().getSetting(Settings.FUZZY_MODE);
+            return configured.fuzzyEquals(what, fuzzyMode);
+        }
+
         private long exposedAmount(AEKey what) {
             var grid = logic.mainNode.getGrid();
             if (grid == null) return 0;
-            long totalCap = 0;
+            long total = 0;
             for (int i = 0; i < size(); i++) {
-                boolean unlimited = logic.owner.isSlotUnlimited(i);
-                if (unlimited) {
-                    if (logic.matchesConfiguredSlot(i, what)) {
-                        totalCap = Long.MAX_VALUE;
-                        break;
-                    }
-                    continue;
-                }
-                var candidates = logic.resolveCandidatesForSlot(i, false);
-                if (!candidates.isEmpty() && candidates.getFirst().equals(what)) {
-                    long slotCap = capForSlot(i);
-                    totalCap = saturatingAdd(totalCap, slotCap);
-                }
+                if (!matchesConfiguredSlot(i, what)) continue;
+                long cap = capForSlot(i);
+                long amount = visibleNetworkAmount(what, cap);
+                if (Long.MAX_VALUE - total < amount) return Long.MAX_VALUE;
+                total += amount;
             }
-            return totalCap > 0 ? visibleNetworkAmount(what, totalCap) : 0;
-        }
-
-        private static long saturatingAdd(long left, long right) {
-            if (left == Long.MAX_VALUE || right == Long.MAX_VALUE
-                    || Long.MAX_VALUE - left < right) {
-                return Long.MAX_VALUE;
-            }
-            return left + right;
+            return total;
         }
 
         // ── Display: server queries ME network & syncs stacks[]; client uses synced stacks[] ─
@@ -564,7 +424,13 @@ public class OverloadedInterfaceLogic extends InterfaceLogic {
             if (logic.mainNode.getGrid() == null) {
                 return super.getStack(slot);
             }
-            var result = displayStack(slot);
+            var key = cfg().getKey(slot);
+            if (key == null) {
+                stacks[slot] = null;
+                return null;
+            }
+            long amt = displayAmount(slot, key);
+            var result = amt > 0 ? new GenericStack(key, amt) : null;
             stacks[slot] = result;
             return result;
         }
@@ -574,8 +440,7 @@ public class OverloadedInterfaceLogic extends InterfaceLogic {
             if (logic.mainNode.getGrid() == null) {
                 return super.getKey(slot);
             }
-            var stack = displayStack(slot);
-            return stack != null ? stack.what() : null;
+            return cfg().getKey(slot);
         }
 
         @Override
@@ -583,8 +448,9 @@ public class OverloadedInterfaceLogic extends InterfaceLogic {
             if (logic.mainNode.getGrid() == null) {
                 return super.getAmount(slot);
             }
-            var stack = displayStack(slot);
-            return stack != null ? stack.amount() : 0;
+            var key = cfg().getKey(slot);
+            if (key == null) return 0;
+            return displayAmount(slot, key);
         }
 
         @Override
@@ -610,7 +476,7 @@ public class OverloadedInterfaceLogic extends InterfaceLogic {
         @Override
         public long extract(int slot, AEKey what, long amount, Actionable mode) {
             if (what == null || amount <= 0) return 0;
-            var key = getKey(slot);
+            var key = cfg().getKey(slot);
             if (key == null || !key.equals(what)) return 0;
             long capped = Math.min(amount, capForSlot(slot));
             long extracted = proxyExtract(what, capped, mode);
@@ -711,17 +577,26 @@ public class OverloadedInterfaceLogic extends InterfaceLogic {
             proxying = true;
             try {
                 var fresh = new KeyCounter();
-                var candidateCaps = new HashMap<AEKey, Long>();
+                var cache = grid.getStorageService().getCachedInventory();
+                boolean fuzzy = logic.ourUpgrades.isInstalled(AEItems.FUZZY_CARD);
+                var fuzzyMode = fuzzy ? logic.getConfigManager().getSetting(Settings.FUZZY_MODE) : null;
                 for (int slot = 0; slot < size(); slot++) {
-                    boolean unlimited = logic.owner.isSlotUnlimited(slot);
-                    long cap = unlimited ? Long.MAX_VALUE : capForSlot(slot);
-                    for (var key : logic.resolveCandidatesForSlot(slot, unlimited)) {
-                        candidateCaps.merge(key, cap, ProxiedStorageInv::saturatingAdd);
+                    var key = cfg().getKey(slot);
+                    if (key == null) continue;
+
+                    long cap = capForSlot(slot);
+                    long configuredAmount = visibleNetworkAmount(key, cap);
+                    if (configuredAmount > 0) fresh.add(key, configuredAmount);
+
+                    if (fuzzy && key.supportsFuzzyRangeSearch()) {
+                        for (var entry : cache.findFuzzy(key, fuzzyMode)) {
+                            if (entry.getKey().equals(key)) continue;
+                            long amount = cap == Long.MAX_VALUE
+                                    ? entry.getLongValue()
+                                    : Math.min(cap, entry.getLongValue());
+                            if (amount > 0) fresh.add(entry.getKey(), amount);
+                        }
                     }
-                }
-                for (var entry : candidateCaps.entrySet()) {
-                    long amount = visibleNetworkAmount(entry.getKey(), entry.getValue());
-                    if (amount > 0) fresh.add(entry.getKey(), amount);
                 }
                 availableStacksCache = fresh;
                 availableStacksCacheTick = now;
