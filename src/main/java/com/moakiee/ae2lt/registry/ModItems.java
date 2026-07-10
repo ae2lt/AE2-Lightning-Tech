@@ -1,6 +1,7 @@
 package com.moakiee.ae2lt.registry;
 
 import com.moakiee.ae2lt.AE2LightningTech;
+import com.moakiee.ae2lt.item.BulkLightningStorageCellItem;
 import com.moakiee.ae2lt.item.DebugLightningRodItem;
 import com.moakiee.ae2lt.item.ElectroChimeCrystalItem;
 import com.moakiee.ae2lt.item.FixedInfiniteCellItem;
@@ -167,6 +168,11 @@ public final class ModItems {
             registerLightningStorageComponent("lightning_storage_component_iv", 16384, 2048);
     public static final DeferredItem<LightningStorageComponentItem> LIGHTNING_STORAGE_COMPONENT_V =
             registerLightningStorageComponent("lightning_storage_component_v", 65536, 8192);
+
+    public static final DeferredItem<BulkLightningStorageCellItem> BULK_LIGHTNING_STORAGE_COMPONENT =
+            ITEMS.register(
+                    "bulk_lightning_storage_component",
+                    () -> new BulkLightningStorageCellItem(new Item.Properties(), 32));
 
     public static final DeferredItem<Item> LIGHTNING_CELL_COMPONENT_I =
             ITEMS.registerSimpleItem("lightning_cell_component_i", new Item.Properties());
