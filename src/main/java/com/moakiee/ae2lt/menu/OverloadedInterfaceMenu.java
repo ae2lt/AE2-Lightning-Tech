@@ -351,7 +351,7 @@ public class OverloadedInterfaceMenu extends InterfaceMenu implements FrequencyB
                               int idx, int button, Player player) {
         var carried = getCarried();
         if (carried.isEmpty()) {
-            var key = proxy.cfg().getKey(idx);
+            var key = proxy.getKey(idx);
             if (!(key instanceof AEItemKey itemKey)) return;
             long cap = proxy.capForSlot(idx);
             int maxStack = itemKey.getMaxStackSize();
@@ -375,7 +375,7 @@ public class OverloadedInterfaceMenu extends InterfaceMenu implements FrequencyB
 
     private void handleQuickMove(OverloadedInterfaceLogic.ProxiedStorageInv proxy,
                                  int idx, Player player) {
-        var key = proxy.cfg().getKey(idx);
+        var key = proxy.getKey(idx);
         if (!(key instanceof AEItemKey itemKey)) return;
         long cap = proxy.capForSlot(idx);
         int maxStack = itemKey.getMaxStackSize();
@@ -391,7 +391,7 @@ public class OverloadedInterfaceMenu extends InterfaceMenu implements FrequencyB
 
     private void handleThrow(OverloadedInterfaceLogic.ProxiedStorageInv proxy,
                              int idx, int button, Player player) {
-        var key = proxy.cfg().getKey(idx);
+        var key = proxy.getKey(idx);
         if (!(key instanceof AEItemKey itemKey)) return;
         long maxExtract = (button == 1)
                 ? Math.min(proxy.capForSlot(idx), itemKey.getMaxStackSize())
@@ -406,7 +406,7 @@ public class OverloadedInterfaceMenu extends InterfaceMenu implements FrequencyB
                             int idx, int button, Player player) {
         if (button < 0 || button > 8) return;
         var hotbarStack = player.getInventory().getItem(button);
-        var key = proxy.cfg().getKey(idx);
+        var key = proxy.getKey(idx);
 
         boolean wantInsert  = !hotbarStack.isEmpty();
         boolean wantExtract = key instanceof AEItemKey;
@@ -458,7 +458,7 @@ public class OverloadedInterfaceMenu extends InterfaceMenu implements FrequencyB
     private void handleClone(OverloadedInterfaceLogic.ProxiedStorageInv proxy,
                              int idx, Player player) {
         if (!player.isCreative()) return;
-        var key = proxy.cfg().getKey(idx);
+        var key = proxy.getKey(idx);
         if (key instanceof AEItemKey itemKey) {
             setCarried(itemKey.toStack(itemKey.getMaxStackSize()));
         }

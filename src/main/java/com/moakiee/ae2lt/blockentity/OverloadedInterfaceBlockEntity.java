@@ -158,6 +158,8 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
     private long exportConfigCacheTick = Long.MIN_VALUE;
     private int exportConfigCacheHash;
     private boolean exportConfigCacheValid;
+    private final Map<AEKey, Boolean> exportBlacklistMatchCache = new HashMap<>();
+    private long exportBlacklistMatchCacheTick = Long.MIN_VALUE;
 
     // ── WirelessConnection ───────────────────────────────────────────────
 
@@ -509,7 +511,7 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
 
     private record IoEntryKey(WirelessConnection conn, AEKeyType keyType, IoDirection direction) {}
     private record ImportResult(long totalAvail, long moved) {}
-    private record ExportConfigEntry(AEKey key, long maxAmount) {}
+    private record ExportConfigEntry(int slot, long maxAmount, boolean unlimited) {}
 
     static final class IoScheduledEntry {
         final WirelessConnection conn;
@@ -801,6 +803,9 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         if (slot < 0 || slot >= SLOT_COUNT) return;
         if (unlimitedSlots[slot] == unlimited) return;
         unlimitedSlots[slot] = unlimited;
+        if (getInterfaceLogic() instanceof OverloadedInterfaceLogic logic) {
+            logic.onSlotModeChanged(slot);
+        }
         invalidateExportConfigCache();
         saveChanges(); markForUpdate();
     }
@@ -978,8 +983,8 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         exportConfigCache.clear();
         exportConfigCacheTick = Long.MIN_VALUE;
         exportConfigCacheValid = false;
-        exportBlacklistCache = Set.of();
-        exportBlacklistTick = -1;
+        exportBlacklistMatchCache.clear();
+        exportBlacklistMatchCacheTick = Long.MIN_VALUE;
     }
 
     private List<WirelessConnection> getOrRefreshValidConnections(
@@ -1484,28 +1489,29 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         return importFilterFuzzyMode == null ? importFilterKeys : null;
     }
 
-    private Set<AEKey> exportBlacklistCache = Set.of();
-    private long exportBlacklistTick = -1;
+    private boolean isConfiguredExportKey(AEKey candidate) {
+        long now = level != null ? level.getGameTime() : Long.MIN_VALUE;
+        if (now != exportBlacklistMatchCacheTick) {
+            exportBlacklistMatchCache.clear();
+            exportBlacklistMatchCacheTick = now;
+        }
+        var cached = exportBlacklistMatchCache.get(candidate);
+        if (cached != null) return cached;
 
-    private Set<AEKey> getExportBlacklist() {
-        if (level != null && level.getGameTime() == exportBlacklistTick) {
-            return exportBlacklistCache;
-        }
         var config = getInterfaceLogic().getConfig();
-        var set = new HashSet<AEKey>();
+        var logic = (OverloadedInterfaceLogic) getInterfaceLogic();
         for (int i = 0; i < config.size(); i++) {
-            var key = config.getKey(i);
-            if (key != null) set.add(key);
+            if (config.getKey(i) != null && logic.matchesConfiguredSlot(i, candidate)) {
+                exportBlacklistMatchCache.put(candidate, true);
+                return true;
+            }
         }
-        exportBlacklistCache = set;
-        if (level != null) {
-            exportBlacklistTick = level.getGameTime();
-        }
-        return set;
+        exportBlacklistMatchCache.put(candidate, false);
+        return false;
     }
 
     private boolean isImportAllowed(AEKey key) {
-        if (getExportBlacklist().contains(key)) return false;
+        if (isConfiguredExportKey(key)) return false;
         var keys = importFilterKeys;
         if (keys == null || keys.isEmpty()) return true;
         var fuzzyMode = importFilterFuzzyMode;
@@ -1532,43 +1538,46 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         long moved = 0;
         boolean overflowed = false;
         var grid = getMainNode().getGrid();
+        var logic = (OverloadedInterfaceLogic) getInterfaceLogic();
 
         for (var entry : entries) {
-            var key = entry.key();
-            if (state.isExportRejected(key, now)) continue;
+            var candidates = logic.resolveCandidatesForSlot(entry.slot(), entry.unlimited());
+            for (var key : candidates) {
+                if (state.isExportRejected(key, now)) continue;
 
-            long toMove = entry.maxAmount();
+                long toMove = entry.maxAmount();
+                long available = me.extract(key, toMove, Actionable.SIMULATE, src);
+                if (available <= 0) continue;
 
-            long available = me.extract(key, toMove, Actionable.SIMULATE, src);
-            if (available <= 0) continue;
+                long requested = Math.min(toMove, available);
+                long canAccept = wrapper.insert(key, requested, Actionable.SIMULATE, src);
+                if (canAccept <= 0) {
+                    state.onExportRejected(key, now);
+                    break;
+                }
 
-            long requested = Math.min(toMove, available);
-            long canAccept = wrapper.insert(key, requested, Actionable.SIMULATE, src);
-            if (canAccept <= 0) {
-                state.onExportRejected(key, now);
-                continue;
-            }
+                long target = Math.min(requested, canAccept);
+                long affordable = PowerCostUtil.maxAffordable(grid, key, target);
+                if (affordable <= 0) continue;
 
-            long target = Math.min(requested, canAccept);
-            long affordable = PowerCostUtil.maxAffordable(grid, key, target);
-            if (affordable <= 0) continue;
+                long extracted = me.extract(key, affordable, Actionable.MODULATE, src);
+                if (extracted <= 0) continue;
 
-            long extracted = me.extract(key, affordable, Actionable.MODULATE, src);
-            if (extracted <= 0) continue;
+                long inserted = wrapper.insert(key, extracted, Actionable.MODULATE, src);
+                if (inserted > 0) {
+                    PowerCostUtil.consume(grid, key, inserted);
+                    state.onExportAccepted(key);
+                    moved += inserted;
+                } else {
+                    state.onExportRejected(key, now);
+                }
 
-            long inserted = wrapper.insert(key, extracted, Actionable.MODULATE, src);
-            if (inserted > 0) {
-                PowerCostUtil.consume(grid, key, inserted);
-                state.onExportAccepted(key);
-                moved += inserted;
-            } else {
-                state.onExportRejected(key, now);
-            }
-
-            long overflow = extracted - inserted;
-            if (overflow > 0) {
-                addToImportBuffer(key, overflow);
-                overflowed = true;
+                long overflow = extracted - inserted;
+                if (overflow > 0) {
+                    addToImportBuffer(key, overflow);
+                    overflowed = true;
+                }
+                if (inserted <= 0) break;
             }
         }
 
@@ -1611,11 +1620,12 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
             var key = config.getKey(ci);
             if (key == null || !isWirelessIoKeyType(key.getType())) continue;
 
-            long maxAmount = unlimitedSlots[ci] ? Long.MAX_VALUE : config.getAmount(ci);
+            boolean unlimited = unlimitedSlots[ci];
+            long maxAmount = unlimited ? Long.MAX_VALUE : config.getAmount(ci);
             if (maxAmount <= 0) maxAmount = Long.MAX_VALUE;
             exportConfigCache
                     .computeIfAbsent(key.getType(), ignored -> new ArrayList<>())
-                    .add(new ExportConfigEntry(key, maxAmount));
+                    .add(new ExportConfigEntry(ci, maxAmount, unlimited));
         }
         exportConfigCache.replaceAll((ignored, entries) -> List.copyOf(entries));
     }
