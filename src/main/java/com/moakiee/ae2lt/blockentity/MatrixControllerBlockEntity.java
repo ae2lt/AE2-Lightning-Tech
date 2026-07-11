@@ -174,15 +174,6 @@ public class MatrixControllerBlockEntity extends BlockEntity {
                 craftingUnitCount).withStyle(ChatFormatting.GREEN), true);
     }
 
-    private void scanAndFormSilently() {
-        var attempt = scanCurrent();
-        if (attempt.formed()) {
-            form(attempt.result());
-        } else {
-            deform();
-        }
-    }
-
     public void autoBuild(ServerPlayer player) {
         if (level == null || level.isClientSide) {
             return;
@@ -193,6 +184,10 @@ public class MatrixControllerBlockEntity extends BlockEntity {
                 : countPatternStorageItems(player);
         var plan = createAutoBuildPlan(patternStorageBudget);
         if (!plan.blocked().isEmpty()) {
+            player.displayClientMessage(Component.translatable(
+                    "ae2lt.matrix.build_blocked",
+                    plan.blocked().size(),
+                    describeBlockedPositions(plan.blocked())).withStyle(ChatFormatting.RED), false);
             return;
         }
 
@@ -202,45 +197,79 @@ public class MatrixControllerBlockEntity extends BlockEntity {
             if (!missing.isEmpty() || plan.missingPatternStorages() > 0) {
                 player.displayClientMessage(Component.translatable(
                         "ae2lt.matrix.build_missing",
-                        describeMissing(missing, plan.missingPatternStorages())).withStyle(ChatFormatting.RED), true);
+                        describeMissing(missing, plan.missingPatternStorages())).withStyle(ChatFormatting.RED), false);
                 return;
             }
         }
 
         Direction facing = getOrientation();
+        int placedBlocks = 0;
         for (var placement : plan.placements()) {
             var local = placement.localPos();
             var pos = MatrixMultiblockScanner.worldPos(worldPosition, local, facing);
-            Item consumedPatternStorage = null;
+            Item consumedItem = null;
             BlockState state;
             if (placement.target() == MatrixAutoBuildPlan.Target.PATTERN_STORAGE
                     && !player.getAbilities().instabuild) {
-                consumedPatternStorage = findPatternStorageItem(player);
-                state = stateForPatternStorageItem(consumedPatternStorage);
+                consumedItem = findPatternStorageItem(player);
+                state = stateForPatternStorageItem(consumedItem);
             } else {
                 state = stateForAutoBuild(placement.target());
             }
-            if (state == null) {
-                continue;
+            if (state == null || state.isAir()) {
+                autoBuildPlacementFailed(player, pos);
+                return;
             }
-            if (state.isAir()) {
-                continue;
+            if (!player.getAbilities().instabuild && consumedItem == null) {
+                consumedItem = state.getBlock().asItem();
+                if (consumedItem == net.minecraft.world.item.Items.AIR) {
+                    autoBuildPlacementFailed(player, pos);
+                    return;
+                }
             }
+            boolean placed;
             if (pos.equals(worldPosition)) {
-                level.setBlock(pos, getBlockState().setValue(MatrixMultiblockDirectionalBlock.FACING, facing),
+                placed = level.setBlock(pos, getBlockState().setValue(MatrixMultiblockDirectionalBlock.FACING, facing),
                         Block.UPDATE_ALL);
             } else {
-                level.setBlock(pos, state, Block.UPDATE_ALL);
+                placed = level.setBlock(pos, state, Block.UPDATE_ALL);
             }
-            if (consumedPatternStorage != null) {
-                consumeItem(player, consumedPatternStorage, 1);
+            if (!placed) {
+                autoBuildPlacementFailed(player, pos);
+                return;
             }
-        }
-        if (!player.getAbilities().instabuild) {
-            consumeRequirements(player, requirements);
+            if (consumedItem != null) {
+                consumeItem(player, consumedItem, 1);
+            }
+            placedBlocks++;
         }
 
-        scanAndFormSilently();
+        finishAutoBuild(player, placedBlocks);
+    }
+
+    private void autoBuildPlacementFailed(ServerPlayer player, BlockPos pos) {
+        refreshStructure();
+        player.displayClientMessage(Component.translatable(
+                "ae2lt.matrix.build_place_failed",
+                describePosition(pos)).withStyle(ChatFormatting.RED), false);
+    }
+
+    private void finishAutoBuild(ServerPlayer player, int placedBlocks) {
+        var attempt = scanCurrent();
+        if (attempt.formed()) {
+            form(attempt.result());
+            Component message = placedBlocks == 0
+                    ? Component.translatable("ae2lt.matrix.build_already_complete")
+                    : Component.translatable("ae2lt.matrix.build_complete", placedBlocks);
+            player.displayClientMessage(message.copy().withStyle(ChatFormatting.GREEN), true);
+            return;
+        }
+
+        deform();
+        Component message = placedBlocks == 0
+                ? Component.translatable("ae2lt.matrix.build_nothing_to_place")
+                : Component.translatable("ae2lt.matrix.build_placed", placedBlocks);
+        player.displayClientMessage(message.copy().withStyle(ChatFormatting.GREEN), true);
     }
 
     public void upgradePatternStorage(ServerPlayer player) {
@@ -560,12 +589,6 @@ public class MatrixControllerBlockEntity extends BlockEntity {
         return item instanceof BlockItem blockItem && blockItem.getBlock() instanceof MatrixPatternStorageBlock;
     }
 
-    private void consumeRequirements(Player player, java.util.Map<Item, Integer> requirements) {
-        for (var entry : requirements.entrySet()) {
-            consumeItem(player, entry.getKey(), entry.getValue());
-        }
-    }
-
     private void consumeItem(Player player, Item item, int amount) {
         int remaining = amount;
         var inventory = player.getInventory();
@@ -648,6 +671,27 @@ public class MatrixControllerBlockEntity extends BlockEntity {
             }
             remaining -= consumed;
         }
+    }
+
+    private Component describeBlockedPositions(List<BlockPos> localPositions) {
+        MutableComponent result = Component.empty();
+        Direction facing = getOrientation();
+        int visible = Math.min(localPositions.size(), 4);
+        for (int i = 0; i < visible; i++) {
+            if (i > 0) {
+                result.append(", ");
+            }
+            result.append(describePosition(MatrixMultiblockScanner.worldPos(
+                    worldPosition, localPositions.get(i), facing)));
+        }
+        if (localPositions.size() > visible) {
+            result.append(", ...");
+        }
+        return result;
+    }
+
+    private Component describePosition(BlockPos pos) {
+        return Component.literal("[" + pos.getX() + ", " + pos.getY() + ", " + pos.getZ() + "]");
     }
 
     private String describeIssues(MatrixMultiblockScanAttempt attempt) {

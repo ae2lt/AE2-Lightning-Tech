@@ -893,5 +893,11 @@
   "ae2lt.matrix.upgraded": "已升级 %s 个样板仓，可升级总数 %s",
   "ae2lt.matrix.pattern_storage_any": "任意等级样板仓",
   "ae2lt.matrix.build_missing": "背包缺少：%s",
+  "ae2lt.matrix.build_blocked": "自动搭建无法继续：%s 个位置被占用或与结构冲突：%s",
+  "ae2lt.matrix.build_place_failed": "无法在 %s 放置结构方块；已成功放置的方块只扣除了对应材料",
+  "ae2lt.matrix.build_complete": "自动搭建完成：已放置 %s 个方块，矩阵已成形",
+  "ae2lt.matrix.build_already_complete": "矩阵结构已完整，无需补建",
+  "ae2lt.matrix.build_placed": "自动搭建完成：已放置 %s 个方块",
+  "ae2lt.matrix.build_nothing_to_place": "没有需要自动搭建的方块",
   "ae2lt.matrix.terminal.tooltip": "样板仓：%s，样板槽：%s"
 }

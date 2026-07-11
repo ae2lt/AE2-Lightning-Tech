@@ -893,5 +893,11 @@
   "ae2lt.matrix.upgraded": "Upgraded %s pattern storage blocks out of %s available",
   "ae2lt.matrix.pattern_storage_any": "Any-tier pattern storage",
   "ae2lt.matrix.build_missing": "Missing from inventory: %s",
+  "ae2lt.matrix.build_blocked": "Auto-build cannot continue: %s positions are occupied or conflict with the structure: %s",
+  "ae2lt.matrix.build_place_failed": "Could not place a structure block at %s; only successfully placed blocks consumed materials",
+  "ae2lt.matrix.build_complete": "Auto-build complete: placed %s blocks and formed the matrix",
+  "ae2lt.matrix.build_already_complete": "The matrix structure is already complete; nothing needs rebuilding",
+  "ae2lt.matrix.build_placed": "Auto-build complete: placed %s blocks",
+  "ae2lt.matrix.build_nothing_to_place": "There are no blocks to auto-build",
   "ae2lt.matrix.terminal.tooltip": "Pattern storages: %s, pattern slots: %s"
 }

@@ -24,7 +24,7 @@ public final class MatrixAutoBuildPlan {
         var placements = new ArrayList<Placement>();
         var blocked = new ArrayList<BlockPos>();
         int remainingPatternStorages = Math.max(0, patternStorageBudget);
-        boolean hasPort = hasExistingPort(resolver);
+        BlockPos portTarget = selectPortTarget(resolver);
         boolean hasPatternStorage = hasExistingPatternStorage(resolver);
         boolean willPlacePatternStorage = false;
 
@@ -53,7 +53,7 @@ public final class MatrixAutoBuildPlan {
                 continue;
             }
 
-            var target = targetFor(role, local, hasPort);
+            var target = targetFor(role, local, portTarget);
             if (target == null) {
                 continue;
             }
@@ -83,14 +83,20 @@ public final class MatrixAutoBuildPlan {
         return missingPatternStorages;
     }
 
-    private static boolean hasExistingPort(ComponentResolver resolver) {
+    private static BlockPos selectPortTarget(ComponentResolver resolver) {
+        BlockPos firstExistingPort = null;
         for (var entry : MatrixMultiblockTemplate.entries()) {
             if (entry.role() == MatrixMultiblockRole.PORT_CANDIDATE
                     && normalize(resolver.componentAt(entry.localPos())) == MatrixMultiblockComponent.MATRIX_PORT) {
-                return true;
+                if (entry.localPos().equals(DEFAULT_PORT_LOCAL)) {
+                    return DEFAULT_PORT_LOCAL;
+                }
+                if (firstExistingPort == null) {
+                    firstExistingPort = entry.localPos();
+                }
             }
         }
-        return false;
+        return firstExistingPort != null ? firstExistingPort : DEFAULT_PORT_LOCAL;
     }
 
     private static boolean hasExistingPatternStorage(ComponentResolver resolver) {
@@ -103,12 +109,12 @@ public final class MatrixAutoBuildPlan {
         return false;
     }
 
-    private static Target targetFor(MatrixMultiblockRole role, BlockPos local, boolean hasPort) {
+    private static Target targetFor(MatrixMultiblockRole role, BlockPos local, BlockPos portTarget) {
         return switch (role) {
             case CASING -> Target.CASING;
             case CONSTRAINT_FRAME -> Target.CONSTRAINT_FRAME;
             case GLASS -> Target.GLASS;
-            case PORT_CANDIDATE -> !hasPort && local.equals(DEFAULT_PORT_LOCAL)
+            case PORT_CANDIDATE -> local.equals(portTarget)
                     ? Target.PORT
                     : Target.CONSTRAINT_FRAME;
             default -> null;
