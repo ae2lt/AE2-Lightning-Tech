@@ -237,6 +237,12 @@ public class OverloadDeviceWorkbenchBlockEntity extends AENetworkedBlockEntity
     }
 
     @Override
+    public void clearContent() {
+        super.clearContent();
+        deviceInventory.clear();
+    }
+
+    @Override
     protected net.minecraft.world.item.Item getItemFromBlockEntity() {
         return ModBlocks.OVERLOAD_DEVICE_WORKBENCH.get().asItem();
     }
