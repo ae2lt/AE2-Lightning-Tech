@@ -20,5 +20,6 @@ Main features:
 * [Lightning System](lightning/lightning-index.md) — Producing, storing and consuming Lightning
 * [Processing Machines](machines/machines-index.md) — Lightning Simulation Room, Lightning Assembly Chamber, Overload Processing Factory and more
 * [Materials & Items](materials/materials-index.md) — Overload Crystal, alloys, processors, and other key materials
+* [Matter Warping Matrix](matrix/matrix-index.md) — Large-scale parallel crafting, pattern storage, and a configurable core array
 * [Overloaded Network](overloaded-network/overloaded-network-index.md) — Overloaded ME Controller, Cable, Interface and Pattern Provider
 * [Overload Devices](devices-index.md) — Electromagnetic Railgun, Celestweave armor and their modules
