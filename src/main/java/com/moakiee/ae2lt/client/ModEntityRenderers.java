@@ -3,12 +3,15 @@ package com.moakiee.ae2lt.client;
 import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.registry.ModEntities;
 import com.moakiee.ae2lt.registry.ModBlockEntities;
+import net.minecraft.client.resources.model.ModelResourceLocation;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.client.renderer.entity.ItemEntityRenderer;
 import net.minecraft.client.renderer.entity.TntRenderer;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
+import net.neoforged.neoforge.client.event.ModelEvent;
 
 @EventBusSubscriber(modid = AE2LightningTech.MODID, bus = EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
 public final class ModEntityRenderers {
@@ -31,5 +34,19 @@ public final class ModEntityRenderers {
         event.registerBlockEntityRenderer(
                 ModBlockEntities.FUMO.get(),
                 FumoBlockRenderer::new);
+    }
+
+    @SubscribeEvent
+    public static void wrapFumoItemModels(ModelEvent.ModifyBakingResult event) {
+        wrapFumoItemModel(event, "moakiee_fumo");
+        wrapFumoItemModel(event, "cystrysu_fumo");
+        wrapFumoItemModel(event, "pigmee_fumo");
+    }
+
+    private static void wrapFumoItemModel(ModelEvent.ModifyBakingResult event, String itemId) {
+        ResourceLocation id = ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, itemId);
+        ModelResourceLocation modelId = ModelResourceLocation.inventory(id);
+        event.getModels().computeIfPresent(modelId,
+                (ignored, model) -> new SpinningFumoBakedModel(model));
     }
 }
