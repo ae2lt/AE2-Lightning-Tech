@@ -23,13 +23,11 @@ The structure provides 50 optional Pattern Storage positions. At least one stora
 
 T1 and T2 storages may be mixed in one structure. The total capacity is the sum of every installed storage, with one encoded pattern per slot.
 
-The matrix only accepts **encoded crafting patterns** for workbench crafting supported by Molecular Assemblers. Processing patterns are rejected and are never published by the matrix as available patterns.
-
 ## Inserting and Removing Patterns
 
 Once the matrix is formed and connected to an active ME network, all of its pattern slots appear as a group represented by the Matrix Port in the **Pattern Access Terminal**. Patterns can be inserted, replaced, or removed there without opening the outer structure.
 
-The Matrix Port also exposes item insertion for automation. Item pipes can insert valid encoded crafting patterns into available slots. Breaking a Pattern Storage drops its stored patterns; upgrading it in place from the Controller preserves them.
+The Matrix Port also exposes item insertion for automation. Item pipes can insert patterns into available slots. Breaking a Pattern Storage drops its stored patterns; upgrading it in place from the Controller preserves them.
 
 ## Upgrading Pattern Storage
 
@@ -58,5 +56,4 @@ The matrix accepts no new crafting work while the Port is disconnected from a po
 * **Structure does not form:** Check the central main core, all 80 sub cores, at least one Pattern Storage, the unique Port, and every fixed shell position
 * **Auto-build does nothing:** Remove invalid blocks from target positions and verify that all materials are in the player inventory
 * **Port is absent from the network:** Check the cable connection, network power, and formation state
-* **Pattern cannot be inserted:** Confirm that it is an encoded crafting pattern rather than a processing pattern
 * **A stored pattern is not selected for a job:** Confirm that the pattern is stored in this matrix and that the Port is online, then check for other providers advertising the same pattern
