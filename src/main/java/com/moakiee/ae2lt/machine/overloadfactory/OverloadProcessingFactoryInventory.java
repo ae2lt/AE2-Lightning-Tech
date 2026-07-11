@@ -19,8 +19,9 @@ public class OverloadProcessingFactoryInventory extends LargeStackItemHandler {
     public static final int SLOT_COUNT = 11;
     public static final int INPUT_SLOT_COUNT = 9;
     public static final int OUTPUT_SLOT_COUNT = 1;
-    public static final int LARGE_SLOT_LIMIT = 8192;
+    public static final int LARGE_SLOT_LIMIT = 16_384;
     public static final int MATRIX_SLOT_LIMIT = 32;
+
     public OverloadProcessingFactoryInventory(@Nullable Runnable changeListener) {
         super(SLOT_COUNT, changeListener);
     }
