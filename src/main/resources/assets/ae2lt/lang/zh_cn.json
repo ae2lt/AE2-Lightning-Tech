@@ -25,7 +25,7 @@
   "ae2lt.railgun.structural_core_required": "需要先安装极限过载核心才能蓄力",
   "ae2lt.railgun.fail.not_bound": "电磁炮未绑定无线网络",
   "ae2lt.railgun.fail.dim_not_loaded": "目标维度未加载",
-  "ae2lt.railgun.fail.no_ap": "无线接入点离线或被破坏",
+  "ae2lt.railgun.fail.no_ap": "找不到绑定的过载设备工作站",
   "ae2lt.railgun.fail.inactive_ap": "无线接入点已断电",
   "ae2lt.railgun.fail.out_of_range": "超出无线网络射程",
   "ae2lt.railgun.fail.wrong_dimension": "无线网络在其它维度",
