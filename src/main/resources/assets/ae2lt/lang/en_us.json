@@ -23,7 +23,7 @@
   "ae2lt.railgun.structural_core_required": "Install an Ultimate Overload Core before charging",
   "ae2lt.railgun.fail.not_bound": "Railgun is not bound to a wireless network",
   "ae2lt.railgun.fail.dim_not_loaded": "Bound dimension is not loaded",
-  "ae2lt.railgun.fail.no_ap": "Wireless access point is offline or destroyed",
+  "ae2lt.railgun.fail.no_ap": "Cannot find the bound Overload Device Workbench",
   "ae2lt.railgun.fail.inactive_ap": "Wireless access point is unpowered",
   "ae2lt.railgun.fail.out_of_range": "Out of wireless range",
   "ae2lt.railgun.fail.wrong_dimension": "Wireless network is in another dimension",
