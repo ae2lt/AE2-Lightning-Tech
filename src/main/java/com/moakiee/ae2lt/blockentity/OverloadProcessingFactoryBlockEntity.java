@@ -77,8 +77,8 @@ public class OverloadProcessingFactoryBlockEntity extends AENetworkedBlockEntity
     private static final String TAG_AUTO_EXPORT = "AutoExport";
     private static final String TAG_ALLOWED_OUTPUTS = "AllowedOutputs";
 
-    public static final int INPUT_TANK_CAPACITY = 512_000;
-    public static final int OUTPUT_TANK_CAPACITY = 512_000;
+    public static final int INPUT_TANK_CAPACITY = 1_024_000;
+    public static final int OUTPUT_TANK_CAPACITY = 1_024_000;
     public static final int SPEED_CARD_SLOTS = 4;
 
     private final OverloadProcessingFactoryInventory inventory =
@@ -161,6 +161,16 @@ public class OverloadProcessingFactoryBlockEntity extends AENetworkedBlockEntity
 
     public OverloadProcessingFactoryInventory getInventory() {
         return inventory;
+    }
+
+    public ItemStack insertMatricesFromHand(ItemStack heldItem, boolean creative) {
+        ItemStack remainder = inventory.insertItem(
+                OverloadProcessingFactoryInventory.SLOT_MATRIX, heldItem.copy(), false);
+        int inserted = heldItem.getCount() - remainder.getCount();
+        if (creative || inserted <= 0) {
+            return heldItem;
+        }
+        return remainder;
     }
 
     public IItemHandlerModifiable getAutomationInventory() {

@@ -32,6 +32,7 @@ import appeng.block.AEBaseEntityBlock;
 import appeng.menu.locator.MenuLocators;
 
 import com.moakiee.ae2lt.blockentity.OverloadProcessingFactoryBlockEntity;
+import com.moakiee.ae2lt.registry.ModItems;
 
 public class OverloadProcessingFactoryBlock extends AEBaseEntityBlock<OverloadProcessingFactoryBlockEntity> {
     public static final BooleanProperty WORKING = BooleanProperty.create("working");
@@ -87,6 +88,16 @@ public class OverloadProcessingFactoryBlock extends AEBaseEntityBlock<OverloadPr
             Player player,
             InteractionHand hand,
             BlockHitResult hit) {
+        if (player.isShiftKeyDown() && heldItem.is(ModItems.LIGHTNING_COLLAPSE_MATRIX.get())) {
+            if (!level.isClientSide()) {
+                var be = getBlockEntity(level, pos);
+                if (be != null) {
+                    player.setItemInHand(hand, be.insertMatricesFromHand(heldItem, player.isCreative()));
+                }
+            }
+            return ItemInteractionResult.sidedSuccess(level.isClientSide());
+        }
+
         if (heldItem.getItem() instanceof BucketItem) {
             if (useBucket(player, level, pos, heldItem, hand)) {
                 return ItemInteractionResult.sidedSuccess(level.isClientSide());
