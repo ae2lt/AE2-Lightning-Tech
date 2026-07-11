@@ -1,6 +1,7 @@
 package com.moakiee.ae2lt.logic.craft;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 
@@ -67,8 +68,21 @@ public final class MatrixAutoBuildPlan {
             placements.add(new Placement(local, target));
         }
 
+        placements.sort(Comparator
+                .comparingInt((Placement placement) -> placement.localPos().getY())
+                .thenComparingInt(placement -> horizontalDistanceFromController(placement.localPos()))
+                .thenComparingInt(placement -> Math.abs(
+                        placement.localPos().getZ() - MatrixMultiblockTemplate.CONTROLLER_LOCAL.getZ()))
+                .thenComparingInt(placement -> placement.localPos().getX())
+                .thenComparingInt(placement -> placement.localPos().getZ()));
+
         int missingPatternStorages = hasPatternStorage || willPlacePatternStorage ? 0 : 1;
         return new MatrixAutoBuildPlan(placements, blocked, missingPatternStorages);
+    }
+
+    private static int horizontalDistanceFromController(BlockPos pos) {
+        return Math.abs(pos.getX() - MatrixMultiblockTemplate.CONTROLLER_LOCAL.getX())
+                + Math.abs(pos.getZ() - MatrixMultiblockTemplate.CONTROLLER_LOCAL.getZ());
     }
 
     public List<Placement> placements() {

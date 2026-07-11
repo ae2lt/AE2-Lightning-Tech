@@ -2,6 +2,7 @@ package com.moakiee.ae2lt.blockentity;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 import com.moakiee.ae2lt.block.MatrixControllerBlock;
 import com.moakiee.ae2lt.block.MatrixFormedBlock;
@@ -31,6 +32,7 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
@@ -41,6 +43,7 @@ import net.minecraft.world.level.block.state.BlockState;
 
 public class MatrixControllerBlockEntity extends BlockEntity {
     private static final long NO_SCHEDULED_SCAN = Long.MIN_VALUE;
+    private static final int AUTO_BUILD_INTERVAL_TICKS = 1;
     private static final String TAG_FORMED = "Formed";
     private static final String TAG_ORIENTATION = "Orientation";
     private static final String TAG_PORT_POS = "PortPos";
@@ -63,6 +66,12 @@ public class MatrixControllerBlockEntity extends BlockEntity {
     private List<MatrixCraftingUnit> cachedCraftingUnits = List.of();
     private boolean structureCacheValid;
     private long scheduledScanTick = NO_SCHEDULED_SCAN;
+    private List<MatrixAutoBuildPlan.Placement> autoBuildPlacements = List.of();
+    private UUID autoBuildPlayerId;
+    private Direction autoBuildFacing = Direction.NORTH;
+    private int autoBuildPlacementIndex;
+    private int autoBuildPlacedBlocks;
+    private long nextAutoBuildTick;
 
     public MatrixControllerBlockEntity(BlockPos pos, BlockState blockState) {
         super(ModBlockEntities.MATRIX_CONTROLLER.get(), pos, blockState);
@@ -79,7 +88,9 @@ public class MatrixControllerBlockEntity extends BlockEntity {
         if (be.formed && !be.structureCacheValid) {
             be.scheduleStructureCheck();
         }
-        if (be.scheduledScanTick != NO_SCHEDULED_SCAN && level.getGameTime() >= be.scheduledScanTick) {
+        if (be.isAutoBuilding()) {
+            be.tickAutoBuild();
+        } else if (be.scheduledScanTick != NO_SCHEDULED_SCAN && level.getGameTime() >= be.scheduledScanTick) {
             be.scheduledScanTick = NO_SCHEDULED_SCAN;
             be.refreshStructure();
         }
@@ -178,6 +189,11 @@ public class MatrixControllerBlockEntity extends BlockEntity {
         if (level == null || level.isClientSide) {
             return;
         }
+        if (isAutoBuilding()) {
+            player.displayClientMessage(Component.translatable(
+                    "ae2lt.matrix.build_in_progress").withStyle(ChatFormatting.YELLOW), true);
+            return;
+        }
 
         int patternStorageBudget = player.getAbilities().instabuild
                 ? Integer.MAX_VALUE
@@ -202,49 +218,145 @@ public class MatrixControllerBlockEntity extends BlockEntity {
             }
         }
 
-        Direction facing = getOrientation();
-        int placedBlocks = 0;
-        for (var placement : plan.placements()) {
-            var local = placement.localPos();
-            var pos = MatrixMultiblockScanner.worldPos(worldPosition, local, facing);
-            Item consumedItem = null;
-            BlockState state;
-            if (placement.target() == MatrixAutoBuildPlan.Target.PATTERN_STORAGE
-                    && !player.getAbilities().instabuild) {
-                consumedItem = findPatternStorageItem(player);
-                state = stateForPatternStorageItem(consumedItem);
-            } else {
-                state = stateForAutoBuild(placement.target());
-            }
-            if (state == null || state.isAir()) {
-                autoBuildPlacementFailed(player, pos);
-                return;
-            }
-            if (!player.getAbilities().instabuild && consumedItem == null) {
-                consumedItem = state.getBlock().asItem();
-                if (consumedItem == net.minecraft.world.item.Items.AIR) {
-                    autoBuildPlacementFailed(player, pos);
-                    return;
-                }
-            }
-            boolean placed;
-            if (pos.equals(worldPosition)) {
-                placed = level.setBlock(pos, getBlockState().setValue(MatrixMultiblockDirectionalBlock.FACING, facing),
-                        Block.UPDATE_ALL);
-            } else {
-                placed = level.setBlock(pos, state, Block.UPDATE_ALL);
-            }
-            if (!placed) {
-                autoBuildPlacementFailed(player, pos);
-                return;
-            }
-            if (consumedItem != null) {
-                consumeItem(player, consumedItem, 1);
-            }
-            placedBlocks++;
+        if (plan.placements().isEmpty()) {
+            finishAutoBuild(player, 0);
+            return;
         }
 
-        finishAutoBuild(player, placedBlocks);
+        autoBuildPlacements = plan.placements();
+        autoBuildPlayerId = player.getUUID();
+        autoBuildFacing = getOrientation();
+        autoBuildPlacementIndex = 0;
+        autoBuildPlacedBlocks = 0;
+        nextAutoBuildTick = level.getGameTime() + AUTO_BUILD_INTERVAL_TICKS;
+        scheduledScanTick = NO_SCHEDULED_SCAN;
+        setChanged();
+        player.displayClientMessage(Component.translatable(
+                "ae2lt.matrix.build_started",
+                autoBuildPlacements.size()).withStyle(ChatFormatting.GREEN), true);
+    }
+
+    private boolean isAutoBuilding() {
+        return autoBuildPlayerId != null && autoBuildPlacementIndex < autoBuildPlacements.size();
+    }
+
+    private void tickAutoBuild() {
+        if (level == null || level.getGameTime() < nextAutoBuildTick) {
+            return;
+        }
+
+        var server = level.getServer();
+        var player = server != null ? server.getPlayerList().getPlayer(autoBuildPlayerId) : null;
+        if (player == null) {
+            clearAutoBuildSession();
+            refreshStructure();
+            return;
+        }
+
+        var placement = autoBuildPlacements.get(autoBuildPlacementIndex);
+        var pos = MatrixMultiblockScanner.worldPos(worldPosition, placement.localPos(), autoBuildFacing);
+        var current = MatrixMultiblockScanner.componentAt(level, pos);
+        if (matchesAutoBuildTarget(current, placement.target())) {
+            advanceAutoBuild(player, false);
+            return;
+        }
+        if (current != MatrixMultiblockComponent.AIR) {
+            abortAutoBuildPlacement(player, pos);
+            return;
+        }
+
+        Item consumedItem = null;
+        BlockState state;
+        if (placement.target() == MatrixAutoBuildPlan.Target.PATTERN_STORAGE
+                && !player.getAbilities().instabuild) {
+            consumedItem = findPatternStorageItem(player);
+            state = stateForPatternStorageItem(consumedItem);
+            if (state == null) {
+                abortAutoBuildMissingItem(player, Component.translatable("ae2lt.matrix.pattern_storage_any"));
+                return;
+            }
+        } else {
+            state = stateForAutoBuild(placement.target());
+        }
+        if (state == null || state.isAir()) {
+            abortAutoBuildPlacement(player, pos);
+            return;
+        }
+        if (!player.getAbilities().instabuild && consumedItem == null) {
+            consumedItem = state.getBlock().asItem();
+            if (consumedItem == net.minecraft.world.item.Items.AIR || countItem(player, consumedItem) <= 0) {
+                abortAutoBuildMissingItem(player, consumedItem.getDescription());
+                return;
+            }
+        }
+
+        boolean placed = pos.equals(worldPosition)
+                ? level.setBlock(pos, getBlockState().setValue(
+                        MatrixMultiblockDirectionalBlock.FACING, autoBuildFacing), Block.UPDATE_ALL)
+                : level.setBlock(pos, state, Block.UPDATE_ALL);
+        if (!placed) {
+            abortAutoBuildPlacement(player, pos);
+            return;
+        }
+        if (consumedItem != null) {
+            consumeItem(player, consumedItem, 1);
+        }
+        playAutoBuildPlaceSound(player, pos, state);
+        advanceAutoBuild(player, true);
+    }
+
+    private boolean matchesAutoBuildTarget(MatrixMultiblockComponent component, MatrixAutoBuildPlan.Target target) {
+        return switch (target) {
+            case CASING -> component == MatrixMultiblockComponent.MATRIX_CASING;
+            case CONSTRAINT_FRAME -> component == MatrixMultiblockComponent.MATRIX_CONSTRAINT_FRAME;
+            case GLASS -> component == MatrixMultiblockComponent.MATRIX_GLASS;
+            case PORT -> component == MatrixMultiblockComponent.MATRIX_PORT;
+            case PATTERN_STORAGE -> component.isPatternStorage();
+        };
+    }
+
+    private void playAutoBuildPlaceSound(ServerPlayer player, BlockPos pos, BlockState state) {
+        var soundType = state.getSoundType(level, pos, player);
+        float volume = (soundType.getVolume() + 1.0F) / 4.0F;
+        float pitch = soundType.getPitch() * (0.82F + level.random.nextFloat() * 0.12F);
+        level.playSound(null, pos, soundType.getPlaceSound(), SoundSource.BLOCKS, volume, pitch);
+    }
+
+    private void advanceAutoBuild(ServerPlayer player, boolean placed) {
+        if (placed) {
+            autoBuildPlacedBlocks++;
+        }
+        autoBuildPlacementIndex++;
+        if (autoBuildPlacementIndex >= autoBuildPlacements.size()) {
+            int placedBlocks = autoBuildPlacedBlocks;
+            clearAutoBuildSession();
+            finishAutoBuild(player, placedBlocks);
+            return;
+        }
+        nextAutoBuildTick = level.getGameTime() + AUTO_BUILD_INTERVAL_TICKS;
+    }
+
+    private void abortAutoBuildPlacement(ServerPlayer player, BlockPos pos) {
+        clearAutoBuildSession();
+        autoBuildPlacementFailed(player, pos);
+    }
+
+    private void abortAutoBuildMissingItem(ServerPlayer player, Component itemName) {
+        clearAutoBuildSession();
+        refreshStructure();
+        player.displayClientMessage(Component.translatable(
+                "ae2lt.matrix.build_interrupted_missing",
+                itemName).withStyle(ChatFormatting.RED), false);
+    }
+
+    private void clearAutoBuildSession() {
+        autoBuildPlacements = List.of();
+        autoBuildPlayerId = null;
+        autoBuildPlacementIndex = 0;
+        autoBuildPlacedBlocks = 0;
+        nextAutoBuildTick = 0L;
+        scheduledScanTick = NO_SCHEDULED_SCAN;
+        setChanged();
     }
 
     private void autoBuildPlacementFailed(ServerPlayer player, BlockPos pos) {

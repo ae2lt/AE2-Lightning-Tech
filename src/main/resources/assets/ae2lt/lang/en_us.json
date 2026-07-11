@@ -899,5 +899,8 @@
   "ae2lt.matrix.build_already_complete": "The matrix structure is already complete; nothing needs rebuilding",
   "ae2lt.matrix.build_placed": "Auto-build complete: placed %s blocks",
   "ae2lt.matrix.build_nothing_to_place": "There are no blocks to auto-build",
+  "ae2lt.matrix.build_started": "Auto-build started: %s blocks will be placed gradually",
+  "ae2lt.matrix.build_in_progress": "The Matter Warping Matrix is already being auto-built",
+  "ae2lt.matrix.build_interrupted_missing": "Auto-build interrupted: missing %s",
   "ae2lt.matrix.terminal.tooltip": "Pattern storages: %s, pattern slots: %s"
 }

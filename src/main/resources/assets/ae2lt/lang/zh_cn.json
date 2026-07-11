@@ -899,5 +899,8 @@
   "ae2lt.matrix.build_already_complete": "矩阵结构已完整，无需补建",
   "ae2lt.matrix.build_placed": "自动搭建完成：已放置 %s 个方块",
   "ae2lt.matrix.build_nothing_to_place": "没有需要自动搭建的方块",
+  "ae2lt.matrix.build_started": "自动搭建已启动：将逐步放置 %s 个方块",
+  "ae2lt.matrix.build_in_progress": "物质扭曲矩阵正在自动搭建中",
+  "ae2lt.matrix.build_interrupted_missing": "自动搭建中断：缺少 %s",
   "ae2lt.matrix.terminal.tooltip": "样板仓：%s，样板槽：%s"
 }
