@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "ABC",
+    "DEF",
+    "GHI"
+  ],
+  "key": {
+    "A": { "item": "minecraft:diamond" },
+    "B": { "item": "minecraft:lapis_lazuli" },
+    "C": { "item": "minecraft:diamond" },
+    "D": { "item": "minecraft:lapis_lazuli" },
+    "E": { "item": "ae2lt:matter_warping_matrix_casing" },
+    "F": { "item": "minecraft:lapis_lazuli" },
+    "G": { "item": "minecraft:diamond" },
+    "H": { "item": "minecraft:lapis_lazuli" },
+    "I": { "item": "minecraft:diamond" }
+  },
+  "result": {
+    "count": 1,
+    "id": "ae2lt:matter_warping_matrix_constraint_frame"
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "ABC",
+    "DEF",
+    "GHI"
+  ],
+  "key": {
+    "A": { "item": "minecraft:iron_ingot" },
+    "B": { "item": "minecraft:quartz_block" },
+    "C": { "item": "minecraft:iron_ingot" },
+    "D": { "item": "minecraft:quartz_block" },
+    "E": { "item": "ae2lt:overload_crystal" },
+    "F": { "item": "minecraft:quartz_block" },
+    "G": { "item": "minecraft:iron_ingot" },
+    "H": { "item": "minecraft:quartz_block" },
+    "I": { "item": "minecraft:iron_ingot" }
+  },
+  "result": {
+    "count": 2,
+    "id": "ae2lt:matter_warping_matrix_casing"
+  }
+}
