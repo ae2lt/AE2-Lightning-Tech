@@ -7,6 +7,7 @@ import com.moakiee.ae2lt.item.FixedInfiniteCellItem;
 import com.moakiee.ae2lt.item.FloatingMatterItem;
 import com.moakiee.ae2lt.item.InfiniteStorageCellItem;
 import com.moakiee.ae2lt.item.LightningStorageComponentItem;
+import com.moakiee.ae2lt.item.LightningCollapseMatrixItem;
 import com.moakiee.ae2lt.item.RisingItem;
 import com.moakiee.ae2lt.item.CelestweaveConduitItem;
 import com.moakiee.ae2lt.item.CelestweaveCoreItem;
@@ -119,8 +120,10 @@ public final class ModItems {
     public static final DeferredItem<Item> ULTIMATE_OVERLOAD_CORE =
             ITEMS.registerSimpleItem("ultimate_overload_core", new Item.Properties());
 
-    public static final DeferredItem<Item> LIGHTNING_COLLAPSE_MATRIX =
-            ITEMS.registerSimpleItem("lightning_collapse_matrix", new Item.Properties());
+    public static final DeferredItem<LightningCollapseMatrixItem> LIGHTNING_COLLAPSE_MATRIX = ITEMS.registerItem(
+            "lightning_collapse_matrix",
+            LightningCollapseMatrixItem::new,
+            new Item.Properties());
 
     public static final DeferredItem<FloatingMatterItem> FLOATING_MATTER = ITEMS.registerItem(
             "floating_matter",

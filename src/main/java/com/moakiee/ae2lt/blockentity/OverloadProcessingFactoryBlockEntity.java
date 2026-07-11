@@ -13,6 +13,7 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
@@ -163,14 +164,18 @@ public class OverloadProcessingFactoryBlockEntity extends AENetworkedBlockEntity
         return inventory;
     }
 
-    public ItemStack insertMatricesFromHand(ItemStack heldItem, boolean creative) {
+    public boolean insertMatricesFromHand(Player player, InteractionHand hand) {
+        ItemStack heldItem = player.getItemInHand(hand);
         ItemStack remainder = inventory.insertItem(
                 OverloadProcessingFactoryInventory.SLOT_MATRIX, heldItem.copy(), false);
         int inserted = heldItem.getCount() - remainder.getCount();
-        if (creative || inserted <= 0) {
-            return heldItem;
+        if (inserted <= 0) {
+            return false;
         }
-        return remainder;
+        if (!player.getAbilities().instabuild) {
+            heldItem.shrink(inserted);
+        }
+        return true;
     }
 
     public IItemHandlerModifiable getAutomationInventory() {
