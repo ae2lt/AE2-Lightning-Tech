@@ -241,10 +241,20 @@ public class OverloadedInterfaceLogic extends InterfaceLogic {
 
         @Override
         public TickRateModulation tickingRequest(IGridNode node, int ticksSinceLastCall) {
-            if (!mainNode.isActive()) return TickRateModulation.IDLE;
-            if (!ourUpgrades.isInstalled(AEItems.CRAFTING_CARD)) return TickRateModulation.IDLE;
+            if (!mainNode.isActive()) return TickRateModulation.SLEEP;
+
+            boolean hasItemIoWork = owner.hasGridItemIoWork();
+            if (hasItemIoWork) {
+                owner.tickGridItemIo();
+            }
+
+            boolean craftingCardInstalled = ourUpgrades.isInstalled(AEItems.CRAFTING_CARD);
+            if (!craftingCardInstalled) {
+                return OverloadedInterfaceTickDecider.gridTickModulation(
+                        hasItemIoWork, false, false);
+            }
             var grid = mainNode.getGrid();
-            if (grid == null) return TickRateModulation.IDLE;
+            if (grid == null) return TickRateModulation.SLEEP;
 
             var cache = grid.getStorageService().getCachedInventory();
             var cfg = getConfig();
@@ -262,7 +272,8 @@ public class OverloadedInterfaceLogic extends InterfaceLogic {
                     }
                 }
             }
-            return didWork ? TickRateModulation.URGENT : TickRateModulation.SLOWER;
+            return OverloadedInterfaceTickDecider.gridTickModulation(
+                    hasItemIoWork, true, didWork);
         }
     }
 
@@ -293,6 +304,12 @@ public class OverloadedInterfaceLogic extends InterfaceLogic {
                 var level = owner.getLevel();
                 if (level != null && !level.isClientSide()) {
                     owner.setSlotUnlimited(slot, false);
+                }
+            }
+            if (owner != null) {
+                var level = owner.getLevel();
+                if (level != null && !level.isClientSide()) {
+                    owner.onGridIoConfigChanged();
                 }
             }
         }

@@ -805,6 +805,11 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         saveChanges(); markForUpdate();
     }
 
+    public void onGridIoConfigChanged() {
+        invalidateExportConfigCache();
+        wakeWirelessIo();
+    }
+
     public @Nullable Direction getEnergyOutputDir() { return energyOutputDir; }
     public void setEnergyOutputDir(@Nullable Direction d) {
         if (energyOutputDir == d) return; energyOutputDir = d;
@@ -949,6 +954,7 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         normalConnectionStates.clear();
         resetIOWheel();
         wirelessDistributor.clearTickState(true);
+        alertGridTicker();
     }
 
     private void resetIOWheel() {
@@ -972,6 +978,12 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         }
         keyTypeLockUntil.clear();
         resetIOWheel();
+        alertGridTicker();
+    }
+
+    private void alertGridTicker() {
+        getMainNode().ifPresent((grid, node) ->
+                grid.getTickManager().alertDevice(node));
     }
 
     private void invalidateExportConfigCache() {
@@ -980,6 +992,7 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         exportConfigCacheValid = false;
         exportBlacklistCache = Set.of();
         exportBlacklistTick = -1;
+        alertGridTicker();
     }
 
     private List<WirelessConnection> getOrRefreshValidConnections(
@@ -1046,20 +1059,14 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         if (!(level instanceof ServerLevel sl)) return;
         be.frequencyBinding.serverTick();
         be.tickWirelessConnectionCleanup(sl);
-        if (!be.hasServerTickWork()) return;
+        if (!be.hasServerEnergyWork()) return;
 
-        // 能量层:每 tick 触发(内部 wheel + scheduleDelay 已经是自适应的)
+        // Energy stays on the block-entity ticker. Item I/O is driven by the
+        // existing AE2 IGridTickable service so it follows node/channel activity.
         be.tickEnergyTransfer(sl);
-
-        // Item IO: wireless uses the timing wheel; normal mode scans adjacent targets.
-        if (be.interfaceMode == InterfaceMode.WIRELESS) {
-            be.tickWirelessIO(sl);
-        } else {
-            be.tickNormalIO(sl);
-        }
     }
 
-    private boolean hasServerTickWork() {
+    private boolean hasServerEnergyWork() {
         boolean wirelessMode = interfaceMode == InterfaceMode.WIRELESS;
         boolean hasConnections = !connections.isEmpty();
         boolean hasEnergyOutput = energyOutputDir != null;
@@ -1067,15 +1074,32 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         boolean mayTransferEnergy = (wirelessMode && hasConnections) || hasEnergyOutput;
         boolean hasInduction = mayTransferEnergy && hasFeKey && hasInductionCard();
 
-        return OverloadedInterfaceTickDecider.hasServerTickWork(
+        return OverloadedInterfaceTickDecider.hasServerEnergyWork(
                 wirelessMode,
-                !importBuffer.isEmpty(),
                 hasConnections,
-                importMode == ImportMode.AUTO,
-                exportMode == ExportMode.AUTO,
                 hasEnergyOutput,
                 hasFeKey,
                 hasInduction);
+    }
+
+    public boolean hasGridItemIoWork() {
+        return OverloadedInterfaceTickDecider.hasGridItemIoWork(
+                interfaceMode == InterfaceMode.WIRELESS,
+                !importBuffer.isEmpty(),
+                !connections.isEmpty(),
+                importMode == ImportMode.AUTO,
+                exportMode == ExportMode.AUTO);
+    }
+
+    public void tickGridItemIo() {
+        if (!(level instanceof ServerLevel sl) || !getMainNode().isActive()) {
+            return;
+        }
+        if (interfaceMode == InterfaceMode.WIRELESS) {
+            tickWirelessIO(sl);
+        } else {
+            tickNormalIO(sl);
+        }
     }
 
     private void tickNormalIO(ServerLevel sl) {
@@ -1640,6 +1664,7 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         if (amount <= 0) return;
         importBuffer.merge(key, amount, (oldAmount, added) ->
                 oldAmount > Long.MAX_VALUE - added ? Long.MAX_VALUE : oldAmount + added);
+        alertGridTicker();
     }
 
     private void flushImportBuffer(MEStorage me, IActionSource src, long now) {
