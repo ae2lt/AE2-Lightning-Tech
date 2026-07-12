@@ -52,6 +52,7 @@ public class MatrixControllerBlockEntity extends BlockEntity {
     private static final String TAG_MEMBER_COUNT = "MemberCount";
     private static final String TAG_PATTERN_STORAGE_COUNT = "PatternStorageCount";
     private static final String TAG_CRAFTING_UNIT_COUNT = "CraftingUnitCount";
+    private static final String TAG_CLOSED_LOOP_PROCESSOR_COUNT = "ClosedLoopProcessorCount";
 
     private boolean formed;
     private Direction orientation = Direction.NORTH;
@@ -61,6 +62,7 @@ public class MatrixControllerBlockEntity extends BlockEntity {
     private int memberCount;
     private int patternStorageCount;
     private int craftingUnitCount;
+    private int closedLoopProcessorCount;
     private List<BlockPos> patternStoragePositions = List.of();
     private List<MatrixPatternStorageBlockEntity> cachedPatternStorages = List.of();
     private List<MatrixCraftingUnit> cachedCraftingUnits = List.of();
@@ -107,6 +109,14 @@ public class MatrixControllerBlockEntity extends BlockEntity {
 
     public BlockPos getPortPos() {
         return portPos;
+    }
+
+    public boolean hasClosedLoopProcessor() {
+        return formed && closedLoopProcessorCount > 0;
+    }
+
+    public int getClosedLoopProcessorCount() {
+        return closedLoopProcessorCount;
     }
 
     public int getMemberCount() {
@@ -468,6 +478,7 @@ public class MatrixControllerBlockEntity extends BlockEntity {
         memberCount = result.members().size();
         patternStorageCount = result.patternMembers().size();
         craftingUnitCount = result.craftingMembers().size();
+        closedLoopProcessorCount = result.closedLoopProcessorCount();
         patternStoragePositions = result.patternMembers().stream()
                 .map(member -> member.worldPos().immutable())
                 .toList();
@@ -490,6 +501,7 @@ public class MatrixControllerBlockEntity extends BlockEntity {
         memberCount = 0;
         patternStorageCount = 0;
         craftingUnitCount = 0;
+        closedLoopProcessorCount = 0;
         patternStoragePositions = List.of();
         cachedPatternStorages = List.of();
         cachedCraftingUnits = List.of();
@@ -853,6 +865,7 @@ public class MatrixControllerBlockEntity extends BlockEntity {
         tag.putInt(TAG_MEMBER_COUNT, memberCount);
         tag.putInt(TAG_PATTERN_STORAGE_COUNT, patternStorageCount);
         tag.putInt(TAG_CRAFTING_UNIT_COUNT, craftingUnitCount);
+        tag.putInt(TAG_CLOSED_LOOP_PROCESSOR_COUNT, closedLoopProcessorCount);
     }
 
     @Override
@@ -873,6 +886,7 @@ public class MatrixControllerBlockEntity extends BlockEntity {
         memberCount = tag.getInt(TAG_MEMBER_COUNT);
         patternStorageCount = tag.getInt(TAG_PATTERN_STORAGE_COUNT);
         craftingUnitCount = tag.getInt(TAG_CRAFTING_UNIT_COUNT);
+        closedLoopProcessorCount = Math.max(0, tag.getInt(TAG_CLOSED_LOOP_PROCESSOR_COUNT));
     }
 
     @Override

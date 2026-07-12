@@ -76,6 +76,7 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
     };
     private final MatrixCraftingCluster cluster = new MatrixCraftingCluster(
             this::isFormed,
+            this::hasClosedLoopProcessor,
             List.of(patternCore),
             List.of(craftCore),
             this,
@@ -129,6 +130,11 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
 
     public boolean isFormed() {
         return formed;
+    }
+
+    public boolean hasClosedLoopProcessor() {
+        var controller = getController();
+        return controller != null && controller.hasClosedLoopProcessor();
     }
 
     public MatrixControllerBlockEntity getController() {
@@ -216,6 +222,11 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
     }
 
     @Override
+    public boolean supportsSingleSeedBatch() {
+        return hasClosedLoopProcessor();
+    }
+
+    @Override
     public BatchDispatchMode getBatchDispatchMode(IPatternDetails details) {
         return cluster.batchDispatchMode();
     }
@@ -223,6 +234,11 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
     @Override
     public int pushBatch(IPatternDetails details, KeyCounter[] oneCopyTemplate, int maxCraft) {
         return cluster.pushBatch(details, oneCopyTemplate, maxCraft);
+    }
+
+    @Override
+    public boolean pushPattern(IPatternDetails patternDetails, KeyCounter[] inputHolder) {
+        return cluster.pushSingle(patternDetails, inputHolder);
     }
 
     @Override

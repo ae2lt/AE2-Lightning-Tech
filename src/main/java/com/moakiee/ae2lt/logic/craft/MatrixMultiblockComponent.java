@@ -20,6 +20,7 @@ public enum MatrixMultiblockComponent {
     MULTIPLIER_SUB_CORE_T2,
     COOLING_SUB_CORE_T1,
     COOLING_SUB_CORE_T2,
+    CLOSED_LOOP_PROCESSOR,
     OTHER;
 
     public boolean isPatternStorage() {
@@ -41,13 +42,18 @@ public enum MatrixMultiblockComponent {
                     MULTIPLIER_SUB_CORE_T1,
                     MULTIPLIER_SUB_CORE_T2,
                     COOLING_SUB_CORE_T1,
-                    COOLING_SUB_CORE_T2 -> true;
+                    COOLING_SUB_CORE_T2,
+                    CLOSED_LOOP_PROCESSOR -> true;
             default -> false;
         };
     }
 
     public boolean isMultiplierSubCore() {
         return this == MULTIPLIER_SUB_CORE_T1 || this == MULTIPLIER_SUB_CORE_T2;
+    }
+
+    public boolean isClosedLoopProcessor() {
+        return this == CLOSED_LOOP_PROCESSOR;
     }
 
     public MatrixPatternStorageTier patternStorageTier() {

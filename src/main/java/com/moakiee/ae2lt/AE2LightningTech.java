@@ -86,6 +86,7 @@ import com.moakiee.ae2lt.logic.research.ResearchNoteModulationHandler;
 import com.moakiee.ae2lt.celestweave.ArmorEnergyBuffer;
 import com.moakiee.ae2lt.celestweave.CelestweaveArmorMaterials;
 import com.moakiee.ae2lt.overload.pattern.OverloadPatternDecoder;
+import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternDecoder;
 
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.server.ServerStartingEvent;
@@ -141,6 +142,10 @@ public class AE2LightningTech {
                         output.accept(ModBlocks.MULTIDIMENSIONAL_SUPERCOMPUTING_UNIT);
                         output.accept(ModBlocks.STORAGE_SUPERCOMPUTING_UNIT);
                         output.accept(ModBlocks.PARALLEL_SUPERCOMPUTING_UNIT);
+                        output.accept(ModBlocks.INVENTORY_MAINTENANCE_CORE);
+                        output.accept(ModBlocks.CLOSED_LOOP_PATTERN_CORE);
+                        output.accept(ModBlocks.CLOSED_LOOP_PATTERN_STORAGE);
+                        output.accept(ModBlocks.CLOSED_LOOP_SEED_STORAGE);
                         output.accept(ModBlocks.MATTER_WARPING_MATRIX_CASING);
                         output.accept(ModBlocks.MATTER_WARPING_MATRIX_CONSTRAINT_FRAME);
                         output.accept(ModBlocks.MATTER_WARPING_MATRIX_GLASS);
@@ -157,6 +162,7 @@ public class AE2LightningTech {
                         output.accept(ModBlocks.MATTER_WARPING_MATRIX_MULTIPLIER_SUB_CORE_T2);
                         output.accept(ModBlocks.MATTER_WARPING_MATRIX_COOLING_SUB_CORE_T1);
                         output.accept(ModBlocks.MATTER_WARPING_MATRIX_COOLING_SUB_CORE_T2);
+                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_CLOSED_LOOP_PROCESSOR);
                         output.accept(ModBlocks.MATTER_WARPING_MATRIX_PATTERN_STORAGE_T1);
                         output.accept(ModBlocks.MATTER_WARPING_MATRIX_PATTERN_STORAGE_T2);
                         if (ModBlocks.hasOverloadedPowerSupply()) {
@@ -232,6 +238,7 @@ public class AE2LightningTech {
                         output.accept(FixedInfiniteCellItem.createDisplayedResultStack(CellOutcome.EXTREME_HIGH_VOLTAGE));
                         // 工具
                         output.accept(ModItems.OVERLOAD_PATTERN);
+                        output.accept(ModItems.CLOSED_LOOP_PATTERN);
                         output.accept(ModItems.OVERLOAD_PATTERN_ENCODER);
                         output.accept(ModItems.OVERLOADED_WIRELESS_CONNECT_TOOL);
                         output.accept(ModItems.OVERLOADED_FREQUENCY_CARD);
@@ -630,7 +637,12 @@ public class AE2LightningTech {
      */
     private void commonSetup(FMLCommonSetupEvent event) {
         FrequencyApi.setProvider(new FrequencyApiBridge());
-        BatchExecutor.setBatchEligibleRule(details -> details instanceof IMolecularAssemblerSupportedPattern);
+        BatchExecutor.setBatchEligibleRule(details -> {
+            if (details instanceof com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopExpandedPatternDetails) {
+                return details instanceof com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopBatchPatternDetails;
+            }
+            return details instanceof IMolecularAssemblerSupportedPattern;
+        });
         event.enqueueWork(() -> {
             var lightningCollectorBlock = ModBlocks.LIGHTNING_COLLECTOR.get();
             var lightningCollectorBeType = ModBlockEntities.LIGHTNING_COLLECTOR.get();
@@ -843,6 +855,7 @@ public class AE2LightningTech {
 
             MachineAdapterRegistry.init();
             PatternDetailsHelper.registerDecoder(OverloadPatternDecoder.INSTANCE);
+            PatternDetailsHelper.registerDecoder(ClosedLoopPatternDecoder.INSTANCE);
             StorageCells.addCellHandler(BulkLightningCellHandler.INSTANCE);
             StorageCells.addCellHandler(InfiniteCellHandler.INSTANCE);
             ModItems.registerStorageCellModels();

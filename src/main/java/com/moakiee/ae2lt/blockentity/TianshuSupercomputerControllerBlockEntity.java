@@ -9,6 +9,7 @@ import com.moakiee.ae2lt.logic.tianshu.TianshuMultiblockScanner;
 import com.moakiee.ae2lt.logic.tianshu.TianshuMultiblockScanIssue;
 import com.moakiee.ae2lt.logic.tianshu.CpuInternalCoreProfile;
 import com.moakiee.ae2lt.logic.tianshu.CpuMainCoreTier;
+import com.moakiee.ae2lt.logic.tianshu.TianshuFunctionProfile;
 import com.moakiee.ae2lt.registry.ModBlockEntities;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -32,12 +33,17 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity {
     private static final String TAG_MAIN_CORE = "MainCore";
     private static final String TAG_CAPACITY_CORES = "CapacityCores";
     private static final String TAG_PARALLEL_CORES = "ParallelCores";
+    private static final String TAG_MAINTENANCE_CORES = "MaintenanceCores";
+    private static final String TAG_CLOSED_LOOP_CORES = "ClosedLoopCores";
+    private static final String TAG_CLOSED_LOOP_STORAGES = "ClosedLoopStorages";
+    private static final String TAG_SEED_STORAGES = "SeedStorages";
     private boolean formed;
     private BlockPos portPos;
     private BlockPos minPos;
     private BlockPos maxPos;
     private int memberCount;
     private CpuInternalCoreProfile coreProfile = CpuInternalCoreProfile.empty();
+    private TianshuFunctionProfile functionProfile = TianshuFunctionProfile.empty();
     private long scheduledScanTick = NO_SCAN;
     private List<TianshuMultiblockScanIssue> lastIssues = List.of();
 
@@ -54,6 +60,7 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity {
         if (controller.formed && controller.portPos != null
                 && level.getBlockEntity(controller.portPos) instanceof TianshuSupercomputerPortBlockEntity port) {
             port.applyPendingProfile();
+            port.tickTianshuFunctions();
         }
     }
 
@@ -76,6 +83,10 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity {
 
     public CpuInternalCoreProfile getCoreProfile() {
         return coreProfile;
+    }
+
+    public TianshuFunctionProfile getFunctionProfile() {
+        return functionProfile;
     }
 
     public int getPrimaryIssueOrdinal() {
@@ -103,7 +114,8 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity {
 
     private void form(TianshuMultiblockScanResult result) {
         if (formed && result.portPos().equals(portPos) && result.minPos().equals(minPos)
-                && result.maxPos().equals(maxPos) && result.coreProfile().equals(coreProfile)) {
+                && result.maxPos().equals(maxPos) && result.coreProfile().equals(coreProfile)
+                && result.functionProfile().equals(functionProfile)) {
             for (BlockPos pos : result.members()) setMemberFormed(pos, true);
             syncControllerState();
             return;
@@ -115,9 +127,10 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity {
         maxPos = result.maxPos();
         memberCount = result.members().size();
         coreProfile = result.coreProfile();
+        functionProfile = result.functionProfile();
         for (BlockPos pos : result.members()) setMemberFormed(pos, true);
         if (level.getBlockEntity(portPos) instanceof TianshuSupercomputerPortBlockEntity port) {
-            port.bindToController(worldPosition, coreProfile);
+            port.bindToController(worldPosition, coreProfile, functionProfile);
         }
         syncControllerState();
     }
@@ -130,6 +143,7 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity {
         maxPos = null;
         memberCount = 0;
         coreProfile = CpuInternalCoreProfile.empty();
+        functionProfile = TianshuFunctionProfile.empty();
         syncControllerState();
     }
 
@@ -177,6 +191,10 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity {
             tag.putInt(TAG_CAPACITY_CORES, coreProfile.capacityCoreCount());
             tag.putInt(TAG_PARALLEL_CORES, coreProfile.parallelCoreCount());
         }
+        tag.putInt(TAG_MAINTENANCE_CORES, functionProfile.inventoryMaintenanceCoreCount());
+        tag.putInt(TAG_CLOSED_LOOP_CORES, functionProfile.closedLoopPatternCoreCount());
+        tag.putInt(TAG_CLOSED_LOOP_STORAGES, functionProfile.closedLoopPatternStorageCount());
+        tag.putInt(TAG_SEED_STORAGES, functionProfile.closedLoopSeedStorageCount());
     }
 
     @Override
@@ -196,6 +214,11 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity {
                 coreProfile = CpuInternalCoreProfile.empty();
             }
         }
+        functionProfile = new TianshuFunctionProfile(
+                Math.max(0, tag.getInt(TAG_MAINTENANCE_CORES)),
+                Math.max(0, tag.getInt(TAG_CLOSED_LOOP_CORES)),
+                Math.max(0, tag.getInt(TAG_CLOSED_LOOP_STORAGES)),
+                Math.max(0, tag.getInt(TAG_SEED_STORAGES)));
     }
 
     @Override

@@ -12,7 +12,10 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import com.moakiee.thunderbolt.ae2.batch.BatchProviderFilterIterable;
+import com.moakiee.thunderbolt.ae2.batch.BatchJobView;
+import com.moakiee.thunderbolt.ae2.batch.BatchTaskHandle;
 import com.moakiee.thunderbolt.ae2.batch.ParallelBatchCpuHelper;
+import com.moakiee.thunderbolt.ae2.batch.SharedBatchInputPattern;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
@@ -111,6 +114,111 @@ class ParallelBatchCpuHelperTest {
     }
 
     @Test
+    void singleSeedBatchExtractsOneSeedAndScalesOnlyConsumableInputs() {
+        var seed = key("infusion_crystal");
+        var essence = key("essence");
+        var inv = inventory();
+        inv.insert(seed, 1, Actionable.MODULATE);
+        inv.insert(essence, 40, Actionable.MODULATE);
+        var pattern = new FakeSingleSeedPattern(
+                new IPatternDetails.IInput[] {
+                        input(stack(seed, 1), 1), input(stack(essence, 4), 1)
+                }, seed);
+
+        var result = ParallelBatchCpuHelper.bulkExtract(pattern, inv, 10);
+
+        assertNotNull(result);
+        assertEquals(10, result.actualCopies);
+        assertEquals(1, result.scaledInputs[0].get(seed));
+        assertEquals(40, result.scaledInputs[1].get(essence));
+
+        ParallelBatchCpuHelper.reinject(result, 3, inv);
+        ParallelBatchCpuHelper.markDispatched(result, 7);
+
+        assertEquals(0, inv.extract(seed, Long.MAX_VALUE, Actionable.SIMULATE));
+        assertEquals(12, inv.extract(essence, Long.MAX_VALUE, Actionable.SIMULATE));
+        assertEquals(0, result.scaledInputs[0].get(seed));
+        assertEquals(0, result.scaledInputs[1].get(essence));
+    }
+
+    @Test
+    void rejectedSingleSeedBatchReinjectsTheSeedExactlyOnce() {
+        var seed = key("template");
+        var material = key("diamond");
+        var inv = inventory();
+        inv.insert(seed, 1, Actionable.MODULATE);
+        inv.insert(material, 14, Actionable.MODULATE);
+        var pattern = new FakeSingleSeedPattern(
+                new IPatternDetails.IInput[] {
+                        input(stack(seed, 1), 1), input(stack(material, 7), 1)
+                }, seed);
+        var result = ParallelBatchCpuHelper.bulkExtract(pattern, inv, 2);
+
+        assertNotNull(result);
+        ParallelBatchCpuHelper.reinject(result, 2, inv);
+
+        assertEquals(1, inv.extract(seed, Long.MAX_VALUE, Actionable.SIMULATE));
+        assertEquals(14, inv.extract(material, Long.MAX_VALUE, Actionable.SIMULATE));
+    }
+
+    @Test
+    void regeneratedSeedOutputIsExpectedOnceAndNetOutputScales() {
+        var template = key("smithing_template");
+        var diamond = key("diamond");
+        var inv = inventory();
+        inv.insert(template, 1, Actionable.MODULATE);
+        inv.insert(diamond, 35, Actionable.MODULATE);
+        var pattern = new FakeRegeneratedSeedPattern(
+                new IPatternDetails.IInput[] {
+                        input(stack(template, 1), 1), input(stack(diamond, 7), 1)
+                }, template);
+        var result = ParallelBatchCpuHelper.bulkExtract(pattern, inv, 5);
+        var waiting = inventory();
+        var job = new FakeBatchJobView(waiting);
+
+        assertNotNull(result);
+        ParallelBatchCpuHelper.registerExpectedOutputs(job, pattern, result, 5);
+
+        assertEquals(6, waiting.extract(template, Long.MAX_VALUE, Actionable.SIMULATE));
+    }
+
+    @Test
+    void sharedAndConsumableSlotsUsingSameKeyReserveSeedBeforeScaling() {
+        var key = key("same_key");
+        var inv = inventory();
+        inv.insert(key, 10, Actionable.MODULATE);
+        var pattern = new FakeSingleSeedPattern(new IPatternDetails.IInput[] {
+                input(stack(key, 1), 1), input(stack(key, 2), 1)
+        }, key);
+
+        var result = ParallelBatchCpuHelper.bulkExtract(pattern, inv, 10);
+
+        assertNotNull(result);
+        assertEquals(4, result.actualCopies);
+        assertEquals(1, result.scaledInputs[0].get(key));
+        assertEquals(8, result.scaledInputs[1].get(key));
+        assertEquals(1, inv.extract(key, Long.MAX_VALUE, Actionable.SIMULATE));
+    }
+
+    @Test
+    void multipleSharedSlotsOfSameKeyAreAllFixedAndReturnedExactlyOncePerSlot() {
+        var key = key("double_seed");
+        var inv = inventory();
+        inv.insert(key, 3, Actionable.MODULATE);
+        var pattern = new FakeAllSharedPattern(new IPatternDetails.IInput[] {
+                input(stack(key, 1), 1), input(stack(key, 2), 1)
+        });
+
+        var result = ParallelBatchCpuHelper.bulkExtract(pattern, inv, Integer.MAX_VALUE);
+        assertNotNull(result);
+        assertEquals(Integer.MAX_VALUE, result.actualCopies);
+        assertEquals(0, inv.extract(key, Long.MAX_VALUE, Actionable.SIMULATE));
+
+        ParallelBatchCpuHelper.reinject(result, Integer.MAX_VALUE, inv);
+        assertEquals(3, inv.extract(key, Long.MAX_VALUE, Actionable.SIMULATE));
+    }
+
+    @Test
     void providerFilterSkipsOnlyIdentityMatchedProviders() {
         var first = new FakeProvider();
         var skipped = new FakeProvider();
@@ -161,6 +269,44 @@ class ParallelBatchCpuHelperTest {
         public List<GenericStack> getOutputs() {
             return List.of();
         }
+    }
+
+    private record FakeSingleSeedPattern(IPatternDetails.IInput[] inputs, AEKey seed)
+            implements IPatternDetails, SharedBatchInputPattern {
+        @Override public AEItemKey getDefinition() { return null; }
+        @Override public IPatternDetails.IInput[] getInputs() { return inputs; }
+        @Override public List<GenericStack> getOutputs() { return List.of(); }
+        @Override public boolean isSharedBatchInput(int slot, AEKey concreteKey) {
+            return slot == 0 && seed.equals(concreteKey);
+        }
+    }
+
+    private record FakeRegeneratedSeedPattern(IPatternDetails.IInput[] inputs, AEKey seed)
+            implements IPatternDetails, SharedBatchInputPattern {
+        @Override public AEItemKey getDefinition() { return null; }
+        @Override public IPatternDetails.IInput[] getInputs() { return inputs; }
+        @Override public List<GenericStack> getOutputs() { return List.of(stack(seed, 2)); }
+        @Override public boolean isSharedBatchInput(int slot, AEKey concreteKey) {
+            return slot == 0 && seed.equals(concreteKey);
+        }
+        @Override public long sharedBatchOutputAmount(AEKey outputKey) {
+            return seed.equals(outputKey) ? 1L : 0L;
+        }
+    }
+
+    private record FakeAllSharedPattern(IPatternDetails.IInput[] inputs)
+            implements IPatternDetails, SharedBatchInputPattern {
+        @Override public AEItemKey getDefinition() { return null; }
+        @Override public IPatternDetails.IInput[] getInputs() { return inputs; }
+        @Override public List<GenericStack> getOutputs() { return List.of(); }
+        @Override public boolean isSharedBatchInput(int slot, AEKey concreteKey) { return true; }
+    }
+
+    private record FakeBatchJobView(ListCraftingInventory waitingFor) implements BatchJobView {
+        @Override public java.util.Iterator<BatchTaskHandle> taskIterator() {
+            return java.util.Collections.emptyIterator();
+        }
+        @Override public void addContainerMaxItems(long count, AEKeyType type) { }
     }
 
     private record FakeInput(GenericStack[] possibleInputs, long multiplier) implements IPatternDetails.IInput {

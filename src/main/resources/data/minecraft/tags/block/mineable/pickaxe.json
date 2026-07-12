@@ -16,6 +16,11 @@
     "ae2lt:extended_overloaded_pattern_provider",
     "ae2lt:overloaded_interface",
     "ae2lt:test_time_wheel_crafting_cpu",
+    "ae2lt:inventory_maintenance_core",
+    "ae2lt:closed_loop_pattern_core",
+    "ae2lt:closed_loop_pattern_storage",
+    "ae2lt:closed_loop_seed_storage",
+    "ae2lt:matter_warping_matrix_closed_loop_processor",
     {
       "id": "ae2lt:overloaded_power_supply",
       "required": false

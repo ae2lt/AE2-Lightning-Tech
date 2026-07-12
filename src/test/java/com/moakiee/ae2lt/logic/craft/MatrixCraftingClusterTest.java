@@ -1,6 +1,7 @@
 package com.moakiee.ae2lt.logic.craft;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 
@@ -9,6 +10,8 @@ import org.junit.jupiter.api.Test;
 import com.moakiee.thunderbolt.core.craft.CopyAssembler;
 import com.moakiee.thunderbolt.core.craft.CraftingCoreHost;
 import com.moakiee.thunderbolt.core.craft.CraftingCoreRegistry;
+import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopBatchPatternDetails;
+import com.moakiee.thunderbolt.ae2.batch.BatchCopyLimitPattern;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.NonNullList;
@@ -100,6 +103,27 @@ class MatrixCraftingClusterTest {
         assertEquals(12, cluster.pushBatch(PATTERN, emptyInputs(), 12));
     }
 
+    @Test
+    void closedLoopBatchFallsBackToNormalDispatchWithoutProcessor() {
+        var loopPattern = new FakeLoopPattern();
+        var cores = List.of(new FakeCraftCore(
+                MatrixCraftingUnit.stableCore(), MatrixCraftingUnit.t2Threader()));
+        var withoutAssembler = new FakeAssembler();
+        var withoutProcessor = new MatrixCraftingCluster(
+                () -> true, () -> false,
+                List.of(() -> List.of(loopPattern)), cores,
+                new FakeHost(), withoutAssembler, new CraftingCoreRegistry());
+        var withProcessor = new MatrixCraftingCluster(
+                () -> true, () -> true,
+                List.of(() -> List.of(loopPattern)), cores,
+                new FakeHost(), (details, inputs) -> null, new CraftingCoreRegistry());
+
+        assertEquals(0, withoutProcessor.getBatchCapacity(loopPattern));
+        assertTrue(withoutProcessor.pushSingle(loopPattern, emptyInputs()));
+        assertEquals(1, withoutAssembler.calls);
+        assertEquals(32, withProcessor.getBatchCapacity(loopPattern));
+    }
+
     private static MatrixCraftingCluster cluster(List<FakeCraftCore> cores) {
         return cluster(new FakeHost(), cores);
     }
@@ -173,7 +197,7 @@ class MatrixCraftingClusterTest {
         }
     }
 
-    private static final class FakePattern implements IMolecularAssemblerSupportedPattern {
+    private static class FakePattern implements IMolecularAssemblerSupportedPattern {
         @Override
         public ItemStack assemble(CraftingInput input, Level level) {
             return ItemStack.EMPTY;
@@ -212,6 +236,11 @@ class MatrixCraftingClusterTest {
         public NonNullList<ItemStack> getRemainingItems(CraftingInput input) {
             return NonNullList.create();
         }
+    }
+
+    private static final class FakeLoopPattern extends FakePattern
+            implements ClosedLoopBatchPatternDetails, BatchCopyLimitPattern {
+        @Override public int maxBatchCopies() { return 32; }
     }
 
     private static final class TestKey extends AEKey {

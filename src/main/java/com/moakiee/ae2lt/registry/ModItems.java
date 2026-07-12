@@ -17,6 +17,7 @@ import com.moakiee.ae2lt.item.CelestweaveStrideItem;
 import com.moakiee.ae2lt.item.OverloadCrystalItem;
 import com.moakiee.ae2lt.item.OverloadPatternEncoderItem;
 import com.moakiee.ae2lt.item.OverloadPatternItem;
+import com.moakiee.ae2lt.item.ClosedLoopPatternItem;
 import com.moakiee.ae2lt.item.OverloadedFilterComponentItem;
 import com.moakiee.ae2lt.item.OverloadedFrequencyCardItem;
 import com.moakiee.ae2lt.item.OverloadedPatternProviderUpgradeItem;
@@ -225,6 +226,11 @@ public final class ModItems {
     public static final DeferredItem<Item> OVERLOAD_PATTERN = ITEMS.registerItem(
             "overload_pattern",
             OverloadPatternItem::new,
+            new Item.Properties());
+
+    public static final DeferredItem<Item> CLOSED_LOOP_PATTERN = ITEMS.registerItem(
+            "closed_loop_pattern",
+            ClosedLoopPatternItem::new,
             new Item.Properties());
 
     public static final DeferredItem<Item> OVERLOAD_PATTERN_ENCODER = ITEMS.registerItem(

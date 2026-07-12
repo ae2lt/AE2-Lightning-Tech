@@ -12,5 +12,6 @@ public record TianshuMultiblockScanResult(
         BlockPos portPos,
         List<BlockPos> members,
         List<BlockPos> corePositions,
-        CpuInternalCoreProfile coreProfile) {
+        CpuInternalCoreProfile coreProfile,
+        TianshuFunctionProfile functionProfile) {
 }

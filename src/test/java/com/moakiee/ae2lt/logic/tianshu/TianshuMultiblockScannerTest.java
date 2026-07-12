@@ -87,6 +87,39 @@ class TianshuMultiblockScannerTest {
         assertTrue(result.issues().contains(TianshuMultiblockScanIssue.UNEXPECTED_BLOCK));
     }
 
+    @Test
+    void optionalFunctionUnitsFormAndProduceIndependentCapabilities() {
+        var blocks = completeStructure(Direction.WEST);
+        var functionComponents = new TianshuMultiblockComponent[] {
+                TianshuMultiblockComponent.INVENTORY_MAINTENANCE_CORE,
+                TianshuMultiblockComponent.CLOSED_LOOP_PATTERN_CORE,
+                TianshuMultiblockComponent.CLOSED_LOOP_PATTERN_STORAGE,
+                TianshuMultiblockComponent.CLOSED_LOOP_SEED_STORAGE
+        };
+        int index = 0;
+        for (int x = 2; x <= 4 && index < functionComponents.length; x++) {
+            for (int y = 2; y <= 4 && index < functionComponents.length; y++) {
+                for (int z = 2; z <= 4 && index < functionComponents.length; z++) {
+                    var local = new BlockPos(x, y, z);
+                    if (local.equals(new BlockPos(3, 3, 3)) || local.equals(new BlockPos(2, 2, 2))) continue;
+                    blocks.put(TianshuMultiblockScanner.worldPos(CONTROLLER, local, Direction.WEST),
+                            functionComponents[index++]);
+                }
+            }
+        }
+
+        var attempt = TianshuMultiblockScanner.scan(CONTROLLER, Direction.WEST, blocks::get);
+
+        assertTrue(attempt.formed(), attempt.issues().toString());
+        var profile = attempt.result().functionProfile();
+        assertTrue(profile.supportsInventoryMaintenance());
+        assertTrue(profile.supportsClosedLoopPatterns());
+        assertTrue(profile.supportsClosedLoopSeeds());
+        assertEquals(64, profile.maintenanceRuleCapacity());
+        assertEquals(64, profile.closedLoopPatternCapacity());
+        assertEquals(64, profile.seedTypeCapacity());
+    }
+
     private static Map<BlockPos, TianshuMultiblockComponent> completeStructure(Direction direction) {
         var result = new HashMap<BlockPos, TianshuMultiblockComponent>();
         for (int x = 0; x < 7; x++) for (int y = 0; y < 7; y++) for (int z = 0; z < 7; z++) {

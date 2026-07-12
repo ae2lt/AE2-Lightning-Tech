@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": ["CLC", "RSR", "CLC"],
+  "key": {
+    "C": { "item": "ae2:crafting_card" },
+    "L": { "item": "ae2:logic_processor" },
+    "R": { "item": "minecraft:redstone_block" },
+    "S": { "item": "ae2lt:storage_supercomputing_unit" }
+  },
+  "result": { "id": "ae2lt:inventory_maintenance_core", "count": 1 }
+}

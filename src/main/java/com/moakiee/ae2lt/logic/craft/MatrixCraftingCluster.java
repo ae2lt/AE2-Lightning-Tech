@@ -19,6 +19,7 @@ import com.moakiee.thunderbolt.core.craft.CraftingCore;
 import com.moakiee.thunderbolt.core.craft.CraftingCoreHost;
 import com.moakiee.thunderbolt.core.craft.CraftingCoreRegistry;
 import com.moakiee.thunderbolt.ae2.api.crafting.BatchDispatchMode;
+import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopBatchPatternDetails;
 
 /**
  * Multiblock-side rate limiter that wraps a shared {@link CraftingCore} engine: it aggregates the
@@ -30,6 +31,7 @@ public final class MatrixCraftingCluster {
     private static final String NBT_LAST_LIMITER_TICK = "lastLimiterTick";
 
     private final BooleanSupplier formed;
+    private final BooleanSupplier closedLoopParallelEnabled;
     private final List<MatrixPatternCore> patternCores;
     private final List<MatrixCraftCore> craftCores;
     private final MatrixHost host;
@@ -45,7 +47,18 @@ public final class MatrixCraftingCluster {
                                  CraftingCoreHost host,
                                  CopyAssembler assembler,
                                  CraftingCoreRegistry registry) {
+        this(formed, () -> false, patternCores, craftCores, host, assembler, registry);
+    }
+
+    public MatrixCraftingCluster(BooleanSupplier formed,
+                                 BooleanSupplier closedLoopParallelEnabled,
+                                 List<? extends MatrixPatternCore> patternCores,
+                                 List<? extends MatrixCraftCore> craftCores,
+                                 CraftingCoreHost host,
+                                 CopyAssembler assembler,
+                                 CraftingCoreRegistry registry) {
         this.formed = Objects.requireNonNull(formed);
+        this.closedLoopParallelEnabled = Objects.requireNonNull(closedLoopParallelEnabled);
         this.patternCores = new ArrayList<>(patternCores);
         this.craftCores = new ArrayList<>(craftCores);
         this.host = new MatrixHost(Objects.requireNonNull(host));
@@ -100,7 +113,15 @@ public final class MatrixCraftingCluster {
 
     public int getBatchCapacity(IPatternDetails details) {
         if (!hasPattern(details)) return 0;
-        return availableCapacity();
+        if (details instanceof ClosedLoopBatchPatternDetails
+                && !closedLoopParallelEnabled.getAsBoolean()) {
+            return 0;
+        }
+        int capacity = availableCapacity();
+        if (details instanceof com.moakiee.thunderbolt.ae2.batch.BatchCopyLimitPattern limited) {
+            capacity = Math.min(capacity, Math.max(1, limited.maxBatchCopies()));
+        }
+        return capacity;
     }
 
     /**
@@ -109,7 +130,7 @@ public final class MatrixCraftingCluster {
      */
     public int pushBatch(IPatternDetails details, KeyCounter[] oneCopyTemplate, int maxCraft) {
         if (!hasPattern(details)) return maxCraft;
-        int copies = Math.min(maxCraft, availableCapacity());
+        int copies = Math.min(maxCraft, getBatchCapacity(details));
         if (copies <= 0) return maxCraft;
         int delay = craftingProfile().mode() == MatrixCoreMode.CREATIVE
                 ? MatrixCraftingMath.CREATIVE_DELAY_TICKS
@@ -117,6 +138,17 @@ public final class MatrixCraftingCluster {
         int accepted = engine.pushBatch(details, oneCopyTemplate, copies, delay);
         limiterRemaining = Math.max(0, limiterRemaining - accepted);
         return maxCraft - accepted;
+    }
+
+    /** Vanilla one-copy path; deliberately ignores the optional closed-loop batch processor. */
+    public boolean pushSingle(IPatternDetails details, KeyCounter[] oneCopyTemplate) {
+        if (!hasPattern(details) || availableCapacity() <= 0) return false;
+        int delay = craftingProfile().mode() == MatrixCoreMode.CREATIVE
+                ? MatrixCraftingMath.CREATIVE_DELAY_TICKS
+                : MatrixCraftingMath.MATRIX_DELAY_TICKS;
+        int accepted = engine.pushBatch(details, oneCopyTemplate, 1, delay);
+        limiterRemaining = Math.max(0, limiterRemaining - accepted);
+        return accepted == 1;
     }
 
     public BatchDispatchMode batchDispatchMode() {

@@ -14,6 +14,9 @@ Jar/
 .docs/
 archive/
 docs/
+!docs/
+docs/*
+!docs/tianshu-extension-design.md
 
 # Bundled source mirrors / references
 Source Code/

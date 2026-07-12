@@ -30,6 +30,7 @@ import appeng.api.stacks.AEKeyType;
 import appeng.api.stacks.GenericStack;
 import appeng.api.stacks.KeyCounter;
 import appeng.blockentity.crafting.IMolecularAssemblerSupportedPattern;
+import com.moakiee.thunderbolt.ae2.batch.SharedBatchInputPattern;
 
 class CraftingCoreTest {
     @Test
@@ -155,6 +156,38 @@ class CraftingCoreTest {
     }
 
     @Test
+    void sharedSeedRemainderIsReturnedOnceForTheWholeBatch() {
+        var host = new FakeHost(0);
+        var output = key("higher_essence");
+        var seed = key("infusion_crystal");
+        CopyAssembler assembler = (details, inputs) -> new CopyAssembler.AssembledCopy(
+                output, 1, List.of(), List.of(stack(seed, 1)));
+        var core = new CraftingCore(host, assembler, new CraftingCoreRegistry());
+
+        assertEquals(8, core.pushBatch(new FakePattern(), inputs(seed, 1), 8, 1));
+        host.time = 1;
+        core.sweepTick();
+
+        assertEquals(8, host.network.getLong(output));
+        assertEquals(1, host.network.getLong(seed));
+    }
+
+    @Test
+    void regeneratedSeedOutputIsReturnedOnceAndOnlyNetGainScales() {
+        var host = new FakeHost(0);
+        var template = key("smithing_template");
+        var core = new CraftingCore(host,
+                new FakeAssembler(template, 2), new CraftingCoreRegistry());
+
+        assertEquals(5, core.pushBatch(new FakeSharedOutputPattern(template),
+                inputs(template, 1), 5, 1));
+        host.time = 1;
+        core.sweepTick();
+
+        assertEquals(6, host.network.getLong(template));
+    }
+
+    @Test
     void removedHostHardFlushesToWorldAndDeregisters() {
         var host = new FakeHost(0);
         var output = key("diamond");
@@ -259,7 +292,7 @@ class CraftingCoreTest {
         }
     }
 
-    private static final class FakePattern implements IMolecularAssemblerSupportedPattern {
+    private static class FakePattern implements IMolecularAssemblerSupportedPattern {
         @Override
         public ItemStack assemble(CraftingInput input, Level level) {
             return ItemStack.EMPTY;
@@ -297,6 +330,18 @@ class CraftingCoreTest {
         @Override
         public NonNullList<ItemStack> getRemainingItems(CraftingInput input) {
             return NonNullList.create();
+        }
+    }
+
+    private static final class FakeSharedOutputPattern extends FakePattern
+            implements SharedBatchInputPattern {
+        private final AEKey seed;
+        private FakeSharedOutputPattern(AEKey seed) { this.seed = seed; }
+        @Override public boolean isSharedBatchInput(int slot, AEKey concreteKey) {
+            return seed.equals(concreteKey);
+        }
+        @Override public long sharedBatchOutputAmount(AEKey outputKey) {
+            return seed.equals(outputKey) ? 1L : 0L;
         }
     }
 
