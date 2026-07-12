@@ -1,0 +1,1 @@
+{"type":"minecraft:crafting_shaped","category":"misc","pattern":["ECE","CRC","ECE"],"key":{"E":{"item":"minecraft:ender_pearl"},"C":{"item":"ae2lt:tianshu_supercomputer_casing"},"R":{"item":"minecraft:redstone_block"}},"result":{"id":"ae2lt:tianshu_supercomputer_port","count":1}}

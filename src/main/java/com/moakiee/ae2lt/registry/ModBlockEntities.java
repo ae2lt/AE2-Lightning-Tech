@@ -21,6 +21,8 @@ import com.moakiee.ae2lt.blockentity.OverloadedPatternProviderBlockEntity;
 import com.moakiee.ae2lt.blockentity.OverloadedPowerSupplyBlockEntity;
 import com.moakiee.ae2lt.blockentity.TeslaCoilBlockEntity;
 import com.moakiee.ae2lt.blockentity.TestTimeWheelCraftingCpuBlockEntity;
+import com.moakiee.ae2lt.blockentity.TianshuSupercomputerControllerBlockEntity;
+import com.moakiee.ae2lt.blockentity.TianshuSupercomputerPortBlockEntity;
 import com.moakiee.ae2lt.blockentity.AdvancedWirelessOverloadedControllerBlockEntity;
 import com.moakiee.ae2lt.blockentity.WirelessOverloadedControllerBlockEntity;
 import com.moakiee.ae2lt.blockentity.WirelessReceiverBlockEntity;
@@ -171,6 +173,20 @@ public final class ModBlockEntities {
                             TestTimeWheelCraftingCpuBlockEntity::new,
                             ModBlocks.TEST_TIME_WHEEL_CRAFTING_CPU.get())
                             .build(null));
+
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TianshuSupercomputerControllerBlockEntity>>
+            TIANSHU_SUPERCOMPUTER_CONTROLLER = BLOCK_ENTITY_TYPES.register(
+                    "tianshu_supercomputer_controller",
+                    () -> BlockEntityType.Builder.of(
+                            TianshuSupercomputerControllerBlockEntity::new,
+                            ModBlocks.TIANSHU_SUPERCOMPUTER_CONTROLLER.get()).build(null));
+
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TianshuSupercomputerPortBlockEntity>>
+            TIANSHU_SUPERCOMPUTER_PORT = BLOCK_ENTITY_TYPES.register(
+                    "tianshu_supercomputer_port",
+                    () -> BlockEntityType.Builder.of(
+                            TianshuSupercomputerPortBlockEntity::new,
+                            ModBlocks.TIANSHU_SUPERCOMPUTER_PORT.get()).build(null));
 
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<MatrixControllerBlockEntity>>
             MATRIX_CONTROLLER = BLOCK_ENTITY_TYPES.register(

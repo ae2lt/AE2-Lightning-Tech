@@ -14,6 +14,7 @@ import com.moakiee.ae2lt.menu.OverloadedInterfaceMenu;
 import com.moakiee.ae2lt.menu.OverloadedPatternProviderMenu;
 import com.moakiee.ae2lt.menu.OverloadedPowerSupplyMenu;
 import com.moakiee.ae2lt.menu.TeslaCoilMenu;
+import com.moakiee.ae2lt.menu.TianshuSupercomputerControllerMenu;
 import com.moakiee.ae2lt.menu.FrequencyMenu;
 import com.moakiee.ae2lt.menu.hub.DeviceHubMenu;
 import net.minecraft.core.registries.Registries;
@@ -101,6 +102,11 @@ public final class ModMenuTypes {
             MATRIX_CONTROLLER = MENU_TYPES.register(
                     "matter_warping_matrix_controller",
                     () -> MatrixControllerMenu.TYPE);
+
+    public static final DeferredHolder<MenuType<?>, MenuType<TianshuSupercomputerControllerMenu>>
+            TIANSHU_SUPERCOMPUTER_CONTROLLER = MENU_TYPES.register(
+                    "tianshu_supercomputer_controller",
+                    () -> TianshuSupercomputerControllerMenu.TYPE);
 
     private ModMenuTypes() {
     }

@@ -1,0 +1,42 @@
+package com.moakiee.ae2lt.block;
+
+import com.moakiee.ae2lt.logic.tianshu.TianshuMultiblockComponent;
+import com.moakiee.ae2lt.logic.tianshu.TianshuMultiblockUpdateScheduler;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.BooleanProperty;
+
+public class TianshuSupercomputingUnitBlock extends Block {
+    public static final BooleanProperty FORMED = TianshuSupercomputerStructureBlock.FORMED;
+    private final TianshuMultiblockComponent component;
+
+    public TianshuSupercomputingUnitBlock(Properties properties, TianshuMultiblockComponent component) {
+        super(properties);
+        this.component = component;
+        registerDefaultState(defaultBlockState().setValue(FORMED, false));
+    }
+
+    public TianshuMultiblockComponent component() {
+        return component;
+    }
+
+    @Override
+    protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
+        builder.add(FORMED);
+    }
+
+    @Override
+    public void onPlace(BlockState state, Level level, BlockPos pos, BlockState oldState, boolean movedByPiston) {
+        super.onPlace(state, level, pos, oldState, movedByPiston);
+        if (!state.is(oldState.getBlock())) TianshuMultiblockUpdateScheduler.scheduleNear(level, pos);
+    }
+
+    @Override
+    public void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean movedByPiston) {
+        if (!state.is(newState.getBlock())) TianshuMultiblockUpdateScheduler.scheduleNear(level, pos);
+        super.onRemove(state, level, pos, newState, movedByPiston);
+    }
+}

@@ -1,0 +1,1 @@
+{"type":"minecraft:crafting_shaped","category":"misc","pattern":["RCR","DCD","RCR"],"key":{"R":{"item":"minecraft:redstone"},"D":{"item":"minecraft:diamond"},"C":{"item":"ae2lt:tianshu_supercomputer_casing"}},"result":{"id":"ae2lt:storage_supercomputing_unit","count":1}}

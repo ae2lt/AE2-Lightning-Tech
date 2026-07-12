@@ -1,0 +1,1 @@
+{"type":"minecraft:crafting_shaped","category":"misc","pattern":["GGG","GCG","GGG"],"key":{"G":{"item":"minecraft:tinted_glass"},"C":{"item":"ae2lt:tianshu_supercomputer_casing"}},"result":{"id":"ae2lt:tianshu_supercomputer_glass","count":8}}

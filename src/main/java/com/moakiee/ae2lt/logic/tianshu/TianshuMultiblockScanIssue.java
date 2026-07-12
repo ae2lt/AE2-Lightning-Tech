@@ -1,0 +1,15 @@
+package com.moakiee.ae2lt.logic.tianshu;
+
+public enum TianshuMultiblockScanIssue {
+    MISSING_CASING,
+    MISSING_GLASS,
+    MISSING_PORT,
+    MULTIPLE_PORTS,
+    INVALID_CONTROLLER,
+    MISSING_MAIN_CORE,
+    MAIN_CORE_OUTSIDE_CENTER,
+    INVALID_PERIPHERAL_CORE,
+    MISSING_STORAGE_CORE,
+    MISSING_PARALLEL_CORE,
+    UNEXPECTED_BLOCK
+}

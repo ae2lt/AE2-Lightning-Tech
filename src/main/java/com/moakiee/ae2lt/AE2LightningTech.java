@@ -21,6 +21,7 @@ import com.moakiee.ae2lt.blockentity.FirmamentConversionCoreBlockEntity;
 import com.moakiee.ae2lt.blockentity.LightningAssemblyChamberBlockEntity;
 import com.moakiee.ae2lt.blockentity.LightningCollectorBlockEntity;
 import com.moakiee.ae2lt.blockentity.MatrixPortBlockEntity;
+import com.moakiee.ae2lt.blockentity.TianshuSupercomputerPortBlockEntity;
 import com.moakiee.ae2lt.blockentity.OverloadDeviceWorkbenchBlockEntity;
 import com.moakiee.ae2lt.blockentity.OverloadedControllerBlockEntity;
 import com.moakiee.ae2lt.blockentity.ExtendedOverloadedPatternProviderBlockEntity;
@@ -130,6 +131,16 @@ public class AE2LightningTech {
                         output.accept(ModBlocks.EXTENDED_OVERLOADED_PATTERN_PROVIDER);
                         output.accept(ModBlocks.OVERLOADED_INTERFACE);
                         output.accept(ModBlocks.TEST_TIME_WHEEL_CRAFTING_CPU);
+                        output.accept(ModBlocks.TIANSHU_SUPERCOMPUTER_CASING);
+                        output.accept(ModBlocks.TIANSHU_SUPERCOMPUTER_GLASS);
+                        output.accept(ModBlocks.TIANSHU_SUPERCOMPUTER_CONTROLLER);
+                        output.accept(ModBlocks.TIANSHU_SUPERCOMPUTER_PORT);
+                        output.accept(ModBlocks.BASELINE_SUPERCOMPUTING_UNIT);
+                        output.accept(ModBlocks.QUANTUM_SUPERCOMPUTING_UNIT);
+                        output.accept(ModBlocks.OVERLOAD_SUPERCOMPUTING_UNIT);
+                        output.accept(ModBlocks.MULTIDIMENSIONAL_SUPERCOMPUTING_UNIT);
+                        output.accept(ModBlocks.STORAGE_SUPERCOMPUTING_UNIT);
+                        output.accept(ModBlocks.PARALLEL_SUPERCOMPUTING_UNIT);
                         output.accept(ModBlocks.MATTER_WARPING_MATRIX_CASING);
                         output.accept(ModBlocks.MATTER_WARPING_MATRIX_CONSTRAINT_FRAME);
                         output.accept(ModBlocks.MATTER_WARPING_MATRIX_GLASS);
@@ -724,6 +735,14 @@ public class AE2LightningTech {
             matrixPortBlock.setBlockEntity(
                     MatrixPortBlockEntity.class,
                     matrixPortBeType,
+                    null,
+                    null);
+
+            var tianshuPortBlock = ModBlocks.TIANSHU_SUPERCOMPUTER_PORT.get();
+            var tianshuPortBeType = ModBlockEntities.TIANSHU_SUPERCOMPUTER_PORT.get();
+            tianshuPortBlock.setBlockEntity(
+                    TianshuSupercomputerPortBlockEntity.class,
+                    tianshuPortBeType,
                     null,
                     null);
 

@@ -26,6 +26,7 @@ import com.moakiee.ae2lt.menu.OverloadedInterfaceMenu;
 import com.moakiee.ae2lt.menu.OverloadedPatternProviderMenu;
 import com.moakiee.ae2lt.menu.OverloadedPowerSupplyMenu;
 import com.moakiee.ae2lt.menu.TeslaCoilMenu;
+import com.moakiee.ae2lt.menu.TianshuSupercomputerControllerMenu;
 import com.moakiee.ae2lt.menu.hub.DeviceHubMenu;
 import com.moakiee.ae2lt.registry.ModBlocks;
 
@@ -54,6 +55,7 @@ public class ModScreens {
         event.register(CrystalCatalyzerMenu.TYPE, ModScreens::createCrystalCatalyzerScreen);
         event.register(DeviceHubMenu.TYPE, DeviceHubScreen::new);
         event.register(MatrixControllerMenu.TYPE, MatrixControllerScreen::new);
+        event.register(TianshuSupercomputerControllerMenu.TYPE, TianshuSupercomputerControllerScreen::new);
     }
 
     private static OverloadedPatternProviderScreen<OverloadedPatternProviderMenu> createOverloadedPatternProviderScreen(

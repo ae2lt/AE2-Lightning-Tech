@@ -24,6 +24,12 @@ import com.moakiee.ae2lt.block.OverloadedPatternProviderBlock;
 import com.moakiee.ae2lt.block.OverloadedPowerSupplyBlock;
 import com.moakiee.ae2lt.block.TeslaCoilBlock;
 import com.moakiee.ae2lt.block.TestTimeWheelCraftingCpuBlock;
+import com.moakiee.ae2lt.block.TianshuSupercomputerControllerBlock;
+import com.moakiee.ae2lt.block.TianshuSupercomputerGlassBlock;
+import com.moakiee.ae2lt.block.TianshuSupercomputerPortBlock;
+import com.moakiee.ae2lt.block.TianshuSupercomputerStructureBlock;
+import com.moakiee.ae2lt.block.TianshuSupercomputingUnitBlock;
+import com.moakiee.ae2lt.logic.tianshu.TianshuMultiblockComponent;
 import com.moakiee.ae2lt.block.AdvancedWirelessOverloadedControllerBlock;
 import com.moakiee.ae2lt.block.WirelessOverloadedControllerBlock;
 import com.moakiee.ae2lt.block.WirelessReceiverBlock;
@@ -210,6 +216,37 @@ public final class ModBlocks {
 
     public static final DeferredBlock<TestTimeWheelCraftingCpuBlock> TEST_TIME_WHEEL_CRAFTING_CPU =
             registerBlock("test_time_wheel_crafting_cpu", TestTimeWheelCraftingCpuBlock::new);
+
+    public static final DeferredBlock<TianshuSupercomputerStructureBlock> TIANSHU_SUPERCOMPUTER_CASING =
+            registerBlock("tianshu_supercomputer_casing", () -> new TianshuSupercomputerStructureBlock(MATRIX_MACHINE_PROPERTIES));
+
+    public static final DeferredBlock<TianshuSupercomputerGlassBlock> TIANSHU_SUPERCOMPUTER_GLASS =
+            registerBlock("tianshu_supercomputer_glass", () -> new TianshuSupercomputerGlassBlock(MATRIX_GLASS_PROPERTIES));
+
+    public static final DeferredBlock<TianshuSupercomputerControllerBlock> TIANSHU_SUPERCOMPUTER_CONTROLLER =
+            registerBlock("tianshu_supercomputer_controller", () -> new TianshuSupercomputerControllerBlock(MATRIX_MACHINE_PROPERTIES));
+
+    public static final DeferredBlock<TianshuSupercomputerPortBlock> TIANSHU_SUPERCOMPUTER_PORT =
+            registerBlock("tianshu_supercomputer_port", () -> new TianshuSupercomputerPortBlock(MATRIX_MACHINE_PROPERTIES));
+
+    public static final DeferredBlock<TianshuSupercomputingUnitBlock> BASELINE_SUPERCOMPUTING_UNIT = registerBlock(
+            "baseline_supercomputing_unit", () -> new TianshuSupercomputingUnitBlock(
+                    MATRIX_MACHINE_PROPERTIES, TianshuMultiblockComponent.MAIN_BASELINE));
+    public static final DeferredBlock<TianshuSupercomputingUnitBlock> QUANTUM_SUPERCOMPUTING_UNIT = registerBlock(
+            "quantum_supercomputing_unit", () -> new TianshuSupercomputingUnitBlock(
+                    MATRIX_MACHINE_PROPERTIES, TianshuMultiblockComponent.MAIN_QUANTUM));
+    public static final DeferredBlock<TianshuSupercomputingUnitBlock> OVERLOAD_SUPERCOMPUTING_UNIT = registerBlock(
+            "overload_supercomputing_unit", () -> new TianshuSupercomputingUnitBlock(
+                    MATRIX_MACHINE_PROPERTIES, TianshuMultiblockComponent.MAIN_OVERLOAD));
+    public static final DeferredBlock<TianshuSupercomputingUnitBlock> MULTIDIMENSIONAL_SUPERCOMPUTING_UNIT = registerBlock(
+            "multidimensional_supercomputing_unit", () -> new TianshuSupercomputingUnitBlock(
+                    MATRIX_MACHINE_PROPERTIES, TianshuMultiblockComponent.MAIN_MULTIDIMENSIONAL));
+    public static final DeferredBlock<TianshuSupercomputingUnitBlock> STORAGE_SUPERCOMPUTING_UNIT = registerBlock(
+            "storage_supercomputing_unit", () -> new TianshuSupercomputingUnitBlock(
+                    MATRIX_MACHINE_PROPERTIES, TianshuMultiblockComponent.STORAGE_CORE));
+    public static final DeferredBlock<TianshuSupercomputingUnitBlock> PARALLEL_SUPERCOMPUTING_UNIT = registerBlock(
+            "parallel_supercomputing_unit", () -> new TianshuSupercomputingUnitBlock(
+                    MATRIX_MACHINE_PROPERTIES, TianshuMultiblockComponent.PARALLEL_CORE));
 
     public static final DeferredBlock<MatrixCasingBlock> MATTER_WARPING_MATRIX_CASING =
             registerBlock("matter_warping_matrix_casing", () -> new MatrixCasingBlock(
