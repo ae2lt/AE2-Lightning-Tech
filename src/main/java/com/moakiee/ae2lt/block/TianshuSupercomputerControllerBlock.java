@@ -46,7 +46,7 @@ public class TianshuSupercomputerControllerBlock extends Block implements Entity
     @Nullable
     @Override
     public BlockState getStateForPlacement(BlockPlaceContext context) {
-        return defaultBlockState().setValue(FACING, context.getHorizontalDirection().getOpposite());
+        return defaultBlockState().setValue(FACING, context.getHorizontalDirection());
     }
 
     @Override
@@ -62,7 +62,7 @@ public class TianshuSupercomputerControllerBlock extends Block implements Entity
     @Override
     public void setPlacedBy(Level level, BlockPos pos, BlockState state, LivingEntity placer, ItemStack stack) {
         if (placer != null) {
-            level.setBlock(pos, state.setValue(FACING, placer.getDirection().getOpposite()), Block.UPDATE_ALL);
+            level.setBlock(pos, state.setValue(FACING, placer.getDirection()), Block.UPDATE_ALL);
         }
     }
 
