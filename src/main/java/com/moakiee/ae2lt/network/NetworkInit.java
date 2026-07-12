@@ -43,6 +43,10 @@ public final class NetworkInit {
                 MatrixControllerActionPacket.TYPE,
                 MatrixControllerActionPacket.STREAM_CODEC,
                 MatrixControllerActionPacket::handle);
+        registrar.playToServer(
+                TianshuControllerActionPacket.TYPE,
+                TianshuControllerActionPacket.STREAM_CODEC,
+                TianshuControllerActionPacket::handle);
 
         // frequency system: C→S
         registrar.playToServer(

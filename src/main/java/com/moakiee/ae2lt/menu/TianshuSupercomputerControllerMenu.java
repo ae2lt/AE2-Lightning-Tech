@@ -100,6 +100,8 @@ public class TianshuSupercomputerControllerMenu extends AbstractContainerMenu {
     }
 
     public boolean isFormed() { return formed.get() != 0; }
+    public BlockPos getBlockPos() { return blockPos; }
+    public int token() { return containerId; }
     public CpuMainCoreTier getTier() {
         int value = tier.get();
         return value >= 0 && value < CpuMainCoreTier.values().length ? CpuMainCoreTier.values()[value] : null;

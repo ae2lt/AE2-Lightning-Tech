@@ -2,11 +2,14 @@ package com.moakiee.ae2lt.client;
 
 import com.moakiee.ae2lt.logic.tianshu.TianshuMultiblockScanIssue;
 import com.moakiee.ae2lt.menu.TianshuSupercomputerControllerMenu;
+import com.moakiee.ae2lt.network.TianshuControllerActionPacket;
 import java.util.Locale;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
+import net.neoforged.neoforge.network.PacketDistributor;
 
 public class TianshuSupercomputerControllerScreen
         extends AbstractContainerScreen<TianshuSupercomputerControllerMenu> {
@@ -14,8 +17,19 @@ public class TianshuSupercomputerControllerScreen
             TianshuSupercomputerControllerMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title);
         imageWidth = 220;
-        imageHeight = 146;
+        imageHeight = 172;
         inventoryLabelY = 10_000;
+    }
+
+    @Override
+    protected void init() {
+        super.init();
+        addRenderableWidget(Button.builder(
+                Component.translatable("ae2lt.tianshu.gui.build"),
+                button -> PacketDistributor.sendToServer(
+                        new TianshuControllerActionPacket(menu.token(), menu.getBlockPos())))
+                .bounds(leftPos + 10, topPos + 140, imageWidth - 20, 20)
+                .build());
     }
 
     @Override
