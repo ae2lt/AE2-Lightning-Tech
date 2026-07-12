@@ -132,7 +132,7 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
     }
 
     public MatrixControllerBlockEntity getController() {
-        if (!formed || controllerPos == null || level == null) {
+        if (!formed || controllerPos == null || level == null || !level.isLoaded(controllerPos)) {
             return null;
         }
         return level.getBlockEntity(controllerPos) instanceof MatrixControllerBlockEntity controller

@@ -452,7 +452,7 @@ public class MatrixControllerBlockEntity extends BlockEntity {
     }
 
     private MatrixPortBlockEntity getPort() {
-        if (level == null || !formed || portPos == null) {
+        if (level == null || !formed || portPos == null || !level.isLoaded(portPos)) {
             return null;
         }
         return level.getBlockEntity(portPos) instanceof MatrixPortBlockEntity port ? port : null;
@@ -500,7 +500,8 @@ public class MatrixControllerBlockEntity extends BlockEntity {
     private List<MatrixPatternStorageBlockEntity> resolvePatternStorages(MatrixMultiblockScanResult result) {
         var storages = new ArrayList<MatrixPatternStorageBlockEntity>();
         for (var member : result.patternMembers()) {
-            if (level.getBlockEntity(member.worldPos()) instanceof MatrixPatternStorageBlockEntity storage) {
+            if (level.isLoaded(member.worldPos())
+                    && level.getBlockEntity(member.worldPos()) instanceof MatrixPatternStorageBlockEntity storage) {
                 storages.add(storage);
             }
         }
@@ -524,11 +525,13 @@ public class MatrixControllerBlockEntity extends BlockEntity {
     }
 
     private void bindMembers(MatrixMultiblockScanResult result) {
-        if (level.getBlockEntity(result.portPos()) instanceof MatrixPortBlockEntity port) {
+        if (level.isLoaded(result.portPos())
+                && level.getBlockEntity(result.portPos()) instanceof MatrixPortBlockEntity port) {
             port.bindToController(worldPosition);
         }
         for (MatrixMultiblockMember member : result.patternMembers()) {
-            if (level.getBlockEntity(member.worldPos()) instanceof MatrixPatternStorageBlockEntity storage) {
+            if (level.isLoaded(member.worldPos())
+                    && level.getBlockEntity(member.worldPos()) instanceof MatrixPatternStorageBlockEntity storage) {
                 storage.setControllerPos(worldPosition);
             }
         }
@@ -542,6 +545,9 @@ public class MatrixControllerBlockEntity extends BlockEntity {
             for (int y = minPos.getY(); y <= maxPos.getY(); y++) {
                 for (int z = minPos.getZ(); z <= maxPos.getZ(); z++) {
                     var pos = new BlockPos(x, y, z);
+                    if (!level.isLoaded(pos)) {
+                        continue;
+                    }
                     var be = level.getBlockEntity(pos);
                     if (be instanceof MatrixPortBlockEntity port && worldPosition.equals(port.getControllerPos())) {
                         port.bindToController(null);

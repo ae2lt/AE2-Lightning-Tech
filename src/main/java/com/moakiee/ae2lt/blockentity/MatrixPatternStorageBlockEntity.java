@@ -174,12 +174,13 @@ public class MatrixPatternStorageBlockEntity extends BlockEntity implements Matr
     }
 
     private void notifyPortPatternsChanged() {
-        if (controllerPos == null || level == null) {
+        if (controllerPos == null || level == null || !level.isLoaded(controllerPos)) {
             return;
         }
         if (level.getBlockEntity(controllerPos) instanceof MatrixControllerBlockEntity controller) {
             var portPos = controller.getPortPos();
-            if (portPos != null && level.getBlockEntity(portPos) instanceof MatrixPortBlockEntity port) {
+            if (portPos != null && level.isLoaded(portPos)
+                    && level.getBlockEntity(portPos) instanceof MatrixPortBlockEntity port) {
                 port.patternsChanged();
             }
         }

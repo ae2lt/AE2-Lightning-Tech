@@ -14,7 +14,8 @@ public final class MatrixMultiblockUpdateScheduler {
             return;
         }
         for (var controllerPos : MatrixMultiblockScanner.candidateControllerPositions(changedPos)) {
-            if (level.getBlockEntity(controllerPos) instanceof MatrixControllerBlockEntity controller) {
+            if (level.isLoaded(controllerPos)
+                    && level.getBlockEntity(controllerPos) instanceof MatrixControllerBlockEntity controller) {
                 controller.scheduleStructureCheck();
             }
         }
