@@ -11,7 +11,7 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-public record TianshuControllerActionPacket(int token, BlockPos pos) implements CustomPacketPayload {
+public record TianshuControllerActionPacket(int token, BlockPos pos, Action action) implements CustomPacketPayload {
     public static final Type<TianshuControllerActionPacket> TYPE =
             new Type<>(NetworkInit.id("tianshu_controller_action"));
     public static final StreamCodec<FriendlyByteBuf, TianshuControllerActionPacket> STREAM_CODEC =
@@ -20,10 +20,11 @@ public record TianshuControllerActionPacket(int token, BlockPos pos) implements 
     private static void encode(FriendlyByteBuf buf, TianshuControllerActionPacket packet) {
         buf.writeVarInt(packet.token);
         buf.writeBlockPos(packet.pos);
+        buf.writeEnum(packet.action);
     }
 
     private static TianshuControllerActionPacket decode(FriendlyByteBuf buf) {
-        return new TianshuControllerActionPacket(buf.readVarInt(), buf.readBlockPos());
+        return new TianshuControllerActionPacket(buf.readVarInt(), buf.readBlockPos(), buf.readEnum(Action.class));
     }
 
     @Override
@@ -49,6 +50,14 @@ public record TianshuControllerActionPacket(int token, BlockPos pos) implements 
                     .withStyle(ChatFormatting.RED), true);
             return;
         }
-        controller.autoBuild(player);
+        switch (action) {
+            case AUTO_BUILD -> controller.autoBuild(player);
+            case TOGGLE_FAST_PLANNING -> controller.toggleFastPlanning();
+        }
+    }
+
+    public enum Action {
+        AUTO_BUILD,
+        TOGGLE_FAST_PLANNING
     }
 }

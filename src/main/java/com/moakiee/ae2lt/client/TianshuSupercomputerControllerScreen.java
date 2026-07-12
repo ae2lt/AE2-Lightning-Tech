@@ -13,6 +13,8 @@ import net.neoforged.neoforge.network.PacketDistributor;
 
 public class TianshuSupercomputerControllerScreen
         extends AbstractContainerScreen<TianshuSupercomputerControllerMenu> {
+    private Button fastPlanningButton;
+
     public TianshuSupercomputerControllerScreen(
             TianshuSupercomputerControllerMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title);
@@ -27,9 +29,29 @@ public class TianshuSupercomputerControllerScreen
         addRenderableWidget(Button.builder(
                 Component.translatable("ae2lt.tianshu.gui.build"),
                 button -> PacketDistributor.sendToServer(
-                        new TianshuControllerActionPacket(menu.token(), menu.getBlockPos())))
-                .bounds(leftPos + 10, topPos + 140, imageWidth - 20, 20)
+                        new TianshuControllerActionPacket(menu.token(), menu.getBlockPos(),
+                                TianshuControllerActionPacket.Action.AUTO_BUILD)))
+                .bounds(leftPos + 10, topPos + 140, 96, 20)
                 .build());
+        fastPlanningButton = addRenderableWidget(Button.builder(
+                fastPlanningText(),
+                button -> PacketDistributor.sendToServer(
+                        new TianshuControllerActionPacket(menu.token(), menu.getBlockPos(),
+                                TianshuControllerActionPacket.Action.TOGGLE_FAST_PLANNING)))
+                .bounds(leftPos + 114, topPos + 140, 96, 20)
+                .build());
+    }
+
+    @Override
+    protected void containerTick() {
+        super.containerTick();
+        if (fastPlanningButton != null) fastPlanningButton.setMessage(fastPlanningText());
+    }
+
+    private Component fastPlanningText() {
+        return Component.translatable(menu.isFastPlanningEnabled()
+                ? "ae2lt.tianshu.gui.fast_planning.on"
+                : "ae2lt.tianshu.gui.fast_planning.off");
     }
 
     @Override

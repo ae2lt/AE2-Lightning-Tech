@@ -106,6 +106,15 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
         return cpuPool;
     }
 
+    public boolean isFastPlanningEnabled() {
+        return cpuPool.isFastPlanningEnabled();
+    }
+
+    public void setFastPlanningEnabled(boolean enabled) {
+        cpuPool.setFastPlanningEnabled(enabled);
+        saveChanges();
+    }
+
     @Override
     public boolean isCpuActive() {
         return formed && getController() != null && getMainNode().isActive() && getMainNode().getGrid() != null;

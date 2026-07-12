@@ -46,6 +46,7 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity {
     private static final String TAG_MAIN_CORE = "MainCore";
     private static final String TAG_CAPACITY_CORES = "CapacityCores";
     private static final String TAG_PARALLEL_CORES = "ParallelCores";
+    private static final String TAG_FAST_PLANNING = "FastPlanning";
     private boolean formed;
     private BlockPos portPos;
     private BlockPos minPos;
@@ -54,6 +55,7 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity {
     private CpuInternalCoreProfile coreProfile = CpuInternalCoreProfile.empty();
     private long scheduledScanTick = NO_SCAN;
     private List<TianshuMultiblockScanIssue> lastIssues = List.of();
+    private boolean fastPlanningEnabled = true;
     private List<TianshuAutoBuildPlan.Placement> autoBuildPlacements = List.of();
     private UUID autoBuildPlayerId;
     private Direction autoBuildFacing = Direction.NORTH;
@@ -98,6 +100,16 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity {
 
     public CpuInternalCoreProfile getCoreProfile() {
         return coreProfile;
+    }
+
+    public boolean isFastPlanningEnabled() {
+        return fastPlanningEnabled;
+    }
+
+    public void toggleFastPlanning() {
+        fastPlanningEnabled = !fastPlanningEnabled;
+        syncPortFastPlanning();
+        setChanged();
     }
 
     public int getPrimaryIssueOrdinal() {
@@ -373,6 +385,7 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity {
         if (formed && result.portPos().equals(portPos) && result.minPos().equals(minPos)
                 && result.maxPos().equals(maxPos) && result.coreProfile().equals(coreProfile)) {
             for (BlockPos pos : result.members()) setMemberFormed(pos, true);
+            syncPortFastPlanning();
             syncControllerState();
             return;
         }
@@ -385,9 +398,17 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity {
         coreProfile = result.coreProfile();
         for (BlockPos pos : result.members()) setMemberFormed(pos, true);
         if (level.getBlockEntity(portPos) instanceof TianshuSupercomputerPortBlockEntity port) {
+            port.setFastPlanningEnabled(fastPlanningEnabled);
             port.bindToController(worldPosition, coreProfile);
         }
         syncControllerState();
+    }
+
+    private void syncPortFastPlanning() {
+        if (level != null && portPos != null
+                && level.getBlockEntity(portPos) instanceof TianshuSupercomputerPortBlockEntity port) {
+            port.setFastPlanningEnabled(fastPlanningEnabled);
+        }
     }
 
     private void deform() {
@@ -440,6 +461,7 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity {
         if (minPos != null) tag.putLong(TAG_MIN_POS, minPos.asLong());
         if (maxPos != null) tag.putLong(TAG_MAX_POS, maxPos.asLong());
         tag.putInt(TAG_MEMBER_COUNT, memberCount);
+        tag.putBoolean(TAG_FAST_PLANNING, fastPlanningEnabled);
         if (coreProfile.mainCore() != null) {
             tag.putString(TAG_MAIN_CORE, coreProfile.mainCore().name());
             tag.putInt(TAG_CAPACITY_CORES, coreProfile.capacityCoreCount());
@@ -455,6 +477,8 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity {
         minPos = tag.contains(TAG_MIN_POS, Tag.TAG_LONG) ? BlockPos.of(tag.getLong(TAG_MIN_POS)) : null;
         maxPos = tag.contains(TAG_MAX_POS, Tag.TAG_LONG) ? BlockPos.of(tag.getLong(TAG_MAX_POS)) : null;
         memberCount = tag.getInt(TAG_MEMBER_COUNT);
+        fastPlanningEnabled = !tag.contains(TAG_FAST_PLANNING, Tag.TAG_BYTE)
+                || tag.getBoolean(TAG_FAST_PLANNING);
         if (tag.contains(TAG_MAIN_CORE, Tag.TAG_STRING)) {
             try {
                 var tier = CpuMainCoreTier.valueOf(tag.getString(TAG_MAIN_CORE));
