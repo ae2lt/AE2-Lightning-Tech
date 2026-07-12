@@ -611,12 +611,6 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
         outputFilterDirty = true;
         refreshEjectRegistrations();
 
-        // EAP smart-doubling compat: re-apply the eap$allowScaling marker to
-        // every pattern. Vanilla updatePatterns has a TAIL mixin from EAP that
-        // does this; since we fully override updatePatterns without calling
-        // super, we replicate it here.
-        SmartDoublingCompat.applyTo(this, patterns);
-
         ICraftingProvider.requestUpdate(accessor.getMainNode());
         alertGridTick();
     }
@@ -661,7 +655,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
         refreshGlobalBackpressure();
         if (wirelessGlobalBackpressure) return false;
         if (!gridNode.isActive()) return false;
-        if (!SmartDoublingCompat.containsOrUnwrapped(getAvailablePatterns(), pattern)) return false;
+        if (!getAvailablePatterns().contains(pattern)) return false;
         if (getCraftingLockedReason() != LockCraftingMode.NONE) return false;
 
         var level = overloadedHost.getLevel();
@@ -1075,9 +1069,6 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
     }
 
     private static boolean isCompactEligible(IPatternDetails pattern) {
-        if (SmartDoublingCompat.unwrap(pattern) != null) {
-            return false;
-        }
         OverloadPatternDetails overloadDetails = pattern instanceof OverloadedProviderOnlyPatternDetails overload
                 ? overload.overloadPatternDetailsView()
                 : null;
@@ -1152,7 +1143,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
         var accessor = (PatternProviderLogicAccessor) this;
         if (!accessor.getSendList().isEmpty()) return false;
         if (!gridNode.isActive()) return false;
-        if (!SmartDoublingCompat.containsOrUnwrapped(getAvailablePatterns(), pattern)) return false;
+        if (!getAvailablePatterns().contains(pattern)) return false;
         if (getCraftingLockedReason() != LockCraftingMode.NONE) return false;
         if (!pattern.supportsPushInputsToExternalInventory()) return false;
 
