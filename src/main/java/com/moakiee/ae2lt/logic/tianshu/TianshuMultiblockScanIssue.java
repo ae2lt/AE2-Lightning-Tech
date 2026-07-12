@@ -2,6 +2,7 @@ package com.moakiee.ae2lt.logic.tianshu;
 
 public enum TianshuMultiblockScanIssue {
     MISSING_CASING,
+    MISSING_COOLING,
     MISSING_GLASS,
     MISSING_PORT,
     MULTIPLE_PORTS,

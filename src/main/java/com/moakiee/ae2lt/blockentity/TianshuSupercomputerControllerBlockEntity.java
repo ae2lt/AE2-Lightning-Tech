@@ -219,6 +219,7 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity {
             TianshuAutoBuildPlan.Target target) {
         return switch (target) {
             case CASING -> component == TianshuMultiblockComponent.CASING;
+            case COOLING -> component == TianshuMultiblockComponent.COOLING;
             case GLASS -> component == TianshuMultiblockComponent.GLASS;
             case PORT -> component == TianshuMultiblockComponent.PORT;
         };
@@ -302,6 +303,7 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity {
     private BlockState stateForAutoBuild(TianshuAutoBuildPlan.Target target) {
         return switch (target) {
             case CASING -> ModBlocks.TIANSHU_SUPERCOMPUTER_CASING.get().defaultBlockState();
+            case COOLING -> ModBlocks.PHASE_CHANGE_COOLING_UNIT.get().defaultBlockState();
             case GLASS -> ModBlocks.TIANSHU_SUPERCOMPUTER_GLASS.get().defaultBlockState();
             case PORT -> ModBlocks.TIANSHU_SUPERCOMPUTER_PORT.get().defaultBlockState();
         };

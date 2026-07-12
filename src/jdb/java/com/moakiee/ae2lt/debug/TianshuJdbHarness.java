@@ -113,12 +113,13 @@ public final class TianshuJdbHarness {
                     var world = TianshuMultiblockScanner.worldPos(controllerPos, local, direction);
                     BlockState state = switch (TianshuMultiblockTemplate.roleAt(local)) {
                         case CASING -> ModBlocks.TIANSHU_SUPERCOMPUTER_CASING.get().defaultBlockState();
+                        case COOLING -> ModBlocks.PHASE_CHANGE_COOLING_UNIT.get().defaultBlockState();
                         case GLASS -> ModBlocks.TIANSHU_SUPERCOMPUTER_GLASS.get().defaultBlockState();
                         case CONTROLLER -> ModBlocks.TIANSHU_SUPERCOMPUTER_CONTROLLER.get().defaultBlockState()
                                 .setValue(TianshuSupercomputerControllerBlock.FACING, direction);
                         case PORT_CANDIDATE -> local.equals(TianshuMultiblockTemplate.LOWER_PORT)
                                 ? ModBlocks.TIANSHU_SUPERCOMPUTER_PORT.get().defaultBlockState()
-                                : ModBlocks.TIANSHU_SUPERCOMPUTER_CASING.get().defaultBlockState();
+                                : ModBlocks.PHASE_CHANGE_COOLING_UNIT.get().defaultBlockState();
                         case CORE_RESERVED -> {
                             if (local.equals(new BlockPos(3, 3, 3))) {
                                 yield ModBlocks.BASELINE_SUPERCOMPUTING_UNIT.get().defaultBlockState();

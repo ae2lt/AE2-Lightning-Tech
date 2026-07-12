@@ -3,6 +3,7 @@ package com.moakiee.ae2lt.logic.tianshu;
 public enum TianshuMultiblockComponent {
     AIR,
     CASING,
+    COOLING,
     GLASS,
     CONTROLLER,
     PORT,

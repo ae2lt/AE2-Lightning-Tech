@@ -220,6 +220,9 @@ public final class ModBlocks {
     public static final DeferredBlock<TianshuSupercomputerStructureBlock> TIANSHU_SUPERCOMPUTER_CASING =
             registerBlock("tianshu_supercomputer_casing", () -> new TianshuSupercomputerStructureBlock(MATRIX_MACHINE_PROPERTIES));
 
+    public static final DeferredBlock<TianshuSupercomputerStructureBlock> PHASE_CHANGE_COOLING_UNIT =
+            registerBlock("phase_change_cooling_unit", () -> new TianshuSupercomputerStructureBlock(MATRIX_MACHINE_PROPERTIES));
+
     public static final DeferredBlock<TianshuSupercomputerGlassBlock> TIANSHU_SUPERCOMPUTER_GLASS =
             registerBlock("tianshu_supercomputer_glass", () -> new TianshuSupercomputerGlassBlock(MATRIX_GLASS_PROPERTIES));
 

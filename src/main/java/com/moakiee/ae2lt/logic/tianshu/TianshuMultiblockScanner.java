@@ -54,6 +54,13 @@ public final class TianshuMultiblockScanner {
                                 members.add(world.immutable());
                             }
                         }
+                        case COOLING -> {
+                            if (component != TianshuMultiblockComponent.COOLING) {
+                                addOnce(issues, TianshuMultiblockScanIssue.MISSING_COOLING);
+                            } else {
+                                members.add(world.immutable());
+                            }
+                        }
                         case GLASS -> {
                             if (component != TianshuMultiblockComponent.GLASS) {
                                 addOnce(issues, TianshuMultiblockScanIssue.MISSING_GLASS);
@@ -65,10 +72,10 @@ public final class TianshuMultiblockScanner {
                             if (component == TianshuMultiblockComponent.PORT) {
                                 ports.add(world.immutable());
                                 members.add(world.immutable());
-                            } else if (component == TianshuMultiblockComponent.CASING) {
+                            } else if (component == TianshuMultiblockComponent.COOLING) {
                                 members.add(world.immutable());
                             } else {
-                                addOnce(issues, TianshuMultiblockScanIssue.MISSING_CASING);
+                                addOnce(issues, TianshuMultiblockScanIssue.MISSING_COOLING);
                             }
                         }
                         case CORE_RESERVED -> {
@@ -122,6 +129,7 @@ public final class TianshuMultiblockScanner {
         var state = level.getBlockState(pos);
         if (state.isAir()) return TianshuMultiblockComponent.AIR;
         if (state.is(ModBlocks.TIANSHU_SUPERCOMPUTER_CASING.get())) return TianshuMultiblockComponent.CASING;
+        if (state.is(ModBlocks.PHASE_CHANGE_COOLING_UNIT.get())) return TianshuMultiblockComponent.COOLING;
         if (state.is(ModBlocks.TIANSHU_SUPERCOMPUTER_GLASS.get())) return TianshuMultiblockComponent.GLASS;
         if (state.is(ModBlocks.TIANSHU_SUPERCOMPUTER_CONTROLLER.get())) return TianshuMultiblockComponent.CONTROLLER;
         if (state.is(ModBlocks.TIANSHU_SUPERCOMPUTER_PORT.get())) return TianshuMultiblockComponent.PORT;

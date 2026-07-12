@@ -132,6 +132,7 @@ public class AE2LightningTech {
                         output.accept(ModBlocks.OVERLOADED_INTERFACE);
                         output.accept(ModBlocks.TEST_TIME_WHEEL_CRAFTING_CPU);
                         output.accept(ModBlocks.TIANSHU_SUPERCOMPUTER_CASING);
+                        output.accept(ModBlocks.PHASE_CHANGE_COOLING_UNIT);
                         output.accept(ModBlocks.TIANSHU_SUPERCOMPUTER_GLASS);
                         output.accept(ModBlocks.TIANSHU_SUPERCOMPUTER_CONTROLLER);
                         output.accept(ModBlocks.TIANSHU_SUPERCOMPUTER_PORT);

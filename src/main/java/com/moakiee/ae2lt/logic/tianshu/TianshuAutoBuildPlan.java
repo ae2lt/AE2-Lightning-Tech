@@ -76,8 +76,9 @@ public final class TianshuAutoBuildPlan {
     private static Target targetFor(TianshuMultiblockRole role, BlockPos local, BlockPos portTarget) {
         return switch (role) {
             case CASING -> Target.CASING;
+            case COOLING -> Target.COOLING;
             case GLASS -> Target.GLASS;
-            case PORT_CANDIDATE -> local.equals(portTarget) ? Target.PORT : Target.CASING;
+            case PORT_CANDIDATE -> local.equals(portTarget) ? Target.PORT : Target.COOLING;
             case CONTROLLER, CORE_RESERVED, IGNORED -> null;
         };
     }
@@ -85,6 +86,7 @@ public final class TianshuAutoBuildPlan {
     private static boolean matchesTarget(TianshuMultiblockComponent component, Target target) {
         return switch (target) {
             case CASING -> component == TianshuMultiblockComponent.CASING;
+            case COOLING -> component == TianshuMultiblockComponent.COOLING;
             case GLASS -> component == TianshuMultiblockComponent.GLASS;
             case PORT -> component == TianshuMultiblockComponent.PORT;
         };
@@ -101,6 +103,7 @@ public final class TianshuAutoBuildPlan {
 
     public enum Target {
         CASING,
+        COOLING,
         GLASS,
         PORT
     }
