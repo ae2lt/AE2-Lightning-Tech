@@ -282,10 +282,14 @@ public class MatrixPatternStorageBlockEntity extends BlockEntity implements Matr
         @Override
         public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
             validateSlot(slot);
-            if (stack.isEmpty() || !isValidPatternStack(stack)) {
+            // Occupancy first, validation (a full pattern decode) second: a matrix in steady state is
+            // mostly full and the network probes inserts every tick, so decoding the incoming stack for
+            // an already-occupied slot is pure waste. Only an empty slot that could actually accept the
+            // stack pays for the decode.
+            if (stack.isEmpty() || !items.get(slot).isEmpty()) {
                 return stack;
             }
-            if (!items.get(slot).isEmpty()) {
+            if (!isValidPatternStack(stack)) {
                 return stack;
             }
             if (!simulate) {
