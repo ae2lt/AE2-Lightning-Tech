@@ -127,7 +127,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
     private final Map<Integer, ItemStack> pendingOverflowPatternDefinitions = new HashMap<>();
     private final List<PendingBucketLoad> pendingOverflowBuckets = new ArrayList<>();
 
-    /** Round-robin index across the *valid* connection list for SINGLE_TARGET. */
+    /** Legacy persisted round-robin position. */
     private int wirelessRoundRobin = 0;
 
     // ---- unified per-connection state ---------------------------------------------
@@ -310,11 +310,11 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
             new ReadyDispatchQueue<>(connectionStates::get);
     private final ReadyDispatchQueue<WirelessConnection, ConnectionState> evenReadyQueue =
             new ReadyDispatchQueue<>(connectionStates::get);
+    private final PatternDispatchPenaltyTracker<WirelessConnection, AEItemKey> patternPenalties =
+            new PatternDispatchPenaltyTracker<>();
     private List<WirelessConnection> pushWheelValidRef = List.of();
     private boolean pushStructuresDirty = true;
     private long lastPushWheelTick = -1;
-
-    private enum PushOutcome { SUCCESS, SOFT_FAIL, HARD_FAIL }
 
     private static final class ConnBucket {
         final boolean compactMode;
@@ -584,6 +584,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
 
     @Override
     public void updatePatterns() {
+        patternPenalties.clear();
         var accessor = (PatternProviderLogicAccessor) this;
         var patterns = accessor.getPatterns();
         var patternInputs = accessor.getPatternInputs();
@@ -671,6 +672,12 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
         var valid = getOrRefreshValidConnections(sl, sl.getGameTime());
         if (valid.isEmpty()) return false;
 
+        // Power availability is a grid-wide condition. Do not scan and penalize
+        // individual machines when no target could possibly accept the job.
+        double cost = PowerCostUtil.totalCost(inputs);
+        var grid = gridNode.getGrid();
+        if (!PowerCostUtil.canAfford(grid, cost)) return false;
+
         long gameTick = sl.getGameTime();
         boolean fastMode = overloadedHost.getWirelessSpeedMode()
                 == OverloadedPatternProviderBlockEntity.WirelessSpeedMode.FAST;
@@ -681,7 +688,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
         advancePushWheel(gameTick, fastMode, dispatchMode);
 
         return switch (dispatchMode) {
-            case EVEN_DISTRIBUTION -> wirelessPushEvenDistribution(pattern, inputs, valid, server, gameTick, fastMode);
+            case EVEN_DISTRIBUTION -> wirelessPushEvenDistribution(pattern, inputs, valid, server, gameTick);
             case SINGLE_TARGET -> wirelessPushSingleTarget(pattern, inputs, valid, server, gameTick, fastMode);
         };
     }
@@ -690,13 +697,18 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
 
     private boolean wirelessPushEvenDistribution(IPatternDetails pattern, KeyCounter[] inputs,
             List<WirelessConnection> valid, net.minecraft.server.MinecraftServer server,
-            long gameTick, boolean fastMode) {
-
+            long gameTick) {
         int scanBudget = evenReadyQueue.size();
+        var patternKey = pattern.getDefinition();
         while (scanBudget-- > 0 && !evenReadyQueue.isEmpty()) {
             var conn = evenReadyQueue.peek();
             if (pendingOverflowByConn.containsKey(conn)) {
                 evenReadyQueue.removeHead();
+                continue;
+            }
+
+            if (patternPenalties.shouldSkip(conn, patternKey, gameTick)) {
+                evenReadyQueue.rotateHeadToTail();
                 continue;
             }
 
@@ -708,11 +720,14 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
 
             boolean probing = state.probeArmed
                     && state.cooldownUntil >= 0 && gameTick < state.cooldownUntil;
-            state.probeArmed = false;
 
             var outcome = tryPushToConnection(pattern, inputs, conn, server);
+            if (outcome.consumesTargetAttempt()) {
+                state.probeArmed = false;
+            }
             switch (outcome) {
                 case SUCCESS -> {
+                    patternPenalties.recordSuccess(conn, patternKey);
                     if (probing) {
                         state.onProbeSuccess();
                     } else {
@@ -728,19 +743,18 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
                 case HARD_FAIL -> {
                     if (!isConnectionAlive(conn, server)) {
                         evenReadyQueue.removeHead();
+                        patternPenalties.removeTarget(conn);
                         connectionsDirty = true;
                     } else {
                         evenReadyQueue.rotateHeadToTail();
                     }
                 }
                 case SOFT_FAIL -> {
-                    evenReadyQueue.removeHead();
-                    if (probing) {
-                        state.onProbeFail();
-                    } else {
-                        state.onPushFail(gameTick);
-                    }
-                    schedulePushWheel(conn, state, fastMode, WirelessDispatchMode.EVEN_DISTRIBUTION);
+                    patternPenalties.recordRejection(conn, patternKey, gameTick);
+                    evenReadyQueue.rotateHeadToTail();
+                }
+                case GLOBAL_ABORT -> {
+                    return false;
                 }
             }
         }
@@ -768,9 +782,11 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
 
             boolean probing = state.probeArmed
                     && state.cooldownUntil >= 0 && gameTick < state.cooldownUntil;
-            state.probeArmed = false;
 
             var outcome = tryPushToConnection(pattern, inputs, conn, server);
+            if (outcome.consumesTargetAttempt()) {
+                state.probeArmed = false;
+            }
             switch (outcome) {
                 case SUCCESS -> {
                     if (probing) {
@@ -797,6 +813,9 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
                     if (!isConnectionAlive(conn, server)) {
                         connectionsDirty = true;
                     }
+                }
+                case GLOBAL_ABORT -> {
+                    return false;
                 }
             }
         }
@@ -924,26 +943,26 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
         }
     }
 
-    private PushOutcome tryPushToConnection(IPatternDetails pattern, KeyCounter[] inputs,
+    private WirelessPushOutcome tryPushToConnection(IPatternDetails pattern, KeyCounter[] inputs,
             WirelessConnection conn, net.minecraft.server.MinecraftServer server) {
-        if (pendingOverflowByConn.containsKey(conn)) return PushOutcome.SOFT_FAIL;
+        if (pendingOverflowByConn.containsKey(conn)) return WirelessPushOutcome.SOFT_FAIL;
         if (AdvancedAECompat.isDirectional(pattern)) {
             return tryPushToConnectionDirectionally(pattern, inputs, conn, server);
         }
 
         var targetLevel = server.getLevel(conn.dimension());
-        if (targetLevel == null) return PushOutcome.HARD_FAIL;
+        if (targetLevel == null) return WirelessPushOutcome.HARD_FAIL;
 
         autoReturnBeforePush(targetLevel, conn);
 
         var state = getOrCreateState(conn);
         var adapter = state.resolveAdapter(targetLevel, conn.pos());
-        if (adapter == null) return PushOutcome.HARD_FAIL;
+        if (adapter == null) return WirelessPushOutcome.HARD_FAIL;
 
         double cost = PowerCostUtil.totalCost(inputs);
         var grid = gridNode.getGrid();
         if (!PowerCostUtil.canAfford(grid, cost)) {
-            return PushOutcome.SOFT_FAIL;
+            return WirelessPushOutcome.GLOBAL_ABORT;
         }
 
         boolean blocking = isBlocking();
@@ -965,7 +984,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
                 targetLevel, conn.pos(), conn.boundFace(),
                 pattern, inputs, 1,
                 blocking, patternInputs, wirelessSource, cachedTarget);
-        if (result.acceptedCopies() == 0) return PushOutcome.SOFT_FAIL;
+        if (result.acceptedCopies() == 0) return WirelessPushOutcome.SOFT_FAIL;
 
         PowerCostUtil.consumeRaw(grid, cost);
 
@@ -980,7 +999,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
         if (overloadedHost.isAutoReturn()) {
             getOrCreateState(conn).resetBackoff(targetLevel.getGameTime());
         }
-        return PushOutcome.SUCCESS;
+        return WirelessPushOutcome.SUCCESS;
     }
 
     private void bucketOverflow(WirelessConnection conn, IPatternDetails pattern,
@@ -1189,23 +1208,23 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
      * Each input key is routed to the target-machine face from the directionMap;
      * keys without a mapping default to {@code conn.boundFace()}.
      */
-    private PushOutcome tryPushToConnectionDirectionally(IPatternDetails pattern, KeyCounter[] inputs,
+    private WirelessPushOutcome tryPushToConnectionDirectionally(IPatternDetails pattern, KeyCounter[] inputs,
             WirelessConnection conn, net.minecraft.server.MinecraftServer server) {
-        if (pendingOverflowByConn.containsKey(conn)) return PushOutcome.SOFT_FAIL;
+        if (pendingOverflowByConn.containsKey(conn)) return WirelessPushOutcome.SOFT_FAIL;
         var targetLevel = server.getLevel(conn.dimension());
-        if (targetLevel == null) return PushOutcome.HARD_FAIL;
-        if (!targetLevel.isLoaded(conn.pos())) return PushOutcome.HARD_FAIL;
-        if (!pattern.supportsPushInputsToExternalInventory()) return PushOutcome.SOFT_FAIL;
+        if (targetLevel == null) return WirelessPushOutcome.HARD_FAIL;
+        if (!targetLevel.isLoaded(conn.pos())) return WirelessPushOutcome.HARD_FAIL;
+        if (!pattern.supportsPushInputsToExternalInventory()) return WirelessPushOutcome.SOFT_FAIL;
 
         autoReturnBeforePush(targetLevel, conn);
 
         var be = targetLevel.getBlockEntity(conn.pos());
-        if (be == null) return PushOutcome.HARD_FAIL;
+        if (be == null) return WirelessPushOutcome.HARD_FAIL;
 
         double cost = PowerCostUtil.totalCost(inputs);
         var grid = gridNode.getGrid();
         if (!PowerCostUtil.canAfford(grid, cost)) {
-            return PushOutcome.SOFT_FAIL;
+            return WirelessPushOutcome.GLOBAL_ABORT;
         }
 
         var defaultFace = conn.boundFace();
@@ -1214,18 +1233,18 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
         try {
             var faceToTarget = buildDirectionalTargets(
                     targetLevel, conn.pos(), be, defaultFace, pattern, inputs, wirelessSource);
-            if (faceToTarget == null) return PushOutcome.SOFT_FAIL;
+            if (faceToTarget == null) return WirelessPushOutcome.SOFT_FAIL;
 
             if (isBlocking()) {
                 var patternInputKeys = ((PatternProviderLogicAccessor) this).getPatternInputs();
                 var anyTarget = faceToTarget.values().iterator().next();
                 // EAP advanced-blocking compat: bypass when target fully matches.
                 if (anyTarget.containsPatternInput(patternInputKeys)
-                        && !AdvancedBlockingCompat.shouldBypassBlocking(this, anyTarget, pattern)) return PushOutcome.SOFT_FAIL;
+                        && !AdvancedBlockingCompat.shouldBypassBlocking(this, anyTarget, pattern)) return WirelessPushOutcome.SOFT_FAIL;
             }
 
             if (!simulateDirectionalAcceptance(faceToTarget, defaultFace, pattern, inputs))
-                return PushOutcome.SOFT_FAIL;
+                return WirelessPushOutcome.SOFT_FAIL;
 
             var overflow = commitDirectionalPushWithOverflow(pattern, inputs, faceToTarget, defaultFace);
             PowerCostUtil.consumeRaw(grid, cost);
@@ -1243,7 +1262,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
         if (overloadedHost.isAutoReturn()) {
             getOrCreateState(conn).resetBackoff(targetLevel.getGameTime());
         }
-        return PushOutcome.SUCCESS;
+        return WirelessPushOutcome.SUCCESS;
     }
 
     // ---- directional push helpers ------------------------------------------------
@@ -2152,6 +2171,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
         lastPushWheelTick = -1;
         targetCache.clear();
         connectionStates.clear();
+        patternPenalties.clear();
         wirelessDistributor.clearTickState(true);
     }
 
