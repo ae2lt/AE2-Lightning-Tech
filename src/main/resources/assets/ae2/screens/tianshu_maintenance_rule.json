@@ -1,0 +1,14 @@
+{
+  "$schema": "schema.json",
+  "includes": ["common/common.json"],
+  "background": {
+    "texture": "guis/interface.png",
+    "srcRect": [0, 0, 176, 207]
+  },
+  "text": {
+    "dialog_title": {
+      "text": { "translate": "ae2lt.tianshu.maintenance.title" },
+      "position": { "left": 8, "top": 6 }
+    }
+  }
+}

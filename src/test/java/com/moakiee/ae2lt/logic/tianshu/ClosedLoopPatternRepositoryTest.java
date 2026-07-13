@@ -21,6 +21,7 @@ import com.moakiee.ae2lt.logic.tianshu.maintenance.InventoryMaintenanceRule;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.ReservedStockRepository;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.InventoryMaintenanceBadge;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.InventoryMaintenanceStatus;
+import com.moakiee.ae2lt.logic.tianshu.maintenance.LayeredReservedStockPolicy;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.MaintenanceTopologyService;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.MaintenanceVariantService;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.ReservedStockMatchMode;
@@ -327,6 +328,52 @@ class ClosedLoopPatternRepositoryTest {
         assertEquals(100L, reserves.usablePreexistingStock(red, 600));
         assertEquals(700L, reserves.usablePreexistingStock(blue, 700));
         assertEquals(false, reserves.groupsSecondaryVariants(blue));
+    }
+
+    @Test
+    void perRuleReserveAddsToMaintenanceWideReserveInsteadOfReplacingIt() {
+        var shared = new TestKey("shared_floor");
+        var onlyGlobal = new TestKey("global_floor");
+        var global = new ReservedStockRepository(() -> 8);
+        var perRule = new ReservedStockRepository(() -> 8);
+        global.set(shared, 1_000);
+        global.set(onlyGlobal, 400);
+        perRule.set(shared, 1_500);
+        var policy = new LayeredReservedStockPolicy(global, perRule);
+
+        assertEquals(500L, policy.usablePreexistingStock(shared, 2_000));
+        assertEquals(600L, policy.usablePreexistingStock(onlyGlobal, 1_000));
+    }
+
+    @Test
+    void perRuleReserveCannotRelaxInfiniteMaintenanceWideReserve() {
+        var key = new TestKey("globally_infinite");
+        var global = new ReservedStockRepository(() -> 8);
+        var perRule = new ReservedStockRepository(() -> 8);
+        global.set(key, ReservedStockRepository.INFINITE);
+        perRule.set(key, 1);
+
+        assertEquals(0L, new LayeredReservedStockPolicy(global, perRule)
+                .usablePreexistingStock(key, Long.MAX_VALUE));
+    }
+
+    @Test
+    void fuzzyGlobalReserveAndExactPerRuleReserveBothConstrainVariants() {
+        var red = new TestKey("layered_variant", "red");
+        var blue = new TestKey("layered_variant", "blue");
+        var global = new ReservedStockRepository(() -> 8);
+        var perRule = new ReservedStockRepository(() -> 8);
+        global.set(red, ReservedStockMatchMode.IGNORE_SECONDARY, 1_000);
+        perRule.set(red, ReservedStockMatchMode.EXACT, 500);
+        var policy = new LayeredReservedStockPolicy(global, perRule);
+        var group = Map.<AEKey, Long>of(red, 600L, blue, 700L);
+
+        long usableRed = policy.usablePreexistingStock(red, 600, group);
+        long usableBlue = policy.usablePreexistingStock(blue, 700, group);
+
+        assertEquals(true, policy.groupsSecondaryVariants(red));
+        assertEquals(true, usableRed <= 100L);
+        assertEquals(300L, usableRed + usableBlue);
     }
 
     @Test

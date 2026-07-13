@@ -63,6 +63,18 @@ public final class TianshuInventoryMaintenanceService
                         () -> port.getFunctionProfile().maintenanceRuleCapacity()));
     }
 
+    public ReservedStockRepository.PutResult setMaintenanceWideReservedStock(
+            AEKey key, ReservedStockMatchMode mode, long amount) {
+        if (!canConfigure()) return ReservedStockRepository.PutResult.UNAVAILABLE;
+        var result = reservedStock.set(key, mode, amount);
+        if (result != ReservedStockRepository.PutResult.INVALID
+                && result != ReservedStockRepository.PutResult.FULL
+                && result != ReservedStockRepository.PutResult.UNAVAILABLE) {
+            port.maintenanceStateChanged();
+        }
+        return result;
+    }
+
     public InventoryMaintenanceStatus status(UUID ruleId) {
         return statuses.getOrDefault(ruleId, InventoryMaintenanceStatus.IDLE);
     }
@@ -301,42 +313,33 @@ public final class TianshuInventoryMaintenanceService
     private boolean respectsCurrentReservedStock(UUID ruleId, ICraftingPlan plan) {
         var grid = port.getGrid();
         if (grid == null || plan == null) return false;
-        var profile = ruleReservedStock.get(ruleId);
-        if (profile == null) profile = reservedStock;
-        if (profile.size() <= 0) return true;
+        var policy = reservedStockPolicy(ruleId);
+        if (policy.isEmpty()) return true;
         var inventory = grid.getStorageService().getInventory();
         var available = inventory.getAvailableStacks();
-        for (var reservation : profile.reservations()) {
-            long used = 0L;
-            for (var entry : plan.usedItems()) {
-                if (matchesReservation(reservation, entry.getKey())) {
-                    used = saturatingAdd(used, Math.max(0L, entry.getLongValue()));
+        for (var used : plan.usedItems()) {
+            if (used.getLongValue() <= 0L) continue;
+            var key = used.getKey();
+            long current = Math.max(0L, available.get(key));
+            long usable;
+            if (policy.groupsSecondaryVariants(key)) {
+                var group = new HashMap<AEKey, Long>();
+                for (var entry : available) {
+                    if (entry.getKey().dropSecondary().equals(key.dropSecondary())) {
+                        group.put(entry.getKey(), Math.max(0L, entry.getLongValue()));
+                    }
                 }
+                usable = policy.usablePreexistingStock(key, current, group);
+            } else {
+                usable = policy.usablePreexistingStock(key, current);
             }
-            if (used <= 0L) continue;
-            long current = 0L;
-            for (var entry : available) {
-                if (matchesReservation(reservation, entry.getKey())) {
-                    current = saturatingAdd(current, Math.max(0L, entry.getLongValue()));
-                }
-            }
-            long usable = reservation.amount() == ReservedStockRepository.INFINITE
-                    ? 0L : Math.max(0L, current - reservation.amount());
-            if (used > usable) return false;
+            if (used.getLongValue() > usable) return false;
         }
         return true;
     }
 
-    private static boolean matchesReservation(
-            ReservedStockRepository.Entry reservation, AEKey candidate) {
-        if (reservation.mode() == ReservedStockMatchMode.EXACT) {
-            return reservation.key().equals(candidate);
-        }
-        return reservation.key().dropSecondary().equals(candidate.dropSecondary());
-    }
-
-    private static long saturatingAdd(long left, long right) {
-        return left >= Long.MAX_VALUE - right ? Long.MAX_VALUE : left + right;
+    private LayeredReservedStockPolicy reservedStockPolicy(UUID ruleId) {
+        return new LayeredReservedStockPolicy(reservedStock, ruleReservedStock.get(ruleId));
     }
 
     private void cancelCalculation(UUID ruleId) {
@@ -461,18 +464,14 @@ public final class TianshuInventoryMaintenanceService
         @Override public IActionSource getActionSource() { return port.getActionSource(); }
         @Override public IGridNode getGridNode() { return port.getMainNode().getNode(); }
         @Override public long usablePreexistingStock(AEKey key, long snapshotAmount) {
-            var profile = ruleReservedStock.get(ruleId);
-            return (profile != null ? profile : reservedStock)
-                    .usablePreexistingStock(key, snapshotAmount);
+            return reservedStockPolicy(ruleId).usablePreexistingStock(key, snapshotAmount);
         }
         @Override public boolean groupsSecondaryVariants(AEKey key) {
-            var profile = ruleReservedStock.get(ruleId);
-            return (profile != null ? profile : reservedStock).groupsSecondaryVariants(key);
+            return reservedStockPolicy(ruleId).groupsSecondaryVariants(key);
         }
         @Override public long usablePreexistingStock(
                 AEKey key, long snapshotAmount, Map<AEKey, Long> groupSnapshot) {
-            var profile = ruleReservedStock.get(ruleId);
-            return (profile != null ? profile : reservedStock)
+            return reservedStockPolicy(ruleId)
                     .usablePreexistingStock(key, snapshotAmount, groupSnapshot);
         }
     }

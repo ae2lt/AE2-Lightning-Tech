@@ -9,6 +9,11 @@ import com.moakiee.ae2lt.network.railgun.RailgunBeamTogglePacket;
 import com.moakiee.ae2lt.network.railgun.RailgunBeamUpdatePacket;
 import com.moakiee.ae2lt.network.railgun.RailgunFirePacket;
 import com.moakiee.ae2lt.network.railgun.RailgunRecoilFxPacket;
+import com.moakiee.ae2lt.network.tianshu.OpenMaintenanceEditorPacket;
+import com.moakiee.ae2lt.network.tianshu.MaintenanceEditorSyncPacket;
+import com.moakiee.ae2lt.network.tianshu.SaveMaintenanceRulePacket;
+import com.moakiee.ae2lt.network.tianshu.MaintenanceSummarySyncPacket;
+import com.moakiee.ae2lt.network.tianshu.SaveGlobalReservePacket;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -142,6 +147,27 @@ public final class NetworkInit {
                 DeviceHubSyncPacket.TYPE,
                 DeviceHubSyncPacket.STREAM_CODEC,
                 DeviceHubSyncPacket::handle);
+
+        registrar.playToServer(
+                OpenMaintenanceEditorPacket.TYPE,
+                OpenMaintenanceEditorPacket.STREAM_CODEC,
+                OpenMaintenanceEditorPacket::handle);
+        registrar.playToServer(
+                SaveMaintenanceRulePacket.TYPE,
+                SaveMaintenanceRulePacket.STREAM_CODEC,
+                SaveMaintenanceRulePacket::handle);
+        registrar.playToClient(
+                MaintenanceEditorSyncPacket.TYPE,
+                MaintenanceEditorSyncPacket.STREAM_CODEC,
+                MaintenanceEditorSyncPacket::handle);
+        registrar.playToClient(
+                MaintenanceSummarySyncPacket.TYPE,
+                MaintenanceSummarySyncPacket.STREAM_CODEC,
+                MaintenanceSummarySyncPacket::handle);
+        registrar.playToServer(
+                SaveGlobalReservePacket.TYPE,
+                SaveGlobalReservePacket.STREAM_CODEC,
+                SaveGlobalReservePacket::handle);
     }
 
     public static ResourceLocation id(String path) {

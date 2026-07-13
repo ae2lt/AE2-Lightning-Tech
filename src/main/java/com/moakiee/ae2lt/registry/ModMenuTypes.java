@@ -15,6 +15,7 @@ import com.moakiee.ae2lt.menu.OverloadedPatternProviderMenu;
 import com.moakiee.ae2lt.menu.OverloadedPowerSupplyMenu;
 import com.moakiee.ae2lt.menu.TeslaCoilMenu;
 import com.moakiee.ae2lt.menu.TianshuSupercomputerControllerMenu;
+import com.moakiee.ae2lt.menu.TianshuPatternEncodingTermMenu;
 import com.moakiee.ae2lt.menu.FrequencyMenu;
 import com.moakiee.ae2lt.menu.hub.DeviceHubMenu;
 import net.minecraft.core.registries.Registries;
@@ -107,6 +108,16 @@ public final class ModMenuTypes {
             TIANSHU_SUPERCOMPUTER_CONTROLLER = MENU_TYPES.register(
                     "tianshu_supercomputer_controller",
                     () -> TianshuSupercomputerControllerMenu.TYPE);
+
+    public static final DeferredHolder<MenuType<?>, MenuType<TianshuPatternEncodingTermMenu>>
+            TIANSHU_PATTERN_ENCODING_TERMINAL = MENU_TYPES.register(
+                    "tianshu_pattern_encoding_terminal",
+                    () -> TianshuPatternEncodingTermMenu.TYPE);
+
+    public static final DeferredHolder<MenuType<?>, ?> TIANSHU_WIRELESS_PATTERN_ENCODING_TERMINAL =
+            net.neoforged.fml.ModList.get().isLoaded("ae2wtlib")
+                    ? com.moakiee.ae2lt.integration.ae2wtlib.Ae2wtlibIntegration.registerTerminalMenu(MENU_TYPES)
+                    : null;
 
     private ModMenuTypes() {
     }

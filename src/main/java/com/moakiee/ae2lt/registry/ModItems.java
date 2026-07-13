@@ -44,6 +44,7 @@ import com.moakiee.ae2lt.celestweave.ArmorEnergyModuleItem;
 import com.moakiee.ae2lt.celestweave.ArmorEnergyRules;
 import com.moakiee.ae2lt.celestweave.module.ResistanceSubmodule;
 import com.moakiee.ae2lt.part.OverloadedCablePart;
+import com.moakiee.ae2lt.part.TianshuPatternEncodingTerminalPart;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Rarity;
@@ -53,6 +54,7 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 import appeng.api.client.StorageCellModels;
 import appeng.api.util.AEColor;
 import appeng.items.parts.ColoredPartItem;
+import appeng.items.parts.PartItem;
 
 public final class ModItems {
     public static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(AE2LightningTech.MODID);
@@ -237,6 +239,17 @@ public final class ModItems {
             "overload_pattern_encoder",
             OverloadPatternEncoderItem::new,
             new Item.Properties());
+
+    public static final DeferredItem<PartItem<TianshuPatternEncodingTerminalPart>> TIANSHU_PATTERN_ENCODING_TERMINAL =
+            ITEMS.register("tianshu_pattern_encoding_terminal",
+                    () -> new PartItem<>(new Item.Properties(),
+                            TianshuPatternEncodingTerminalPart.class,
+                            TianshuPatternEncodingTerminalPart::new));
+
+    public static final DeferredItem<Item> TIANSHU_WIRELESS_PATTERN_ENCODING_TERMINAL =
+            net.neoforged.fml.ModList.get().isLoaded("ae2wtlib")
+                    ? com.moakiee.ae2lt.integration.ae2wtlib.Ae2wtlibIntegration.registerTerminalItem(ITEMS)
+                    : null;
 
     public static final DeferredItem<Item> OVERLOADED_FILTER_COMPONENT = ITEMS.registerItem(
             "overloaded_filter_component",
