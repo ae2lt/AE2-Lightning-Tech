@@ -6,13 +6,13 @@
       "ingredient": {
         "item": "ae2lt:matter_warping_matrix_stable_main_core"
       },
-      "count": 1
+      "count": 8
     },
     {
       "ingredient": {
         "item": "ae2lt:lightning_collapse_matrix"
       },
-      "count": 4
+      "count": 16
     },
     {
       "ingredient": {
@@ -30,7 +30,7 @@
       "ingredient": {
         "item": "ae2:cell_component_256k"
       },
-      "count": 64
+      "count": 1024
     },
     {
       "ingredient": {

@@ -6,13 +6,25 @@
       "ingredient": {
         "item": "ae2lt:matter_warping_matrix_quantum_main_core"
       },
-      "count": 4
+      "count": 8
     },
     {
       "ingredient": {
         "item": "ae2lt:lightning_collapse_matrix"
       },
-      "count": 64
+      "count": 32
+    },
+    {
+      "ingredient": {
+        "item": "ae2lt:overload_alloy_plate"
+      },
+      "count": 4096
+    },
+    {
+      "ingredient": {
+        "item": "ae2:cell_component_256k"
+      },
+      "count": 8192
     },
     {
       "ingredient": {
@@ -31,6 +43,12 @@
         "item": "minecraft:ominous_trial_key"
       },
       "count": 16
+    },
+    {
+      "ingredient": {
+        "item": "ae2lt:pigmee_fumo"
+      },
+      "count": 1
     }
   ],
   "result": {
