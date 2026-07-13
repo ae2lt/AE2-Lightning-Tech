@@ -385,7 +385,7 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity {
         if (formed && result.portPos().equals(portPos) && result.minPos().equals(minPos)
                 && result.maxPos().equals(maxPos) && result.coreProfile().equals(coreProfile)) {
             for (BlockPos pos : result.members()) setMemberFormed(pos, true);
-            syncPortFastPlanning();
+            syncPortConfiguration();
             syncControllerState();
             return;
         }
@@ -397,11 +397,16 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity {
         memberCount = result.members().size();
         coreProfile = result.coreProfile();
         for (BlockPos pos : result.members()) setMemberFormed(pos, true);
-        if (level.getBlockEntity(portPos) instanceof TianshuSupercomputerPortBlockEntity port) {
+        syncPortConfiguration();
+        syncControllerState();
+    }
+
+    private void syncPortConfiguration() {
+        if (level != null && portPos != null
+                && level.getBlockEntity(portPos) instanceof TianshuSupercomputerPortBlockEntity port) {
             port.setFastPlanningEnabled(fastPlanningEnabled);
             port.bindToController(worldPosition, coreProfile);
         }
-        syncControllerState();
     }
 
     private void syncPortFastPlanning() {

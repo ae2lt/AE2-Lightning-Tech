@@ -8,6 +8,7 @@ import com.moakiee.thunderbolt.ae2.timewheel.TimeWheelCraftingCpuPool;
 import com.moakiee.thunderbolt.ae2.timewheel.TimeWheelCraftingCpuPoolHost;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import appeng.api.networking.IManagedGridNode;
 import appeng.api.networking.IGrid;
@@ -71,14 +72,22 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
     }
 
     public void bindToController(BlockPos controllerPos, CpuInternalCoreProfile profile) {
-        this.controllerPos = controllerPos == null ? null : controllerPos.immutable();
-        this.formed = controllerPos != null;
-        if (formed && profile.mainCore() != null
-                && (cpuPool.getTotalStorage() != profile.storageBytes()
-                || cpuPool.getCoProcessors() != profile.parallelism())) {
+        BlockPos newControllerPos = controllerPos == null ? null : controllerPos.immutable();
+        boolean newFormed = newControllerPos != null;
+        boolean bindingChanged = formed != newFormed || !Objects.equals(this.controllerPos, newControllerPos);
+        this.controllerPos = newControllerPos;
+        this.formed = newFormed;
+        if (!formed || profile.mainCore() == null) {
+            clearPendingProfile();
+        } else if (cpuPool.getTotalStorage() != profile.storageBytes()
+                || cpuPool.getCoProcessors() != profile.parallelism()) {
             pendingStorage = profile.storageBytes();
             pendingParallel = profile.parallelism();
             applyPendingProfile();
+        } else {
+            // A previously deferred profile is no longer desired (for example A -> B -> A
+            // while jobs are still active). Do not let it overwrite the current profile later.
+            clearPendingProfile();
         }
         if (level != null && !level.isClientSide) {
             var state = getBlockState();
@@ -86,7 +95,9 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
                     && state.getValue(TianshuSupercomputerPortBlock.FORMED) != formed) {
                 level.setBlock(worldPosition, state.setValue(TianshuSupercomputerPortBlock.FORMED, formed), Block.UPDATE_ALL);
             }
-            level.updateNeighborsAt(worldPosition, state.getBlock());
+            if (bindingChanged) {
+                level.updateNeighborsAt(worldPosition, state.getBlock());
+            }
         }
         saveChanges();
         markForUpdate();
@@ -150,11 +161,15 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
     }
 
     public void applyPendingProfile() {
-        if (pendingStorage >= 0L && !cpuPool.hasPersistentState()) {
+        if (pendingStorage >= 0L && pendingParallel >= 0 && !cpuPool.hasPersistentState()) {
             cpuPool.reconfigure(pendingStorage, pendingParallel);
-            pendingStorage = -1L;
-            pendingParallel = -1;
+            clearPendingProfile();
         }
+    }
+
+    private void clearPendingProfile() {
+        pendingStorage = -1L;
+        pendingParallel = -1;
     }
 
     @Override
