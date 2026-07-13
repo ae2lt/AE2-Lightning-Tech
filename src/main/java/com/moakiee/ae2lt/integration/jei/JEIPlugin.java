@@ -19,6 +19,7 @@ import com.moakiee.ae2lt.integration.jei.category.OverloadGrowthCategory;
 import com.moakiee.ae2lt.integration.jei.category.OverloadProcessingCategory;
 import com.moakiee.ae2lt.integration.jei.category.TeslaCoilCategory;
 import com.moakiee.ae2lt.integration.jei.compat.ae2jeiintegration.AE2JeiIntegrationCompat;
+import com.moakiee.ae2lt.menu.TianshuPatternEncodingTermMenu;
 import com.moakiee.ae2lt.registry.ModBlocks;
 import mezz.jei.api.IModPlugin;
 import mezz.jei.api.JeiPlugin;
@@ -30,11 +31,13 @@ import mezz.jei.api.registration.IModIngredientRegistration;
 import mezz.jei.api.registration.IRecipeCatalystRegistration;
 import mezz.jei.api.registration.IRecipeCategoryRegistration;
 import mezz.jei.api.registration.IRecipeRegistration;
+import mezz.jei.api.registration.IRecipeTransferRegistration;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.neoforged.fml.ModList;
+import tamaized.ae2jeiintegration.integration.modules.jei.transfer.EncodePatternTransferHandler;
 
 @JeiPlugin
 public class JEIPlugin implements IModPlugin {
@@ -148,6 +151,28 @@ public class JEIPlugin implements IModPlugin {
         registration.addRecipeCatalyst(ModBlocks.TESLA_COIL.toStack(), TeslaCoilCategory.TYPE);
         registration.addRecipeCatalyst(ModBlocks.CRYSTAL_CATALYZER.toStack(), CrystalCatalyzerCategory.TYPE);
         registration.addRecipeCatalyst(ModBlocks.FIRMAMENT_CONVERSION_CORE.toStack(), FirmamentConversionCategory.TYPE);
+    }
+
+    @Override
+    public void registerRecipeTransferHandlers(IRecipeTransferRegistration registration) {
+        if (!ModList.get().isLoaded(AE2_JEI_INTEGRATION_MODID)) {
+            return;
+        }
+        var helper = registration.getTransferHelper();
+        var visibility = registration.getJeiHelpers().getIngredientVisibility();
+        registration.addUniversalRecipeTransferHandler(new EncodePatternTransferHandler<>(
+                TianshuPatternEncodingTermMenu.TYPE,
+                TianshuPatternEncodingTermMenu.class,
+                helper,
+                visibility));
+
+        if (ModList.get().isLoaded("ae2wtlib")) {
+            registration.addUniversalRecipeTransferHandler(new EncodePatternTransferHandler<>(
+                    com.moakiee.ae2lt.integration.ae2wtlib.TianshuWirelessPatternEncodingTermMenu.TYPE,
+                    com.moakiee.ae2lt.integration.ae2wtlib.TianshuWirelessPatternEncodingTermMenu.class,
+                    helper,
+                    visibility));
+        }
     }
 
     @Override

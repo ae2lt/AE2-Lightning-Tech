@@ -154,8 +154,8 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
     private void openUploadScreen() {
         var stack = menu.getSlots(SlotSemantics.ENCODED_PATTERN).stream()
                 .map(Slot::getItem).filter(item -> !item.isEmpty()).findFirst().orElse(ItemStack.EMPTY);
-        var route = TianshuPatternUploadRouting.classify(stack,
-                minecraft.player != null ? minecraft.player.level() : null);
+        if (stack.isEmpty()) return;
+        var route = TianshuPatternUploadRouting.forEncodingMode(menu.tianshuMode);
         switch (route) {
             case CLOSED_LOOP_STORAGE -> menu.uploadTianshuPattern();
             case CRAFTING_ASSEMBLER -> menu.uploadTianshuCraftingPattern();

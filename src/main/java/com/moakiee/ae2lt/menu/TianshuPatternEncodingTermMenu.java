@@ -385,21 +385,24 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         }
         var targetInventory = selected.getTerminalPatternInventory();
         try {
-            targetInventory.setItemDirect(selectedSlot, removed);
+            var remaining = targetInventory.insertItem(selectedSlot, removed, false);
+            if (!remaining.isEmpty()) {
+                sourceInventory.addItems(remaining);
+                finishProviderUpload(player, false);
+                return;
+            }
             if (selected instanceof PatternProviderLogicHost logicHost) logicHost.saveChanges();
             finishProviderUpload(player, true);
         } catch (RuntimeException failure) {
-            boolean rolledBack = false;
+            // insertItem is the provider-owned write path. Only return the source stack if
+            // the provider demonstrably did not take ownership, otherwise avoid duplication.
             try {
-                if (ItemStack.isSameItemSameComponents(
+                if (!ItemStack.isSameItemSameComponents(
                         targetInventory.getStackInSlot(selectedSlot), removed)) {
-                    targetInventory.setItemDirect(selectedSlot, ItemStack.EMPTY);
+                    sourceInventory.addItems(removed);
                 }
-                rolledBack = true;
             } catch (RuntimeException ignored) {
-                // The item remains owned by the target; never duplicate it back into the source.
             }
-            if (rolledBack) sourceInventory.addItems(removed);
             finishProviderUpload(player, false);
         }
     }

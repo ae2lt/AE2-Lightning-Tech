@@ -2,7 +2,9 @@ package com.moakiee.ae2lt.debug;
 
 import appeng.api.config.Actionable;
 import appeng.api.stacks.AEItemKey;
+import appeng.core.definitions.AEItems;
 import com.moakiee.ae2lt.block.TianshuSupercomputerControllerBlock;
+import com.moakiee.ae2lt.blockentity.TianshuSeedStorageBlockEntity;
 import com.moakiee.ae2lt.blockentity.TianshuSupercomputerControllerBlockEntity;
 import com.moakiee.ae2lt.blockentity.TianshuSupercomputerPortBlockEntity;
 import com.moakiee.ae2lt.logic.tianshu.TianshuMultiblockScanIssue;
@@ -209,7 +211,8 @@ public final class TianshuJdbHarness {
             require(functions.inventoryMaintenanceCoreCount() == 1, direction + " maintenance count mismatch");
             require(functions.closedLoopPatternCoreCount() == 1, direction + " loop core count mismatch");
             require(functions.closedLoopPatternCapacity() == 64, direction + " pattern capacity mismatch");
-            require(functions.seedTypeCapacity() == 64, direction + " seed capacity mismatch");
+            require(functions.closedLoopSeedStorageCount() == 1,
+                    direction + " seed drive count mismatch");
 
             BlockPos portPos = TianshuMultiblockScanner.worldPos(
                     controllerPos, TianshuMultiblockTemplate.LOWER_PORT, direction);
@@ -217,6 +220,9 @@ public final class TianshuJdbHarness {
             require(port.isFormed(), direction + " port did not form");
             require(controllerPos.equals(port.getControllerPos()), direction + " port binding mismatch");
 
+            BlockPos seedStoragePos = peripheral(controllerPos, direction, 3);
+            var seedDrive = requireSeedDrive(level, seedStoragePos);
+            seedDrive.getCellInventory().setItemDirect(0, AEItems.ITEM_CELL_1K.stack());
             var seed = AEItemKey.of(new ItemStack(Items.NETHERITE_UPGRADE_SMITHING_TEMPLATE));
             require(seed != null && port.insertReusableSeed(seed, 3, Actionable.MODULATE) == 3,
                     direction + " seed insert failed");
@@ -227,7 +233,8 @@ public final class TianshuJdbHarness {
             require(!port.isFormed(), direction + " port stayed formed after breakup");
             require(port.getCableConnectionType(Direction.UP) == appeng.api.util.AECableType.NONE,
                     direction + " unformed port exposed AE cable");
-            require(port.getSeedStorage().amount(seed) == 3, direction + " deform erased seed data");
+            require(seedDrive.amount(seed, port.getActionSource()) == 3,
+                    direction + " deform erased disk seed data");
             require(port.extractReusableSeed(seed, 1, Actionable.MODULATE) == 0,
                     direction + " unformed port allowed seed extraction");
             level.setBlock(functionCore, ModBlocks.INVENTORY_MAINTENANCE_CORE.get().defaultBlockState(), Block.UPDATE_ALL);
@@ -268,21 +275,23 @@ public final class TianshuJdbHarness {
                     direction + " NBT reload lost ignore-NBT reserve mode");
             require(loadedCopy.getClosedLoopPatternRepository().get(patternId) != null,
                     direction + " NBT reload lost closed-loop pattern");
-            require(loadedCopy.getSeedStorage().amount(seed) == 2,
-                    direction + " NBT reload lost seed contents");
+            var savedDrive = new net.minecraft.nbt.CompoundTag();
+            seedDrive.saveAdditional(savedDrive, level.registryAccess());
+            var loadedDrive = new TianshuSeedStorageBlockEntity(seedStoragePos, seedDrive.getBlockState());
+            loadedDrive.loadTag(savedDrive, level.registryAccess());
+            require(loadedDrive.amount(seed, port.getActionSource()) == 2,
+                    direction + " disk NBT reload lost seed contents");
 
             BlockPos maintenanceCore = peripheral(controllerPos, direction, 0);
             BlockPos loopStorage = peripheral(controllerPos, direction, 2);
-            BlockPos seedStorage = peripheral(controllerPos, direction, 3);
             for (int cycle = 0; cycle < 3; cycle++) {
-                level.setBlock(seedStorage, ModBlocks.STORAGE_SUPERCOMPUTING_UNIT.get().defaultBlockState(), Block.UPDATE_ALL);
+                level.setBlock(seedStoragePos, ModBlocks.STORAGE_SUPERCOMPUTING_UNIT.get().defaultBlockState(), Block.UPDATE_ALL);
                 controller.scanNow();
                 require(controller.isFormed(), direction + " seed-storage removal deformed cycle " + cycle);
                 require(!port.getFunctionProfile().supportsClosedLoopSeeds(), direction + " seed ability remained cycle " + cycle);
-                require(port.getSeedStorage().amount(seed) == 2, direction + " seed data lost cycle " + cycle);
                 require(port.extractReusableSeed(seed, 1, Actionable.MODULATE) == 0,
                         direction + " disabled seed storage extracted cycle " + cycle);
-                level.setBlock(seedStorage, ModBlocks.CLOSED_LOOP_SEED_STORAGE.get().defaultBlockState(), Block.UPDATE_ALL);
+                level.setBlock(seedStoragePos, ModBlocks.CLOSED_LOOP_SEED_STORAGE.get().defaultBlockState(), Block.UPDATE_ALL);
 
                 level.setBlock(maintenanceCore, ModBlocks.PARALLEL_SUPERCOMPUTING_UNIT.get().defaultBlockState(), Block.UPDATE_ALL);
                 controller.scanNow();
@@ -420,6 +429,11 @@ public final class TianshuJdbHarness {
     private static TianshuSupercomputerPortBlockEntity requirePort(ServerLevel level, BlockPos pos) {
         if (level.getBlockEntity(pos) instanceof TianshuSupercomputerPortBlockEntity value) return value;
         throw new IllegalStateException("missing port at " + pos);
+    }
+
+    private static TianshuSeedStorageBlockEntity requireSeedDrive(ServerLevel level, BlockPos pos) {
+        if (level.getBlockEntity(pos) instanceof TianshuSeedStorageBlockEntity value) return value;
+        throw new IllegalStateException("missing seed drive at " + pos);
     }
 
     private static void require(boolean condition, String message) {
