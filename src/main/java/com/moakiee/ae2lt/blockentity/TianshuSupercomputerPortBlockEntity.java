@@ -6,7 +6,6 @@ import com.moakiee.ae2lt.registry.ModBlocks;
 import com.moakiee.ae2lt.logic.tianshu.CpuInternalCoreProfile;
 import com.moakiee.thunderbolt.ae2.timewheel.TimeWheelCraftingCpuPool;
 import com.moakiee.thunderbolt.ae2.timewheel.TimeWheelCraftingCpuPoolHost;
-import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
@@ -59,12 +58,12 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
 
     @Override
     public AECableType getCableConnectionType(Direction dir) {
-        return formed ? AECableType.DENSE_SMART : AECableType.NONE;
+        return AECableType.DENSE_SMART;
     }
 
     @Override
     public Set<Direction> getGridConnectableSides(BlockOrientation orientation) {
-        return formed ? EnumSet.allOf(Direction.class) : Collections.emptySet();
+        return EnumSet.allOf(Direction.class);
     }
 
     public void bindToController(BlockPos controllerPos) {
