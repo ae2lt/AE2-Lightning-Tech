@@ -43,7 +43,10 @@ public final class OverloadedInterfaceTickDecider {
         }
         return craftingCardInstalled
                 ? TickRateModulation.SLOWER
-                : TickRateModulation.SLEEP;
+                // Eject-mode capability use and several remote inventory/grid
+                // changes have no callback that can wake a sleeping interface.
+                // IDLE keeps the old five-tick safety poll without running hot.
+                : TickRateModulation.IDLE;
     }
 
     public static int normalIoDirectionCount(boolean hasConfiguredDirection) {
