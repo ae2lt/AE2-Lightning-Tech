@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.moakiee.ae2lt.mixin.client.EapSettingToggleButtonAccessor;
+import com.moakiee.ae2lt.client.EapSettingToggleButtonAccess;
 
 /**
  * Client-side extension point for hiding left-toolbar buttons that other mods
@@ -41,7 +41,7 @@ public final class PatternProviderToolbarButtonHider {
         if (shouldHideToolbarButtonClassName(button.getClass().getName())) {
             return true;
         }
-        if (!(button instanceof EapSettingToggleButtonAccessor accessor)) {
+        if (!(button instanceof EapSettingToggleButtonAccess accessor)) {
             return false;
         }
 

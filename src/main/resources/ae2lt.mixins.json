@@ -33,7 +33,7 @@
     "client.CableBusRenderStateMixin",
     "client.CableBusContainerRenderMixin",
     "client.CableBusBakedModelMixin",
-    "client.EapSettingToggleButtonAccessor",
+    "client.EapSettingToggleButtonMixin",
     "client.PatternProviderScreenAccessor",
     "client.RailgunHumanoidModelMixin",
     "client.AEBaseScreenAccessor",
