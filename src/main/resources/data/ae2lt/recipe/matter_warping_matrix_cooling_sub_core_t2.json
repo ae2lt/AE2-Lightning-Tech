@@ -7,7 +7,7 @@
     "ATA"
   ],
   "key": {
-    "A": { "item": "ae2:singularity" },
+    "A": { "item": "minecraft:blue_ice" },
     "T": { "item": "ae2lt:matter_warping_matrix_cooling_sub_core_t1" },
     "P": { "item": "ae2lt:overload_processor" },
     "N": { "item": "minecraft:nether_star" }
