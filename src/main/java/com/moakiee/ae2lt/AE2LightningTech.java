@@ -520,6 +520,11 @@ public class AE2LightningTech {
 
         event.registerBlockEntity(
                 AECapabilities.IN_WORLD_GRID_NODE_HOST,
+                ModBlockEntities.TIANSHU_SUPERCOMPUTER_PORT.get(),
+                (blockEntity, context) -> (IInWorldGridNodeHost) blockEntity);
+
+        event.registerBlockEntity(
+                AECapabilities.IN_WORLD_GRID_NODE_HOST,
                 ModBlockEntities.OVERLOADED_INTERFACE.get(),
                 (blockEntity, context) -> (IInWorldGridNodeHost) blockEntity);
 
