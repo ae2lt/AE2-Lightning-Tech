@@ -1,1 +1,0 @@
-{"type":"minecraft:crafting_shaped","category":"misc","pattern":["ENE","NON","ENE"],"key":{"E":{"item":"minecraft:end_crystal"},"N":{"item":"minecraft:nether_star"},"O":{"item":"ae2lt:overload_supercomputing_unit"}},"result":{"id":"ae2lt:multidimensional_supercomputing_unit","count":1}}
