@@ -24,6 +24,7 @@ import com.moakiee.ae2lt.block.OverloadedPatternProviderBlock;
 import com.moakiee.ae2lt.block.OverloadedPowerSupplyBlock;
 import com.moakiee.ae2lt.block.TeslaCoilBlock;
 import com.moakiee.ae2lt.block.TestTimeWheelCraftingCpuBlock;
+import com.moakiee.ae2lt.block.TianshuSeedStorageBlock;
 import com.moakiee.ae2lt.block.TianshuSupercomputerControllerBlock;
 import com.moakiee.ae2lt.block.TianshuSupercomputerGlassBlock;
 import com.moakiee.ae2lt.block.TianshuSupercomputerPortBlock;
@@ -256,9 +257,8 @@ public final class ModBlocks {
     public static final DeferredBlock<TianshuSupercomputingUnitBlock> CLOSED_LOOP_PATTERN_STORAGE = registerBlock(
             "closed_loop_pattern_storage", () -> new TianshuSupercomputingUnitBlock(
                     MATRIX_MACHINE_PROPERTIES, TianshuMultiblockComponent.CLOSED_LOOP_PATTERN_STORAGE));
-    public static final DeferredBlock<TianshuSupercomputingUnitBlock> CLOSED_LOOP_SEED_STORAGE = registerBlock(
-            "closed_loop_seed_storage", () -> new TianshuSupercomputingUnitBlock(
-                    MATRIX_MACHINE_PROPERTIES, TianshuMultiblockComponent.CLOSED_LOOP_SEED_STORAGE));
+    public static final DeferredBlock<TianshuSeedStorageBlock> CLOSED_LOOP_SEED_STORAGE = registerBlock(
+            "closed_loop_seed_storage", () -> new TianshuSeedStorageBlock(MATRIX_MACHINE_PROPERTIES));
 
     public static final DeferredBlock<MatrixCasingBlock> MATTER_WARPING_MATRIX_CASING =
             registerBlock("matter_warping_matrix_casing", () -> new MatrixCasingBlock(

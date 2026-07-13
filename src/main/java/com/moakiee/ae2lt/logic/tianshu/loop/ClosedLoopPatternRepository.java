@@ -32,6 +32,11 @@ public final class ClosedLoopPatternRepository {
         return List.copyOf(patterns.values());
     }
 
+    /** Patterns currently backed by installed warehouse capacity. Overflow stays persisted. */
+    public List<ClosedLoopPatternPayload> activePatterns() {
+        return patterns.values().stream().limit(capacity()).toList();
+    }
+
     public ClosedLoopPatternPayload get(UUID id) {
         return id == null ? null : patterns.get(id);
     }

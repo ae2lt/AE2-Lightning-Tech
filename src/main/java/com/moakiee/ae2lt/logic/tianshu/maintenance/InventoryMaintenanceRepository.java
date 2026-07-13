@@ -20,6 +20,10 @@ public final class InventoryMaintenanceRepository {
     public int capacity() { return Math.max(0, capacity.getAsInt()); }
     public int size() { return rules.size(); }
     public List<InventoryMaintenanceRule> rules() { return List.copyOf(rules.values()); }
+    /** Rules currently backed by installed maintenance-core capacity. Overflow stays persisted. */
+    public List<InventoryMaintenanceRule> activeRules() {
+        return rules.values().stream().limit(capacity()).toList();
+    }
     public InventoryMaintenanceRule get(AEKey key) { return rules.get(key); }
     public InventoryMaintenanceRule getById(UUID id) {
         if (id == null) return null;

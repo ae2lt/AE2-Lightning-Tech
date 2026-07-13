@@ -1,0 +1,19 @@
+{
+  "$schema": "schema.json",
+  "includes": ["common/common.json"],
+  "background": {
+    "texture": "guis/interface.png",
+    "srcRect": [0, 0, 176, 207]
+  },
+  "text": {
+    "dialog_title": {
+      "text": { "translate": "ae2lt.tianshu.upload.title" },
+      "position": { "left": 8, "top": 6 }
+    }
+  },
+  "widgets": {
+    "field_search": { "left": 8, "top": 21, "width": 142, "height": 16 },
+    "scrollbar": { "left": 158, "top": 43 },
+    "button_back": { "left": 152, "top": -5, "width": 20, "height": 20 }
+  }
+}

@@ -17,6 +17,7 @@ import com.moakiee.ae2lt.blockentity.TianshuSupercomputerPortBlockEntity;
 import com.moakiee.thunderbolt.ae2.crafting.ReservedStockCraftingRequester;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.Future;
@@ -179,7 +180,9 @@ public final class TianshuInventoryMaintenanceService
         nextCheckTick = now + CHECK_INTERVAL;
 
         var crafting = (CraftingService) grid.getCraftingService();
-        pollCalculations(crafting);
+        var activeRuleIds = new HashSet<UUID>();
+        for (var activeRule : repository.activeRules()) activeRuleIds.add(activeRule.id());
+        pollCalculations(crafting, activeRuleIds);
         for (var original : repository.rules()) {
             var rule = repository.get(original.key());
             if (rule == null) continue;
@@ -191,6 +194,12 @@ public final class TianshuInventoryMaintenanceService
                 repository.put(rule);
                 port.maintenanceStateChanged();
             }
+            if (!activeRuleIds.contains(rule.id())) {
+                cancelCalculation(rule.id());
+                statuses.put(rule.id(), activeLink
+                        ? InventoryMaintenanceStatus.CRAFTING : InventoryMaintenanceStatus.DISABLED);
+                continue;
+            }
             if (!rule.enabled()) {
                 statuses.put(rule.id(), InventoryMaintenanceStatus.DISABLED);
                 continue;
@@ -200,7 +209,7 @@ public final class TianshuInventoryMaintenanceService
                     .extract(rule.key(), Long.MAX_VALUE, Actionable.SIMULATE, port.getActionSource());
             boolean calculationActive = calculations.containsKey(rule.id());
             boolean otherCalculationActive = InventoryMaintenanceCalculationClaims.claimedByOther(
-                    grid, rule.key(), rule.id(), now);
+                    grid, rule.key(), rule.id());
             boolean networkTaskActive = activeLink || calculationActive || crafting.isRequesting(rule.key())
                     || otherCalculationActive;
             var decision = InventoryMaintenanceDecision.evaluate(rule, stock, networkTaskActive);
@@ -232,8 +241,7 @@ public final class TianshuInventoryMaintenanceService
     private void beginCalculation(CraftingService crafting, InventoryMaintenanceRule rule, long amount) {
         var grid = port.getGrid();
         var level = port.getLevel();
-        long now = level != null ? level.getGameTime() : 0L;
-        if (!InventoryMaintenanceCalculationClaims.tryClaim(grid, rule.key(), rule.id(), now)) {
+        if (!InventoryMaintenanceCalculationClaims.tryClaim(grid, rule.key(), rule.id())) {
             statuses.put(rule.id(), InventoryMaintenanceStatus.CALCULATING);
             return;
         }
@@ -259,17 +267,26 @@ public final class TianshuInventoryMaintenanceService
         port.maintenanceStateChanged();
     }
 
-    private void pollCalculations(CraftingService crafting) {
+    private void pollCalculations(CraftingService crafting, java.util.Set<UUID> activeRuleIds) {
         var iterator = calculations.entrySet().iterator();
         while (iterator.hasNext()) {
             var entry = iterator.next();
             var pending = entry.getValue();
+            if (pending.grid() != port.getGrid()) {
+                iterator.remove();
+                pending.future().cancel(false);
+                InventoryMaintenanceCalculationClaims.release(
+                        pending.grid(), pending.key(), entry.getKey());
+                statuses.put(entry.getKey(), InventoryMaintenanceStatus.IDLE);
+                continue;
+            }
             if (!pending.future().isDone()) continue;
             iterator.remove();
             InventoryMaintenanceCalculationClaims.release(
                     pending.grid(), pending.key(), entry.getKey());
             var rule = repository.get(pending.key());
-            if (rule == null || !rule.id().equals(entry.getKey()) || !rule.enabled()) continue;
+            if (rule == null || !rule.id().equals(entry.getKey()) || !rule.enabled()
+                    || !activeRuleIds.contains(rule.id())) continue;
             try {
                 var plan = pending.future().get();
                 if (plan == null || plan.simulation() || !plan.missingItems().isEmpty()) {
@@ -351,6 +368,26 @@ public final class TianshuInventoryMaintenanceService
         }
     }
 
+    /** Cancels non-persistent calculations and releases their requester-style lifecycle claims. */
+    public void shutdownCalculations() {
+        for (var entry : calculations.entrySet()) {
+            entry.getValue().future().cancel(false);
+            InventoryMaintenanceCalculationClaims.release(
+                    entry.getValue().grid(), entry.getValue().key(), entry.getKey());
+        }
+        calculations.clear();
+    }
+
+    /** Applies changed multiblock capacity without deleting overflow configuration. */
+    public void functionCapacityChanged() {
+        var activeRuleIds = new HashSet<UUID>();
+        for (var rule : repository.activeRules()) activeRuleIds.add(rule.id());
+        for (var ruleId : java.util.List.copyOf(calculations.keySet())) {
+            if (!activeRuleIds.contains(ruleId)) cancelCalculation(ruleId);
+        }
+        nextCheckTick = 0L;
+    }
+
     private CraftingLink findLink(UUID id) {
         if (id == null) return null;
         for (var link : links) if (id.equals(link.getCraftingID())) return link;
@@ -419,12 +456,7 @@ public final class TianshuInventoryMaintenanceService
     }
 
     public void readFrom(CompoundTag parent, HolderLookup.Provider registries) {
-        for (var entry : calculations.entrySet()) {
-            entry.getValue().future().cancel(false);
-            InventoryMaintenanceCalculationClaims.release(
-                    entry.getValue().grid(), entry.getValue().key(), entry.getKey());
-        }
-        calculations.clear();
+        shutdownCalculations();
         statuses.clear();
         retryAfter.clear();
         ruleReservedStock.clear();

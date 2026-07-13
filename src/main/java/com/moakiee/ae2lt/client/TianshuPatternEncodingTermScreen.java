@@ -1,16 +1,25 @@
 package com.moakiee.ae2lt.client;
 
 import appeng.client.Point;
+import appeng.client.gui.Icon;
 import appeng.client.gui.ICompositeWidget;
 import appeng.client.gui.me.items.PatternEncodingTermScreen;
 import appeng.client.gui.style.ScreenStyle;
 import appeng.client.gui.widgets.AE2Button;
+import appeng.client.gui.widgets.IconButton;
+import appeng.client.gui.widgets.SettingToggleButton;
 import appeng.client.gui.widgets.TabButton;
 import appeng.client.gui.widgets.TabButton.Style;
+import appeng.api.config.Settings;
+import appeng.api.config.ViewItems;
+import appeng.core.localization.ButtonToolTips;
 import appeng.menu.SlotSemantics;
 import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuEncodingMode;
+import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuPatternUploadRouting;
 import com.moakiee.ae2lt.menu.TianshuPatternEncodingTermMenu;
 import com.moakiee.ae2lt.mixin.client.PatternEncodingTermScreenAccessor;
+import com.moakiee.ae2lt.mixin.client.AEBaseScreenAccessor;
+import com.moakiee.ae2lt.mixin.client.VerticalButtonBarAccessor;
 import com.moakiee.ae2lt.registry.ModItems;
 import java.util.EnumMap;
 import java.util.Map;
@@ -24,6 +33,7 @@ import appeng.client.gui.me.common.RepoSlot;
 import org.lwjgl.glfw.GLFW;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.InventoryMaintenanceBadge;
 import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.ItemStack;
 import com.moakiee.ae2lt.logic.AdvancedAECompat;
 
 public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTermMenu>
@@ -40,10 +50,7 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
     private final AE2Button parallelDown;
     private final AE2Button parallelUp;
     private final AE2Button upload;
-    private final AE2Button previousUploadTarget;
-    private final AE2Button nextUploadTarget;
-    private final UploadTargetPanel uploadTargetPanel = new UploadTargetPanel();
-    private final AE2Button maintainableView;
+    private final TianshuViewModeButton viewModeButton;
     private final AE2Button globalReserve;
     private boolean awaitingMaintenanceEditor;
     private int requestedMaintenanceRevision;
@@ -79,15 +86,8 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
         parallelUp = widgets.addButton("closedLoopParallelUp", Component.literal("+"),
                 () -> menu.changeClosedLoopParallelism(hasShiftDown() ? 10 : 1));
         upload = widgets.addButton("tianshuUpload", Component.translatable("ae2lt.tianshu.terminal.upload"),
-                menu::uploadTianshuPattern);
-        previousUploadTarget = widgets.addButton("uploadTargetPrevious", Component.literal("<"),
-                () -> menu.cycleUploadTarget(-1));
-        nextUploadTarget = widgets.addButton("uploadTargetNext", Component.literal(">"),
-                () -> menu.cycleUploadTarget(1));
-        widgets.add("uploadTargetPanel", uploadTargetPanel);
-        maintainableView = widgets.addButton("maintainableView",
-                Component.translatable("ae2lt.tianshu.maintenance.view"),
-                () -> menu.setMaintainableView(!menu.maintainableView));
+                this::openUploadScreen);
+        viewModeButton = replaceViewModeButton();
         globalReserve = widgets.addButton("globalReserve",
                 Component.translatable("ae2lt.tianshu.reserve.button"),
                 () -> switchToScreen(new TianshuGlobalReserveScreen<>(this)));
@@ -105,6 +105,10 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
     @Override
     protected void updateBeforeRender() {
         super.updateBeforeRender();
+        if (menu.consumeTriggeredUpload()) {
+            openUploadScreen();
+            return;
+        }
         if (awaitingMaintenanceEditor
                 && menu.getMaintenanceEditorRevision() != requestedMaintenanceRevision
                 && menu.getMaintenanceEditorData() != null) {
@@ -143,15 +147,95 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
         parallelDown.visible = closedLoop;
         parallelUp.visible = closedLoop;
         upload.visible = true;
-        upload.active = closedLoop ? menu.encodedClosedLoop : menu.uploadTargetFreeSlots > 0;
-        boolean providerUpload = !closedLoop;
-        previousUploadTarget.visible = providerUpload;
-        nextUploadTarget.visible = providerUpload;
-        uploadTargetPanel.visible = providerUpload;
-        maintainableView.active = menu.maintenanceAvailable;
+        upload.active = closedLoop ? menu.encodedClosedLoop : hasEncodedPattern();
         globalReserve.active = menu.maintenanceAvailable;
-        maintainableView.setMessage(Component.translatable(menu.maintainableView
-                ? "ae2lt.tianshu.maintenance.view.on" : "ae2lt.tianshu.maintenance.view"));
+    }
+
+    private void openUploadScreen() {
+        var stack = menu.getSlots(SlotSemantics.ENCODED_PATTERN).stream()
+                .map(Slot::getItem).filter(item -> !item.isEmpty()).findFirst().orElse(ItemStack.EMPTY);
+        var route = TianshuPatternUploadRouting.classify(stack,
+                minecraft.player != null ? minecraft.player.level() : null);
+        switch (route) {
+            case CLOSED_LOOP_STORAGE -> menu.uploadTianshuPattern();
+            case CRAFTING_ASSEMBLER -> menu.uploadTianshuCraftingPattern();
+            case PROCESSING_PROVIDER -> switchToScreen(new TianshuUploadTargetScreen<>(this));
+            case INVALID -> { }
+        }
+    }
+
+    private boolean hasEncodedPattern() {
+        return menu.getSlots(SlotSemantics.ENCODED_PATTERN).stream()
+                .anyMatch(slot -> !slot.getItem().isEmpty());
+    }
+
+    private TianshuViewModeButton replaceViewModeButton() {
+        var toolbar = ((AEBaseScreenAccessor) this).ae2lt$getVerticalToolbar();
+        var buttons = ((VerticalButtonBarAccessor) toolbar).ae2lt$getButtons();
+        for (int i = 0; i < buttons.size(); i++) {
+            if (buttons.get(i) instanceof SettingToggleButton<?> settingButton
+                    && settingButton.getSetting() == Settings.VIEW_MODE) {
+                var replacement = new TianshuViewModeButton();
+                buttons.set(i, replacement);
+                return replacement;
+            }
+        }
+        throw new IllegalStateException("AE2 view-mode button is missing");
+    }
+
+    private void cycleViewMode(boolean reverse) {
+        var current = menu.getConfigManager().getSetting(Settings.VIEW_MODE);
+        ViewItems next;
+        if (menu.maintainableView) {
+            menu.setMaintainableView(false);
+            next = reverse ? ViewItems.CRAFTABLE : ViewItems.ALL;
+        } else if (reverse) {
+            next = switch (current) {
+                case ALL -> null;
+                case STORED -> ViewItems.ALL;
+                case CRAFTABLE -> ViewItems.STORED;
+            };
+        } else {
+            next = switch (current) {
+                case ALL -> ViewItems.STORED;
+                case STORED -> ViewItems.CRAFTABLE;
+                case CRAFTABLE -> null;
+            };
+        }
+        if (next == null) {
+            menu.setMaintainableView(true);
+        } else {
+            menu.getConfigManager().putSetting(Settings.VIEW_MODE, next);
+        }
+    }
+
+    private final class TianshuViewModeButton extends IconButton {
+        private TianshuViewModeButton() {
+            super(ignored -> cycleViewMode(hasShiftDown()));
+        }
+
+        @Override
+        protected Icon getIcon() {
+            if (menu.maintainableView) return Icon.VIEW_MODE_CRAFTING;
+            return switch (menu.getConfigManager().getSetting(Settings.VIEW_MODE)) {
+                case ALL -> Icon.VIEW_MODE_ALL;
+                case STORED -> Icon.VIEW_MODE_STORED;
+                case CRAFTABLE -> Icon.VIEW_MODE_CRAFTING;
+            };
+        }
+
+        @Override
+        public java.util.List<Component> getTooltipMessage() {
+            var value = menu.maintainableView
+                    ? Component.translatable("ae2lt.tianshu.maintenance.view")
+                    : switch (menu.getConfigManager().getSetting(Settings.VIEW_MODE)) {
+                        case ALL -> Component.translatable(ButtonToolTips.StoredCraftable.getTranslationKey());
+                        case STORED -> Component.translatable(ButtonToolTips.StoredItems.getTranslationKey());
+                        case CRAFTABLE -> Component.translatable(ButtonToolTips.Craftable.getTranslationKey());
+                    };
+            return java.util.List.of(
+                    Component.translatable(ButtonToolTips.View.getTranslationKey()), value);
+        }
     }
 
     @Override
@@ -306,26 +390,4 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
         }
     }
 
-    private final class UploadTargetPanel implements ICompositeWidget {
-        private int x;
-        private int y;
-        private boolean visible;
-
-        @Override public boolean isVisible() { return visible; }
-        @Override public void setPosition(Point position) { x = position.getX(); y = position.getY(); }
-        @Override public void setSize(int width, int height) { }
-        @Override public Rect2i getBounds() { return new Rect2i(x, y, 96, 26); }
-
-        @Override
-        public void drawForegroundLayer(GuiGraphics graphics, Rect2i bounds, Point mouse) {
-            if (!visible) return;
-            String name = menu.uploadTargetName == null || menu.uploadTargetName.isBlank()
-                    ? Component.translatable("ae2lt.tianshu.terminal.upload.no_target").getString()
-                    : menu.uploadTargetName;
-            graphics.drawString(font, font.plainSubstrByWidth(name, 94), x, y, 0x404040, false);
-            graphics.drawString(font, Component.translatable(
-                    "ae2lt.tianshu.terminal.upload.free", menu.uploadTargetFreeSlots),
-                    x, y + 11, menu.uploadTargetFreeSlots > 0 ? 0x228822 : 0xAA2222, false);
-        }
-    }
 }

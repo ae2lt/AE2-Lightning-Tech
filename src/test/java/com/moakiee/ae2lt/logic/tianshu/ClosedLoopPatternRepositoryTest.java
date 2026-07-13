@@ -13,8 +13,6 @@ import com.mojang.serialization.MapCodec;
 import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternPayload;
 import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternRepository;
 import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopMemberPattern;
-import com.moakiee.ae2lt.logic.tianshu.loop.TianshuSeedStorage;
-import appeng.api.config.Actionable;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.InventoryMaintenanceDecision;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.InventoryMaintenanceRepository;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.InventoryMaintenanceRule;
@@ -57,8 +55,11 @@ class ClosedLoopPatternRepositoryTest {
         capacity[0] = 0;
         assertNotNull(repository.get(first.patternId()));
         assertEquals(List.of(first), repository.overflowedPatterns());
+        assertEquals(List.of(), repository.activePatterns());
         assertEquals(ClosedLoopPatternRepository.PutResult.UPDATED,
                 repository.put(first.withParallelism(8)));
+        capacity[0] = 1;
+        assertEquals(1, repository.activePatterns().size());
     }
 
     @Test
@@ -71,37 +72,6 @@ class ClosedLoopPatternRepositoryTest {
         assertEquals(ClosedLoopPatternRepository.PutResult.ADDED, repository.put(newer));
         assertEquals(ClosedLoopPatternRepository.PutResult.STALE_VERSION, repository.put(older));
         assertEquals(4, repository.get(id).version());
-    }
-
-    @Test
-    void seedStorageLimitsTypesAndPreservesExistingTypesWhenCapacityShrinks() {
-        var capacity = new int[] { 1 };
-        var storage = new TianshuSeedStorage(() -> capacity[0]);
-        var template = new TestKey("template");
-        var crystal = new TestKey("crystal");
-
-        assertEquals(3, storage.insert(template, 3, Actionable.MODULATE));
-        assertEquals(0, storage.insert(crystal, 1, Actionable.MODULATE));
-        assertEquals(2, storage.extract(template, 2, Actionable.SIMULATE));
-        assertEquals(3, storage.amount(template));
-
-        capacity[0] = 0;
-        assertEquals(1, storage.extract(template, 1, Actionable.MODULATE));
-        assertEquals(2, storage.amount(template));
-        assertEquals(0, storage.insert(crystal, 1, Actionable.MODULATE));
-    }
-
-    @Test
-    void seedStorageSaturatesAmountsAndSimulationNeverMutates() {
-        var storage = new TianshuSeedStorage(() -> 1);
-        var seed = new TestKey("seed");
-
-        assertEquals(Long.MAX_VALUE, storage.insert(seed, Long.MAX_VALUE, Actionable.MODULATE));
-        assertEquals(0, storage.insert(seed, 1, Actionable.MODULATE));
-        assertEquals(Long.MAX_VALUE, storage.extract(seed, Long.MAX_VALUE, Actionable.SIMULATE));
-        assertEquals(Long.MAX_VALUE, storage.amount(seed));
-        assertEquals(0, storage.insert(null, 1, Actionable.MODULATE));
-        assertEquals(0, storage.extract(seed, -1, Actionable.MODULATE));
     }
 
     @Test
@@ -130,6 +100,7 @@ class ClosedLoopPatternRepositoryTest {
                 repository.put(new InventoryMaintenanceRule(
                         UUID.randomUUID(), key, 10, 20, 5, true, false, null)));
         assertEquals(1, repository.size());
+        assertEquals(1, repository.activeRules().size());
     }
 
     @Test
@@ -154,12 +125,29 @@ class ClosedLoopPatternRepositoryTest {
     }
 
     @Test
+    void maintenanceCapacityShrinkKeepsOverflowButOnlyActivatesBackedRules() {
+        var capacity = new int[] {2};
+        var repository = new InventoryMaintenanceRepository(() -> capacity[0]);
+        var first = new InventoryMaintenanceRule(
+                UUID.randomUUID(), new TestKey("first_rule"), 10, 20, 5, true, false, null);
+        var second = new InventoryMaintenanceRule(
+                UUID.randomUUID(), new TestKey("second_rule"), 10, 20, 5, true, false, null);
+        assertEquals(InventoryMaintenanceRepository.PutResult.ADDED, repository.put(first));
+        assertEquals(InventoryMaintenanceRepository.PutResult.ADDED, repository.put(second));
+
+        capacity[0] = 1;
+        assertEquals(List.of(first), repository.activeRules());
+        assertNotNull(repository.get(second.key()));
+        capacity[0] = 2;
+        assertEquals(List.of(first, second), repository.activeRules());
+    }
+
+    @Test
     void functionProfileCapacitiesSaturateWithoutOverflow() {
         var profile = new TianshuFunctionProfile(Integer.MAX_VALUE, Integer.MAX_VALUE,
                 Integer.MAX_VALUE, Integer.MAX_VALUE);
         assertEquals(Integer.MAX_VALUE, profile.maintenanceRuleCapacity());
         assertEquals(Integer.MAX_VALUE, profile.closedLoopPatternCapacity());
-        assertEquals(Integer.MAX_VALUE, profile.seedTypeCapacity());
         assertThrows(IllegalArgumentException.class, () -> new TianshuFunctionProfile(-1, 0, 0, 0));
     }
 

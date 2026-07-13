@@ -130,7 +130,13 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity {
         functionProfile = result.functionProfile();
         for (BlockPos pos : result.members()) setMemberFormed(pos, true);
         if (level.getBlockEntity(portPos) instanceof TianshuSupercomputerPortBlockEntity port) {
-            port.bindToController(worldPosition, coreProfile, functionProfile);
+            port.bindToController(
+                    worldPosition, coreProfile, functionProfile, result.seedStoragePositions());
+            for (var seedStoragePos : result.seedStoragePositions()) {
+                if (level.getBlockEntity(seedStoragePos) instanceof TianshuSeedStorageBlockEntity drive) {
+                    drive.bindToPort(portPos);
+                }
+            }
         }
         syncControllerState();
     }
@@ -155,6 +161,8 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity {
             if (level.getBlockEntity(pos) instanceof TianshuSupercomputerPortBlockEntity port
                     && worldPosition.equals(port.getControllerPos())) {
                 port.bindToController(null);
+            } else if (level.getBlockEntity(pos) instanceof TianshuSeedStorageBlockEntity drive) {
+                drive.bindToPort(null);
             }
         }
     }

@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -117,7 +118,9 @@ class TianshuMultiblockScannerTest {
         assertTrue(profile.supportsClosedLoopSeeds());
         assertEquals(64, profile.maintenanceRuleCapacity());
         assertEquals(64, profile.closedLoopPatternCapacity());
-        assertEquals(64, profile.seedTypeCapacity());
+        assertEquals(List.of(TianshuMultiblockScanner.worldPos(
+                        CONTROLLER, new BlockPos(2, 3, 3), Direction.WEST)),
+                attempt.result().seedStoragePositions());
     }
 
     private static Map<BlockPos, TianshuMultiblockComponent> completeStructure(Direction direction) {

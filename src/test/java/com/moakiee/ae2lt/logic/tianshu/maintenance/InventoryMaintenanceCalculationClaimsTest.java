@@ -21,20 +21,21 @@ import org.junit.jupiter.api.Test;
 
 class InventoryMaintenanceCalculationClaimsTest {
     @Test
-    void claimIsPerGridPerExactKeyAndExpiresAtLeaseBoundary() {
+    void claimIsPerGridPerExactKeyAndLivesUntilRequesterReleasesIt() {
         var grid = grid();
         var otherGrid = grid();
         var key = new TestKey("diamond");
         var owner = UUID.randomUUID();
         var other = UUID.randomUUID();
 
-        assertTrue(InventoryMaintenanceCalculationClaims.tryClaim(grid, key, owner, 100));
-        assertTrue(InventoryMaintenanceCalculationClaims.tryClaim(grid, key, owner, 101));
-        assertFalse(InventoryMaintenanceCalculationClaims.tryClaim(grid, key, other, 101));
-        assertTrue(InventoryMaintenanceCalculationClaims.claimedByOther(grid, key, other, 1_300));
-        assertFalse(InventoryMaintenanceCalculationClaims.claimedByOther(grid, key, other, 1_301));
-        assertTrue(InventoryMaintenanceCalculationClaims.tryClaim(grid, key, other, 1_301));
-        assertTrue(InventoryMaintenanceCalculationClaims.tryClaim(otherGrid, key, owner, 1_301));
+        assertTrue(InventoryMaintenanceCalculationClaims.tryClaim(grid, key, owner));
+        assertTrue(InventoryMaintenanceCalculationClaims.tryClaim(grid, key, owner));
+        assertFalse(InventoryMaintenanceCalculationClaims.tryClaim(grid, key, other));
+        assertTrue(InventoryMaintenanceCalculationClaims.claimedByOther(grid, key, other));
+        InventoryMaintenanceCalculationClaims.release(grid, key, owner);
+        assertFalse(InventoryMaintenanceCalculationClaims.claimedByOther(grid, key, other));
+        assertTrue(InventoryMaintenanceCalculationClaims.tryClaim(grid, key, other));
+        assertTrue(InventoryMaintenanceCalculationClaims.tryClaim(otherGrid, key, owner));
     }
 
     @Test
@@ -43,12 +44,12 @@ class InventoryMaintenanceCalculationClaimsTest {
         var key = new TestKey("emerald");
         var owner = UUID.randomUUID();
         var other = UUID.randomUUID();
-        assertFalse(InventoryMaintenanceCalculationClaims.tryClaim(null, key, owner, 0));
-        assertTrue(InventoryMaintenanceCalculationClaims.tryClaim(grid, key, owner, Long.MAX_VALUE));
+        assertFalse(InventoryMaintenanceCalculationClaims.tryClaim(null, key, owner));
+        assertTrue(InventoryMaintenanceCalculationClaims.tryClaim(grid, key, owner));
         InventoryMaintenanceCalculationClaims.release(grid, key, other);
-        assertTrue(InventoryMaintenanceCalculationClaims.claimedByOther(grid, key, other, Long.MAX_VALUE - 1));
+        assertTrue(InventoryMaintenanceCalculationClaims.claimedByOther(grid, key, other));
         InventoryMaintenanceCalculationClaims.release(grid, key, owner);
-        assertFalse(InventoryMaintenanceCalculationClaims.claimedByOther(grid, key, other, Long.MAX_VALUE - 1));
+        assertFalse(InventoryMaintenanceCalculationClaims.claimedByOther(grid, key, other));
     }
 
     private static IGrid grid() {

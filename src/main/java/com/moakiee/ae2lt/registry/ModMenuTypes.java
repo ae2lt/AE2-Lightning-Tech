@@ -16,6 +16,7 @@ import com.moakiee.ae2lt.menu.OverloadedPowerSupplyMenu;
 import com.moakiee.ae2lt.menu.TeslaCoilMenu;
 import com.moakiee.ae2lt.menu.TianshuSupercomputerControllerMenu;
 import com.moakiee.ae2lt.menu.TianshuPatternEncodingTermMenu;
+import com.moakiee.ae2lt.menu.TianshuSeedStorageMenu;
 import com.moakiee.ae2lt.menu.FrequencyMenu;
 import com.moakiee.ae2lt.menu.hub.DeviceHubMenu;
 import net.minecraft.core.registries.Registries;
@@ -31,6 +32,10 @@ public final class ModMenuTypes {
             OVERLOADED_PATTERN_PROVIDER = MENU_TYPES.register(
                     "overloaded_pattern_provider",
                     () -> OverloadedPatternProviderMenu.TYPE);
+
+    public static final DeferredHolder<MenuType<?>, MenuType<TianshuSeedStorageMenu>>
+            TIANSHU_SEED_STORAGE = MENU_TYPES.register(
+                    "closed_loop_seed_storage", () -> TianshuSeedStorageMenu.TYPE);
 
     public static final DeferredHolder<MenuType<?>, MenuType<OverloadPatternEncoderMenu>>
             OVERLOAD_PATTERN_ENCODER = MENU_TYPES.register(

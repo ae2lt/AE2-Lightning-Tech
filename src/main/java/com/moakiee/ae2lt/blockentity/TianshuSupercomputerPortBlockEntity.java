@@ -8,7 +8,6 @@ import com.moakiee.ae2lt.logic.tianshu.TianshuFunctionProfile;
 import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternRepository;
 import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternDecoder;
 import com.moakiee.ae2lt.logic.tianshu.loop.Ae2ClosedLoopPatternDetails;
-import com.moakiee.ae2lt.logic.tianshu.loop.TianshuSeedStorage;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.TianshuInventoryMaintenanceService;
 import com.moakiee.ae2lt.registry.ModItems;
 import com.moakiee.thunderbolt.ae2.timewheel.TimeWheelCraftingCpuPool;
@@ -57,7 +56,7 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
     private static final String TAG_FUNCTION_PROFILE = "FunctionProfile";
     private static final String TAG_CLOSED_LOOP_PATTERNS = "ClosedLoopPatterns";
     private static final String TAG_TIANSHU_ID = "TianshuId";
-    private static final String TAG_SEED_STORAGE = "SeedStorage";
+    private static final String TAG_SEED_DRIVES = "SeedDrives";
     private static final String TAG_MAINTENANCE = "InventoryMaintenance";
     private final IActionSource actionSource = new MachineSource(getMainNode()::getNode);
     private final TimeWheelCraftingCpuPool cpuPool = new TimeWheelCraftingCpuPool(this);
@@ -70,8 +69,7 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
     private final ClosedLoopPatternRepository closedLoopPatterns =
             new ClosedLoopPatternRepository(() -> functionProfile.closedLoopPatternCapacity());
     private java.util.UUID tianshuId = java.util.UUID.randomUUID();
-    private final TianshuSeedStorage seedStorage =
-            new TianshuSeedStorage(() -> functionProfile.seedTypeCapacity());
+    private List<BlockPos> seedDrivePositions = List.of();
     private final TianshuInventoryMaintenanceService maintenance =
             new TianshuInventoryMaintenanceService(this);
 
@@ -100,19 +98,29 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
     }
 
     public void bindToController(BlockPos controllerPos) {
-        bindToController(controllerPos, CpuInternalCoreProfile.empty(), TianshuFunctionProfile.empty());
+        bindToController(controllerPos, CpuInternalCoreProfile.empty(),
+                TianshuFunctionProfile.empty(), List.of());
     }
 
     public void bindToController(BlockPos controllerPos, CpuInternalCoreProfile profile) {
-        bindToController(controllerPos, profile, TianshuFunctionProfile.empty());
+        bindToController(controllerPos, profile, TianshuFunctionProfile.empty(), List.of());
     }
 
     public void bindToController(BlockPos controllerPos, CpuInternalCoreProfile profile,
                                  TianshuFunctionProfile functionProfile) {
+        bindToController(controllerPos, profile, functionProfile, List.of());
+    }
+
+    public void bindToController(BlockPos controllerPos, CpuInternalCoreProfile profile,
+                                 TianshuFunctionProfile functionProfile,
+                                 List<BlockPos> seedDrivePositions) {
         this.controllerPos = controllerPos == null ? null : controllerPos.immutable();
         this.formed = controllerPos != null;
         this.functionProfile = formed && functionProfile != null
                 ? functionProfile : TianshuFunctionProfile.empty();
+        this.seedDrivePositions = formed && seedDrivePositions != null
+                ? seedDrivePositions.stream().map(BlockPos::immutable).toList() : List.of();
+        maintenance.functionCapacityChanged();
         if (formed && profile.mainCore() != null
                 && (cpuPool.getTotalStorage() != profile.storageBytes()
                 || cpuPool.getCoProcessors() != profile.parallelism())) {
@@ -127,6 +135,10 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
                 level.setBlock(worldPosition, state.setValue(TianshuSupercomputerPortBlock.FORMED, formed), Block.UPDATE_ALL);
             }
             level.updateNeighborsAt(worldPosition, state.getBlock());
+            var grid = getMainNode().getGrid();
+            if (grid != null) {
+                grid.getCraftingService().refreshNodeCraftingProvider(getMainNode().getNode());
+            }
         }
         saveChanges();
         markForUpdate();
@@ -150,10 +162,6 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
 
     public java.util.UUID getTianshuId() {
         return tianshuId;
-    }
-
-    public TianshuSeedStorage getSeedStorage() {
-        return seedStorage;
     }
 
     public TianshuInventoryMaintenanceService getInventoryMaintenance() {
@@ -184,17 +192,61 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
     @Override
     public long extractReusableSeed(AEKey key, long amount, Actionable mode) {
         if (!formed || !functionProfile.supportsClosedLoopSeeds()) return 0L;
-        long extracted = seedStorage.extract(key, amount, mode);
-        if (extracted > 0 && mode == Actionable.MODULATE) saveChanges();
+        long remaining = Math.max(0L, amount);
+        long extracted = 0L;
+        for (var drive : seedDrives()) {
+            long moved = drive.extract(key, remaining, mode, actionSource);
+            extracted = saturatingAdd(extracted, moved);
+            remaining -= moved;
+            if (remaining <= 0) break;
+        }
+        if (extracted > 0 && mode == Actionable.MODULATE) seedStorageChanged();
         return extracted;
     }
 
     @Override
     public long insertReusableSeed(AEKey key, long amount, Actionable mode) {
         if (!formed || !functionProfile.supportsClosedLoopSeeds()) return 0L;
-        long inserted = seedStorage.insert(key, amount, mode);
-        if (inserted > 0 && mode == Actionable.MODULATE) saveChanges();
+        long remaining = Math.max(0L, amount);
+        long inserted = 0L;
+        for (var drive : seedDrives()) {
+            long moved = drive.insert(key, remaining, mode, actionSource);
+            inserted = saturatingAdd(inserted, moved);
+            remaining -= moved;
+            if (remaining <= 0) break;
+        }
+        if (inserted > 0 && mode == Actionable.MODULATE) seedStorageChanged();
         return inserted;
+    }
+
+    public long reusableSeedAmount(AEKey key) {
+        long amount = 0L;
+        for (var drive : seedDrives()) {
+            amount = saturatingAdd(amount, drive.amount(key, actionSource));
+        }
+        return amount;
+    }
+
+    private List<TianshuSeedStorageBlockEntity> seedDrives() {
+        if (level == null) return List.of();
+        var result = new java.util.ArrayList<TianshuSeedStorageBlockEntity>();
+        for (var pos : seedDrivePositions) {
+            if (level.isLoaded(pos)
+                    && level.getBlockEntity(pos) instanceof TianshuSeedStorageBlockEntity drive) {
+                result.add(drive);
+            }
+        }
+        return result;
+    }
+
+    public void seedDrivesChanged() { seedStorageChanged(); }
+
+    private void seedStorageChanged() {
+        saveChanges();
+        var grid = getMainNode().getGrid();
+        if (grid != null) {
+            grid.getCraftingService().refreshNodeCraftingProvider(getMainNode().getNode());
+        }
     }
 
     public void closedLoopPatternsChanged() {
@@ -210,7 +262,7 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
             return List.of();
         }
         var result = new java.util.ArrayList<IPatternDetails>();
-        for (var payload : closedLoopPatterns.patterns()) {
+        for (var payload : closedLoopPatterns.activePatterns()) {
             if (!payload.enabled() || !membersAreAvailable(payload)) continue;
             var item = (com.moakiee.ae2lt.item.ClosedLoopPatternItem) ModItems.CLOSED_LOOP_PATTERN.get();
             var stack = item.createStack(payload, level.registryAccess());
@@ -229,10 +281,16 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
 
     private java.util.Map<AEKey, Long> availableSeedsFor(
             com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternPayload payload) {
-        var result = new java.util.LinkedHashMap<AEKey, Long>();
+        var requirements = new java.util.LinkedHashMap<AEKey, Long>();
         for (var seed : payload.seeds()) {
-            long available = Math.min(seed.amount(), seedStorage.amount(seed.what()));
-            if (available > 0) result.merge(seed.what(), available, Math::max);
+            requirements.merge(seed.what(), seed.amount(),
+                    com.moakiee.thunderbolt.core.planner.Sat::add);
+        }
+        var result = new java.util.LinkedHashMap<AEKey, Long>();
+        for (var requirement : requirements.entrySet()) {
+            long available = Math.min(
+                    requirement.getValue(), reusableSeedAmount(requirement.getKey()));
+            if (available > 0) result.put(requirement.getKey(), available);
         }
         return java.util.Map.copyOf(result);
     }
@@ -269,6 +327,18 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
     @Override
     public boolean isCpuActive() {
         return formed && getController() != null && getMainNode().isActive() && getMainNode().getGrid() != null;
+    }
+
+    @Override
+    public void onChunkUnloaded() {
+        maintenance.shutdownCalculations();
+        super.onChunkUnloaded();
+    }
+
+    @Override
+    public void setRemoved() {
+        maintenance.shutdownCalculations();
+        super.setRemoved();
     }
 
     @Override
@@ -326,9 +396,9 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
         closedLoopPatterns.writeTo(closedLoopTag, registries);
         tag.put(TAG_CLOSED_LOOP_PATTERNS, closedLoopTag);
         tag.putUUID(TAG_TIANSHU_ID, tianshuId);
-        var seedTag = new CompoundTag();
-        seedStorage.writeTo(seedTag, registries);
-        tag.put(TAG_SEED_STORAGE, seedTag);
+        var seedDrivesTag = new net.minecraft.nbt.LongArrayTag(
+                seedDrivePositions.stream().mapToLong(BlockPos::asLong).toArray());
+        tag.put(TAG_SEED_DRIVES, seedDrivesTag);
         var maintenanceTag = new CompoundTag();
         maintenance.writeTo(maintenanceTag, registries);
         tag.put(TAG_MAINTENANCE, maintenanceTag);
@@ -358,8 +428,11 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
         if (tag.contains(TAG_CLOSED_LOOP_PATTERNS, Tag.TAG_COMPOUND)) {
             closedLoopPatterns.readFrom(tag.getCompound(TAG_CLOSED_LOOP_PATTERNS), registries);
         }
-        if (tag.contains(TAG_SEED_STORAGE, Tag.TAG_COMPOUND)) {
-            seedStorage.readFrom(tag.getCompound(TAG_SEED_STORAGE), registries);
+        if (tag.contains(TAG_SEED_DRIVES, Tag.TAG_LONG_ARRAY)) {
+            seedDrivePositions = java.util.Arrays.stream(tag.getLongArray(TAG_SEED_DRIVES))
+                    .mapToObj(BlockPos::of).toList();
+        } else {
+            seedDrivePositions = List.of();
         }
         if (tag.contains(TAG_MAINTENANCE, Tag.TAG_COMPOUND)) {
             maintenance.readFrom(tag.getCompound(TAG_MAINTENANCE), registries);
@@ -382,6 +455,10 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
     public void addAdditionalDrops(Level level, BlockPos pos, List<ItemStack> drops) {
         super.addAdditionalDrops(level, pos, drops);
         cpuPool.addRemovalDrops(level, pos, drops);
+    }
+
+    private static long saturatingAdd(long left, long right) {
+        return left >= Long.MAX_VALUE - right ? Long.MAX_VALUE : left + right;
     }
 
     @Override

@@ -318,6 +318,8 @@ public class AE2LightningTech {
         modEventBus.addListener(this::registerCapabilities);
         modEventBus.addListener(this::commonSetup);
         modContainer.registerConfig(ModConfig.Type.COMMON, AE2LTCommonConfig.SPEC);
+        modContainer.registerConfig(ModConfig.Type.CLIENT,
+                com.moakiee.ae2lt.config.AE2LTClientConfig.SPEC, "ae2lt-client.toml");
 
         NeoForge.EVENT_BUS.addListener(this::onServerStarting);
         NeoForge.EVENT_BUS.addListener(this::onServerStopped);
@@ -764,6 +766,10 @@ public class AE2LightningTech {
                     tianshuPortBeType,
                     null,
                     null);
+
+            appeng.blockentity.AEBaseBlockEntity.registerBlockEntityItem(
+                    ModBlockEntities.TIANSHU_SEED_STORAGE.get(),
+                    ModBlocks.CLOSED_LOOP_SEED_STORAGE.get().asItem());
 
             var interfaceBlock = ModBlocks.OVERLOADED_INTERFACE.get();
             var interfaceBeType = ModBlockEntities.OVERLOADED_INTERFACE.get();

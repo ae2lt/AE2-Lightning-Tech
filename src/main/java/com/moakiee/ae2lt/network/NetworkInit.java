@@ -14,6 +14,9 @@ import com.moakiee.ae2lt.network.tianshu.MaintenanceEditorSyncPacket;
 import com.moakiee.ae2lt.network.tianshu.SaveMaintenanceRulePacket;
 import com.moakiee.ae2lt.network.tianshu.MaintenanceSummarySyncPacket;
 import com.moakiee.ae2lt.network.tianshu.SaveGlobalReservePacket;
+import com.moakiee.ae2lt.network.tianshu.RequestUploadTargetsPacket;
+import com.moakiee.ae2lt.network.tianshu.UploadPatternToTargetPacket;
+import com.moakiee.ae2lt.network.tianshu.UploadTargetsSyncPacket;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -168,6 +171,18 @@ public final class NetworkInit {
                 SaveGlobalReservePacket.TYPE,
                 SaveGlobalReservePacket.STREAM_CODEC,
                 SaveGlobalReservePacket::handle);
+        registrar.playToServer(
+                RequestUploadTargetsPacket.TYPE,
+                RequestUploadTargetsPacket.STREAM_CODEC,
+                RequestUploadTargetsPacket::handle);
+        registrar.playToServer(
+                UploadPatternToTargetPacket.TYPE,
+                UploadPatternToTargetPacket.STREAM_CODEC,
+                UploadPatternToTargetPacket::handle);
+        registrar.playToClient(
+                UploadTargetsSyncPacket.TYPE,
+                UploadTargetsSyncPacket.STREAM_CODEC,
+                UploadTargetsSyncPacket::handle);
     }
 
     public static ResourceLocation id(String path) {

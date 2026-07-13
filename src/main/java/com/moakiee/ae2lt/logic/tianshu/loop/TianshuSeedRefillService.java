@@ -53,7 +53,7 @@ public final class TianshuSeedRefillService {
         var missing = new LinkedHashMap<AEKey, Long>();
         var network = grid.getStorageService().getInventory();
         for (var entry : required.entrySet()) {
-            long need = Math.max(0L, entry.getValue() - target.getSeedStorage().amount(entry.getKey()));
+            long need = Math.max(0L, entry.getValue() - target.reusableSeedAmount(entry.getKey()));
             if (need <= 0) continue;
             long canStore = target.insertReusableSeed(entry.getKey(), need, Actionable.SIMULATE);
             long extracted = canStore > 0

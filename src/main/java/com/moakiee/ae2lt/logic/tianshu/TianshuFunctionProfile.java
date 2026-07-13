@@ -11,7 +11,6 @@ public record TianshuFunctionProfile(
         int closedLoopSeedStorageCount) {
     public static final int RULES_PER_MAINTENANCE_CORE = 64;
     public static final int PATTERNS_PER_CLOSED_LOOP_STORAGE = 64;
-    public static final int SEED_TYPES_PER_STORAGE = 64;
 
     public TianshuFunctionProfile {
         if (inventoryMaintenanceCoreCount < 0
@@ -46,10 +45,6 @@ public record TianshuFunctionProfile(
         return supportsClosedLoopPatterns()
                 ? saturatingMultiply(closedLoopPatternStorageCount, PATTERNS_PER_CLOSED_LOOP_STORAGE)
                 : 0;
-    }
-
-    public int seedTypeCapacity() {
-        return saturatingMultiply(closedLoopSeedStorageCount, SEED_TYPES_PER_STORAGE);
     }
 
     private static int saturatingMultiply(int count, int perUnit) {

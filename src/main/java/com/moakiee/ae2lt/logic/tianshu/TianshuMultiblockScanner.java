@@ -22,6 +22,7 @@ public final class TianshuMultiblockScanner {
         var members = new ArrayList<BlockPos>();
         var cores = new ArrayList<BlockPos>(27);
         var ports = new ArrayList<BlockPos>(2);
+        var seedStorages = new ArrayList<BlockPos>();
         CpuMainCoreTier mainCore = null;
         int capacityCores = 0;
         int parallelCores = 0;
@@ -103,6 +104,7 @@ public final class TianshuMultiblockScanner {
                                 members.add(world.immutable());
                             } else if (component == TianshuMultiblockComponent.CLOSED_LOOP_SEED_STORAGE) {
                                 closedLoopSeedStorages++;
+                                seedStorages.add(world.immutable());
                                 members.add(world.immutable());
                             } else {
                                 if (tier != null) addOnce(issues, TianshuMultiblockScanIssue.MAIN_CORE_OUTSIDE_CENTER);
@@ -133,7 +135,8 @@ public final class TianshuMultiblockScanner {
                 maintenanceCores, closedLoopPatternCores, closedLoopPatternStorages, closedLoopSeedStorages);
         return new TianshuMultiblockScanAttempt(new TianshuMultiblockScanResult(
                 controllerPos.immutable(), orientation, min, max, ports.getFirst(),
-                List.copyOf(members), List.copyOf(cores), profile, functionProfile), List.of());
+                List.copyOf(members), List.copyOf(cores), List.copyOf(seedStorages),
+                profile, functionProfile), List.of());
     }
 
     public static TianshuMultiblockComponent componentAt(Level level, BlockPos pos) {
