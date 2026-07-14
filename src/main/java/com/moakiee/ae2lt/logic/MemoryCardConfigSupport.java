@@ -11,11 +11,14 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.component.CustomData;
 
 import appeng.api.orientation.RelativeSide;
 import appeng.util.SettingsFrom;
 
+import com.moakiee.ae2lt.machine.common.LightningCollapseMatrixHost;
 import com.moakiee.ae2lt.registry.ModDataComponents;
 
 /**
@@ -34,6 +37,7 @@ import com.moakiee.ae2lt.registry.ModDataComponents;
 public final class MemoryCardConfigSupport {
     private static final String TAG_AUTO_EXPORT = "AutoExport";
     private static final String TAG_ALLOWED_OUTPUTS = "AllowedOutputs";
+    private static final String TAG_MATRIX_COUNT = "LightningCollapseMatrixCount";
 
     private MemoryCardConfigSupport() {}
 
@@ -117,6 +121,33 @@ public final class MemoryCardConfigSupport {
             extraReader.accept(tag);
             afterImport.run();
         });
+    }
+
+    // ── Lightning Collapse Matrix template ───────────────────────────────
+
+    /**
+     * Records the exact installed count as a memory-card template. The card
+     * stores only the desired count; the matrix items remain in the machine.
+     */
+    public static void writeMatrixCount(CompoundTag tag, LightningCollapseMatrixHost host) {
+        tag.putInt(TAG_MATRIX_COUNT, host.getInstalledMatrixCount());
+    }
+
+    /**
+     * Applies a saved matrix count using real items from the player's main
+     * inventory. The target host clamps the count to its own slot capacity.
+     */
+    public static void restoreMatrixCount(
+            CompoundTag tag, @Nullable Player player, LightningCollapseMatrixHost host) {
+        if (!tag.contains(TAG_MATRIX_COUNT)) {
+            return;
+        }
+
+        int missing = host.restoreMatricesFromMemoryCard(player, tag.getInt(TAG_MATRIX_COUNT));
+        if (missing > 0 && player != null && !player.level().isClientSide()) {
+            player.sendSystemMessage(Component.translatable(
+                    "message.ae2lt.memory_card.missing_matrices", missing));
+        }
     }
 
     // ── RelativeSide set serialization ────────────────────────────────────

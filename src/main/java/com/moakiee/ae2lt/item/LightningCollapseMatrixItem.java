@@ -5,7 +5,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.UseOnContext;
 
-import com.moakiee.ae2lt.blockentity.OverloadProcessingFactoryBlockEntity;
+import com.moakiee.ae2lt.machine.common.LightningCollapseMatrixHost;
 
 public class LightningCollapseMatrixItem extends Item {
     public LightningCollapseMatrixItem(Properties properties) {
@@ -14,28 +14,28 @@ public class LightningCollapseMatrixItem extends Item {
 
     @Override
     public InteractionResult onItemUseFirst(ItemStack stack, UseOnContext context) {
-        return insertIntoFactory(context);
+        return insertIntoMachine(context);
     }
 
     @Override
     public InteractionResult useOn(UseOnContext context) {
-        return insertIntoFactory(context);
+        return insertIntoMachine(context);
     }
 
-    private InteractionResult insertIntoFactory(UseOnContext context) {
+    private InteractionResult insertIntoMachine(UseOnContext context) {
         var player = context.getPlayer();
         if (player == null || !player.isSecondaryUseActive()) {
             return InteractionResult.PASS;
         }
 
         var level = context.getLevel();
-        if (!(level.getBlockEntity(context.getClickedPos())
-                instanceof OverloadProcessingFactoryBlockEntity factory)) {
+        var host = LightningCollapseMatrixHost.find(level, context.getClickedPos());
+        if (host == null) {
             return InteractionResult.PASS;
         }
 
         if (!level.isClientSide()) {
-            factory.insertMatricesFromHand(player, context.getHand());
+            host.insertMatricesFromHand(player, context.getHand());
         }
         return InteractionResult.sidedSuccess(level.isClientSide());
     }
