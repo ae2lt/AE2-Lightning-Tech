@@ -231,6 +231,8 @@
   "block.ae2lt.overloaded_interface": "过载ME接口",
   "block.ae2lt.test_time_wheel_crafting_cpu": "天枢超算中心",
   "block.ae2lt.pigmee_mentalmath_unit": "猪咪口算单元",
+  "tooltip.ae2lt.pigmee_mentalmath_unit.1": "猪圈里最聪明的小猪，",
+  "tooltip.ae2lt.pigmee_mentalmath_unit.2": "现在是 MOAKIEE 手下的智力担当。",
   "block.ae2lt.overloaded_power_supply": "过载供电仪",
   "ae2lt.gui.title.extended_overloaded_pattern_provider": "扩展过载样板供应器",
   "ae2lt.gui.provider_mode.normal": "普通模式",

@@ -260,6 +260,8 @@
   "block.ae2lt.overloaded_interface": "Overloaded ME Interface",
   "block.ae2lt.test_time_wheel_crafting_cpu": "天枢超算中心",
   "block.ae2lt.pigmee_mentalmath_unit": "Pigmee Mental Arithmetic Unit",
+  "tooltip.ae2lt.pigmee_mentalmath_unit.1": "The smartest little pig in the pen,",
+  "tooltip.ae2lt.pigmee_mentalmath_unit.2": "now serving as the brains of MOAKIEE's crew.",
   "block.ae2lt.overloaded_power_supply": "Overloaded Power Supply",
   "config.jade.plugin_ae2lt.lightning_collector": "Lightning Collector",
   "jade.ae2lt.lightning_collector.cooldown": "Cooldown: %ss",
