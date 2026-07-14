@@ -73,7 +73,7 @@ public final class Ae2ClosedLoopPatternDetails
             decodedMembers.add(new ExpandedMember(
                     ClosedLoopExpandedPatternDetails.wrap(
                             details, seedAmounts, payload.memberPatterns().size() == 1,
-                            persistenceDefinition, payload.parallelism()),
+                            persistenceDefinition, memberIndex),
                     member.copiesPerCycle()));
             memberIndex++;
         }
@@ -121,6 +121,15 @@ public final class Ae2ClosedLoopPatternDetails
         var result = new LinkedHashMap<AEKey, Long>();
         for (var seed : payload.seeds()) {
             result.merge(seed.what(), seed.amount(), Sat::add);
+        }
+        return Map.copyOf(result);
+    }
+
+    @Override
+    public Map<AEKey, Long> maximumReusableSeedRequirements() {
+        var result = new LinkedHashMap<AEKey, Long>();
+        for (var seed : payload.seeds()) {
+            result.merge(seed.what(), Sat.mul(seed.amount(), payload.seedMultiplier()), Sat::add);
         }
         return Map.copyOf(result);
     }

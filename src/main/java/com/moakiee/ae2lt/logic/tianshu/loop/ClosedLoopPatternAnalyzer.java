@@ -4,6 +4,7 @@ import appeng.api.crafting.IPatternDetails;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.GenericStack;
 import com.moakiee.thunderbolt.core.planner.Sat;
+import com.moakiee.thunderbolt.core.planner.PositiveIntegerLinearSolver;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -11,26 +12,109 @@ import java.util.List;
 import java.util.Map;
 
 public final class ClosedLoopPatternAnalyzer {
+    public static final int MAX_MEMBERS = 6;
+    public enum StructureStatus {
+        VALID,
+        NOT_CONNECTED,
+        NOT_MINIMAL,
+        INVALID
+    }
+
+    /**
+     * Builds the exact mass-balance inequalities for the selected members and solves them without
+     * a coefficient or probe bound. A non-solved status is deliberately preserved so callers can
+     * distinguish an impossible loop from overflow, invalid input, or a solver failure.
+     */
+    public static PositiveIntegerLinearSolver.Result solveCoefficients(
+            List<IPatternDetails> members, AEKey requestedOutput) {
+        if (members == null || members.isEmpty() || requestedOutput == null) {
+            return solverResult(PositiveIntegerLinearSolver.Status.INVALID_INPUT);
+        }
+
+        var possibleLoopOutputs = possibleLoopOutputs(members);
+        if (possibleLoopOutputs == null) {
+            return solverResult(PositiveIntegerLinearSolver.Status.INVALID_INPUT);
+        }
+        var balances = new ArrayList<Balance>(members.size());
+        var consumed = new LinkedHashMap<AEKey, Long>();
+        var produced = new LinkedHashMap<AEKey, Long>();
+        for (var member : members) {
+            var balance = balance(member, possibleLoopOutputs);
+            if (balance == null) {
+                return solverResult(PositiveIntegerLinearSolver.Status.INVALID_INPUT);
+            }
+            balances.add(balance);
+            mergeScaled(consumed, balance.consumed(), 1L);
+            mergeScaled(produced, balance.produced(), 1L);
+        }
+
+        var cycleKeys = new java.util.LinkedHashSet<AEKey>();
+        for (var key : consumed.keySet()) {
+            if (produced.getOrDefault(key, 0L) > 0) cycleKeys.add(key);
+        }
+        if (cycleKeys.isEmpty()) {
+            return solverResult(PositiveIntegerLinearSolver.Status.INFEASIBLE);
+        }
+
+        var constraints = new ArrayList<PositiveIntegerLinearSolver.Constraint>(cycleKeys.size() + 1);
+        for (var key : cycleKeys) {
+            constraints.add(new PositiveIntegerLinearSolver.Constraint(
+                    netRow(balances, key), 0L));
+        }
+        constraints.add(new PositiveIntegerLinearSolver.Constraint(
+                netRow(balances, requestedOutput), 1L));
+
+        var solved = PositiveIntegerLinearSolver.solve(members.size(), constraints);
+        if (!solved.solved()) return solved;
+
+        var analyzed = new ArrayList<Member>(members.size());
+        var coefficients = solved.coefficients();
+        for (int i = 0; i < members.size(); i++) {
+            analyzed.add(new Member(members.get(i), coefficients[i]));
+        }
+        return analyze(analyzed, requestedOutput) != null
+                ? solved : solverResult(PositiveIntegerLinearSolver.Status.INTERNAL_ERROR);
+    }
+
+    /**
+     * Requires every member to participate in one strongly connected material cycle and rejects a
+     * composite whenever a proper subset is already a valid closed loop of its own.
+     */
+    public static StructureStatus validateMinimalStructure(List<IPatternDetails> members) {
+        if (members == null || members.isEmpty() || members.size() > MAX_MEMBERS) {
+            return StructureStatus.INVALID;
+        }
+        var prepared = prepareBalances(members);
+        if (prepared == null) return StructureStatus.INVALID;
+        if (!isStronglyConnected(prepared)) return StructureStatus.NOT_CONNECTED;
+        if (members.size() == 1) return StructureStatus.VALID;
+
+        int fullMask = (1 << members.size()) - 1;
+        for (int mask = 1; mask < fullMask; mask++) {
+            var subset = new ArrayList<IPatternDetails>();
+            for (int member = 0; member < members.size(); member++) {
+                if ((mask & (1 << member)) != 0) subset.add(members.get(member));
+            }
+            var subsetStatus = hasBalancedClosedLoop(subset);
+            if (subsetStatus == SubsetLoopStatus.ERROR) return StructureStatus.INVALID;
+            if (subsetStatus == SubsetLoopStatus.YES) return StructureStatus.NOT_MINIMAL;
+        }
+        return StructureStatus.VALID;
+    }
+
     public static ClosedLoopAnalysis analyze(
             List<Member> members, AEKey requestedOutput) {
         if (members == null || members.isEmpty() || requestedOutput == null) return null;
         var consumed = new LinkedHashMap<AEKey, Long>();
         var produced = new LinkedHashMap<AEKey, Long>();
         var perMember = new ArrayList<Balance>(members.size());
-        var possibleLoopOutputs = new ArrayList<LoopOutput>();
+        var details = new ArrayList<IPatternDetails>(members.size());
         for (var member : members) {
             if (member == null || member.details() == null) return null;
-            var overload = member.details() instanceof
-                    com.moakiee.thunderbolt.ae2.overload.pattern.OverloadedProviderOnlyPatternDetails value
-                    ? value : null;
-            var memberOutputs = member.details().getOutputs();
-            for (int slot = 0; slot < memberOutputs.size(); slot++) {
-                var output = memberOutputs.get(slot);
-                if (output == null || output.what() == null || output.amount() <= 0) return null;
-                possibleLoopOutputs.add(new LoopOutput(
-                        output.what(), overload != null && overload.isFuzzyOutput(slot)));
-            }
+            details.add(member.details());
         }
+        var possibleLoopOutputs = possibleLoopOutputs(details);
+        if (possibleLoopOutputs == null) return null;
         for (var member : members) {
             var balance = balance(member.details(), possibleLoopOutputs);
             if (balance == null || member.copies() <= 0) return null;
@@ -57,32 +141,17 @@ public final class ClosedLoopPatternAnalyzer {
             var member = members.get(memberIndex);
             var balance = perMember.get(memberIndex);
             for (var key : cycleKeys) {
-                long consumedPerCopy = balance.consumed().getOrDefault(key, 0L);
-                long producedPerCopy = balance.produced().getOrDefault(key, 0L);
+                long consumedByGroup = Sat.mul(
+                        balance.consumed().getOrDefault(key, 0L), member.copies());
+                long producedByGroup = Sat.mul(
+                        balance.produced().getOrDefault(key, 0L), member.copies());
                 long held = balances.getOrDefault(key, 0L);
-                if (consumedPerCopy == 0L) {
-                    balances.put(key, Sat.add(held, Sat.mul(producedPerCopy, member.copies())));
-                    continue;
-                }
-                long firstDeficit = Math.max(0L, consumedPerCopy - held);
-                if (firstDeficit > 0L) seedAmounts.merge(key, firstDeficit, Sat::add);
-                long afterFirst = Sat.add(Math.max(held, consumedPerCopy) - consumedPerCopy, producedPerCopy);
-                long remainingCopies = member.copies() - 1L;
-                if (remainingCopies == 0L) {
-                    balances.put(key, afterFirst);
-                } else if (producedPerCopy >= consumedPerCopy) {
-                    balances.put(key, Sat.add(afterFirst,
-                            Sat.mul(producedPerCopy - consumedPerCopy, remainingCopies)));
-                } else {
-                    long decline = consumedPerCopy - producedPerCopy;
-                    long requiredBeforeRemaining = Sat.add(consumedPerCopy,
-                            Sat.mul(decline, remainingCopies - 1L));
-                    long repeatedDeficit = Math.max(0L, requiredBeforeRemaining - afterFirst);
-                    if (repeatedDeficit > 0L) seedAmounts.merge(key, repeatedDeficit, Sat::add);
-                    balances.put(key, repeatedDeficit > 0L
-                            ? producedPerCopy
-                            : afterFirst - Sat.mul(decline, remainingCopies));
-                }
+                // copiesPerCycle is one atomic dispatch group. Outputs from copy 1 are therefore
+                // not available to satisfy copy 2 inside the same member group.
+                long deficit = Math.max(0L, consumedByGroup - held);
+                if (deficit > 0L) seedAmounts.merge(key, deficit, Sat::add);
+                long afterConsumption = Math.max(held, consumedByGroup) - consumedByGroup;
+                balances.put(key, Sat.add(afterConsumption, producedByGroup));
             }
         }
         if (seedAmounts.isEmpty()) return null;
@@ -98,6 +167,43 @@ public final class ClosedLoopPatternAnalyzer {
             }
         }
         return new ClosedLoopAnalysis(seeds, toStacks(external), toStacks(outputs));
+    }
+
+    /** Chooses the member-group order with the smallest total simultaneous seed requirement. */
+    public static OrderedAnalysis analyzeBestOrder(
+            List<Member> members, AEKey requestedOutput) {
+        if (members == null || members.isEmpty() || members.size() > MAX_MEMBERS) return null;
+        var source = List.copyOf(members);
+        var used = new boolean[source.size()];
+        var current = new ArrayList<Member>(source.size());
+        var best = new OrderedAnalysis[1];
+        var bestSeedTotal = new long[] {Long.MAX_VALUE};
+        enumerateOrders(source, requestedOutput, used, current, best, bestSeedTotal);
+        return best[0];
+    }
+
+    private static void enumerateOrders(
+            List<Member> source, AEKey requestedOutput, boolean[] used,
+            ArrayList<Member> current, OrderedAnalysis[] best, long[] bestSeedTotal) {
+        if (current.size() == source.size()) {
+            var analysis = analyze(current, requestedOutput);
+            if (analysis == null) return;
+            long total = 0L;
+            for (var seed : analysis.seeds()) total = Sat.add(total, seed.amount());
+            if (best[0] == null || total < bestSeedTotal[0]) {
+                best[0] = new OrderedAnalysis(List.copyOf(current), analysis);
+                bestSeedTotal[0] = total;
+            }
+            return;
+        }
+        for (int i = 0; i < source.size(); i++) {
+            if (used[i]) continue;
+            used[i] = true;
+            current.add(source.get(i));
+            enumerateOrders(source, requestedOutput, used, current, best, bestSeedTotal);
+            current.removeLast();
+            used[i] = false;
+        }
     }
 
     private static Balance balance(IPatternDetails details, List<LoopOutput> possibleLoopOutputs) {
@@ -134,6 +240,106 @@ public final class ClosedLoopPatternAnalyzer {
             produced.merge(output.what(), output.amount(), Sat::add);
         }
         return new Balance(consumed, produced);
+    }
+
+    private static List<LoopOutput> possibleLoopOutputs(List<IPatternDetails> members) {
+        var result = new ArrayList<LoopOutput>();
+        for (var member : members) {
+            if (member == null) return null;
+            var overload = member instanceof
+                    com.moakiee.thunderbolt.ae2.overload.pattern.OverloadedProviderOnlyPatternDetails value
+                    ? value : null;
+            var outputs = member.getOutputs();
+            for (int slot = 0; slot < outputs.size(); slot++) {
+                var output = outputs.get(slot);
+                if (output == null || output.what() == null || output.amount() <= 0) return null;
+                result.add(new LoopOutput(
+                        output.what(), overload != null && overload.isFuzzyOutput(slot)));
+            }
+        }
+        return List.copyOf(result);
+    }
+
+    private static List<Balance> prepareBalances(List<IPatternDetails> members) {
+        var outputs = possibleLoopOutputs(members);
+        if (outputs == null) return null;
+        var result = new ArrayList<Balance>(members.size());
+        for (var member : members) {
+            var balance = balance(member, outputs);
+            if (balance == null) return null;
+            result.add(balance);
+        }
+        return List.copyOf(result);
+    }
+
+    private static boolean isStronglyConnected(List<Balance> balances) {
+        int size = balances.size();
+        var edges = new boolean[size][size];
+        for (int producer = 0; producer < size; producer++) {
+            for (int consumer = 0; consumer < size; consumer++) {
+                for (var key : balances.get(producer).produced().keySet()) {
+                    if (balances.get(producer).produced().getOrDefault(key, 0L) > 0
+                            && balances.get(consumer).consumed().getOrDefault(key, 0L) > 0) {
+                        edges[producer][consumer] = true;
+                        break;
+                    }
+                }
+            }
+        }
+        if (size == 1) return edges[0][0];
+        return reachesEveryMember(edges, false) && reachesEveryMember(edges, true);
+    }
+
+    private static boolean reachesEveryMember(boolean[][] edges, boolean reverse) {
+        var visited = new boolean[edges.length];
+        var pending = new java.util.ArrayDeque<Integer>();
+        visited[0] = true;
+        pending.add(0);
+        while (!pending.isEmpty()) {
+            int current = pending.removeFirst();
+            for (int next = 0; next < edges.length; next++) {
+                boolean linked = reverse ? edges[next][current] : edges[current][next];
+                if (linked && !visited[next]) {
+                    visited[next] = true;
+                    pending.addLast(next);
+                }
+            }
+        }
+        for (var member : visited) if (!member) return false;
+        return true;
+    }
+
+    private static SubsetLoopStatus hasBalancedClosedLoop(List<IPatternDetails> members) {
+        var balances = prepareBalances(members);
+        if (balances == null) return SubsetLoopStatus.ERROR;
+        if (!isStronglyConnected(balances)) return SubsetLoopStatus.NO;
+        var possibleOutputs = new java.util.LinkedHashSet<AEKey>();
+        for (var balance : balances) possibleOutputs.addAll(balance.produced().keySet());
+        for (var output : possibleOutputs) {
+            var solved = solveCoefficients(members, output);
+            if (solved.status() == PositiveIntegerLinearSolver.Status.SOLVED) {
+                return SubsetLoopStatus.YES;
+            }
+            if (solved.status() != PositiveIntegerLinearSolver.Status.INFEASIBLE) {
+                return SubsetLoopStatus.ERROR;
+            }
+        }
+        return SubsetLoopStatus.NO;
+    }
+
+    private static long[] netRow(List<Balance> balances, AEKey key) {
+        var result = new long[balances.size()];
+        for (int i = 0; i < balances.size(); i++) {
+            var balance = balances.get(i);
+            result[i] = balance.produced().getOrDefault(key, 0L)
+                    - balance.consumed().getOrDefault(key, 0L);
+        }
+        return result;
+    }
+
+    private static PositiveIntegerLinearSolver.Result solverResult(
+            PositiveIntegerLinearSolver.Status status) {
+        return new PositiveIntegerLinearSolver.Result(status, new long[0]);
     }
 
     private static LoopMatch matchingLoopOutput(
@@ -184,9 +390,15 @@ public final class ClosedLoopPatternAnalyzer {
     }
 
     public record Member(IPatternDetails details, long copies) { }
+    public record OrderedAnalysis(List<Member> members, ClosedLoopAnalysis analysis) {
+        public OrderedAnalysis {
+            members = List.copyOf(members);
+        }
+    }
     private record Balance(Map<AEKey, Long> consumed, Map<AEKey, Long> produced) { }
     private record LoopOutput(AEKey key, boolean fuzzy) { }
     private record LoopMatch(AEKey key, boolean forbidden) { }
+    private enum SubsetLoopStatus { YES, NO, ERROR }
 
     private ClosedLoopPatternAnalyzer() { }
 }

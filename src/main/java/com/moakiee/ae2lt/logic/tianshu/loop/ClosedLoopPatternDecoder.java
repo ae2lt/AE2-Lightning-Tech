@@ -38,7 +38,7 @@ public final class ClosedLoopPatternDecoder implements IPatternDetailsDecoder {
                         seed.what(), seed.amount(), com.moakiee.thunderbolt.core.planner.Sat::add);
                 return ClosedLoopExpandedPatternDetails.wrap(
                         delegate, seedAmounts, payload.memberPatterns().size() == 1, what,
-                        payload.parallelism());
+                        executionMember);
             }
             if (!payload.enabled()) return null;
             return new Ae2ClosedLoopPatternDetails(what, payload, level);

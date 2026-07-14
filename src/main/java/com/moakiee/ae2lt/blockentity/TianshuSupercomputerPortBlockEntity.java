@@ -263,7 +263,10 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
         }
         var result = new java.util.ArrayList<IPatternDetails>();
         for (var payload : closedLoopPatterns.activePatterns()) {
-            if (!payload.enabled() || !membersAreAvailable(payload)) continue;
+            if (!payload.enabled()
+                    || !com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternValidator
+                            .validate(payload, level).valid()
+                    || !membersAreAvailable(payload)) continue;
             var item = (com.moakiee.ae2lt.item.ClosedLoopPatternItem) ModItems.CLOSED_LOOP_PATTERN.get();
             var stack = item.createStack(payload, level.registryAccess());
             var key = appeng.api.stacks.AEItemKey.of(stack);
@@ -303,7 +306,10 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
         for (var member : payload.memberPatterns()) {
             var details = PatternDetailsHelper.decodePattern(
                     member.pattern().toItemStack(level.registryAccess()), level);
-            if (details == null || !crafting.getProviders(details).iterator().hasNext()) return false;
+            if (details == null) return false;
+            var providerPattern = com.moakiee.thunderbolt.ae2.api.crafting.CraftingPatternDelegates
+                    .forProviderLookup(details);
+            if (!crafting.getProviders(providerPattern).iterator().hasNext()) return false;
         }
         return true;
     }

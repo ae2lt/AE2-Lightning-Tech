@@ -101,7 +101,7 @@ class ClosedLoopDiscoveryServiceTest {
     }
 
     @Test
-    void rejectsCoefficientSearchWhenNoCombinationWithinBoundClosesTheLoop() {
+    void findsValidCoefficientBeyondTheLegacyBound() {
         var target = key("bounded_target");
         var intermediate = key("bounded_intermediate");
         var root = pattern(List.of(stack(target, 10)), input(intermediate, 9, null));
@@ -112,7 +112,11 @@ class ClosedLoopDiscoveryServiceTest {
         var candidates = ClosedLoopDiscoveryService.resolveCandidates(
                 key -> patterns.getOrDefault(key, List.of()), target);
 
-        assertEquals(List.of(), candidates);
+        assertEquals(1, candidates.size());
+        assertEquals(List.of(1L, 9L), java.util.Arrays.stream(
+                candidates.getFirst().coefficients()).boxed().toList());
+        assertEquals(9, amount(candidates.getFirst().analysis().seeds(), intermediate));
+        assertEquals(1, amount(candidates.getFirst().analysis().netOutputs(), target));
     }
 
     private static long amount(List<GenericStack> stacks, AEKey key) {

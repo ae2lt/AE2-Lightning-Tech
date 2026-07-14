@@ -19,19 +19,19 @@ public final class ClosedLoopPatternManagementService {
         return store(target, payload.withEnabled(enabled));
     }
 
-    public static ClosedLoopPatternRepository.PutResult setParallelism(
-            TianshuSupercomputerPortBlockEntity target, UUID patternId, int parallelism) {
-        if (parallelism < 1) return ClosedLoopPatternRepository.PutResult.INVALID;
+    public static ClosedLoopPatternRepository.PutResult setSeedMultiplier(
+            TianshuSupercomputerPortBlockEntity target, UUID patternId, int seedMultiplier) {
+        if (seedMultiplier < 1) return ClosedLoopPatternRepository.PutResult.INVALID;
         var payload = editable(target, patternId);
         if (payload == null) return ClosedLoopPatternRepository.PutResult.UNAVAILABLE;
         if (target.getLevel() == null
                 || !ClosedLoopPatternValidator.validate(payload, target.getLevel()).valid()) {
             return ClosedLoopPatternRepository.PutResult.INVALID;
         }
-        if (payload.parallelism() == parallelism) {
+        if (payload.seedMultiplier() == seedMultiplier) {
             return ClosedLoopPatternRepository.PutResult.UPDATED;
         }
-        return store(target, payload.withParallelism(parallelism));
+        return store(target, payload.withSeedMultiplier(seedMultiplier));
     }
 
     public static boolean remove(

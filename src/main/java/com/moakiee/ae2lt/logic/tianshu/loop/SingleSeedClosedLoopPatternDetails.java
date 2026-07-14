@@ -3,16 +3,14 @@ package com.moakiee.ae2lt.logic.tianshu.loop;
 import appeng.api.crafting.IPatternDetails;
 import appeng.api.stacks.AEKey;
 import com.moakiee.thunderbolt.ae2.batch.SharedBatchInputPattern;
-import com.moakiee.thunderbolt.ae2.batch.BatchCopyLimitPattern;
-import java.util.Set;
 
 class SingleSeedClosedLoopPatternDetails extends ClosedLoopExpandedPatternDetails
-        implements SharedBatchInputPattern, BatchCopyLimitPattern, ClosedLoopBatchPatternDetails {
+        implements SharedBatchInputPattern, ClosedLoopBatchPatternDetails {
     SingleSeedClosedLoopPatternDetails(IPatternDetails delegate,
                                        java.util.Map<AEKey, Long> seedAmounts,
                                        appeng.api.stacks.AEItemKey persistenceDefinition,
-                                       int batchParallelism) {
-        super(delegate, seedAmounts, persistenceDefinition, batchParallelism);
+                                       int dispatchOrder) {
+        super(delegate, seedAmounts, persistenceDefinition, dispatchOrder);
     }
 
     @Override
@@ -24,6 +22,4 @@ class SingleSeedClosedLoopPatternDetails extends ClosedLoopExpandedPatternDetail
     public long sharedBatchOutputAmount(AEKey outputKey) {
         return super.sharedBatchOutputAmount(outputKey);
     }
-
-    @Override public int maxBatchCopies() { return batchParallelism; }
 }

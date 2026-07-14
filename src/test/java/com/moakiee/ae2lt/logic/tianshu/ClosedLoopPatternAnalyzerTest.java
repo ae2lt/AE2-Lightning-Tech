@@ -1,9 +1,11 @@
 package com.moakiee.ae2lt.logic.tianshu;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.time.Duration;
 import java.util.List;
@@ -11,6 +13,8 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternAnalyzer;
+import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternAuthoringService;
+import com.moakiee.thunderbolt.ae2.overload.pattern.SourcePatternSnapshot;
 import com.moakiee.thunderbolt.ae2.overload.pattern.OverloadedProviderOnlyPatternDetails;
 import com.moakiee.thunderbolt.ae2.overload.pattern.OverloadPatternDetails;
 import com.moakiee.thunderbolt.ae2.overload.pattern.PatternExecutionHostKind;
@@ -70,6 +74,20 @@ class ClosedLoopPatternAnalyzerTest {
     }
 
     @Test
+    void memberCopiesAreOneDispatchGroupAndCannotRecycleOutputsInsideTheGroup() {
+        var seed = key("grouped_seed");
+        var duplicate = pattern(List.of(output(seed, 2)), input(seed, 1, null));
+
+        var analysis = ClosedLoopPatternAnalyzer.analyze(
+                List.of(new ClosedLoopPatternAnalyzer.Member(duplicate, 1_000)), seed);
+
+        assertNotNull(analysis);
+        assertStack(analysis.seeds(), seed, 1_000);
+        assertEquals(List.of(), analysis.externalInputs());
+        assertStack(analysis.netOutputs(), seed, 1_000);
+    }
+
+    @Test
     void reactionChamberLoopContractsToNetCertusOutput() {
         var charged = key("charged_certus_quartz_crystal");
         var dust = key("certus_quartz_dust");
@@ -119,7 +137,9 @@ class ClosedLoopPatternAnalyzerTest {
                 () -> ClosedLoopPatternAnalyzer.analyze(List.of(member), product));
 
         assertNotNull(analysis);
-        assertAmount(analysis.seeds(), catalyst, 1);
+        // One member group cannot recycle its own outputs, so its whole saturated copy count is
+        // also the simultaneous catalyst seed requirement.
+        assertAmount(analysis.seeds(), catalyst, Long.MAX_VALUE / 4);
         // AE stack arithmetic intentionally clamps below Long.MAX_VALUE.
         assertAmount(analysis.netOutputs(), product, Long.MAX_VALUE / 4);
     }
@@ -175,6 +195,174 @@ class ClosedLoopPatternAnalyzerTest {
                 "ID_ONLY output must enter ID_ONLY input");
         assertNull(analyzeOverloadEdge(exact, exact, product, false, true),
                 "ID_ONLY output cannot guarantee a STRICT input");
+    }
+
+    @Test
+    void exactBalancerFindsSixMemberSolutionBeyondTheOldProbeBudget() {
+        var ratioA = key("ratio_a");
+        var ratioB = key("ratio_b");
+        var target = key("six_member_target");
+        var lower = java.util.stream.IntStream.range(0, 4)
+                .mapToObj(i -> key("lower_" + i)).toList();
+        var upper = java.util.stream.IntStream.range(0, 4)
+                .mapToObj(i -> key("upper_" + i)).toList();
+
+        var rootInputs = new java.util.ArrayList<IPatternDetails.IInput>();
+        rootInputs.add(input(ratioA, 3, null));
+        for (var key : lower) rootInputs.add(input(key, 4, null));
+        var rootOutputs = new java.util.ArrayList<GenericStack>();
+        rootOutputs.add(output(ratioB, 3));
+        rootOutputs.add(output(target, 1));
+        for (var key : upper) rootOutputs.add(output(key, 4));
+
+        var members = new java.util.ArrayList<IPatternDetails>();
+        members.add(pattern(rootOutputs,
+                rootInputs.toArray(IPatternDetails.IInput[]::new)));
+        members.add(pattern(List.of(output(ratioA, 2)), input(ratioB, 2, null)));
+        for (int i = 0; i < 4; i++) {
+            members.add(pattern(List.of(output(lower.get(i), 1)),
+                    input(upper.get(i), 1, null)));
+        }
+
+        var solved = ClosedLoopPatternAnalyzer.solveCoefficients(members, target);
+
+        assertEquals(com.moakiee.thunderbolt.core.planner.PositiveIntegerLinearSolver.Status.SOLVED,
+                solved.status());
+        assertArrayEquals(new long[] {2, 3, 8, 8, 8, 8}, solved.coefficients());
+        var analyzed = new java.util.ArrayList<ClosedLoopPatternAnalyzer.Member>();
+        for (int i = 0; i < members.size(); i++) {
+            analyzed.add(new ClosedLoopPatternAnalyzer.Member(
+                    members.get(i), solved.coefficients()[i]));
+        }
+        assertNotNull(ClosedLoopPatternAnalyzer.analyze(analyzed, target));
+    }
+
+    @Test
+    void downstreamConsumerIsRejectedByTheMinimalClosedLoopRule() {
+        var seed = key("minimal_seed");
+        var product = key("downstream_product");
+        var grow = pattern(List.of(output(seed, 2)), input(seed, 1, null));
+        var downstream = pattern(List.of(output(product, 1)), input(seed, 2, null));
+
+        var members = List.<IPatternDetails>of(grow, downstream);
+        var solved = ClosedLoopPatternAnalyzer.solveCoefficients(members, product);
+
+        assertEquals(com.moakiee.thunderbolt.core.planner.PositiveIntegerLinearSolver.Status.SOLVED,
+                solved.status(), "mass balance alone is feasible and must not hide the structure bug");
+        assertEquals(ClosedLoopPatternAnalyzer.StructureStatus.NOT_CONNECTED,
+                ClosedLoopPatternAnalyzer.validateMinimalStructure(members));
+    }
+
+    @Test
+    void connectedCompositeIsRejectedWhenOneMemberAlreadyFormsItsOwnLoop() {
+        var seed = key("non_minimal_seed");
+        var product = key("non_minimal_product");
+        var selfReplicating = pattern(List.of(output(seed, 2)), input(seed, 1, null));
+        var returnedSeedProduct = pattern(
+                List.of(output(seed, 1), output(product, 1)), input(seed, 1, null));
+
+        assertEquals(ClosedLoopPatternAnalyzer.StructureStatus.NOT_MINIMAL,
+                ClosedLoopPatternAnalyzer.validateMinimalStructure(
+                        List.of(selfReplicating, returnedSeedProduct)));
+    }
+
+    @Test
+    void balancedTwoMemberCycleIsConnectedMinimalAndRequiresASeed() {
+        var a = key("minimal_cycle_a");
+        var b = key("minimal_cycle_b");
+        var product = key("minimal_cycle_product");
+        var first = pattern(List.of(output(b, 1)), input(a, 1, null));
+        var second = pattern(List.of(output(a, 1), output(product, 1)), input(b, 1, null));
+        var members = List.<IPatternDetails>of(first, second);
+
+        assertEquals(ClosedLoopPatternAnalyzer.StructureStatus.VALID,
+                ClosedLoopPatternAnalyzer.validateMinimalStructure(members));
+        var solved = ClosedLoopPatternAnalyzer.solveCoefficients(members, product);
+        assertArrayEquals(new long[] {1, 1}, solved.coefficients());
+        var analysis = ClosedLoopPatternAnalyzer.analyze(List.of(
+                new ClosedLoopPatternAnalyzer.Member(first, 1),
+                new ClosedLoopPatternAnalyzer.Member(second, 1)), product);
+        assertNotNull(analysis);
+        assertAmount(analysis.seeds(), a, 1);
+    }
+
+    @Test
+    void automaticOrderingMinimizesTheSimultaneousSeedPool() {
+        var a = key("ordered_a");
+        var b = key("ordered_b");
+        var product = key("ordered_product");
+        var expensiveFirst = pattern(List.of(output(b, 10)), input(a, 10, null));
+        var cheapFirst = pattern(
+                List.of(output(a, 10), output(product, 1)), input(b, 1, null));
+
+        var ordered = ClosedLoopPatternAnalyzer.analyzeBestOrder(List.of(
+                new ClosedLoopPatternAnalyzer.Member(expensiveFirst, 1),
+                new ClosedLoopPatternAnalyzer.Member(cheapFirst, 1)), product);
+
+        assertNotNull(ordered);
+        assertEquals(cheapFirst, ordered.members().getFirst().details());
+        assertStack(ordered.analysis().seeds(), b, 1);
+    }
+
+    @Test
+    void markedAuthoringDerivesSeedsConsumablesByproductsAndNetOutputs() {
+        var seed = key("marked_seed");
+        var material = key("marked_material");
+        var product = key("marked_product");
+        var byproduct = key("marked_byproduct");
+        var member = pattern(
+                List.of(output(seed, 2), output(product, 1), output(byproduct, 3)),
+                input(seed, 1, null), input(material, 4, null));
+        var snapshot = new SourcePatternSnapshot(
+                ResourceLocation.fromNamespaceAndPath("ae2lt_test", "marked_pattern"), null, null);
+
+        var result = ClosedLoopPatternAuthoringService.create(List.of(
+                new ClosedLoopPatternAuthoringService.MarkedMember(member, snapshot, 1_000)),
+                product, 8);
+
+        assertEquals(ClosedLoopPatternAuthoringService.Status.VALID, result.status());
+        var payload = result.payload();
+        assertNotNull(payload);
+        assertEquals(8, payload.seedMultiplier());
+        assertStack(payload.seeds(), seed, 1_000);
+        assertStack(payload.externalInputs(), material, 4_000);
+        assertAmount(payload.netOutputs(), seed, 1_000);
+        assertAmount(payload.netOutputs(), product, 1_000);
+        assertAmount(payload.netOutputs(), byproduct, 3_000);
+    }
+
+    @Test
+    void productionWithoutAnyReusableSeedIsNotAClosedLoop() {
+        var product = key("seedless_product");
+        var seedless = pattern(List.of(output(product, 1)));
+
+        var solved = ClosedLoopPatternAnalyzer.solveCoefficients(List.of(seedless), product);
+
+        assertEquals(com.moakiee.thunderbolt.core.planner.PositiveIntegerLinearSolver.Status.INFEASIBLE,
+                solved.status());
+        assertEquals(ClosedLoopPatternAnalyzer.StructureStatus.NOT_CONNECTED,
+                ClosedLoopPatternAnalyzer.validateMinimalStructure(List.of(seedless)));
+    }
+
+    @Test
+    void fuzzySeedSlotIsPinnedToOneConcreteVariantForEveryExecutionRound() {
+        var encodedInput = new TestKey("pinned_seed", "encoded");
+        var returnedVariant = new TestKey("pinned_seed", "returned");
+        var otherReturnedVariant = new TestKey("pinned_seed", "other");
+        var details = new FakeOverloadPattern(
+                new IPatternDetails.IInput[] {input(encodedInput, 1, null)},
+                List.of(output(returnedVariant, 1)), true, false);
+
+        var pinned = com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopExpandedPatternDetails
+                .pinReusableSeedInputs(details, java.util.Set.of(returnedVariant));
+
+        assertEquals(returnedVariant, pinned[0].getPossibleInputs()[0].what());
+        assertEquals(true, pinned[0].isValid(returnedVariant, null));
+        assertEquals(false, pinned[0].isValid(encodedInput, null));
+        assertThrows(IllegalArgumentException.class,
+                () -> com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopExpandedPatternDetails
+                        .pinReusableSeedInputs(details,
+                                java.util.Set.of(returnedVariant, otherReturnedVariant)));
     }
 
     private static com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopAnalysis analyzeOverloadEdge(

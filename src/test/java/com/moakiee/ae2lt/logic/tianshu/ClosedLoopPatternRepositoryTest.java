@@ -13,6 +13,7 @@ import com.mojang.serialization.MapCodec;
 import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternPayload;
 import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternRepository;
 import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopMemberPattern;
+import com.moakiee.ae2lt.logic.tianshu.loop.TianshuSeedRefillService;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.InventoryMaintenanceDecision;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.InventoryMaintenanceRepository;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.InventoryMaintenanceRule;
@@ -43,6 +44,18 @@ import org.junit.jupiter.api.Test;
 
 class ClosedLoopPatternRepositoryTest {
     @Test
+    void seedMultiplierScalesStorageTargetButNotTheComputedBaseSeed() {
+        var base = payload(UUID.randomUUID(), 1);
+        var scaled = base.withSeedMultiplier(1_000);
+        var seed = base.seeds().getFirst();
+
+        assertEquals(1, seed.amount());
+        assertEquals(1_000, scaled.seedMultiplier());
+        assertEquals(1_000,
+                TianshuSeedRefillService.requirements(scaled).get(seed.what()));
+    }
+
+    @Test
     void warehouseCapacityGatesNewPatternsButNeverDeletesExistingData() {
         var capacity = new int[] { 1 };
         var repository = new ClosedLoopPatternRepository(() -> capacity[0]);
@@ -57,7 +70,7 @@ class ClosedLoopPatternRepositoryTest {
         assertEquals(List.of(first), repository.overflowedPatterns());
         assertEquals(List.of(), repository.activePatterns());
         assertEquals(ClosedLoopPatternRepository.PutResult.UPDATED,
-                repository.put(first.withParallelism(8)));
+                repository.put(first.withSeedMultiplier(8)));
         capacity[0] = 1;
         assertEquals(1, repository.activePatterns().size());
     }

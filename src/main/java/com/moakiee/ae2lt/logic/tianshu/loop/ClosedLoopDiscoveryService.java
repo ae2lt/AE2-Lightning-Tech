@@ -1,6 +1,7 @@
 package com.moakiee.ae2lt.logic.tianshu.loop;
 
 import appeng.api.crafting.IPatternDetails;
+import appeng.api.crafting.PatternDetailsHelper;
 import appeng.api.networking.crafting.ICraftingService;
 import appeng.api.stacks.AEKey;
 import com.moakiee.thunderbolt.ae2.overload.pattern.SourcePatternSnapshot;
@@ -15,23 +16,35 @@ import net.minecraft.world.level.Level;
 
 public final class ClosedLoopDiscoveryService {
     private static final int MAX_DEPTH = 8;
-    private static final int MAX_MEMBERS = 6;
-    private static final int MAX_COEFFICIENT = 8;
-    private static final int MAX_COEFFICIENT_PROBES = 65_536;
     private static final int MAX_PATHS_PER_INPUT = 32;
     private static final int MAX_MEMBER_COMBINATIONS = 128;
 
     public static List<ClosedLoopDiscoveryCandidate> discover(
             ICraftingService crafting, Level level, AEKey requestedOutput) {
-        if (crafting == null || level == null || requestedOutput == null) return List.of();
+        return discoverDetailed(crafting, level, requestedOutput).candidates();
+    }
+
+    public static DiscoveryResult discoverDetailed(
+            ICraftingService crafting, Level level, AEKey requestedOutput) {
+        if (crafting == null || level == null || requestedOutput == null) {
+            return new DiscoveryResult(List.of(), false);
+        }
         var result = new ArrayList<ClosedLoopDiscoveryCandidate>();
         var signatures = new HashSet<String>();
+        boolean rejectedUndecodablePattern = false;
         for (var resolved : resolveCandidates(crafting::getCraftingFor, requestedOutput)) {
             var storedMembers = new ArrayList<ClosedLoopMemberPattern>(resolved.members().size());
             boolean valid = true;
             for (int i = 0; i < resolved.members().size(); i++) {
                 var definition = resolved.members().get(i).getDefinition();
                 if (definition == null) {
+                    valid = false;
+                    break;
+                }
+                var decoded = PatternDetailsHelper.decodePattern(definition, level);
+                // Only persist members that participate in AE2's standard save/load decoder path.
+                if (decoded == null) {
+                    rejectedUndecodablePattern = true;
                     valid = false;
                     break;
                 }
@@ -50,7 +63,15 @@ public final class ClosedLoopDiscoveryService {
                     UUID.randomUUID(), 1L, storedMembers, analysis.seeds(), analysis.externalInputs(),
                     analysis.netOutputs(), 1, true)));
         }
-        return List.copyOf(result);
+        return new DiscoveryResult(result, rejectedUndecodablePattern);
+    }
+
+    public record DiscoveryResult(
+            List<ClosedLoopDiscoveryCandidate> candidates,
+            boolean rejectedUndecodablePattern) {
+        public DiscoveryResult {
+            candidates = List.copyOf(candidates);
+        }
     }
 
     /** Pure graph portion, package-visible for deterministic unit tests. */
@@ -82,15 +103,19 @@ public final class ClosedLoopDiscoveryService {
             var combinations = new int[] {0};
             enumerateMemberSets(optionsByInput, 0, selected, hasReturnedInput(root), combinations,
                     members -> {
-                        if (members.size() > MAX_MEMBERS
+                        if (members.size() > ClosedLoopPatternAnalyzer.MAX_MEMBERS
                                 || !memberSetSignatures.add(Set.copyOf(members))) return;
                         var memberList = List.copyOf(members);
-                        long[] coefficients = solveCoefficients(memberList, requestedOutput);
-                        if (coefficients == null) return;
-                        var analysis = analyze(memberList, coefficients, requestedOutput);
-                        if (analysis != null) {
+                        var coefficientResult = ClosedLoopPatternAnalyzer.solveCoefficients(
+                                memberList, requestedOutput);
+                        if (!coefficientResult.solved()) return;
+                        if (ClosedLoopPatternAnalyzer.validateMinimalStructure(memberList)
+                                != ClosedLoopPatternAnalyzer.StructureStatus.VALID) return;
+                        long[] coefficients = coefficientResult.coefficients();
+                        var ordered = analyzeBestOrder(memberList, coefficients, requestedOutput);
+                        if (ordered != null) {
                             result.add(new ResolvedCandidate(
-                                    memberList, coefficients.clone(), analysis));
+                                    ordered.members(), ordered.coefficients(), ordered.analysis()));
                         }
                     });
         }
@@ -115,7 +140,7 @@ public final class ClosedLoopDiscoveryService {
             for (var member : option.members()) {
                 if (selected.add(member)) added.add(member);
             }
-            if (selected.size() <= MAX_MEMBERS) {
+            if (selected.size() <= ClosedLoopPatternAnalyzer.MAX_MEMBERS) {
                 enumerateMemberSets(optionsByInput, index + 1, selected,
                         closes || option.closes(), combinations, sink);
             }
@@ -164,36 +189,22 @@ public final class ClosedLoopDiscoveryService {
         return patterns != null ? patterns : List.of();
     }
 
-    private static long[] solveCoefficients(List<IPatternDetails> members, AEKey output) {
-        var allOne = new long[members.size()];
-        java.util.Arrays.fill(allOne, 1L);
-        if (analyze(members, allOne, output) != null) return allOne;
-        var probes = new int[] {0};
-        return searchCoefficients(members, output, new long[members.size()], 0, probes);
-    }
-
-    private static long[] searchCoefficients(
-            List<IPatternDetails> members, AEKey output, long[] coefficients,
-            int index, int[] probes) {
-        if (probes[0]++ >= MAX_COEFFICIENT_PROBES) return null;
-        if (index == coefficients.length) {
-            return analyze(members, coefficients, output) != null ? coefficients.clone() : null;
-        }
-        for (int value = 1; value <= MAX_COEFFICIENT; value++) {
-            coefficients[index] = value;
-            var found = searchCoefficients(members, output, coefficients, index + 1, probes);
-            if (found != null) return found;
-        }
-        return null;
-    }
-
-    private static ClosedLoopAnalysis analyze(
+    private static OrderedCandidate analyzeBestOrder(
             List<IPatternDetails> members, long[] coefficients, AEKey output) {
         var analyzed = new ArrayList<ClosedLoopPatternAnalyzer.Member>(members.size());
         for (int i = 0; i < members.size(); i++) {
             analyzed.add(new ClosedLoopPatternAnalyzer.Member(members.get(i), coefficients[i]));
         }
-        return ClosedLoopPatternAnalyzer.analyze(analyzed, output);
+        var ordered = ClosedLoopPatternAnalyzer.analyzeBestOrder(analyzed, output);
+        if (ordered == null) return null;
+        var orderedDetails = new ArrayList<IPatternDetails>(ordered.members().size());
+        var orderedCoefficients = new long[ordered.members().size()];
+        for (int i = 0; i < ordered.members().size(); i++) {
+            orderedDetails.add(ordered.members().get(i).details());
+            orderedCoefficients[i] = ordered.members().get(i).copies();
+        }
+        return new OrderedCandidate(
+                List.copyOf(orderedDetails), orderedCoefficients, ordered.analysis());
     }
 
     private static List<AEKey> deterministicInputs(IPatternDetails details) {
@@ -226,6 +237,11 @@ public final class ClosedLoopDiscoveryService {
     }
 
     static record ResolvedCandidate(
+            List<IPatternDetails> members,
+            long[] coefficients,
+            ClosedLoopAnalysis analysis) { }
+
+    private record OrderedCandidate(
             List<IPatternDetails> members,
             long[] coefficients,
             ClosedLoopAnalysis analysis) { }

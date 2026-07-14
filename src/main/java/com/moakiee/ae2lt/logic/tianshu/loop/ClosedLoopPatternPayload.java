@@ -14,7 +14,7 @@ public record ClosedLoopPatternPayload(
         List<GenericStack> seeds,
         List<GenericStack> externalInputs,
         List<GenericStack> netOutputs,
-        int parallelism,
+        int seedMultiplier,
         boolean enabled) {
 
     public ClosedLoopPatternPayload {
@@ -27,7 +27,7 @@ public record ClosedLoopPatternPayload(
         if (memberPatterns.isEmpty()) throw new IllegalArgumentException("closed-loop pattern requires members");
         if (seeds.isEmpty()) throw new IllegalArgumentException("closed-loop pattern requires at least one seed");
         if (netOutputs.isEmpty()) throw new IllegalArgumentException("closed-loop pattern requires a net output");
-        if (parallelism < 1) throw new IllegalArgumentException("parallelism must be positive");
+        if (seedMultiplier < 1) throw new IllegalArgumentException("seed multiplier must be positive");
 
         var outputKeys = new HashSet<>();
         for (var output : netOutputs) {
@@ -37,15 +37,15 @@ public record ClosedLoopPatternPayload(
         }
     }
 
-    public ClosedLoopPatternPayload withParallelism(int newParallelism) {
+    public ClosedLoopPatternPayload withSeedMultiplier(int newSeedMultiplier) {
         return new ClosedLoopPatternPayload(patternId, version + 1, memberPatterns, seeds,
-                externalInputs, netOutputs, newParallelism, enabled);
+                externalInputs, netOutputs, newSeedMultiplier, enabled);
     }
 
     public ClosedLoopPatternPayload withEnabled(boolean newEnabled) {
         if (enabled == newEnabled) return this;
         return new ClosedLoopPatternPayload(patternId, version + 1, memberPatterns, seeds,
-                externalInputs, netOutputs, parallelism, newEnabled);
+                externalInputs, netOutputs, seedMultiplier, newEnabled);
     }
 
     private static List<ClosedLoopMemberPattern> copyMembers(List<ClosedLoopMemberPattern> members) {

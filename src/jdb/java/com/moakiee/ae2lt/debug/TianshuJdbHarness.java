@@ -56,6 +56,71 @@ public final class TianshuJdbHarness {
 
     public static String lastReport() { return lastReport; }
 
+    /** Probes MEGA's real runtime jar through AE2's standard CPU persistence decoder path. */
+    public static String runMegaPatternDecodeProbe() {
+        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+        if (server == null) return "FAIL: no running Minecraft server";
+        if (!server.isSameThread()) return "FAIL: invoke from the suspended server tick thread";
+        try {
+            var patternClass = Class.forName("gripe._90.megacells.misc.DecompressionPattern");
+            var constructor = patternClass.getConstructor(ItemStack.class, ItemStack.class);
+            var original = (appeng.api.crafting.IPatternDetails) constructor.newInstance(
+                    new ItemStack(Items.IRON_INGOT, 9), new ItemStack(Items.IRON_BLOCK));
+            var definition = original.getDefinition();
+            require(definition != null, "MEGA definition is null");
+            var level = server.overworld();
+            var decodedDirect = appeng.api.crafting.PatternDetailsHelper.decodePattern(definition, level);
+            var snapshot = com.moakiee.thunderbolt.ae2.overload.pattern.SourcePatternSnapshot
+                    .fromItemStack(definition.toStack(), level.registryAccess());
+            var authoringResult = com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternAuthoringService
+                    .createFromDraft(
+                            java.util.List.of(new com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopMemberPattern(
+                                    snapshot, 1L)),
+                            appeng.api.stacks.AEItemKey.of(Items.IRON_BLOCK), 1, level);
+            var definitionTag = definition.toTag(level.registryAccess());
+            definitionTag.putLong("#craftingProgress", 64L);
+            var restoredDefinition = AEItemKey.fromTag(level.registryAccess(), definitionTag);
+            var decodedRoundTrip = appeng.api.crafting.PatternDetailsHelper.decodePattern(
+                    restoredDefinition, level);
+            var controlStack = appeng.api.crafting.PatternDetailsHelper.encodeProcessingPattern(
+                    List.of(new appeng.api.stacks.GenericStack(AEItemKey.of(Items.IRON_INGOT), 9)),
+                    List.of(new appeng.api.stacks.GenericStack(AEItemKey.of(Items.IRON_BLOCK), 1)));
+            var controlDefinition = AEItemKey.of(controlStack);
+            require(controlDefinition != null, "AE2 control definition is null");
+            var controlTag = controlDefinition.toTag(level.registryAccess());
+            controlTag.putLong("#craftingProgress", 64L);
+            var restoredControlDefinition = AEItemKey.fromTag(level.registryAccess(), controlTag);
+            var decodedControl = appeng.api.crafting.PatternDetailsHelper.decodePattern(
+                    restoredControlDefinition, level);
+            var decodersField = appeng.api.crafting.PatternDetailsHelper.class.getDeclaredField("DECODERS");
+            decodersField.setAccessible(true);
+            var decoders = ((java.util.List<?>) decodersField.get(null)).stream()
+                    .map(decoder -> decoder.getClass().getName())
+                    .toList();
+            var compressionService = Class.forName("gripe._90.megacells.misc.CompressionService");
+            var chainsField = compressionService.getDeclaredField("chains");
+            chainsField.setAccessible(true);
+            int chainCount = ((java.util.List<?>) chainsField.get(null)).size();
+            return "MEGA decode: direct=" + className(decodedDirect)
+                    + ", nbtRoundTrip=" + className(decodedRoundTrip)
+                    + ", definition=" + definition
+                    + ", vanillaCpuTaskRoundTrip={control:1->" + (decodedControl == null ? 0 : 1)
+                    + ", mega:1->" + (decodedRoundTrip == null ? 0 : 1)
+                    + ", lostMegaProgress=" + (decodedRoundTrip == null
+                            ? definitionTag.getLong("#craftingProgress") : 0L) + "}"
+                    + ", ae2ltAuthoringGate=" + authoringResult.status()
+                    + ", compressionChains=" + chainCount
+                    + ", registeredDecoders=" + decoders;
+        } catch (Throwable failure) {
+            failure.printStackTrace();
+            return "FAIL: " + failure.getClass().getSimpleName() + ": " + failure.getMessage();
+        }
+    }
+
+    private static String className(Object value) {
+        return value == null ? "null" : value.getClass().getName();
+    }
+
     private static void runPatternAlgorithmChecks(ServerLevel level, List<String> checks) {
         var seedStack = new ItemStack(Items.NETHERITE_PICKAXE);
         seedStack.setDamageValue(1);

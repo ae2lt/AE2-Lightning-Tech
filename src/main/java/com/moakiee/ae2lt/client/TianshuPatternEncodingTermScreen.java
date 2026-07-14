@@ -82,9 +82,9 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
         nextCandidate = widgets.addButton("closedLoopNext", Component.literal(">"),
                 () -> menu.selectClosedLoopCandidate(1));
         parallelDown = widgets.addButton("closedLoopParallelDown", Component.literal("−"),
-                () -> menu.changeClosedLoopParallelism(hasShiftDown() ? -10 : -1));
+                () -> menu.changeClosedLoopSeedMultiplier(hasShiftDown() ? -10 : -1));
         parallelUp = widgets.addButton("closedLoopParallelUp", Component.literal("+"),
-                () -> menu.changeClosedLoopParallelism(hasShiftDown() ? 10 : 1));
+                () -> menu.changeClosedLoopSeedMultiplier(hasShiftDown() ? 10 : 1));
         upload = widgets.addButton("tianshuUpload", Component.translatable("ae2lt.tianshu.terminal.upload"),
                 this::openUploadScreen);
         viewModeButton = replaceViewModeButton();
@@ -336,9 +336,16 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
                     menu.closedLoopCandidateCount == 0 ? 0 : menu.closedLoopCandidateIndex + 1,
                     menu.closedLoopCandidateCount), x + 8, y + 29, 0x666666, false);
             graphics.drawString(font, Component.translatable(
-                    "ae2lt.tianshu.terminal.closed_loop.parallel", menu.closedLoopParallelism),
+                    "ae2lt.tianshu.terminal.closed_loop.seed_multiplier",
+                    menu.closedLoopSeedMultiplier),
                     x + 8, y + 43, 0x666666, false);
-            if (menu.uploadState != 0) {
+            if (menu.closedLoopEncodeState != 0) {
+                graphics.drawString(font, Component.translatable(
+                        menu.closedLoopEncodeState == 1
+                                ? "ae2lt.tianshu.terminal.closed_loop.invalid_pattern"
+                                : "ae2lt.tianshu.terminal.closed_loop.invalid_configuration"),
+                        x + 8, y + 55, 0xAA2222, false);
+            } else if (menu.uploadState != 0) {
                 graphics.drawString(font, Component.translatable(
                         menu.uploadState == 1 ? "ae2lt.tianshu.terminal.upload.success"
                                 : "ae2lt.tianshu.terminal.upload.failed"),

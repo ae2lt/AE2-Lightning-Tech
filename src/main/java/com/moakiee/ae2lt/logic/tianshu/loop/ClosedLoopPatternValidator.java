@@ -30,6 +30,17 @@ public final class ClosedLoopPatternValidator {
             members.add(new ClosedLoopPatternAnalyzer.Member(details, stored.copiesPerCycle()));
         }
 
+        var structure = ClosedLoopPatternAnalyzer.validateMinimalStructure(
+                members.stream().map(ClosedLoopPatternAnalyzer.Member::details).toList());
+        if (structure != ClosedLoopPatternAnalyzer.StructureStatus.VALID) {
+            return invalid(switch (structure) {
+                case NOT_CONNECTED -> ClosedLoopValidationResult.Status.MEMBERS_NOT_CONNECTED;
+                case NOT_MINIMAL -> ClosedLoopValidationResult.Status.MEMBERS_NOT_MINIMAL;
+                case INVALID -> ClosedLoopValidationResult.Status.STRUCTURE_CHECK_FAILED;
+                case VALID -> throw new IllegalStateException("unreachable");
+            });
+        }
+
         for (var declaredOutput : payload.netOutputs()) {
             var analysis = ClosedLoopPatternAnalyzer.analyze(members, declaredOutput.what());
             if (analysis == null) continue;

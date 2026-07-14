@@ -17,7 +17,7 @@ public final class ClosedLoopPatternPayloadTagCodec {
     private static final String TAG_SEEDS = "Seeds";
     private static final String TAG_INPUTS = "Inputs";
     private static final String TAG_OUTPUTS = "Outputs";
-    private static final String TAG_PARALLELISM = "Parallelism";
+    private static final String TAG_SEED_MULTIPLIER = "SeedMultiplier";
     private static final String TAG_ENABLED = "Enabled";
 
     public static CompoundTag write(ClosedLoopPatternPayload payload, HolderLookup.Provider registries) {
@@ -35,7 +35,7 @@ public final class ClosedLoopPatternPayloadTagCodec {
         tag.put(TAG_SEEDS, writeStacks(payload.seeds(), registries));
         tag.put(TAG_INPUTS, writeStacks(payload.externalInputs(), registries));
         tag.put(TAG_OUTPUTS, writeStacks(payload.netOutputs(), registries));
-        tag.putInt(TAG_PARALLELISM, payload.parallelism());
+        tag.putInt(TAG_SEED_MULTIPLIER, payload.seedMultiplier());
         tag.putBoolean(TAG_ENABLED, payload.enabled());
         return tag;
     }
@@ -59,7 +59,7 @@ public final class ClosedLoopPatternPayloadTagCodec {
                 readStacks(tag.getList(TAG_SEEDS, Tag.TAG_COMPOUND), registries),
                 readStacks(tag.getList(TAG_INPUTS, Tag.TAG_COMPOUND), registries),
                 readStacks(tag.getList(TAG_OUTPUTS, Tag.TAG_COMPOUND), registries),
-                Math.max(1, tag.getInt(TAG_PARALLELISM)),
+                Math.max(1, tag.getInt(TAG_SEED_MULTIPLIER)),
                 !tag.contains(TAG_ENABLED, Tag.TAG_BYTE) || tag.getBoolean(TAG_ENABLED));
     }
 
