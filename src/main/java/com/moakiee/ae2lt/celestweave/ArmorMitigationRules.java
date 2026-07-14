@@ -13,6 +13,20 @@ public final class ArmorMitigationRules {
     private ArmorMitigationRules() {
     }
 
+    static DamageClass classify(boolean environmentDamage, boolean hardDamage) {
+        // Vanilla damage types can belong to both groups. For example, ON_FIRE,
+        // FALL and DROWN bypass armor while still being environmental hazards.
+        // Environment must win so the matrix shield matches its documented
+        // "cancels environmental damage" behavior.
+        if (environmentDamage) {
+            return DamageClass.ENVIRONMENT;
+        }
+        if (hardDamage) {
+            return DamageClass.HARD;
+        }
+        return DamageClass.ORDINARY;
+    }
+
     public static float apply(String stage, DamageClass damageClass, float incomingDamage) {
         float incoming = Math.max(0.0F, incomingDamage);
         if (incoming <= 0.0F) {

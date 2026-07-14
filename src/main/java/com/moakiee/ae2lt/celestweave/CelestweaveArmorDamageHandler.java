@@ -78,13 +78,9 @@ public final class CelestweaveArmorDamageHandler {
     }
 
     private static ArmorMitigationRules.DamageClass classifyDamage(DamageSource source) {
-        if (isHardDamage(source)) {
-            return ArmorMitigationRules.DamageClass.HARD;
-        }
-        if (isEnvironmentDamage(source)) {
-            return ArmorMitigationRules.DamageClass.ENVIRONMENT;
-        }
-        return ArmorMitigationRules.DamageClass.ORDINARY;
+        return ArmorMitigationRules.classify(
+                isEnvironmentDamage(source),
+                isHardDamage(source));
     }
 
     private static boolean isHardDamage(DamageSource source) {
