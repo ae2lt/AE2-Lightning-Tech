@@ -7,6 +7,7 @@ import com.moakiee.ae2lt.menu.LightningAssemblyChamberMenu;
 import com.moakiee.ae2lt.menu.LightningCollectorMenu;
 import com.moakiee.ae2lt.menu.LightningSimulationChamberMenu;
 import com.moakiee.ae2lt.menu.MatrixControllerMenu;
+import com.moakiee.ae2lt.menu.MatrixPortMenu;
 import com.moakiee.ae2lt.menu.OverloadPatternEncoderMenu;
 import com.moakiee.ae2lt.menu.OverloadProcessingFactoryMenu;
 import com.moakiee.ae2lt.menu.OverloadDeviceWorkbenchMenu;
@@ -102,6 +103,11 @@ public final class ModMenuTypes {
             MATRIX_CONTROLLER = MENU_TYPES.register(
                     "matter_warping_matrix_controller",
                     () -> MatrixControllerMenu.TYPE);
+
+    public static final DeferredHolder<MenuType<?>, MenuType<MatrixPortMenu>>
+            MATRIX_PORT = MENU_TYPES.register(
+                    "matter_warping_matrix_port",
+                    () -> MatrixPortMenu.TYPE);
 
     public static final DeferredHolder<MenuType<?>, MenuType<TianshuSupercomputerControllerMenu>>
             TIANSHU_SUPERCOMPUTER_CONTROLLER = MENU_TYPES.register(

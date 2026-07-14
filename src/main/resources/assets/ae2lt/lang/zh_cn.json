@@ -952,5 +952,7 @@
   "ae2lt.tianshu.issue.missing_storage_core": "至少需要一个存储超算单元",
   "ae2lt.tianshu.issue.missing_parallel_core": "至少需要一个并行超算单元",
   "ae2lt.tianshu.issue.unexpected_block": "模板空气区域中存在无关方块",
-  "ae2lt.tianshu.issue.unknown": "结构不完整"
+  "ae2lt.tianshu.issue.unknown": "结构不完整",
+  "ae2lt.gui.matrix_port.search": "搜索矩阵样板",
+  "ae2lt.gui.matrix_port.title": "样板管理"
 }
