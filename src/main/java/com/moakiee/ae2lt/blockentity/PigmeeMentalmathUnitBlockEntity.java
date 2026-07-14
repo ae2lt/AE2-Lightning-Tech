@@ -4,6 +4,7 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 
+import appeng.api.networking.GridFlags;
 import appeng.api.networking.IGrid;
 import appeng.api.networking.IManagedGridNode;
 import appeng.api.networking.security.IActionSource;
@@ -51,7 +52,8 @@ public class PigmeeMentalmathUnitBlockEntity extends AENetworkedBlockEntity
         return super.createMainNode()
                 .setTagName("pigmee_mentalmath_unit")
                 .setVisualRepresentation(ModBlocks.PIGMEE_MENTALMATH_UNIT.get())
-                .setIdlePowerUsage(1.0D);
+                .setIdlePowerUsage(1.0D)
+                .setFlags(GridFlags.REQUIRE_CHANNEL);
     }
 
     @Override
