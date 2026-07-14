@@ -75,8 +75,8 @@ If FE or required Lightning is missing, the affected effects cannot be maintaine
 | Module | Effect |
 |--------|--------|
 | Reach Extension | Adds block / entity interaction range; configurable as 1x, 2x or 4x |
-| Matrix Shield | Cancels environmental damage, reduces ordinary damage by about 80%, and reduces hard damage by about 50% |
-| Phase Shield | Blocks incoming damage completely, spending EHV based on prevented damage |
+| Matrix Shield | Cancels environmental damage and extinguishes fire, reduces ordinary damage by about 80%, and reduces hard damage by about 50% |
+| Phase Shield | Blocks incoming damage completely and extinguishes fire, spending EHV based on prevented damage |
 | Reflect | Reflects up to 30% of attacker damage, spending FE and HV |
 | Undying | Intercepts fatal damage, spending large FE and EHV costs |
 | Purification | Removes and blocks configured status effects; by default, harmful effects only |

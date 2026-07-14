@@ -28,7 +28,8 @@
     "client.VerticalButtonBarAccessor",
     "client.AEBaseScreenFrequencyTerminalButtonMixin",
     "client.ClientPacketListenerShieldHitFeedbackMixin",
-    "client.LocalPlayerShieldHitFeedbackMixin"
+    "client.LocalPlayerShieldHitFeedbackMixin",
+    "client.EntityShieldFireVisualMixin"
   ],
   "injectors": {
     "defaultRequire": 1
