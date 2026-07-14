@@ -15,10 +15,12 @@ import com.moakiee.ae2lt.integration.jei.category.LightningAssemblyCategory;
 import com.moakiee.ae2lt.integration.jei.category.LightningSimulationCategory;
 import com.moakiee.ae2lt.integration.jei.category.LightningStrikeCategory;
 import com.moakiee.ae2lt.integration.jei.category.LightningTransformCategory;
+import com.moakiee.ae2lt.integration.jei.category.MultiblockStructureCategory;
 import com.moakiee.ae2lt.integration.jei.category.OverloadGrowthCategory;
 import com.moakiee.ae2lt.integration.jei.category.OverloadProcessingCategory;
 import com.moakiee.ae2lt.integration.jei.category.TeslaCoilCategory;
 import com.moakiee.ae2lt.integration.jei.compat.ae2jeiintegration.AE2JeiIntegrationCompat;
+import com.moakiee.ae2lt.integration.jei.multiblock.MultiblockStructureRecipes;
 import com.moakiee.ae2lt.registry.ModBlocks;
 import mezz.jei.api.IModPlugin;
 import mezz.jei.api.JeiPlugin;
@@ -75,13 +77,15 @@ public class JEIPlugin implements IModPlugin {
                 new OverloadProcessingCategory(guiHelper),
                 new TeslaCoilCategory(guiHelper),
                 new CrystalCatalyzerCategory(guiHelper),
-                new FirmamentConversionCategory(guiHelper));
+                new FirmamentConversionCategory(guiHelper),
+                new MultiblockStructureCategory(guiHelper));
     }
 
     @Override
     public void registerRecipes(IRecipeRegistration registration) {
         registration.addRecipes(OverloadGrowthCategory.TYPE, List.of(OverloadGrowthCategory.Page.values()));
         registration.addRecipes(TeslaCoilCategory.TYPE, List.of(TeslaCoilCategory.Page.values()));
+        registration.addRecipes(MultiblockStructureCategory.TYPE, MultiblockStructureRecipes.all());
 
         var level = Minecraft.getInstance().level;
         if (level == null) {
@@ -148,6 +152,12 @@ public class JEIPlugin implements IModPlugin {
         registration.addRecipeCatalyst(ModBlocks.TESLA_COIL.toStack(), TeslaCoilCategory.TYPE);
         registration.addRecipeCatalyst(ModBlocks.CRYSTAL_CATALYZER.toStack(), CrystalCatalyzerCategory.TYPE);
         registration.addRecipeCatalyst(ModBlocks.FIRMAMENT_CONVERSION_CORE.toStack(), FirmamentConversionCategory.TYPE);
+        registration.addRecipeCatalyst(
+                ModBlocks.MATTER_WARPING_MATRIX_CONTROLLER.toStack(),
+                MultiblockStructureCategory.TYPE);
+        registration.addRecipeCatalyst(
+                ModBlocks.TIANSHU_SUPERCOMPUTER_CONTROLLER.toStack(),
+                MultiblockStructureCategory.TYPE);
     }
 
     @Override
