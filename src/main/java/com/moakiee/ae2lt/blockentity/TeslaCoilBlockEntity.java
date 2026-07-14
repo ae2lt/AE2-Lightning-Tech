@@ -20,6 +20,8 @@ import appeng.menu.locator.MenuHostLocator;
 import com.moakiee.ae2lt.block.TeslaCoilBlock;
 import com.moakiee.ae2lt.grid.FrequencyBindingHelper;
 import com.moakiee.ae2lt.grid.FrequencyBindingHost;
+import com.moakiee.ae2lt.logic.MemoryCardConfigSupport;
+import com.moakiee.ae2lt.machine.common.LightningCollapseMatrixHost;
 import com.moakiee.ae2lt.machine.teslacoil.TeslaCoilAutomationInventory;
 import com.moakiee.ae2lt.machine.teslacoil.TeslaCoilEnergyStorage;
 import com.moakiee.ae2lt.machine.teslacoil.TeslaCoilInventory;
@@ -44,7 +46,7 @@ import net.neoforged.neoforge.energy.IEnergyStorage;
 import net.neoforged.neoforge.items.IItemHandlerModifiable;
 
 public class TeslaCoilBlockEntity extends AENetworkedBlockEntity
-        implements IActionHost, FrequencyBindingHost {
+        implements IActionHost, FrequencyBindingHost, LightningCollapseMatrixHost {
     public static final int ENERGY_CAPACITY = 16_000_000;
     private static final String TAG_INVENTORY = "Inventory";
     private static final String TAG_ENERGY = "Energy";
@@ -111,6 +113,16 @@ public class TeslaCoilBlockEntity extends AENetworkedBlockEntity
 
     public TeslaCoilInventory getInventory() {
         return inventory;
+    }
+
+    @Override
+    public IItemHandlerModifiable getMatrixInventory() {
+        return inventory;
+    }
+
+    @Override
+    public int getMatrixSlot() {
+        return TeslaCoilInventory.SLOT_MATRIX;
     }
 
     public IItemHandlerModifiable getAutomationInventory() {
@@ -429,9 +441,10 @@ public class TeslaCoilBlockEntity extends AENetworkedBlockEntity
                                net.minecraft.core.component.DataComponentMap.Builder builder,
                                @org.jetbrains.annotations.Nullable Player player) {
         super.exportSettings(mode, builder, player);
-        com.moakiee.ae2lt.logic.MemoryCardConfigSupport.exportMemoryCardSettings(mode, builder, tag -> {
-            com.moakiee.ae2lt.logic.MemoryCardConfigSupport.writeEnum(tag, TAG_SELECTED_MODE, selectedMode);
+        MemoryCardConfigSupport.exportMemoryCardSettings(mode, builder, tag -> {
+            MemoryCardConfigSupport.writeEnum(tag, TAG_SELECTED_MODE, selectedMode);
             FrequencyBindingHelper.writeMemoryFrequency(tag, getFrequencyId());
+            MemoryCardConfigSupport.writeMatrixCount(tag, this);
         });
     }
 
@@ -440,11 +453,12 @@ public class TeslaCoilBlockEntity extends AENetworkedBlockEntity
                                net.minecraft.core.component.DataComponentMap input,
                                @org.jetbrains.annotations.Nullable Player player) {
         super.importSettings(mode, input, player);
-        com.moakiee.ae2lt.logic.MemoryCardConfigSupport.importMemoryCardSettings(mode, input, tag -> {
-            var mode2 = com.moakiee.ae2lt.logic.MemoryCardConfigSupport.readEnum(
+        MemoryCardConfigSupport.importMemoryCardSettings(mode, input, tag -> {
+            var mode2 = MemoryCardConfigSupport.readEnum(
                     tag, TAG_SELECTED_MODE, TeslaCoilMode.class, selectedMode);
             this.selectedMode = mode2;
             FrequencyBindingHelper.importMemoryFrequency(tag, this::setFrequency);
+            MemoryCardConfigSupport.restoreMatrixCount(tag, player, this);
             saveChanges();
             markForUpdate();
         });
