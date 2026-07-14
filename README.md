@@ -1,4 +1,6 @@
-# AE2 Lightning Tech [![Modrinth](https://img.shields.io/modrinth/dt/ArHeh5Fz?style=flat&logo=modrinth&label=Modrinth)](https://modrinth.com/mod/ae2-lightning-tech) [![CurseForge](https://img.shields.io/curseforge/dt/1527395?style=flat&logo=curseforge&label=CurseForge)](https://www.curseforge.com/minecraft/mc-mods/ae2-lightning-tech)
+# AE2 Lightning Tech
+
+[![Modrinth](https://img.shields.io/modrinth/dt/ArHeh5Fz?style=flat&logo=modrinth&label=Modrinth)](https://modrinth.com/mod/ae2-lightning-tech) [![CurseForge](https://img.shields.io/curseforge/dt/1527395?style=flat&logo=curseforge&label=CurseForge)](https://www.curseforge.com/minecraft/mc-mods/ae2-lightning-tech)
 
 [中文文档](README_zh_CN.md)
 
