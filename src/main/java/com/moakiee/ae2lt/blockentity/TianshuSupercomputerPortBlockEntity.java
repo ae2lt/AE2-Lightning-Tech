@@ -151,7 +151,7 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
 
     @Override
     public Component getDisplayName() {
-        return Component.translatable("block.ae2lt.tianshu_supercomputer_controller");
+        return Component.translatable("ae2lt.tianshu.cpu_name");
     }
 
     public TianshuSupercomputerControllerBlockEntity getController() {

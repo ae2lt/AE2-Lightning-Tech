@@ -30,6 +30,7 @@ import com.moakiee.ae2lt.blockentity.LightningSimulationChamberBlockEntity;
 import com.moakiee.ae2lt.blockentity.OverloadProcessingFactoryBlockEntity;
 import com.moakiee.ae2lt.blockentity.OverloadedPatternProviderBlockEntity;
 import com.moakiee.ae2lt.blockentity.OverloadedPowerSupplyBlockEntity;
+import com.moakiee.ae2lt.blockentity.PigmeeMentalmathUnitBlockEntity;
 import com.moakiee.ae2lt.blockentity.TeslaCoilBlockEntity;
 import com.moakiee.ae2lt.blockentity.TestTimeWheelCraftingCpuBlockEntity;
 import com.moakiee.ae2lt.block.TeslaCoilBlock;
@@ -131,6 +132,7 @@ public class AE2LightningTech {
                         output.accept(ModBlocks.EXTENDED_OVERLOADED_PATTERN_PROVIDER);
                         output.accept(ModBlocks.OVERLOADED_INTERFACE);
                         output.accept(ModBlocks.TEST_TIME_WHEEL_CRAFTING_CPU);
+                        output.accept(ModBlocks.PIGMEE_MENTALMATH_UNIT);
                         output.accept(ModBlocks.TIANSHU_SUPERCOMPUTER_CASING);
                         output.accept(ModBlocks.PHASE_CHANGE_COOLING_UNIT);
                         output.accept(ModBlocks.TIANSHU_SUPERCOMPUTER_GLASS);
@@ -515,6 +517,11 @@ public class AE2LightningTech {
 
         event.registerBlockEntity(
                 AECapabilities.IN_WORLD_GRID_NODE_HOST,
+                ModBlockEntities.PIGMEE_MENTALMATH_UNIT.get(),
+                (blockEntity, context) -> (IInWorldGridNodeHost) blockEntity);
+
+        event.registerBlockEntity(
+                AECapabilities.IN_WORLD_GRID_NODE_HOST,
                 ModBlockEntities.MATRIX_PORT.get(),
                 (blockEntity, context) -> (IInWorldGridNodeHost) blockEntity);
 
@@ -736,6 +743,14 @@ public class AE2LightningTech {
                     null,
                     null);
 
+            var pigmeeMentalmathUnitBlock = ModBlocks.PIGMEE_MENTALMATH_UNIT.get();
+            var pigmeeMentalmathUnitBeType = ModBlockEntities.PIGMEE_MENTALMATH_UNIT.get();
+            pigmeeMentalmathUnitBlock.setBlockEntity(
+                    PigmeeMentalmathUnitBlockEntity.class,
+                    pigmeeMentalmathUnitBeType,
+                    null,
+                    null);
+
             var matrixPortBlock = ModBlocks.MATTER_WARPING_MATRIX_PORT.get();
             var matrixPortBeType = ModBlockEntities.MATRIX_PORT.get();
             matrixPortBlock.setBlockEntity(
@@ -785,6 +800,9 @@ public class AE2LightningTech {
             appeng.blockentity.AEBaseBlockEntity.registerBlockEntityItem(
                     testTimeWheelCraftingCpuBeType,
                     testTimeWheelCraftingCpuBlock.asItem());
+            appeng.blockentity.AEBaseBlockEntity.registerBlockEntityItem(
+                    pigmeeMentalmathUnitBeType,
+                    pigmeeMentalmathUnitBlock.asItem());
             appeng.blockentity.AEBaseBlockEntity.registerBlockEntityItem(
                     matrixPortBeType,
                     matrixPortBlock.asItem());
