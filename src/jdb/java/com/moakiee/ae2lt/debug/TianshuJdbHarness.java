@@ -78,6 +78,10 @@ public final class TianshuJdbHarness {
         var port = requirePort(level, portPos);
         require(port.isFormed(), direction + " port did not enter formed state");
         require(controllerPos.equals(port.getControllerPos()), direction + " port controller binding was wrong");
+        require(port.getCableConnectionType(Direction.UP) == appeng.api.util.AECableType.DENSE_SMART,
+                direction + " formed port did not expose an AE cable connection");
+        require(port.getGridConnectableSides(port.getOrientation()).size() == Direction.values().length,
+                direction + " formed port did not expose all six grid sides");
 
         BlockPos brokenCasing = TianshuMultiblockScanner.worldPos(controllerPos, BlockPos.ZERO, direction);
         level.setBlock(brokenCasing, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
@@ -86,6 +90,8 @@ public final class TianshuJdbHarness {
         require(!port.isFormed(), direction + " port stayed formed after structure breakup");
         require(port.getCableConnectionType(Direction.UP) == appeng.api.util.AECableType.NONE,
                 direction + " port still exposed an AE cable connection while unformed");
+        require(port.getGridConnectableSides(port.getOrientation()).isEmpty(),
+                direction + " port still exposed grid sides while unformed");
 
         level.setBlock(brokenCasing, ModBlocks.TIANSHU_SUPERCOMPUTER_CASING.get().defaultBlockState(), Block.UPDATE_ALL);
         controller.scanNow();

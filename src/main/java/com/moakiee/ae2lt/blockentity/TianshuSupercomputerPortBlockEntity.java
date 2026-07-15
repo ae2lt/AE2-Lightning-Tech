@@ -6,6 +6,7 @@ import com.moakiee.ae2lt.registry.ModBlocks;
 import com.moakiee.ae2lt.logic.tianshu.CpuInternalCoreProfile;
 import com.moakiee.thunderbolt.ae2.timewheel.TimeWheelCraftingCpuPool;
 import com.moakiee.thunderbolt.ae2.timewheel.TimeWheelCraftingCpuPoolHost;
+import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Objects;
@@ -61,12 +62,12 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
 
     @Override
     public AECableType getCableConnectionType(Direction dir) {
-        return AECableType.DENSE_SMART;
+        return formed ? AECableType.DENSE_SMART : AECableType.NONE;
     }
 
     @Override
     public Set<Direction> getGridConnectableSides(BlockOrientation orientation) {
-        return EnumSet.allOf(Direction.class);
+        return formed ? EnumSet.allOf(Direction.class) : Collections.emptySet();
     }
 
     public void bindToController(BlockPos controllerPos) {
@@ -76,9 +77,13 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
     public void bindToController(BlockPos controllerPos, CpuInternalCoreProfile profile) {
         BlockPos newControllerPos = controllerPos == null ? null : controllerPos.immutable();
         boolean newFormed = newControllerPos != null;
-        boolean bindingChanged = formed != newFormed || !Objects.equals(this.controllerPos, newControllerPos);
+        boolean formedChanged = formed != newFormed;
+        boolean bindingChanged = formedChanged || !Objects.equals(this.controllerPos, newControllerPos);
         this.controllerPos = newControllerPos;
         this.formed = newFormed;
+        if (formedChanged) {
+            onGridConnectableSidesChanged();
+        }
         if (!formed || profile.mainCore() == null) {
             clearPendingProfile();
         } else if (cpuPool.getTotalStorage() != profile.storageBytes()
@@ -193,6 +198,7 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
         super.loadTag(tag, registries);
         controllerPos = tag.contains(TAG_CONTROLLER_POS, Tag.TAG_LONG) ? BlockPos.of(tag.getLong(TAG_CONTROLLER_POS)) : null;
         formed = tag.getBoolean(TAG_FORMED) && controllerPos != null;
+        onGridConnectableSidesChanged();
         if (tag.contains(TAG_CPU_STORAGE, Tag.TAG_LONG)) {
             cpuPool.reconfigure(Math.max(0L, tag.getLong(TAG_CPU_STORAGE)), Math.max(0, tag.getInt(TAG_CPU_PARALLEL)));
         }

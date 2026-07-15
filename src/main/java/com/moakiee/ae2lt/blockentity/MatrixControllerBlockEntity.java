@@ -459,7 +459,18 @@ public class MatrixControllerBlockEntity extends BlockEntity {
     }
 
     private void form(MatrixMultiblockScanResult result) {
-        clearBindingsInStoredBounds();
+        List<BlockPos> newPatternStoragePositions = result.patternMembers().stream()
+                .map(member -> member.worldPos().immutable())
+                .toList();
+        boolean bindingLayoutChanged = !formed
+                || orientation != result.orientation()
+                || !result.portPos().equals(portPos)
+                || !result.minPos().equals(minPos)
+                || !result.maxPos().equals(maxPos)
+                || !newPatternStoragePositions.equals(patternStoragePositions);
+        if (bindingLayoutChanged) {
+            clearBindingsInStoredBounds();
+        }
         formed = true;
         orientation = result.orientation();
         portPos = result.portPos();
@@ -468,9 +479,7 @@ public class MatrixControllerBlockEntity extends BlockEntity {
         memberCount = result.members().size();
         patternStorageCount = result.patternMembers().size();
         craftingUnitCount = result.craftingMembers().size();
-        patternStoragePositions = result.patternMembers().stream()
-                .map(member -> member.worldPos().immutable())
-                .toList();
+        patternStoragePositions = newPatternStoragePositions;
         cachedPatternStorages = resolvePatternStorages(result);
         cachedCraftingUnits = result.craftingUnits();
         structureCacheValid = true;

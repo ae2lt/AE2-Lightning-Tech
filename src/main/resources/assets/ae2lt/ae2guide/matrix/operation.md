@@ -47,7 +47,7 @@ The Port:
 * Publishes the matrix as a crafting provider to the ME network
 * Aggregates and exposes all Pattern Storages
 * Receives ingredients from crafting jobs and inserts completed results directly into the network
-* Accepts ME cable connections on all six sides, uses 8 AE/t while idle, and the formed multiblock consumes 1 channel
+* Accepts ME cable connections on all six sides only after formation; cables cannot connect while the structure is unformed. It uses 8 AE/t while idle, and the formed multiblock consumes 1 channel
 
 The matrix accepts no new crafting work while the Port is disconnected from a powered network or belongs to an unformed structure.
 

@@ -1,7 +1,10 @@
 package com.moakiee.ae2lt.blockentity;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 
 import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.thunderbolt.ae2.api.crafting.IBatchCraftingProvider;
@@ -104,12 +107,12 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
 
     @Override
     public AECableType getCableConnectionType(Direction dir) {
-        return AECableType.DENSE_SMART;
+        return formed ? AECableType.DENSE_SMART : AECableType.NONE;
     }
 
     @Override
-    public java.util.Set<Direction> getGridConnectableSides(BlockOrientation orientation) {
-        return java.util.EnumSet.allOf(Direction.class);
+    public Set<Direction> getGridConnectableSides(BlockOrientation orientation) {
+        return formed ? EnumSet.allOf(Direction.class) : Collections.emptySet();
     }
 
     public IItemHandlerModifiable getPatternItemHandler() {
@@ -121,8 +124,17 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
     }
 
     public void bindToController(BlockPos controllerPos) {
-        this.controllerPos = controllerPos == null ? null : controllerPos.immutable();
-        this.formed = controllerPos != null;
+        BlockPos newControllerPos = controllerPos == null ? null : controllerPos.immutable();
+        boolean newFormed = newControllerPos != null;
+        boolean formedChanged = formed != newFormed;
+        this.controllerPos = newControllerPos;
+        this.formed = newFormed;
+        if (formedChanged) {
+            onGridConnectableSidesChanged();
+            if (level != null && !level.isClientSide) {
+                level.updateNeighborsAt(worldPosition, getBlockState().getBlock());
+            }
+        }
         invalidateExposedPatternStorage();
         saveChanges();
         markForUpdate();
@@ -282,6 +294,7 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
                 ? BlockPos.of(tag.getLong(TAG_CONTROLLER_POS))
                 : null;
         formed = tag.getBoolean(TAG_FORMED) && controllerPos != null;
+        onGridConnectableSidesChanged();
         if (tag.contains(TAG_CLUSTER, Tag.TAG_COMPOUND)) {
             cluster.readEngineFrom(tag.getCompound(TAG_CLUSTER), registries);
         }
