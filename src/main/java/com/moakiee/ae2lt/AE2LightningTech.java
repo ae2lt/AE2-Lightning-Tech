@@ -76,7 +76,6 @@ import com.moakiee.ae2lt.me.GridLightningEnergyHandler;
 import com.moakiee.ae2lt.me.cell.BulkLightningCellHandler;
 import com.moakiee.ae2lt.me.cell.FixedInfiniteCellHandler;
 
-import com.moakiee.ae2lt.logic.EjectModeRegistry;
 import com.moakiee.ae2lt.logic.MachineAdapterRegistry;
 import com.moakiee.thunderbolt.ae2.batch.BatchExecutor;
 import com.moakiee.thunderbolt.core.craft.CraftingCoreRegistry;
@@ -945,14 +944,12 @@ public class AE2LightningTech {
     }
 
     private void onServerStarting(ServerStartingEvent event) {
-        EjectModeRegistry.onServerStart(event.getServer());
         WirelessFrequencyManager.onServerStart(event.getServer());
         WirelessLinkRegistry.onServerStart(event.getServer());
         ResearchNoteGenerator.onServerStarting();
     }
 
     private void onServerStopped(ServerStoppedEvent event) {
-        EjectModeRegistry.onServerStop();
         WirelessLinkRegistry.onServerStop();
         WirelessFrequencyManager.onServerStop();
         CRAFTING_CORE_REGISTRY.clear();

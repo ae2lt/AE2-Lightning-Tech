@@ -13,8 +13,6 @@
     "ServerPlayerUndyingMixin",
     "PlayerPhaseFlightMixin",
     "ControllerValidatorMixin",
-    "EjectCapabilityMixin",
-    "EjectGhostBEMixin",
     "AnnihilationPlaneShulkerMixin"
   ],
   "client": [
