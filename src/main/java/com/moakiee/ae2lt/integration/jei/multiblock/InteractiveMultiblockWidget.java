@@ -27,7 +27,9 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
+import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
@@ -47,7 +49,7 @@ public final class InteractiveMultiblockWidget implements ISlottedRecipeWidget, 
 
     private static final int NAME_Y = 1;
     private static final int TOOLBAR_Y = 14;
-    private static final int TOOLBAR_HEIGHT = 14;
+    private static final int TOOLBAR_HEIGHT = 16;
     private static final int VIEW_X = 2;
     private static final int VIEW_Y = 31;
     private static final int PANEL_WIDTH = 105;
@@ -66,7 +68,6 @@ public final class InteractiveMultiblockWidget implements ISlottedRecipeWidget, 
     private static final int PANEL_BACKGROUND = 0xFF181818;
     private static final int VIEW_BACKGROUND = 0xFF101010;
     private static final int BORDER_COLOR = 0xFF626262;
-    private static final int ACTIVE_COLOR = 0xFF444444;
     private static final int HOVER_COLOR = 0xFF353535;
     private static final int BUTTON_COLOR = 0xFF262626;
     private static final int TEXT_COLOR = 0xFFFFFFFF;
@@ -89,12 +90,12 @@ public final class InteractiveMultiblockWidget implements ISlottedRecipeWidget, 
     private final IRecipeSlotDrawable selectedBlockSlot;
     private final List<IRecipeSlotDrawable> alternativeSlots;
 
-    private final UiRect resetButton = new UiRect(2, TOOLBAR_Y, 34, TOOLBAR_HEIGHT);
-    private final UiRect autoButton = new UiRect(38, TOOLBAR_Y, 38, TOOLBAR_HEIGHT);
-    private final UiRect shellButton = new UiRect(78, TOOLBAR_Y, 40, TOOLBAR_HEIGHT);
-    private final UiRect layerModeButton = new UiRect(120, TOOLBAR_Y, 52, TOOLBAR_HEIGHT);
-    private final UiRect layerDownButton = new UiRect(174, TOOLBAR_Y, 14, TOOLBAR_HEIGHT);
-    private final UiRect layerUpButton = new UiRect(235, TOOLBAR_Y, 14, TOOLBAR_HEIGHT);
+    private final UiRect resetButton = new UiRect(2, TOOLBAR_Y, 16, TOOLBAR_HEIGHT);
+    private final UiRect autoButton = new UiRect(20, TOOLBAR_Y, 16, TOOLBAR_HEIGHT);
+    private final UiRect shellButton = new UiRect(38, TOOLBAR_Y, 16, TOOLBAR_HEIGHT);
+    private final UiRect layerModeButton = new UiRect(56, TOOLBAR_Y, 16, TOOLBAR_HEIGHT);
+    private final UiRect layerDownButton = new UiRect(76, TOOLBAR_Y, 16, TOOLBAR_HEIGHT);
+    private final UiRect layerUpButton = new UiRect(145, TOOLBAR_Y, 16, TOOLBAR_HEIGHT);
 
     private float yaw = DEFAULT_YAW;
     private float pitch = DEFAULT_PITCH;
@@ -110,6 +111,8 @@ public final class InteractiveMultiblockWidget implements ISlottedRecipeWidget, 
     private MultiblockStructureRecipe.Cell selectedCell;
     private MultiblockStructureRecipe.Cell hoveredCell;
     private MultiblockStructureRecipe.Cell slotsForCell;
+    private UiRect transientPressedButton;
+    private int transientPressedTicks;
 
     public InteractiveMultiblockWidget(
             MultiblockStructureRecipe recipe,
@@ -172,33 +175,90 @@ public final class InteractiveMultiblockWidget implements ISlottedRecipeWidget, 
     }
 
     private void drawToolbar(GuiGraphics guiGraphics, Font font, double mouseX, double mouseY) {
-        drawButton(guiGraphics, font, resetButton, Component.translatable("jei.ae2lt.multiblock.reset"),
-                false, mouseX, mouseY);
-        drawButton(guiGraphics, font, autoButton,
-                Component.translatable(autoRotate
-                        ? "jei.ae2lt.multiblock.auto.on"
-                        : "jei.ae2lt.multiblock.auto.off"),
-                autoRotate, mouseX, mouseY);
-        drawButton(guiGraphics, font, shellButton,
-                Component.translatable(hideShell
-                        ? "jei.ae2lt.multiblock.shell.hidden"
-                        : "jei.ae2lt.multiblock.shell.visible"),
-                hideShell, mouseX, mouseY);
-        drawButton(guiGraphics, font, layerModeButton, layerMode.label(),
-                layerMode != LayerMode.FULL, mouseX, mouseY);
-        drawButton(guiGraphics, font, layerDownButton, Component.literal("-"),
-                false, mouseX, mouseY);
-        drawButton(guiGraphics, font, layerUpButton, Component.literal("+"),
-                false, mouseX, mouseY);
+        drawControlButton(
+                guiGraphics,
+                resetButton,
+                JeiStyleControls.PixelIcon.RESET_VIEW,
+                false,
+                true,
+                mouseX,
+                mouseY);
+        drawControlButton(
+                guiGraphics,
+                autoButton,
+                autoRotate ? JeiStyleControls.PixelIcon.PAUSE : JeiStyleControls.PixelIcon.PLAY,
+                autoRotate,
+                true,
+                mouseX,
+                mouseY);
+        drawControlButton(
+                guiGraphics,
+                shellButton,
+                hideShell ? JeiStyleControls.PixelIcon.SHELL_HIDDEN : JeiStyleControls.PixelIcon.SHELL,
+                hideShell,
+                true,
+                mouseX,
+                mouseY);
+        drawControlButton(
+                guiGraphics,
+                layerModeButton,
+                layerMode.icon(),
+                layerMode != LayerMode.FULL,
+                true,
+                mouseX,
+                mouseY);
+        drawControlButton(
+                guiGraphics,
+                layerDownButton,
+                JeiStyleControls.PixelIcon.MINUS,
+                false,
+                layer > 0,
+                mouseX,
+                mouseY);
+        drawControlButton(
+                guiGraphics,
+                layerUpButton,
+                JeiStyleControls.PixelIcon.PLUS,
+                false,
+                layer < recipe.sizeY() - 1,
+                mouseX,
+                mouseY);
 
         UiRect layerLabel = layerLabelRect();
-        guiGraphics.fill(layerLabel.x(), layerLabel.y(), layerLabel.right(), layerLabel.bottom(), PANEL_BACKGROUND);
-        guiGraphics.renderOutline(layerLabel.x(), layerLabel.y(), layerLabel.width(), layerLabel.height(), BORDER_COLOR);
         Component text = Component.translatable(
                 "jei.ae2lt.multiblock.layer",
                 layer + 1,
                 recipe.sizeY());
-        drawCenteredTrimmed(guiGraphics, font, text, layerLabel, MUTED_TEXT_COLOR);
+        JeiStyleControls.drawInsetLabel(
+                guiGraphics,
+                font,
+                layerLabel.x(),
+                layerLabel.y(),
+                layerLabel.width(),
+                layerLabel.height(),
+                text);
+    }
+
+    private void drawControlButton(
+            GuiGraphics guiGraphics,
+            UiRect rect,
+            JeiStyleControls.PixelIcon icon,
+            boolean pressed,
+            boolean enabled,
+            double mouseX,
+            double mouseY) {
+        boolean transientPressed = transientPressedTicks > 0 && rect.equals(transientPressedButton);
+        JeiStyleControls.drawIconButton(
+                guiGraphics,
+                rect.x(),
+                rect.y(),
+                rect.width(),
+                rect.height(),
+                icon,
+                pressed || transientPressed,
+                transientPressed,
+                enabled,
+                rect.contains(mouseX, mouseY));
     }
 
     private void drawViewport(GuiGraphics guiGraphics) {
@@ -310,12 +370,26 @@ public final class InteractiveMultiblockWidget implements ISlottedRecipeWidget, 
 
         UiRect materialsTab = materialsTabRect();
         UiRect detailsTab = detailsTabRect();
-        drawTab(guiGraphics, font, materialsTab,
+        JeiStyleControls.drawTextButton(
+                guiGraphics,
+                font,
+                materialsTab.x(),
+                materialsTab.y(),
+                materialsTab.width(),
+                materialsTab.height(),
                 Component.translatable("jei.ae2lt.multiblock.materials"),
-                panelTab == PanelTab.MATERIALS, mouseX, mouseY);
-        drawTab(guiGraphics, font, detailsTab,
+                panelTab == PanelTab.MATERIALS,
+                materialsTab.contains(mouseX, mouseY));
+        JeiStyleControls.drawTextButton(
+                guiGraphics,
+                font,
+                detailsTab.x(),
+                detailsTab.y(),
+                detailsTab.width(),
+                detailsTab.height(),
                 Component.translatable("jei.ae2lt.multiblock.details"),
-                panelTab == PanelTab.DETAILS, mouseX, mouseY);
+                panelTab == PanelTab.DETAILS,
+                detailsTab.contains(mouseX, mouseY));
 
         if (panelTab == PanelTab.MATERIALS) {
             drawMaterials(guiGraphics, font, mouseX, mouseY);
@@ -570,10 +644,12 @@ public final class InteractiveMultiblockWidget implements ISlottedRecipeWidget, 
             return true;
         }
         if (button == 0 && materialsTabRect().contains(mouseX, mouseY)) {
+            playButtonClick();
             panelTab = PanelTab.MATERIALS;
             return true;
         }
         if (button == 0 && detailsTabRect().contains(mouseX, mouseY)) {
+            playButtonClick();
             panelTab = PanelTab.DETAILS;
             return true;
         }
@@ -641,6 +717,9 @@ public final class InteractiveMultiblockWidget implements ISlottedRecipeWidget, 
 
     @Override
     public void tick() {
+        if (transientPressedTicks > 0 && --transientPressedTicks == 0) {
+            transientPressedButton = null;
+        }
         if (autoRotate) {
             yaw = wrapDegrees(yaw + AUTO_ROTATION_PER_TICK);
         }
@@ -648,30 +727,56 @@ public final class InteractiveMultiblockWidget implements ISlottedRecipeWidget, 
 
     private boolean handleToolbarClick(double mouseX, double mouseY) {
         if (resetButton.contains(mouseX, mouseY)) {
+            pressButton(resetButton);
+            playButtonClick();
             resetCamera();
             return true;
         }
         if (autoButton.contains(mouseX, mouseY)) {
+            pressButton(autoButton);
+            playButtonClick();
             autoRotate = !autoRotate;
             return true;
         }
         if (shellButton.contains(mouseX, mouseY)) {
+            pressButton(shellButton);
+            playButtonClick();
             hideShell = !hideShell;
             return true;
         }
         if (layerModeButton.contains(mouseX, mouseY)) {
+            pressButton(layerModeButton);
+            playButtonClick();
             layerMode = layerMode.next();
             return true;
         }
         if (layerDownButton.contains(mouseX, mouseY)) {
-            layer = Math.max(0, layer - 1);
+            if (layer > 0) {
+                pressButton(layerDownButton);
+                playButtonClick();
+                layer--;
+            }
             return true;
         }
         if (layerUpButton.contains(mouseX, mouseY)) {
-            layer = Math.min(recipe.sizeY() - 1, layer + 1);
+            if (layer < recipe.sizeY() - 1) {
+                pressButton(layerUpButton);
+                playButtonClick();
+                layer++;
+            }
             return true;
         }
         return false;
+    }
+
+    private void pressButton(UiRect button) {
+        transientPressedButton = button;
+        transientPressedTicks = 2;
+    }
+
+    private static void playButtonClick() {
+        Minecraft.getInstance().getSoundManager().play(
+                SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.value(), 1.0F));
     }
 
     private boolean isClickableArea(double mouseX, double mouseY, int button) {
@@ -700,7 +805,9 @@ public final class InteractiveMultiblockWidget implements ISlottedRecipeWidget, 
             return Component.translatable("jei.ae2lt.multiblock.tooltip.shell");
         }
         if (layerModeButton.contains(mouseX, mouseY)) {
-            return Component.translatable("jei.ae2lt.multiblock.tooltip.layer_mode");
+            return Component.translatable("jei.ae2lt.multiblock.tooltip.layer_mode")
+                    .append(" · ")
+                    .append(layerMode.label());
         }
         if (layerDownButton.contains(mouseX, mouseY) || layerUpButton.contains(mouseX, mouseY)
                 || layerLabelRect().contains(mouseX, mouseY)) {
@@ -877,35 +984,7 @@ public final class InteractiveMultiblockWidget implements ISlottedRecipeWidget, 
     }
 
     private UiRect layerLabelRect() {
-        return new UiRect(190, TOOLBAR_Y, 43, TOOLBAR_HEIGHT);
-    }
-
-    private void drawButton(
-            GuiGraphics guiGraphics,
-            Font font,
-            UiRect rect,
-            Component label,
-            boolean active,
-            double mouseX,
-            double mouseY) {
-        int color = active ? ACTIVE_COLOR : rect.contains(mouseX, mouseY) ? HOVER_COLOR : BUTTON_COLOR;
-        guiGraphics.fill(rect.x(), rect.y(), rect.right(), rect.bottom(), color);
-        guiGraphics.renderOutline(rect.x(), rect.y(), rect.width(), rect.height(), BORDER_COLOR);
-        drawCenteredTrimmed(guiGraphics, font, label, rect, TEXT_COLOR);
-    }
-
-    private void drawTab(
-            GuiGraphics guiGraphics,
-            Font font,
-            UiRect rect,
-            Component label,
-            boolean active,
-            double mouseX,
-            double mouseY) {
-        int color = active ? ACTIVE_COLOR : rect.contains(mouseX, mouseY) ? HOVER_COLOR : BUTTON_COLOR;
-        guiGraphics.fill(rect.x(), rect.y(), rect.right(), rect.bottom(), color);
-        guiGraphics.renderOutline(rect.x(), rect.y(), rect.width(), rect.height(), BORDER_COLOR);
-        drawCenteredTrimmed(guiGraphics, font, label, rect, active ? TEXT_COLOR : MUTED_TEXT_COLOR);
+        return new UiRect(94, TOOLBAR_Y, 49, TOOLBAR_HEIGHT);
     }
 
     private static void drawTrimmed(
@@ -979,6 +1058,14 @@ public final class InteractiveMultiblockWidget implements ISlottedRecipeWidget, 
 
         Component label() {
             return Component.translatable(translationKey);
+        }
+
+        JeiStyleControls.PixelIcon icon() {
+            return switch (this) {
+                case FULL -> JeiStyleControls.PixelIcon.LAYERS_FULL;
+                case UP_TO -> JeiStyleControls.PixelIcon.LAYERS_UP_TO;
+                case SINGLE -> JeiStyleControls.PixelIcon.LAYERS_SINGLE;
+            };
         }
 
         LayerMode next() {
