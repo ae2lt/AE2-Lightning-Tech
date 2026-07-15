@@ -3,12 +3,10 @@ package com.moakiee.ae2lt.blockentity;
 import com.moakiee.ae2lt.block.TianshuSupercomputerPortBlock;
 import com.moakiee.ae2lt.registry.ModBlockEntities;
 import com.moakiee.ae2lt.registry.ModBlocks;
-import com.moakiee.ae2lt.logic.tianshu.CpuInternalCoreProfile;
 import com.moakiee.thunderbolt.ae2.timewheel.TimeWheelCraftingCpuPool;
 import com.moakiee.thunderbolt.ae2.timewheel.TimeWheelCraftingCpuPoolHost;
 import java.util.Collections;
 import java.util.EnumSet;
-import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import appeng.api.networking.GridFlags;
@@ -18,16 +16,11 @@ import appeng.api.networking.security.IActionSource;
 import appeng.api.orientation.BlockOrientation;
 import appeng.api.util.AECableType;
 import appeng.blockentity.grid.AENetworkedBlockEntity;
-import appeng.hooks.ticking.TickHandler;
 import appeng.me.helpers.MachineSource;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.core.HolderLookup;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.Tag;
-import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
@@ -35,18 +28,10 @@ import net.minecraft.world.level.block.state.BlockState;
 public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
         implements TimeWheelCraftingCpuPoolHost {
     private static final int BINDING_CHECK_INTERVAL_TICKS = 20;
-    private static final String TAG_CONTROLLER_POS = "ControllerPos";
-    private static final String TAG_FORMED = "Formed";
-    private static final String TAG_CPU_POOL = "CpuPool";
-    private static final String TAG_CPU_STORAGE = "CpuStorage";
-    private static final String TAG_CPU_PARALLEL = "CpuParallel";
     private final IActionSource actionSource = new MachineSource(getMainNode()::getNode);
-    private final TimeWheelCraftingCpuPool cpuPool = new TimeWheelCraftingCpuPool(this);
+    private TimeWheelCraftingCpuPool exposedCpuPool;
     private BlockPos controllerPos;
     private boolean formed;
-    private long lastCpuDirtyTick = Long.MIN_VALUE;
-    private long pendingStorage = -1L;
-    private int pendingParallel = -1;
     private long nextBindingCheckTick;
 
     public TianshuSupercomputerPortBlockEntity(BlockPos pos, BlockState state) {
@@ -84,41 +69,28 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
     }
 
     public void bindToController(BlockPos controllerPos) {
-        bindToController(controllerPos, CpuInternalCoreProfile.empty());
-    }
-
-    public void bindToController(BlockPos controllerPos, CpuInternalCoreProfile profile) {
         BlockPos newControllerPos = controllerPos == null ? null : controllerPos.immutable();
-        updateControllerBinding(newControllerPos, newControllerPos != null, profile);
+        updateControllerBinding(newControllerPos, newControllerPos != null);
     }
 
     public void suspendFromController(BlockPos expectedControllerPos) {
         if (formed && expectedControllerPos != null && expectedControllerPos.equals(controllerPos)) {
-            updateControllerBinding(controllerPos, false, CpuInternalCoreProfile.empty());
+            updateControllerBinding(controllerPos, false);
         }
     }
 
     private void updateControllerBinding(BlockPos newControllerPos,
-                                         boolean newFormed,
-                                         CpuInternalCoreProfile profile) {
+                                         boolean newFormed) {
         boolean formedChanged = formed != newFormed;
         boolean bindingChanged = formedChanged || !Objects.equals(this.controllerPos, newControllerPos);
         this.controllerPos = newControllerPos;
         this.formed = newFormed;
+        if (newFormed) {
+            var controller = resolveBoundController();
+            exposedCpuPool = controller != null ? controller.getTimeWheelCraftingCpuPool() : null;
+        }
         if (formedChanged) {
             onGridConnectableSidesChanged();
-        }
-        if (!formed || profile.mainCore() == null) {
-            clearPendingProfile();
-        } else if (cpuPool.getTotalStorage() != profile.storageBytes()
-                || cpuPool.getCoProcessors() != profile.parallelism()) {
-            pendingStorage = profile.storageBytes();
-            pendingParallel = profile.parallelism();
-            applyPendingProfile();
-        } else {
-            // A previously deferred profile is no longer desired (for example A -> B -> A
-            // while jobs are still active). Do not let it overwrite the current profile later.
-            clearPendingProfile();
         }
         if (level != null && !level.isClientSide) {
             var state = getBlockState();
@@ -144,16 +116,16 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
 
     @Override
     public TimeWheelCraftingCpuPool getTimeWheelCraftingCpuPool() {
-        return cpuPool;
-    }
-
-    public boolean isFastPlanningEnabled() {
-        return cpuPool.isFastPlanningEnabled();
-    }
-
-    public void setFastPlanningEnabled(boolean enabled) {
-        cpuPool.setFastPlanningEnabled(enabled);
-        saveChanges();
+        if (exposedCpuPool == null) {
+            var controller = resolveBoundController();
+            if (controller != null) {
+                exposedCpuPool = controller.getTimeWheelCraftingCpuPool();
+            }
+        }
+        if (exposedCpuPool == null) {
+            throw new IllegalStateException("Tianshu port is not bound to a controller");
+        }
+        return exposedCpuPool;
     }
 
     @Override
@@ -166,6 +138,10 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
         return formed ? getMainNode().getGrid() : null;
     }
 
+    public boolean isNetworkActive() {
+        return formed && getMainNode().isActive() && getMainNode().getGrid() != null;
+    }
+
     @Override
     public IActionSource getActionSource() {
         return actionSource;
@@ -173,11 +149,7 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
 
     @Override
     public void markCpuDirty() {
-        long now = TickHandler.instance().getCurrentTick();
-        if (lastCpuDirtyTick != now) {
-            lastCpuDirtyTick = now;
-            saveChanges();
-        }
+        saveChanges();
     }
 
     @Override
@@ -186,71 +158,23 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
     }
 
     public TianshuSupercomputerControllerBlockEntity getController() {
-        if (!formed || controllerPos == null || level == null || !level.isLoaded(controllerPos)) return null;
+        var controller = formed ? resolveBoundController() : null;
+        return controller != null && controller.isPortActive(worldPosition) ? controller : null;
+    }
+
+    private TianshuSupercomputerControllerBlockEntity resolveBoundController() {
+        if (controllerPos == null || level == null || !level.isLoaded(controllerPos)) {
+            return null;
+        }
         return level.getBlockEntity(controllerPos) instanceof TianshuSupercomputerControllerBlockEntity controller
-                && controller.isPortActive(worldPosition) ? controller : null;
-    }
-
-    public void applyPendingProfile() {
-        if (pendingStorage >= 0L && pendingParallel >= 0 && !cpuPool.hasPersistentState()) {
-            cpuPool.reconfigure(pendingStorage, pendingParallel);
-            clearPendingProfile();
-        }
-    }
-
-    private void clearPendingProfile() {
-        pendingStorage = -1L;
-        pendingParallel = -1;
-    }
-
-    @Override
-    public void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
-        super.saveAdditional(tag, registries);
-        if (controllerPos != null) tag.putLong(TAG_CONTROLLER_POS, controllerPos.asLong());
-        tag.putBoolean(TAG_FORMED, formed);
-        tag.putLong(TAG_CPU_STORAGE, cpuPool.getTotalStorage());
-        tag.putInt(TAG_CPU_PARALLEL, cpuPool.getCoProcessors());
-        if (cpuPool.hasPersistentState()) {
-            var poolTag = new CompoundTag();
-            cpuPool.writeToNBT(poolTag, registries);
-            if (!poolTag.isEmpty()) tag.put(TAG_CPU_POOL, poolTag);
-        }
-    }
-
-    @Override
-    public void loadTag(CompoundTag tag, HolderLookup.Provider registries) {
-        super.loadTag(tag, registries);
-        controllerPos = tag.contains(TAG_CONTROLLER_POS, Tag.TAG_LONG) ? BlockPos.of(tag.getLong(TAG_CONTROLLER_POS)) : null;
-        formed = tag.getBoolean(TAG_FORMED) && controllerPos != null;
-        onGridConnectableSidesChanged();
-        if (tag.contains(TAG_CPU_STORAGE, Tag.TAG_LONG)) {
-            cpuPool.reconfigure(Math.max(0L, tag.getLong(TAG_CPU_STORAGE)), Math.max(0, tag.getInt(TAG_CPU_PARALLEL)));
-        }
-        if (tag.contains(TAG_CPU_POOL, Tag.TAG_COMPOUND)) {
-            cpuPool.readFromNBT(tag.getCompound(TAG_CPU_POOL), registries);
-        }
+                ? controller
+                : null;
     }
 
     @Override
     public void onLoad() {
         super.onLoad();
-        cpuPool.resolvePendingLoad();
         nextBindingCheckTick = level != null ? level.getGameTime() : 0L;
-        if (level != null && !level.isClientSide && formed && controllerPos != null) {
-            suspendFromController(controllerPos);
-        }
-    }
-
-    @Override
-    public void addAdditionalDrops(Level level, BlockPos pos, List<ItemStack> drops) {
-        super.addAdditionalDrops(level, pos, drops);
-        cpuPool.addRemovalDrops(level, pos, drops);
-    }
-
-    @Override
-    public void clearContent() {
-        super.clearContent();
-        cpuPool.clearRemovedContent();
     }
 
     @Override

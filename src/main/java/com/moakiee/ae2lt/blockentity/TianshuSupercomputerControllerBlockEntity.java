@@ -13,6 +13,14 @@ import com.moakiee.ae2lt.logic.tianshu.CpuInternalCoreProfile;
 import com.moakiee.ae2lt.logic.tianshu.CpuMainCoreTier;
 import com.moakiee.ae2lt.registry.ModBlockEntities;
 import com.moakiee.ae2lt.registry.ModBlocks;
+import com.moakiee.thunderbolt.ae2.timewheel.TimeWheelCraftingCpuPool;
+import com.moakiee.thunderbolt.ae2.timewheel.TimeWheelCraftingCpuPoolHost;
+import appeng.api.networking.IGrid;
+import appeng.api.networking.IGridNode;
+import appeng.api.networking.security.IActionSource;
+import appeng.hooks.ticking.TickHandler;
+import appeng.me.helpers.MachineSource;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -35,7 +43,8 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 
-public class TianshuSupercomputerControllerBlockEntity extends BlockEntity {
+public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
+        implements TimeWheelCraftingCpuPoolHost {
     private static final long NO_SCAN = Long.MIN_VALUE;
     private static final int AUTO_BUILD_INTERVAL_TICKS = 1;
     private static final int CHUNK_RECHECK_INTERVAL_TICKS = 20;
@@ -48,6 +57,11 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity {
     private static final String TAG_CAPACITY_CORES = "CapacityCores";
     private static final String TAG_PARALLEL_CORES = "ParallelCores";
     private static final String TAG_FAST_PLANNING = "FastPlanning";
+    private static final String TAG_CPU_POOL = "CpuPool";
+    private static final String TAG_CPU_STORAGE = "CpuStorage";
+    private static final String TAG_CPU_PARALLEL = "CpuParallel";
+    private final IActionSource actionSource = new MachineSource(this::getGridNode);
+    private final TimeWheelCraftingCpuPool cpuPool = new TimeWheelCraftingCpuPool(this);
     private boolean formed;
     private BlockPos portPos;
     private BlockPos minPos;
@@ -66,6 +80,9 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity {
     private int autoBuildPlacementIndex;
     private int autoBuildPlacedBlocks;
     private long nextAutoBuildTick;
+    private long lastCpuDirtyTick = Long.MIN_VALUE;
+    private long pendingStorage = -1L;
+    private int pendingParallel = -1;
 
     public TianshuSupercomputerControllerBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.TIANSHU_SUPERCOMPUTER_CONTROLLER.get(), pos, state);
@@ -84,10 +101,7 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity {
             controller.scheduledScanTick = NO_SCAN;
             controller.scanNow();
         }
-        if (controller.isFormed() && controller.portPos != null && level.isLoaded(controller.portPos)
-                && level.getBlockEntity(controller.portPos) instanceof TianshuSupercomputerPortBlockEntity port) {
-            port.applyPendingProfile();
-        }
+        controller.applyPendingProfile();
     }
 
     public boolean isFormed() {
@@ -129,8 +143,91 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity {
 
     public void toggleFastPlanning() {
         fastPlanningEnabled = !fastPlanningEnabled;
-        syncPortFastPlanning();
+        syncFastPlanning();
         setChanged();
+    }
+
+    @Override
+    public TimeWheelCraftingCpuPool getTimeWheelCraftingCpuPool() {
+        return cpuPool;
+    }
+
+    @Override
+    public boolean isCpuActive() {
+        var port = getPortEntity();
+        return isFormed() && port != null && port.isNetworkActive();
+    }
+
+    @Override
+    public IGrid getGrid() {
+        var port = getPortEntity();
+        return port != null ? port.getGrid() : null;
+    }
+
+    @Override
+    public IActionSource getActionSource() {
+        return actionSource;
+    }
+
+    @Override
+    public void markCpuDirty() {
+        long now = TickHandler.instance().getCurrentTick();
+        if (lastCpuDirtyTick != now) {
+            lastCpuDirtyTick = now;
+            setChanged();
+        }
+    }
+
+    @Override
+    public Component getDisplayName() {
+        return Component.translatable("ae2lt.tianshu.cpu_name");
+    }
+
+    private IGridNode getGridNode() {
+        var port = getPortEntity();
+        return port != null ? port.getMainNode().getNode() : null;
+    }
+
+    private TianshuSupercomputerPortBlockEntity getPortEntity() {
+        if (level == null || portPos == null || !level.isLoaded(portPos)) {
+            return null;
+        }
+        return level.getBlockEntity(portPos) instanceof TianshuSupercomputerPortBlockEntity port
+                && worldPosition.equals(port.getControllerPos()) ? port : null;
+    }
+
+    private void configureCpuPool(CpuInternalCoreProfile profile) {
+        syncFastPlanning();
+        if (profile.mainCore() == null) {
+            clearPendingProfile();
+        } else if (cpuPool.getTotalStorage() != profile.storageBytes()
+                || cpuPool.getCoProcessors() != profile.parallelism()) {
+            pendingStorage = profile.storageBytes();
+            pendingParallel = profile.parallelism();
+            applyPendingProfile();
+        } else {
+            clearPendingProfile();
+        }
+    }
+
+    private void applyPendingProfile() {
+        if (pendingStorage >= 0L && pendingParallel >= 0 && !cpuPool.hasPersistentState()) {
+            cpuPool.reconfigure(pendingStorage, pendingParallel);
+            clearPendingProfile();
+        }
+    }
+
+    private void clearPendingProfile() {
+        pendingStorage = -1L;
+        pendingParallel = -1;
+    }
+
+    private void syncFastPlanning() {
+        try {
+            cpuPool.getClass().getMethod("setFastPlanningEnabled", boolean.class)
+                    .invoke(cpuPool, fastPlanningEnabled);
+        } catch (ReflectiveOperationException ignored) {
+        }
     }
 
     public int getPrimaryIssueOrdinal() {
@@ -447,15 +544,8 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity {
     private void syncPortConfiguration() {
         if (level != null && structureAvailable && portPos != null && level.isLoaded(portPos)
                 && level.getBlockEntity(portPos) instanceof TianshuSupercomputerPortBlockEntity port) {
-            port.setFastPlanningEnabled(fastPlanningEnabled);
-            port.bindToController(worldPosition, coreProfile);
-        }
-    }
-
-    private void syncPortFastPlanning() {
-        if (level != null && structureAvailable && portPos != null && level.isLoaded(portPos)
-                && level.getBlockEntity(portPos) instanceof TianshuSupercomputerPortBlockEntity port) {
-            port.setFastPlanningEnabled(fastPlanningEnabled);
+            port.bindToController(worldPosition);
+            configureCpuPool(coreProfile);
         }
     }
 
@@ -557,6 +647,15 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity {
         if (maxPos != null) tag.putLong(TAG_MAX_POS, maxPos.asLong());
         tag.putInt(TAG_MEMBER_COUNT, memberCount);
         tag.putBoolean(TAG_FAST_PLANNING, fastPlanningEnabled);
+        tag.putLong(TAG_CPU_STORAGE, cpuPool.getTotalStorage());
+        tag.putInt(TAG_CPU_PARALLEL, cpuPool.getCoProcessors());
+        if (cpuPool.hasPersistentState()) {
+            var poolTag = new CompoundTag();
+            cpuPool.writeToNBT(poolTag, registries);
+            if (!poolTag.isEmpty()) {
+                tag.put(TAG_CPU_POOL, poolTag);
+            }
+        }
         if (coreProfile.mainCore() != null) {
             tag.putString(TAG_MAIN_CORE, coreProfile.mainCore().name());
             tag.putInt(TAG_CAPACITY_CORES, coreProfile.capacityCoreCount());
@@ -577,6 +676,14 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity {
         memberCount = tag.getInt(TAG_MEMBER_COUNT);
         fastPlanningEnabled = !tag.contains(TAG_FAST_PLANNING, Tag.TAG_BYTE)
                 || tag.getBoolean(TAG_FAST_PLANNING);
+        if (tag.contains(TAG_CPU_STORAGE, Tag.TAG_LONG)) {
+            cpuPool.reconfigure(Math.max(0L, tag.getLong(TAG_CPU_STORAGE)),
+                    Math.max(0, tag.getInt(TAG_CPU_PARALLEL)));
+            if (tag.contains(TAG_CPU_POOL, Tag.TAG_COMPOUND)) {
+                cpuPool.readFromNBT(tag.getCompound(TAG_CPU_POOL), registries);
+            }
+        }
+        syncFastPlanning();
         if (tag.contains(TAG_MAIN_CORE, Tag.TAG_STRING)) {
             try {
                 var tier = CpuMainCoreTier.valueOf(tag.getString(TAG_MAIN_CORE));
@@ -591,7 +698,23 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity {
     @Override
     public void onLoad() {
         super.onLoad();
+        cpuPool.resolvePendingLoad();
         nextChunkCheckTick = level != null ? level.getGameTime() : 0L;
         scheduleStructureCheck();
+    }
+
+    public void dropCpuContents() {
+        if (level == null || level.isClientSide || !cpuPool.hasPersistentState()) {
+            return;
+        }
+        var drops = new ArrayList<ItemStack>();
+        cpuPool.addRemovalDrops(level, worldPosition, drops);
+        for (var drop : drops) {
+            if (!drop.isEmpty()) {
+                Block.popResource(level, worldPosition, drop);
+            }
+        }
+        cpuPool.clearRemovedContent();
+        setChanged();
     }
 }

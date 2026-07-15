@@ -98,7 +98,6 @@ public class MatrixPatternStorageBlockEntity extends BlockEntity implements Matr
 
     public void setControllerPos(BlockPos controllerPos) {
         this.controllerPos = controllerPos == null ? null : controllerPos.immutable();
-        setChangedAndUpdate();
     }
 
     public boolean isT1() {
@@ -189,10 +188,6 @@ public class MatrixPatternStorageBlockEntity extends BlockEntity implements Matr
     @Override
     protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.saveAdditional(tag, registries);
-        if (controllerPos != null) {
-            tag.putLong("ControllerPos", controllerPos.asLong());
-        }
-
         var items = new ListTag();
         for (int slot = 0; slot < capacity(); slot++) {
             var stack = inventory.getStackInSlot(slot);
@@ -210,9 +205,7 @@ public class MatrixPatternStorageBlockEntity extends BlockEntity implements Matr
     @Override
     protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.loadAdditional(tag, registries);
-        controllerPos = tag.contains("ControllerPos", Tag.TAG_LONG)
-                ? BlockPos.of(tag.getLong("ControllerPos"))
-                : null;
+        controllerPos = null;
 
         inventory.clear();
         patternsDirty = true;
@@ -233,11 +226,7 @@ public class MatrixPatternStorageBlockEntity extends BlockEntity implements Matr
 
     @Override
     public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
-        var tag = new CompoundTag();
-        if (controllerPos != null) {
-            tag.putLong("ControllerPos", controllerPos.asLong());
-        }
-        return tag;
+        return new CompoundTag();
     }
 
     @Override

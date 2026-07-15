@@ -99,6 +99,7 @@ public class TianshuSupercomputerControllerBlock extends Block implements Entity
     public void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean movedByPiston) {
         if (!state.is(newState.getBlock())
                 && level.getBlockEntity(pos) instanceof TianshuSupercomputerControllerBlockEntity controller) {
+            controller.dropCpuContents();
             controller.clearStructureBindings();
             TianshuMultiblockUpdateScheduler.scheduleNear(level, pos);
         }

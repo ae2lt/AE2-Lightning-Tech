@@ -9,7 +9,10 @@ import com.moakiee.ae2lt.block.MatrixFormedBlock;
 import com.moakiee.ae2lt.block.MatrixMultiblockComponentBlock;
 import com.moakiee.ae2lt.block.MatrixMultiblockDirectionalBlock;
 import com.moakiee.ae2lt.block.MatrixPatternStorageBlock;
+import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.logic.craft.MatrixAutoBuildPlan;
+import com.moakiee.ae2lt.logic.craft.MatrixCraftCore;
+import com.moakiee.ae2lt.logic.craft.MatrixCraftingCluster;
 import com.moakiee.ae2lt.logic.craft.MatrixMultiblockComponent;
 import com.moakiee.ae2lt.logic.craft.MatrixCraftingMath;
 import com.moakiee.ae2lt.logic.craft.MatrixCraftingProfile;
@@ -18,11 +21,18 @@ import com.moakiee.ae2lt.logic.craft.MatrixMultiblockMember;
 import com.moakiee.ae2lt.logic.craft.MatrixMultiblockScanAttempt;
 import com.moakiee.ae2lt.logic.craft.MatrixMultiblockScanResult;
 import com.moakiee.ae2lt.logic.craft.MatrixMultiblockScanner;
+import com.moakiee.ae2lt.logic.craft.MatrixPatternCore;
 import com.moakiee.ae2lt.network.MatrixControllerActionPacket;
 import com.moakiee.ae2lt.registry.ModBlockEntities;
 import com.moakiee.ae2lt.registry.ModBlocks;
 import com.moakiee.ae2lt.registry.ModItems;
+import com.moakiee.thunderbolt.ae2.api.crafting.BatchDispatchMode;
+import com.moakiee.thunderbolt.core.craft.CraftingCoreHost;
+import com.moakiee.thunderbolt.core.craft.MolecularCopyAssembler;
 
+import appeng.api.crafting.IPatternDetails;
+import appeng.api.stacks.AEKey;
+import appeng.api.stacks.KeyCounter;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -41,7 +51,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 
-public class MatrixControllerBlockEntity extends BlockEntity {
+public class MatrixControllerBlockEntity extends BlockEntity implements CraftingCoreHost {
     private static final long NO_SCHEDULED_SCAN = Long.MIN_VALUE;
     private static final int AUTO_BUILD_INTERVAL_TICKS = 1;
     private static final int CHUNK_RECHECK_INTERVAL_TICKS = 20;
@@ -53,7 +63,32 @@ public class MatrixControllerBlockEntity extends BlockEntity {
     private static final String TAG_MEMBER_COUNT = "MemberCount";
     private static final String TAG_PATTERN_STORAGE_COUNT = "PatternStorageCount";
     private static final String TAG_CRAFTING_UNIT_COUNT = "CraftingUnitCount";
+    private static final String TAG_CLUSTER = "Cluster";
 
+    private final MatrixPatternCore patternCore = new MatrixPatternCore() {
+        @Override
+        public List<IPatternDetails> getAvailablePatterns() {
+            return collectAvailablePatterns();
+        }
+
+        @Override
+        public boolean hasPattern(IPatternDetails details) {
+            return hasAvailablePattern(details);
+        }
+    };
+    private final MatrixCraftCore craftCore = new MatrixCraftCore() {
+        @Override
+        public List<MatrixCraftingUnit> craftingUnits() {
+            return findCraftingUnits();
+        }
+    };
+    private final MatrixCraftingCluster cluster = new MatrixCraftingCluster(
+            this::isFormed,
+            List.of(patternCore),
+            List.of(craftCore),
+            this,
+            new MolecularCopyAssembler(this::getLevel),
+            AE2LightningTech.craftingCoreRegistry());
     private boolean formed;
     private Direction orientation = Direction.NORTH;
     private BlockPos portPos;
@@ -76,6 +111,7 @@ public class MatrixControllerBlockEntity extends BlockEntity {
     private int autoBuildPlacementIndex;
     private int autoBuildPlacedBlocks;
     private long nextAutoBuildTick;
+    private int lastObservedClusterThreads = -1;
 
     public MatrixControllerBlockEntity(BlockPos pos, BlockState blockState) {
         super(ModBlockEntities.MATRIX_CONTROLLER.get(), pos, blockState);
@@ -102,6 +138,11 @@ public class MatrixControllerBlockEntity extends BlockEntity {
             be.scheduledScanTick = NO_SCHEDULED_SCAN;
             be.refreshStructure();
         }
+        int clusterThreads = be.cluster.threadsInFlight();
+        if (clusterThreads > 0 || clusterThreads != be.lastObservedClusterThreads) {
+            be.setChanged();
+        }
+        be.lastObservedClusterThreads = clusterThreads;
         be.syncRenderState();
     }
 
@@ -146,15 +187,35 @@ public class MatrixControllerBlockEntity extends BlockEntity {
     }
 
     public MatrixCraftingProfile getCraftingProfile() {
-        var port = getPort();
-        return port != null ? port.getCraftingProfile() : MatrixCraftingProfile.empty();
+        return cluster.craftingProfile();
     }
 
     public MatrixCraftingMath.Snapshot getLimiterSnapshot() {
-        var port = getPort();
-        return port != null
-                ? port.getLimiterSnapshot()
-                : MatrixCraftingMath.idleSnapshot(0.0D, 0.0D);
+        return cluster.previewSnapshot();
+    }
+
+    public List<IPatternDetails> getAvailablePatterns() {
+        return cluster.getAvailablePatterns();
+    }
+
+    public boolean isCraftingBusy() {
+        return cluster.isBusy();
+    }
+
+    public int getBatchCapacity(IPatternDetails details) {
+        return cluster.getBatchCapacity(details);
+    }
+
+    public BatchDispatchMode getBatchDispatchMode() {
+        return cluster.batchDispatchMode();
+    }
+
+    public int pushBatch(IPatternDetails details, KeyCounter[] oneCopyTemplate, int maxCraft) {
+        int remaining = cluster.pushBatch(details, oneCopyTemplate, maxCraft);
+        if (remaining < maxCraft) {
+            setChanged();
+        }
+        return remaining;
     }
 
     public void performAction(MatrixControllerActionPacket.Action action, ServerPlayer player) {
@@ -485,6 +546,29 @@ public class MatrixControllerBlockEntity extends BlockEntity {
         return cachedCraftingUnits;
     }
 
+    private List<IPatternDetails> collectAvailablePatterns() {
+        if (!isFormed()) {
+            return List.of();
+        }
+        var result = new ArrayList<IPatternDetails>();
+        for (var storage : findPatternStorages()) {
+            result.addAll(storage.getAvailablePatterns());
+        }
+        return List.copyOf(result);
+    }
+
+    private boolean hasAvailablePattern(IPatternDetails details) {
+        if (details == null || !isFormed()) {
+            return false;
+        }
+        for (var storage : findPatternStorages()) {
+            if (storage.hasPattern(details)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private MatrixMultiblockScanAttempt scanCurrent() {
         return MatrixMultiblockScanner.scan(level, worldPosition, getOrientation());
     }
@@ -496,6 +580,42 @@ public class MatrixControllerBlockEntity extends BlockEntity {
         return level.getBlockEntity(portPos) instanceof MatrixPortBlockEntity port && port.isFormed()
                 ? port
                 : null;
+    }
+
+    @Override
+    public long getGameTime() {
+        return level != null ? level.getGameTime() : 0L;
+    }
+
+    @Override
+    public boolean isConnected() {
+        var port = getPort();
+        return port != null && port.isConnected();
+    }
+
+    @Override
+    public long insertToNetwork(AEKey key, long amount) {
+        var port = getPort();
+        return port != null ? port.insertToNetwork(key, amount) : 0L;
+    }
+
+    @Override
+    public void spawnToWorld(AEKey key, long amount) {
+        if (key == null || amount <= 0L || level == null || level.isClientSide) {
+            return;
+        }
+        var port = getPort();
+        if (port != null) {
+            port.spawnToWorld(key, amount);
+            return;
+        }
+        var drops = new ArrayList<ItemStack>();
+        key.addDrops(amount, drops, level, worldPosition);
+        for (var drop : drops) {
+            if (!drop.isEmpty()) {
+                Block.popResource(level, worldPosition, drop);
+            }
+        }
     }
 
     private void form(MatrixMultiblockScanResult result) {
@@ -705,9 +825,8 @@ public class MatrixControllerBlockEntity extends BlockEntity {
         }
     }
 
-    private boolean isWorking() {
-        var port = getPort();
-        return isFormed() && port != null && port.isWorking();
+    public boolean isWorking() {
+        return isFormed() && cluster.threadsInFlight() > 0;
     }
 
     private MatrixAutoBuildPlan createAutoBuildPlan(int patternStorageBudget) {
@@ -948,6 +1067,11 @@ public class MatrixControllerBlockEntity extends BlockEntity {
         tag.putInt(TAG_MEMBER_COUNT, memberCount);
         tag.putInt(TAG_PATTERN_STORAGE_COUNT, patternStorageCount);
         tag.putInt(TAG_CRAFTING_UNIT_COUNT, craftingUnitCount);
+        var clusterTag = new CompoundTag();
+        cluster.writeEngineTo(clusterTag, registries);
+        if (!clusterTag.isEmpty()) {
+            tag.put(TAG_CLUSTER, clusterTag);
+        }
     }
 
     @Override
@@ -971,6 +1095,9 @@ public class MatrixControllerBlockEntity extends BlockEntity {
         memberCount = tag.getInt(TAG_MEMBER_COUNT);
         patternStorageCount = tag.getInt(TAG_PATTERN_STORAGE_COUNT);
         craftingUnitCount = tag.getInt(TAG_CRAFTING_UNIT_COUNT);
+        if (tag.contains(TAG_CLUSTER, Tag.TAG_COMPOUND)) {
+            cluster.readEngineFrom(tag.getCompound(TAG_CLUSTER), registries);
+        }
     }
 
     @Override

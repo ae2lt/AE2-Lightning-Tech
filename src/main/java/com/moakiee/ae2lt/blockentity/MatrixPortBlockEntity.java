@@ -6,26 +6,16 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 
-import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.block.MatrixPortBlock;
 import com.moakiee.thunderbolt.ae2.api.crafting.IBatchCraftingProvider;
 import com.moakiee.thunderbolt.ae2.api.crafting.BatchDispatchMode;
-import com.moakiee.thunderbolt.core.craft.CraftingCoreHost;
-import com.moakiee.ae2lt.logic.craft.MatrixCraftCore;
 import com.moakiee.ae2lt.logic.craft.MatrixCraftingMath;
-import com.moakiee.ae2lt.logic.craft.MatrixCraftingCluster;
 import com.moakiee.ae2lt.logic.craft.MatrixCraftingProfile;
-import com.moakiee.ae2lt.logic.craft.MatrixCraftingUnit;
-import com.moakiee.ae2lt.logic.craft.MatrixPatternCore;
-import com.moakiee.thunderbolt.core.craft.MolecularCopyAssembler;
 import com.moakiee.ae2lt.registry.ModBlockEntities;
 import com.moakiee.ae2lt.registry.ModBlocks;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.core.HolderLookup;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -54,39 +44,12 @@ import appeng.helpers.patternprovider.PatternContainer;
 import appeng.me.helpers.MachineSource;
 
 public class MatrixPortBlockEntity extends AENetworkedBlockEntity
-        implements CraftingCoreHost, IBatchCraftingProvider, PatternContainer {
+        implements IBatchCraftingProvider, PatternContainer {
     private static final int BINDING_CHECK_INTERVAL_TICKS = 20;
-    private static final String TAG_CONTROLLER_POS = "ControllerPos";
-    private static final String TAG_FORMED = "Formed";
-    private static final String TAG_CLUSTER = "Cluster";
 
     private final IActionSource actionSource = new MachineSource(getMainNode()::getNode);
     private final PortPatternItemHandler itemHandler = new PortPatternItemHandler();
     private final MatrixTerminalPatternInventory terminalPatternInventory = new MatrixTerminalPatternInventory();
-    private final MatrixPatternCore patternCore = new MatrixPatternCore() {
-        @Override
-        public List<IPatternDetails> getAvailablePatterns() {
-            return collectAvailablePatterns();
-        }
-
-        @Override
-        public boolean hasPattern(IPatternDetails details) {
-            return hasAvailablePattern(details);
-        }
-    };
-    private final MatrixCraftCore craftCore = new MatrixCraftCore() {
-        @Override
-        public List<MatrixCraftingUnit> craftingUnits() {
-            return collectCraftingUnits();
-        }
-    };
-    private final MatrixCraftingCluster cluster = new MatrixCraftingCluster(
-            this::isFormed,
-            List.of(patternCore),
-            List.of(craftCore),
-            this,
-            new MolecularCopyAssembler(this::getLevel),
-            AE2LightningTech.craftingCoreRegistry());
     private BlockPos controllerPos;
     private boolean formed;
     private long lastPatternUpdateTick = Long.MIN_VALUE;
@@ -189,15 +152,20 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
     }
 
     public MatrixCraftingProfile getCraftingProfile() {
-        return cluster.craftingProfile();
+        var controller = getController();
+        return controller != null ? controller.getCraftingProfile() : MatrixCraftingProfile.empty();
     }
 
     public MatrixCraftingMath.Snapshot getLimiterSnapshot() {
-        return cluster.previewSnapshot();
+        var controller = getController();
+        return controller != null
+                ? controller.getLimiterSnapshot()
+                : MatrixCraftingMath.idleSnapshot(0.0D, 0.0D);
     }
 
     public boolean isWorking() {
-        return formed && cluster.threadsInFlight() > 0;
+        var controller = getController();
+        return controller != null && controller.isWorking();
     }
 
     public void patternsChanged() {
@@ -245,40 +213,38 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
 
     @Override
     public List<IPatternDetails> getAvailablePatterns() {
-        return cluster.getAvailablePatterns();
+        var controller = getController();
+        return controller != null ? controller.getAvailablePatterns() : List.of();
     }
 
     @Override
     public boolean isBusy() {
-        return cluster.isBusy();
+        var controller = getController();
+        return controller == null || controller.isCraftingBusy();
     }
 
     @Override
     public int getBatchCapacity(IPatternDetails details) {
-        return cluster.getBatchCapacity(details);
+        var controller = getController();
+        return controller != null ? controller.getBatchCapacity(details) : 0;
     }
 
     @Override
     public BatchDispatchMode getBatchDispatchMode(IPatternDetails details) {
-        return cluster.batchDispatchMode();
+        var controller = getController();
+        return controller != null ? controller.getBatchDispatchMode() : BatchDispatchMode.NORMAL;
     }
 
     @Override
     public int pushBatch(IPatternDetails details, KeyCounter[] oneCopyTemplate, int maxCraft) {
-        return cluster.pushBatch(details, oneCopyTemplate, maxCraft);
+        var controller = getController();
+        return controller != null ? controller.pushBatch(details, oneCopyTemplate, maxCraft) : maxCraft;
     }
 
-    @Override
-    public long getGameTime() {
-        return level != null ? level.getGameTime() : 0L;
-    }
-
-    @Override
     public boolean isConnected() {
         return formed && getMainNode().isActive() && getMainNode().getGrid() != null;
     }
 
-    @Override
     public long insertToNetwork(AEKey key, long amount) {
         var grid = getMainNode().getGrid();
         if (grid == null || key == null || amount <= 0) {
@@ -287,7 +253,6 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
         return grid.getStorageService().getInventory().insert(key, amount, Actionable.MODULATE, actionSource);
     }
 
-    @Override
     public void spawnToWorld(AEKey key, long amount) {
         Level level = getLevel();
         if (level == null || level.isClientSide || key == null || amount <= 0) {
@@ -303,40 +268,9 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
     }
 
     @Override
-    public void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
-        super.saveAdditional(tag, registries);
-        if (controllerPos != null) {
-            tag.putLong(TAG_CONTROLLER_POS, controllerPos.asLong());
-        }
-        tag.putBoolean(TAG_FORMED, formed);
-        var clusterTag = new CompoundTag();
-        cluster.writeEngineTo(clusterTag, registries);
-        if (!clusterTag.isEmpty()) {
-            tag.put(TAG_CLUSTER, clusterTag);
-        }
-    }
-
-    @Override
-    public void loadTag(CompoundTag tag, HolderLookup.Provider registries) {
-        super.loadTag(tag, registries);
-        controllerPos = tag.contains(TAG_CONTROLLER_POS, Tag.TAG_LONG)
-                ? BlockPos.of(tag.getLong(TAG_CONTROLLER_POS))
-                : null;
-        formed = tag.getBoolean(TAG_FORMED) && controllerPos != null;
-        onGridConnectableSidesChanged();
-        if (tag.contains(TAG_CLUSTER, Tag.TAG_COMPOUND)) {
-            cluster.readEngineFrom(tag.getCompound(TAG_CLUSTER), registries);
-        }
-        invalidateExposedPatternStorage();
-    }
-
-    @Override
     public void onLoad() {
         super.onLoad();
         nextBindingCheckTick = level != null ? level.getGameTime() : 0L;
-        if (level != null && !level.isClientSide && formed && controllerPos != null) {
-            suspendFromController(controllerPos);
-        }
     }
 
     @Override
@@ -366,34 +300,6 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
         } else if (!level.getBlockState(controllerPos).is(ModBlocks.MATTER_WARPING_MATRIX_CONTROLLER.get())) {
             updateControllerBinding(null, false);
         }
-    }
-
-    private List<IPatternDetails> collectAvailablePatterns() {
-        if (!formed || level == null) {
-            return List.of();
-        }
-        var result = new ArrayList<IPatternDetails>();
-        for (var storage : getPatternStorages()) {
-            result.addAll(storage.getAvailablePatterns());
-        }
-        return List.copyOf(result);
-    }
-
-    private boolean hasAvailablePattern(IPatternDetails details) {
-        if (details == null || !formed || level == null) {
-            return false;
-        }
-        for (var storage : getPatternStorages()) {
-            if (storage.hasPattern(details)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private List<MatrixCraftingUnit> collectCraftingUnits() {
-        var controller = getController();
-        return controller != null ? controller.findCraftingUnits() : List.of();
     }
 
     private void invalidateExposedPatternStorage() {
