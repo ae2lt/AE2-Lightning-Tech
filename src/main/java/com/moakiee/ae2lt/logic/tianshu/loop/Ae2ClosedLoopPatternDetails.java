@@ -4,15 +4,19 @@ import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.GenericStack;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.Nullable;
 import appeng.api.crafting.PatternDetailsHelper;
 import appeng.api.crafting.IPatternDetails;
 import com.moakiee.thunderbolt.ae2.crafting.PatternFiringExpander;
+import com.moakiee.thunderbolt.ae2.crafting.ExecuteLoopPattern;
 import com.moakiee.thunderbolt.core.planner.Sat;
 import com.moakiee.thunderbolt.ae2.timewheel.TimeWheelPoolRestrictedPattern;
 import com.moakiee.thunderbolt.ae2.timewheel.TimeWheelCraftingCpuPoolHost;
@@ -29,6 +33,8 @@ public final class Ae2ClosedLoopPatternDetails
     private final List<ExpandedMember> members;
     private final UUID owningTianshuId;
     private final Map<AEKey, Long> availableSeedSnapshot;
+    private final Set<AEKey> cycleKeys;
+    private final boolean singleSeedInputPerMember;
 
     public Ae2ClosedLoopPatternDetails(AEItemKey definition, ClosedLoopPatternPayload payload, Level level) {
         this(definition, payload, level, null, Map.of());
@@ -60,16 +66,37 @@ public final class Ae2ClosedLoopPatternDetails
         }
         for (var input : payload.externalInputs()) inputs[slot++] = new ExactInput(input, false);
 
-        var decodedMembers = new ArrayList<ExpandedMember>(payload.memberPatterns().size());
-        var seedAmounts = new java.util.LinkedHashMap<AEKey, Long>();
-        for (var seed : payload.seeds()) seedAmounts.merge(seed.what(), seed.amount(), Sat::add);
-        int memberIndex = 0;
+        var rawMembers = new ArrayList<IPatternDetails>(payload.memberPatterns().size());
         for (var member : payload.memberPatterns()) {
             var details = PatternDetailsHelper.decodePattern(
                     member.pattern().toItemStack(level.registryAccess()), level);
             if (details == null || details instanceof TianshuClosedLoopPatternDetails) {
                 throw new IllegalArgumentException("closed-loop member pattern is no longer decodable");
             }
+            rawMembers.add(details);
+        }
+        var seedAmounts = new java.util.LinkedHashMap<AEKey, Long>();
+        for (var seed : payload.seeds()) seedAmounts.merge(seed.what(), seed.amount(), Sat::add);
+        this.cycleKeys = ClosedLoopCycleKeys.analyze(rawMembers, seedAmounts.keySet());
+
+        var analyzedMembers = new ArrayList<ClosedLoopPatternAnalyzer.Member>(
+                payload.memberPatterns().size());
+        for (int i = 0; i < payload.memberPatterns().size(); i++) {
+            analyzedMembers.add(new ClosedLoopPatternAnalyzer.Member(
+                    rawMembers.get(i), payload.memberPatterns().get(i).copiesPerCycle()));
+        }
+        var memberFlows = ClosedLoopPatternAnalyzer.deriveMemberFlows(
+                analyzedMembers, payload.seeds());
+        if (memberFlows.size() != rawMembers.size()) {
+            throw new IllegalArgumentException("closed-loop member seed transitions are unavailable");
+        }
+        this.singleSeedInputPerMember =
+                ClosedLoopPatternAnalyzer.hasSingleSeedInputPerMember(memberFlows);
+
+        var decodedMembers = new ArrayList<ExpandedMember>(payload.memberPatterns().size());
+        int memberIndex = 0;
+        for (var member : payload.memberPatterns()) {
+            var details = rawMembers.get(memberIndex);
             var item = (com.moakiee.ae2lt.item.ClosedLoopPatternItem) definition.getItem();
             var persistenceDefinition = AEItemKey.of(item.createExecutionMemberStack(
                     payload, memberIndex, level.registryAccess()));
@@ -78,9 +105,11 @@ public final class Ae2ClosedLoopPatternDetails
             }
             decodedMembers.add(new ExpandedMember(
                     ClosedLoopExpandedPatternDetails.wrap(
-                            details, seedAmounts, payload.memberPatterns().size() == 1,
+                            details, seedAmounts, cycleKeys, payload.patternId(),
+                            singleSeedInputPerMember,
+                            payload.memberPatterns().size() == 1,
                             persistenceDefinition, memberIndex),
-                    member.copiesPerCycle()));
+                    member.copiesPerCycle(), memberFlows.get(memberIndex)));
             memberIndex++;
         }
         members = List.copyOf(decodedMembers);
@@ -108,11 +137,18 @@ public final class Ae2ClosedLoopPatternDetails
 
     @Override
     public Map<IPatternDetails, Long> expandPatternFirings(long macroFirings) {
+        if (macroFirings <= 0) return Map.of();
         var result = new LinkedHashMap<IPatternDetails, Long>();
         for (var member : members) {
-            result.merge(member.details(), Sat.mul(macroFirings, member.copiesPerCycle()), Sat::add);
+            for (var slice : splitMemberFlow(member.flow(), member.copiesPerCycle())) {
+                long count = Sat.mul(macroFirings, slice.copiesPerCycle());
+                result.put(new ExecuteLoopPattern(
+                        member.details(),
+                        counter(slice.inputSeed()),
+                        counter(slice.outputSeed())), count);
+            }
         }
-        return Map.copyOf(result);
+        return Collections.unmodifiableMap(result);
     }
 
     @Override
@@ -129,6 +165,21 @@ public final class Ae2ClosedLoopPatternDetails
             result.merge(seed.what(), Sat.mul(seed.amount(), payload.seedMultiplier()), Sat::add);
         }
         return Map.copyOf(result);
+    }
+
+    @Override
+    public UUID reusableSeedGroupId() {
+        return payload.patternId();
+    }
+
+    @Override
+    public Set<AEKey> reusableSeedCycleKeys() {
+        return cycleKeys;
+    }
+
+    @Override
+    public boolean hasSingleSeedInputPerMember() {
+        return singleSeedInputPerMember;
     }
 
     @Override
@@ -177,6 +228,77 @@ public final class Ae2ClosedLoopPatternDetails
         }
     }
 
-    private record ExpandedMember(IPatternDetails details, long copiesPerCycle) {
+    /**
+     * Converts one atomic member-group transition into a bounded number of per-execution
+     * transitions. Most flows produce one slice. Remainders produce at most one extra boundary
+     * per seed key, so this never expands once per copy even for very large coefficients.
+     */
+    static List<MemberFlowSlice> splitMemberFlow(
+            ClosedLoopPatternAnalyzer.MemberFlow flow, long copiesPerCycle) {
+        if (flow == null || copiesPerCycle <= 0) return List.of();
+        var boundaries = new TreeSet<Long>();
+        boundaries.add(0L);
+        boundaries.add(copiesPerCycle);
+        addRemainderBoundaries(boundaries, flow.inputSeed(), copiesPerCycle);
+        addRemainderBoundaries(boundaries, flow.outputSeed(), copiesPerCycle);
+
+        var points = new ArrayList<>(boundaries);
+        var slices = new ArrayList<MemberFlowSlice>(Math.max(1, points.size() - 1));
+        for (int i = 0; i + 1 < points.size(); i++) {
+            long start = points.get(i);
+            long end = points.get(i + 1);
+            if (end <= start) continue;
+            slices.add(new MemberFlowSlice(
+                    perCopyAt(flow.inputSeed(), copiesPerCycle, start),
+                    perCopyAt(flow.outputSeed(), copiesPerCycle, start),
+                    end - start));
+        }
+        return List.copyOf(slices);
+    }
+
+    private static void addRemainderBoundaries(
+            Set<Long> boundaries, Map<AEKey, Long> values, long copiesPerCycle) {
+        for (var amount : values.values()) {
+            if (amount == null || amount <= 0) continue;
+            long remainder = amount % copiesPerCycle;
+            if (remainder > 0) boundaries.add(remainder);
+        }
+    }
+
+    private static Map<AEKey, Long> perCopyAt(
+            Map<AEKey, Long> values, long copiesPerCycle, long copyIndex) {
+        var result = new LinkedHashMap<AEKey, Long>();
+        for (var entry : values.entrySet()) {
+            long total = entry.getValue();
+            if (total <= 0) continue;
+            long amount = total / copiesPerCycle;
+            if (copyIndex < total % copiesPerCycle) amount = Sat.add(amount, 1L);
+            if (amount > 0) result.put(entry.getKey(), amount);
+        }
+        return Map.copyOf(result);
+    }
+
+    private static appeng.api.stacks.KeyCounter counter(Map<AEKey, Long> values) {
+        var result = new appeng.api.stacks.KeyCounter();
+        for (var entry : values.entrySet()) {
+            if (entry.getValue() > 0) result.add(entry.getKey(), entry.getValue());
+        }
+        return result;
+    }
+
+    record MemberFlowSlice(
+            Map<AEKey, Long> inputSeed,
+            Map<AEKey, Long> outputSeed,
+            long copiesPerCycle) {
+        MemberFlowSlice {
+            inputSeed = Map.copyOf(inputSeed);
+            outputSeed = Map.copyOf(outputSeed);
+        }
+    }
+
+    private record ExpandedMember(
+            IPatternDetails details,
+            long copiesPerCycle,
+            ClosedLoopPatternAnalyzer.MemberFlow flow) {
     }
 }

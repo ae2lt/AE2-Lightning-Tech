@@ -345,7 +345,7 @@ class ClosedLoopPatternAnalyzerTest {
     }
 
     @Test
-    void fuzzySeedSlotIsPinnedToOneConcreteVariantForEveryExecutionRound() {
+    void fuzzySeedSlotKeepsOnePlanningIdentityButAcceptsTheReturnedRuntimeVariant() {
         var encodedInput = new TestKey("pinned_seed", "encoded");
         var returnedVariant = new TestKey("pinned_seed", "returned");
         var otherReturnedVariant = new TestKey("pinned_seed", "other");
@@ -358,11 +358,74 @@ class ClosedLoopPatternAnalyzerTest {
 
         assertEquals(returnedVariant, pinned[0].getPossibleInputs()[0].what());
         assertEquals(true, pinned[0].isValid(returnedVariant, null));
-        assertEquals(false, pinned[0].isValid(encodedInput, null));
+        assertEquals(true, pinned[0].isValid(encodedInput, null));
         assertThrows(IllegalArgumentException.class,
                 () -> com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopExpandedPatternDetails
                         .pinReusableSeedInputs(details,
                                 java.util.Set.of(returnedVariant, otherReturnedVariant)));
+    }
+
+    @Test
+    void memberFlowsCarrySeedStateAcrossDifferentKeysAndExposeOnlySafeOutput() {
+        var a = key("flow_a");
+        var b = key("flow_b");
+        var aToB = pattern(List.of(output(b, 1)), input(a, 1, null));
+        var bToA = pattern(List.of(output(a, 2)), input(b, 1, null));
+
+        var flows = ClosedLoopPatternAnalyzer.deriveMemberFlows(List.of(
+                new ClosedLoopPatternAnalyzer.Member(aToB, 1),
+                new ClosedLoopPatternAnalyzer.Member(bToA, 1)),
+                List.of(output(a, 1)));
+
+        assertEquals(java.util.Map.of(a, 1L), flows.get(0).inputSeed());
+        assertEquals(java.util.Map.of(b, 1L), flows.get(0).outputSeed());
+        assertEquals(java.util.Map.of(b, 1L), flows.get(1).inputSeed());
+        assertEquals(java.util.Map.of(a, 1L), flows.get(1).outputSeed());
+    }
+
+    @Test
+    void twoPatternsCanCarryTwoMaterialLoopsAsOneAtomicSeedState() {
+        var a = key("two_loop_a");
+        var b = key("two_loop_b");
+        var c = key("two_loop_c");
+        var d = key("two_loop_d");
+        var first = pattern(List.of(output(b, 1), output(d, 1)),
+                input(a, 1, null), input(c, 1, null));
+        var second = pattern(List.of(output(a, 2), output(c, 1)),
+                input(b, 1, null), input(d, 1, null));
+        var details = List.<IPatternDetails>of(first, second);
+        var members = List.of(
+                new ClosedLoopPatternAnalyzer.Member(first, 1),
+                new ClosedLoopPatternAnalyzer.Member(second, 1));
+
+        assertEquals(ClosedLoopPatternAnalyzer.StructureStatus.VALID,
+                ClosedLoopPatternAnalyzer.validateMinimalStructure(details));
+        var analysis = ClosedLoopPatternAnalyzer.analyze(members, a);
+        assertNotNull(analysis);
+        assertEquals(2, analysis.seeds().size());
+        assertAmount(analysis.seeds(), a, 1);
+        assertAmount(analysis.seeds(), c, 1);
+
+        var flows = ClosedLoopPatternAnalyzer.deriveMemberFlows(members, analysis.seeds());
+        assertEquals(java.util.Map.of(a, 1L, c, 1L), flows.get(0).inputSeed());
+        assertEquals(java.util.Map.of(b, 1L, d, 1L), flows.get(0).outputSeed());
+        assertEquals(java.util.Map.of(b, 1L, d, 1L), flows.get(1).inputSeed());
+        assertEquals(java.util.Map.of(a, 1L, c, 1L), flows.get(1).outputSeed());
+    }
+
+    @Test
+    void dependentSelfGrowthCannotClassifyItsExternalInputAsSeed() {
+        var a = key("flow_external_a");
+        var b = key("flow_seed_b");
+        var growB = pattern(List.of(output(b, 2)),
+                input(b, 1, null), input(a, 1, null));
+
+        var flows = ClosedLoopPatternAnalyzer.deriveMemberFlows(
+                List.of(new ClosedLoopPatternAnalyzer.Member(growB, 1)),
+                List.of(output(b, 1)));
+
+        assertEquals(java.util.Map.of(b, 1L), flows.get(0).inputSeed());
+        assertEquals(java.util.Map.of(b, 1L), flows.get(0).outputSeed());
     }
 
     private static com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopAnalysis analyzeOverloadEdge(

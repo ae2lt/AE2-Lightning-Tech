@@ -66,6 +66,10 @@ public final class ClosedLoopPatternAuthoringService {
             stored.add(new ClosedLoopMemberPattern(marked.snapshot(), member.copies()));
         }
         var analysis = ordered.analysis();
+        if (ClosedLoopPatternAnalyzer.deriveMemberFlows(
+                ordered.members(), analysis.seeds()).size() != ordered.members().size()) {
+            return new Result(Status.NOT_BALANCED, null);
+        }
         var payload = new ClosedLoopPatternPayload(
                 UUID.randomUUID(), 1L, stored, analysis.seeds(), analysis.externalInputs(),
                 analysis.netOutputs(), seedMultiplier, true);

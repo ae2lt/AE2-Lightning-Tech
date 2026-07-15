@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 import org.jetbrains.annotations.Nullable;
 import appeng.blockentity.crafting.IMolecularAssemblerSupportedPattern;
 
@@ -23,11 +24,13 @@ public class ClosedLoopExpandedPatternDetails
     public static final int CLOSED_LOOP_DISPATCH_PRIORITY = 1_000;
     protected final IPatternDetails delegate;
     protected final Set<appeng.api.stacks.AEKey> seedKeys;
+    protected final Set<appeng.api.stacks.AEKey> cycleKeys;
     protected final Map<appeng.api.stacks.AEKey, Long> sharedOutputAmounts;
     private final AEItemKey persistenceDefinition;
     private final int dispatchOrder;
     private final IInput[] executionInputs;
-    private final Map<appeng.api.stacks.AEKey, Long> seedCreditPerCopy;
+    private final UUID seedGroupId;
+    private final boolean singleSeedInputPerMember;
 
     public ClosedLoopExpandedPatternDetails(IPatternDetails delegate,
                                             Map<appeng.api.stacks.AEKey, Long> seedAmounts,
@@ -39,10 +42,33 @@ public class ClosedLoopExpandedPatternDetails
                                             Map<appeng.api.stacks.AEKey, Long> seedAmounts,
                                             AEItemKey persistenceDefinition,
                                             int dispatchOrder) {
+        this(delegate, seedAmounts, seedAmounts.keySet(), fallbackGroupId(persistenceDefinition),
+                persistenceDefinition, dispatchOrder);
+    }
+
+    public ClosedLoopExpandedPatternDetails(IPatternDetails delegate,
+                                            Map<appeng.api.stacks.AEKey, Long> seedAmounts,
+                                            Set<appeng.api.stacks.AEKey> cycleKeys,
+                                            UUID seedGroupId,
+                                            AEItemKey persistenceDefinition,
+                                            int dispatchOrder) {
+        this(delegate, seedAmounts, cycleKeys, seedGroupId, seedAmounts.size() == 1,
+                persistenceDefinition, dispatchOrder);
+    }
+
+    public ClosedLoopExpandedPatternDetails(IPatternDetails delegate,
+                                            Map<appeng.api.stacks.AEKey, Long> seedAmounts,
+                                            Set<appeng.api.stacks.AEKey> cycleKeys,
+                                            UUID seedGroupId,
+                                            boolean singleSeedInputPerMember,
+                                            AEItemKey persistenceDefinition,
+                                            int dispatchOrder) {
         this.delegate = Objects.requireNonNull(delegate, "delegate");
         this.seedKeys = Set.copyOf(seedAmounts.keySet());
+        this.cycleKeys = Set.copyOf(cycleKeys);
+        this.seedGroupId = Objects.requireNonNull(seedGroupId, "seedGroupId");
+        this.singleSeedInputPerMember = singleSeedInputPerMember;
         this.executionInputs = pinReusableSeedInputs(delegate, this.seedKeys);
-        this.seedCreditPerCopy = seedCreditPerCopy(this.executionInputs, this.seedKeys);
         this.sharedOutputAmounts = sharedOutputAmounts(delegate, seedAmounts);
         this.persistenceDefinition = Objects.requireNonNull(
                 persistenceDefinition, "persistenceDefinition");
@@ -66,20 +92,45 @@ public class ClosedLoopExpandedPatternDetails
     public static ClosedLoopExpandedPatternDetails wrap(
             IPatternDetails delegate, Map<appeng.api.stacks.AEKey, Long> seedAmounts,
             boolean singleMemberLoop, AEItemKey persistenceDefinition, int dispatchOrder) {
+        return wrap(delegate, seedAmounts, seedAmounts.keySet(), fallbackGroupId(persistenceDefinition),
+                singleMemberLoop, persistenceDefinition, dispatchOrder);
+    }
+
+    public static ClosedLoopExpandedPatternDetails wrap(
+            IPatternDetails delegate, Map<appeng.api.stacks.AEKey, Long> seedAmounts,
+            Set<appeng.api.stacks.AEKey> cycleKeys, UUID seedGroupId,
+            boolean singleMemberLoop, AEItemKey persistenceDefinition, int dispatchOrder) {
+        return wrap(delegate, seedAmounts, cycleKeys, seedGroupId, seedAmounts.size() == 1,
+                singleMemberLoop, persistenceDefinition, dispatchOrder);
+    }
+
+    public static ClosedLoopExpandedPatternDetails wrap(
+            IPatternDetails delegate, Map<appeng.api.stacks.AEKey, Long> seedAmounts,
+            Set<appeng.api.stacks.AEKey> cycleKeys, UUID seedGroupId,
+            boolean singleSeedInputPerMember,
+            boolean singleMemberLoop, AEItemKey persistenceDefinition, int dispatchOrder) {
         boolean reusableSeed = singleMemberLoop && seedAmounts.size() == 1
                 && hasSeedInput(delegate, seedAmounts.keySet());
         if (delegate instanceof IMolecularAssemblerSupportedPattern molecular) {
             return reusableSeed
                     ? new SingleSeedClosedLoopMolecularPatternDetails(
-                            molecular, seedAmounts, persistenceDefinition, dispatchOrder)
+                            molecular, seedAmounts, cycleKeys, seedGroupId,
+                            singleSeedInputPerMember,
+                            persistenceDefinition, dispatchOrder)
                     : new ClosedLoopMolecularPatternDetails(
-                            molecular, seedAmounts, persistenceDefinition, dispatchOrder);
+                            molecular, seedAmounts, cycleKeys, seedGroupId,
+                            singleSeedInputPerMember,
+                            persistenceDefinition, dispatchOrder);
         }
         return reusableSeed
                 ? new SingleSeedClosedLoopPatternDetails(
-                        delegate, seedAmounts, persistenceDefinition, dispatchOrder)
+                        delegate, seedAmounts, cycleKeys, seedGroupId,
+                        singleSeedInputPerMember,
+                        persistenceDefinition, dispatchOrder)
                 : new ClosedLoopExpandedPatternDetails(
-                        delegate, seedAmounts, persistenceDefinition, dispatchOrder);
+                        delegate, seedAmounts, cycleKeys, seedGroupId,
+                        singleSeedInputPerMember,
+                        persistenceDefinition, dispatchOrder);
     }
 
     public IPatternDetails delegate() {
@@ -98,8 +149,10 @@ public class ClosedLoopExpandedPatternDetails
 
     @Override public int dispatchPriority() { return CLOSED_LOOP_DISPATCH_PRIORITY; }
     @Override public int dispatchOrder() { return dispatchOrder; }
-    @Override public Map<appeng.api.stacks.AEKey, Long> seedCreditPerCopy() {
-        return seedCreditPerCopy;
+    @Override public UUID reusableSeedGroupId() { return seedGroupId; }
+    @Override public Set<appeng.api.stacks.AEKey> reusableSeedCycleKeys() { return cycleKeys; }
+    @Override public boolean hasSingleSeedInputPerMember() {
+        return singleSeedInputPerMember;
     }
 
     @Override public AEItemKey getDefinition() { return delegate.getDefinition(); }
@@ -173,7 +226,8 @@ public class ClosedLoopExpandedPatternDetails
             }
             if (selected != null) {
                 result[slot] = new PinnedSeedInput(
-                        selected, selectedAmount, input.getMultiplier(), input.getRemainingKey(selected));
+                        selected, selectedAmount, input.getMultiplier(),
+                        input.getRemainingKey(selected), ignoreSecondary);
             }
         }
         return result;
@@ -192,22 +246,29 @@ public class ClosedLoopExpandedPatternDetails
         private final long multiplier;
         @Nullable
         private final appeng.api.stacks.AEKey remaining;
+        private final boolean ignoreSecondary;
 
         private PinnedSeedInput(appeng.api.stacks.AEKey selected, long amount, long multiplier,
-                                @Nullable appeng.api.stacks.AEKey remaining) {
+                                @Nullable appeng.api.stacks.AEKey remaining,
+                                boolean ignoreSecondary) {
             this.possible = new GenericStack[] {new GenericStack(selected, amount)};
             this.multiplier = multiplier;
             this.remaining = remaining;
+            this.ignoreSecondary = ignoreSecondary;
         }
 
         @Override public GenericStack[] getPossibleInputs() { return possible.clone(); }
         @Override public long getMultiplier() { return multiplier; }
         @Override public boolean isValid(appeng.api.stacks.AEKey input, Level level) {
-            return possible[0].what().equals(input);
+            return sameSeedIdentity(possible[0].what(), input, ignoreSecondary);
         }
         @Override public @Nullable appeng.api.stacks.AEKey getRemainingKey(
                 appeng.api.stacks.AEKey template) {
-            return possible[0].what().equals(template) ? remaining : null;
+            if (!sameSeedIdentity(possible[0].what(), template, ignoreSecondary)) return null;
+            if (ignoreSecondary && remaining != null && remaining.equals(possible[0].what())) {
+                return template;
+            }
+            return remaining;
         }
     }
 
@@ -233,19 +294,9 @@ public class ClosedLoopExpandedPatternDetails
         return Map.copyOf(result);
     }
 
-    private static Map<appeng.api.stacks.AEKey, Long> seedCreditPerCopy(
-            IInput[] inputs, Set<appeng.api.stacks.AEKey> seedKeys) {
-        var result = new java.util.LinkedHashMap<appeng.api.stacks.AEKey, Long>();
-        for (var input : inputs) {
-            for (var possible : input.getPossibleInputs()) {
-                if (possible.what() == null || !seedKeys.contains(possible.what())) continue;
-                long amount = com.moakiee.thunderbolt.core.planner.Sat.mul(
-                        possible.amount(), input.getMultiplier());
-                if (amount > 0) result.merge(possible.what(), amount,
-                        com.moakiee.thunderbolt.core.planner.Sat::add);
-                break;
-            }
-        }
-        return Map.copyOf(result);
+    private static UUID fallbackGroupId(AEItemKey persistenceDefinition) {
+        return UUID.nameUUIDFromBytes(
+                Objects.requireNonNull(persistenceDefinition, "persistenceDefinition")
+                        .toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
     }
 }

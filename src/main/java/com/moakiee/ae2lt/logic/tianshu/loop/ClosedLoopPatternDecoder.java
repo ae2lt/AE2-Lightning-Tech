@@ -29,16 +29,34 @@ public final class ClosedLoopPatternDecoder implements IPatternDetailsDecoder {
             int executionMember = item.readExecutionMember(stack);
             if (executionMember >= 0) {
                 if (executionMember >= payload.memberPatterns().size()) return null;
-                var stored = payload.memberPatterns().get(executionMember);
-                var delegate = appeng.api.crafting.PatternDetailsHelper.decodePattern(
-                        stored.pattern().toItemStack(level.registryAccess()), level);
-                if (delegate == null || delegate instanceof TianshuClosedLoopPatternDetails) return null;
+                var decodedMembers = new java.util.ArrayList<IPatternDetails>(
+                        payload.memberPatterns().size());
+                for (var stored : payload.memberPatterns()) {
+                    var decoded = appeng.api.crafting.PatternDetailsHelper.decodePattern(
+                            stored.pattern().toItemStack(level.registryAccess()), level);
+                    if (decoded == null || decoded instanceof TianshuClosedLoopPatternDetails) return null;
+                    decodedMembers.add(decoded);
+                }
+                var delegate = decodedMembers.get(executionMember);
                 var seedAmounts = new java.util.LinkedHashMap<appeng.api.stacks.AEKey, Long>();
                 for (var seed : payload.seeds()) seedAmounts.merge(
                         seed.what(), seed.amount(), com.moakiee.thunderbolt.core.planner.Sat::add);
+                var cycleKeys = ClosedLoopCycleKeys.analyze(decodedMembers, seedAmounts.keySet());
+                var analyzedMembers = new java.util.ArrayList<ClosedLoopPatternAnalyzer.Member>(
+                        decodedMembers.size());
+                for (int i = 0; i < decodedMembers.size(); i++) {
+                    analyzedMembers.add(new ClosedLoopPatternAnalyzer.Member(
+                            decodedMembers.get(i), payload.memberPatterns().get(i).copiesPerCycle()));
+                }
+                var memberFlows = ClosedLoopPatternAnalyzer.deriveMemberFlows(
+                        analyzedMembers, payload.seeds());
+                if (memberFlows.size() != decodedMembers.size()) return null;
+                boolean singleSeedInputPerMember =
+                        ClosedLoopPatternAnalyzer.hasSingleSeedInputPerMember(memberFlows);
                 return ClosedLoopExpandedPatternDetails.wrap(
-                        delegate, seedAmounts, payload.memberPatterns().size() == 1, what,
-                        executionMember);
+                        delegate, seedAmounts, cycleKeys, payload.patternId(),
+                        singleSeedInputPerMember,
+                        payload.memberPatterns().size() == 1, what, executionMember);
             }
             if (!payload.enabled()) return null;
             return new Ae2ClosedLoopPatternDetails(what, payload, level);

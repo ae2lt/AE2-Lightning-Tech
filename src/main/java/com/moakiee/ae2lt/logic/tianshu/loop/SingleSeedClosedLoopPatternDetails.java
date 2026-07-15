@@ -8,9 +8,13 @@ class SingleSeedClosedLoopPatternDetails extends ClosedLoopExpandedPatternDetail
         implements SharedBatchInputPattern, ClosedLoopBatchPatternDetails {
     SingleSeedClosedLoopPatternDetails(IPatternDetails delegate,
                                        java.util.Map<AEKey, Long> seedAmounts,
+                                       java.util.Set<AEKey> cycleKeys,
+                                       java.util.UUID seedGroupId,
+                                       boolean singleSeedInputPerMember,
                                        appeng.api.stacks.AEItemKey persistenceDefinition,
                                        int dispatchOrder) {
-        super(delegate, seedAmounts, persistenceDefinition, dispatchOrder);
+        super(delegate, seedAmounts, cycleKeys, seedGroupId, singleSeedInputPerMember,
+                persistenceDefinition, dispatchOrder);
     }
 
     @Override

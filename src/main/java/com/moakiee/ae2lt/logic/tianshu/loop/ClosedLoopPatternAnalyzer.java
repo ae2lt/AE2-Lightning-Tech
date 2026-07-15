@@ -182,6 +182,113 @@ public final class ClosedLoopPatternAnalyzer {
         return best[0];
     }
 
+    /**
+     * Derives the explicit virtual-inventory transition for every ordered member dispatch group.
+     * Values are totals for {@link Member#copies()} executions, not per-copy averages.
+     */
+    public static List<MemberFlow> deriveMemberFlows(
+            List<Member> members, List<GenericStack> seeds) {
+        if (members == null || members.isEmpty() || seeds == null || seeds.isEmpty()) {
+            return List.of();
+        }
+        var details = new ArrayList<IPatternDetails>(members.size());
+        for (var member : members) {
+            if (member == null || member.details() == null || member.copies() <= 0) return List.of();
+            details.add(member.details());
+        }
+        var possibleOutputs = possibleLoopOutputs(details);
+        if (possibleOutputs == null) return List.of();
+
+        var scaled = new ArrayList<Balance>(members.size());
+        var totalConsumed = new LinkedHashMap<AEKey, Long>();
+        var totalProduced = new LinkedHashMap<AEKey, Long>();
+        for (var member : members) {
+            var perCopy = balance(member.details(), possibleOutputs);
+            if (perCopy == null) return List.of();
+            var consumed = scaledCopy(perCopy.consumed(), member.copies());
+            var produced = scaledCopy(perCopy.produced(), member.copies());
+            scaled.add(new Balance(consumed, produced));
+            mergeScaled(totalConsumed, consumed, 1L);
+            mergeScaled(totalProduced, produced, 1L);
+        }
+
+        var cycleKeys = new java.util.LinkedHashSet<AEKey>();
+        for (var key : totalConsumed.keySet()) {
+            if (totalProduced.getOrDefault(key, 0L) > 0) cycleKeys.add(key);
+        }
+        var seedAmounts = new LinkedHashMap<AEKey, Long>();
+        for (var seed : seeds) {
+            if (seed != null && seed.what() != null && seed.amount() > 0) {
+                seedAmounts.merge(seed.what(), seed.amount(), Sat::add);
+            }
+        }
+        if (!cycleKeys.containsAll(seedAmounts.keySet())) return List.of();
+
+        var required = new ArrayList<Map<AEKey, Long>>(java.util.Collections.nCopies(
+                members.size() + 1, Map.of()));
+        required.set(members.size(), Map.copyOf(seedAmounts));
+        for (int memberIndex = members.size() - 1; memberIndex >= 0; memberIndex--) {
+            var balance = scaled.get(memberIndex);
+            var after = required.get(memberIndex + 1);
+            var before = new LinkedHashMap<AEKey, Long>();
+            for (var key : cycleKeys) {
+                long consumed = balance.consumed().getOrDefault(key, 0L);
+                long produced = balance.produced().getOrDefault(key, 0L);
+                long retainedAfter = after.getOrDefault(key, 0L);
+                long neededBefore = Sat.add(consumed, Math.max(0L, retainedAfter - produced));
+                if (neededBefore > 0) before.put(key, neededBefore);
+            }
+            required.set(memberIndex, Map.copyOf(before));
+        }
+
+        var result = new ArrayList<MemberFlow>(members.size());
+        for (int memberIndex = 0; memberIndex < members.size(); memberIndex++) {
+            var balance = scaled.get(memberIndex);
+            var before = required.get(memberIndex);
+            var after = required.get(memberIndex + 1);
+            var inputSeed = new LinkedHashMap<AEKey, Long>();
+            var outputSeed = new LinkedHashMap<AEKey, Long>();
+            for (var entry : balance.consumed().entrySet()) {
+                if (cycleKeys.contains(entry.getKey()) && entry.getValue() > 0) {
+                    inputSeed.put(entry.getKey(), entry.getValue());
+                }
+            }
+            // A member without a reusable-state input is a producer in a dependency chain, not a
+            // closed-loop transition. It cannot be made safe by assigning it a dedicated ledger.
+            if (inputSeed.isEmpty()) return List.of();
+            for (var entry : balance.produced().entrySet()) {
+                var key = entry.getKey();
+                long produced = entry.getValue();
+                long seedOutput = 0L;
+                if (cycleKeys.contains(key)) {
+                    long carried = Math.max(0L,
+                            before.getOrDefault(key, 0L)
+                                    - balance.consumed().getOrDefault(key, 0L));
+                    seedOutput = Math.min(produced,
+                            Math.max(0L, after.getOrDefault(key, 0L) - carried));
+                    if (seedOutput > 0) outputSeed.put(key, seedOutput);
+                }
+            }
+            result.add(new MemberFlow(
+                    Map.copyOf(inputSeed), Map.copyOf(outputSeed)));
+        }
+        return List.copyOf(result);
+    }
+
+    /** Classification used by the CPU's shared single-seed ledger. */
+    static boolean hasSingleSeedInputPerMember(List<MemberFlow> flows) {
+        if (flows == null || flows.isEmpty()) return false;
+        for (var flow : flows) {
+            if (flow == null) return false;
+            int positiveTypes = 0;
+            for (var amount : flow.inputSeed().values()) {
+                if (amount != null && amount > 0 && ++positiveTypes > 1) return false;
+            }
+            if (positiveTypes != 1) return false;
+        }
+        return true;
+    }
+
     private static void enumerateOrders(
             List<Member> source, AEKey requestedOutput, boolean[] used,
             ArrayList<Member> current, OrderedAnalysis[] best, long[] bestSeedTotal) {
@@ -381,6 +488,12 @@ public final class ClosedLoopPatternAnalyzer {
         }
     }
 
+    private static Map<AEKey, Long> scaledCopy(Map<AEKey, Long> source, long copies) {
+        var result = new LinkedHashMap<AEKey, Long>();
+        mergeScaled(result, source, copies);
+        return Map.copyOf(result);
+    }
+
     private static List<GenericStack> toStacks(Map<AEKey, Long> values) {
         var result = new ArrayList<GenericStack>(values.size());
         for (var entry : values.entrySet()) {
@@ -393,6 +506,14 @@ public final class ClosedLoopPatternAnalyzer {
     public record OrderedAnalysis(List<Member> members, ClosedLoopAnalysis analysis) {
         public OrderedAnalysis {
             members = List.copyOf(members);
+        }
+    }
+    public record MemberFlow(
+            Map<AEKey, Long> inputSeed,
+            Map<AEKey, Long> outputSeed) {
+        public MemberFlow {
+            inputSeed = Map.copyOf(inputSeed);
+            outputSeed = Map.copyOf(outputSeed);
         }
     }
     private record Balance(Map<AEKey, Long> consumed, Map<AEKey, Long> produced) { }

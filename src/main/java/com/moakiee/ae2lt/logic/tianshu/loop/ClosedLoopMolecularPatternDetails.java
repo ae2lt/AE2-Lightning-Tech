@@ -16,9 +16,13 @@ class ClosedLoopMolecularPatternDetails extends ClosedLoopExpandedPatternDetails
 
     ClosedLoopMolecularPatternDetails(IMolecularAssemblerSupportedPattern molecular,
                                       java.util.Map<AEKey, Long> seedAmounts,
+                                      java.util.Set<AEKey> cycleKeys,
+                                      java.util.UUID seedGroupId,
+                                      boolean singleSeedInputPerMember,
                                       appeng.api.stacks.AEItemKey persistenceDefinition,
                                       int dispatchOrder) {
-        super(molecular, seedAmounts, persistenceDefinition, dispatchOrder);
+        super(molecular, seedAmounts, cycleKeys, seedGroupId, singleSeedInputPerMember,
+                persistenceDefinition, dispatchOrder);
         this.molecular = molecular;
     }
 
