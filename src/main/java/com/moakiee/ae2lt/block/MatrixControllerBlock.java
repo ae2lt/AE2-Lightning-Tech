@@ -79,6 +79,7 @@ public class MatrixControllerBlock extends MatrixMultiblockDirectionalBlock impl
     public void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean movedByPiston) {
         if (!state.is(newState.getBlock())
                 && level.getBlockEntity(pos) instanceof MatrixControllerBlockEntity controller) {
+            controller.prepareForControllerRemoval();
             controller.clearStructureBindings();
         }
         super.onRemove(state, level, pos, newState, movedByPiston);

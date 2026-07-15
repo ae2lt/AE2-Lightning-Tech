@@ -55,4 +55,20 @@ class ControllerMachineStateSavedDataTest {
         assertEquals(id, ControllerMachineIdentity.read(tag));
         assertEquals(id, ControllerMachineIdentity.read(tag.copy()));
     }
+
+    @Test
+    void releasingLoadedOwnerDoesNotDeleteUuidState() {
+        var data = new ControllerMachineStateSavedData();
+        var id = UUID.randomUUID();
+        var state = new CompoundTag();
+        state.putLong("StillInFlight", 7L);
+
+        data.setState(MachineType.TIANSHU, id, state);
+        assertTrue(data.claim(MachineType.TIANSHU, id, "minecraft:overworld", 10L));
+        data.release(MachineType.TIANSHU, id, "minecraft:overworld", 10L);
+
+        assertTrue(data.hasState(MachineType.TIANSHU, id));
+        assertEquals(7L, data.getState(MachineType.TIANSHU, id).getLong("StillInFlight"));
+        assertTrue(data.claim(MachineType.TIANSHU, id, "minecraft:overworld", 11L));
+    }
 }

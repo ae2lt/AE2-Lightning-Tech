@@ -551,6 +551,17 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
                 .setState(MachineType.TIANSHU, machineId, state);
     }
 
+    /**
+     * Called only for an actual block replacement, while the port link is still
+     * available. Release what can be returned now, then persist any unfinished
+     * closed-loop cancellation under this controller UUID.
+     */
+    public void prepareForControllerRemoval() {
+        if (!persistentStateOwner || !(level instanceof ServerLevel)) return;
+        cpuPool.tryReleaseContents();
+        persistRuntimeStateIfChanged();
+    }
+
     private void loadRuntimeState(TianshuSupercomputerPortBlockEntity port) {
         if (!(level instanceof ServerLevel serverLevel)) return;
         var data = ControllerMachineStateSavedData.get(serverLevel);

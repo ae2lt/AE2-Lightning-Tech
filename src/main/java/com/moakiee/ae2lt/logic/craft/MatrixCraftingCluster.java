@@ -211,6 +211,15 @@ public final class MatrixCraftingCluster {
         lastLimiterSnapshot = MatrixCraftingMath.idleSnapshot(0.0D, 0.0D);
     }
 
+    /**
+     * Attempts to deliver every queued output before its controller is removed.
+     * Outputs rejected by the network stay in the engine and are serialized by
+     * the controller afterwards.
+     */
+    public void tryReleaseOutputs() {
+        engine.drainAll(false);
+    }
+
     public int totalThreadCapacity() {
         if (!formed.getAsBoolean()) return 0;
         long total = 0;

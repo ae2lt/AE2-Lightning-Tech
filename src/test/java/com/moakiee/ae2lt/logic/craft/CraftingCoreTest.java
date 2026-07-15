@@ -156,6 +156,26 @@ class CraftingCoreTest {
     }
 
     @Test
+    void gracefulRemovalDrainReleasesAcceptedOutputsAndKeepsRemainder() {
+        var host = new FakeHost(0);
+        host.maxInsertPerCall = 3;
+        var output = key("diamond");
+        var core = new CraftingCore(host, new FakeAssembler(output, 5), new CraftingCoreRegistry());
+
+        core.pushBatch(new FakePattern(), inputs(key("stick"), 1), 2, 20);
+        core.drainAll(false);
+
+        assertEquals(3, host.network.getLong(output));
+        assertEquals(2, core.threadsInFlight());
+
+        host.maxInsertPerCall = Long.MAX_VALUE;
+        core.drainAll(false);
+
+        assertEquals(10, host.network.getLong(output));
+        assertEquals(0, core.threadsInFlight());
+    }
+
+    @Test
     void sharedSeedRemainderIsReturnedOnceForTheWholeBatch() {
         var host = new FakeHost(0);
         var output = key("higher_essence");

@@ -579,6 +579,17 @@ public class MatrixControllerBlockEntity extends BlockEntity implements Crafting
                 .setState(MachineType.MATRIX, machineId, state);
     }
 
+    /**
+     * Called only for an actual block replacement, before the port is unlinked.
+     * Deliver every output accepted by the network and retain the remainder in
+     * UUID-keyed SavedData.
+     */
+    public void prepareForControllerRemoval() {
+        if (!persistentStateOwner || !(level instanceof ServerLevel)) return;
+        cluster.tryReleaseOutputs();
+        persistRuntimeStateIfChanged();
+    }
+
     private void ensureRuntimeStateLoaded(MatrixPortBlockEntity port) {
         if (machineId.equals(loadedRuntimeId) || !(level instanceof ServerLevel serverLevel)) return;
         cluster.suspendRuntime();
