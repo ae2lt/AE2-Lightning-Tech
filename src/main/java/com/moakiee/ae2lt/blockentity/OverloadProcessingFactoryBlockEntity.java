@@ -13,7 +13,6 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
@@ -50,6 +49,7 @@ import com.moakiee.ae2lt.grid.FrequencyBindingHost;
 import com.moakiee.ae2lt.logic.AdjacentItemAutoExportHelper;
 import com.moakiee.ae2lt.logic.MemoryCardConfigSupport;
 import com.moakiee.ae2lt.machine.common.GridRecipeMachineHost;
+import com.moakiee.ae2lt.machine.common.LightningCollapseMatrixHost;
 import com.moakiee.ae2lt.machine.overloadfactory.NotifyingFluidTank;
 import com.moakiee.ae2lt.machine.overloadfactory.OverloadProcessingFactoryAutomationInventory;
 import com.moakiee.ae2lt.machine.overloadfactory.OverloadProcessingFactoryEnergyStorage;
@@ -66,6 +66,7 @@ import com.moakiee.ae2lt.registry.ModBlocks;
 
 public class OverloadProcessingFactoryBlockEntity extends AENetworkedBlockEntity
     implements IUpgradeableObject, FrequencyBindingHost,
+        LightningCollapseMatrixHost,
         GridRecipeMachineHost<OverloadProcessingLockedRecipe, OverloadProcessingRecipeCandidate> {
     private static final String TAG_INVENTORY = "Inventory";
     private static final String TAG_UPGRADES = "Upgrades";
@@ -164,18 +165,14 @@ public class OverloadProcessingFactoryBlockEntity extends AENetworkedBlockEntity
         return inventory;
     }
 
-    public boolean insertMatricesFromHand(Player player, InteractionHand hand) {
-        ItemStack heldItem = player.getItemInHand(hand);
-        ItemStack remainder = inventory.insertItem(
-                OverloadProcessingFactoryInventory.SLOT_MATRIX, heldItem.copy(), false);
-        int inserted = heldItem.getCount() - remainder.getCount();
-        if (inserted <= 0) {
-            return false;
-        }
-        if (!player.getAbilities().instabuild) {
-            heldItem.shrink(inserted);
-        }
-        return true;
+    @Override
+    public IItemHandlerModifiable getMatrixInventory() {
+        return inventory;
+    }
+
+    @Override
+    public int getMatrixSlot() {
+        return OverloadProcessingFactoryInventory.SLOT_MATRIX;
     }
 
     public IItemHandlerModifiable getAutomationInventory() {
@@ -718,8 +715,10 @@ public class OverloadProcessingFactoryBlockEntity extends AENetworkedBlockEntity
                                net.minecraft.core.component.DataComponentMap.Builder builder,
                                @org.jetbrains.annotations.Nullable Player player) {
         super.exportSettings(mode, builder, player);
-        MemoryCardConfigSupport.exportAutoExportSettings(mode, builder, autoExport, allowedOutputs,
-                tag -> FrequencyBindingHelper.writeMemoryFrequency(tag, getFrequencyId()));
+        MemoryCardConfigSupport.exportAutoExportSettings(mode, builder, autoExport, allowedOutputs, tag -> {
+            FrequencyBindingHelper.writeMemoryFrequency(tag, getFrequencyId());
+            MemoryCardConfigSupport.writeMatrixCount(tag, this);
+        });
     }
 
     @Override
@@ -730,7 +729,10 @@ public class OverloadProcessingFactoryBlockEntity extends AENetworkedBlockEntity
         MemoryCardConfigSupport.importAutoExportSettings(mode, input,
                 v -> this.autoExport = v,
                 sides -> this.allowedOutputs = sides,
-                tag -> FrequencyBindingHelper.importMemoryFrequency(tag, this::setFrequency),
+                tag -> {
+                    FrequencyBindingHelper.importMemoryFrequency(tag, this::setFrequency);
+                    MemoryCardConfigSupport.restoreMatrixCount(tag, player, this);
+                },
                 () -> {
                     invalidateExportTargets();
                     saveChanges();
@@ -937,5 +939,4 @@ public class OverloadProcessingFactoryBlockEntity extends AENetworkedBlockEntity
         markForClientUpdate();
     }
 }
-
 

@@ -38,6 +38,7 @@ public final class CelestweaveArmorUtilityHandler {
             return;
         }
         var capabilities = ArmorCapabilityCollector.collectPerInstalledStack(player);
+        extinguishShieldedPlayer(player, capabilities);
         ArmorInteractionRangeService.tick(player, capabilities);
         tickPurification(player, capabilities);
         tickFoodSustain(player, capabilities);
@@ -196,6 +197,21 @@ public final class CelestweaveArmorUtilityHandler {
             }
             SaturationSubmodule.setCooldown(active.armor(), player, intervalTicks);
             return;
+        }
+    }
+
+    private static void extinguishShieldedPlayer(
+            ServerPlayer player,
+            List<ActiveCapability> capabilities) {
+        if (!player.isOnFire()) {
+            return;
+        }
+        for (var active : capabilities) {
+            if (active.capability() instanceof DeviceCapability.StagedMitigation) {
+                player.clearFire();
+                player.setRemainingFireTicks(0);
+                return;
+            }
         }
     }
 

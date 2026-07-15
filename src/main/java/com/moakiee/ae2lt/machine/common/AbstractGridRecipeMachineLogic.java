@@ -140,7 +140,7 @@ public abstract class AbstractGridRecipeMachineLogic<
             if (host.pushOutResult()) {
                 return TickRateModulation.URGENT;
             }
-            return TickRateModulation.SLEEP;
+            return energyWaitModulation();
         }
 
         int consumed = host.extractMachineEnergy(toConsume);
@@ -148,7 +148,7 @@ public abstract class AbstractGridRecipeMachineLogic<
             if (host.pushOutResult()) {
                 return TickRateModulation.URGENT;
             }
-            return TickRateModulation.SLEEP;
+            return energyWaitModulation();
         }
 
         host.onEnergyConsumed(consumed);
@@ -160,6 +160,15 @@ public abstract class AbstractGridRecipeMachineLogic<
 
         host.pushOutResult();
         return TickRateModulation.URGENT;
+    }
+
+    private TickRateModulation energyWaitModulation() {
+        // External FE insertion invokes the machine's energy-change callback,
+        // but FE appearing later in the ME network does not. Keep a slow poll
+        // only when Applied Flux can supply the machine from that network.
+        return AppFluxHelper.isAvailable()
+                ? TickRateModulation.SLOWER
+                : TickRateModulation.SLEEP;
     }
 
     private void tryStartProcessing() {

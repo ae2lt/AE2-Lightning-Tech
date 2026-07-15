@@ -19,7 +19,7 @@
     "client.CableBusRenderStateMixin",
     "client.CableBusContainerRenderMixin",
     "client.CableBusBakedModelMixin",
-    "client.EapSettingToggleButtonAccessor",
+    "client.EapSettingToggleButtonMixin",
     "client.PatternProviderScreenAccessor",
     "client.PatternEncodingTermScreenAccessor",
     "client.RailgunHumanoidModelMixin",
@@ -27,7 +27,8 @@
     "client.VerticalButtonBarAccessor",
     "client.AEBaseScreenFrequencyTerminalButtonMixin",
     "client.ClientPacketListenerShieldHitFeedbackMixin",
-    "client.LocalPlayerShieldHitFeedbackMixin"
+    "client.LocalPlayerShieldHitFeedbackMixin",
+    "client.EntityShieldFireVisualMixin"
   ],
   "injectors": {
     "defaultRequire": 1

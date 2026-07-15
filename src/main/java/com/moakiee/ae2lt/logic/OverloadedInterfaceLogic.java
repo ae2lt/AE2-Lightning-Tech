@@ -241,7 +241,11 @@ public class OverloadedInterfaceLogic extends InterfaceLogic {
 
         @Override
         public TickRateModulation tickingRequest(IGridNode node, int ticksSinceLastCall) {
-            if (!mainNode.isActive()) return TickRateModulation.SLEEP;
+            // Keep polling at the maximum interval while the node is inactive.
+            // Channel/power changes and remote eject targets do not reliably
+            // produce an alertDevice callback for this node, so SLEEP can leave
+            // the interface stuck after the external condition recovers.
+            if (!mainNode.isActive()) return TickRateModulation.IDLE;
 
             boolean hasItemIoWork = owner.hasGridItemIoWork();
             if (hasItemIoWork) {

@@ -46,6 +46,7 @@ import com.moakiee.ae2lt.grid.FrequencyBindingHost;
 import com.moakiee.ae2lt.logic.AdjacentItemAutoExportHelper;
 import com.moakiee.ae2lt.logic.MemoryCardConfigSupport;
 import com.moakiee.ae2lt.machine.common.GridRecipeMachineHost;
+import com.moakiee.ae2lt.machine.common.LightningCollapseMatrixHost;
 import com.moakiee.ae2lt.machine.common.SingleOutputLightningRecipeExecutor;
 import com.moakiee.ae2lt.machine.lightningchamber.LightningSimulationChamberAutomationInventory;
 import com.moakiee.ae2lt.machine.lightningchamber.LightningSimulationChamberEnergyStorage;
@@ -61,6 +62,7 @@ import com.moakiee.ae2lt.registry.ModBlocks;
 
 public class LightningSimulationChamberBlockEntity extends AENetworkedBlockEntity
     implements IUpgradeableObject, FrequencyBindingHost,
+        LightningCollapseMatrixHost,
         GridRecipeMachineHost<LightningSimulationLockedRecipe, LightningSimulationRecipeCandidate> {
     private static final String TAG_INVENTORY = "Inventory";
     private static final String TAG_LOCKED_RECIPE = "LockedRecipe";
@@ -146,6 +148,16 @@ public class LightningSimulationChamberBlockEntity extends AENetworkedBlockEntit
 
     public LightningSimulationChamberInventory getInventory() {
         return inventory;
+    }
+
+    @Override
+    public IItemHandlerModifiable getMatrixInventory() {
+        return inventory;
+    }
+
+    @Override
+    public int getMatrixSlot() {
+        return LightningSimulationChamberInventory.SLOT_CATALYST;
     }
 
     public IItemHandlerModifiable getAutomationInventory() {
@@ -584,8 +596,10 @@ public class LightningSimulationChamberBlockEntity extends AENetworkedBlockEntit
                                net.minecraft.core.component.DataComponentMap.Builder builder,
                                @org.jetbrains.annotations.Nullable Player player) {
         super.exportSettings(mode, builder, player);
-        MemoryCardConfigSupport.exportAutoExportSettings(mode, builder, autoExport, allowedOutputs,
-                tag -> FrequencyBindingHelper.writeMemoryFrequency(tag, getFrequencyId()));
+        MemoryCardConfigSupport.exportAutoExportSettings(mode, builder, autoExport, allowedOutputs, tag -> {
+            FrequencyBindingHelper.writeMemoryFrequency(tag, getFrequencyId());
+            MemoryCardConfigSupport.writeMatrixCount(tag, this);
+        });
     }
 
     @Override
@@ -596,7 +610,10 @@ public class LightningSimulationChamberBlockEntity extends AENetworkedBlockEntit
         MemoryCardConfigSupport.importAutoExportSettings(mode, input,
                 v -> this.autoExport = v,
                 sides -> this.allowedOutputs = sides,
-                tag -> FrequencyBindingHelper.importMemoryFrequency(tag, this::setFrequency),
+                tag -> {
+                    FrequencyBindingHelper.importMemoryFrequency(tag, this::setFrequency);
+                    MemoryCardConfigSupport.restoreMatrixCount(tag, player, this);
+                },
                 () -> {
                     invalidateExportTargets();
                     saveChanges();
