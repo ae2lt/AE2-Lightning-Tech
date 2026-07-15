@@ -26,6 +26,6 @@ The matrix is a **crafting provider**, not crafting storage. An ME Crafting CPU 
 * The structure must be formed and its core configuration must be valid
 * Exactly one Matrix Port and one main core must be present
 * At least one Pattern Storage must be installed
-* The port must be connected to an active ME network; its idle power usage is **8 AE/t**, and it does not consume a channel
+* The port must be connected to an active ME network; its idle power usage is **8 AE/t**, and the formed multiblock consumes **1 channel**
 
 The structure requires no external FE and does not directly consume Lightning.

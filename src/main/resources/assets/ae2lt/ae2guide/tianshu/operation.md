@@ -13,7 +13,7 @@ item_ids:
 
 ## Tianshu Supercomputer Port
 
-After formation, the <ItemLink id="ae2lt:tianshu_supercomputer_port" /> publishes the multiblock to the ME network as a crafting CPU named “Tianshu Supercomputer.” ME cables can connect on all six sides. The port uses **8 AE/t** while idle and does not consume a channel.
+After formation, the <ItemLink id="ae2lt:tianshu_supercomputer_port" /> publishes the multiblock to the ME network as a crafting CPU named “Tianshu Supercomputer.” ME cables can connect on all six sides. The port uses **8 AE/t** while idle, and the formed multiblock consumes **1 channel**.
 
 The supercomputer does not accept new jobs while its port is offline, its ME network is unpowered, or the structure is unformed. Saved job state persists across chunk unloads and can continue after the structure and network return.
 

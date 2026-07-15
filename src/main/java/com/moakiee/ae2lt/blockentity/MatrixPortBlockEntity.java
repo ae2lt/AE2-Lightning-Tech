@@ -35,6 +35,7 @@ import appeng.api.crafting.IPatternDetails;
 import appeng.api.implementations.blockentities.PatternContainerGroup;
 import appeng.api.inventories.BaseInternalInventory;
 import appeng.api.inventories.InternalInventory;
+import appeng.api.networking.GridFlags;
 import appeng.api.networking.IGrid;
 import appeng.api.networking.IManagedGridNode;
 import appeng.api.networking.crafting.ICraftingProvider;
@@ -97,6 +98,7 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
                 .setTagName("matter_warping_matrix_port")
                 .setVisualRepresentation(ModBlocks.MATTER_WARPING_MATRIX_PORT.get())
                 .setIdlePowerUsage(8.0D)
+                .setFlags(GridFlags.REQUIRE_CHANNEL)
                 .addService(ICraftingProvider.class, this);
     }
 

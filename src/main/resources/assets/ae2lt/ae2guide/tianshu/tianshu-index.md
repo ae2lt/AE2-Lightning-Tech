@@ -27,6 +27,6 @@ The supercomputer calculates plans, retains job state, and schedules crafting st
 * Exactly one Tianshu Supercomputer Port is required
 * The chamber center requires one main unit; all 26 surrounding cells require Storage or Parallel Supercomputing Units
 * At least one Storage Unit and one Parallel Unit are required
-* The port must be connected to an active ME network; it uses **8 AE/t** while idle and does not consume a channel
+* The port must be connected to an active ME network; it uses **8 AE/t** while idle, and the formed multiblock consumes **1 channel**
 
 The structure requires neither external FE nor Lightning.

@@ -10,6 +10,7 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import appeng.api.networking.GridFlags;
 import appeng.api.networking.IManagedGridNode;
 import appeng.api.networking.IGrid;
 import appeng.api.networking.security.IActionSource;
@@ -54,7 +55,8 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
         return super.createMainNode()
                 .setTagName("tianshu_supercomputer_port")
                 .setVisualRepresentation(ModBlocks.TIANSHU_SUPERCOMPUTER_PORT.get())
-                .setIdlePowerUsage(8.0D);
+                .setIdlePowerUsage(8.0D)
+                .setFlags(GridFlags.REQUIRE_CHANNEL);
     }
 
     @Override
