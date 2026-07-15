@@ -6,6 +6,7 @@ import java.util.Map;
 import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.block.MatrixFormedBlock;
 import com.moakiee.ae2lt.block.MatrixMultiblockComponentBlock;
+import com.moakiee.ae2lt.block.TianshuSupercomputerStructureBlock;
 import com.moakiee.ae2lt.logic.craft.MatrixMultiblockComponent;
 
 import net.minecraft.core.BlockPos;
@@ -61,9 +62,30 @@ public final class ConnectionPredicates {
         }
     };
 
+    /** Tianshu shell components: active only once formed; connects only to formed blocks of the same type. */
+    public static final ConnectionPredicate TIANSHU_FORMED_SAME_BLOCK = new ConnectionPredicate() {
+        @Override
+        public boolean isActive(BlockAndTintGetter level, BlockPos pos, BlockState self) {
+            return isFormedTianshuComponent(self);
+        }
+
+        @Override
+        public boolean connects(BlockAndTintGetter level, BlockPos pos, BlockState self, Direction dir) {
+            BlockState neighbour = level.getBlockState(pos.relative(dir));
+            return neighbour.is(self.getBlock()) && isFormedTianshuComponent(neighbour);
+        }
+
+        @Override
+        public boolean connects(BlockAndTintGetter level, BlockPos pos, BlockState self, BlockPos neighbourPos) {
+            BlockState neighbour = level.getBlockState(neighbourPos);
+            return neighbour.is(self.getBlock()) && isFormedTianshuComponent(neighbour);
+        }
+    };
+
     static {
         register(rl("same_block"), SAME_BLOCK);
         register(rl("matrix_formed_same_block"), MATRIX_FORMED_SAME_BLOCK);
+        register(rl("tianshu_formed_same_block"), TIANSHU_FORMED_SAME_BLOCK);
     }
 
     private ConnectionPredicates() {
@@ -88,5 +110,11 @@ public final class ConnectionPredicates {
             return false;
         }
         return state.getValue(MatrixFormedBlock.FORMED);
+    }
+
+    private static boolean isFormedTianshuComponent(BlockState state) {
+        return state.getBlock() instanceof TianshuSupercomputerStructureBlock
+                && state.hasProperty(TianshuSupercomputerStructureBlock.FORMED)
+                && state.getValue(TianshuSupercomputerStructureBlock.FORMED);
     }
 }

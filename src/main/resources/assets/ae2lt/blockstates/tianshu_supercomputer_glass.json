@@ -1,1 +1,10 @@
-{"variants":{"formed=false":{"model":"ae2lt:block/tianshu_supercomputer_glass"},"formed=true":{"model":"ae2lt:block/tianshu_supercomputer_glass"}}}
+{
+  "variants": {
+    "formed=false": {
+      "model": "ae2lt:block/tianshu_supercomputer_glass"
+    },
+    "formed=true": {
+      "model": "ae2lt:block/tianshu_supercomputer_glass_formed"
+    }
+  }
+}
