@@ -1833,11 +1833,13 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
     // ══════════════════════════════════════════════════════════════════════
 
     public void refreshEjectRegistrations() {
+        // The registry is shared by both logical sides in an integrated server.
+        if (level != null && level.isClientSide()) return;
         unregisterEject();
         if (!OverloadedInterfaceTickDecider.shouldRegisterEjectPorts(
                 interfaceMode == InterfaceMode.WIRELESS,
                 importMode == ImportMode.EJECT)
-                || level==null || level.isClientSide()) return;
+                || level==null) return;
         var srv = level.getServer(); if (srv==null) return;
         for (var c : connections) {
             if (!c.dimension().equals(level.dimension())) continue;
@@ -1858,7 +1860,7 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
     }
 
     private void unregisterEject() {
-        if (level==null) return;
+        if (level==null || level.isClientSide()) return;
         var removed = EjectModeRegistry.unregisterAll(this, true);
         if (level instanceof ServerLevel sl) {
             var srv = sl.getServer();
