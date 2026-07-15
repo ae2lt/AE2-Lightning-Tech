@@ -22,12 +22,11 @@ public final class TianshuMultiblockScanner {
         var members = new ArrayList<BlockPos>();
         var cores = new ArrayList<BlockPos>(27);
         var ports = new ArrayList<BlockPos>(2);
+        var patternStorages = new ArrayList<BlockPos>();
         var seedStorages = new ArrayList<BlockPos>();
         CpuMainCoreTier mainCore = null;
         int capacityCores = 0;
         int parallelCores = 0;
-        int maintenanceCores = 0;
-        int closedLoopPatternCores = 0;
         int closedLoopPatternStorages = 0;
         int closedLoopSeedStorages = 0;
         BlockPos min = null;
@@ -93,14 +92,9 @@ public final class TianshuMultiblockScanner {
                             } else if (component == TianshuMultiblockComponent.PARALLEL_CORE) {
                                 parallelCores++;
                                 members.add(world.immutable());
-                            } else if (component == TianshuMultiblockComponent.INVENTORY_MAINTENANCE_CORE) {
-                                maintenanceCores++;
-                                members.add(world.immutable());
-                            } else if (component == TianshuMultiblockComponent.CLOSED_LOOP_PATTERN_CORE) {
-                                closedLoopPatternCores++;
-                                members.add(world.immutable());
                             } else if (component == TianshuMultiblockComponent.CLOSED_LOOP_PATTERN_STORAGE) {
                                 closedLoopPatternStorages++;
+                                patternStorages.add(world.immutable());
                                 members.add(world.immutable());
                             } else if (component == TianshuMultiblockComponent.CLOSED_LOOP_SEED_STORAGE) {
                                 closedLoopSeedStorages++;
@@ -132,10 +126,11 @@ public final class TianshuMultiblockScanner {
         }
         var profile = CpuInternalCoreCalculator.calculate(mainCore, capacityCores, parallelCores);
         var functionProfile = new TianshuFunctionProfile(
-                maintenanceCores, closedLoopPatternCores, closedLoopPatternStorages, closedLoopSeedStorages);
+                closedLoopPatternStorages, closedLoopSeedStorages);
         return new TianshuMultiblockScanAttempt(new TianshuMultiblockScanResult(
                 controllerPos.immutable(), orientation, min, max, ports.getFirst(),
-                List.copyOf(members), List.copyOf(cores), List.copyOf(seedStorages),
+                List.copyOf(members), List.copyOf(cores), List.copyOf(patternStorages),
+                List.copyOf(seedStorages),
                 profile, functionProfile), List.of());
     }
 

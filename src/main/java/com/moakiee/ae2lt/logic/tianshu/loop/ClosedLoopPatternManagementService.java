@@ -37,15 +37,17 @@ public final class ClosedLoopPatternManagementService {
     public static boolean remove(
             TianshuSupercomputerPortBlockEntity target, UUID patternId) {
         if (!canManage(target) || patternId == null) return false;
-        boolean removed = target.getClosedLoopPatternRepository().remove(patternId);
+        var repository = target.getClosedLoopPatternRepository();
+        if (repository == null) return false;
+        boolean removed = repository.remove(patternId);
         if (removed) target.closedLoopPatternsChanged();
         return removed;
     }
 
     public static ClosedLoopValidationResult revalidate(
             TianshuSupercomputerPortBlockEntity target, UUID patternId) {
-        var payload = target != null
-                ? target.getClosedLoopPatternRepository().get(patternId) : null;
+        var repository = target != null ? target.getClosedLoopPatternRepository() : null;
+        var payload = repository != null ? repository.get(patternId) : null;
         if (payload == null || target.getLevel() == null) {
             return new ClosedLoopValidationResult(
                     ClosedLoopValidationResult.Status.MEMBER_UNDECODABLE, null);
@@ -55,8 +57,8 @@ public final class ClosedLoopPatternManagementService {
 
     private static ClosedLoopPatternPayload editable(
             TianshuSupercomputerPortBlockEntity target, UUID patternId) {
-        return canManage(target) && patternId != null
-                ? target.getClosedLoopPatternRepository().get(patternId) : null;
+        var repository = canManage(target) ? target.getClosedLoopPatternRepository() : null;
+        return repository != null && patternId != null ? repository.get(patternId) : null;
     }
 
     private static boolean canManage(TianshuSupercomputerPortBlockEntity target) {
@@ -68,7 +70,9 @@ public final class ClosedLoopPatternManagementService {
 
     private static ClosedLoopPatternRepository.PutResult store(
             TianshuSupercomputerPortBlockEntity target, ClosedLoopPatternPayload payload) {
-        var result = target.getClosedLoopPatternRepository().put(payload);
+        var repository = target.getClosedLoopPatternRepository();
+        if (repository == null) return ClosedLoopPatternRepository.PutResult.UNAVAILABLE;
+        var result = repository.put(payload);
         if (result == ClosedLoopPatternRepository.PutResult.ADDED
                 || result == ClosedLoopPatternRepository.PutResult.UPDATED) {
             target.closedLoopPatternsChanged();

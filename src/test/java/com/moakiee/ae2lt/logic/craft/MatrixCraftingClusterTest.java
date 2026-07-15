@@ -104,24 +104,19 @@ class MatrixCraftingClusterTest {
     }
 
     @Test
-    void closedLoopBatchFallsBackToNormalDispatchWithoutProcessor() {
+    void closedLoopBatchRunsThroughBuiltInMainCore() {
         var loopPattern = new FakeLoopPattern();
         var cores = List.of(new FakeCraftCore(
                 MatrixCraftingUnit.stableCore(), MatrixCraftingUnit.t2Threader()));
-        var withoutAssembler = new FakeAssembler();
-        var withoutProcessor = new MatrixCraftingCluster(
-                () -> true, () -> false,
+        var assembler = new FakeAssembler();
+        var cluster = new MatrixCraftingCluster(
+                () -> true,
                 List.of(() -> List.of(loopPattern)), cores,
-                new FakeHost(), withoutAssembler, new CraftingCoreRegistry());
-        var withProcessor = new MatrixCraftingCluster(
-                () -> true, () -> true,
-                List.of(() -> List.of(loopPattern)), cores,
-                new FakeHost(), (details, inputs) -> null, new CraftingCoreRegistry());
+                new FakeHost(), assembler, new CraftingCoreRegistry());
 
-        assertEquals(0, withoutProcessor.getBatchCapacity(loopPattern));
-        assertTrue(withoutProcessor.pushSingle(loopPattern, emptyInputs()));
-        assertEquals(1, withoutAssembler.calls);
-        assertEquals(32, withProcessor.getBatchCapacity(loopPattern));
+        assertEquals(32, cluster.getBatchCapacity(loopPattern));
+        assertTrue(cluster.pushSingle(loopPattern, emptyInputs()));
+        assertEquals(1, assembler.calls);
     }
 
     private static MatrixCraftingCluster cluster(List<FakeCraftCore> cores) {

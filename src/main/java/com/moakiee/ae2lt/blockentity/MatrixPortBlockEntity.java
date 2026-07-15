@@ -1,19 +1,12 @@
 package com.moakiee.ae2lt.blockentity;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
-import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.thunderbolt.ae2.api.crafting.IBatchCraftingProvider;
 import com.moakiee.thunderbolt.ae2.api.crafting.BatchDispatchMode;
-import com.moakiee.thunderbolt.core.craft.CraftingCoreHost;
-import com.moakiee.ae2lt.logic.craft.MatrixCraftCore;
 import com.moakiee.ae2lt.logic.craft.MatrixCraftingMath;
-import com.moakiee.ae2lt.logic.craft.MatrixCraftingCluster;
 import com.moakiee.ae2lt.logic.craft.MatrixCraftingProfile;
-import com.moakiee.ae2lt.logic.craft.MatrixCraftingUnit;
-import com.moakiee.ae2lt.logic.craft.MatrixPatternCore;
-import com.moakiee.thunderbolt.core.craft.MolecularCopyAssembler;
 import com.moakiee.ae2lt.registry.ModBlockEntities;
 import com.moakiee.ae2lt.registry.ModBlocks;
 
@@ -25,8 +18,6 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.neoforge.items.IItemHandlerModifiable;
 
@@ -49,7 +40,7 @@ import appeng.helpers.patternprovider.PatternContainer;
 import appeng.me.helpers.MachineSource;
 
 public class MatrixPortBlockEntity extends AENetworkedBlockEntity
-        implements CraftingCoreHost, IBatchCraftingProvider, PatternContainer {
+        implements IBatchCraftingProvider, PatternContainer {
     private static final String TAG_CONTROLLER_POS = "ControllerPos";
     private static final String TAG_FORMED = "Formed";
     private static final String TAG_CLUSTER = "Cluster";
@@ -57,32 +48,9 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
     private final IActionSource actionSource = new MachineSource(getMainNode()::getNode);
     private final PortPatternItemHandler itemHandler = new PortPatternItemHandler();
     private final MatrixTerminalPatternInventory terminalPatternInventory = new MatrixTerminalPatternInventory();
-    private final MatrixPatternCore patternCore = new MatrixPatternCore() {
-        @Override
-        public List<IPatternDetails> getAvailablePatterns() {
-            return collectAvailablePatterns();
-        }
-
-        @Override
-        public boolean hasPattern(IPatternDetails details) {
-            return hasAvailablePattern(details);
-        }
-    };
-    private final MatrixCraftCore craftCore = new MatrixCraftCore() {
-        @Override
-        public List<MatrixCraftingUnit> craftingUnits() {
-            return collectCraftingUnits();
-        }
-    };
-    private final MatrixCraftingCluster cluster = new MatrixCraftingCluster(
-            this::isFormed,
-            this::hasClosedLoopProcessor,
-            List.of(patternCore),
-            List.of(craftCore),
-            this,
-            new MolecularCopyAssembler(this::getLevel),
-            AE2LightningTech.craftingCoreRegistry());
     private BlockPos controllerPos;
+    private UUID boundMachineId;
+    private CompoundTag legacyClusterState;
     private boolean formed;
     private long lastPatternUpdateTick = Long.MIN_VALUE;
     private MatrixPatternStorageBlockEntity exposedPatternStorage;
@@ -103,12 +71,12 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
 
     @Override
     public AECableType getCableConnectionType(Direction dir) {
-        return AECableType.DENSE_SMART;
+        return formed ? AECableType.DENSE_SMART : AECableType.NONE;
     }
 
     @Override
     public java.util.Set<Direction> getGridConnectableSides(BlockOrientation orientation) {
-        return java.util.EnumSet.allOf(Direction.class);
+        return formed ? java.util.EnumSet.allOf(Direction.class) : java.util.Set.of();
     }
 
     public IItemHandlerModifiable getPatternItemHandler() {
@@ -120,30 +88,57 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
     }
 
     public void bindToController(BlockPos controllerPos) {
-        this.controllerPos = controllerPos == null ? null : controllerPos.immutable();
-        this.formed = controllerPos != null;
+        if (controllerPos != null) {
+            throw new IllegalArgumentException("A matrix link requires its controller UUID");
+        }
+        this.controllerPos = null;
+        this.boundMachineId = null;
+        this.formed = false;
+        updateLinkState();
+    }
+
+    public void bindToController(BlockPos controllerPos, UUID machineId) {
+        if (controllerPos == null || machineId == null) {
+            bindToController(null);
+            return;
+        }
+        this.controllerPos = controllerPos.immutable();
+        this.boundMachineId = machineId;
+        this.formed = true;
+        updateLinkState();
+    }
+
+    private void updateLinkState() {
         invalidateExposedPatternStorage();
+        if (level != null && !level.isClientSide) {
+            level.updateNeighborsAt(worldPosition, getBlockState().getBlock());
+        }
         saveChanges();
         markForUpdate();
         requestCraftingUpdate();
     }
 
     public boolean isFormed() {
-        return formed;
+        var controller = getController();
+        return formed && boundMachineId != null && controller != null;
     }
 
-    public boolean hasClosedLoopProcessor() {
-        var controller = getController();
-        return controller != null && controller.hasClosedLoopProcessor();
+    public boolean isLinkedTo(BlockPos controllerPos, UUID machineId) {
+        return formed && controllerPos != null && machineId != null
+                && controllerPos.equals(this.controllerPos)
+                && machineId.equals(boundMachineId);
     }
 
     public MatrixControllerBlockEntity getController() {
         if (!formed || controllerPos == null || level == null || !level.isLoaded(controllerPos)) {
             return null;
         }
-        return level.getBlockEntity(controllerPos) instanceof MatrixControllerBlockEntity controller
-                ? controller
-                : null;
+        if (!(level.getBlockEntity(controllerPos) instanceof MatrixControllerBlockEntity controller)
+                || !controller.isPersistentStateOwner() || boundMachineId == null
+                || !boundMachineId.equals(controller.getMachineId())) {
+            return null;
+        }
+        return controller;
     }
 
     public List<MatrixPatternStorageBlockEntity> getPatternStorages() {
@@ -152,15 +147,20 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
     }
 
     public MatrixCraftingProfile getCraftingProfile() {
-        return cluster.craftingProfile();
+        var controller = getController();
+        return controller != null ? controller.getCraftingProfile() : MatrixCraftingProfile.empty();
     }
 
     public MatrixCraftingMath.Snapshot getLimiterSnapshot() {
-        return cluster.previewSnapshot();
+        var controller = getController();
+        return controller != null
+                ? controller.getLimiterSnapshot()
+                : MatrixCraftingMath.idleSnapshot(0.0D, 0.0D);
     }
 
     public boolean isWorking() {
-        return formed && cluster.threadsInFlight() > 0;
+        var controller = getController();
+        return controller != null && controller.isWorking();
     }
 
     public void patternsChanged() {
@@ -174,7 +174,7 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
 
     @Override
     public IGrid getGrid() {
-        return formed ? getMainNode().getGrid() : null;
+        return isFormed() ? getMainNode().getGrid() : null;
     }
 
     @Override
@@ -208,71 +208,56 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
 
     @Override
     public List<IPatternDetails> getAvailablePatterns() {
-        return cluster.getAvailablePatterns();
+        var controller = getController();
+        return controller != null ? controller.getAvailablePatterns() : List.of();
     }
 
     @Override
     public boolean isBusy() {
-        return cluster.isBusy();
+        var controller = getController();
+        return controller == null || controller.isMatrixBusy();
     }
 
     @Override
     public int getBatchCapacity(IPatternDetails details) {
-        return cluster.getBatchCapacity(details);
+        var controller = getController();
+        return controller != null ? controller.getBatchCapacity(details) : 0;
     }
 
     @Override
     public boolean supportsSingleSeedBatch() {
-        return hasClosedLoopProcessor();
+        return isFormed();
     }
 
     @Override
     public BatchDispatchMode getBatchDispatchMode(IPatternDetails details) {
-        return cluster.batchDispatchMode();
+        var controller = getController();
+        return controller != null ? controller.getBatchDispatchMode() : BatchDispatchMode.NORMAL;
     }
 
     @Override
     public int pushBatch(IPatternDetails details, KeyCounter[] oneCopyTemplate, int maxCraft) {
-        return cluster.pushBatch(details, oneCopyTemplate, maxCraft);
+        var controller = getController();
+        return controller != null
+                ? controller.pushBatch(details, oneCopyTemplate, maxCraft) : maxCraft;
     }
 
     @Override
     public boolean pushPattern(IPatternDetails patternDetails, KeyCounter[] inputHolder) {
-        return cluster.pushSingle(patternDetails, inputHolder);
+        var controller = getController();
+        return controller != null && controller.pushPattern(patternDetails, inputHolder);
     }
 
-    @Override
-    public long getGameTime() {
-        return level != null ? level.getGameTime() : 0L;
+    public boolean isLinkConnected() {
+        return isFormed() && getMainNode().isActive() && getMainNode().getGrid() != null;
     }
 
-    @Override
-    public boolean isConnected() {
-        return formed && getMainNode().isActive() && getMainNode().getGrid() != null;
-    }
-
-    @Override
-    public long insertToNetwork(AEKey key, long amount) {
+    public long insertToNetworkLink(AEKey key, long amount) {
         var grid = getMainNode().getGrid();
         if (grid == null || key == null || amount <= 0) {
             return 0L;
         }
         return grid.getStorageService().getInventory().insert(key, amount, Actionable.MODULATE, actionSource);
-    }
-
-    @Override
-    public void spawnToWorld(AEKey key, long amount) {
-        Level level = getLevel();
-        if (level == null || level.isClientSide || key == null || amount <= 0) {
-            return;
-        }
-        var drops = new ArrayList<ItemStack>();
-        key.addDrops(amount, drops, level, getBlockPos());
-        for (var drop : drops) {
-            if (!drop.isEmpty()) {
-                Block.popResource(level, getBlockPos(), drop);
-            }
-        }
     }
 
     @Override
@@ -282,11 +267,8 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
             tag.putLong(TAG_CONTROLLER_POS, controllerPos.asLong());
         }
         tag.putBoolean(TAG_FORMED, formed);
-        var clusterTag = new CompoundTag();
-        cluster.writeEngineTo(clusterTag, registries);
-        if (!clusterTag.isEmpty()) {
-            tag.put(TAG_CLUSTER, clusterTag);
-        }
+        // Retain old port-owned state only until a controller UUID can migrate it to SavedData.
+        if (legacyClusterState != null) tag.put(TAG_CLUSTER, legacyClusterState.copy());
     }
 
     @Override
@@ -295,44 +277,28 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
         controllerPos = tag.contains(TAG_CONTROLLER_POS, Tag.TAG_LONG)
                 ? BlockPos.of(tag.getLong(TAG_CONTROLLER_POS))
                 : null;
-        formed = tag.getBoolean(TAG_FORMED) && controllerPos != null;
+        // Reconnect only after the controller has reclaimed the UUID-backed runtime.
+        formed = false;
+        boundMachineId = null;
+        legacyClusterState = null;
         if (tag.contains(TAG_CLUSTER, Tag.TAG_COMPOUND)) {
-            cluster.readEngineFrom(tag.getCompound(TAG_CLUSTER), registries);
+            legacyClusterState = tag.getCompound(TAG_CLUSTER).copy();
         }
         invalidateExposedPatternStorage();
+    }
+
+    public CompoundTag copyLegacyClusterState() {
+        return legacyClusterState != null ? legacyClusterState.copy() : null;
+    }
+
+    public void consumeLegacyClusterState() {
+        legacyClusterState = null;
+        saveChanges();
     }
 
     @Override
     protected Item getItemFromBlockEntity() {
         return ModBlocks.MATTER_WARPING_MATRIX_PORT.get().asItem();
-    }
-
-    private List<IPatternDetails> collectAvailablePatterns() {
-        if (!formed || level == null) {
-            return List.of();
-        }
-        var result = new ArrayList<IPatternDetails>();
-        for (var storage : getPatternStorages()) {
-            result.addAll(storage.getAvailablePatterns());
-        }
-        return List.copyOf(result);
-    }
-
-    private boolean hasAvailablePattern(IPatternDetails details) {
-        if (details == null || !formed || level == null) {
-            return false;
-        }
-        for (var storage : getPatternStorages()) {
-            if (storage.hasPattern(details)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private List<MatrixCraftingUnit> collectCraftingUnits() {
-        var controller = getController();
-        return controller != null ? controller.findCraftingUnits() : List.of();
     }
 
     private void invalidateExposedPatternStorage() {

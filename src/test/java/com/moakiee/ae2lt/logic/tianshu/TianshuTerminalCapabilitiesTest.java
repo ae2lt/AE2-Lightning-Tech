@@ -21,11 +21,11 @@ class TianshuTerminalCapabilitiesTest {
     }
 
     @Test
-    void closedLoopUploadRequiresCoreWarehouseAndSeedStorage() {
+    void closedLoopUploadRequiresWarehouseAndSeedStorage() {
         var incomplete = TianshuTerminalCapabilities.forTianshu(true,
-                new TianshuFunctionProfile(1, 1, 1, 0));
+                new TianshuFunctionProfile(1, 0));
         var complete = TianshuTerminalCapabilities.forTianshu(true,
-                new TianshuFunctionProfile(1, 1, 1, 1));
+                new TianshuFunctionProfile(1, 1));
 
         assertFalse(incomplete.allows(TianshuTerminalAction.UPLOAD_CLOSED_LOOP_PATTERN));
         assertTrue(complete.allows(TianshuTerminalAction.UPLOAD_CLOSED_LOOP_PATTERN));

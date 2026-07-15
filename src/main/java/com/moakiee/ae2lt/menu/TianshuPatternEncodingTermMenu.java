@@ -605,7 +605,8 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     public boolean isKeyVisible(appeng.api.stacks.AEKey key) {
         if (!maintainableView) return super.isKeyVisible(key);
         var target = tianshuHost.getSelectedTianshu();
-        return target != null && target.getInventoryMaintenance().repository().get(key) != null;
+        var maintenance = target != null ? target.getInventoryMaintenance() : null;
+        return maintenance != null && maintenance.repository().get(key) != null;
     }
 
     @Override
@@ -621,13 +622,15 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         var summaries = new LinkedHashMap<appeng.api.stacks.AEKey, MaintenanceSummarySyncPacket.Entry>();
         if (target != null && target.getFunctionProfile().supportsInventoryMaintenance()) {
             var service = target.getInventoryMaintenance();
-            for (var rule : service.repository().rules()) summaries.put(rule.key(), new MaintenanceSummarySyncPacket.Entry(
-                    rule.key(), service.status(rule.id()), service.reservedStock().reserve(rule.key()),
-                    service.reservedStock().matchMode(rule.key())));
-            for (var reserve : service.reservedStock().reservations()) summaries.putIfAbsent(
-                    reserve.key(), new MaintenanceSummarySyncPacket.Entry(
-                            reserve.key(), InventoryMaintenanceStatus.IDLE,
-                            reserve.amount(), reserve.mode()));
+            if (service != null) {
+                for (var rule : service.repository().rules()) summaries.put(rule.key(), new MaintenanceSummarySyncPacket.Entry(
+                        rule.key(), service.status(rule.id()), service.reservedStock().reserve(rule.key()),
+                        service.reservedStock().matchMode(rule.key())));
+                for (var reserve : service.reservedStock().reservations()) summaries.putIfAbsent(
+                        reserve.key(), new MaintenanceSummarySyncPacket.Entry(
+                                reserve.key(), InventoryMaintenanceStatus.IDLE,
+                                reserve.amount(), reserve.mode()));
+            }
         }
         PacketDistributor.sendToPlayer(player, new MaintenanceSummarySyncPacket(
                 containerId, List.copyOf(summaries.values())));
@@ -668,7 +671,9 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         if (!isServerSide() || packet == null || packet.amount() < -1) return;
         var target = tianshuHost.getSelectedTianshu();
         if (target == null || !target.getFunctionProfile().supportsInventoryMaintenance()) return;
-        target.getInventoryMaintenance().setMaintenanceWideReservedStock(
+        var maintenance = target.getInventoryMaintenance();
+        if (maintenance == null) return;
+        maintenance.setMaintenanceWideReservedStock(
                 packet.key(), packet.mode(), packet.amount());
         lastMaintenanceSummaryTick = Integer.MIN_VALUE;
         broadcastChanges();
@@ -678,6 +683,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         var target = tianshuHost.getSelectedTianshu();
         if (target == null) return;
         var maintenance = target.getInventoryMaintenance();
+        if (maintenance == null) return;
         var rule = maintenance.repository().get(key);
         var grid = tianshuHost.getActionableNode() != null
                 ? tianshuHost.getActionableNode().getGrid() : null;
@@ -726,6 +732,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         var target = tianshuHost.getSelectedTianshu();
         if (target == null || !target.getFunctionProfile().supportsInventoryMaintenance()) return;
         var service = target.getInventoryMaintenance();
+        if (service == null) return;
         var existing = service.repository().get(packet.target());
         if ((existing == null && packet.expectedRuleId() != null)
                 || (existing != null && !existing.id().equals(packet.expectedRuleId()))) {

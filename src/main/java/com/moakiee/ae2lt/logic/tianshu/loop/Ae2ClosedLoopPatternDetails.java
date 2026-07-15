@@ -24,7 +24,7 @@ import com.moakiee.thunderbolt.core.planner.Sat;
 import com.moakiee.thunderbolt.ae2.timewheel.TimeWheelPoolRestrictedPattern;
 import com.moakiee.thunderbolt.ae2.timewheel.TimeWheelCraftingCpuPoolHost;
 import com.moakiee.thunderbolt.ae2.timewheel.ReusableSeedPattern;
-import com.moakiee.ae2lt.blockentity.TianshuSupercomputerPortBlockEntity;
+import com.moakiee.ae2lt.logic.tianshu.TianshuCraftingCpuHost;
 import java.util.UUID;
 
 public final class Ae2ClosedLoopPatternDetails
@@ -177,8 +177,8 @@ public final class Ae2ClosedLoopPatternDetails
     @Override
     public boolean acceptsTimeWheelPool(TimeWheelCraftingCpuPoolHost host) {
         return owningTianshuId != null
-                && host instanceof TianshuSupercomputerPortBlockEntity port
-                && owningTianshuId.equals(port.getTianshuId());
+                && host instanceof TianshuCraftingCpuHost tianshu
+                && owningTianshuId.equals(tianshu.getTianshuId());
     }
 
     @Override

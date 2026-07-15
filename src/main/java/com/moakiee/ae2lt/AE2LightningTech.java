@@ -145,8 +145,6 @@ public class AE2LightningTech {
                         output.accept(ModBlocks.MULTIDIMENSIONAL_SUPERCOMPUTING_UNIT);
                         output.accept(ModBlocks.STORAGE_SUPERCOMPUTING_UNIT);
                         output.accept(ModBlocks.PARALLEL_SUPERCOMPUTING_UNIT);
-                        output.accept(ModBlocks.INVENTORY_MAINTENANCE_CORE);
-                        output.accept(ModBlocks.CLOSED_LOOP_PATTERN_CORE);
                         output.accept(ModBlocks.CLOSED_LOOP_PATTERN_STORAGE);
                         output.accept(ModBlocks.CLOSED_LOOP_SEED_STORAGE);
                         output.accept(ModBlocks.MATTER_WARPING_MATRIX_CASING);
@@ -165,7 +163,6 @@ public class AE2LightningTech {
                         output.accept(ModBlocks.MATTER_WARPING_MATRIX_MULTIPLIER_SUB_CORE_T2);
                         output.accept(ModBlocks.MATTER_WARPING_MATRIX_COOLING_SUB_CORE_T1);
                         output.accept(ModBlocks.MATTER_WARPING_MATRIX_COOLING_SUB_CORE_T2);
-                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_CLOSED_LOOP_PROCESSOR);
                         output.accept(ModBlocks.MATTER_WARPING_MATRIX_PATTERN_STORAGE_T1);
                         output.accept(ModBlocks.MATTER_WARPING_MATRIX_PATTERN_STORAGE_T2);
                         if (ModBlocks.hasOverloadedPowerSupply()) {

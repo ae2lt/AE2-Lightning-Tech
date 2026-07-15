@@ -1,7 +1,10 @@
 package com.moakiee.ae2lt.block;
 
 import com.moakiee.ae2lt.blockentity.TianshuSupercomputerControllerBlockEntity;
+import com.moakiee.ae2lt.logic.persistence.ControllerMachineIdentity;
 import com.moakiee.ae2lt.logic.tianshu.TianshuMultiblockUpdateScheduler;
+import java.util.ArrayList;
+import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
@@ -13,6 +16,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.HorizontalDirectionalBlock;
@@ -25,6 +29,8 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.level.storage.loot.LootParams;
+import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import com.moakiee.ae2lt.menu.TianshuSupercomputerControllerMenu;
 import org.jetbrains.annotations.Nullable;
 
@@ -61,8 +67,12 @@ public class TianshuSupercomputerControllerBlock extends Block implements Entity
 
     @Override
     public void setPlacedBy(Level level, BlockPos pos, BlockState state, LivingEntity placer, ItemStack stack) {
+        super.setPlacedBy(level, pos, state, placer, stack);
         if (placer != null) {
             level.setBlock(pos, state.setValue(FACING, placer.getDirection().getOpposite()), Block.UPDATE_ALL);
+        }
+        if (level.getBlockEntity(pos) instanceof TianshuSupercomputerControllerBlockEntity controller) {
+            controller.initializeIdentityFromItem(stack);
         }
     }
 
@@ -103,5 +113,26 @@ public class TianshuSupercomputerControllerBlock extends Block implements Entity
             TianshuMultiblockUpdateScheduler.scheduleNear(level, pos);
         }
         super.onRemove(state, level, pos, newState, movedByPiston);
+    }
+
+    @Override
+    public List<ItemStack> getDrops(BlockState state, LootParams.Builder builder) {
+        var drops = new ArrayList<>(super.getDrops(state, builder));
+        var blockEntity = builder.getOptionalParameter(LootContextParams.BLOCK_ENTITY);
+        if (blockEntity instanceof TianshuSupercomputerControllerBlockEntity controller) {
+            for (var drop : drops) {
+                if (drop.is(asItem())) ControllerMachineIdentity.write(drop, controller.getMachineId());
+            }
+        }
+        return drops;
+    }
+
+    @Override
+    public ItemStack getCloneItemStack(LevelReader level, BlockPos pos, BlockState state) {
+        var stack = new ItemStack(asItem());
+        if (level.getBlockEntity(pos) instanceof TianshuSupercomputerControllerBlockEntity controller) {
+            ControllerMachineIdentity.write(stack, controller.getMachineId());
+        }
+        return stack;
     }
 }

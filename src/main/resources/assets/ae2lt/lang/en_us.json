@@ -963,7 +963,7 @@
   "ae2lt.tianshu.maintenance.batch": "Amount per job",
   "ae2lt.tianshu.maintenance.topology": "Crafting topology (click to edit reserves)",
   "ae2lt.tianshu.maintenance.delete": "Delete",
-  "ae2lt.tianshu.maintenance.unavailable": "No available Tianshu with an inventory maintenance core",
+  "ae2lt.tianshu.maintenance.unavailable": "No available formed Tianshu on this network",
   "ae2lt.tianshu.reserve.title": "Reserved Inventory",
   "ae2lt.tianshu.reserve.amount": "Reserved amount",
   "ae2lt.tianshu.reserve.global": "Tianshu global",

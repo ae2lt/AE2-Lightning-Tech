@@ -13,7 +13,6 @@ import appeng.api.stacks.AEKey;
 import appeng.crafting.CraftingLink;
 import appeng.me.service.CraftingService;
 import com.google.common.collect.ImmutableSet;
-import com.moakiee.ae2lt.blockentity.TianshuSupercomputerPortBlockEntity;
 import com.moakiee.thunderbolt.ae2.crafting.ReservedStockCraftingRequester;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
@@ -35,7 +34,7 @@ public final class TianshuInventoryMaintenanceService
     private static final long CHECK_INTERVAL = 10L;
     private static final long RETRY_INTERVAL = 100L;
 
-    private final TianshuSupercomputerPortBlockEntity port;
+    private final TianshuInventoryMaintenanceHost host;
     private final InventoryMaintenanceRepository repository;
     private final ReservedStockRepository reservedStock;
     private final Map<UUID, ReservedStockRepository> ruleReservedStock = new HashMap<>();
@@ -47,12 +46,12 @@ public final class TianshuInventoryMaintenanceService
     private boolean linksRestored;
     private IGrid restoredGrid;
 
-    public TianshuInventoryMaintenanceService(TianshuSupercomputerPortBlockEntity port) {
-        this.port = port;
+    public TianshuInventoryMaintenanceService(TianshuInventoryMaintenanceHost host) {
+        this.host = host;
         this.repository = new InventoryMaintenanceRepository(
-                () -> port.getFunctionProfile().maintenanceRuleCapacity());
+                () -> host.getFunctionProfile().maintenanceRuleCapacity());
         this.reservedStock = new ReservedStockRepository(
-                () -> port.getFunctionProfile().maintenanceRuleCapacity());
+                () -> host.getFunctionProfile().maintenanceRuleCapacity());
     }
 
     public InventoryMaintenanceRepository repository() { return repository; }
@@ -61,7 +60,7 @@ public final class TianshuInventoryMaintenanceService
         if (ruleId == null) return reservedStock;
         return ruleReservedStock.computeIfAbsent(ruleId,
                 ignored -> new ReservedStockRepository(
-                        () -> port.getFunctionProfile().maintenanceRuleCapacity()));
+                        () -> host.getFunctionProfile().maintenanceRuleCapacity()));
     }
 
     public ReservedStockRepository.PutResult setMaintenanceWideReservedStock(
@@ -71,7 +70,7 @@ public final class TianshuInventoryMaintenanceService
         if (result != ReservedStockRepository.PutResult.INVALID
                 && result != ReservedStockRepository.PutResult.FULL
                 && result != ReservedStockRepository.PutResult.UNAVAILABLE) {
-            port.maintenanceStateChanged();
+            host.maintenanceStateChanged();
         }
         return result;
     }
@@ -82,7 +81,7 @@ public final class TianshuInventoryMaintenanceService
 
     /** Stored and craftable exact variants shown by the reserve-stock editor. */
     public java.util.List<MaintenanceVariantService.Variant> variants(AEKey selected) {
-        var grid = port.getGrid();
+        var grid = host.getGrid();
         if (grid == null || selected == null) return java.util.List.of();
         return MaintenanceVariantService.list(
                 grid.getStorageService().getInventory(), grid.getCraftingService(), selected);
@@ -98,7 +97,7 @@ public final class TianshuInventoryMaintenanceService
         if ((result == InventoryMaintenanceRepository.PutResult.ADDED
                 || result == InventoryMaintenanceRepository.PutResult.UPDATED)) {
             nextCheckTick = 0L;
-            port.maintenanceStateChanged();
+            host.maintenanceStateChanged();
         }
         return result;
     }
@@ -112,7 +111,7 @@ public final class TianshuInventoryMaintenanceService
         ruleReservedStock.remove(ruleId);
         retryAfter.remove(ruleId);
         statuses.remove(ruleId);
-        if (removed) port.maintenanceStateChanged();
+        if (removed) host.maintenanceStateChanged();
         return removed;
     }
 
@@ -130,7 +129,7 @@ public final class TianshuInventoryMaintenanceService
         if (result != ReservedStockRepository.PutResult.INVALID
                 && result != ReservedStockRepository.PutResult.FULL
                 && result != ReservedStockRepository.PutResult.UNAVAILABLE) {
-            port.maintenanceStateChanged();
+            host.maintenanceStateChanged();
         }
         return result;
     }
@@ -140,7 +139,7 @@ public final class TianshuInventoryMaintenanceService
         var rule = repository.getById(ruleId);
         if (rule == null || rule.activeCraftingId() == null) return false;
         UUID craftingId = rule.activeCraftingId();
-        for (var cpu : port.getTimeWheelCraftingCpuPool().getActiveCpus()) {
+        for (var cpu : host.getTimeWheelCraftingCpuPool().getActiveCpus()) {
             var link = cpu.getCraftingLogic().getLastLink();
             if (link != null && craftingId.equals(link.getCraftingID())) {
                 cpu.cancelJob();
@@ -166,14 +165,14 @@ public final class TianshuInventoryMaintenanceService
     }
 
     private boolean canConfigure() {
-        return port.isFormed() && port.getFunctionProfile().supportsInventoryMaintenance();
+        return host.isFormed() && host.getFunctionProfile().supportsInventoryMaintenance();
     }
 
     public void tick() {
-        var level = port.getLevel();
-        var grid = port.getGrid();
-        if (level == null || level.isClientSide || grid == null || !port.isCpuActive()
-                || !port.getFunctionProfile().supportsInventoryMaintenance()) return;
+        var level = host.getLevel();
+        var grid = host.getGrid();
+        if (level == null || level.isClientSide || grid == null || !host.isCpuActive()
+                || !host.getFunctionProfile().supportsInventoryMaintenance()) return;
         restoreLinks((CraftingService) grid.getCraftingService());
         long now = level.getGameTime();
         if (now < nextCheckTick) return;
@@ -192,7 +191,7 @@ public final class TianshuInventoryMaintenanceService
                 links.remove(link);
                 rule = rule.withRuntime(rule.replenishing(), null);
                 repository.put(rule);
-                port.maintenanceStateChanged();
+                host.maintenanceStateChanged();
             }
             if (!activeRuleIds.contains(rule.id())) {
                 cancelCalculation(rule.id());
@@ -206,7 +205,7 @@ public final class TianshuInventoryMaintenanceService
             }
 
             long stock = grid.getStorageService().getInventory()
-                    .extract(rule.key(), Long.MAX_VALUE, Actionable.SIMULATE, port.getActionSource());
+                    .extract(rule.key(), Long.MAX_VALUE, Actionable.SIMULATE, host.getActionSource());
             boolean calculationActive = calculations.containsKey(rule.id());
             boolean otherCalculationActive = InventoryMaintenanceCalculationClaims.claimedByOther(
                     grid, rule.key(), rule.id());
@@ -216,7 +215,7 @@ public final class TianshuInventoryMaintenanceService
             if (decision.replenishing() != rule.replenishing()) {
                 rule = rule.withRuntime(decision.replenishing(), rule.activeCraftingId());
                 repository.put(rule);
-                port.maintenanceStateChanged();
+                host.maintenanceStateChanged();
             }
             if (activeLink) {
                 statuses.put(rule.id(), InventoryMaintenanceStatus.CRAFTING);
@@ -239,8 +238,8 @@ public final class TianshuInventoryMaintenanceService
     }
 
     private void beginCalculation(CraftingService crafting, InventoryMaintenanceRule rule, long amount) {
-        var grid = port.getGrid();
-        var level = port.getLevel();
+        var grid = host.getGrid();
+        var level = host.getLevel();
         if (!InventoryMaintenanceCalculationClaims.tryClaim(grid, rule.key(), rule.id())) {
             statuses.put(rule.id(), InventoryMaintenanceStatus.CALCULATING);
             return;
@@ -254,7 +253,7 @@ public final class TianshuInventoryMaintenanceService
         Future<ICraftingPlan> future;
         try {
             future = crafting.beginCraftingCalculation(
-                    port.getLevel(), new RuleCalculationRequester(rule.id()), rule.key(), amount,
+                    host.getLevel(), new RuleCalculationRequester(rule.id()), rule.key(), amount,
                     CalculationStrategy.REPORT_MISSING_ITEMS);
         } catch (RuntimeException failure) {
             InventoryMaintenanceCalculationClaims.release(grid, rule.key(), rule.id());
@@ -264,7 +263,7 @@ public final class TianshuInventoryMaintenanceService
         }
         calculations.put(rule.id(), new PendingCalculation(grid, rule.key(), amount, future));
         statuses.put(rule.id(), InventoryMaintenanceStatus.CALCULATING);
-        port.maintenanceStateChanged();
+        host.maintenanceStateChanged();
     }
 
     private void pollCalculations(CraftingService crafting, java.util.Set<UUID> activeRuleIds) {
@@ -272,7 +271,7 @@ public final class TianshuInventoryMaintenanceService
         while (iterator.hasNext()) {
             var entry = iterator.next();
             var pending = entry.getValue();
-            if (pending.grid() != port.getGrid()) {
+            if (pending.grid() != host.getGrid()) {
                 iterator.remove();
                 pending.future().cancel(false);
                 InventoryMaintenanceCalculationClaims.release(
@@ -303,7 +302,7 @@ public final class TianshuInventoryMaintenanceService
                     scheduleRetry(rule.id());
                     continue;
                 }
-                var submitted = crafting.submitJob(plan, this, null, false, port.getActionSource());
+                var submitted = crafting.submitJob(plan, this, null, false, host.getActionSource());
                 if (!submitted.successful() || submitted.link() == null) {
                     statuses.put(rule.id(), InventoryMaintenanceStatus.WAITING_CPU);
                     scheduleRetry(rule.id());
@@ -314,7 +313,7 @@ public final class TianshuInventoryMaintenanceService
                 repository.put(rule.withRuntime(true, link.getCraftingID()));
                 statuses.put(rule.id(), InventoryMaintenanceStatus.CRAFTING);
                 retryAfter.remove(rule.id());
-                port.maintenanceStateChanged();
+                host.maintenanceStateChanged();
             } catch (Exception ignored) {
                 statuses.put(rule.id(), InventoryMaintenanceStatus.MISSING_INGREDIENTS);
                 scheduleRetry(rule.id());
@@ -323,12 +322,12 @@ public final class TianshuInventoryMaintenanceService
     }
 
     private void scheduleRetry(UUID ruleId) {
-        var level = port.getLevel();
+        var level = host.getLevel();
         retryAfter.put(ruleId, (level != null ? level.getGameTime() : 0L) + RETRY_INTERVAL);
     }
 
     private boolean respectsCurrentReservedStock(UUID ruleId, ICraftingPlan plan) {
-        var grid = port.getGrid();
+        var grid = host.getGrid();
         if (grid == null || plan == null) return false;
         var policy = reservedStockPolicy(ruleId);
         if (policy.isEmpty()) return true;
@@ -395,7 +394,7 @@ public final class TianshuInventoryMaintenanceService
     }
 
     private void restoreLinks(CraftingService crafting) {
-        var grid = port.getGrid();
+        var grid = host.getGrid();
         if (linksRestored && restoredGrid == grid) return;
         linksRestored = true;
         restoredGrid = grid;
@@ -408,9 +407,9 @@ public final class TianshuInventoryMaintenanceService
 
     @Override
     public long insertCraftedItems(ICraftingLink link, AEKey what, long amount, Actionable mode) {
-        var grid = port.getGrid();
+        var grid = host.getGrid();
         if (grid == null || what == null || amount <= 0) return 0L;
-        return grid.getStorageService().getInventory().insert(what, amount, mode, port.getActionSource());
+        return grid.getStorageService().getInventory().insert(what, amount, mode, host.getActionSource());
     }
 
     @Override
@@ -424,11 +423,11 @@ public final class TianshuInventoryMaintenanceService
                 if (changed.isCanceled()) scheduleRetry(rule.id());
             }
         }
-        port.maintenanceStateChanged();
+        host.maintenanceStateChanged();
     }
 
-    @Override public IGridNode getActionableNode() { return port.getMainNode().getNode(); }
-    @Override public IActionSource getActionSource() { return port.getActionSource(); }
+    @Override public IGridNode getActionableNode() { return host.getActionableNode(); }
+    @Override public IActionSource getActionSource() { return host.getActionSource(); }
 
     public void writeTo(CompoundTag parent, HolderLookup.Provider registries) {
         var repoTag = new CompoundTag();
@@ -463,24 +462,20 @@ public final class TianshuInventoryMaintenanceService
         links.clear();
         linksRestored = false;
         restoredGrid = null;
-        if (parent.contains(TAG_REPOSITORY, Tag.TAG_COMPOUND)) {
-            repository.readFrom(parent.getCompound(TAG_REPOSITORY), registries);
-        }
-        if (parent.contains(TAG_RESERVED_STOCK, Tag.TAG_COMPOUND)) {
-            reservedStock.readFrom(parent.getCompound(TAG_RESERVED_STOCK), registries);
-        }
+        repository.readFrom(parent.getCompound(TAG_REPOSITORY), registries);
+        reservedStock.readFrom(parent.getCompound(TAG_RESERVED_STOCK), registries);
         var ruleReserves = parent.getList(TAG_RULE_RESERVED_STOCK, Tag.TAG_COMPOUND);
         for (int i = 0; i < ruleReserves.size(); i++) {
             var tag = ruleReserves.getCompound(i);
             if (!tag.hasUUID("RuleId")) continue;
             var profile = new ReservedStockRepository(
-                    () -> port.getFunctionProfile().maintenanceRuleCapacity());
+                    () -> host.getFunctionProfile().maintenanceRuleCapacity());
             profile.readFrom(tag, registries);
             ruleReservedStock.put(tag.getUUID("RuleId"), profile);
         }
         var linkTags = parent.getList(TAG_LINKS, Tag.TAG_COMPOUND);
         for (int i = 0; i < linkTags.size(); i++) {
-            try { links.add(new CraftingLink(linkTags.getCompound(i), port)); }
+            try { links.add(new CraftingLink(linkTags.getCompound(i), this)); }
             catch (RuntimeException ignored) { }
         }
     }
@@ -493,8 +488,8 @@ public final class TianshuInventoryMaintenanceService
         private final UUID ruleId;
 
         private RuleCalculationRequester(UUID ruleId) { this.ruleId = ruleId; }
-        @Override public IActionSource getActionSource() { return port.getActionSource(); }
-        @Override public IGridNode getGridNode() { return port.getMainNode().getNode(); }
+        @Override public IActionSource getActionSource() { return host.getActionSource(); }
+        @Override public IGridNode getGridNode() { return host.getActionableNode(); }
         @Override public long usablePreexistingStock(AEKey key, long snapshotAmount) {
             return reservedStockPolicy(ruleId).usablePreexistingStock(key, snapshotAmount);
         }

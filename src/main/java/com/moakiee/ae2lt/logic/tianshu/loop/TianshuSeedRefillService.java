@@ -13,15 +13,19 @@ public final class TianshuSeedRefillService {
     public static RefillResult refillPattern(
             TianshuSupercomputerPortBlockEntity target, UUID patternId) {
         if (target == null || patternId == null) return RefillResult.UNAVAILABLE;
-        var payload = target.getClosedLoopPatternRepository().get(patternId);
+        var repository = target.getClosedLoopPatternRepository();
+        if (repository == null) return RefillResult.UNAVAILABLE;
+        var payload = repository.get(patternId);
         if (payload == null) return RefillResult.UNAVAILABLE;
         return refill(target, requirements(payload));
     }
 
     public static RefillResult refillAll(TianshuSupercomputerPortBlockEntity target) {
         if (target == null) return RefillResult.UNAVAILABLE;
+        var repository = target.getClosedLoopPatternRepository();
+        if (repository == null) return RefillResult.UNAVAILABLE;
         var required = new LinkedHashMap<AEKey, Long>();
-        for (var payload : target.getClosedLoopPatternRepository().patterns()) {
+        for (var payload : repository.patterns()) {
             if (!payload.enabled()) continue;
             for (var entry : requirements(payload).entrySet()) {
                 // The storage is shared and seeds are allocated to jobs only when they start.

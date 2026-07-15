@@ -59,6 +59,21 @@ public final class ClosedLoopPatternRepository {
         return id != null && patterns.remove(id) != null;
     }
 
+    /** Replaces physical storage contents without applying upload/version admission rules. */
+    public void replaceAll(List<ClosedLoopPatternPayload> payloads) {
+        patterns.clear();
+        if (payloads == null) return;
+        for (var payload : payloads) {
+            if (payload != null && patterns.size() < capacity()) {
+                patterns.put(payload.patternId(), payload);
+            }
+        }
+    }
+
+    public void clear() {
+        patterns.clear();
+    }
+
     public void writeTo(CompoundTag parent, HolderLookup.Provider registries) {
         var list = new ListTag();
         for (var pattern : patterns.values()) {

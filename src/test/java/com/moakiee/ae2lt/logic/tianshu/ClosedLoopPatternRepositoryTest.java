@@ -157,11 +157,10 @@ class ClosedLoopPatternRepositoryTest {
 
     @Test
     void functionProfileCapacitiesSaturateWithoutOverflow() {
-        var profile = new TianshuFunctionProfile(Integer.MAX_VALUE, Integer.MAX_VALUE,
-                Integer.MAX_VALUE, Integer.MAX_VALUE);
+        var profile = new TianshuFunctionProfile(Integer.MAX_VALUE, Integer.MAX_VALUE);
         assertEquals(Integer.MAX_VALUE, profile.maintenanceRuleCapacity());
         assertEquals(Integer.MAX_VALUE, profile.closedLoopPatternCapacity());
-        assertThrows(IllegalArgumentException.class, () -> new TianshuFunctionProfile(-1, 0, 0, 0));
+        assertThrows(IllegalArgumentException.class, () -> new TianshuFunctionProfile(-1, 0));
     }
 
     @Test

@@ -19,7 +19,6 @@ import com.moakiee.thunderbolt.core.craft.CraftingCore;
 import com.moakiee.thunderbolt.core.craft.CraftingCoreHost;
 import com.moakiee.thunderbolt.core.craft.CraftingCoreRegistry;
 import com.moakiee.thunderbolt.ae2.api.crafting.BatchDispatchMode;
-import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopBatchPatternDetails;
 
 /**
  * Multiblock-side rate limiter that wraps a shared {@link CraftingCore} engine: it aggregates the
@@ -31,7 +30,6 @@ public final class MatrixCraftingCluster {
     private static final String NBT_LAST_LIMITER_TICK = "lastLimiterTick";
 
     private final BooleanSupplier formed;
-    private final BooleanSupplier closedLoopParallelEnabled;
     private final List<MatrixPatternCore> patternCores;
     private final List<MatrixCraftCore> craftCores;
     private final MatrixHost host;
@@ -47,18 +45,7 @@ public final class MatrixCraftingCluster {
                                  CraftingCoreHost host,
                                  CopyAssembler assembler,
                                  CraftingCoreRegistry registry) {
-        this(formed, () -> false, patternCores, craftCores, host, assembler, registry);
-    }
-
-    public MatrixCraftingCluster(BooleanSupplier formed,
-                                 BooleanSupplier closedLoopParallelEnabled,
-                                 List<? extends MatrixPatternCore> patternCores,
-                                 List<? extends MatrixCraftCore> craftCores,
-                                 CraftingCoreHost host,
-                                 CopyAssembler assembler,
-                                 CraftingCoreRegistry registry) {
         this.formed = Objects.requireNonNull(formed);
-        this.closedLoopParallelEnabled = Objects.requireNonNull(closedLoopParallelEnabled);
         this.patternCores = new ArrayList<>(patternCores);
         this.craftCores = new ArrayList<>(craftCores);
         this.host = new MatrixHost(Objects.requireNonNull(host));
@@ -113,10 +100,6 @@ public final class MatrixCraftingCluster {
 
     public int getBatchCapacity(IPatternDetails details) {
         if (!hasPattern(details)) return 0;
-        if (details instanceof ClosedLoopBatchPatternDetails
-                && !closedLoopParallelEnabled.getAsBoolean()) {
-            return 0;
-        }
         int capacity = availableCapacity();
         if (details instanceof com.moakiee.thunderbolt.ae2.batch.BatchCopyLimitPattern limited) {
             capacity = Math.min(capacity, Math.max(1, limited.maxBatchCopies()));
@@ -140,7 +123,7 @@ public final class MatrixCraftingCluster {
         return maxCraft - accepted;
     }
 
-    /** Vanilla one-copy path; deliberately ignores the optional closed-loop batch processor. */
+    /** Vanilla one-copy path through the matrix main core. */
     public boolean pushSingle(IPatternDetails details, KeyCounter[] oneCopyTemplate) {
         if (!hasPattern(details) || availableCapacity() <= 0) return false;
         int delay = craftingProfile().mode() == MatrixCoreMode.CREATIVE
@@ -217,6 +200,15 @@ public final class MatrixCraftingCluster {
         lastLimiterTick = tag.contains(NBT_LAST_LIMITER_TICK, Tag.TAG_LONG) ? tag.getLong(NBT_LAST_LIMITER_TICK) : Long.MIN_VALUE;
         limiterRemaining = 0;
         lastLimiterSnapshot = MatrixCraftingMath.idleSnapshot(heat, 0.0D);
+    }
+
+    /** Clears only this linked runtime mirror after its state has been persisted by the controller. */
+    public void suspendRuntime() {
+        engine.suspend();
+        heat = 0.0D;
+        lastLimiterTick = Long.MIN_VALUE;
+        limiterRemaining = 0;
+        lastLimiterSnapshot = MatrixCraftingMath.idleSnapshot(0.0D, 0.0D);
     }
 
     public int totalThreadCapacity() {

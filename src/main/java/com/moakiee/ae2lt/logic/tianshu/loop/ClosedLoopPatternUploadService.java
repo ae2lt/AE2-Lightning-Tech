@@ -19,7 +19,9 @@ public final class ClosedLoopPatternUploadService {
                 || !ClosedLoopPatternValidator.validate(payload, target.getLevel()).valid()) {
             return ClosedLoopPatternRepository.PutResult.INVALID;
         }
-        var result = target.getClosedLoopPatternRepository().put(payload);
+        var repository = target.getClosedLoopPatternRepository();
+        if (repository == null) return ClosedLoopPatternRepository.PutResult.UNAVAILABLE;
+        var result = repository.put(payload);
         if (result == ClosedLoopPatternRepository.PutResult.ADDED
                 || result == ClosedLoopPatternRepository.PutResult.UPDATED) {
             target.closedLoopPatternsChanged();

@@ -25,6 +25,7 @@ import com.moakiee.ae2lt.block.OverloadedPowerSupplyBlock;
 import com.moakiee.ae2lt.block.TeslaCoilBlock;
 import com.moakiee.ae2lt.block.TestTimeWheelCraftingCpuBlock;
 import com.moakiee.ae2lt.block.TianshuSeedStorageBlock;
+import com.moakiee.ae2lt.block.TianshuPatternStorageBlock;
 import com.moakiee.ae2lt.block.TianshuSupercomputerControllerBlock;
 import com.moakiee.ae2lt.block.TianshuSupercomputerGlassBlock;
 import com.moakiee.ae2lt.block.TianshuSupercomputerPortBlock;
@@ -225,7 +226,8 @@ public final class ModBlocks {
             registerBlock("tianshu_supercomputer_glass", () -> new TianshuSupercomputerGlassBlock(MATRIX_GLASS_PROPERTIES));
 
     public static final DeferredBlock<TianshuSupercomputerControllerBlock> TIANSHU_SUPERCOMPUTER_CONTROLLER =
-            registerBlock("tianshu_supercomputer_controller", () -> new TianshuSupercomputerControllerBlock(MATRIX_MACHINE_PROPERTIES));
+            registerControllerBlock("tianshu_supercomputer_controller",
+                    () -> new TianshuSupercomputerControllerBlock(MATRIX_MACHINE_PROPERTIES));
 
     public static final DeferredBlock<TianshuSupercomputerPortBlock> TIANSHU_SUPERCOMPUTER_PORT =
             registerBlock("tianshu_supercomputer_port", () -> new TianshuSupercomputerPortBlock(MATRIX_MACHINE_PROPERTIES));
@@ -250,13 +252,12 @@ public final class ModBlocks {
                     MATRIX_MACHINE_PROPERTIES, TianshuMultiblockComponent.PARALLEL_CORE));
     public static final DeferredBlock<TianshuSupercomputingUnitBlock> INVENTORY_MAINTENANCE_CORE = registerBlock(
             "inventory_maintenance_core", () -> new TianshuSupercomputingUnitBlock(
-                    MATRIX_MACHINE_PROPERTIES, TianshuMultiblockComponent.INVENTORY_MAINTENANCE_CORE));
+                    MATRIX_MACHINE_PROPERTIES, TianshuMultiblockComponent.STORAGE_CORE));
     public static final DeferredBlock<TianshuSupercomputingUnitBlock> CLOSED_LOOP_PATTERN_CORE = registerBlock(
             "closed_loop_pattern_core", () -> new TianshuSupercomputingUnitBlock(
-                    MATRIX_MACHINE_PROPERTIES, TianshuMultiblockComponent.CLOSED_LOOP_PATTERN_CORE));
-    public static final DeferredBlock<TianshuSupercomputingUnitBlock> CLOSED_LOOP_PATTERN_STORAGE = registerBlock(
-            "closed_loop_pattern_storage", () -> new TianshuSupercomputingUnitBlock(
-                    MATRIX_MACHINE_PROPERTIES, TianshuMultiblockComponent.CLOSED_LOOP_PATTERN_STORAGE));
+                    MATRIX_MACHINE_PROPERTIES, TianshuMultiblockComponent.PARALLEL_CORE));
+    public static final DeferredBlock<TianshuPatternStorageBlock> CLOSED_LOOP_PATTERN_STORAGE = registerBlock(
+            "closed_loop_pattern_storage", () -> new TianshuPatternStorageBlock(MATRIX_MACHINE_PROPERTIES));
     public static final DeferredBlock<TianshuSeedStorageBlock> CLOSED_LOOP_SEED_STORAGE = registerBlock(
             "closed_loop_seed_storage", () -> new TianshuSeedStorageBlock(MATRIX_MACHINE_PROPERTIES));
 
@@ -273,7 +274,8 @@ public final class ModBlocks {
                     MATRIX_GLASS_PROPERTIES, MatrixMultiblockComponent.MATRIX_GLASS));
 
     public static final DeferredBlock<MatrixControllerBlock> MATTER_WARPING_MATRIX_CONTROLLER =
-            registerBlock("matter_warping_matrix_controller", () -> new MatrixControllerBlock(MATRIX_MACHINE_PROPERTIES));
+            registerControllerBlock("matter_warping_matrix_controller",
+                    () -> new MatrixControllerBlock(MATRIX_MACHINE_PROPERTIES));
 
     public static final DeferredBlock<MatrixPortBlock> MATTER_WARPING_MATRIX_PORT =
             registerBlock("matter_warping_matrix_port", () -> new MatrixPortBlock(MATRIX_MACHINE_PROPERTIES));
@@ -324,7 +326,7 @@ public final class ModBlocks {
 
     public static final DeferredBlock<MatrixFormedBlock> MATTER_WARPING_MATRIX_CLOSED_LOOP_PROCESSOR =
             registerBlock("matter_warping_matrix_closed_loop_processor", () -> new MatrixFormedBlock(
-                    MATRIX_MACHINE_PROPERTIES, MatrixMultiblockComponent.CLOSED_LOOP_PROCESSOR));
+                    MATRIX_MACHINE_PROPERTIES, MatrixMultiblockComponent.BLANK_SUB_CORE));
 
     public static final DeferredBlock<MatrixPatternStorageBlock> MATTER_WARPING_MATRIX_PATTERN_STORAGE_T1 =
             registerBlock("matter_warping_matrix_pattern_storage_t1", () -> new MatrixPatternStorageBlock(
@@ -339,6 +341,14 @@ public final class ModBlocks {
 
     private static <T extends Block> DeferredBlock<T> registerBlock(String name, Supplier<T> blockFactory) {
         return registerBlock(name, blockFactory, () -> true);
+    }
+
+    private static <T extends Block> DeferredBlock<T> registerControllerBlock(
+            String name, Supplier<T> blockFactory) {
+        var registered = BLOCKS.register(name, blockFactory);
+        ModItems.ITEMS.register(name,
+                () -> new BlockItem(registered.get(), new Item.Properties().stacksTo(1)));
+        return registered;
     }
 
     private static <T extends Block> DeferredBlock<T> registerBlock(

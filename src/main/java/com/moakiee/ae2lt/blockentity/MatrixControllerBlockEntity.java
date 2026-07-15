@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.block.MatrixControllerBlock;
 import com.moakiee.ae2lt.block.MatrixFormedBlock;
 import com.moakiee.ae2lt.block.MatrixMultiblockComponentBlock;
@@ -12,16 +13,29 @@ import com.moakiee.ae2lt.block.MatrixPatternStorageBlock;
 import com.moakiee.ae2lt.logic.craft.MatrixAutoBuildPlan;
 import com.moakiee.ae2lt.logic.craft.MatrixMultiblockComponent;
 import com.moakiee.ae2lt.logic.craft.MatrixCraftingMath;
+import com.moakiee.ae2lt.logic.craft.MatrixCraftCore;
+import com.moakiee.ae2lt.logic.craft.MatrixCraftingCluster;
 import com.moakiee.ae2lt.logic.craft.MatrixCraftingProfile;
 import com.moakiee.ae2lt.logic.craft.MatrixCraftingUnit;
+import com.moakiee.ae2lt.logic.craft.MatrixPatternCore;
 import com.moakiee.ae2lt.logic.craft.MatrixMultiblockMember;
 import com.moakiee.ae2lt.logic.craft.MatrixMultiblockScanAttempt;
 import com.moakiee.ae2lt.logic.craft.MatrixMultiblockScanResult;
 import com.moakiee.ae2lt.logic.craft.MatrixMultiblockScanner;
+import com.moakiee.ae2lt.logic.persistence.ControllerMachineIdentity;
+import com.moakiee.ae2lt.logic.persistence.ControllerMachineStateSavedData;
+import com.moakiee.ae2lt.logic.persistence.ControllerMachineStateSavedData.MachineType;
 import com.moakiee.ae2lt.network.MatrixControllerActionPacket;
 import com.moakiee.ae2lt.registry.ModBlockEntities;
 import com.moakiee.ae2lt.registry.ModBlocks;
 import com.moakiee.ae2lt.registry.ModItems;
+import com.moakiee.thunderbolt.ae2.api.crafting.BatchDispatchMode;
+import com.moakiee.thunderbolt.core.craft.CraftingCoreHost;
+import com.moakiee.thunderbolt.core.craft.MolecularCopyAssembler;
+
+import appeng.api.crafting.IPatternDetails;
+import appeng.api.stacks.AEKey;
+import appeng.api.stacks.KeyCounter;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
@@ -32,6 +46,7 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.BlockItem;
@@ -41,7 +56,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 
-public class MatrixControllerBlockEntity extends BlockEntity {
+public class MatrixControllerBlockEntity extends BlockEntity implements CraftingCoreHost {
     private static final long NO_SCHEDULED_SCAN = Long.MIN_VALUE;
     private static final int AUTO_BUILD_INTERVAL_TICKS = 1;
     private static final String TAG_FORMED = "Formed";
@@ -52,7 +67,7 @@ public class MatrixControllerBlockEntity extends BlockEntity {
     private static final String TAG_MEMBER_COUNT = "MemberCount";
     private static final String TAG_PATTERN_STORAGE_COUNT = "PatternStorageCount";
     private static final String TAG_CRAFTING_UNIT_COUNT = "CraftingUnitCount";
-    private static final String TAG_CLOSED_LOOP_PROCESSOR_COUNT = "ClosedLoopProcessorCount";
+    private static final String TAG_MACHINE_ID = "MachineId";
 
     private boolean formed;
     private Direction orientation = Direction.NORTH;
@@ -62,7 +77,33 @@ public class MatrixControllerBlockEntity extends BlockEntity {
     private int memberCount;
     private int patternStorageCount;
     private int craftingUnitCount;
-    private int closedLoopProcessorCount;
+    private UUID machineId = UUID.randomUUID();
+    private boolean persistentStateOwner;
+    private final MatrixPatternCore patternCore = new MatrixPatternCore() {
+        @Override
+        public List<IPatternDetails> getAvailablePatterns() {
+            return collectAvailablePatterns();
+        }
+
+        @Override
+        public boolean hasPattern(IPatternDetails details) {
+            return hasAvailablePattern(details);
+        }
+    };
+    private final MatrixCraftCore craftCore = new MatrixCraftCore() {
+        @Override
+        public List<MatrixCraftingUnit> craftingUnits() {
+            return findCraftingUnits();
+        }
+    };
+    private final MatrixCraftingCluster cluster = new MatrixCraftingCluster(
+            this::isFormed,
+            List.of(patternCore),
+            List.of(craftCore),
+            this,
+            new MolecularCopyAssembler(this::getLevel),
+            AE2LightningTech.craftingCoreRegistry());
+    private UUID loadedRuntimeId;
     private List<BlockPos> patternStoragePositions = List.of();
     private List<MatrixPatternStorageBlockEntity> cachedPatternStorages = List.of();
     private List<MatrixCraftingUnit> cachedCraftingUnits = List.of();
@@ -87,6 +128,10 @@ public class MatrixControllerBlockEntity extends BlockEntity {
         if (level.isClientSide) {
             return;
         }
+        if (!be.persistentStateOwner) {
+            if (be.formed) be.deform();
+            return;
+        }
         if (be.formed && !be.structureCacheValid) {
             be.scheduleStructureCheck();
         }
@@ -96,6 +141,7 @@ public class MatrixControllerBlockEntity extends BlockEntity {
             be.scheduledScanTick = NO_SCHEDULED_SCAN;
             be.refreshStructure();
         }
+        be.persistRuntimeStateIfChanged();
         be.syncRenderState();
     }
 
@@ -111,14 +157,6 @@ public class MatrixControllerBlockEntity extends BlockEntity {
         return portPos;
     }
 
-    public boolean hasClosedLoopProcessor() {
-        return formed && closedLoopProcessorCount > 0;
-    }
-
-    public int getClosedLoopProcessorCount() {
-        return closedLoopProcessorCount;
-    }
-
     public int getMemberCount() {
         return memberCount;
     }
@@ -131,6 +169,26 @@ public class MatrixControllerBlockEntity extends BlockEntity {
         return craftingUnitCount;
     }
 
+    public UUID getMachineId() {
+        return machineId;
+    }
+
+    public boolean isPersistentStateOwner() {
+        return persistentStateOwner;
+    }
+
+    public void initializeIdentityFromItem(ItemStack stack) {
+        var itemId = ControllerMachineIdentity.read(stack);
+        if (itemId != null && !itemId.equals(machineId)) {
+            persistRuntimeStateIfChanged();
+            suspendRuntime();
+            releasePersistentState();
+            machineId = itemId;
+        }
+        claimPersistentState();
+        setChanged();
+    }
+
     public int getPatternSlotCount() {
         int total = 0;
         for (var storage : findPatternStorages()) {
@@ -140,19 +198,15 @@ public class MatrixControllerBlockEntity extends BlockEntity {
     }
 
     public MatrixCraftingProfile getCraftingProfile() {
-        var port = getPort();
-        return port != null ? port.getCraftingProfile() : MatrixCraftingProfile.empty();
+        return cluster.craftingProfile();
     }
 
     public MatrixCraftingMath.Snapshot getLimiterSnapshot() {
-        var port = getPort();
-        return port != null
-                ? port.getLimiterSnapshot()
-                : MatrixCraftingMath.idleSnapshot(0.0D, 0.0D);
+        return cluster.previewSnapshot();
     }
 
     public void performAction(MatrixControllerActionPacket.Action action, ServerPlayer player) {
-        if (level == null || level.isClientSide) {
+        if (level == null || level.isClientSide || !persistentStateOwner) {
             return;
         }
         switch (action) {
@@ -178,6 +232,7 @@ public class MatrixControllerBlockEntity extends BlockEntity {
     }
 
     public void scanAndForm(ServerPlayer player) {
+        if (!persistentStateOwner) return;
         var attempt = scanCurrent();
         if (!attempt.formed()) {
             deform();
@@ -456,19 +511,125 @@ public class MatrixControllerBlockEntity extends BlockEntity {
         return cachedCraftingUnits;
     }
 
+    public List<IPatternDetails> getAvailablePatterns() {
+        return cluster.getAvailablePatterns();
+    }
+
+    public boolean isMatrixBusy() {
+        return cluster.isBusy();
+    }
+
+    public int getBatchCapacity(IPatternDetails details) {
+        return cluster.getBatchCapacity(details);
+    }
+
+    public BatchDispatchMode getBatchDispatchMode() {
+        return cluster.batchDispatchMode();
+    }
+
+    public int pushBatch(IPatternDetails details, KeyCounter[] oneCopyTemplate, int maxCraft) {
+        int remaining = cluster.pushBatch(details, oneCopyTemplate, maxCraft);
+        if (remaining != maxCraft) persistRuntimeStateIfChanged();
+        return remaining;
+    }
+
+    public boolean pushPattern(IPatternDetails details, KeyCounter[] oneCopyTemplate) {
+        boolean accepted = cluster.pushSingle(details, oneCopyTemplate);
+        if (accepted) persistRuntimeStateIfChanged();
+        return accepted;
+    }
+
+    public boolean isWorking() {
+        return formed && cluster.threadsInFlight() > 0;
+    }
+
+    @Override
+    public long getGameTime() {
+        return level != null ? level.getGameTime() : 0L;
+    }
+
+    @Override
+    public boolean isConnected() {
+        var port = getLinkedPort();
+        return port != null && port.isLinkConnected();
+    }
+
+    @Override
+    public long insertToNetwork(AEKey key, long amount) {
+        var port = getLinkedPort();
+        return port != null ? port.insertToNetworkLink(key, amount) : 0L;
+    }
+
+    @Override
+    public void spawnToWorld(AEKey key, long amount) {
+        if (level == null || level.isClientSide || key == null || amount <= 0) return;
+        var drops = new ArrayList<ItemStack>();
+        key.addDrops(amount, drops, level, worldPosition);
+        for (var drop : drops) {
+            if (!drop.isEmpty()) Block.popResource(level, worldPosition, drop);
+        }
+    }
+
+    public void persistRuntimeStateIfChanged() {
+        if (!persistentStateOwner || !machineId.equals(loadedRuntimeId)
+                || !(level instanceof ServerLevel serverLevel)) return;
+        var state = new CompoundTag();
+        cluster.writeEngineTo(state, serverLevel.registryAccess());
+        ControllerMachineStateSavedData.get(serverLevel)
+                .setState(MachineType.MATRIX, machineId, state);
+    }
+
+    private void ensureRuntimeStateLoaded(MatrixPortBlockEntity port) {
+        if (machineId.equals(loadedRuntimeId) || !(level instanceof ServerLevel serverLevel)) return;
+        cluster.suspendRuntime();
+        var data = ControllerMachineStateSavedData.get(serverLevel);
+        boolean stored = data.hasState(MachineType.MATRIX, machineId);
+        var legacy = port.copyLegacyClusterState();
+        var state = stored ? data.getState(MachineType.MATRIX, machineId)
+                : legacy != null ? legacy : new CompoundTag();
+        cluster.readEngineFrom(state, serverLevel.registryAccess());
+        loadedRuntimeId = machineId;
+        if (!stored) persistRuntimeStateIfChanged();
+        if (legacy != null) port.consumeLegacyClusterState();
+    }
+
+    private void suspendRuntime() {
+        cluster.suspendRuntime();
+        loadedRuntimeId = null;
+    }
+
+    private List<IPatternDetails> collectAvailablePatterns() {
+        if (!formed || level == null) return List.of();
+        var result = new ArrayList<IPatternDetails>();
+        for (var storage : findPatternStorages()) {
+            result.addAll(storage.getAvailablePatterns());
+        }
+        return List.copyOf(result);
+    }
+
+    private boolean hasAvailablePattern(IPatternDetails details) {
+        if (details == null || !formed || level == null) return false;
+        for (var storage : findPatternStorages()) {
+            if (storage.hasPattern(details)) return true;
+        }
+        return false;
+    }
+
     private MatrixMultiblockScanAttempt scanCurrent() {
         return MatrixMultiblockScanner.scan(worldPosition, getOrientation(),
                 pos -> MatrixMultiblockScanner.componentAt(level, pos));
     }
 
-    private MatrixPortBlockEntity getPort() {
+    private MatrixPortBlockEntity getLinkedPort() {
         if (level == null || !formed || portPos == null || !level.isLoaded(portPos)) {
             return null;
         }
-        return level.getBlockEntity(portPos) instanceof MatrixPortBlockEntity port ? port : null;
+        return level.getBlockEntity(portPos) instanceof MatrixPortBlockEntity port
+                && port.isLinkedTo(worldPosition, machineId) ? port : null;
     }
 
     private void form(MatrixMultiblockScanResult result) {
+        persistRuntimeStateIfChanged();
         clearBindingsInStoredBounds();
         formed = true;
         orientation = result.orientation();
@@ -478,7 +639,6 @@ public class MatrixControllerBlockEntity extends BlockEntity {
         memberCount = result.members().size();
         patternStorageCount = result.patternMembers().size();
         craftingUnitCount = result.craftingMembers().size();
-        closedLoopProcessorCount = result.closedLoopProcessorCount();
         patternStoragePositions = result.patternMembers().stream()
                 .map(member -> member.worldPos().immutable())
                 .toList();
@@ -486,12 +646,16 @@ public class MatrixControllerBlockEntity extends BlockEntity {
         cachedCraftingUnits = result.craftingUnits();
         structureCacheValid = true;
 
+        if (level.getBlockEntity(result.portPos()) instanceof MatrixPortBlockEntity port) {
+            ensureRuntimeStateLoaded(port);
+        }
         bindMembers(result);
         setMembersFormed(result, true);
         setChangedAndUpdate();
     }
 
     private void deform() {
+        persistRuntimeStateIfChanged();
         clearBindingsInStoredBounds();
         setBoundsConnectedTextureFormed(false);
         formed = false;
@@ -501,7 +665,6 @@ public class MatrixControllerBlockEntity extends BlockEntity {
         memberCount = 0;
         patternStorageCount = 0;
         craftingUnitCount = 0;
-        closedLoopProcessorCount = 0;
         patternStoragePositions = List.of();
         cachedPatternStorages = List.of();
         cachedCraftingUnits = List.of();
@@ -539,7 +702,7 @@ public class MatrixControllerBlockEntity extends BlockEntity {
     private void bindMembers(MatrixMultiblockScanResult result) {
         if (level.isLoaded(result.portPos())
                 && level.getBlockEntity(result.portPos()) instanceof MatrixPortBlockEntity port) {
-            port.bindToController(worldPosition);
+            port.bindToController(worldPosition, machineId);
         }
         for (MatrixMultiblockMember member : result.patternMembers()) {
             if (level.isLoaded(member.worldPos())
@@ -620,11 +783,6 @@ public class MatrixControllerBlockEntity extends BlockEntity {
                     .setValue(MatrixControllerBlock.FORMED, formed)
                     .setValue(MatrixControllerBlock.WORKING, working), Block.UPDATE_CLIENTS);
         }
-    }
-
-    private boolean isWorking() {
-        var port = getPort();
-        return formed && port != null && port.isWorking();
     }
 
     private MatrixAutoBuildPlan createAutoBuildPlan(int patternStorageBudget) {
@@ -865,7 +1023,7 @@ public class MatrixControllerBlockEntity extends BlockEntity {
         tag.putInt(TAG_MEMBER_COUNT, memberCount);
         tag.putInt(TAG_PATTERN_STORAGE_COUNT, patternStorageCount);
         tag.putInt(TAG_CRAFTING_UNIT_COUNT, craftingUnitCount);
-        tag.putInt(TAG_CLOSED_LOOP_PROCESSOR_COUNT, closedLoopProcessorCount);
+        tag.putUUID(TAG_MACHINE_ID, machineId);
     }
 
     @Override
@@ -886,12 +1044,44 @@ public class MatrixControllerBlockEntity extends BlockEntity {
         memberCount = tag.getInt(TAG_MEMBER_COUNT);
         patternStorageCount = tag.getInt(TAG_PATTERN_STORAGE_COUNT);
         craftingUnitCount = tag.getInt(TAG_CRAFTING_UNIT_COUNT);
-        closedLoopProcessorCount = Math.max(0, tag.getInt(TAG_CLOSED_LOOP_PROCESSOR_COUNT));
+        if (tag.hasUUID(TAG_MACHINE_ID)) machineId = tag.getUUID(TAG_MACHINE_ID);
     }
 
     @Override
     public void onLoad() {
         super.onLoad();
+        claimPersistentState();
         scheduleStructureCheck();
+    }
+
+    @Override
+    public void onChunkUnloaded() {
+        persistRuntimeStateIfChanged();
+        suspendRuntime();
+        releasePersistentState();
+        super.onChunkUnloaded();
+    }
+
+    @Override
+    public void setRemoved() {
+        persistRuntimeStateIfChanged();
+        suspendRuntime();
+        releasePersistentState();
+        super.setRemoved();
+    }
+
+    private void claimPersistentState() {
+        if (level instanceof ServerLevel serverLevel) {
+            persistentStateOwner = ControllerMachineStateSavedData.get(serverLevel)
+                    .claim(MachineType.MATRIX, machineId, serverLevel, worldPosition);
+        }
+    }
+
+    private void releasePersistentState() {
+        if (persistentStateOwner && level instanceof ServerLevel serverLevel) {
+            ControllerMachineStateSavedData.get(serverLevel)
+                    .release(MachineType.MATRIX, machineId, serverLevel, worldPosition);
+        }
+        persistentStateOwner = false;
     }
 }

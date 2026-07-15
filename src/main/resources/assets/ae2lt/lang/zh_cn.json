@@ -963,7 +963,7 @@
   "ae2lt.tianshu.maintenance.batch": "单次合成",
   "ae2lt.tianshu.maintenance.topology": "合成拓扑（点击编辑保留）",
   "ae2lt.tianshu.maintenance.delete": "删除",
-  "ae2lt.tianshu.maintenance.unavailable": "当前网络没有安装库存维持核心的可用天枢",
+  "ae2lt.tianshu.maintenance.unavailable": "当前网络没有可用且已成型的天枢",
   "ae2lt.tianshu.reserve.title": "库存保留",
   "ae2lt.tianshu.reserve.amount": "保留数量",
   "ae2lt.tianshu.reserve.global": "天枢全局",

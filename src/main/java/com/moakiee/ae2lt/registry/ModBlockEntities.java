@@ -23,6 +23,7 @@ import com.moakiee.ae2lt.blockentity.TeslaCoilBlockEntity;
 import com.moakiee.ae2lt.blockentity.TestTimeWheelCraftingCpuBlockEntity;
 import com.moakiee.ae2lt.blockentity.TianshuSupercomputerControllerBlockEntity;
 import com.moakiee.ae2lt.blockentity.TianshuSupercomputerPortBlockEntity;
+import com.moakiee.ae2lt.blockentity.TianshuPatternStorageBlockEntity;
 import com.moakiee.ae2lt.blockentity.TianshuSeedStorageBlockEntity;
 import com.moakiee.ae2lt.blockentity.AdvancedWirelessOverloadedControllerBlockEntity;
 import com.moakiee.ae2lt.blockentity.WirelessOverloadedControllerBlockEntity;
@@ -195,6 +196,13 @@ public final class ModBlockEntities {
                     () -> BlockEntityType.Builder.of(
                             TianshuSeedStorageBlockEntity::new,
                             ModBlocks.CLOSED_LOOP_SEED_STORAGE.get()).build(null));
+
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TianshuPatternStorageBlockEntity>>
+            TIANSHU_PATTERN_STORAGE = BLOCK_ENTITY_TYPES.register(
+                    "closed_loop_pattern_storage",
+                    () -> BlockEntityType.Builder.of(
+                            TianshuPatternStorageBlockEntity::new,
+                            ModBlocks.CLOSED_LOOP_PATTERN_STORAGE.get()).build(null));
 
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<MatrixControllerBlockEntity>>
             MATRIX_CONTROLLER = BLOCK_ENTITY_TYPES.register(

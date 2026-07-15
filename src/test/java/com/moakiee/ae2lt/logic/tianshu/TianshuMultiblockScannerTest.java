@@ -89,11 +89,9 @@ class TianshuMultiblockScannerTest {
     }
 
     @Test
-    void optionalFunctionUnitsFormAndProduceIndependentCapabilities() {
+    void mainCoreProvidesFunctionsWhilePhysicalWarehousesProvideCapacity() {
         var blocks = completeStructure(Direction.WEST);
         var functionComponents = new TianshuMultiblockComponent[] {
-                TianshuMultiblockComponent.INVENTORY_MAINTENANCE_CORE,
-                TianshuMultiblockComponent.CLOSED_LOOP_PATTERN_CORE,
                 TianshuMultiblockComponent.CLOSED_LOOP_PATTERN_STORAGE,
                 TianshuMultiblockComponent.CLOSED_LOOP_SEED_STORAGE
         };
@@ -116,10 +114,13 @@ class TianshuMultiblockScannerTest {
         assertTrue(profile.supportsInventoryMaintenance());
         assertTrue(profile.supportsClosedLoopPatterns());
         assertTrue(profile.supportsClosedLoopSeeds());
-        assertEquals(64, profile.maintenanceRuleCapacity());
+        assertEquals(Integer.MAX_VALUE, profile.maintenanceRuleCapacity());
         assertEquals(64, profile.closedLoopPatternCapacity());
         assertEquals(List.of(TianshuMultiblockScanner.worldPos(
-                        CONTROLLER, new BlockPos(2, 3, 3), Direction.WEST)),
+                        CONTROLLER, new BlockPos(2, 2, 3), Direction.WEST)),
+                attempt.result().patternStoragePositions());
+        assertEquals(List.of(TianshuMultiblockScanner.worldPos(
+                        CONTROLLER, new BlockPos(2, 2, 4), Direction.WEST)),
                 attempt.result().seedStoragePositions());
     }
 

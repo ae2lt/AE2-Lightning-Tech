@@ -202,6 +202,23 @@ class CraftingCoreTest {
         assertEquals(0, core.threadsInFlight());
     }
 
+    @Test
+    void suspendDropsOnlyTheLocalMirrorWithoutSpawningPersistedOutputs() {
+        var host = new FakeHost(0);
+        var output = key("diamond");
+        var registry = new CraftingCoreRegistry();
+        var core = new CraftingCore(host, new FakeAssembler(output, 1), registry);
+
+        core.pushBatch(new FakePattern(), inputs(key("stick"), 1), 2, 1);
+        core.suspend();
+        host.removed = true;
+        registry.tickAll();
+
+        assertEquals(0, host.spawned.getLong(output));
+        assertEquals(0, host.network.getLong(output));
+        assertEquals(0, core.threadsInFlight());
+    }
+
     private static KeyCounter[] inputs(AEKey key, long amount) {
         var counter = new KeyCounter();
         counter.add(key, amount);

@@ -34,14 +34,11 @@ class MatrixMultiblockScannerTest {
     }
 
     @Test
-    void closedLoopProcessorIsAnOptionalCraftingBayUnit() {
-        var components = completeStructure();
-        components.put(worldPos(firstNonCenterCraftingSlot()), MatrixMultiblockComponent.CLOSED_LOOP_PROCESSOR);
-
-        var attempt = MatrixMultiblockScanner.scan(CONTROLLER, ORIENTATION, components::get);
-
+    void mainCoreFormsWithoutASeparateClosedLoopProcessor() {
+        var attempt = MatrixMultiblockScanner.scan(
+                CONTROLLER, ORIENTATION, completeStructure()::get);
         assertTrue(attempt.formed(), attempt.issues().toString());
-        assertTrue(attempt.result().hasClosedLoopProcessor());
+        assertTrue(attempt.result().craftingProfile().isValid());
     }
 
     private static Map<BlockPos, MatrixMultiblockComponent> completeStructure() {

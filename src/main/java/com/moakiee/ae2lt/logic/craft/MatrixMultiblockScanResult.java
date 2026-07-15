@@ -81,20 +81,6 @@ public final class MatrixMultiblockScanResult {
         return MatrixCraftingProfile.fromUnits(craftingUnits());
     }
 
-    public int closedLoopProcessorCount() {
-        int count = 0;
-        for (var member : craftingMembers) {
-            if (member.component().isClosedLoopProcessor()) {
-                count++;
-            }
-        }
-        return count;
-    }
-
-    public boolean hasClosedLoopProcessor() {
-        return closedLoopProcessorCount() > 0;
-    }
-
     public List<MatrixPatternStorageTier> patternStorageTiers() {
         var tiers = new ArrayList<MatrixPatternStorageTier>();
         for (var member : patternMembers) {
