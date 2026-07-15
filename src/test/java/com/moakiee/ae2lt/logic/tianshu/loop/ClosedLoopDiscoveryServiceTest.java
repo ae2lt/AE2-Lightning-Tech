@@ -7,6 +7,9 @@ import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
+import com.moakiee.thunderbolt.ae2.overload.pattern.OverloadPatternDetails;
+import com.moakiee.thunderbolt.ae2.overload.pattern.OverloadedProviderOnlyPatternDetails;
+import com.moakiee.thunderbolt.ae2.overload.pattern.PatternExecutionHostKind;
 import com.mojang.serialization.MapCodec;
 
 import net.minecraft.core.BlockPos;
@@ -119,6 +122,70 @@ class ClosedLoopDiscoveryServiceTest {
         assertEquals(1, amount(candidates.getFirst().analysis().netOutputs(), target));
     }
 
+    @Test
+    void discoversLoopThroughANonFirstSubstitutionCandidate() {
+        var target = key("substitution_target");
+        var unavailable = key("substitution_unavailable");
+        var intermediate = key("substitution_intermediate");
+        var root = pattern(
+                List.of(stack(target, 2)),
+                alternatives(stack(unavailable, 1), stack(intermediate, 1)));
+        var recycle = pattern(List.of(stack(intermediate, 1)), input(target, 1, null));
+        var patterns = Map.<AEKey, List<IPatternDetails>>of(
+                target, List.of(root), intermediate, List.of(recycle));
+
+        var candidates = ClosedLoopDiscoveryService.resolveCandidates(
+                key -> patterns.getOrDefault(key, List.of()), target);
+
+        assertEquals(1, candidates.size());
+        assertEquals(2, candidates.getFirst().members().size());
+        assertEquals(1, amount(candidates.getFirst().analysis().seeds(), intermediate));
+        assertEquals(1, amount(candidates.getFirst().analysis().netOutputs(), target));
+    }
+
+    @Test
+    void discoversIdOnlyLoopThroughAnotherConcreteVariant() {
+        var target = key("id_only_target");
+        var encodedSeed = new TestKey("id_only_seed", "encoded");
+        var returnedSeed = new TestKey("id_only_seed", "returned");
+        var root = new FakeOverloadPattern(
+                new IPatternDetails.IInput[] {input(encodedSeed, 1, null)},
+                List.of(stack(target, 2)), true, false);
+        var recycle = new FakeOverloadPattern(
+                new IPatternDetails.IInput[] {input(target, 1, null)},
+                List.of(stack(returnedSeed, 1)), false, true);
+        var patterns = Map.<AEKey, List<IPatternDetails>>of(
+                target, List.of(root), returnedSeed, List.of(recycle));
+
+        var candidates = ClosedLoopDiscoveryService.resolveCandidates(
+                key -> patterns.getOrDefault(key, List.of()),
+                template -> template.dropSecondary().equals(encodedSeed.dropSecondary())
+                        ? List.of(returnedSeed) : List.of(),
+                target);
+
+        assertEquals(1, candidates.size());
+        assertEquals(2, candidates.getFirst().members().size());
+        assertEquals(1, amount(candidates.getFirst().analysis().seeds(), returnedSeed));
+        assertEquals(1, amount(candidates.getFirst().analysis().netOutputs(), target));
+    }
+
+    @Test
+    void doesNotUseAnIdOnlyOutputToSatisfyAStrictInput() {
+        var target = key("strict_target");
+        var seed = key("strict_seed");
+        var root = pattern(List.of(stack(target, 2)), input(seed, 1, null));
+        var recycle = new FakeOverloadPattern(
+                new IPatternDetails.IInput[] {input(target, 1, null)},
+                List.of(stack(seed, 1)), false, true);
+        var patterns = Map.<AEKey, List<IPatternDetails>>of(
+                target, List.of(root), seed, List.of(recycle));
+
+        var candidates = ClosedLoopDiscoveryService.resolveCandidates(
+                key -> patterns.getOrDefault(key, List.of()), target);
+
+        assertEquals(0, candidates.size());
+    }
+
     private static long amount(List<GenericStack> stacks, AEKey key) {
         return stacks.stream().filter(stack -> key.equals(stack.what()))
                 .mapToLong(GenericStack::amount).sum();
@@ -130,6 +197,10 @@ class ClosedLoopDiscoveryServiceTest {
 
     private static FakeInput input(AEKey key, long amount, AEKey remaining) {
         return new FakeInput(new GenericStack[] {stack(key, amount)}, remaining);
+    }
+
+    private static FakeInput alternatives(GenericStack... alternatives) {
+        return new FakeInput(alternatives, null);
     }
 
     private static GenericStack stack(AEKey key, long amount) {
@@ -147,12 +218,34 @@ class ClosedLoopDiscoveryServiceTest {
         @Override public List<GenericStack> getOutputs() { return outputs; }
     }
 
+    private record FakeOverloadPattern(
+            IPatternDetails.IInput[] inputs, List<GenericStack> outputs,
+            boolean inputFuzzy, boolean outputFuzzy)
+            implements IPatternDetails, OverloadedProviderOnlyPatternDetails {
+        @Override public AEItemKey getDefinition() { return null; }
+        @Override public IPatternDetails.IInput[] getInputs() { return inputs; }
+        @Override public List<GenericStack> getOutputs() { return outputs; }
+        @Override public PatternExecutionHostKind requiredHostKind() {
+            return PatternExecutionHostKind.OVERLOADED_PATTERN_PROVIDER;
+        }
+        @Override public String overloadPatternIdentity() {
+            return "test:" + inputFuzzy + ":" + outputFuzzy;
+        }
+        @Override public OverloadPatternDetails overloadPatternDetailsView() { return null; }
+        @Override public boolean hasFuzzyInputs() { return inputFuzzy; }
+        @Override public boolean isFuzzyInput(int slot) { return inputFuzzy && slot == 0; }
+        @Override public boolean isFuzzyOutput(int slot) { return outputFuzzy && slot == 0; }
+    }
+
     private record FakeInput(GenericStack[] possibleInputs, AEKey remaining)
             implements IPatternDetails.IInput {
         @Override public GenericStack[] getPossibleInputs() { return possibleInputs; }
         @Override public long getMultiplier() { return 1; }
         @Override public boolean isValid(AEKey key, Level level) {
-            return possibleInputs[0].what().equals(key);
+            for (var possible : possibleInputs) {
+                if (possible.what().equals(key)) return true;
+            }
+            return false;
         }
         @Override public AEKey getRemainingKey(AEKey template) { return remaining; }
     }
@@ -160,12 +253,20 @@ class ClosedLoopDiscoveryServiceTest {
     private static final class TestKey extends AEKey {
         private static final TestKeyType TYPE = new TestKeyType();
         private final String id;
-        private TestKey(String id) { this.id = id; }
+        private final String secondary;
+        private TestKey(String id) { this(id, ""); }
+        private TestKey(String id, String secondary) {
+            this.id = id;
+            this.secondary = secondary;
+        }
         @Override public AEKeyType getType() { return TYPE; }
-        @Override public AEKey dropSecondary() { return this; }
+        @Override public AEKey dropSecondary() {
+            return secondary.isEmpty() ? this : new TestKey(id);
+        }
         @Override public CompoundTag toTag(net.minecraft.core.HolderLookup.Provider registries) {
             var tag = new CompoundTag();
             tag.putString("id", id);
+            tag.putString("secondary", secondary);
             return tag;
         }
         @Override public Object getPrimaryKey() { return id; }
@@ -177,9 +278,10 @@ class ClosedLoopDiscoveryServiceTest {
         @Override public void addDrops(long amount, List<ItemStack> drops, Level level, BlockPos pos) { }
         @Override public boolean hasComponents() { return false; }
         @Override public boolean equals(Object obj) {
-            return obj instanceof TestKey other && id.equals(other.id);
+            return obj instanceof TestKey other
+                    && id.equals(other.id) && secondary.equals(other.secondary);
         }
-        @Override public int hashCode() { return id.hashCode(); }
+        @Override public int hashCode() { return java.util.Objects.hash(id, secondary); }
     }
 
     private static final class TestKeyType extends AEKeyType {

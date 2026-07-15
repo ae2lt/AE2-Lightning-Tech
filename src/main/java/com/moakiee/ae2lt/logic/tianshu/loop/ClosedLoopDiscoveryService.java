@@ -4,8 +4,11 @@ import appeng.api.crafting.IPatternDetails;
 import appeng.api.crafting.PatternDetailsHelper;
 import appeng.api.networking.crafting.ICraftingService;
 import appeng.api.stacks.AEKey;
+import appeng.api.stacks.GenericStack;
+import com.moakiee.thunderbolt.ae2.overload.pattern.OverloadedProviderOnlyPatternDetails;
 import com.moakiee.thunderbolt.ae2.overload.pattern.SourcePatternSnapshot;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -32,7 +35,12 @@ public final class ClosedLoopDiscoveryService {
         var result = new ArrayList<ClosedLoopDiscoveryCandidate>();
         var signatures = new HashSet<String>();
         boolean rejectedUndecodablePattern = false;
-        for (var resolved : resolveCandidates(crafting::getCraftingFor, requestedOutput)) {
+        for (var resolved : resolveCandidates(
+                crafting::getCraftingFor,
+                template -> crafting.getCraftables(
+                        candidate -> candidate != null
+                                && template.dropSecondary().equals(candidate.dropSecondary())),
+                requestedOutput)) {
             var storedMembers = new ArrayList<ClosedLoopMemberPattern>(resolved.members().size());
             boolean valid = true;
             for (int i = 0; i < resolved.members().size(); i++) {
@@ -78,22 +86,42 @@ public final class ClosedLoopDiscoveryService {
     static List<ResolvedCandidate> resolveCandidates(
             Function<AEKey, ? extends Iterable<IPatternDetails>> patternsFor,
             AEKey requestedOutput) {
-        if (patternsFor == null || requestedOutput == null) return List.of();
+        return resolveCandidates(patternsFor, ignored -> List.of(), requestedOutput);
+    }
+
+    /**
+     * Variant-aware graph resolver. The second lookup enumerates craftable keys sharing an
+     * input template's primary identity; it is consulted only for ID_ONLY overload inputs.
+     */
+    static List<ResolvedCandidate> resolveCandidates(
+            Function<AEKey, ? extends Iterable<IPatternDetails>> patternsFor,
+            Function<AEKey, ? extends Iterable<AEKey>> fuzzyCraftablesFor,
+            AEKey requestedOutput) {
+        if (patternsFor == null || fuzzyCraftablesFor == null || requestedOutput == null) {
+            return List.of();
+        }
+        var patternCache = new HashMap<AEKey, List<IPatternDetails>>();
+        Function<AEKey, Iterable<IPatternDetails>> cachedPatternsFor = key ->
+                patternCache.computeIfAbsent(key, ignored -> copyPatterns(patternsFor.apply(key)));
+        var fuzzyCache = new HashMap<AEKey, List<AEKey>>();
+        Function<AEKey, Iterable<AEKey>> cachedFuzzyCraftablesFor = template ->
+                fuzzyCache.computeIfAbsent(template.dropSecondary(), ignored ->
+                        copyKeys(fuzzyCraftablesFor.apply(template)));
         var result = new ArrayList<ResolvedCandidate>();
         var memberSetSignatures = new HashSet<Set<IPatternDetails>>();
-        for (var root : safePatterns(patternsFor, requestedOutput)) {
-            var rootInputs = deterministicInputs(root);
-            if (!produces(root, requestedOutput) || rootInputs == null) continue;
+        for (var root : safePatterns(cachedPatternsFor, requestedOutput)) {
+            var rootInputs = inputRequirements(root);
+            var rootAnchors = exactOutputs(root, requestedOutput);
+            if (rootInputs == null || rootAnchors.isEmpty()) continue;
 
             var optionsByInput = new ArrayList<List<PathOption>>(rootInputs.size());
             for (var input : rootInputs) {
                 var options = new ArrayList<PathOption>();
-                options.add(new PathOption(List.of(), input.equals(requestedOutput)));
-                if (!input.equals(requestedOutput)) {
-                    for (var path : pathsBackToAnchor(
-                            patternsFor, input, requestedOutput, new HashSet<>(), 0)) {
-                        options.add(new PathOption(path, true));
-                    }
+                options.add(new PathOption(List.of(), acceptsAny(input, rootAnchors)));
+                for (var path : pathsBackToAnchor(
+                        cachedPatternsFor, cachedFuzzyCraftablesFor, input, rootAnchors,
+                        new HashSet<>(), 0)) {
+                    options.add(new PathOption(path, true));
                 }
                 optionsByInput.add(List.copyOf(options));
             }
@@ -151,24 +179,29 @@ public final class ClosedLoopDiscoveryService {
 
     private static List<List<IPatternDetails>> pathsBackToAnchor(
             Function<AEKey, ? extends Iterable<IPatternDetails>> patternsFor,
-            AEKey needed,
-            AEKey anchor,
-            Set<AEKey> visiting,
+            Function<AEKey, ? extends Iterable<AEKey>> fuzzyCraftablesFor,
+            InputRequirement needed,
+            List<PatternOutput> anchors,
+            Set<InputIdentity> visiting,
             int depth) {
-        if (depth >= MAX_DEPTH || !visiting.add(needed)) return List.of();
+        var identity = needed.identity();
+        if (depth >= MAX_DEPTH || !visiting.add(identity)) return List.of();
         try {
             var result = new ArrayList<List<IPatternDetails>>();
-            for (var pattern : safePatterns(patternsFor, needed)) {
+            for (var pattern : patternsForRequirement(
+                    patternsFor, fuzzyCraftablesFor, needed)) {
                 if (!produces(pattern, needed)) continue;
-                var inputs = deterministicInputs(pattern);
+                var inputs = inputRequirements(pattern);
                 if (inputs == null) continue;
-                if (inputs.contains(anchor) || hasReturnedInput(pattern)) {
+                if (inputs.stream().anyMatch(input -> acceptsAny(input, anchors))
+                        || hasReturnedInput(pattern)) {
                     result.add(List.of(pattern));
                 }
                 for (var input : inputs) {
-                    if (input.equals(anchor)) continue;
+                    if (acceptsAny(input, anchors)) continue;
                     for (var tail : pathsBackToAnchor(
-                            patternsFor, input, anchor, visiting, depth + 1)) {
+                            patternsFor, fuzzyCraftablesFor, input, anchors,
+                            visiting, depth + 1)) {
                         var path = new ArrayList<IPatternDetails>(tail.size() + 1);
                         path.add(pattern);
                         path.addAll(tail);
@@ -179,14 +212,58 @@ public final class ClosedLoopDiscoveryService {
             }
             return List.copyOf(result);
         } finally {
-            visiting.remove(needed);
+            visiting.remove(identity);
         }
+    }
+
+    private static Iterable<IPatternDetails> patternsForRequirement(
+            Function<AEKey, ? extends Iterable<IPatternDetails>> patternsFor,
+            Function<AEKey, ? extends Iterable<AEKey>> fuzzyCraftablesFor,
+            InputRequirement requirement) {
+        var lookupKeys = new LinkedHashSet<AEKey>(requirement.keys());
+        if (requirement.fuzzy()) {
+            for (var template : requirement.keys()) {
+                var variants = fuzzyCraftablesFor.apply(template);
+                if (variants == null) continue;
+                for (var variant : variants) {
+                    if (variant != null && accepts(
+                            requirement, new PatternOutput(variant, false))) {
+                        lookupKeys.add(variant);
+                    }
+                }
+            }
+        }
+        var result = new LinkedHashSet<IPatternDetails>();
+        for (var key : lookupKeys) {
+            for (var pattern : safePatterns(patternsFor, key)) {
+                if (pattern != null) result.add(pattern);
+            }
+        }
+        return List.copyOf(result);
     }
 
     private static Iterable<IPatternDetails> safePatterns(
             Function<AEKey, ? extends Iterable<IPatternDetails>> patternsFor, AEKey key) {
         var patterns = patternsFor.apply(key);
         return patterns != null ? patterns : List.of();
+    }
+
+    private static List<IPatternDetails> copyPatterns(Iterable<IPatternDetails> patterns) {
+        if (patterns == null) return List.of();
+        var result = new ArrayList<IPatternDetails>();
+        for (var pattern : patterns) {
+            if (pattern != null) result.add(pattern);
+        }
+        return List.copyOf(result);
+    }
+
+    private static List<AEKey> copyKeys(Iterable<AEKey> keys) {
+        if (keys == null) return List.of();
+        var result = new LinkedHashSet<AEKey>();
+        for (var key : keys) {
+            if (key != null) result.add(key);
+        }
+        return List.copyOf(result);
     }
 
     private static OrderedCandidate analyzeBestOrder(
@@ -207,33 +284,87 @@ public final class ClosedLoopDiscoveryService {
                 List.copyOf(orderedDetails), orderedCoefficients, ordered.analysis());
     }
 
-    private static List<AEKey> deterministicInputs(IPatternDetails details) {
+    private static List<InputRequirement> inputRequirements(IPatternDetails details) {
         if (details == null || details instanceof TianshuClosedLoopPatternDetails) return null;
-        var result = new ArrayList<AEKey>();
-        for (var input : details.getInputs()) {
+        var inputs = details.getInputs();
+        var overload = details instanceof OverloadedProviderOnlyPatternDetails value ? value : null;
+        var result = new ArrayList<InputRequirement>(inputs.length);
+        for (int slot = 0; slot < inputs.length; slot++) {
+            var input = inputs[slot];
             var possible = input.getPossibleInputs();
             if (possible.length == 0 || possible[0].what() == null) return null;
-            result.add(possible[0].what());
+            var keys = new LinkedHashSet<AEKey>();
+            for (var candidate : possible) {
+                if (candidate != null && candidate.what() != null) keys.add(candidate.what());
+            }
+            if (keys.isEmpty()) return null;
+            result.add(new InputRequirement(
+                    possible, List.copyOf(keys), overload != null && overload.isFuzzyInput(slot)));
         }
-        return result;
+        return List.copyOf(result);
     }
 
     private static boolean hasReturnedInput(IPatternDetails details) {
         var inputs = details.getInputs();
-        for (var input : inputs) {
+        var requirements = inputRequirements(details);
+        if (requirements == null) return false;
+        for (int slot = 0; slot < inputs.length; slot++) {
+            var input = inputs[slot];
             var possible = input.getPossibleInputs();
-            if (possible.length == 1 && possible[0].what() != null
-                    && possible[0].what().equals(input.getRemainingKey(possible[0].what()))) return true;
+            for (var candidate : possible) {
+                if (candidate == null || candidate.what() == null) continue;
+                var remaining = input.getRemainingKey(candidate.what());
+                if (remaining != null && accepts(
+                        requirements.get(slot), new PatternOutput(remaining, false))) {
+                    return true;
+                }
+            }
         }
         return false;
     }
 
-    private static boolean produces(IPatternDetails details, AEKey key) {
+    private static boolean produces(IPatternDetails details, InputRequirement requirement) {
         if (details == null) return false;
-        for (var output : details.getOutputs()) {
-            if (output != null && key.equals(output.what()) && output.amount() > 0) return true;
+        for (var output : outputs(details)) {
+            if (accepts(requirement, output)) return true;
         }
         return false;
+    }
+
+    private static List<PatternOutput> exactOutputs(IPatternDetails details, AEKey key) {
+        var result = new ArrayList<PatternOutput>();
+        for (var output : outputs(details)) {
+            if (key.equals(output.key())) result.add(output);
+        }
+        return List.copyOf(result);
+    }
+
+    private static List<PatternOutput> outputs(IPatternDetails details) {
+        if (details == null) return List.of();
+        var overload = details instanceof OverloadedProviderOnlyPatternDetails value ? value : null;
+        var outputs = details.getOutputs();
+        var result = new ArrayList<PatternOutput>(outputs.size());
+        for (int slot = 0; slot < outputs.size(); slot++) {
+            var output = outputs.get(slot);
+            if (output == null || output.what() == null || output.amount() <= 0) continue;
+            result.add(new PatternOutput(
+                    output.what(), overload != null && overload.isFuzzyOutput(slot)));
+        }
+        return List.copyOf(result);
+    }
+
+    private static boolean acceptsAny(
+            InputRequirement requirement, List<PatternOutput> outputs) {
+        for (var output : outputs) {
+            if (accepts(requirement, output)) return true;
+        }
+        return false;
+    }
+
+    private static boolean accepts(InputRequirement requirement, PatternOutput output) {
+        return ClosedLoopPatternAnalyzer.acceptsLoopOutput(
+                requirement.possibleInputs(), requirement.fuzzy(),
+                output.key(), output.fuzzy());
     }
 
     static record ResolvedCandidate(
@@ -247,6 +378,42 @@ public final class ClosedLoopDiscoveryService {
             ClosedLoopAnalysis analysis) { }
 
     private record PathOption(List<IPatternDetails> members, boolean closes) { }
+
+    private record PatternOutput(AEKey key, boolean fuzzy) { }
+
+    private record InputIdentity(List<AEKey> keys, boolean fuzzy) {
+        private InputIdentity {
+            keys = List.copyOf(keys);
+        }
+    }
+
+    private static final class InputRequirement {
+        private final GenericStack[] possibleInputs;
+        private final List<AEKey> keys;
+        private final boolean fuzzy;
+
+        private InputRequirement(GenericStack[] possibleInputs, List<AEKey> keys, boolean fuzzy) {
+            this.possibleInputs = possibleInputs.clone();
+            this.keys = List.copyOf(keys);
+            this.fuzzy = fuzzy;
+        }
+
+        private GenericStack[] possibleInputs() {
+            return possibleInputs;
+        }
+
+        private List<AEKey> keys() {
+            return keys;
+        }
+
+        private boolean fuzzy() {
+            return fuzzy;
+        }
+
+        private InputIdentity identity() {
+            return new InputIdentity(keys, fuzzy);
+        }
+    }
 
     private ClosedLoopDiscoveryService() { }
 }

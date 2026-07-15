@@ -471,6 +471,22 @@ public final class ClosedLoopPatternAnalyzer {
         return null;
     }
 
+    /**
+     * Uses the same containment rules as balance analysis for discovery graph edges.
+     * Keeping this here prevents automatic discovery from accepting a fuzzy edge that
+     * the final analyzer would later interpret differently.
+     */
+    static boolean acceptsLoopOutput(
+            GenericStack[] possibleInputs,
+            boolean inputFuzzy,
+            AEKey output,
+            boolean outputFuzzy) {
+        if (possibleInputs == null || output == null) return false;
+        var match = matchingLoopOutput(
+                possibleInputs, List.of(new LoopOutput(output, outputFuzzy)), inputFuzzy);
+        return match != null && !match.forbidden();
+    }
+
     private static boolean isDurabilityFuzzy(AEKey input, AEKey output) {
         if (input.equals(output)) return false;
         if (input instanceof appeng.api.stacks.AEItemKey itemInput
