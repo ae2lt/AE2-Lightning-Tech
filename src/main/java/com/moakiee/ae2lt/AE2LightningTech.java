@@ -74,7 +74,7 @@ import com.moakiee.ae2lt.grid.wirelesslink.WirelessLinkRegistry;
 import com.moakiee.ae2lt.grid.api.FrequencyApiBridge;
 import com.moakiee.ae2lt.me.GridLightningEnergyHandler;
 import com.moakiee.ae2lt.me.cell.BulkLightningCellHandler;
-import com.moakiee.ae2lt.me.cell.InfiniteCellHandler;
+import com.moakiee.ae2lt.me.cell.FixedInfiniteCellHandler;
 
 import com.moakiee.ae2lt.logic.EjectModeRegistry;
 import com.moakiee.ae2lt.logic.MachineAdapterRegistry;
@@ -870,7 +870,7 @@ public class AE2LightningTech {
             PatternDetailsHelper.registerDecoder(OverloadPatternDecoder.INSTANCE);
             PatternDetailsHelper.registerDecoder(ClosedLoopPatternDecoder.INSTANCE);
             StorageCells.addCellHandler(BulkLightningCellHandler.INSTANCE);
-            StorageCells.addCellHandler(InfiniteCellHandler.INSTANCE);
+            StorageCells.addCellHandler(FixedInfiniteCellHandler.INSTANCE);
             ModItems.registerStorageCellModels();
             Upgrades.add(AEItems.SPEED_CARD, ModBlocks.LIGHTNING_SIMULATION_CHAMBER.get(),
                     LightningSimulationChamberBlockEntity.SPEED_CARD_SLOTS);
