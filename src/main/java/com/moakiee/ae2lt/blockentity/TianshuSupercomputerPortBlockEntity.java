@@ -34,6 +34,7 @@ import net.minecraft.world.level.block.state.BlockState;
 
 public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
         implements TimeWheelCraftingCpuPoolHost {
+    private static final int BINDING_CHECK_INTERVAL_TICKS = 20;
     private static final String TAG_CONTROLLER_POS = "ControllerPos";
     private static final String TAG_FORMED = "Formed";
     private static final String TAG_CPU_POOL = "CpuPool";
@@ -46,9 +47,21 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
     private long lastCpuDirtyTick = Long.MIN_VALUE;
     private long pendingStorage = -1L;
     private int pendingParallel = -1;
+    private long nextBindingCheckTick;
 
     public TianshuSupercomputerPortBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.TIANSHU_SUPERCOMPUTER_PORT.get(), pos, state);
+    }
+
+    public static void serverTick(Level level,
+                                  BlockPos pos,
+                                  BlockState state,
+                                  TianshuSupercomputerPortBlockEntity port) {
+        if (level.isClientSide || level.getGameTime() < port.nextBindingCheckTick) {
+            return;
+        }
+        port.nextBindingCheckTick = level.getGameTime() + BINDING_CHECK_INTERVAL_TICKS;
+        port.validateControllerBinding();
     }
 
     @Override
@@ -76,7 +89,18 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
 
     public void bindToController(BlockPos controllerPos, CpuInternalCoreProfile profile) {
         BlockPos newControllerPos = controllerPos == null ? null : controllerPos.immutable();
-        boolean newFormed = newControllerPos != null;
+        updateControllerBinding(newControllerPos, newControllerPos != null, profile);
+    }
+
+    public void suspendFromController(BlockPos expectedControllerPos) {
+        if (formed && expectedControllerPos != null && expectedControllerPos.equals(controllerPos)) {
+            updateControllerBinding(controllerPos, false, CpuInternalCoreProfile.empty());
+        }
+    }
+
+    private void updateControllerBinding(BlockPos newControllerPos,
+                                         boolean newFormed,
+                                         CpuInternalCoreProfile profile) {
         boolean formedChanged = formed != newFormed;
         boolean bindingChanged = formedChanged || !Objects.equals(this.controllerPos, newControllerPos);
         this.controllerPos = newControllerPos;
@@ -164,7 +188,7 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
     public TianshuSupercomputerControllerBlockEntity getController() {
         if (!formed || controllerPos == null || level == null || !level.isLoaded(controllerPos)) return null;
         return level.getBlockEntity(controllerPos) instanceof TianshuSupercomputerControllerBlockEntity controller
-                ? controller : null;
+                && controller.isPortActive(worldPosition) ? controller : null;
     }
 
     public void applyPendingProfile() {
@@ -211,6 +235,10 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
     public void onLoad() {
         super.onLoad();
         cpuPool.resolvePendingLoad();
+        nextBindingCheckTick = level != null ? level.getGameTime() : 0L;
+        if (level != null && !level.isClientSide && formed && controllerPos != null) {
+            suspendFromController(controllerPos);
+        }
     }
 
     @Override
@@ -228,5 +256,29 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
     @Override
     protected Item getItemFromBlockEntity() {
         return ModBlocks.TIANSHU_SUPERCOMPUTER_PORT.get().asItem();
+    }
+
+    private void validateControllerBinding() {
+        if (level == null || level.isClientSide || controllerPos == null) {
+            return;
+        }
+        if (!level.isLoaded(controllerPos)) {
+            suspendFromController(controllerPos);
+            return;
+        }
+        if (level.getBlockEntity(controllerPos) instanceof TianshuSupercomputerControllerBlockEntity controller) {
+            if (controller.isPortActive(worldPosition)) {
+                if (!formed) {
+                    controller.scheduleStructureCheck();
+                }
+            } else if (controller.ownsPort(worldPosition)) {
+                suspendFromController(controllerPos);
+                controller.scheduleStructureCheck();
+            } else {
+                bindToController(null);
+            }
+        } else if (!level.getBlockState(controllerPos).is(ModBlocks.TIANSHU_SUPERCOMPUTER_CONTROLLER.get())) {
+            bindToController(null);
+        }
     }
 }

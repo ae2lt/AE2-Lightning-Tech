@@ -998,6 +998,7 @@
   "ae2lt.tianshu.issue.missing_storage_core": "At least one storage unit is required",
   "ae2lt.tianshu.issue.missing_parallel_core": "At least one parallel unit is required",
   "ae2lt.tianshu.issue.unexpected_block": "A required-air position contains an unexpected block",
+  "ae2lt.tianshu.issue.chunks_unloaded": "The structure's chunks are not fully loaded",
   "ae2lt.tianshu.issue.unknown": "Structure is incomplete",
   "ae2lt.gui.matrix_port.search": "Search matrix patterns",
   "ae2lt.gui.matrix_port.title": "Pattern Management"

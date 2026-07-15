@@ -757,7 +757,7 @@ public class AE2LightningTech {
                     MatrixPortBlockEntity.class,
                     matrixPortBeType,
                     null,
-                    null);
+                    MatrixPortBlockEntity::serverTick);
 
             var tianshuPortBlock = ModBlocks.TIANSHU_SUPERCOMPUTER_PORT.get();
             var tianshuPortBeType = ModBlockEntities.TIANSHU_SUPERCOMPUTER_PORT.get();
@@ -765,7 +765,7 @@ public class AE2LightningTech {
                     TianshuSupercomputerPortBlockEntity.class,
                     tianshuPortBeType,
                     null,
-                    null);
+                    TianshuSupercomputerPortBlockEntity::serverTick);
 
             var interfaceBlock = ModBlocks.OVERLOADED_INTERFACE.get();
             var interfaceBeType = ModBlockEntities.OVERLOADED_INTERFACE.get();

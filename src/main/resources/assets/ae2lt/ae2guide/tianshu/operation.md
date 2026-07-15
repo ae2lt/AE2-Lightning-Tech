@@ -17,6 +17,8 @@ After formation, the <ItemLink id="ae2lt:tianshu_supercomputer_port" /> publishe
 
 The supercomputer does not accept new jobs while its port is offline, its ME network is unpowered, or the structure is unformed. Saved job state persists across chunk unloads and can continue after the structure and network return.
 
+The supercomputer does not force-load any chunk in its footprint. If any structure chunk is unloaded, the Port disconnects and jobs pause. It rescans and resumes automatically after the complete structure is loaded again. A cross-chunk build therefore needs a chunk loader covering the whole structure.
+
 ## Shared Capacity and Concurrent Jobs
 
 Unlike a conventional crafting CPU, the Tianshu Supercomputer can retain and execute multiple crafting jobs at once.
@@ -54,5 +56,6 @@ Fast-planning eligibility is aggregated across the entire ME network. If another
 * **All visible structure blocks are present:** Clear the required-air positions omitted from the displayed structure; cables, lights, and decorations are not permitted there
 * **Auto-build does not start:** Clear the coordinates reported by the controller and ensure all materials are in the player inventory
 * **The CPU is absent from crafting confirmation:** Check the port's cable connection, ME power, and structure formation state
+* **The Port stays offline after a cross-chunk load:** Ensure the chunk loader covers the entire Tianshu structure and allow time for the automatic rescan
 * **The CPU rejects a new job:** Check remaining crafting storage; active jobs may already reserve the total capacity
 * **High parallelism does not improve throughput:** Check Pattern Provider and processing-machine counts, machine speed, material supply, and network transfer capacity

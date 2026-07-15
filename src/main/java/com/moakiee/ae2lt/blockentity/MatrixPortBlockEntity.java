@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Set;
 
 import com.moakiee.ae2lt.AE2LightningTech;
+import com.moakiee.ae2lt.block.MatrixPortBlock;
 import com.moakiee.thunderbolt.ae2.api.crafting.IBatchCraftingProvider;
 import com.moakiee.thunderbolt.ae2.api.crafting.BatchDispatchMode;
 import com.moakiee.thunderbolt.core.craft.CraftingCoreHost;
@@ -54,6 +55,7 @@ import appeng.me.helpers.MachineSource;
 
 public class MatrixPortBlockEntity extends AENetworkedBlockEntity
         implements CraftingCoreHost, IBatchCraftingProvider, PatternContainer {
+    private static final int BINDING_CHECK_INTERVAL_TICKS = 20;
     private static final String TAG_CONTROLLER_POS = "ControllerPos";
     private static final String TAG_FORMED = "Formed";
     private static final String TAG_CLUSTER = "Cluster";
@@ -90,9 +92,21 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
     private long lastPatternUpdateTick = Long.MIN_VALUE;
     private MatrixPatternStorageBlockEntity exposedPatternStorage;
     private boolean exposedPatternStorageDirty = true;
+    private long nextBindingCheckTick;
 
     public MatrixPortBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.MATRIX_PORT.get(), pos, state);
+    }
+
+    public static void serverTick(Level level,
+                                  BlockPos pos,
+                                  BlockState state,
+                                  MatrixPortBlockEntity port) {
+        if (level.isClientSide || level.getGameTime() < port.nextBindingCheckTick) {
+            return;
+        }
+        port.nextBindingCheckTick = level.getGameTime() + BINDING_CHECK_INTERVAL_TICKS;
+        port.validateControllerBinding();
     }
 
     @Override
@@ -125,7 +139,16 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
 
     public void bindToController(BlockPos controllerPos) {
         BlockPos newControllerPos = controllerPos == null ? null : controllerPos.immutable();
-        boolean newFormed = newControllerPos != null;
+        updateControllerBinding(newControllerPos, newControllerPos != null);
+    }
+
+    public void suspendFromController(BlockPos expectedControllerPos) {
+        if (formed && expectedControllerPos != null && expectedControllerPos.equals(controllerPos)) {
+            updateControllerBinding(controllerPos, false);
+        }
+    }
+
+    private void updateControllerBinding(BlockPos newControllerPos, boolean newFormed) {
         boolean formedChanged = formed != newFormed;
         this.controllerPos = newControllerPos;
         this.formed = newFormed;
@@ -133,6 +156,13 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
             onGridConnectableSidesChanged();
             if (level != null && !level.isClientSide) {
                 level.updateNeighborsAt(worldPosition, getBlockState().getBlock());
+            }
+        }
+        if (level != null && !level.isClientSide) {
+            var state = getBlockState();
+            if (state.hasProperty(MatrixPortBlock.FORMED)
+                    && state.getValue(MatrixPortBlock.FORMED) != formed) {
+                level.setBlock(worldPosition, state.setValue(MatrixPortBlock.FORMED, formed), Block.UPDATE_ALL);
             }
         }
         invalidateExposedPatternStorage();
@@ -150,8 +180,7 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
             return null;
         }
         return level.getBlockEntity(controllerPos) instanceof MatrixControllerBlockEntity controller
-                ? controller
-                : null;
+                && controller.isPortActive(worldPosition) ? controller : null;
     }
 
     public List<MatrixPatternStorageBlockEntity> getPatternStorages() {
@@ -302,8 +331,41 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
     }
 
     @Override
+    public void onLoad() {
+        super.onLoad();
+        nextBindingCheckTick = level != null ? level.getGameTime() : 0L;
+        if (level != null && !level.isClientSide && formed && controllerPos != null) {
+            suspendFromController(controllerPos);
+        }
+    }
+
+    @Override
     protected Item getItemFromBlockEntity() {
         return ModBlocks.MATTER_WARPING_MATRIX_PORT.get().asItem();
+    }
+
+    private void validateControllerBinding() {
+        if (level == null || level.isClientSide || controllerPos == null) {
+            return;
+        }
+        if (!level.isLoaded(controllerPos)) {
+            suspendFromController(controllerPos);
+            return;
+        }
+        if (level.getBlockEntity(controllerPos) instanceof MatrixControllerBlockEntity controller) {
+            if (controller.isPortActive(worldPosition)) {
+                if (!formed) {
+                    controller.scheduleStructureCheck();
+                }
+            } else if (controller.ownsPort(worldPosition)) {
+                suspendFromController(controllerPos);
+                controller.scheduleStructureCheck();
+            } else {
+                updateControllerBinding(null, false);
+            }
+        } else if (!level.getBlockState(controllerPos).is(ModBlocks.MATTER_WARPING_MATRIX_CONTROLLER.get())) {
+            updateControllerBinding(null, false);
+        }
     }
 
     private List<IPatternDetails> collectAvailablePatterns() {

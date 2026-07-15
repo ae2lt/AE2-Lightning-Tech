@@ -15,4 +15,8 @@ public record MatrixMultiblockScanAttempt(
     public boolean formed() {
         return result != null && issues.isEmpty();
     }
+
+    public boolean chunksUnavailable() {
+        return issues.contains(MatrixMultiblockScanIssue.CHUNKS_UNLOADED);
+    }
 }

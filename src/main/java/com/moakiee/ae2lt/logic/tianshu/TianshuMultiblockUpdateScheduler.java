@@ -6,11 +6,16 @@ import net.minecraft.world.level.Level;
 
 public final class TianshuMultiblockUpdateScheduler {
     public static void scheduleNear(Level level, BlockPos changedPos) {
-        if (level.isClientSide) {
+        if (level == null || level.isClientSide || changedPos == null) {
             return;
         }
-        for (BlockPos pos : BlockPos.betweenClosed(changedPos.offset(-6, -6, -6), changedPos.offset(6, 6, 6))) {
-            if (level.getBlockEntity(pos) instanceof TianshuSupercomputerControllerBlockEntity controller) {
+        // The controller sits on the bottom layer, so it can only be at the
+        // changed block's Y level or one of the six levels below it.
+        for (BlockPos pos : BlockPos.betweenClosed(
+                changedPos.offset(-6, -6, -6),
+                changedPos.offset(6, 0, 6))) {
+            if (level.isLoaded(pos)
+                    && level.getBlockEntity(pos) instanceof TianshuSupercomputerControllerBlockEntity controller) {
                 controller.scheduleStructureCheck();
             }
         }

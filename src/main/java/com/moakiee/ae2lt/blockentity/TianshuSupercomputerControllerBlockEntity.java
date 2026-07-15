@@ -38,6 +38,7 @@ import net.minecraft.world.level.block.state.BlockState;
 public class TianshuSupercomputerControllerBlockEntity extends BlockEntity {
     private static final long NO_SCAN = Long.MIN_VALUE;
     private static final int AUTO_BUILD_INTERVAL_TICKS = 1;
+    private static final int CHUNK_RECHECK_INTERVAL_TICKS = 20;
     private static final String TAG_FORMED = "Formed";
     private static final String TAG_PORT_POS = "PortPos";
     private static final String TAG_MIN_POS = "MinPos";
@@ -53,7 +54,10 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity {
     private BlockPos maxPos;
     private int memberCount;
     private CpuInternalCoreProfile coreProfile = CpuInternalCoreProfile.empty();
+    private boolean structureAvailable;
+    private boolean waitingForChunks;
     private long scheduledScanTick = NO_SCAN;
+    private long nextChunkCheckTick;
     private List<TianshuMultiblockScanIssue> lastIssues = List.of();
     private boolean fastPlanningEnabled = true;
     private List<TianshuAutoBuildPlan.Placement> autoBuildPlacements = List.of();
@@ -69,20 +73,37 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity {
 
     public static void serverTick(Level level, BlockPos pos, BlockState state,
                                   TianshuSupercomputerControllerBlockEntity controller) {
+        if ((controller.formed || controller.waitingForChunks)
+                && level.getGameTime() >= controller.nextChunkCheckTick) {
+            controller.nextChunkCheckTick = level.getGameTime() + CHUNK_RECHECK_INTERVAL_TICKS;
+            controller.checkChunkAvailability();
+        }
         if (controller.isAutoBuilding()) {
             controller.tickAutoBuild();
         } else if (controller.scheduledScanTick != NO_SCAN && level.getGameTime() >= controller.scheduledScanTick) {
             controller.scheduledScanTick = NO_SCAN;
             controller.scanNow();
         }
-        if (controller.formed && controller.portPos != null
+        if (controller.isFormed() && controller.portPos != null && level.isLoaded(controller.portPos)
                 && level.getBlockEntity(controller.portPos) instanceof TianshuSupercomputerPortBlockEntity port) {
             port.applyPendingProfile();
         }
     }
 
     public boolean isFormed() {
-        return formed;
+        return formed && structureAvailable;
+    }
+
+    public BlockPos getPortPos() {
+        return portPos;
+    }
+
+    public boolean ownsPort(BlockPos candidate) {
+        return formed && candidate != null && candidate.equals(portPos);
+    }
+
+    public boolean isPortActive(BlockPos candidate) {
+        return structureAvailable && ownsPort(candidate);
     }
 
     public String issueText() {
@@ -123,7 +144,10 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity {
 
     public void scheduleStructureCheck() {
         if (level != null && !level.isClientSide) {
-            scheduledScanTick = level.getGameTime() + 1;
+            long targetTick = level.getGameTime() + 1L;
+            if (scheduledScanTick == NO_SCAN || targetTick < scheduledScanTick) {
+                scheduledScanTick = targetTick;
+            }
         }
     }
 
@@ -132,7 +156,13 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity {
         Direction orientation = getBlockState().getValue(TianshuSupercomputerControllerBlock.FACING);
         TianshuMultiblockScanAttempt attempt = TianshuMultiblockScanner.scan(level, worldPosition, orientation);
         lastIssues = attempt.issues();
-        if (attempt.formed()) form(attempt.result()); else deform();
+        if (attempt.chunksUnavailable()) {
+            suspendForUnloadedChunks();
+        } else if (attempt.formed()) {
+            form(attempt.result());
+        } else {
+            deform();
+        }
     }
 
     public void autoBuild(ServerPlayer player) {
@@ -140,6 +170,9 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity {
         if (isAutoBuilding()) {
             player.displayClientMessage(Component.translatable(
                     "ae2lt.tianshu.build_in_progress").withStyle(ChatFormatting.YELLOW), true);
+            return;
+        }
+        if (!ensureStructureChunksLoaded()) {
             return;
         }
 
@@ -198,6 +231,10 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity {
 
         var placement = autoBuildPlacements.get(autoBuildPlacementIndex);
         var pos = TianshuMultiblockScanner.worldPos(worldPosition, placement.localPos(), autoBuildFacing);
+        if (!level.isLoaded(pos)) {
+            nextAutoBuildTick = level.getGameTime() + CHUNK_RECHECK_INTERVAL_TICKS;
+            return;
+        }
         var current = TianshuMultiblockScanner.componentAt(level, pos);
         if (matchesAutoBuildTarget(current, placement.target())) {
             advanceAutoBuild(player, false);
@@ -284,8 +321,11 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity {
 
     private void finishAutoBuild(ServerPlayer player, int placedBlocks) {
         scanNow();
+        if (lastIssues.contains(TianshuMultiblockScanIssue.CHUNKS_UNLOADED)) {
+            return;
+        }
         Component message;
-        if (formed) {
+        if (isFormed()) {
             message = placedBlocks == 0
                     ? Component.translatable("ae2lt.tianshu.build_already_complete")
                     : Component.translatable("ae2lt.tianshu.build_complete", placedBlocks);
@@ -382,6 +422,9 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity {
     }
 
     private void form(TianshuMultiblockScanResult result) {
+        structureAvailable = true;
+        waitingForChunks = false;
+        nextChunkCheckTick = level.getGameTime() + CHUNK_RECHECK_INTERVAL_TICKS;
         if (formed && result.portPos().equals(portPos) && result.minPos().equals(minPos)
                 && result.maxPos().equals(maxPos) && result.coreProfile().equals(coreProfile)) {
             for (BlockPos pos : result.members()) setMemberFormed(pos, true);
@@ -402,7 +445,7 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity {
     }
 
     private void syncPortConfiguration() {
-        if (level != null && portPos != null
+        if (level != null && structureAvailable && portPos != null && level.isLoaded(portPos)
                 && level.getBlockEntity(portPos) instanceof TianshuSupercomputerPortBlockEntity port) {
             port.setFastPlanningEnabled(fastPlanningEnabled);
             port.bindToController(worldPosition, coreProfile);
@@ -410,7 +453,7 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity {
     }
 
     private void syncPortFastPlanning() {
-        if (level != null && portPos != null
+        if (level != null && structureAvailable && portPos != null && level.isLoaded(portPos)
                 && level.getBlockEntity(portPos) instanceof TianshuSupercomputerPortBlockEntity port) {
             port.setFastPlanningEnabled(fastPlanningEnabled);
         }
@@ -419,6 +462,9 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity {
     private void deform() {
         clearStructureBindings();
         formed = false;
+        structureAvailable = false;
+        waitingForChunks = false;
+        nextChunkCheckTick = 0L;
         portPos = null;
         minPos = null;
         maxPos = null;
@@ -431,6 +477,9 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity {
         if (level == null || minPos == null || maxPos == null) return;
         for (BlockPos mutable : BlockPos.betweenClosed(minPos, maxPos)) {
             BlockPos pos = mutable.immutable();
+            if (!level.isLoaded(pos)) {
+                continue;
+            }
             setMemberFormed(pos, false);
             if (level.getBlockEntity(pos) instanceof TianshuSupercomputerPortBlockEntity port
                     && worldPosition.equals(port.getControllerPos())) {
@@ -440,6 +489,9 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity {
     }
 
     private void setMemberFormed(BlockPos pos, boolean value) {
+        if (level == null || !level.isLoaded(pos)) {
+            return;
+        }
         BlockState state = level.getBlockState(pos);
         if (state.hasProperty(TianshuSupercomputerStructureBlock.FORMED)
                 && state.getValue(TianshuSupercomputerStructureBlock.FORMED) != value) {
@@ -452,10 +504,48 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity {
 
     private void syncControllerState() {
         BlockState state = getBlockState();
-        if (state.getValue(TianshuSupercomputerControllerBlock.FORMED) != formed) {
-            level.setBlock(worldPosition, state.setValue(TianshuSupercomputerControllerBlock.FORMED, formed), Block.UPDATE_CLIENTS);
+        boolean activeFormed = isFormed();
+        if (state.getValue(TianshuSupercomputerControllerBlock.FORMED) != activeFormed) {
+            level.setBlock(worldPosition, state.setValue(
+                    TianshuSupercomputerControllerBlock.FORMED, activeFormed), Block.UPDATE_CLIENTS);
         }
         setChanged();
+    }
+
+    private void checkChunkAvailability() {
+        if (level == null || (!formed && !waitingForChunks)) {
+            return;
+        }
+        Direction facing = getBlockState().getValue(TianshuSupercomputerControllerBlock.FACING);
+        if (!TianshuMultiblockScanner.areRequiredChunksLoaded(level, worldPosition, facing)) {
+            lastIssues = List.of(TianshuMultiblockScanIssue.CHUNKS_UNLOADED);
+            suspendForUnloadedChunks();
+        } else if (!structureAvailable || waitingForChunks) {
+            scheduleStructureCheck();
+        }
+    }
+
+    private void suspendForUnloadedChunks() {
+        boolean changed = !waitingForChunks || structureAvailable;
+        waitingForChunks = true;
+        structureAvailable = false;
+        if (changed && level != null && portPos != null && level.isLoaded(portPos)
+                && level.getBlockEntity(portPos) instanceof TianshuSupercomputerPortBlockEntity port) {
+            port.suspendFromController(worldPosition);
+        }
+        if (changed && level != null && !level.isClientSide) {
+            syncControllerState();
+        }
+    }
+
+    private boolean ensureStructureChunksLoaded() {
+        Direction facing = getBlockState().getValue(TianshuSupercomputerControllerBlock.FACING);
+        if (TianshuMultiblockScanner.areRequiredChunksLoaded(level, worldPosition, facing)) {
+            return true;
+        }
+        lastIssues = List.of(TianshuMultiblockScanIssue.CHUNKS_UNLOADED);
+        suspendForUnloadedChunks();
+        return false;
     }
 
     @Override
@@ -478,6 +568,9 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity {
     protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.loadAdditional(tag, registries);
         formed = tag.getBoolean(TAG_FORMED);
+        structureAvailable = false;
+        waitingForChunks = false;
+        nextChunkCheckTick = 0L;
         portPos = tag.contains(TAG_PORT_POS, Tag.TAG_LONG) ? BlockPos.of(tag.getLong(TAG_PORT_POS)) : null;
         minPos = tag.contains(TAG_MIN_POS, Tag.TAG_LONG) ? BlockPos.of(tag.getLong(TAG_MIN_POS)) : null;
         maxPos = tag.contains(TAG_MAX_POS, Tag.TAG_LONG) ? BlockPos.of(tag.getLong(TAG_MAX_POS)) : null;
@@ -498,6 +591,7 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity {
     @Override
     public void onLoad() {
         super.onLoad();
+        nextChunkCheckTick = level != null ? level.getGameTime() : 0L;
         scheduleStructureCheck();
     }
 }
