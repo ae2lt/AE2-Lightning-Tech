@@ -67,7 +67,7 @@ Wearing the complete Celestweave set (<ItemLink id="ae2lt:celestweave_oculus" />
 | Energy Module T1 / T2 / T3 | 1 | Sets railgun FE capacity to 100,000,000 / 500,000,000 / 2,000,000,000 FE |
 | Overload Compute Module | 2 | Enables and improves chain arcs; at max charge, strengthens the EMP pulse |
 | Overload Acceleration Module | 2 | Each module adds +1 charge unit per tick, reducing charge time |
-| Overload Execution Module | 1 | Only works on EHV3 charged hits; spends 20,000,000 FE to record target health and can force execution after repeated hits |
+| Overload Execution Module | 1 | Triggers only on EHV3 hits; spends an additional 20,000,000 FE per target to further reduce and lock its health; forces execution when the locked value reaches 0 |
 
 Without compute modules, chain arcs are disabled. With two acceleration modules, charge progress accumulates at three times the base rate.
 
