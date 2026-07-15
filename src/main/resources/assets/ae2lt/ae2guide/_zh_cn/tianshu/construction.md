@@ -1,0 +1,71 @@
+---
+navigation:
+  title: 结构与自动搭建
+  icon: ae2lt:tianshu_supercomputer_casing
+  parent: tianshu/tianshu-index.md
+  position: 10
+item_ids:
+  - ae2lt:tianshu_supercomputer_casing
+  - ae2lt:phase_change_cooling_unit
+  - ae2lt:tianshu_supercomputer_glass
+  - ae2lt:tianshu_supercomputer_controller
+  - ae2lt:tianshu_supercomputer_port
+---
+
+# 结构与自动搭建
+
+天枢超算中心占用 **7×7×7** 的固定空间。控制器位于一个侧面的底边中央；结构从控制器沿其朝向延伸 6 格、向上延伸 6 格，并向左右各延伸 3 格。
+
+下图展示使用基准主超算单元、16 个存储超算单元与 10 个并行超算单元的完整结构。场景可以拖动旋转；底部与顶部中央是两个端口候选位。
+
+<GameScene zoom="2.8" background="transparent" interactive={true}>
+  <ImportStructure src="../assets/assemblies/tianshu_supercomputer.snbt" />
+  <DiamondAnnotation pos="6.5 0.5 3.5" color="#f2d37a">天枢超算控制器</DiamondAnnotation>
+  <DiamondAnnotation pos="3.5 0.5 3.5" color="#85f29e">默认端口位置</DiamondAnnotation>
+  <DiamondAnnotation pos="3.5 6.5 3.5" color="#80c6ff">另一端口候选位</DiamondAnnotation>
+  <BoxAnnotation min="2 2 2" max="5 5 5" color="#d58cff" alwaysOnTop={true}>3×3×3 核心舱</BoxAnnotation>
+  <IsometricCamera yaw="215" pitch="25" />
+</GameScene>
+
+## 自动搭建材料清单
+
+以下数量适用于只放置了控制器、其余目标位置均为空的结构。已有的正确方块会被保留，并从实际需求中扣除。
+
+| 材料 | 数量 | 自动搭建行为 |
+|------|-----:|--------------|
+| <ItemLink id="ae2lt:tianshu_supercomputer_casing" /> | 99 | 固定外壳 |
+| <ItemLink id="ae2lt:phase_change_cooling_unit" /> | 17 | 包括未安装端口的候选位置 |
+| <ItemLink id="ae2lt:tianshu_supercomputer_glass" /> | 98 | 固定核心舱观察层 |
+| <ItemLink id="ae2lt:tianshu_supercomputer_port" /> | 1 | 未预先放置端口时安装在底部候选位 |
+
+控制器已经放置，因此不在按钮消耗的材料中。自动搭建也不会填充核心舱；完整成形还必须手动准备并放置：
+
+| 核心舱单元 | 数量 | 说明 |
+|------------|-----:|------|
+| 任意一种主超算单元 | 1 | 只能放在核心舱正中心 |
+| <ItemLink id="ae2lt:storage_supercomputing_unit" /> | 1–25 | 与并行超算单元合计 26 个，且至少需要 1 个 |
+| <ItemLink id="ae2lt:parallel_supercomputing_unit" /> | 1–25 | 与存储超算单元合计 26 个，且至少需要 1 个 |
+
+因此，从空场地开始需要 **1 个控制器、215 个由按钮放置的非核心方块，以及 27 个核心舱单元**，合计 243 个结构成员。
+
+## 使用自动搭建
+
+1. 放置控制器，并按其朝向预留完整的 7×7×7 空间
+2. 将外壳、相变冷却单元、玻璃与端口放入**玩家背包**
+3. 右击控制器并执行「自动搭建外壳」
+4. 外壳搭建完成后，手动安装主超算单元、存储超算单元与并行超算单元
+
+自动搭建只读取玩家背包，不会从 ME 网络或相邻容器提取方块。开始前会核对完整材料，并以每 tick 一个方块的速度逐步放置；搭建期间应将所需材料保留在背包内。
+
+已有端口可以位于任一候选位。若两处均未安装端口，自动搭建会将端口放在底部候选位，并在顶部候选位放置相变冷却单元。
+
+如果任一由自动搭建负责的外壳、冷却、玻璃或端口位置被错误方块占据，本次自动搭建不会放置任何方块。应根据提示坐标清除阻挡后重试。若搭建开始后材料被移走或目标位置受到阻挡，流程会中断，且只消耗已经成功放置的方块。
+
+## 手动搭建规则
+
+* 两个端口候选位中必须**恰好一个**放置天枢超算端口，另一个必须使用相变冷却单元
+* 核心舱中心必须放置一种主超算单元；主超算单元不能出现在其余 26 格
+* 其余 26 个核心位置必须由存储与并行超算单元填满，并且两种单元均至少安装一个
+* 展示结构中省略的 100 个位置属于必要空气区域，不能放置装饰方块、线缆或其他设备
+
+最后一个必要方块放置后，结构会自动重新扫描并成形，无需再次执行自动搭建。

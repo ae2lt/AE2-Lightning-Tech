@@ -1,0 +1,40 @@
+{
+    DataVersion: 3337,
+    size: [7, 7, 7],
+    data: [
+        {pos: [2, 2, 2], state: "ae2lt:storage_supercomputing_unit{formed:true}"},
+        {pos: [3, 2, 2], state: "ae2lt:storage_supercomputing_unit{formed:true}"},
+        {pos: [4, 2, 2], state: "ae2lt:storage_supercomputing_unit{formed:true}"},
+        {pos: [2, 2, 3], state: "ae2lt:storage_supercomputing_unit{formed:true}"},
+        {pos: [3, 2, 3], state: "ae2lt:storage_supercomputing_unit{formed:true}"},
+        {pos: [4, 2, 3], state: "ae2lt:storage_supercomputing_unit{formed:true}"},
+        {pos: [2, 2, 4], state: "ae2lt:storage_supercomputing_unit{formed:true}"},
+        {pos: [3, 2, 4], state: "ae2lt:storage_supercomputing_unit{formed:true}"},
+        {pos: [4, 2, 4], state: "ae2lt:storage_supercomputing_unit{formed:true}"},
+        {pos: [2, 3, 2], state: "ae2lt:storage_supercomputing_unit{formed:true}"},
+        {pos: [3, 3, 2], state: "ae2lt:storage_supercomputing_unit{formed:true}"},
+        {pos: [4, 3, 2], state: "ae2lt:storage_supercomputing_unit{formed:true}"},
+        {pos: [2, 3, 3], state: "ae2lt:storage_supercomputing_unit{formed:true}"},
+        {pos: [3, 3, 3], state: "ae2lt:baseline_supercomputing_unit{formed:true}"},
+        {pos: [4, 3, 3], state: "ae2lt:storage_supercomputing_unit{formed:true}"},
+        {pos: [2, 3, 4], state: "ae2lt:storage_supercomputing_unit{formed:true}"},
+        {pos: [3, 3, 4], state: "ae2lt:storage_supercomputing_unit{formed:true}"},
+        {pos: [4, 3, 4], state: "ae2lt:parallel_supercomputing_unit{formed:true}"},
+        {pos: [2, 4, 2], state: "ae2lt:parallel_supercomputing_unit{formed:true}"},
+        {pos: [3, 4, 2], state: "ae2lt:parallel_supercomputing_unit{formed:true}"},
+        {pos: [4, 4, 2], state: "ae2lt:parallel_supercomputing_unit{formed:true}"},
+        {pos: [2, 4, 3], state: "ae2lt:parallel_supercomputing_unit{formed:true}"},
+        {pos: [3, 4, 3], state: "ae2lt:parallel_supercomputing_unit{formed:true}"},
+        {pos: [4, 4, 3], state: "ae2lt:parallel_supercomputing_unit{formed:true}"},
+        {pos: [2, 4, 4], state: "ae2lt:parallel_supercomputing_unit{formed:true}"},
+        {pos: [3, 4, 4], state: "ae2lt:parallel_supercomputing_unit{formed:true}"},
+        {pos: [4, 4, 4], state: "ae2lt:parallel_supercomputing_unit{formed:true}"}
+    ],
+    entities: [],
+    palette: [
+        "ae2lt:baseline_supercomputing_unit{formed:true}",
+        "ae2lt:storage_supercomputing_unit{formed:true}",
+        "ae2lt:parallel_supercomputing_unit{formed:true}"
+    ]
+}
+
