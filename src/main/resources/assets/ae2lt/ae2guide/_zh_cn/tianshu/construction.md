@@ -16,7 +16,7 @@ item_ids:
 
 天枢超算中心占用 **7×7×7** 的固定空间。控制器位于一个侧面的底边中央；结构从控制器沿其朝向延伸 6 格、向上延伸 6 格，并向左右各延伸 3 格。
 
-下图展示使用基准主超算单元、16 个存储超算单元与 10 个并行超算单元的完整结构。场景可以拖动旋转；底部与顶部中央是两个端口候选位。
+下图展示使用基准主超算单元的一种完整结构。场景可以拖动旋转；底部与顶部中央是两个端口候选位。
 
 <GameScene zoom="2.8" background="transparent" interactive={true}>
   <ImportStructure src="../assets/assemblies/tianshu_supercomputer.snbt" />

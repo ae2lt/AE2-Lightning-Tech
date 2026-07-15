@@ -16,7 +16,7 @@ item_ids:
 
 The Tianshu Supercomputer occupies a fixed **7×7×7** volume. Its controller sits at the center of the bottom edge of one side. From the controller, the structure extends six blocks forward, six blocks upward, and three blocks to either side.
 
-The scene below shows a complete structure with a Baseline main unit, 16 Storage Units, and 10 Parallel Units. Drag to rotate the scene. The centers of the bottom and top faces are the two possible port positions.
+The scene below shows one complete structure using a Baseline main unit. Drag to rotate the scene. The centers of the bottom and top faces are the two possible port positions.
 
 <GameScene zoom="2.8" background="transparent" interactive={true}>
   <ImportStructure src="../assets/assemblies/tianshu_supercomputer.snbt" />
