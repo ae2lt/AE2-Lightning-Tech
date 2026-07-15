@@ -80,6 +80,8 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
     /** 9-slot return page view exposed via getReturnInv() for the GUI. */
     private final UnlimitedReturnInventory returnPageView;
     private boolean returnSyncing = false;
+    /** Last state copied from the full inventory into the visible return page. */
+    private final GenericStack[] returnPageSnapshot = new GenericStack[9];
 
     private final OverloadedPatternProviderBlockEntity overloadedHost;
     private final IManagedGridNode gridNode;
@@ -560,25 +562,31 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
             int offset = currentPage * 9;
             for (int i = 0; i < 9; i++) {
                 int fullIdx = offset + i;
-                if (fullIdx < fullReturnInv.size()) {
-                    returnPageView.setStack(i, fullReturnInv.getStack(fullIdx));
-                } else {
-                    returnPageView.setStack(i, null);
-                }
+                GenericStack stack = fullIdx < fullReturnInv.size()
+                        ? fullReturnInv.getStack(fullIdx)
+                        : null;
+                returnPageView.setStack(i, stack);
+                returnPageSnapshot[i] = stack;
             }
         } finally {
             returnSyncing = false;
         }
     }
 
-    /** Copy 9 slots from returnPageView back to fullReturnInv. */
+    /** Copy only player-modified slots back, preserving newer external inserts. */
     private void syncReturnFullFromPageView() {
         int offset = currentPage * 9;
         for (int i = 0; i < 9; i++) {
             int fullIdx = offset + i;
-            if (fullIdx < fullReturnInv.size()) {
-                fullReturnInv.setStack(fullIdx, returnPageView.getStack(i));
+            if (fullIdx >= fullReturnInv.size()) {
+                continue;
             }
+            var current = returnPageView.getStack(i);
+            if (java.util.Objects.equals(current, returnPageSnapshot[i])) {
+                continue;
+            }
+            fullReturnInv.setStack(fullIdx, current);
+            returnPageSnapshot[i] = current;
         }
     }
 
@@ -1507,7 +1515,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
                 && gridNode.isActive()
                 && isInductionCardInstalled()
                 && CACHED_APPFLUX_FE_KEY != null) return true;
-        if (overloadedHost.isAutoReturn()) return true;
+        if (overloadedHost.getReturnMode() == ReturnMode.AUTO) return true;
         if (!fullReturnInv.isEmpty()) return true;
         return false;
     }
@@ -1813,13 +1821,17 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
      * connections, or patterns change.
      */
     public void refreshEjectRegistrations() {
+        var level = overloadedHost.getLevel();
+        // Integrated-server clients share static state with the server. Client
+        // block-entity sync must never unregister server-side eject entries.
+        if (level != null && level.isClientSide()) return;
+
         var removed = EjectModeRegistry.unregisterAll(overloadedHost, true);
         invalidateCapabilitiesAt(removed);
 
         if (overloadedHost.getReturnMode() != ReturnMode.EJECT) return;
         if (overloadedHost.getProviderMode() != ProviderMode.WIRELESS) return;
 
-        var level = overloadedHost.getLevel();
         if (!(level instanceof ServerLevel sl)) return;
 
         for (var conn : overloadedHost.getConnections()) {
@@ -2096,7 +2108,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
     }
 
     private boolean shouldPollAutoReturnNow(long gameTick) {
-        if (!overloadedHost.isAutoReturn() || !gridNode.isActive()) {
+        if (overloadedHost.getReturnMode() != ReturnMode.AUTO || !gridNode.isActive()) {
             return false;
         }
         if (getOrBuildOutputFilter().isEmpty()) {

@@ -178,6 +178,12 @@ public final class EjectModeRegistry {
             boolean persistToSavedData) {
 
         var hostLevel = host.getLevel();
+        // This registry and its SavedData belong to the logical server. In an
+        // integrated server both sides share these statics, so reject any
+        // defensive or lifecycle call that originates from a client level.
+        if (hostLevel != null && hostLevel.isClientSide()) {
+            return List.of();
+        }
         ResourceKey<Level> hostDim = hostLevel != null
                 ? hostLevel.dimension() : null;
         BlockPos hostPos = host.getBlockPos();
@@ -231,7 +237,10 @@ public final class EjectModeRegistry {
             BlockPos hostPos) {
         var ref = e.getHost();
         if (ref == host) return true;
-        if (ref == null && hostDim != null) {
+        // A fully unloaded chunk creates a new block-entity instance when it is
+        // loaded again. Match the location as well so a not-yet-GC'd weak
+        // reference cannot remain ahead of the replacement registration.
+        if (hostDim != null) {
             return e.hostDim().equals(hostDim)
                     && e.hostPos().equals(hostPos);
         }
