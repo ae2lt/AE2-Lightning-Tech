@@ -47,11 +47,17 @@ public final class Ae2ClosedLoopPatternDetails
         this.owningTianshuId = owningTianshuId;
         this.availableSeedSnapshot = Map.copyOf(availableSeedSnapshot);
         var allInputs = new ArrayList<GenericStack>(payload.seeds().size() + payload.externalInputs().size());
-        for (var seed : payload.seeds()) allInputs.add(seed);
+        for (var seed : payload.seeds()) {
+            allInputs.add(new GenericStack(
+                    seed.what(), Sat.mul(seed.amount(), payload.seedMultiplier())));
+        }
         for (var input : payload.externalInputs()) allInputs.add(input);
         inputs = new IInput[allInputs.size()];
         int slot = 0;
-        for (var seed : payload.seeds()) inputs[slot++] = new ExactInput(seed, true);
+        for (var seed : payload.seeds()) {
+            inputs[slot++] = new ExactInput(new GenericStack(
+                    seed.what(), Sat.mul(seed.amount(), payload.seedMultiplier())), true);
+        }
         for (var input : payload.externalInputs()) inputs[slot++] = new ExactInput(input, false);
 
         var decodedMembers = new ArrayList<ExpandedMember>(payload.memberPatterns().size());
@@ -117,16 +123,7 @@ public final class Ae2ClosedLoopPatternDetails
     }
 
     @Override
-    public Map<AEKey, Long> reusableSeedRequirements() {
-        var result = new LinkedHashMap<AEKey, Long>();
-        for (var seed : payload.seeds()) {
-            result.merge(seed.what(), seed.amount(), Sat::add);
-        }
-        return Map.copyOf(result);
-    }
-
-    @Override
-    public Map<AEKey, Long> maximumReusableSeedRequirements() {
+    public Map<AEKey, Long> totalReusableSeedRequirements() {
         var result = new LinkedHashMap<AEKey, Long>();
         for (var seed : payload.seeds()) {
             result.merge(seed.what(), Sat.mul(seed.amount(), payload.seedMultiplier()), Sat::add);

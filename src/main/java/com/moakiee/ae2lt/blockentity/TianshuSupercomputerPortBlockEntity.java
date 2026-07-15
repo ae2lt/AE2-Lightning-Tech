@@ -286,7 +286,8 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
             com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternPayload payload) {
         var requirements = new java.util.LinkedHashMap<AEKey, Long>();
         for (var seed : payload.seeds()) {
-            requirements.merge(seed.what(), seed.amount(),
+            requirements.merge(seed.what(), com.moakiee.thunderbolt.core.planner.Sat.mul(
+                            seed.amount(), payload.seedMultiplier()),
                     com.moakiee.thunderbolt.core.planner.Sat::add);
         }
         var result = new java.util.LinkedHashMap<AEKey, Long>();
