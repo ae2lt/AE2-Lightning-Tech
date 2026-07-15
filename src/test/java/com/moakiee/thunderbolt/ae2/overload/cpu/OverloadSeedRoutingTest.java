@@ -72,6 +72,44 @@ class OverloadSeedRoutingTest {
     }
 
     @Test
+    void partialRequesterAcceptanceLeavesTheUnacceptedTailPending() {
+        var fixture = fixture();
+        fixture.state().registerExpectedOutput(
+                fixture.reference(), 0, fixture.itemId(), fixture.expectedKey(), 5L, true, null);
+
+        var preview = fixture.state().claimByItemId(fixture.itemId(), 5L, false);
+        var committed = fixture.state().commitPreview(preview.limitRequester(2L));
+
+        assertEquals(2L, committed.claimedAmount());
+        assertEquals(2L, committed.claimedForRequester());
+        assertEquals(0L, committed.claimedForInventory());
+        var stillPending = fixture.state().allPending().iterator().next();
+        assertEquals(3L, stillPending.remainingAmount());
+    }
+
+    @Test
+    void partialRequesterAcceptanceStillCommitsTheReusableSeedPrefix() {
+        var fixture = fixture();
+        var seedGroup = UUID.randomUUID();
+        fixture.state().registerExpectedOutput(
+                fixture.reference(), 0, fixture.itemId(), fixture.expectedKey(), 5L, true,
+                new OverloadReusableSeedMetadata(seedGroup, true, 1L));
+
+        var preview = fixture.state().claimByItemId(fixture.itemId(), 5L, false);
+        var committed = fixture.state().commitPreview(preview.limitRequester(2L));
+
+        assertEquals(3L, committed.claimedAmount());
+        assertEquals(1L, committed.claimedForInventory());
+        assertEquals(2L, committed.claimedForRequester());
+        var claim = committed.claims().getFirst();
+        assertEquals(1L, claim.reusableSeedAmount());
+        assertEquals(seedGroup, claim.reusableSeedGroupId());
+        var stillPending = fixture.state().allPending().iterator().next();
+        assertEquals(2L, stillPending.remainingAmount());
+        assertEquals(0L, stillPending.remainingReusableSeedAmount());
+    }
+
+    @Test
     void repeatedHugeRegistrationsSaturateInsteadOfWrappingPendingCounts() {
         var fixture = fixture();
         var metadata = new OverloadReusableSeedMetadata(

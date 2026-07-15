@@ -3,6 +3,7 @@ package com.moakiee.thunderbolt.ae2.timewheel;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.AEKeyType;
@@ -20,6 +21,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import org.junit.jupiter.api.Test;
+import com.moakiee.thunderbolt.core.planner.Sat;
 
 class LoopSeedLedgerBookEdgeCaseTest {
     @Test
@@ -80,6 +82,65 @@ class LoopSeedLedgerBookEdgeCaseTest {
         assertEquals(1L, ledgers.balance(pool, actual));
         assertEquals(Map.of(actual, 1L), ledgers.positiveSnapshot());
         assertFalse(ledgers.positiveSnapshot().containsKey(expected));
+    }
+
+    @Test
+    void sharedSingleSeedGroupsUseOneMaximumPhysicalReserve() {
+        var seed = key("shared_seed", "");
+        var first = UUID.randomUUID();
+        var second = UUID.randomUUID();
+        var ledgers = new LoopSeedLedgerBook();
+
+        ledgers.initialize(
+                Map.of(first, Map.of(seed, 1L), second, Map.of(seed, 3L)),
+                Set.of());
+
+        assertEquals(3L, ledgers.totalReserved(seed));
+        assertEquals(3L, ledgers.balance(LoopSeedLedgerBook.SHARED_POOL, seed));
+        assertEquals(1, ledgers.ledgerCount());
+    }
+
+    @Test
+    void dedicatedReserveAggregateDoesNotWrapAtExtremeAmounts() {
+        var seed = key("huge_seed", "");
+        var groups = List.of(
+                UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+                UUID.randomUUID(), UUID.randomUUID());
+        var requirements = new java.util.LinkedHashMap<UUID, Map<AEKey, Long>>();
+        for (var group : groups) requirements.put(group, Map.of(seed, Sat.SAT));
+        var ledgers = new LoopSeedLedgerBook();
+        ledgers.initialize(requirements, Set.copyOf(groups));
+
+        assertEquals(Long.MAX_VALUE, ledgers.totalReserved(seed));
+        ledgers.recordDispatch(
+                LoopSeedLedgerBook.poolFor(groups.getFirst(), false),
+                counter(seed, Sat.SAT), new KeyCounter(), 1L);
+
+        assertEquals(Sat.SAT * 4L, ledgers.totalReserved(seed));
+        assertTrue(ledgers.totalReserved(seed) > 0L);
+    }
+
+    @Test
+    void concreteHostVariantRekeysOnlyTheBorrowedInitialReserve() {
+        var expected = key("tool", "planned");
+        var actual = key("tool", "stored");
+        var first = UUID.randomUUID();
+        var second = UUID.randomUUID();
+        var firstPool = LoopSeedLedgerBook.poolFor(first, false);
+        var secondPool = LoopSeedLedgerBook.poolFor(second, false);
+        var ledgers = new LoopSeedLedgerBook();
+        ledgers.initialize(
+                Map.of(first, Map.of(expected, 1L), second, Map.of(expected, 1L)),
+                Set.of(first, second));
+
+        ledgers.rekeyAvailable(firstPool, expected, actual, 1L);
+
+        assertEquals(1L, ledgers.totalReserved(expected));
+        assertEquals(1L, ledgers.totalReserved(actual));
+        assertEquals(1L, ledgers.balance(firstPool, actual));
+        assertEquals(0L, ledgers.balance(firstPool, expected));
+        assertEquals(1L, ledgers.balance(secondPool, expected));
+        assertEquals(0L, ledgers.balance(secondPool, actual));
     }
 
     private static KeyCounter counter(AEKey key, long amount) {

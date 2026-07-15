@@ -16,6 +16,7 @@ import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Predicate;
 import appeng.api.networking.IManagedGridNode;
 import appeng.api.networking.IGrid;
 import appeng.api.networking.security.IActionSource;
@@ -205,6 +206,44 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
     }
 
     @Override
+    public KeyCounter extractReusableSeedVariants(
+            AEKey planned,
+            long amount,
+            Predicate<AEKey> acceptsVariant,
+            Actionable mode) {
+        var result = new KeyCounter();
+        if (!formed || !functionProfile.supportsClosedLoopSeeds()
+                || planned == null || amount <= 0 || acceptsVariant == null) {
+            return result;
+        }
+        var available = reusableSeedSnapshot();
+        var candidates = new java.util.ArrayList<AEKey>();
+        if (available.get(planned) > 0 && acceptsVariant.test(planned)) candidates.add(planned);
+        for (var entry : available) {
+            if (!entry.getKey().equals(planned)
+                    && entry.getLongValue() > 0
+                    && acceptsVariant.test(entry.getKey())) {
+                candidates.add(entry.getKey());
+            }
+        }
+        candidates.sort(java.util.Comparator
+                .comparing((AEKey key) -> key.getId().toString())
+                .thenComparing(Object::toString));
+        if (candidates.remove(planned)) candidates.addFirst(planned);
+
+        long remaining = amount;
+        for (var actual : candidates) {
+            long extracted = extractReusableSeed(actual, remaining, mode);
+            if (extracted > 0) {
+                result.add(actual, extracted);
+                remaining -= extracted;
+            }
+            if (remaining <= 0) break;
+        }
+        return result;
+    }
+
+    @Override
     public long insertReusableSeed(AEKey key, long amount, Actionable mode) {
         if (!formed || !functionProfile.supportsClosedLoopSeeds()) return 0L;
         long remaining = Math.max(0L, amount);
@@ -225,6 +264,12 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
             amount = saturatingAdd(amount, drive.amount(key, actionSource));
         }
         return amount;
+    }
+
+    private KeyCounter reusableSeedSnapshot() {
+        var result = new KeyCounter();
+        for (var drive : seedDrives()) drive.getAvailableStacks(result);
+        return result;
     }
 
     private List<TianshuSeedStorageBlockEntity> seedDrives() {
@@ -273,7 +318,7 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
             IPatternDetails details;
             try {
                 details = key != null ? new Ae2ClosedLoopPatternDetails(
-                        key, payload, level, tianshuId, availableSeedsFor(payload)) : null;
+                        key, payload, level, tianshuId, this::availableSeedsFor) : null;
             } catch (RuntimeException ignored) {
                 details = null;
             }
@@ -283,18 +328,19 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
     }
 
     private java.util.Map<AEKey, Long> availableSeedsFor(
-            com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternPayload payload) {
-        var requirements = new java.util.LinkedHashMap<AEKey, Long>();
-        for (var seed : payload.seeds()) {
-            requirements.merge(seed.what(), com.moakiee.thunderbolt.core.planner.Sat.mul(
-                            seed.amount(), payload.seedMultiplier()),
-                    com.moakiee.thunderbolt.core.planner.Sat::add);
-        }
+            com.moakiee.thunderbolt.ae2.timewheel.ReusableSeedPattern pattern) {
+        var available = reusableSeedSnapshot();
         var result = new java.util.LinkedHashMap<AEKey, Long>();
-        for (var requirement : requirements.entrySet()) {
-            long available = Math.min(
-                    requirement.getValue(), reusableSeedAmount(requirement.getKey()));
-            if (available > 0) result.put(requirement.getKey(), available);
+        for (var requirement : pattern.totalReusableSeedRequirements().entrySet()) {
+            long amount = 0L;
+            for (var candidate : available) {
+                if (candidate.getLongValue() > 0
+                        && pattern.acceptsReusableSeedVariant(
+                                requirement.getKey(), candidate.getKey())) {
+                    amount = saturatingAdd(amount, candidate.getLongValue());
+                }
+            }
+            if (amount > 0) result.put(requirement.getKey(), amount);
         }
         return java.util.Map.copyOf(result);
     }

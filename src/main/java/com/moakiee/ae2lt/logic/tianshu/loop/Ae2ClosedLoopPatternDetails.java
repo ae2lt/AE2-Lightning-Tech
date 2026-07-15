@@ -11,12 +11,15 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.function.Function;
 import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.Nullable;
 import appeng.api.crafting.PatternDetailsHelper;
 import appeng.api.crafting.IPatternDetails;
 import com.moakiee.thunderbolt.ae2.crafting.PatternFiringExpander;
 import com.moakiee.thunderbolt.ae2.crafting.ExecuteLoopPattern;
+import com.moakiee.thunderbolt.ae2.api.crafting.CraftingPatternDelegates;
+import com.moakiee.thunderbolt.ae2.overload.pattern.OverloadedProviderOnlyPatternDetails;
 import com.moakiee.thunderbolt.core.planner.Sat;
 import com.moakiee.thunderbolt.ae2.timewheel.TimeWheelPoolRestrictedPattern;
 import com.moakiee.thunderbolt.ae2.timewheel.TimeWheelCraftingCpuPoolHost;
@@ -34,6 +37,8 @@ public final class Ae2ClosedLoopPatternDetails
     private final UUID owningTianshuId;
     private final Map<AEKey, Long> availableSeedSnapshot;
     private final Set<AEKey> cycleKeys;
+    private final Map<AEKey, Set<AEKey>> acceptedSeedVariants;
+    private final Set<AEKey> fuzzySeedKeys;
     private final boolean singleSeedInputPerMember;
 
     public Ae2ClosedLoopPatternDetails(AEItemKey definition, ClosedLoopPatternPayload payload, Level level) {
@@ -48,10 +53,20 @@ public final class Ae2ClosedLoopPatternDetails
     public Ae2ClosedLoopPatternDetails(AEItemKey definition, ClosedLoopPatternPayload payload,
                                        Level level, UUID owningTianshuId,
                                        Map<AEKey, Long> availableSeedSnapshot) {
+        this(definition, payload, level, owningTianshuId,
+                ignored -> Map.copyOf(availableSeedSnapshot));
+    }
+
+    public Ae2ClosedLoopPatternDetails(
+            AEItemKey definition,
+            ClosedLoopPatternPayload payload,
+            Level level,
+            UUID owningTianshuId,
+            Function<ReusableSeedPattern, Map<AEKey, Long>> availableSeedSnapshotFactory) {
         this.definition = Objects.requireNonNull(definition, "definition");
         this.payload = Objects.requireNonNull(payload, "payload");
         this.owningTianshuId = owningTianshuId;
-        this.availableSeedSnapshot = Map.copyOf(availableSeedSnapshot);
+        Objects.requireNonNull(availableSeedSnapshotFactory, "availableSeedSnapshotFactory");
         var allInputs = new ArrayList<GenericStack>(payload.seeds().size() + payload.externalInputs().size());
         for (var seed : payload.seeds()) {
             allInputs.add(new GenericStack(
@@ -77,6 +92,12 @@ public final class Ae2ClosedLoopPatternDetails
         }
         var seedAmounts = new java.util.LinkedHashMap<AEKey, Long>();
         for (var seed : payload.seeds()) seedAmounts.merge(seed.what(), seed.amount(), Sat::add);
+        var acceptedVariants = new LinkedHashMap<AEKey, Set<AEKey>>();
+        var fuzzySeeds = new java.util.LinkedHashSet<AEKey>();
+        collectAcceptedSeedVariants(
+                rawMembers, seedAmounts.keySet(), acceptedVariants, fuzzySeeds);
+        this.acceptedSeedVariants = Map.copyOf(acceptedVariants);
+        this.fuzzySeedKeys = Set.copyOf(fuzzySeeds);
         this.cycleKeys = ClosedLoopCycleKeys.analyze(rawMembers, seedAmounts.keySet());
 
         var analyzedMembers = new ArrayList<ClosedLoopPatternAnalyzer.Member>(
@@ -113,6 +134,8 @@ public final class Ae2ClosedLoopPatternDetails
             memberIndex++;
         }
         members = List.copyOf(decodedMembers);
+        this.availableSeedSnapshot = Map.copyOf(
+                availableSeedSnapshotFactory.apply(this));
     }
 
     @Override
@@ -168,6 +191,22 @@ public final class Ae2ClosedLoopPatternDetails
     }
 
     @Override
+    public Object reusableSeedStorageScope() {
+        return owningTianshuId != null ? owningTianshuId : payload.patternId();
+    }
+
+    @Override
+    public boolean acceptsReusableSeedVariant(AEKey planned, AEKey actual) {
+        if (planned == null || actual == null) return false;
+        if (planned.equals(actual)) return true;
+        if (fuzzySeedKeys.contains(planned)
+                && planned.dropSecondary().equals(actual.dropSecondary())) {
+            return true;
+        }
+        return acceptedSeedVariants.getOrDefault(planned, Set.of()).contains(actual);
+    }
+
+    @Override
     public UUID reusableSeedGroupId() {
         return payload.patternId();
     }
@@ -185,6 +224,45 @@ public final class Ae2ClosedLoopPatternDetails
     @Override
     public Map<AEKey, Long> availableReusableSeedSnapshot() {
         return availableSeedSnapshot;
+    }
+
+    private static void collectAcceptedSeedVariants(
+            List<IPatternDetails> members,
+            Set<AEKey> seeds,
+            Map<AEKey, Set<AEKey>> accepted,
+            Set<AEKey> fuzzySeeds) {
+        for (var details : members) {
+            var provider = CraftingPatternDelegates.forProviderLookup(details);
+            var overload = provider instanceof OverloadedProviderOnlyPatternDetails candidate
+                    ? candidate : null;
+            var inputs = details.getInputs();
+            for (int slot = 0; slot < inputs.length; slot++) {
+                boolean fuzzy = overload != null && overload.isFuzzyInput(slot);
+                var possible = inputs[slot].getPossibleInputs();
+                for (var seed : seeds) {
+                    boolean matchesSlot = false;
+                    for (var option : possible) {
+                        if (option.what() != null && (seed.equals(option.what())
+                                || (fuzzy && seed.dropSecondary()
+                                        .equals(option.what().dropSecondary())))) {
+                            matchesSlot = true;
+                            break;
+                        }
+                    }
+                    if (!matchesSlot) continue;
+                    if (fuzzy) fuzzySeeds.add(seed);
+                    var variants = new java.util.LinkedHashSet<AEKey>(
+                            accepted.getOrDefault(seed, Set.of()));
+                    for (var option : possible) {
+                        if (option.what() != null && (!fuzzy
+                                || seed.dropSecondary().equals(option.what().dropSecondary()))) {
+                            variants.add(option.what());
+                        }
+                    }
+                    accepted.put(seed, Set.copyOf(variants));
+                }
+            }
+        }
     }
 
     @Override

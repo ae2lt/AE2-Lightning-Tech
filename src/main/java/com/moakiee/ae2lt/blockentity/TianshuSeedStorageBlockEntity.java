@@ -5,6 +5,7 @@ import appeng.api.networking.security.IActionSource;
 import appeng.api.stacks.AEKey;
 import appeng.api.storage.StorageCells;
 import appeng.api.storage.cells.StorageCell;
+import appeng.api.stacks.KeyCounter;
 import appeng.blockentity.AEBaseBlockEntity;
 import appeng.menu.MenuOpener;
 import appeng.menu.locator.MenuLocators;
@@ -78,6 +79,25 @@ public final class TianshuSeedStorageBlockEntity extends AEBaseBlockEntity
 
     public long amount(AEKey key, IActionSource source) {
         return extract(key, Long.MAX_VALUE, Actionable.SIMULATE, source);
+    }
+
+    public void getAvailableStacks(KeyCounter out) {
+        for (int slot = 0; slot < cells.size(); slot++) {
+            var cell = cell(slot);
+            if (cell == null) continue;
+            // KeyCounter delegates to fastutil's raw long addition, which wraps. Fold each cell
+            // snapshot explicitly so several very large cells cannot turn a usable seed into a
+            // negative/zero planning amount.
+            var snapshot = new KeyCounter();
+            cell.getAvailableStacks(snapshot);
+            for (var entry : snapshot) {
+                long amount = entry.getLongValue();
+                if (amount <= 0) continue;
+                long current = Math.max(0L, out.get(entry.getKey()));
+                out.set(entry.getKey(), current > Long.MAX_VALUE - amount
+                        ? Long.MAX_VALUE : current + amount);
+            }
+        }
     }
 
     private StorageCell cell(int slot) {
