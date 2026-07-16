@@ -2,8 +2,8 @@ package com.moakiee.ae2lt.logic.tianshu;
 
 public enum CpuMainCoreTier {
     BASELINE(1L, 1),
-    QUANTUM(16L, 2),
-    OVERLOAD(256L, 4),
+    QUANTUM(16L, 3),
+    OVERLOAD(256L, 6),
     MULTIDIMENSIONAL(Long.MAX_VALUE, 8);
 
     private final long storageMultiplier;

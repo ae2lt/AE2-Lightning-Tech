@@ -30,8 +30,8 @@ The main unit determines both the crafting-storage multiplier and the parallelis
 | Main Unit | Storage Multiplier | Parallel Multiplier | Characteristic |
 |-----------|-------------------:|--------------------:|----------------|
 | <ItemLink id="ae2lt:baseline_supercomputing_unit" /> | ×1 | ×1 | Base performance |
-| <ItemLink id="ae2lt:quantum_supercomputing_unit" /> | ×16 | ×2 | Substantially increased crafting storage |
-| <ItemLink id="ae2lt:overload_supercomputing_unit" /> | ×256 | ×4 | Intended for exceptionally large crafting plans |
+| <ItemLink id="ae2lt:quantum_supercomputing_unit" /> | ×16 | ×3 | Substantially increased crafting storage |
+| <ItemLink id="ae2lt:overload_supercomputing_unit" /> | ×256 | ×6 | Intended for exceptionally large crafting plans |
 | <ItemLink id="ae2lt:multidimensional_supercomputing_unit" /> | Infinite | ×8 | No byte limit; parallelism remains globally capped |
 
 A Multidimensional main unit still requires at least one Storage Unit for the structure to form.
@@ -44,11 +44,13 @@ Let **S** be the number of Storage Units and **P** the number of Parallel Units.
 * Parallelism is `128 × P × the main unit's parallel multiplier`
 * Parallelism is capped at **16,384**; any amount above the cap provides no further benefit
 
-| Main Unit | Storage per Storage Unit | With 25 Storage Units | Parallelism per Parallel Unit | With 25 Parallel Units |
-|-----------|-------------------------:|----------------------:|------------------------------:|-----------------------:|
-| Baseline | 64 MiB | 1,600 MiB (1.56 GiB) | 128 | 3,200 |
-| Quantum | 1 GiB | 25 GiB | 256 | 6,400 |
-| Overload | 16 GiB | 400 GiB | 512 | 12,800 |
-| Multidimensional | Total storage is always infinite | Infinite | 1,024 | 16,384 |
+The table below gives the actual contribution of each peripheral unit with the selected main unit installed; the main-unit multiplier is already included.
+
+| Main Unit | Storage per Storage Unit | Parallelism per Parallel Unit |
+|-----------|-------------------------:|------------------------------:|
+| Baseline | 64 MiB | 128 |
+| Quantum | 1 GiB | 384 |
+| Overload | 16 GiB | 768 |
+| Multidimensional | Total storage is always infinite | 1,024 |
 
 Parallelism increases crafting-step dispatch capacity; it does not shorten a processing machine's recipe duration. High parallelism also requires sufficient Pattern Providers, processing machines, materials, and transfer capacity.
