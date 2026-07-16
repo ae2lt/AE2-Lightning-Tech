@@ -13,15 +13,22 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-public record MaintenanceEditorSyncPacket(int containerId, MaintenanceEditorData data)
+public record MaintenanceEditorSyncPacket(
+        int containerId, int selectionRevision, MaintenanceEditorData data)
         implements CustomPacketPayload {
     public static final Type<MaintenanceEditorSyncPacket> TYPE =
             new Type<>(NetworkInit.id("maintenance_editor_sync"));
     public static final StreamCodec<RegistryFriendlyByteBuf, MaintenanceEditorSyncPacket> STREAM_CODEC =
             StreamCodec.ofMember(MaintenanceEditorSyncPacket::write, MaintenanceEditorSyncPacket::decode);
 
+    public MaintenanceEditorSyncPacket {
+        TianshuPacketLimits.requireListSize("maintenance topology", data.topology().size());
+        TianshuPacketLimits.requireListSize("maintenance variants", data.variants().size());
+    }
+
     private void write(RegistryFriendlyByteBuf buf) {
         buf.writeVarInt(containerId);
+        buf.writeVarInt(selectionRevision);
         AEKey.STREAM_CODEC.encode(buf, data.target());
         buf.writeBoolean(data.ruleId() != null);
         if (data.ruleId() != null) buf.writeUUID(data.ruleId());
@@ -30,6 +37,7 @@ public record MaintenanceEditorSyncPacket(int containerId, MaintenanceEditorData
         buf.writeVarLong(data.amountPerJob());
         buf.writeBoolean(data.enabled());
         buf.writeEnum(data.status());
+        buf.writeBoolean(data.recoveryPage());
         buf.writeVarInt(data.topology().size());
         for (var entry : data.topology()) {
             AEKey.STREAM_CODEC.encode(buf, entry.key());
@@ -50,6 +58,7 @@ public record MaintenanceEditorSyncPacket(int containerId, MaintenanceEditorData
 
     private static MaintenanceEditorSyncPacket decode(RegistryFriendlyByteBuf buf) {
         int container = buf.readVarInt();
+        int selectionRevision = buf.readVarInt();
         AEKey target = AEKey.STREAM_CODEC.decode(buf);
         UUID ruleId = buf.readBoolean() ? buf.readUUID() : null;
         long lower = buf.readVarLong();
@@ -57,7 +66,9 @@ public record MaintenanceEditorSyncPacket(int containerId, MaintenanceEditorData
         long batch = buf.readVarLong();
         boolean enabled = buf.readBoolean();
         var status = buf.readEnum(InventoryMaintenanceStatus.class);
-        int topologySize = Math.min(2048, buf.readVarInt());
+        boolean recoveryPage = buf.readBoolean();
+        int topologySize = TianshuPacketLimits.requireDecodedListSize(
+                "maintenance topology", buf.readVarInt());
         var topology = new ArrayList<MaintenanceEditorData.TopologyEntry>(topologySize);
         for (int i = 0; i < topologySize; i++) {
             topology.add(new MaintenanceEditorData.TopologyEntry(
@@ -65,14 +76,16 @@ public record MaintenanceEditorSyncPacket(int containerId, MaintenanceEditorData
                     buf.readLong(), buf.readEnum(ReservedStockMatchMode.class),
                     buf.readLong(), buf.readEnum(ReservedStockMatchMode.class)));
         }
-        int variantSize = Math.min(2048, buf.readVarInt());
+        int variantSize = TianshuPacketLimits.requireDecodedListSize(
+                "maintenance variants", buf.readVarInt());
         var variants = new ArrayList<MaintenanceEditorData.VariantEntry>(variantSize);
         for (int i = 0; i < variantSize; i++) {
             variants.add(new MaintenanceEditorData.VariantEntry(
                     AEKey.STREAM_CODEC.decode(buf), buf.readVarLong(), buf.readBoolean()));
         }
-        return new MaintenanceEditorSyncPacket(container, new MaintenanceEditorData(
-                target, ruleId, lower, upper, batch, enabled, status, topology, variants));
+        return new MaintenanceEditorSyncPacket(container, selectionRevision, new MaintenanceEditorData(
+                target, ruleId, lower, upper, batch, enabled, status,
+                recoveryPage, topology, variants));
     }
 
     @Override public Type<MaintenanceEditorSyncPacket> type() { return TYPE; }
@@ -81,7 +94,7 @@ public record MaintenanceEditorSyncPacket(int containerId, MaintenanceEditorData
         context.enqueueWork(() -> {
             if (context.player().containerMenu instanceof TianshuPatternEncodingTermMenu menu
                     && menu.containerId == packet.containerId()) {
-                menu.receiveMaintenanceEditorData(packet.data());
+                menu.receiveMaintenanceEditorData(packet.selectionRevision(), packet.data());
             }
         });
     }

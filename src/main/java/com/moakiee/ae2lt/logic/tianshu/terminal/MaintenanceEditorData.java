@@ -16,6 +16,7 @@ public record MaintenanceEditorData(
         long amountPerJob,
         boolean enabled,
         InventoryMaintenanceStatus status,
+        boolean recoveryPage,
         List<TopologyEntry> topology,
         List<VariantEntry> variants) {
     public MaintenanceEditorData {

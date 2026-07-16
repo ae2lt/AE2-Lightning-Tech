@@ -1,0 +1,7 @@
+{
+  "$schema": "../schema.json",
+  "includes": [
+    "tianshu_pattern_encoding_terminal.json",
+    "../wtlib/universal_terminal.json"
+  ]
+}

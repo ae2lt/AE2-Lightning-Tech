@@ -52,7 +52,6 @@ public final class TianshuGlobalReserveScreen<M extends TianshuPatternEncodingTe
     private List<MaintenanceSummarySyncPacket.Entry> entries() {
         String needle = search != null ? search.getValue().toLowerCase(java.util.Locale.ROOT) : "";
         return menu.getMaintenanceSummary().values().stream()
-                .filter(entry -> entry.globalReserve() != 0)
                 .filter(entry -> needle.isEmpty() || entry.key().getDisplayName().getString()
                         .toLowerCase(java.util.Locale.ROOT).contains(needle))
                 .sorted(Comparator.comparing(entry -> entry.key().getDisplayName().getString()))
@@ -74,10 +73,19 @@ public final class TianshuGlobalReserveScreen<M extends TianshuPatternEncodingTe
                     29, y + 4, 0x404040, false);
             String amount = entry.globalReserve() < 0 ? "∞" : Long.toString(entry.globalReserve());
             graphics.drawString(font, amount + (entry.globalMode() == ReservedStockMatchMode.IGNORE_SECONDARY ? " *" : ""),
-                    137, y + 4, 0x3355AA, false);
+                    137, y + 4, entry.ruleReserveOverflow() ? 0xAA2222 : 0x3355AA, false);
+            if (entry.ruleReserveOverflow()) {
+                graphics.drawString(font, "!", 162, y + 4, 0xAA2222, false);
+            }
         }
-        if (entries.isEmpty()) graphics.drawCenteredString(font,
-                Component.translatable("ae2lt.tianshu.reserve.empty"), 88, 90, 0x777777);
+        if (menu.isMaintenanceSummaryOverflow()) {
+            graphics.drawCenteredString(font,
+                    Component.translatable("ae2lt.tianshu.maintenance.summary_too_large"),
+                    88, entries.isEmpty() ? 90 : 171, 0xAA2222);
+        } else if (entries.isEmpty()) {
+            graphics.drawCenteredString(font,
+                    Component.translatable("ae2lt.tianshu.reserve.empty"), 88, 90, 0x777777);
+        }
     }
 
     @Override
@@ -88,7 +96,13 @@ public final class TianshuGlobalReserveScreen<M extends TianshuPatternEncodingTe
             int index = scroll + row;
             if (row >= 0 && row < VISIBLE_ROWS && index >= 0 && index < entries.size()
                     && mouseX >= leftPos + 7 && mouseX < leftPos + 169) {
-                switchToScreen(new GlobalReserveEditScreen<>(this, entries.get(index)));
+                var entry = entries.get(index);
+                if (hasShiftDown()) {
+                    getParent().requestMaintenanceEditorFor(entry.key());
+                    returnToParent();
+                } else {
+                    switchToScreen(new GlobalReserveEditScreen<>(this, entry));
+                }
                 return true;
             }
         }

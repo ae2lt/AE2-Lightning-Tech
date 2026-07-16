@@ -20,6 +20,7 @@ import com.moakiee.ae2lt.logic.tianshu.maintenance.TianshuInventoryMaintenanceSe
 import com.moakiee.ae2lt.logic.persistence.ControllerMachineIdentity;
 import com.moakiee.ae2lt.logic.persistence.ControllerMachineStateSavedData;
 import com.moakiee.ae2lt.logic.persistence.ControllerMachineStateSavedData.MachineType;
+import com.moakiee.ae2lt.logic.persistence.CompletePhysicalStorageSet;
 import com.moakiee.ae2lt.registry.ModBlockEntities;
 import com.moakiee.ae2lt.registry.ModItems;
 import com.moakiee.ae2lt.registry.ModBlocks;
@@ -80,7 +81,6 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
     private static final String TAG_CLOSED_LOOP_STORAGES = "ClosedLoopStorages";
     private static final String TAG_SEED_STORAGES = "SeedStorages";
     private static final String TAG_MACHINE_ID = "MachineId";
-    private static final String TAG_FAST_PLANNING = "FastPlanning";
     private static final String TAG_CPU_POOL = "CpuPool";
     private static final String TAG_MAINTENANCE = "InventoryMaintenance";
     private boolean formed;
@@ -106,7 +106,6 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
     private long scheduledScanTick = NO_SCAN;
     private long nextChunkCheckTick;
     private List<TianshuMultiblockScanIssue> lastIssues = List.of();
-    private boolean fastPlanningEnabled = true;
     private List<TianshuAutoBuildPlan.Placement> autoBuildPlacements = List.of();
     private UUID autoBuildPlayerId;
     private Direction autoBuildFacing = Direction.NORTH;
@@ -204,15 +203,6 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
         setChanged();
     }
 
-    public boolean isFastPlanningEnabled() {
-        return fastPlanningEnabled;
-    }
-
-    public void toggleFastPlanning() {
-        fastPlanningEnabled = !fastPlanningEnabled;
-        cpuPool.setFastPlanningEnabled(fastPlanningEnabled);
-        setChanged();
-    }
     public int getPrimaryIssueOrdinal() {
         if (lastIssues.isEmpty()) return -1;
         return lastIssues.getFirst().ordinal();
@@ -562,7 +552,6 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
             loadPatternsFromWarehouses(port);
             maintenance.functionCapacityChanged();
             cpuPool.resolvePendingLoad();
-            cpuPool.setFastPlanningEnabled(fastPlanningEnabled);
         }
     }
 
@@ -650,7 +639,7 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
     }
 
     public ClosedLoopPatternRepository getClosedLoopPatternRepository() {
-        return closedLoopPatterns;
+        return isFormed() && patternStorages() != null ? closedLoopPatterns : null;
     }
 
     public TianshuInventoryMaintenanceService getInventoryMaintenance() {
@@ -721,10 +710,12 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
 
     @Override
     public long extractReusableSeed(AEKey key, long amount, Actionable mode) {
-        if (!formed || !functionProfile.supportsClosedLoopSeeds()) return 0L;
+        if (!isFormed() || !functionProfile.supportsClosedLoopSeeds()) return 0L;
+        var drives = seedDrives();
+        if (drives == null) return 0L;
         long remaining = Math.max(0L, amount);
         long extracted = 0L;
-        for (var drive : seedDrives()) {
+        for (var drive : drives) {
             long moved = drive.extract(key, remaining, mode, getActionSource());
             extracted = saturatingAdd(extracted, moved);
             remaining -= moved;
@@ -741,7 +732,7 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
             Predicate<AEKey> acceptsVariant,
             Actionable mode) {
         var result = new KeyCounter();
-        if (!formed || !functionProfile.supportsClosedLoopSeeds()
+        if (!isFormed() || !functionProfile.supportsClosedLoopSeeds()
                 || planned == null || amount <= 0 || acceptsVariant == null) {
             return result;
         }
@@ -774,10 +765,12 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
 
     @Override
     public long insertReusableSeed(AEKey key, long amount, Actionable mode) {
-        if (!formed || !functionProfile.supportsClosedLoopSeeds()) return 0L;
+        if (!isFormed() || !functionProfile.supportsClosedLoopSeeds()) return 0L;
+        var drives = seedDrives();
+        if (drives == null) return 0L;
         long remaining = Math.max(0L, amount);
         long inserted = 0L;
-        for (var drive : seedDrives()) {
+        for (var drive : drives) {
             long moved = drive.insert(key, remaining, mode, getActionSource());
             inserted = saturatingAdd(inserted, moved);
             remaining -= moved;
@@ -788,8 +781,11 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
     }
 
     public long reusableSeedAmount(AEKey key) {
+        if (!isFormed() || !functionProfile.supportsClosedLoopSeeds()) return 0L;
+        var drives = seedDrives();
+        if (drives == null) return 0L;
         long amount = 0L;
-        for (var drive : seedDrives()) {
+        for (var drive : drives) {
             amount = saturatingAdd(amount, drive.amount(key, getActionSource()));
         }
         return amount;
@@ -801,14 +797,18 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
     }
 
     public void closedLoopPatternsChanged() {
-        persistPatternsToWarehouses();
+        if (!persistPatternsToWarehouses()) return;
         var port = getLinkedPort();
         if (port != null) port.refreshCraftingProvider();
     }
 
     public List<IPatternDetails> getAvailablePatterns() {
-        if (!formed || level == null || !functionProfile.supportsClosedLoopPatterns()
+        if (!isFormed() || level == null || !functionProfile.supportsClosedLoopPatterns()
                 || functionProfile.closedLoopPatternCapacity() <= 0) {
+            return List.of();
+        }
+        if (patternStorages() == null
+                || (functionProfile.supportsClosedLoopSeeds() && seedDrives() == null)) {
             return List.of();
         }
         var result = new java.util.ArrayList<IPatternDetails>();
@@ -832,21 +832,15 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
         return List.copyOf(result);
     }
 
-    private Map<AEKey, Long> availableSeedsFor(ReusableSeedPattern pattern) {
+    private Map<AEKey, Long> availableSeedsFor(ReusableSeedPattern ignoredPattern) {
         var available = reusableSeedSnapshot();
-        var result = new java.util.LinkedHashMap<AEKey, Long>();
-        for (var requirement : pattern.totalReusableSeedRequirements().entrySet()) {
-            long amount = 0L;
-            for (var candidate : available) {
-                if (candidate.getLongValue() > 0
-                        && pattern.acceptsReusableSeedVariant(
-                                requirement.getKey(), candidate.getKey())) {
-                    amount = saturatingAdd(amount, candidate.getLongValue());
-                }
+        var variants = new java.util.LinkedHashMap<AEKey, Long>();
+        for (var candidate : available) {
+            if (candidate.getLongValue() > 0) {
+                variants.put(candidate.getKey(), candidate.getLongValue());
             }
-            if (amount > 0) result.put(requirement.getKey(), amount);
         }
-        return Map.copyOf(result);
+        return Map.copyOf(variants);
     }
 
     private boolean membersAreAvailable(
@@ -922,9 +916,11 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
     }
 
     private void loadPatternsFromWarehouses(TianshuSupercomputerPortBlockEntity port) {
+        var storages = patternStorages();
+        if (storages == null) return;
         var merged = new java.util.ArrayList<
                 com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternPayload>();
-        for (var storage : patternStorages()) merged.addAll(storage.patterns());
+        for (var storage : storages) merged.addAll(storage.patterns());
         closedLoopPatterns.replaceAll(merged);
         var legacyState = port.copyLegacyPatternState();
         if (legacyState != null && level != null) {
@@ -940,50 +936,63 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
                             item.createStack(payload, level.registryAccess()));
                 }
             }
-            persistPatternsToWarehouses();
-            port.consumeLegacyPatternState();
+            if (persistPatternsToWarehouses()) port.consumeLegacyPatternState();
         }
     }
 
-    private void persistPatternsToWarehouses() {
+    private boolean persistPatternsToWarehouses() {
+        var storages = patternStorages();
+        if (storages == null) return false;
         var patterns = closedLoopPatterns.patterns();
         int offset = 0;
-        for (var storage : patternStorages()) {
+        for (var storage : storages) {
             int end = Math.min(patterns.size(),
                     offset + TianshuFunctionProfile.PATTERNS_PER_CLOSED_LOOP_STORAGE);
             storage.replacePatterns(offset < end ? patterns.subList(offset, end) : List.of());
             offset = end;
         }
+        return true;
     }
 
     private KeyCounter reusableSeedSnapshot() {
         var result = new KeyCounter();
-        for (var drive : seedDrives()) drive.getAvailableStacks(result);
+        var drives = seedDrives();
+        if (drives != null) {
+            for (var drive : drives) drive.getAvailableStacks(result);
+        }
         return result;
     }
 
     private List<TianshuSeedStorageBlockEntity> seedDrives() {
-        if (level == null) return List.of();
-        var result = new java.util.ArrayList<TianshuSeedStorageBlockEntity>();
-        for (var pos : seedStoragePositions) {
-            if (level.isLoaded(pos)
-                    && level.getBlockEntity(pos) instanceof TianshuSeedStorageBlockEntity drive) {
-                result.add(drive);
-            }
-        }
-        return result;
+        if (level == null) return null;
+        var result = CompletePhysicalStorageSet.resolve(seedStoragePositions, pos -> {
+            if (!level.isLoaded(pos)) return null;
+            var blockEntity = level.getBlockEntity(pos);
+            return blockEntity instanceof TianshuSeedStorageBlockEntity drive
+                    && !drive.isRemoved() && portPos != null && portPos.equals(drive.getPortPos())
+                    ? drive : null;
+        });
+        if (result.isEmpty()) suspendForUnavailablePhysicalStorage();
+        return result.orElse(null);
     }
 
     private List<TianshuPatternStorageBlockEntity> patternStorages() {
-        if (level == null) return List.of();
-        var result = new java.util.ArrayList<TianshuPatternStorageBlockEntity>();
-        for (var pos : patternStoragePositions) {
-            if (level.isLoaded(pos)
-                    && level.getBlockEntity(pos) instanceof TianshuPatternStorageBlockEntity storage) {
-                result.add(storage);
-            }
-        }
-        return result;
+        if (level == null) return null;
+        var result = CompletePhysicalStorageSet.resolve(patternStoragePositions, pos -> {
+            if (!level.isLoaded(pos)) return null;
+            var blockEntity = level.getBlockEntity(pos);
+            return blockEntity instanceof TianshuPatternStorageBlockEntity storage
+                    && !storage.isRemoved() && portPos != null && portPos.equals(storage.getPortPos())
+                    ? storage : null;
+        });
+        if (result.isEmpty()) suspendForUnavailablePhysicalStorage();
+        return result.orElse(null);
+    }
+
+    private void suspendForUnavailablePhysicalStorage() {
+        lastIssues = List.of(TianshuMultiblockScanIssue.CHUNKS_UNLOADED);
+        suspendForUnloadedChunks();
+        if (level != null) nextChunkCheckTick = level.getGameTime();
     }
 
     private TianshuSupercomputerPortBlockEntity getLinkedPort() {
@@ -1047,7 +1056,6 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
         if (minPos != null) tag.putLong(TAG_MIN_POS, minPos.asLong());
         if (maxPos != null) tag.putLong(TAG_MAX_POS, maxPos.asLong());
         tag.putInt(TAG_MEMBER_COUNT, memberCount);
-        tag.putBoolean(TAG_FAST_PLANNING, fastPlanningEnabled);
         if (coreProfile.mainCore() != null) {
             tag.putString(TAG_MAIN_CORE, coreProfile.mainCore().name());
             tag.putInt(TAG_CAPACITY_CORES, coreProfile.capacityCoreCount());
@@ -1069,9 +1077,6 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
         minPos = tag.contains(TAG_MIN_POS, Tag.TAG_LONG) ? BlockPos.of(tag.getLong(TAG_MIN_POS)) : null;
         maxPos = tag.contains(TAG_MAX_POS, Tag.TAG_LONG) ? BlockPos.of(tag.getLong(TAG_MAX_POS)) : null;
         memberCount = tag.getInt(TAG_MEMBER_COUNT);
-        fastPlanningEnabled = !tag.contains(TAG_FAST_PLANNING, Tag.TAG_BYTE)
-                || tag.getBoolean(TAG_FAST_PLANNING);
-        cpuPool.setFastPlanningEnabled(fastPlanningEnabled);
         if (tag.contains(TAG_MAIN_CORE, Tag.TAG_STRING)) {
             try {
                 var tier = CpuMainCoreTier.valueOf(tag.getString(TAG_MAIN_CORE));

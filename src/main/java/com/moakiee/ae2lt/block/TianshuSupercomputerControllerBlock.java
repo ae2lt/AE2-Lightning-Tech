@@ -130,10 +130,6 @@ public class TianshuSupercomputerControllerBlock extends Block implements Entity
 
     @Override
     public ItemStack getCloneItemStack(LevelReader level, BlockPos pos, BlockState state) {
-        var stack = new ItemStack(asItem());
-        if (level.getBlockEntity(pos) instanceof TianshuSupercomputerControllerBlockEntity controller) {
-            ControllerMachineIdentity.write(stack, controller.getMachineId());
-        }
-        return stack;
+        return new ItemStack(asItem());
     }
 }

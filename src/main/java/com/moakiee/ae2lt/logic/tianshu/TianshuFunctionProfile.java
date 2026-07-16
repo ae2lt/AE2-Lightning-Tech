@@ -32,7 +32,7 @@ public record TianshuFunctionProfile(
     }
 
     public int maintenanceRuleCapacity() {
-        return Integer.MAX_VALUE;
+        return com.moakiee.ae2lt.logic.tianshu.maintenance.InventoryMaintenanceLimits.MAX_ENTRIES;
     }
 
     public int closedLoopPatternCapacity() {

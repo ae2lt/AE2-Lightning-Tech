@@ -96,6 +96,11 @@ public final class TianshuMaintenanceRuleScreen<M extends TianshuPatternEncoding
         graphics.drawString(font, Component.translatable("ae2lt.tianshu.maintenance.batch"), 8, 69, 0x404040, false);
         graphics.drawString(font, Component.translatable("ae2lt.tianshu.maintenance.topology"), 8, 83, 0x404040, false);
         drawTopology(graphics, mouseX - leftPos, mouseY - topPos);
+        if (draft.data.recoveryPage()) {
+            graphics.drawCenteredString(font,
+                    Component.translatable("ae2lt.tianshu.maintenance.recovery_page"),
+                    88, 171, 0xAA2222);
+        }
     }
 
     private void drawTopology(GuiGraphics graphics, int mouseX, int mouseY) {
@@ -165,13 +170,15 @@ public final class TianshuMaintenanceRuleScreen<M extends TianshuPatternEncoding
                 || parsedUpper <= parsedLower || parsedPerJob <= 0) return;
         var edits = draft.reserves.stream().map(entry -> new SaveMaintenanceRulePacket.ReserveEdit(
                 entry.key, entry.globalAmount, entry.globalMode, entry.ruleAmount, entry.ruleMode)).toList();
-        menu.sendMaintenanceSave(new SaveMaintenanceRulePacket(menu.containerId, draft.data.target(),
+        menu.sendMaintenanceSave(new SaveMaintenanceRulePacket(
+                menu.containerId, menu.tianshuSelectionRevision, draft.data.target(),
                 draft.data.ruleId(), false, parsedLower, parsedUpper, parsedPerJob, draft.enabled, edits));
         returnToParent();
     }
 
     private void delete() {
-        menu.sendMaintenanceSave(new SaveMaintenanceRulePacket(menu.containerId, draft.data.target(),
+        menu.sendMaintenanceSave(new SaveMaintenanceRulePacket(
+                menu.containerId, menu.tianshuSelectionRevision, draft.data.target(),
                 draft.data.ruleId(), true, 0, 1, 1, false, List.of()));
         returnToParent();
     }

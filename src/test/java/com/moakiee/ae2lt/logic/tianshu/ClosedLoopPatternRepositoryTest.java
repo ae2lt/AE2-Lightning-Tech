@@ -149,16 +149,22 @@ class ClosedLoopPatternRepositoryTest {
         assertEquals(InventoryMaintenanceRepository.PutResult.ADDED, repository.put(second));
 
         capacity[0] = 1;
-        assertEquals(List.of(first), repository.activeRules());
+        assertEquals(List.of(), repository.activeRules());
+        assertEquals(List.of(first), repository.rules(1));
         assertNotNull(repository.get(second.key()));
+        assertEquals(InventoryMaintenanceRepository.PutResult.FULL,
+                repository.put(new InventoryMaintenanceRule(
+                        first.id(), first.key(), 5, 25, 5, true, false, null)));
+        assertEquals(true, repository.remove(second.key()));
         capacity[0] = 2;
-        assertEquals(List.of(first, second), repository.activeRules());
+        assertEquals(List.of(first), repository.activeRules());
     }
 
     @Test
     void functionProfileCapacitiesSaturateWithoutOverflow() {
         var profile = new TianshuFunctionProfile(Integer.MAX_VALUE, Integer.MAX_VALUE);
-        assertEquals(Integer.MAX_VALUE, profile.maintenanceRuleCapacity());
+        assertEquals(com.moakiee.ae2lt.logic.tianshu.maintenance.InventoryMaintenanceLimits.MAX_ENTRIES,
+                profile.maintenanceRuleCapacity());
         assertEquals(Integer.MAX_VALUE, profile.closedLoopPatternCapacity());
         assertThrows(IllegalArgumentException.class, () -> new TianshuFunctionProfile(-1, 0));
     }
@@ -178,6 +184,23 @@ class ClosedLoopPatternRepositoryTest {
 
         assertEquals(ReservedStockRepository.PutResult.REMOVED, reserves.set(key, 0));
         assertEquals(500, reserves.usablePreexistingStock(key, 500));
+    }
+
+    @Test
+    void oversizedLegacyReservesRemainRemovableButReadOnly() {
+        var capacity = new int[] {2};
+        var first = new TestKey("legacy_reserve_first");
+        var second = new TestKey("legacy_reserve_second");
+        var reserves = new ReservedStockRepository(() -> capacity[0]);
+        assertEquals(ReservedStockRepository.PutResult.ADDED, reserves.set(first, 10));
+        assertEquals(ReservedStockRepository.PutResult.ADDED, reserves.set(second, 20));
+
+        capacity[0] = 1;
+        assertEquals(List.of(new ReservedStockRepository.Entry(
+                first, 10, ReservedStockMatchMode.EXACT)), reserves.reservations(1));
+        assertEquals(ReservedStockRepository.PutResult.FULL, reserves.set(first, 30));
+        assertEquals(ReservedStockRepository.PutResult.REMOVED, reserves.set(second, 0));
+        assertEquals(ReservedStockRepository.PutResult.UPDATED, reserves.set(first, 30));
     }
 
     @Test

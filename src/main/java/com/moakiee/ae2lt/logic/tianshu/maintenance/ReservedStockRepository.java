@@ -35,6 +35,11 @@ public final class ReservedStockRepository {
         return Map.copyOf(result);
     }
     public List<Entry> reservations() { return List.copyOf(reserves.values()); }
+    /** Bounded recovery view; oversized legacy entries remain individually removable. */
+    public List<Entry> reservations(int limit) {
+        if (limit <= 0) return List.of();
+        return reserves.values().stream().limit(limit).toList();
+    }
 
     public PutResult set(AEKey key, long amount) {
         return set(key, ReservedStockMatchMode.EXACT, amount);
@@ -51,6 +56,9 @@ public final class ReservedStockRepository {
             }
             return removed ? PutResult.REMOVED : PutResult.REMOVED;
         }
+        // Preserve oversized legacy state as read-only; amount=0 above remains available
+        // so players can reduce it back under the current hard limit.
+        if (reserves.size() > capacity()) return PutResult.FULL;
         AEKey storageKey = key;
         if (mode == ReservedStockMatchMode.IGNORE_SECONDARY) {
             for (var existing : reserves.entrySet()) {

@@ -13,7 +13,8 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 public record SaveMaintenanceRulePacket(
-        int containerId, AEKey target, UUID expectedRuleId, boolean delete,
+        int containerId, int selectionRevision, AEKey target,
+        UUID expectedRuleId, boolean delete,
         long lower, long upper, long amountPerJob, boolean enabled,
         List<ReserveEdit> reserves) implements CustomPacketPayload {
     public static final Type<SaveMaintenanceRulePacket> TYPE =
@@ -21,10 +22,14 @@ public record SaveMaintenanceRulePacket(
     public static final StreamCodec<RegistryFriendlyByteBuf, SaveMaintenanceRulePacket> STREAM_CODEC =
             StreamCodec.ofMember(SaveMaintenanceRulePacket::write, SaveMaintenanceRulePacket::decode);
 
-    public SaveMaintenanceRulePacket { reserves = List.copyOf(reserves); }
+    public SaveMaintenanceRulePacket {
+        reserves = List.copyOf(reserves);
+        TianshuPacketLimits.requireListSize("maintenance reserve edits", reserves.size());
+    }
 
     private void write(RegistryFriendlyByteBuf buf) {
         buf.writeVarInt(containerId);
+        buf.writeVarInt(selectionRevision);
         AEKey.STREAM_CODEC.encode(buf, target);
         buf.writeBoolean(expectedRuleId != null);
         if (expectedRuleId != null) buf.writeUUID(expectedRuleId);
@@ -45,6 +50,7 @@ public record SaveMaintenanceRulePacket(
 
     private static SaveMaintenanceRulePacket decode(RegistryFriendlyByteBuf buf) {
         int container = buf.readVarInt();
+        int selectionRevision = buf.readVarInt();
         AEKey target = AEKey.STREAM_CODEC.decode(buf);
         UUID id = buf.readBoolean() ? buf.readUUID() : null;
         boolean delete = buf.readBoolean();
@@ -52,14 +58,15 @@ public record SaveMaintenanceRulePacket(
         long upper = buf.readVarLong();
         long batch = buf.readVarLong();
         boolean enabled = buf.readBoolean();
-        int size = Math.min(2048, buf.readVarInt());
+        int size = TianshuPacketLimits.requireDecodedListSize(
+                "maintenance reserve edits", buf.readVarInt());
         var edits = new ArrayList<ReserveEdit>(size);
         for (int i = 0; i < size; i++) {
             edits.add(new ReserveEdit(AEKey.STREAM_CODEC.decode(buf),
                     buf.readLong(), buf.readEnum(ReservedStockMatchMode.class),
                     buf.readLong(), buf.readEnum(ReservedStockMatchMode.class)));
         }
-        return new SaveMaintenanceRulePacket(container, target, id, delete,
+        return new SaveMaintenanceRulePacket(container, selectionRevision, target, id, delete,
                 lower, upper, batch, enabled, edits);
     }
 

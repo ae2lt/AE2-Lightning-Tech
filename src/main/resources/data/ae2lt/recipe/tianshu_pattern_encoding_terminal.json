@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    { "item": "ae2:pattern_encoding_terminal" },
+    { "item": "ae2lt:overload_processor" }
+  ],
+  "result": {
+    "id": "ae2lt:tianshu_pattern_encoding_terminal",
+    "count": 1
+  }
+}

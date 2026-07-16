@@ -7,6 +7,7 @@ navigation:
 item_ids:
   - ae2lt:tianshu_supercomputer_controller
   - ae2lt:tianshu_supercomputer_port
+  - ae2lt:tianshu_pattern_encoding_terminal
 ---
 
 # Port, Jobs, and Fast Planning
@@ -18,6 +19,14 @@ After formation, the <ItemLink id="ae2lt:tianshu_supercomputer_port" /> publishe
 The supercomputer does not accept new jobs while its port is offline, its ME network is unpowered, or the structure is unformed. Saved job state persists across chunk unloads and can continue after the structure and network return.
 
 The supercomputer does not force-load any chunk in its footprint. If any structure chunk is unloaded, the Port disconnects and jobs pause. It rescans and resumes automatically after the complete structure is loaded again. A cross-chunk build therefore needs a chunk loader covering the whole structure.
+
+## Tianshu Pattern Encoding Terminal
+
+The <ItemLink id="ae2lt:tianshu_pattern_encoding_terminal" /> extends the normal Pattern Encoding Terminal with closed-loop authoring, upload routing, and inventory-maintenance controls. When the menu opens, it binds to one formed Tianshu by machine UUID. Use the Tianshu selector to switch explicitly between machines on the same ME network; the terminal never switches silently, and writes fail if the selected machine becomes unavailable.
+
+Use the maintenance overview to see configured items even when their stored amount is zero. Shift-click an entry there to edit its maintenance rule. If migrated data exceeds the current hard limit, the overview marks the bounded recovery page explicitly; deleting visible entries reveals the remaining persisted entries in later revisions.
+
+<RecipeFor id="ae2lt:tianshu_pattern_encoding_terminal" />
 
 ## Shared Capacity and Concurrent Jobs
 

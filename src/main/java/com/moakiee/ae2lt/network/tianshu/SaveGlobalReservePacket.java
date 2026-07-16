@@ -10,7 +10,8 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 public record SaveGlobalReservePacket(
-        int containerId, AEKey key, long amount, ReservedStockMatchMode mode)
+        int containerId, int selectionRevision, AEKey key,
+        long amount, ReservedStockMatchMode mode)
         implements CustomPacketPayload {
     public static final Type<SaveGlobalReservePacket> TYPE =
             new Type<>(NetworkInit.id("save_global_reserve"));
@@ -19,13 +20,15 @@ public record SaveGlobalReservePacket(
 
     private void write(RegistryFriendlyByteBuf buf) {
         buf.writeVarInt(containerId);
+        buf.writeVarInt(selectionRevision);
         AEKey.STREAM_CODEC.encode(buf, key);
         buf.writeLong(amount);
         buf.writeEnum(mode);
     }
 
     private static SaveGlobalReservePacket decode(RegistryFriendlyByteBuf buf) {
-        return new SaveGlobalReservePacket(buf.readVarInt(), AEKey.STREAM_CODEC.decode(buf),
+        return new SaveGlobalReservePacket(buf.readVarInt(), buf.readVarInt(),
+                AEKey.STREAM_CODEC.decode(buf),
                 buf.readLong(), buf.readEnum(ReservedStockMatchMode.class));
     }
 

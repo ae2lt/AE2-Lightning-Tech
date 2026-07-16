@@ -50,10 +50,12 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
     private final AE2Button parallelDown;
     private final AE2Button parallelUp;
     private final AE2Button upload;
+    private final AE2Button tianshuTarget;
     private final TianshuViewModeButton viewModeButton;
     private final AE2Button globalReserve;
     private boolean awaitingMaintenanceEditor;
     private int requestedMaintenanceRevision;
+    private int observedTianshuSelectionRevision = Integer.MIN_VALUE;
 
     public TianshuPatternEncodingTermScreen(
             M menu,
@@ -87,6 +89,8 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
                 () -> menu.changeClosedLoopSeedMultiplier(hasShiftDown() ? 10 : 1));
         upload = widgets.addButton("tianshuUpload", Component.translatable("ae2lt.tianshu.terminal.upload"),
                 this::openUploadScreen);
+        tianshuTarget = widgets.addButton("tianshuTarget", Component.empty(),
+                () -> menu.cycleTianshuTarget(hasShiftDown() ? -1 : 1));
         viewModeButton = replaceViewModeButton();
         globalReserve = widgets.addButton("globalReserve",
                 Component.translatable("ae2lt.tianshu.reserve.button"),
@@ -105,6 +109,11 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
     @Override
     protected void updateBeforeRender() {
         super.updateBeforeRender();
+        if (observedTianshuSelectionRevision != menu.tianshuSelectionRevision) {
+            observedTianshuSelectionRevision = menu.tianshuSelectionRevision;
+            awaitingMaintenanceEditor = false;
+            menu.resetClientTianshuScopedState();
+        }
         if (menu.consumeTriggeredUpload()) {
             openUploadScreen();
             return;
@@ -147,15 +156,32 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
         parallelDown.visible = closedLoop;
         parallelUp.visible = closedLoop;
         upload.visible = true;
-        upload.active = closedLoop ? menu.encodedClosedLoop : hasEncodedPattern();
-        globalReserve.active = menu.maintenanceAvailable;
+        upload.active = closedLoop
+                ? menu.encodedClosedLoop && !menu.isTianshuSelectionPending()
+                : hasEncodedPattern();
+        tianshuTarget.setMessage(Component.translatable(
+                "ae2lt.tianshu.terminal.target.short",
+                menu.selectedTianshuIndex >= 0 ? menu.selectedTianshuIndex + 1 : "-",
+                menu.availableTianshuCount));
+        tianshuTarget.setTooltip(net.minecraft.client.gui.components.Tooltip.create(
+                Component.translatable(
+                        menu.selectedTianshuMachine.isEmpty()
+                                ? "ae2lt.tianshu.terminal.target.none"
+                                : "ae2lt.tianshu.terminal.target.tooltip",
+                        menu.selectedTianshuMachine, menu.selectedTianshuLocation)));
+        tianshuTarget.active = !menu.isTianshuSelectionPending()
+                && (menu.availableTianshuCount > 1
+                || menu.selectedTianshuIndex < 0 && menu.availableTianshuCount > 0);
+        globalReserve.active = menu.maintenanceAvailable && !menu.isTianshuSelectionPending();
     }
 
     private void openUploadScreen() {
         var stack = menu.getSlots(SlotSemantics.ENCODED_PATTERN).stream()
                 .map(Slot::getItem).filter(item -> !item.isEmpty()).findFirst().orElse(ItemStack.EMPTY);
         if (stack.isEmpty()) return;
-        var route = TianshuPatternUploadRouting.forEncodingMode(menu.tianshuMode);
+        var route = minecraft.level != null
+                ? TianshuPatternUploadRouting.classify(stack, minecraft.level)
+                : TianshuPatternUploadRouting.Route.INVALID;
         switch (route) {
             case CLOSED_LOOP_STORAGE -> menu.uploadTianshuPattern();
             case CRAFTING_ASSEMBLER -> menu.uploadTianshuCraftingPattern();
@@ -249,13 +275,19 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
             }
             var entry = repoSlot.getEntry();
             if (entry != null && entry.getWhat() != null) {
-                requestedMaintenanceRevision = menu.getMaintenanceEditorRevision();
-                awaitingMaintenanceEditor = true;
-                menu.requestMaintenanceEditor(entry.getWhat());
+                requestMaintenanceEditorFor(entry.getWhat());
                 return true;
             }
         }
         return super.mouseClicked(mouseX, mouseY, button);
+    }
+
+    /** Also used by the dedicated maintenance overview for zero-stock entries. */
+    public void requestMaintenanceEditorFor(appeng.api.stacks.AEKey key) {
+        if (key == null) return;
+        requestedMaintenanceRevision = menu.getMaintenanceEditorRevision();
+        awaitingMaintenanceEditor = true;
+        menu.requestMaintenanceEditor(key);
     }
 
     @Override

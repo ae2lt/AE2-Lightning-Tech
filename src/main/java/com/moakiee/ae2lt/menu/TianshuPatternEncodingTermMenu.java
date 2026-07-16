@@ -15,6 +15,7 @@ import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternUploadService;
 import com.moakiee.ae2lt.logic.tianshu.terminal.ProcessingPatternMultiplier;
 import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuEncodingMode;
 import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuPatternTerminalHost;
+import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuTerminalTarget;
 import com.moakiee.ae2lt.logic.tianshu.terminal.MaintenanceEditorData;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.InventoryMaintenanceRule;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.InventoryMaintenanceStatus;
@@ -54,6 +55,7 @@ import com.moakiee.ae2lt.network.tianshu.UploadTargetsSyncPacket;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import com.moakiee.ae2lt.network.tianshu.SaveGlobalReservePacket;
+import com.moakiee.ae2lt.network.tianshu.TianshuPacketLimits;
 
 public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     private static final MenuTypeBuilder.MenuFactory<
@@ -90,8 +92,19 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     /** 0=none, 1=member cannot be decoded, 2=other invalid closed-loop declaration. */
     @GuiSync(125)
     public int closedLoopEncodeState;
+    @GuiSync(126)
+    public String selectedTianshuMachine = "";
+    @GuiSync(127)
+    public String selectedTianshuLocation = "";
+    @GuiSync(128)
+    public int selectedTianshuIndex = -1;
+    @GuiSync(129)
+    public int availableTianshuCount;
+    @GuiSync(130)
+    public int tianshuSelectionRevision;
 
     protected final TianshuPatternTerminalHost tianshuHost;
+    @Nullable private TianshuTerminalTarget boundTianshuTarget;
     private final PatternConversionService conversionService = new PatternConversionService();
     private ItemStack configuredSource = ItemStack.EMPTY;
     @Nullable private ParsedPatternDefinition overloadSource;
@@ -100,14 +113,22 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     @Nullable private appeng.api.stacks.AEKey closedLoopMainOutput;
     @Nullable private MaintenanceEditorData maintenanceEditorData;
     private int maintenanceEditorRevision;
+    private int maintenanceEditorSelectionRevision = Integer.MIN_VALUE;
     private List<PatternContainer> uploadTargets = List.of();
     private List<TianshuUploadTargetData> uploadTargetGroups = List.of();
     private int uploadTargetsRevision;
     private int lastMaintenanceSummaryTick = Integer.MIN_VALUE;
+    @Nullable private List<MaintenanceSummarySyncPacket.Entry> lastSentMaintenanceSummary;
+    private boolean lastSentMaintenanceSummaryOverflow;
+    private long maintenanceSummaryRevision;
+    private long receivedMaintenanceSummaryRevision = Long.MIN_VALUE;
+    private int maintenanceSummarySelectionRevision = Integer.MIN_VALUE;
+    private boolean maintenanceSummaryOverflow;
     private List<MaintenanceSummarySyncPacket.Entry> maintenanceSummary = List.of();
     private boolean pendingTriggeredUpload;
     private int pendingTriggeredUploadUntil;
     private int expectedTriggeredUploadAck;
+    private boolean tianshuSelectionPending;
 
     public TianshuPatternEncodingTermMenu(
             int id, Inventory inventory, TianshuPatternTerminalHost host) {
@@ -118,6 +139,9 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
             MenuType<?> type, int id, Inventory inventory, TianshuPatternTerminalHost host) {
         super(type, id, inventory, host, true);
         this.tianshuHost = host;
+        this.boundTianshuTarget = inventory.player.level().isClientSide
+                ? null : host.selectTianshuTarget();
+        if (boundTianshuTarget != null) tianshuSelectionRevision = 1;
         this.tianshuMode = host.getTianshuEncodingMode();
         registerClientAction("setTianshuMode", TianshuEncodingMode.class, this::setTianshuModeServer);
         registerClientAction("multiplyProcessing", Integer.class, this::multiplyProcessingServer);
@@ -127,22 +151,109 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         registerClientAction("selectClosedLoopCandidate", Integer.class, this::selectClosedLoopCandidateServer);
         registerClientAction("changeClosedLoopSeedMultiplier", Integer.class,
                 this::changeClosedLoopSeedMultiplierServer);
-        registerClientAction("uploadTianshuPattern", this::uploadTianshuPatternServer);
+        registerClientAction("uploadTianshuPattern", Integer.class, this::uploadTianshuPatternServer);
         registerClientAction("uploadTianshuCraftingPattern", this::uploadTianshuCraftingPatternServer);
         registerClientAction("setMaintainableView", Boolean.class, this::setMaintainableViewServer);
+        registerClientAction("cycleTianshuTarget", Integer.class, this::cycleTianshuTargetServer);
     }
 
     @Override
     public void broadcastChanges() {
         if (isServerSide()) {
             tianshuMode = tianshuHost.getTianshuEncodingMode();
-            var selected = tianshuHost.getSelectedTianshu();
+            var selected = resolveBoundTianshu();
+            refreshTianshuSelectionSync(selected);
             maintenanceAvailable = selected != null
                     && selected.getFunctionProfile().supportsInventoryMaintenance();
-            sendMaintenanceSummaryIfNeeded();
             refreshDerivedConfiguration();
         }
         super.broadcastChanges();
+        if (isServerSide()) sendMaintenanceSummaryIfNeeded();
+    }
+
+    /** Resolves only the machine captured when this server menu opened. */
+    @Nullable
+    private com.moakiee.ae2lt.blockentity.TianshuSupercomputerPortBlockEntity resolveBoundTianshu() {
+        return tianshuHost.resolveTianshuTarget(boundTianshuTarget);
+    }
+
+    private void refreshTianshuSelectionSync(
+            @Nullable com.moakiee.ae2lt.blockentity.TianshuSupercomputerPortBlockEntity selected) {
+        var available = tianshuHost.getAvailableTianshu();
+        availableTianshuCount = available.size();
+        selectedTianshuIndex = -1;
+        if (boundTianshuTarget == null) {
+            selectedTianshuMachine = "";
+            selectedTianshuLocation = "";
+            return;
+        }
+        selectedTianshuMachine = boundTianshuTarget.machineId().toString();
+        var pos = boundTianshuTarget.controllerPos();
+        selectedTianshuLocation = boundTianshuTarget.dimension().location()
+                + " @ " + pos.getX() + ", " + pos.getY() + ", " + pos.getZ();
+        if (selected == null) return;
+        for (int i = 0; i < available.size(); i++) {
+            if (boundTianshuTarget.matches(available.get(i))) {
+                selectedTianshuIndex = i;
+                break;
+            }
+        }
+    }
+
+    public void cycleTianshuTarget(int delta) {
+        if (delta == 0) return;
+        if (isClientSide()) {
+            if (tianshuSelectionPending) return;
+            tianshuSelectionPending = true;
+            sendClientAction("cycleTianshuTarget", delta);
+        } else {
+            cycleTianshuTargetServer(delta);
+        }
+    }
+
+    private void cycleTianshuTargetServer(int delta) {
+        if (!isServerSide() || delta == 0) return;
+        var available = tianshuHost.getAvailableTianshu();
+        if (!available.isEmpty()) {
+            int current = -1;
+            for (int i = 0; i < available.size(); i++) {
+                if (boundTianshuTarget != null && boundTianshuTarget.matches(available.get(i))) {
+                    current = i;
+                    break;
+                }
+            }
+            int step = Integer.signum(delta);
+            int next = current < 0
+                    ? (step < 0 ? available.size() - 1 : 0)
+                    : Math.floorMod(current + step, available.size());
+            boundTianshuTarget = TianshuTerminalTarget.from(available.get(next));
+        }
+        // Also acknowledge a selection attempt if the topology changed between the
+        // client click and server handling. This releases the client's pending gate
+        // without ever falling back to a different machine implicitly.
+        tianshuSelectionRevision++;
+        maintenanceEditorData = null;
+        lastSentMaintenanceSummary = null;
+        lastMaintenanceSummaryTick = Integer.MIN_VALUE;
+        uploadState = 0;
+        broadcastChanges();
+    }
+
+    public void resetClientTianshuScopedState() {
+        if (!isClientSide()) return;
+        tianshuSelectionPending = false;
+        if (maintenanceSummarySelectionRevision != tianshuSelectionRevision) {
+            maintenanceSummary = List.of();
+            maintenanceSummaryOverflow = false;
+        }
+        if (maintenanceEditorSelectionRevision != tianshuSelectionRevision) {
+            maintenanceEditorData = null;
+            maintenanceEditorRevision++;
+        }
+    }
+
+    public boolean isTianshuSelectionPending() {
+        return tianshuSelectionPending;
     }
 
     @Override
@@ -269,12 +380,15 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     }
 
     public void uploadTianshuPattern() {
-        if (isClientSide()) sendClientAction("uploadTianshuPattern");
-        else uploadTianshuPatternServer();
+        if (isClientSide()) {
+            if (tianshuSelectionPending) return;
+            sendClientAction("uploadTianshuPattern", tianshuSelectionRevision);
+        }
+        else uploadTianshuPatternServer(tianshuSelectionRevision);
     }
 
-    private void uploadTianshuPatternServer() {
-        if (!isServerSide()) return;
+    private void uploadTianshuPatternServer(int expectedSelectionRevision) {
+        if (!isServerSide() || expectedSelectionRevision != tianshuSelectionRevision) return;
         uploadState = 2;
         var stack = tianshuHost.getLogic().getEncodedPatternInv().getStackInSlot(0);
         if (TianshuPatternUploadRouting.classify(stack, getPlayer().level())
@@ -284,7 +398,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
             broadcastChanges();
             return;
         }
-        var target = tianshuHost.getSelectedTianshu();
+        var target = resolveBoundTianshu();
         var payload = item.readPayload(stack, getPlayer().level()).orElse(null);
         var result = ClosedLoopPatternUploadService.upload(target, payload);
         uploadState = switch (result) {
@@ -373,7 +487,6 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         }
         refreshUploadTargetsNow();
         for (var target : uploadTargets) {
-            if (!TianshuPatternUploadRouting.isCraftingAssemblerGroup(target.getTerminalGroup())) continue;
             int free = firstFreePatternSlot(target.getTerminalPatternInventory(), stack);
             if (free >= 0) {
                 uploadToProvider(player, target, free, stack);
@@ -574,13 +687,15 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     }
 
     public void requestMaintenanceEditor(appeng.api.stacks.AEKey key) {
-        if (!isClientSide()) return;
-        PacketDistributor.sendToServer(new OpenMaintenanceEditorPacket(containerId, key));
+        if (!isClientSide() || tianshuSelectionPending) return;
+        PacketDistributor.sendToServer(new OpenMaintenanceEditorPacket(
+                containerId, tianshuSelectionRevision, key));
     }
 
-    public void openMaintenanceEditor(appeng.api.stacks.AEKey key) {
-        if (!isServerSide() || !(getPlayer() instanceof ServerPlayer serverPlayer)) return;
-        var target = tianshuHost.getSelectedTianshu();
+    public void openMaintenanceEditor(int expectedSelectionRevision, appeng.api.stacks.AEKey key) {
+        if (!isServerSide() || expectedSelectionRevision != tianshuSelectionRevision
+                || !(getPlayer() instanceof ServerPlayer serverPlayer)) return;
+        var target = resolveBoundTianshu();
         if (key == null || target == null
                 || !target.getFunctionProfile().supportsInventoryMaintenance()) return;
         sendMaintenanceEditorData(serverPlayer, key);
@@ -590,7 +705,6 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         maintainableView = enabled;
         if (isClientSide()) {
             sendClientAction("setMaintainableView", enabled);
-            applyMaintenanceSyntheticEntries();
         } else setMaintainableViewServer(enabled);
     }
 
@@ -604,7 +718,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     @Override
     public boolean isKeyVisible(appeng.api.stacks.AEKey key) {
         if (!maintainableView) return super.isKeyVisible(key);
-        var target = tianshuHost.getSelectedTianshu();
+        var target = resolveBoundTianshu();
         var maintenance = target != null ? target.getInventoryMaintenance() : null;
         return maintenance != null && maintenance.repository().get(key) != null;
     }
@@ -618,42 +732,69 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         if (!(getPlayer() instanceof ServerPlayer player)
                 || getPlayer().tickCount - lastMaintenanceSummaryTick < 20) return;
         lastMaintenanceSummaryTick = getPlayer().tickCount;
-        var target = tianshuHost.getSelectedTianshu();
+        var target = resolveBoundTianshu();
         var summaries = new LinkedHashMap<appeng.api.stacks.AEKey, MaintenanceSummarySyncPacket.Entry>();
+        boolean overflow = false;
         if (target != null && target.getFunctionProfile().supportsInventoryMaintenance()) {
             var service = target.getInventoryMaintenance();
             if (service != null) {
-                for (var rule : service.repository().rules()) summaries.put(rule.key(), new MaintenanceSummarySyncPacket.Entry(
-                        rule.key(), service.status(rule.id()), service.reservedStock().reserve(rule.key()),
-                        service.reservedStock().matchMode(rule.key())));
-                for (var reserve : service.reservedStock().reservations()) summaries.putIfAbsent(
-                        reserve.key(), new MaintenanceSummarySyncPacket.Entry(
-                                reserve.key(), InventoryMaintenanceStatus.IDLE,
-                                reserve.amount(), reserve.mode()));
+                if (service.repository().size() > TianshuPacketLimits.MAX_LIST_ENTRIES
+                        || service.reservedStock().size() > TianshuPacketLimits.MAX_LIST_ENTRIES) {
+                    overflow = true;
+                }
+                for (var rule : service.repository().rules(TianshuPacketLimits.MAX_LIST_ENTRIES)) {
+                    if (summaries.size() >= TianshuPacketLimits.MAX_LIST_ENTRIES
+                            && !summaries.containsKey(rule.key())) {
+                        overflow = true;
+                        break;
+                    }
+                    boolean ruleReserveOverflow = service.reservedStock(rule.id()).size()
+                            > TianshuPacketLimits.MAX_LIST_ENTRIES;
+                    summaries.put(rule.key(), new MaintenanceSummarySyncPacket.Entry(
+                            rule.key(), service.status(rule.id()),
+                            service.reservedStock().reserve(rule.key()),
+                            service.reservedStock().matchMode(rule.key()),
+                            ruleReserveOverflow));
+                }
+                for (var reserve : service.reservedStock().reservations(TianshuPacketLimits.MAX_LIST_ENTRIES)) {
+                    if (summaries.size() >= TianshuPacketLimits.MAX_LIST_ENTRIES
+                            && !summaries.containsKey(reserve.key())) {
+                        overflow = true;
+                        break;
+                    }
+                    summaries.putIfAbsent(reserve.key(), new MaintenanceSummarySyncPacket.Entry(
+                            reserve.key(), InventoryMaintenanceStatus.IDLE,
+                            reserve.amount(), reserve.mode(), false));
+                }
             }
         }
+        // An explicit overflow marker makes this a recovery page, rather than a
+        // silently-truncated authoritative snapshot. Deleting one of the visible
+        // entries exposes the next persisted entry on the following revision.
+        var snapshot = List.copyOf(summaries.values());
+        if (lastSentMaintenanceSummary != null
+                && lastSentMaintenanceSummaryOverflow == overflow
+                && lastSentMaintenanceSummary.equals(snapshot)) return;
+        lastSentMaintenanceSummary = snapshot;
+        lastSentMaintenanceSummaryOverflow = overflow;
+        maintenanceSummaryRevision++;
         PacketDistributor.sendToPlayer(player, new MaintenanceSummarySyncPacket(
-                containerId, List.copyOf(summaries.values())));
+                containerId, tianshuSelectionRevision,
+                maintenanceSummaryRevision, overflow, snapshot));
     }
 
-    public void receiveMaintenanceSummary(List<MaintenanceSummarySyncPacket.Entry> entries) {
-        if (!isClientSide()) return;
+    public void receiveMaintenanceSummary(
+            int selectionRevision, long revision, boolean overflow,
+            List<MaintenanceSummarySyncPacket.Entry> entries) {
+        if (!isClientSide() || revision <= receivedMaintenanceSummaryRevision) return;
+        if (selectionRevision < tianshuSelectionRevision) return;
+        receivedMaintenanceSummaryRevision = revision;
+        maintenanceSummarySelectionRevision = selectionRevision;
+        maintenanceSummaryOverflow = overflow;
         maintenanceSummary = entries != null ? List.copyOf(entries) : List.of();
-        applyMaintenanceSyntheticEntries();
     }
 
-    private void applyMaintenanceSyntheticEntries() {
-        if (!isClientSide() || !maintainableView || getClientRepo() == null) return;
-        var existingKeys = new java.util.HashSet<appeng.api.stacks.AEKey>();
-        for (var entry : getClientRepo().getAllEntries()) existingKeys.add(entry.getWhat());
-        var synthetic = new ArrayList<appeng.menu.me.common.GridInventoryEntry>();
-        long serial = Long.MIN_VALUE;
-        for (var entry : maintenanceSummary) {
-            if (!existingKeys.contains(entry.key())) synthetic.add(new appeng.menu.me.common.GridInventoryEntry(
-                    serial++, entry.key(), 0L, 0L, false));
-        }
-        if (!synthetic.isEmpty()) getClientRepo().handleUpdate(false, synthetic);
-    }
+    public boolean isMaintenanceSummaryOverflow() { return maintenanceSummaryOverflow; }
 
     public Map<appeng.api.stacks.AEKey, MaintenanceSummarySyncPacket.Entry> getMaintenanceSummary() {
         var result = new LinkedHashMap<appeng.api.stacks.AEKey, MaintenanceSummarySyncPacket.Entry>();
@@ -663,16 +804,29 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
 
     public void sendGlobalReserve(appeng.api.stacks.AEKey key, long amount,
                                   com.moakiee.ae2lt.logic.tianshu.maintenance.ReservedStockMatchMode mode) {
-        if (isClientSide() && key != null && mode != null) PacketDistributor.sendToServer(
-                new SaveGlobalReservePacket(containerId, key, amount, mode));
+        if (isClientSide() && !tianshuSelectionPending && key != null && mode != null) PacketDistributor.sendToServer(
+                new SaveGlobalReservePacket(
+                        containerId, tianshuSelectionRevision, key, amount, mode));
     }
 
     public void saveGlobalReserve(SaveGlobalReservePacket packet) {
-        if (!isServerSide() || packet == null || packet.amount() < -1) return;
-        var target = tianshuHost.getSelectedTianshu();
+        if (!isServerSide() || packet == null || packet.amount() < -1
+                || packet.selectionRevision() != tianshuSelectionRevision) return;
+        var target = resolveBoundTianshu();
         if (target == null || !target.getFunctionProfile().supportsInventoryMaintenance()) return;
         var maintenance = target.getInventoryMaintenance();
         if (maintenance == null) return;
+        if (packet.amount() != 0
+                && maintenance.reservedStock().size() > TianshuPacketLimits.MAX_LIST_ENTRIES) {
+            getPlayer().displayClientMessage(net.minecraft.network.chat.Component.translatable(
+                    "ae2lt.tianshu.maintenance.too_large",
+                    TianshuPacketLimits.MAX_LIST_ENTRIES), true);
+            return;
+        }
+        if (packet.amount() != 0 && maintenance.reservedStock().reserve(packet.key()) == 0
+                && maintenance.reservedStock().size() >= TianshuPacketLimits.MAX_LIST_ENTRIES) {
+            return;
+        }
         maintenance.setMaintenanceWideReservedStock(
                 packet.key(), packet.mode(), packet.amount());
         lastMaintenanceSummaryTick = Integer.MIN_VALUE;
@@ -680,7 +834,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     }
 
     private void sendMaintenanceEditorData(ServerPlayer player, appeng.api.stacks.AEKey key) {
-        var target = tianshuHost.getSelectedTianshu();
+        var target = resolveBoundTianshu();
         if (target == null) return;
         var maintenance = target.getInventoryMaintenance();
         if (maintenance == null) return;
@@ -689,18 +843,38 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
                 ? tianshuHost.getActionableNode().getGrid() : null;
         var topology = grid != null
                 ? MaintenanceTopologyService.build(grid.getCraftingService(), key) : List.<MaintenanceTopologyService.Entry>of();
-        var topologyData = new ArrayList<MaintenanceEditorData.TopologyEntry>(topology.size());
-        for (var entry : topology) {
-            var global = maintenance.reservedStock();
-            var local = rule != null ? maintenance.reservedStock(rule.id()) : null;
-            topologyData.add(new MaintenanceEditorData.TopologyEntry(
-                    entry.key(), entry.depth(), entry.craftable(),
-                    global.reserve(entry.key()), global.matchMode(entry.key()),
-                    local != null ? local.reserve(entry.key()) : 0L,
-                    local != null ? local.matchMode(entry.key())
-                            : com.moakiee.ae2lt.logic.tianshu.maintenance.ReservedStockMatchMode.EXACT));
+        boolean recoveryPage = topology.size() > TianshuPacketLimits.MAX_LIST_ENTRIES;
+        var global = maintenance.reservedStock();
+        var local = rule != null ? maintenance.reservedStock(rule.id()) : null;
+        var topologyByKey = new LinkedHashMap<appeng.api.stacks.AEKey, MaintenanceTopologyService.Entry>();
+        for (var entry : topology) topologyByKey.putIfAbsent(entry.key(), entry);
+        var topologyData = new LinkedHashMap<appeng.api.stacks.AEKey, MaintenanceEditorData.TopologyEntry>();
+
+        // Persisted per-rule reserves come first. This keeps old entries that are no
+        // longer part of the current crafting topology visible and lets amount=0
+        // remove them even while the legacy repository remains oversized/read-only.
+        if (local != null) {
+            if (local.size() > TianshuPacketLimits.MAX_LIST_ENTRIES) recoveryPage = true;
+            for (var saved : local.reservations(TianshuPacketLimits.MAX_LIST_ENTRIES)) {
+                var topologyEntry = topologyByKey.get(saved.key());
+                topologyData.put(saved.key(), maintenanceEditorEntry(
+                        saved.key(), topologyEntry, global, local));
+            }
         }
-        var variants = maintenance.variants(key).stream()
+        for (var entry : topology) {
+            if (topologyData.containsKey(entry.key())) continue;
+            if (topologyData.size() >= TianshuPacketLimits.MAX_LIST_ENTRIES) {
+                recoveryPage = true;
+                break;
+            }
+            topologyData.put(entry.key(), maintenanceEditorEntry(
+                    entry.key(), entry, global, local));
+        }
+
+        var allVariants = maintenance.variants(key);
+        if (allVariants.size() > TianshuPacketLimits.MAX_LIST_ENTRIES) recoveryPage = true;
+        var variants = allVariants.stream()
+                .limit(TianshuPacketLimits.MAX_LIST_ENTRIES)
                 .map(variant -> new MaintenanceEditorData.VariantEntry(
                         variant.key(), variant.storedAmount(), variant.craftable()))
                 .toList();
@@ -710,12 +884,28 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
                 rule != null ? rule.amountPerJob() : 64L,
                 rule == null || rule.enabled(),
                 rule != null ? maintenance.status(rule.id()) : InventoryMaintenanceStatus.IDLE,
-                topologyData, variants);
-        PacketDistributor.sendToPlayer(player, new MaintenanceEditorSyncPacket(containerId, data));
+                recoveryPage, List.copyOf(topologyData.values()), variants);
+        PacketDistributor.sendToPlayer(player, new MaintenanceEditorSyncPacket(
+                containerId, tianshuSelectionRevision, data));
     }
 
-    public void receiveMaintenanceEditorData(MaintenanceEditorData data) {
-        if (!isClientSide() || data == null) return;
+    private static MaintenanceEditorData.TopologyEntry maintenanceEditorEntry(
+            appeng.api.stacks.AEKey key,
+            @Nullable MaintenanceTopologyService.Entry topology,
+            com.moakiee.ae2lt.logic.tianshu.maintenance.ReservedStockRepository global,
+            @Nullable com.moakiee.ae2lt.logic.tianshu.maintenance.ReservedStockRepository local) {
+        return new MaintenanceEditorData.TopologyEntry(
+                key, topology != null ? topology.depth() : 0,
+                topology != null && topology.craftable(),
+                global.reserve(key), global.matchMode(key),
+                local != null ? local.reserve(key) : 0L,
+                local != null ? local.matchMode(key)
+                        : com.moakiee.ae2lt.logic.tianshu.maintenance.ReservedStockMatchMode.EXACT);
+    }
+
+    public void receiveMaintenanceEditorData(int selectionRevision, MaintenanceEditorData data) {
+        if (!isClientSide() || data == null || selectionRevision < tianshuSelectionRevision) return;
+        maintenanceEditorSelectionRevision = selectionRevision;
         maintenanceEditorData = data;
         maintenanceEditorRevision++;
     }
@@ -724,12 +914,16 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     public int getMaintenanceEditorRevision() { return maintenanceEditorRevision; }
 
     public void sendMaintenanceSave(SaveMaintenanceRulePacket packet) {
-        if (isClientSide() && packet != null) PacketDistributor.sendToServer(packet);
+        if (isClientSide() && !tianshuSelectionPending && packet != null) {
+            PacketDistributor.sendToServer(packet);
+        }
     }
 
     public void saveMaintenanceRule(SaveMaintenanceRulePacket packet) {
-        if (!isServerSide() || packet == null || !(getPlayer() instanceof ServerPlayer player)) return;
-        var target = tianshuHost.getSelectedTianshu();
+        if (!isServerSide() || packet == null
+                || packet.selectionRevision() != tianshuSelectionRevision
+                || !(getPlayer() instanceof ServerPlayer player)) return;
+        var target = resolveBoundTianshu();
         if (target == null || !target.getFunctionProfile().supportsInventoryMaintenance()) return;
         var service = target.getInventoryMaintenance();
         if (service == null) return;
@@ -744,7 +938,22 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
             sendMaintenanceEditorData(player, packet.target());
             return;
         }
+        if (service.repository().size() > TianshuPacketLimits.MAX_LIST_ENTRIES) {
+            player.displayClientMessage(net.minecraft.network.chat.Component.translatable(
+                    "ae2lt.tianshu.maintenance.too_large",
+                    TianshuPacketLimits.MAX_LIST_ENTRIES), true);
+            sendMaintenanceEditorData(player, packet.target());
+            return;
+        }
         if (packet.lower() < 0 || packet.upper() <= packet.lower() || packet.amountPerJob() <= 0) {
+            sendMaintenanceEditorData(player, packet.target());
+            return;
+        }
+        if (existing == null
+                && service.repository().size() >= TianshuPacketLimits.MAX_LIST_ENTRIES) {
+            player.displayClientMessage(net.minecraft.network.chat.Component.translatable(
+                    "ae2lt.tianshu.maintenance.too_large",
+                    TianshuPacketLimits.MAX_LIST_ENTRIES), true);
             sendMaintenanceEditorData(player, packet.target());
             return;
         }
@@ -773,8 +982,9 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         }
         if (tianshuMode.isAe2Mode()) {
             super.encode();
-            if (isServerSide()
-                    && !tianshuHost.getLogic().getEncodedPatternInv().getStackInSlot(0).isEmpty()) {
+            var encoded = tianshuHost.getLogic().getEncodedPatternInv().getStackInSlot(0);
+            if (isServerSide() && TianshuPatternUploadRouting.isValidEncodingResult(
+                    encoded, getPlayer().level())) {
                 triggeredUploadAck++;
                 broadcastChanges();
             }
@@ -788,7 +998,9 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         if (result != null && !result.isEmpty()) {
             if (tianshuMode == TianshuEncodingMode.CLOSED_LOOP) closedLoopEncodeState = 0;
             tianshuHost.getLogic().getEncodedPatternInv().setItemDirect(0, result);
-            triggeredUploadAck++;
+            if (TianshuPatternUploadRouting.isValidEncodingResult(result, getPlayer().level())) {
+                triggeredUploadAck++;
+            }
             broadcastChanges();
         }
     }

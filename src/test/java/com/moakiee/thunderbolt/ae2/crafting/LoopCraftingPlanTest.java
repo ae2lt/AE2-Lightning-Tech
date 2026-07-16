@@ -1,6 +1,7 @@
 package com.moakiee.thunderbolt.ae2.crafting;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import appeng.api.crafting.IPatternDetails;
@@ -46,7 +47,7 @@ class LoopCraftingPlanTest {
         assertTrue(fallback.hostReusableSeeds().isEmpty(),
                 "an AE2 fallback plan has no exact private-stock trace and must not guess");
 
-        var usage = Map.of(
+        Map<ReusableStockUsageKey<AEKey>, Long> usage = Map.of(
                 usage(left, seed), 1L,
                 usage(right, seed), 1L);
         var fast = (LoopCraftingPlan) LoopCraftingPlan.wrapIfNeeded(delegate, usage);
@@ -59,9 +60,75 @@ class LoopCraftingPlanTest {
                         .collect(java.util.stream.Collectors.toSet()));
     }
 
+    @Test
+    void routePrivateFuzzyHostSeedsMayExceedTheFinalSharedExactQuota() {
+        var planned = new TestKey("planned_seed");
+        var actualX = new TestKey("actual_x");
+        var actualY = new TestKey("actual_y");
+        var first = new TestLoopPattern(
+                planned, UUID.randomUUID(), true, Set.of(planned, actualX));
+        var second = new TestLoopPattern(
+                planned, UUID.randomUUID(), true, Set.of(planned, actualY));
+        var patternTimes = new LinkedHashMap<IPatternDetails, Long>();
+        patternTimes.put(first, 1L);
+        patternTimes.put(second, 1L);
+        var delegate = new CraftingPlan(
+                new GenericStack(planned, 1L), 0L, false, false,
+                new KeyCounter(), new KeyCounter(), new KeyCounter(), patternTimes);
+        var firstSource = first.reusableStockSource();
+        var secondSource = second.reusableStockSource();
+        Map<ReusableStockUsageKey<AEKey>, Long> usage = Map.of(
+                new ReusableStockUsageKey<>(
+                        firstSource.storageScope(), firstSource.poolScope(),
+                        firstSource.routingScope(), planned, actualX), 1L,
+                new ReusableStockUsageKey<>(
+                        secondSource.storageScope(), secondSource.poolScope(),
+                        secondSource.routingScope(), planned, actualY), 1L);
+
+        var plan = (LoopCraftingPlan) LoopCraftingPlan.wrapIfNeeded(delegate, usage);
+
+        assertEquals(Map.of(planned, 1L), plan.totalReusableSeeds(),
+                "two safe groups still return only one shared exact seed quota");
+        assertEquals(Map.of(planned, 2L), plan.hostReusableSeeds(),
+                "each non-exact physical variant remains route-private at startup");
+        assertEquals(Set.of(actualX, actualY), plan.hostReusableSeedAllocations().stream()
+                .map(LoopCraftingPlan.HostReusableSeedAllocation::actualKey)
+                .collect(java.util.stream.Collectors.toSet()));
+        assertTrue(plan.hostReusableSeedAllocations().stream()
+                .allMatch(allocation -> plan.acceptsReusableSeedVariant(
+                        allocation, allocation.actualKey())));
+    }
+
+    @Test
+    void splitActualVariantsCannotExceedOneRoutesSeedRequirement() {
+        var planned = new TestKey("planned_seed");
+        var actualX = new TestKey("actual_x");
+        var actualY = new TestKey("actual_y");
+        var pattern = new TestLoopPattern(
+                planned, UUID.randomUUID(), true, Set.of(planned, actualX, actualY));
+        var delegate = new CraftingPlan(
+                new GenericStack(planned, 1L), 0L, false, false,
+                new KeyCounter(), new KeyCounter(), new KeyCounter(), Map.of(pattern, 1L));
+        var source = pattern.reusableStockSource();
+        Map<ReusableStockUsageKey<AEKey>, Long> usage = Map.of(
+                new ReusableStockUsageKey<>(
+                        source.storageScope(), source.poolScope(), source.routingScope(),
+                        planned, actualX), 1L,
+                new ReusableStockUsageKey<>(
+                        source.storageScope(), source.poolScope(), source.routingScope(),
+                        planned, actualY), 1L);
+
+        assertThrows(IllegalStateException.class,
+                () -> LoopCraftingPlan.wrapIfNeeded(delegate, usage));
+    }
+
     private static ReusableStockUsageKey<AEKey> usage(TestLoopPattern pattern, AEKey seed) {
         var source = pattern.reusableStockSource();
-        return new ReusableStockUsageKey<>(source.storageScope(), source.poolScope(), seed);
+        // Mirror CraftPlannerV2's exact trace: dedicated loops share physical storage
+        // but retain their group UUID as routing scope, and exact matching keeps the
+        // planned and actual variants identical.
+        return new ReusableStockUsageKey<>(
+                source.storageScope(), source.poolScope(), source.routingScope(), seed, seed);
     }
 
     private static final class TestLoopPattern
@@ -69,11 +136,18 @@ class LoopCraftingPlanTest {
         private final AEKey seed;
         private final UUID groupId;
         private final boolean shared;
+        private final Set<AEKey> acceptedVariants;
 
         private TestLoopPattern(AEKey seed, UUID groupId, boolean shared) {
+            this(seed, groupId, shared, Set.of(seed));
+        }
+
+        private TestLoopPattern(
+                AEKey seed, UUID groupId, boolean shared, Set<AEKey> acceptedVariants) {
             this.seed = seed;
             this.groupId = groupId;
             this.shared = shared;
+            this.acceptedVariants = Set.copyOf(acceptedVariants);
         }
 
         @Override public AEItemKey getDefinition() { return null; }
@@ -90,6 +164,9 @@ class LoopCraftingPlanTest {
         @Override public boolean hasSingleSeedInputPerMember() { return shared; }
         @Override public Map<AEKey, Long> totalReusableSeedRequirements() {
             return Map.of(seed, 1L);
+        }
+        @Override public boolean acceptsReusableSeedVariant(AEKey planned, AEKey actual) {
+            return seed.equals(planned) && acceptedVariants.contains(actual);
         }
     }
 

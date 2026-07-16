@@ -610,6 +610,105 @@ class LoopSeedLedgerBookEdgeCaseTest {
     }
 
     @Test
+    void sharedFuzzyHostVariantBindsToAConsumerInItsAllocatedGroup() {
+        var planned = key("shared_host_state", "planned");
+        var actual = key("shared_host_state", "actual");
+        var group = UUID.randomUUID();
+        var consumer = UUID.randomUUID();
+        var pattern = loopPattern(
+                consumer, group, counter(planned, 1L), counter(planned, 1L),
+                stack(planned, 1L), stack(actual, 1L));
+        var ledgers = new LoopSeedLedgerBook();
+        ledgers.initialize(List.of(pattern));
+
+        var accepted = ledgers.assignHostVariantsForGroup(
+                group, true, planned, counter(actual, 1L));
+
+        assertEquals(1L, accepted.get(actual));
+        assertEquals(0L, ledgers.balance(
+                ExecuteLoopPattern.SHARED_SEED_ACCOUNT_ID, planned));
+        assertEquals(1L, ledgers.balance(consumer, actual));
+    }
+
+    @Test
+    void sharedFuzzyHostVariantCannotBindToACompatibleConsumerInAnotherGroup() {
+        var planned = key("group_scoped_host_state", "planned");
+        var actual = key("group_scoped_host_state", "actual");
+        var firstGroup = UUID.randomUUID();
+        var secondGroup = UUID.randomUUID();
+        var firstConsumer = UUID.randomUUID();
+        var secondConsumer = UUID.randomUUID();
+        var firstPattern = loopPattern(
+                firstConsumer, firstGroup, counter(planned, 1L), counter(planned, 1L),
+                stack(planned, 1L));
+        var secondPattern = loopPattern(
+                secondConsumer, secondGroup, counter(planned, 1L), counter(planned, 1L),
+                stack(planned, 1L), stack(actual, 1L));
+        var ledgers = new LoopSeedLedgerBook();
+        ledgers.initialize(List.of(firstPattern, secondPattern));
+
+        var accepted = ledgers.assignHostVariantsForGroup(
+                firstGroup, true, planned, counter(actual, 1L));
+
+        assertTrue(accepted.isEmpty());
+        assertEquals(1L, ledgers.balance(
+                ExecuteLoopPattern.SHARED_SEED_ACCOUNT_ID, planned));
+        assertEquals(0L, ledgers.balance(firstConsumer, actual));
+        assertEquals(0L, ledgers.balance(secondConsumer, actual));
+    }
+
+    @Test
+    void onePhysicalSharedFuzzyVariantIsAssignedToOnlyOneConsumer() {
+        var planned = key("single_physical_host_state", "planned");
+        var actual = key("single_physical_host_state", "actual");
+        var group = UUID.randomUUID();
+        var first = UUID.randomUUID();
+        var second = UUID.randomUUID();
+        var firstPattern = loopPattern(
+                first, group, counter(planned, 1L), counter(planned, 1L),
+                stack(planned, 1L), stack(actual, 1L));
+        var secondPattern = loopPattern(
+                second, group, counter(planned, 1L), counter(planned, 1L),
+                stack(planned, 1L), stack(actual, 1L));
+        var ledgers = new LoopSeedLedgerBook();
+        ledgers.initialize(List.of(firstPattern, secondPattern));
+
+        var accepted = ledgers.assignHostVariantsForGroup(
+                group, true, planned, counter(actual, 1L));
+
+        assertEquals(1L, accepted.get(actual));
+        assertEquals(1L, ledgers.balance(first, actual) + ledgers.balance(second, actual));
+        assertEquals(1L, ledgers.balance(
+                ExecuteLoopPattern.SHARED_SEED_ACCOUNT_ID, planned));
+    }
+
+    @Test
+    void exactHostVariantRemainsInTheGlobalSharedAccount() {
+        var planned = key("exact_shared_host_state", "planned");
+        var firstGroup = UUID.randomUUID();
+        var secondGroup = UUID.randomUUID();
+        var firstConsumer = UUID.randomUUID();
+        var secondConsumer = UUID.randomUUID();
+        var firstPattern = loopPattern(
+                firstConsumer, firstGroup, counter(planned, 1L), counter(planned, 1L),
+                stack(planned, 1L));
+        var secondPattern = loopPattern(
+                secondConsumer, secondGroup, counter(planned, 1L), counter(planned, 1L),
+                stack(planned, 1L));
+        var ledgers = new LoopSeedLedgerBook();
+        ledgers.initialize(List.of(firstPattern, secondPattern));
+
+        var accepted = ledgers.assignHostVariantsForGroup(
+                firstGroup, true, planned, counter(planned, 1L));
+
+        assertEquals(1L, accepted.get(planned));
+        assertEquals(1L, ledgers.balance(
+                ExecuteLoopPattern.SHARED_SEED_ACCOUNT_ID, planned));
+        assertEquals(0L, ledgers.balance(firstConsumer, planned));
+        assertEquals(0L, ledgers.balance(secondConsumer, planned));
+    }
+
+    @Test
     void concreteOwnedVariantIsDebitedBeforeAnUnreturnedPlannedCredit() {
         var planned = key("debit_order", "planned");
         var actual = key("debit_order", "actual");

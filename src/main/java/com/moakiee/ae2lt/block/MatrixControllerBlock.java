@@ -118,10 +118,6 @@ public class MatrixControllerBlock extends MatrixMultiblockDirectionalBlock impl
 
     @Override
     public ItemStack getCloneItemStack(LevelReader level, BlockPos pos, BlockState state) {
-        var stack = new ItemStack(asItem());
-        if (level.getBlockEntity(pos) instanceof MatrixControllerBlockEntity controller) {
-            ControllerMachineIdentity.write(stack, controller.getMachineId());
-        }
-        return stack;
+        return new ItemStack(asItem());
     }
 }

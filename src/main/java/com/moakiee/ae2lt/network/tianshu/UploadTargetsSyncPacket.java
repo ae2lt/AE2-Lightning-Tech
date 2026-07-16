@@ -13,7 +13,6 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 public record UploadTargetsSyncPacket(int containerId, List<TianshuUploadTargetData> targets)
         implements CustomPacketPayload {
-    private static final int MAX_TARGETS = 2048;
     public static final Type<UploadTargetsSyncPacket> TYPE =
             new Type<>(NetworkInit.id("upload_targets_sync"));
     public static final StreamCodec<RegistryFriendlyByteBuf, UploadTargetsSyncPacket> STREAM_CODEC =
@@ -21,13 +20,13 @@ public record UploadTargetsSyncPacket(int containerId, List<TianshuUploadTargetD
 
     public UploadTargetsSyncPacket {
         targets = targets == null ? List.of() : List.copyOf(targets);
+        TianshuPacketLimits.requireListSize("upload targets", targets.size());
     }
 
     private void write(RegistryFriendlyByteBuf buf) {
         buf.writeVarInt(containerId);
-        buf.writeVarInt(Math.min(MAX_TARGETS, targets.size()));
-        for (int i = 0; i < Math.min(MAX_TARGETS, targets.size()); i++) {
-            var target = targets.get(i);
+        buf.writeVarInt(targets.size());
+        for (var target : targets) {
             target.group().writeToPacket(buf);
             buf.writeVarInt(target.providerCount());
             buf.writeVarInt(target.availableSlots());
@@ -36,10 +35,8 @@ public record UploadTargetsSyncPacket(int containerId, List<TianshuUploadTargetD
 
     private static UploadTargetsSyncPacket decode(RegistryFriendlyByteBuf buf) {
         int containerId = buf.readVarInt();
-        int size = buf.readVarInt();
-        if (size < 0 || size > MAX_TARGETS) {
-            throw new IllegalArgumentException("Invalid upload target count: " + size);
-        }
+        int size = TianshuPacketLimits.requireDecodedListSize(
+                "upload targets", buf.readVarInt());
         var targets = new ArrayList<TianshuUploadTargetData>(size);
         for (int i = 0; i < size; i++) {
             targets.add(new TianshuUploadTargetData(

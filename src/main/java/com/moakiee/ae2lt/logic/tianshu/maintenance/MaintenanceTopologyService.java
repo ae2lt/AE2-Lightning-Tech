@@ -13,7 +13,8 @@ import java.util.function.Function;
 /** Builds the target-first dependency order used by reserve-stock configuration. */
 public final class MaintenanceTopologyService {
     private static final int MAX_DEPTH = 32;
-    private static final int MAX_KEYS = 2_048;
+    /** One extra key is retained as an overflow sentinel for the packet boundary. */
+    private static final int MAX_KEYS = InventoryMaintenanceLimits.MAX_ENTRIES + 1;
 
     public static List<Entry> build(ICraftingService crafting, AEKey target) {
         if (crafting == null) return List.of();

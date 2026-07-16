@@ -22,9 +22,11 @@ import com.moakiee.ae2lt.logic.craft.MatrixMultiblockMember;
 import com.moakiee.ae2lt.logic.craft.MatrixMultiblockScanAttempt;
 import com.moakiee.ae2lt.logic.craft.MatrixMultiblockScanResult;
 import com.moakiee.ae2lt.logic.craft.MatrixMultiblockScanner;
+import com.moakiee.ae2lt.logic.craft.MatrixMultiblockTemplate;
 import com.moakiee.ae2lt.logic.persistence.ControllerMachineIdentity;
 import com.moakiee.ae2lt.logic.persistence.ControllerMachineStateSavedData;
 import com.moakiee.ae2lt.logic.persistence.ControllerMachineStateSavedData.MachineType;
+import com.moakiee.ae2lt.logic.persistence.CompletePhysicalStorageSet;
 import com.moakiee.ae2lt.network.MatrixControllerActionPacket;
 import com.moakiee.ae2lt.registry.ModBlockEntities;
 import com.moakiee.ae2lt.registry.ModBlocks;
@@ -105,6 +107,7 @@ public class MatrixControllerBlockEntity extends BlockEntity implements Crafting
     private UUID loadedRuntimeId;
     private List<BlockPos> patternStoragePositions = List.of();
     private List<MatrixPatternStorageBlockEntity> cachedPatternStorages = List.of();
+    private List<CraftingUnitCacheEntry> craftingUnitCacheEntries = List.of();
     private List<MatrixCraftingUnit> cachedCraftingUnits = List.of();
     private boolean structureCacheValid;
     private boolean structureAvailable;
@@ -547,6 +550,7 @@ public class MatrixControllerBlockEntity extends BlockEntity implements Crafting
             return List.of();
         }
         ensureStructureCache();
+        if (!validateStructureCache()) return List.of();
         return cachedPatternStorages;
     }
 
@@ -555,6 +559,7 @@ public class MatrixControllerBlockEntity extends BlockEntity implements Crafting
             return List.of();
         }
         ensureStructureCache();
+        if (!validateStructureCache()) return List.of();
         return cachedCraftingUnits;
     }
 
@@ -713,7 +718,10 @@ public class MatrixControllerBlockEntity extends BlockEntity implements Crafting
         craftingUnitCount = result.craftingMembers().size();
         patternStoragePositions = newPatternStoragePositions;
         cachedPatternStorages = resolvePatternStorages(result);
-        cachedCraftingUnits = result.craftingUnits();
+        craftingUnitCacheEntries = createCraftingUnitCacheEntries(result);
+        cachedCraftingUnits = craftingUnitCacheEntries.stream()
+                .map(CraftingUnitCacheEntry::unit)
+                .toList();
         structureCacheValid = true;
 
         if (level.getBlockEntity(result.portPos()) instanceof MatrixPortBlockEntity port) {
@@ -740,6 +748,7 @@ public class MatrixControllerBlockEntity extends BlockEntity implements Crafting
         craftingUnitCount = 0;
         patternStoragePositions = List.of();
         cachedPatternStorages = List.of();
+        craftingUnitCacheEntries = List.of();
         cachedCraftingUnits = List.of();
         structureCacheValid = false;
         setChangedAndUpdate();
@@ -754,6 +763,51 @@ public class MatrixControllerBlockEntity extends BlockEntity implements Crafting
             }
         }
         return List.copyOf(storages);
+    }
+
+    private List<CraftingUnitCacheEntry> createCraftingUnitCacheEntries(
+            MatrixMultiblockScanResult result) {
+        var entries = new ArrayList<CraftingUnitCacheEntry>();
+        for (var member : result.craftingMembers()) {
+            var unit = member.component().toCraftingUnit(distanceToCraftingCenter(member.localPos()));
+            if (unit != null) {
+                entries.add(new CraftingUnitCacheEntry(
+                        member.worldPos().immutable(), member.component(), unit));
+            }
+        }
+        return List.copyOf(entries);
+    }
+
+    private boolean validateStructureCache() {
+        if (level == null || !isFormed() || !structureCacheValid) return false;
+
+        var storages = CompletePhysicalStorageSet.resolve(patternStoragePositions, pos -> {
+            if (!level.isLoaded(pos)) return null;
+            var blockEntity = level.getBlockEntity(pos);
+            return blockEntity instanceof MatrixPatternStorageBlockEntity storage
+                    && !storage.isRemoved() && worldPosition.equals(storage.getControllerPos())
+                    ? storage : null;
+        });
+        var units = CompletePhysicalStorageSet.resolve(craftingUnitCacheEntries, entry -> {
+            if (!level.isLoaded(entry.pos())) return null;
+            return MatrixMultiblockScanner.componentAt(level, entry.pos()) == entry.component()
+                    ? entry.unit() : null;
+        });
+        if (storages.isEmpty() || units.isEmpty()) {
+            suspendForUnloadedChunks();
+            nextChunkCheckTick = level.getGameTime();
+            return false;
+        }
+        cachedPatternStorages = storages.orElseThrow();
+        cachedCraftingUnits = units.orElseThrow();
+        return true;
+    }
+
+    private static int distanceToCraftingCenter(BlockPos localPos) {
+        var center = MatrixMultiblockTemplate.CRAFTING_CENTER_LOCAL;
+        return Math.abs(localPos.getX() - center.getX())
+                + Math.abs(localPos.getY() - center.getY())
+                + Math.abs(localPos.getZ() - center.getZ());
     }
 
     private void refreshStructure() {
@@ -792,6 +846,7 @@ public class MatrixControllerBlockEntity extends BlockEntity implements Crafting
         structureAvailable = false;
         structureCacheValid = false;
         cachedPatternStorages = List.of();
+        craftingUnitCacheEntries = List.of();
         cachedCraftingUnits = List.of();
         if (changed && level != null && portPos != null && level.isLoaded(portPos)
                 && level.getBlockEntity(portPos) instanceof MatrixPortBlockEntity port) {
@@ -1148,6 +1203,7 @@ public class MatrixControllerBlockEntity extends BlockEntity implements Crafting
         nextChunkCheckTick = 0L;
         patternStoragePositions = List.of();
         cachedPatternStorages = List.of();
+        craftingUnitCacheEntries = List.of();
         cachedCraftingUnits = List.of();
         orientation = Direction.from3DDataValue(tag.getInt(TAG_ORIENTATION));
         if (orientation.getAxis() == Direction.Axis.Y) {
@@ -1199,5 +1255,11 @@ public class MatrixControllerBlockEntity extends BlockEntity implements Crafting
                     .release(MachineType.MATRIX, machineId, serverLevel, worldPosition);
         }
         persistentStateOwner = false;
+    }
+
+    private record CraftingUnitCacheEntry(
+            BlockPos pos,
+            MatrixMultiblockComponent component,
+            MatrixCraftingUnit unit) {
     }
 }

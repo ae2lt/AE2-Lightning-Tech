@@ -8,7 +8,8 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import appeng.api.stacks.AEKey;
 
-public record OpenMaintenanceEditorPacket(int containerId, AEKey key) implements CustomPacketPayload {
+public record OpenMaintenanceEditorPacket(
+        int containerId, int selectionRevision, AEKey key) implements CustomPacketPayload {
     public static final Type<OpenMaintenanceEditorPacket> TYPE =
             new Type<>(NetworkInit.id("open_maintenance_editor"));
     public static final StreamCodec<RegistryFriendlyByteBuf, OpenMaintenanceEditorPacket> STREAM_CODEC =
@@ -16,11 +17,13 @@ public record OpenMaintenanceEditorPacket(int containerId, AEKey key) implements
 
     private void write(RegistryFriendlyByteBuf buf) {
         buf.writeVarInt(containerId);
+        buf.writeVarInt(selectionRevision);
         AEKey.STREAM_CODEC.encode(buf, key);
     }
 
     private static OpenMaintenanceEditorPacket decode(RegistryFriendlyByteBuf buf) {
-        return new OpenMaintenanceEditorPacket(buf.readVarInt(), AEKey.STREAM_CODEC.decode(buf));
+        return new OpenMaintenanceEditorPacket(
+                buf.readVarInt(), buf.readVarInt(), AEKey.STREAM_CODEC.decode(buf));
     }
 
     @Override public Type<OpenMaintenanceEditorPacket> type() { return TYPE; }
@@ -29,7 +32,7 @@ public record OpenMaintenanceEditorPacket(int containerId, AEKey key) implements
         context.enqueueWork(() -> {
             if (context.player().containerMenu instanceof TianshuPatternEncodingTermMenu menu
                     && menu.containerId == packet.containerId()) {
-                menu.openMaintenanceEditor(packet.key());
+                menu.openMaintenanceEditor(packet.selectionRevision(), packet.key());
             }
         });
     }

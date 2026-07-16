@@ -7,6 +7,7 @@ navigation:
 item_ids:
   - ae2lt:tianshu_supercomputer_controller
   - ae2lt:tianshu_supercomputer_port
+  - ae2lt:tianshu_pattern_encoding_terminal
 ---
 
 # 端口、任务与快速计算
@@ -18,6 +19,14 @@ item_ids:
 端口离线、ME 网络断电或结构解体时，天枢超算中心不会接受新任务。已经保存的任务状态不会因区块卸载而丢失；结构恢复并重新联网后可以继续执行。
 
 天枢超算不会强制加载其覆盖的区块。任一结构区块未加载时，端口会断开并暂停任务；完整结构重新加载后会自动复扫和续接。跨区块建造时，区块加载器应覆盖整座结构。
+
+## 天枢样板编码终端
+
+<ItemLink id="ae2lt:tianshu_pattern_encoding_terminal" /> 在普通样板编码终端的基础上提供闭环编写、样板上传与库存维持配置。菜单打开时会按机器 UUID 绑定一座已成形的天枢；可以通过天枢选择按钮明确切换同一 ME 网络中的其他机器。终端不会静默切换，所选机器离线时写操作会直接失败。
+
+库存维持总览会单独显示已配置但当前库存为零的物品。按住 Shift 点击条目即可编辑对应的库存维持规则。若迁移后的旧数据超过当前硬上限，总览会明确标记有界恢复页；逐条删除可见项后，后续持久化条目会在新 revision 中继续显示。
+
+<RecipeFor id="ae2lt:tianshu_pattern_encoding_terminal" />
 
 ## 共享容量与多任务
 

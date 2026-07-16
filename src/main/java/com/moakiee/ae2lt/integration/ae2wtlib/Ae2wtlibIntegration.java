@@ -76,6 +76,7 @@ public final class Ae2wtlibIntegration {
     private static TianshuWirelessPatternEncodingTermScreen createTerminalScreen(
             TianshuWirelessPatternEncodingTermMenu menu, Inventory inventory, Component title) {
         return new TianshuWirelessPatternEncodingTermScreen(menu, inventory, title,
-                StyleManager.loadStyleDoc("/screens/terminals/tianshu_pattern_encoding_terminal.json"));
+                StyleManager.loadStyleDoc(
+                        "/screens/terminals/tianshu_wireless_pattern_encoding_terminal.json"));
     }
 }

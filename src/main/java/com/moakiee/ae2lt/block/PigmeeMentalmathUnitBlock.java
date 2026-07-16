@@ -4,9 +4,10 @@ import java.util.List;
 
 import appeng.api.orientation.IOrientationStrategy;
 import appeng.api.orientation.OrientationStrategies;
-import appeng.block.AEBaseEntityBlock;
+import appeng.block.crafting.AbstractCraftingUnitBlock;
 
 import com.moakiee.ae2lt.blockentity.PigmeeMentalmathUnitBlockEntity;
+import com.moakiee.ae2lt.logic.craft.PigmeeCraftingUnitType;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.Direction;
@@ -17,11 +18,11 @@ import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.DirectionProperty;
 
-public class PigmeeMentalmathUnitBlock extends AEBaseEntityBlock<PigmeeMentalmathUnitBlockEntity> {
+public class PigmeeMentalmathUnitBlock extends AbstractCraftingUnitBlock<PigmeeMentalmathUnitBlockEntity> {
     public static final DirectionProperty FACING = BlockStateProperties.HORIZONTAL_FACING;
 
     public PigmeeMentalmathUnitBlock() {
-        super(metalProps().forceSolidOn());
+        super(metalProps().forceSolidOn(), PigmeeCraftingUnitType.INSTANCE);
         registerDefaultState(defaultBlockState().setValue(FACING, Direction.NORTH));
     }
 

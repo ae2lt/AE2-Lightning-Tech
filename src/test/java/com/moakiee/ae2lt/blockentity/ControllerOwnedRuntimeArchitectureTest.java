@@ -45,4 +45,12 @@ class ControllerOwnedRuntimeArchitectureTest {
         assertFalse(Arrays.stream(MatrixPortBlockEntity.class.getDeclaredFields())
                 .anyMatch(field -> field.getType() == MatrixCraftingCluster.class));
     }
+
+    @Test
+    void fastPlanningIsNotAControllerOwnedToggle() {
+        assertFalse(Arrays.stream(TianshuSupercomputerControllerBlockEntity.class.getDeclaredFields())
+                .anyMatch(field -> field.getName().toLowerCase().contains("fastplanning")));
+        assertFalse(Arrays.stream(TianshuSupercomputerControllerBlockEntity.class.getDeclaredMethods())
+                .anyMatch(method -> method.getName().toLowerCase().contains("fastplanning")));
+    }
 }

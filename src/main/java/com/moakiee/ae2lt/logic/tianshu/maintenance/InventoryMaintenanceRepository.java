@@ -20,8 +20,20 @@ public final class InventoryMaintenanceRepository {
     public int capacity() { return Math.max(0, capacity.getAsInt()); }
     public int size() { return rules.size(); }
     public List<InventoryMaintenanceRule> rules() { return List.copyOf(rules.values()); }
+    /**
+     * Returns a stable, bounded prefix for diagnostics and recovery UIs.
+     *
+     * <p>This deliberately remains available when legacy persisted state exceeds the
+     * current capacity, so players can delete visible entries until the repository is
+     * writable again without ever serializing an unbounded network payload.</p>
+     */
+    public List<InventoryMaintenanceRule> rules(int limit) {
+        if (limit <= 0) return List.of();
+        return rules.values().stream().limit(limit).toList();
+    }
     /** Rules currently backed by installed maintenance-core capacity. Overflow stays persisted. */
     public List<InventoryMaintenanceRule> activeRules() {
+        if (rules.size() > capacity()) return List.of();
         return rules.values().stream().limit(capacity()).toList();
     }
     public InventoryMaintenanceRule get(AEKey key) { return rules.get(key); }
@@ -33,6 +45,9 @@ public final class InventoryMaintenanceRepository {
 
     public PutResult put(InventoryMaintenanceRule rule) {
         if (rule == null) return PutResult.INVALID;
+        // Oversized legacy state remains persisted and removable, but cannot be mutated
+        // until enough entries have been deleted to return within the supported bound.
+        if (rules.size() > capacity()) return PutResult.FULL;
         if (!rules.containsKey(rule.key()) && rules.size() >= capacity()) {
             return capacity() <= 0 ? PutResult.UNAVAILABLE : PutResult.FULL;
         }

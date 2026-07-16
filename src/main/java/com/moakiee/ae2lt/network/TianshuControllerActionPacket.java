@@ -52,12 +52,10 @@ public record TianshuControllerActionPacket(int token, BlockPos pos, Action acti
         }
         switch (action) {
             case AUTO_BUILD -> controller.autoBuild(player);
-            case TOGGLE_FAST_PLANNING -> controller.toggleFastPlanning();
         }
     }
 
     public enum Action {
-        AUTO_BUILD,
-        TOGGLE_FAST_PLANNING
+        AUTO_BUILD
     }
 }

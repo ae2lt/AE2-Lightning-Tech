@@ -1,8 +1,7 @@
 {
   "$schema": "../schema.json",
   "includes": [
-    "pattern_encoding_terminal.json",
-    "../wtlib/universal_terminal.json"
+    "pattern_encoding_terminal.json"
   ],
   "widgets": {
     "modeTabButton3": { "left": 173, "bottom": 132, "width": 22, "height": 22 },
@@ -20,6 +19,7 @@
     "closedLoopParallelDown": { "left": 73, "bottom": 105, "width": 18, "height": 16 },
     "closedLoopParallelUp": { "left": 92, "bottom": 105, "width": 18, "height": 16 },
     "tianshuUpload": { "left": 196, "bottom": 111, "width": 50, "height": 18 },
+    "tianshuTarget": { "left": 196, "bottom": 90, "width": 50, "height": 18 },
     "globalReserve": { "left": 196, "bottom": 52, "width": 50, "height": 18 }
   }
 }
