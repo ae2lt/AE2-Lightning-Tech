@@ -18,6 +18,7 @@ import com.moakiee.ae2lt.registry.ModBlockEntities;
 import com.moakiee.ae2lt.registry.ModBlocks;
 import com.moakiee.thunderbolt.ae2.timewheel.TimeWheelCraftingCpuPool;
 import com.moakiee.thunderbolt.ae2.timewheel.TimeWheelCraftingCpuPoolHost;
+import com.moakiee.thunderbolt.ae2.timewheel.TimeWheelCraftingCpuPoolProvider;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -53,7 +54,8 @@ public class PigmeeMentalmathUnitBlockEntity extends AENetworkedBlockEntity
                 .setTagName("pigmee_mentalmath_unit")
                 .setVisualRepresentation(ModBlocks.PIGMEE_MENTALMATH_UNIT.get())
                 .setIdlePowerUsage(1.0D)
-                .setFlags(GridFlags.REQUIRE_CHANNEL);
+                .setFlags(GridFlags.REQUIRE_CHANNEL)
+                .addService(TimeWheelCraftingCpuPoolProvider.class, this);
     }
 
     @Override

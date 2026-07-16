@@ -4,32 +4,28 @@ import com.moakiee.ae2lt.block.TianshuSupercomputerPortBlock;
 import com.moakiee.ae2lt.registry.ModBlockEntities;
 import com.moakiee.ae2lt.registry.ModBlocks;
 import com.moakiee.thunderbolt.ae2.timewheel.TimeWheelCraftingCpuPool;
-import com.moakiee.thunderbolt.ae2.timewheel.TimeWheelCraftingCpuPoolHost;
+import com.moakiee.thunderbolt.ae2.timewheel.TimeWheelCraftingCpuPoolProvider;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Objects;
 import java.util.Set;
+import org.jetbrains.annotations.Nullable;
 import appeng.api.networking.GridFlags;
 import appeng.api.networking.IManagedGridNode;
 import appeng.api.networking.IGrid;
-import appeng.api.networking.security.IActionSource;
 import appeng.api.orientation.BlockOrientation;
 import appeng.api.util.AECableType;
 import appeng.blockentity.grid.AENetworkedBlockEntity;
-import appeng.me.helpers.MachineSource;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 
 public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
-        implements TimeWheelCraftingCpuPoolHost {
+        implements TimeWheelCraftingCpuPoolProvider {
     private static final int BINDING_CHECK_INTERVAL_TICKS = 20;
-    private final IActionSource actionSource = new MachineSource(getMainNode()::getNode);
-    private TimeWheelCraftingCpuPool exposedCpuPool;
     private BlockPos controllerPos;
     private boolean formed;
     private long nextBindingCheckTick;
@@ -55,7 +51,8 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
                 .setTagName("tianshu_supercomputer_port")
                 .setVisualRepresentation(ModBlocks.TIANSHU_SUPERCOMPUTER_PORT.get())
                 .setIdlePowerUsage(8.0D)
-                .setFlags(GridFlags.REQUIRE_CHANNEL);
+                .setFlags(GridFlags.REQUIRE_CHANNEL)
+                .addService(TimeWheelCraftingCpuPoolProvider.class, this);
     }
 
     @Override
@@ -85,10 +82,6 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
         boolean bindingChanged = formedChanged || !Objects.equals(this.controllerPos, newControllerPos);
         this.controllerPos = newControllerPos;
         this.formed = newFormed;
-        if (newFormed) {
-            var controller = resolveBoundController();
-            exposedCpuPool = controller != null ? controller.getTimeWheelCraftingCpuPool() : null;
-        }
         if (formedChanged) {
             onGridConnectableSidesChanged();
         }
@@ -115,46 +108,18 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
     }
 
     @Override
+    @Nullable
     public TimeWheelCraftingCpuPool getTimeWheelCraftingCpuPool() {
-        if (exposedCpuPool == null) {
-            var controller = resolveBoundController();
-            if (controller != null) {
-                exposedCpuPool = controller.getTimeWheelCraftingCpuPool();
-            }
-        }
-        if (exposedCpuPool == null) {
-            throw new IllegalStateException("Tianshu port is not bound to a controller");
-        }
-        return exposedCpuPool;
+        var controller = getController();
+        return controller != null ? controller.getTimeWheelCraftingCpuPool() : null;
     }
 
-    @Override
-    public boolean isCpuActive() {
-        return formed && getController() != null && getMainNode().isActive() && getMainNode().getGrid() != null;
-    }
-
-    @Override
     public IGrid getGrid() {
         return formed ? getMainNode().getGrid() : null;
     }
 
     public boolean isNetworkActive() {
         return formed && getMainNode().isActive() && getMainNode().getGrid() != null;
-    }
-
-    @Override
-    public IActionSource getActionSource() {
-        return actionSource;
-    }
-
-    @Override
-    public void markCpuDirty() {
-        saveChanges();
-    }
-
-    @Override
-    public Component getDisplayName() {
-        return Component.translatable("ae2lt.tianshu.cpu_name");
     }
 
     public TianshuSupercomputerControllerBlockEntity getController() {
