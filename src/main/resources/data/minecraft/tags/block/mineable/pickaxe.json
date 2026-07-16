@@ -15,7 +15,6 @@
     "ae2lt:overloaded_pattern_provider",
     "ae2lt:extended_overloaded_pattern_provider",
     "ae2lt:overloaded_interface",
-    "ae2lt:test_time_wheel_crafting_cpu",
     "ae2lt:pigmee_mentalmath_unit",
     {
       "id": "ae2lt:overloaded_power_supply",
