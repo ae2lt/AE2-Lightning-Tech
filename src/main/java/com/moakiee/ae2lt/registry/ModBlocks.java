@@ -22,8 +22,8 @@ import com.moakiee.ae2lt.block.OverloadedControllerBlock;
 import com.moakiee.ae2lt.block.OverloadedInterfaceBlock;
 import com.moakiee.ae2lt.block.OverloadedPatternProviderBlock;
 import com.moakiee.ae2lt.block.OverloadedPowerSupplyBlock;
+import com.moakiee.ae2lt.block.PigmeeMentalmathUnitBlock;
 import com.moakiee.ae2lt.block.TeslaCoilBlock;
-import com.moakiee.ae2lt.block.TestTimeWheelCraftingCpuBlock;
 import com.moakiee.ae2lt.block.TianshuSeedStorageBlock;
 import com.moakiee.ae2lt.block.TianshuPatternStorageBlock;
 import com.moakiee.ae2lt.block.TianshuSupercomputerControllerBlock;
@@ -216,11 +216,14 @@ public final class ModBlocks {
     public static final DeferredBlock<OverloadDeviceWorkbenchBlock> OVERLOAD_DEVICE_WORKBENCH =
             registerBlock("overload_device_workbench", OverloadDeviceWorkbenchBlock::new);
 
-    public static final DeferredBlock<TestTimeWheelCraftingCpuBlock> TEST_TIME_WHEEL_CRAFTING_CPU =
-            registerBlock("test_time_wheel_crafting_cpu", TestTimeWheelCraftingCpuBlock::new);
+    public static final DeferredBlock<PigmeeMentalmathUnitBlock> PIGMEE_MENTALMATH_UNIT =
+            registerBlock("pigmee_mentalmath_unit", PigmeeMentalmathUnitBlock::new);
 
     public static final DeferredBlock<TianshuSupercomputerStructureBlock> TIANSHU_SUPERCOMPUTER_CASING =
             registerBlock("tianshu_supercomputer_casing", () -> new TianshuSupercomputerStructureBlock(MATRIX_MACHINE_PROPERTIES));
+
+    public static final DeferredBlock<TianshuSupercomputerStructureBlock> PHASE_CHANGE_COOLING_UNIT =
+            registerBlock("phase_change_cooling_unit", () -> new TianshuSupercomputerStructureBlock(MATRIX_MACHINE_PROPERTIES));
 
     public static final DeferredBlock<TianshuSupercomputerGlassBlock> TIANSHU_SUPERCOMPUTER_GLASS =
             registerBlock("tianshu_supercomputer_glass", () -> new TianshuSupercomputerGlassBlock(MATRIX_GLASS_PROPERTIES));

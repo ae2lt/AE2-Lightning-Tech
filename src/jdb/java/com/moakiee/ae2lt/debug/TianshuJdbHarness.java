@@ -285,6 +285,11 @@ public final class TianshuJdbHarness {
             require(port.isFormed(), direction + " port did not form");
             require(controllerPos.equals(port.getControllerPos()), direction + " port binding mismatch");
 
+            require(port.getCableConnectionType(Direction.UP) == appeng.api.util.AECableType.DENSE_SMART,
+                    direction + " formed port did not expose an AE cable connection");
+            require(port.getGridConnectableSides(port.getOrientation()).size() == Direction.values().length,
+                    direction + " formed port did not expose all six grid sides");
+
             BlockPos seedStoragePos = peripheral(controllerPos, direction, 3);
             var seedDrive = requireSeedDrive(level, seedStoragePos);
             seedDrive.getCellInventory().setItemDirect(0, AEItems.ITEM_CELL_1K.stack());
@@ -420,37 +425,41 @@ public final class TianshuJdbHarness {
 
     private static void buildComplete(ServerLevel level, BlockPos controllerPos, Direction direction) {
         int peripheralIndex = 0;
-        for (int x = 0; x < TianshuMultiblockTemplate.SIZE; x++) for (int y = 0; y < TianshuMultiblockTemplate.SIZE; y++)
-            for (int z = 0; z < TianshuMultiblockTemplate.SIZE; z++) {
-                var local = new BlockPos(x, y, z);
-                var world = TianshuMultiblockScanner.worldPos(controllerPos, local, direction);
-                BlockState state = switch (TianshuMultiblockTemplate.roleAt(local)) {
-                    case CASING -> ModBlocks.TIANSHU_SUPERCOMPUTER_CASING.get().defaultBlockState();
-                    case GLASS -> ModBlocks.TIANSHU_SUPERCOMPUTER_GLASS.get().defaultBlockState();
-                    case CONTROLLER -> ModBlocks.TIANSHU_SUPERCOMPUTER_CONTROLLER.get().defaultBlockState()
-                            .setValue(TianshuSupercomputerControllerBlock.FACING, direction);
-                    case PORT_CANDIDATE -> local.equals(TianshuMultiblockTemplate.LOWER_PORT)
-                            ? ModBlocks.TIANSHU_SUPERCOMPUTER_PORT.get().defaultBlockState()
-                            : ModBlocks.TIANSHU_SUPERCOMPUTER_CASING.get().defaultBlockState();
-                    case CORE_RESERVED -> {
-                        if (local.equals(new BlockPos(3, 3, 3))) {
-                            yield ModBlocks.BASELINE_SUPERCOMPUTING_UNIT.get().defaultBlockState();
+        for (int x = 0; x < TianshuMultiblockTemplate.SIZE; x++) {
+            for (int y = 0; y < TianshuMultiblockTemplate.SIZE; y++) {
+                for (int z = 0; z < TianshuMultiblockTemplate.SIZE; z++) {
+                    var local = new BlockPos(x, y, z);
+                    var world = TianshuMultiblockScanner.worldPos(controllerPos, local, direction);
+                    BlockState state = switch (TianshuMultiblockTemplate.roleAt(local)) {
+                        case CASING -> ModBlocks.TIANSHU_SUPERCOMPUTER_CASING.get().defaultBlockState();
+                        case COOLING -> ModBlocks.PHASE_CHANGE_COOLING_UNIT.get().defaultBlockState();
+                        case GLASS -> ModBlocks.TIANSHU_SUPERCOMPUTER_GLASS.get().defaultBlockState();
+                        case CONTROLLER -> ModBlocks.TIANSHU_SUPERCOMPUTER_CONTROLLER.get().defaultBlockState()
+                                .setValue(TianshuSupercomputerControllerBlock.FACING, direction);
+                        case PORT_CANDIDATE -> local.equals(TianshuMultiblockTemplate.LOWER_PORT)
+                                ? ModBlocks.TIANSHU_SUPERCOMPUTER_PORT.get().defaultBlockState()
+                                : ModBlocks.PHASE_CHANGE_COOLING_UNIT.get().defaultBlockState();
+                        case CORE_RESERVED -> {
+                            if (local.equals(new BlockPos(3, 3, 3))) {
+                                yield ModBlocks.BASELINE_SUPERCOMPUTING_UNIT.get().defaultBlockState();
+                            }
+                            int index = peripheralIndex++;
+                            yield switch (index) {
+                                case 0 -> ModBlocks.STORAGE_SUPERCOMPUTING_UNIT.get().defaultBlockState();
+                                case 1 -> ModBlocks.PARALLEL_SUPERCOMPUTING_UNIT.get().defaultBlockState();
+                                case 2 -> ModBlocks.CLOSED_LOOP_PATTERN_STORAGE.get().defaultBlockState();
+                                case 3 -> ModBlocks.CLOSED_LOOP_SEED_STORAGE.get().defaultBlockState();
+                                default -> index % 2 == 0
+                                        ? ModBlocks.STORAGE_SUPERCOMPUTING_UNIT.get().defaultBlockState()
+                                        : ModBlocks.PARALLEL_SUPERCOMPUTING_UNIT.get().defaultBlockState();
+                            };
                         }
-                        int index = peripheralIndex++;
-                        yield switch (index) {
-                            case 0 -> ModBlocks.STORAGE_SUPERCOMPUTING_UNIT.get().defaultBlockState();
-                            case 1 -> ModBlocks.PARALLEL_SUPERCOMPUTING_UNIT.get().defaultBlockState();
-                            case 2 -> ModBlocks.CLOSED_LOOP_PATTERN_STORAGE.get().defaultBlockState();
-                            case 3 -> ModBlocks.CLOSED_LOOP_SEED_STORAGE.get().defaultBlockState();
-                            default -> index % 2 == 0
-                                    ? ModBlocks.STORAGE_SUPERCOMPUTING_UNIT.get().defaultBlockState()
-                                    : ModBlocks.PARALLEL_SUPERCOMPUTING_UNIT.get().defaultBlockState();
-                        };
-                    }
                     case IGNORED -> Blocks.AIR.defaultBlockState();
                 };
                 level.setBlock(world, state, Block.UPDATE_ALL);
             }
+            }
+        }
     }
 
     private static void clearTemplateVolume(ServerLevel level, BlockPos controllerPos, Direction direction) {

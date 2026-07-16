@@ -258,7 +258,7 @@ public class OverloadedInterfaceLogic extends InterfaceLogic {
                         hasItemIoWork, false, false);
             }
             var grid = mainNode.getGrid();
-            if (grid == null) return TickRateModulation.SLEEP;
+            if (grid == null) return TickRateModulation.IDLE;
 
             var cache = grid.getStorageService().getCachedInventory();
             var cfg = getConfig();

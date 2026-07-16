@@ -1,5 +1,9 @@
 package com.moakiee.ae2lt.blockentity;
 
+import com.moakiee.ae2lt.block.TianshuSupercomputerPortBlock;
+import com.moakiee.ae2lt.registry.ModBlockEntities;
+import com.moakiee.ae2lt.registry.ModBlocks;
+import com.moakiee.thunderbolt.ae2.timewheel.TimeWheelCraftingCpuPool;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
@@ -10,17 +14,14 @@ import java.util.function.Predicate;
 import org.jetbrains.annotations.Nullable;
 
 import com.google.common.collect.ImmutableSet;
-import com.moakiee.ae2lt.block.TianshuSupercomputerPortBlock;
 import com.moakiee.ae2lt.logic.tianshu.TianshuFunctionProfile;
 import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternRepository;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.TianshuInventoryMaintenanceService;
-import com.moakiee.ae2lt.registry.ModBlockEntities;
-import com.moakiee.ae2lt.registry.ModBlocks;
-import com.moakiee.thunderbolt.ae2.timewheel.TimeWheelCraftingCpuPool;
 import com.moakiee.thunderbolt.ae2.timewheel.TimeWheelCraftingCpuPoolHost;
 
 import appeng.api.config.Actionable;
 import appeng.api.crafting.IPatternDetails;
+import appeng.api.networking.GridFlags;
 import appeng.api.networking.IGrid;
 import appeng.api.networking.IManagedGridNode;
 import appeng.api.networking.crafting.ICraftingLink;
@@ -40,6 +41,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 
@@ -56,6 +58,7 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
     private static final String TAG_TIANSHU_ID = "TianshuId";
     private static final String TAG_MAINTENANCE = "InventoryMaintenance";
     private final IActionSource actionSource = new MachineSource(getMainNode()::getNode);
+    private static final int BINDING_CHECK_INTERVAL_TICKS = 20;
     private BlockPos controllerPos;
     private UUID boundMachineId;
     private TimeWheelCraftingCpuPool linkedCpuPool;
@@ -65,9 +68,21 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
     private UUID legacyTianshuId;
     private CompoundTag legacyRuntimeState;
     private CompoundTag legacyPatternState;
+    private long nextBindingCheckTick;
 
     public TianshuSupercomputerPortBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.TIANSHU_SUPERCOMPUTER_PORT.get(), pos, state);
+    }
+
+    public static void serverTick(Level level,
+                                  BlockPos pos,
+                                  BlockState state,
+                                  TianshuSupercomputerPortBlockEntity port) {
+        if (level.isClientSide || level.getGameTime() < port.nextBindingCheckTick) {
+            return;
+        }
+        port.nextBindingCheckTick = level.getGameTime() + BINDING_CHECK_INTERVAL_TICKS;
+        port.validateControllerBinding();
     }
 
     @Override
@@ -76,6 +91,7 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
                 .setTagName("tianshu_supercomputer_port")
                 .setVisualRepresentation(ModBlocks.TIANSHU_SUPERCOMPUTER_PORT.get())
                 .setIdlePowerUsage(8.0D)
+                .setFlags(GridFlags.REQUIRE_CHANNEL)
                 .addService(ICraftingProvider.class, this)
                 .addService(ICraftingRequester.class, this);
     }
@@ -94,9 +110,11 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
         if (controllerPos != null) {
             throw new IllegalArgumentException("A Tianshu link requires its controller UUID and CPU pool");
         }
+        boolean formedChanged = formed;
         this.controllerPos = null;
         this.boundMachineId = null;
         this.formed = false;
+        if (formedChanged) onGridConnectableSidesChanged();
         updateLinkState();
     }
 
@@ -106,12 +124,22 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
             bindToController(null);
             return;
         }
+        boolean formedChanged = !formed;
         this.controllerPos = controllerPos.immutable();
         this.boundMachineId = machineId;
         this.linkedCpuPool = cpuPool;
         this.formed = true;
         this.legacyTianshuId = null;
+        if (formedChanged) onGridConnectableSidesChanged();
         updateLinkState();
+    }
+
+    public void suspendFromController(BlockPos expectedControllerPos) {
+        if (formed && expectedControllerPos != null && expectedControllerPos.equals(controllerPos)) {
+            formed = false;
+            onGridConnectableSidesChanged();
+            updateLinkState();
+        }
     }
 
     private void updateLinkState() {
@@ -306,6 +334,10 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
         return Component.translatable("block.ae2lt.tianshu_supercomputer_controller");
     }
 
+    public boolean isNetworkActive() {
+        return formed && getMainNode().isActive() && getMainNode().getGrid() != null;
+    }
+
     @Nullable
     public TianshuSupercomputerControllerBlockEntity getController() {
         if (!formed || controllerPos == null || boundMachineId == null
@@ -313,7 +345,8 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
         if (!(level.getBlockEntity(controllerPos)
                 instanceof TianshuSupercomputerControllerBlockEntity controller)
                 || !controller.isPersistentStateOwner()
-                || !boundMachineId.equals(controller.getMachineId())) {
+                || !boundMachineId.equals(controller.getMachineId())
+                || !controller.isPortActive(worldPosition)) {
             return null;
         }
         return controller;
@@ -388,7 +421,37 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
     }
 
     @Override
+    public void onLoad() {
+        super.onLoad();
+        nextBindingCheckTick = level != null ? level.getGameTime() : 0L;
+    }
+
+    @Override
     protected Item getItemFromBlockEntity() {
         return ModBlocks.TIANSHU_SUPERCOMPUTER_PORT.get().asItem();
+    }
+
+    private void validateControllerBinding() {
+        if (level == null || level.isClientSide || controllerPos == null) {
+            return;
+        }
+        if (!level.isLoaded(controllerPos)) {
+            suspendFromController(controllerPos);
+            return;
+        }
+        if (level.getBlockEntity(controllerPos) instanceof TianshuSupercomputerControllerBlockEntity controller) {
+            if (controller.isPortActive(worldPosition)) {
+                if (!formed) {
+                    controller.scheduleStructureCheck();
+                }
+            } else if (controller.ownsPort(worldPosition)) {
+                suspendFromController(controllerPos);
+                controller.scheduleStructureCheck();
+            } else {
+                bindToController(null);
+            }
+        } else if (!level.getBlockState(controllerPos).is(ModBlocks.TIANSHU_SUPERCOMPUTER_CONTROLLER.get())) {
+            bindToController(null);
+        }
     }
 }

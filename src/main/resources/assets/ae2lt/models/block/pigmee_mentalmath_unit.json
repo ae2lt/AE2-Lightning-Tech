@@ -1,0 +1,12 @@
+{
+  "parent": "minecraft:block/cube",
+  "textures": {
+    "down": "ae2lt:block/pigmee_mentalmath_unit_bottom",
+    "up": "ae2lt:block/pigmee_mentalmath_unit_top",
+    "north": "ae2lt:block/pigmee_mentalmath_unit_front",
+    "south": "ae2lt:block/pigmee_mentalmath_unit_back",
+    "west": "ae2lt:block/pigmee_mentalmath_unit_side",
+    "east": "ae2lt:block/pigmee_mentalmath_unit_side",
+    "particle": "ae2lt:block/pigmee_mentalmath_unit_side"
+  }
+}

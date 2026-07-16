@@ -23,6 +23,7 @@ public class TianshuSupercomputerControllerMenu extends AbstractContainerMenu {
     private final DataSlot parallelCores = DataSlot.standalone();
     private final DataSlot parallelism = DataSlot.standalone();
     private final DataSlot capped = DataSlot.standalone();
+    private final DataSlot fastPlanning = DataSlot.standalone();
     private final DataSlot issue = DataSlot.standalone();
     private final DataSlot[] storage = {DataSlot.standalone(), DataSlot.standalone(),
             DataSlot.standalone(), DataSlot.standalone()};
@@ -38,7 +39,7 @@ public class TianshuSupercomputerControllerMenu extends AbstractContainerMenu {
 
     private TianshuSupercomputerControllerMenu(int id, BlockPos pos, boolean formed, int tier,
                                                 int capacity, int parallel, long storage,
-                                                int parallelism, boolean capped, int issue) {
+                                                int parallelism, boolean capped, boolean fastPlanning, int issue) {
         super(TYPE, id);
         this.blockPos = pos;
         this.host = null;
@@ -48,6 +49,7 @@ public class TianshuSupercomputerControllerMenu extends AbstractContainerMenu {
         parallelCores.set(parallel);
         this.parallelism.set(parallelism);
         this.capped.set(capped ? 1 : 0);
+        this.fastPlanning.set(fastPlanning ? 1 : 0);
         this.issue.set(issue);
         setStorage(storage);
         addSlots();
@@ -55,7 +57,8 @@ public class TianshuSupercomputerControllerMenu extends AbstractContainerMenu {
 
     private static TianshuSupercomputerControllerMenu clientCreate(int id, Inventory inventory, FriendlyByteBuf buf) {
         return new TianshuSupercomputerControllerMenu(id, buf.readBlockPos(), buf.readBoolean(), buf.readVarInt(),
-                buf.readVarInt(), buf.readVarInt(), buf.readLong(), buf.readVarInt(), buf.readBoolean(), buf.readVarInt());
+                buf.readVarInt(), buf.readVarInt(), buf.readLong(), buf.readVarInt(), buf.readBoolean(),
+                buf.readBoolean(), buf.readVarInt());
     }
 
     public static void writeExtraData(FriendlyByteBuf buf, TianshuSupercomputerControllerBlockEntity host) {
@@ -68,6 +71,7 @@ public class TianshuSupercomputerControllerMenu extends AbstractContainerMenu {
         buf.writeLong(profile.storageBytes());
         buf.writeVarInt(profile.parallelism());
         buf.writeBoolean(profile.parallelCapped());
+        buf.writeBoolean(host.isFastPlanningEnabled());
         buf.writeVarInt(host.getPrimaryIssueOrdinal());
     }
 
@@ -85,13 +89,14 @@ public class TianshuSupercomputerControllerMenu extends AbstractContainerMenu {
         parallelCores.set(profile.parallelCoreCount());
         parallelism.set(profile.parallelism());
         capped.set(profile.parallelCapped() ? 1 : 0);
+        fastPlanning.set(host.isFastPlanningEnabled() ? 1 : 0);
         issue.set(host.getPrimaryIssueOrdinal());
         setStorage(profile.storageBytes());
     }
 
     private void addSlots() {
         addDataSlot(formed); addDataSlot(tier); addDataSlot(capacityCores); addDataSlot(parallelCores);
-        addDataSlot(parallelism); addDataSlot(capped); addDataSlot(issue);
+        addDataSlot(parallelism); addDataSlot(capped); addDataSlot(fastPlanning); addDataSlot(issue);
         for (var slot : storage) addDataSlot(slot);
     }
 
@@ -100,6 +105,8 @@ public class TianshuSupercomputerControllerMenu extends AbstractContainerMenu {
     }
 
     public boolean isFormed() { return formed.get() != 0; }
+    public BlockPos getBlockPos() { return blockPos; }
+    public int token() { return containerId; }
     public CpuMainCoreTier getTier() {
         int value = tier.get();
         return value >= 0 && value < CpuMainCoreTier.values().length ? CpuMainCoreTier.values()[value] : null;
@@ -108,6 +115,7 @@ public class TianshuSupercomputerControllerMenu extends AbstractContainerMenu {
     public int getParallelCores() { return parallelCores.get(); }
     public int getParallelism() { return parallelism.get(); }
     public boolean isCapped() { return capped.get() != 0; }
+    public boolean isFastPlanningEnabled() { return fastPlanning.get() != 0; }
     public int getIssue() { return issue.get(); }
     public long getStorageBytes() {
         long value = 0L;

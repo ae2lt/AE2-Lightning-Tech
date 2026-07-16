@@ -29,6 +29,9 @@ public final class TianshuMultiblockTemplate {
                 && (x == 1 || x == 5 || y == 1 || y == 5 || z == 1 || z == 5)) {
             return TianshuMultiblockRole.GLASS;
         }
+        if ((y == 0 || y == 6) && betweenTwoAndFour(x) && betweenTwoAndFour(z)) {
+            return TianshuMultiblockRole.COOLING;
+        }
         int boundaryCount = boundary(x) + boundary(y) + boundary(z);
         if (boundaryCount >= 2) {
             return TianshuMultiblockRole.CASING;

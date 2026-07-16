@@ -1,1 +1,7 @@
-{"parent":"minecraft:block/cube_all","textures":{"all":"ae2lt:block/matter_warping_matrix/matter_warping_matrix_casing"}}
+{
+  "parent": "minecraft:block/cube_all",
+  "textures": {
+    "all": "ae2lt:block/tianshu/tianshu_supercomputer_casing",
+    "particle": "ae2lt:block/tianshu/tianshu_supercomputer_casing"
+  }
+}

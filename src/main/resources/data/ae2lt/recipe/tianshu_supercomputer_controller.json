@@ -1,1 +1,0 @@
-{"type":"minecraft:crafting_shaped","category":"misc","pattern":["RCR","CDC","RCR"],"key":{"R":{"item":"minecraft:redstone_block"},"C":{"item":"ae2lt:tianshu_supercomputer_casing"},"D":{"item":"minecraft:diamond_block"}},"result":{"id":"ae2lt:tianshu_supercomputer_controller","count":1}}

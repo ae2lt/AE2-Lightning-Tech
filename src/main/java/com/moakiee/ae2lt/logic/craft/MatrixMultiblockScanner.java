@@ -6,12 +6,14 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Predicate;
 
 import com.moakiee.ae2lt.block.MatrixMultiblockComponentBlock;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.Level;
 
 public final class MatrixMultiblockScanner {
     private MatrixMultiblockScanner() {
@@ -31,7 +33,48 @@ public final class MatrixMultiblockScanner {
                                                                    BlockPos controllerPos,
                                                                    Direction orientation) {
         Objects.requireNonNull(level);
+        if (level instanceof Level realLevel
+                && !areRequiredChunksLoaded(realLevel, controllerPos, orientation)) {
+            return Optional.empty();
+        }
         return find(controllerPos, orientation, pos -> componentAt(level, pos));
+    }
+
+    public static MatrixMultiblockScanAttempt scan(Level level,
+                                                   BlockPos controllerPos,
+                                                   Direction orientation) {
+        Objects.requireNonNull(level);
+        if (!areRequiredChunksLoaded(level, controllerPos, orientation)) {
+            return new MatrixMultiblockScanAttempt(
+                    orientation,
+                    List.of(MatrixMultiblockScanIssue.CHUNKS_UNLOADED),
+                    null);
+        }
+        return scan(controllerPos, orientation, pos -> componentAt(level, pos));
+    }
+
+    public static boolean areRequiredChunksLoaded(Level level,
+                                                  BlockPos controllerPos,
+                                                  Direction orientation) {
+        Objects.requireNonNull(level);
+        return areRequiredChunksLoaded(controllerPos, orientation, level::isLoaded);
+    }
+
+    static boolean areRequiredChunksLoaded(BlockPos controllerPos,
+                                           Direction orientation,
+                                           Predicate<BlockPos> loaded) {
+        Objects.requireNonNull(controllerPos);
+        Objects.requireNonNull(orientation);
+        Objects.requireNonNull(loaded);
+        // The horizontal footprint is 7x7, so its four corners cover every
+        // intersected chunk regardless of horizontal orientation.
+        return loaded.test(worldPos(controllerPos, new BlockPos(0, 0, 0), orientation))
+                && loaded.test(worldPos(controllerPos, new BlockPos(MatrixMultiblockTemplate.SIZE_X - 1, 0, 0), orientation))
+                && loaded.test(worldPos(controllerPos, new BlockPos(0, 0, MatrixMultiblockTemplate.SIZE_Z - 1), orientation))
+                && loaded.test(worldPos(controllerPos, new BlockPos(
+                        MatrixMultiblockTemplate.SIZE_X - 1,
+                        0,
+                        MatrixMultiblockTemplate.SIZE_Z - 1), orientation));
     }
 
     public static MatrixMultiblockScanAttempt scan(BlockPos controllerPos,

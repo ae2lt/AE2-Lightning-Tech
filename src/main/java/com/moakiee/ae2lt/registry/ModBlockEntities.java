@@ -19,8 +19,8 @@ import com.moakiee.ae2lt.blockentity.OverloadedControllerBlockEntity;
 import com.moakiee.ae2lt.blockentity.OverloadedInterfaceBlockEntity;
 import com.moakiee.ae2lt.blockentity.OverloadedPatternProviderBlockEntity;
 import com.moakiee.ae2lt.blockentity.OverloadedPowerSupplyBlockEntity;
+import com.moakiee.ae2lt.blockentity.PigmeeMentalmathUnitBlockEntity;
 import com.moakiee.ae2lt.blockentity.TeslaCoilBlockEntity;
-import com.moakiee.ae2lt.blockentity.TestTimeWheelCraftingCpuBlockEntity;
 import com.moakiee.ae2lt.blockentity.TianshuSupercomputerControllerBlockEntity;
 import com.moakiee.ae2lt.blockentity.TianshuSupercomputerPortBlockEntity;
 import com.moakiee.ae2lt.blockentity.TianshuPatternStorageBlockEntity;
@@ -168,12 +168,12 @@ public final class ModBlockEntities {
                             ModBlocks.ADVANCED_WIRELESS_OVERLOADED_CONTROLLER.get())
                             .build(null));
 
-    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TestTimeWheelCraftingCpuBlockEntity>>
-            TEST_TIME_WHEEL_CRAFTING_CPU = BLOCK_ENTITY_TYPES.register(
-                    "test_time_wheel_crafting_cpu",
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<PigmeeMentalmathUnitBlockEntity>>
+            PIGMEE_MENTALMATH_UNIT = BLOCK_ENTITY_TYPES.register(
+                    "pigmee_mentalmath_unit",
                     () -> BlockEntityType.Builder.of(
-                            TestTimeWheelCraftingCpuBlockEntity::new,
-                            ModBlocks.TEST_TIME_WHEEL_CRAFTING_CPU.get())
+                            PigmeeMentalmathUnitBlockEntity::new,
+                            ModBlocks.PIGMEE_MENTALMATH_UNIT.get())
                             .build(null));
 
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TianshuSupercomputerControllerBlockEntity>>

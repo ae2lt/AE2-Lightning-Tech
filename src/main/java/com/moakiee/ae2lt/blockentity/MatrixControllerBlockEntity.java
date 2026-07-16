@@ -11,10 +11,10 @@ import com.moakiee.ae2lt.block.MatrixMultiblockComponentBlock;
 import com.moakiee.ae2lt.block.MatrixMultiblockDirectionalBlock;
 import com.moakiee.ae2lt.block.MatrixPatternStorageBlock;
 import com.moakiee.ae2lt.logic.craft.MatrixAutoBuildPlan;
-import com.moakiee.ae2lt.logic.craft.MatrixMultiblockComponent;
-import com.moakiee.ae2lt.logic.craft.MatrixCraftingMath;
 import com.moakiee.ae2lt.logic.craft.MatrixCraftCore;
 import com.moakiee.ae2lt.logic.craft.MatrixCraftingCluster;
+import com.moakiee.ae2lt.logic.craft.MatrixMultiblockComponent;
+import com.moakiee.ae2lt.logic.craft.MatrixCraftingMath;
 import com.moakiee.ae2lt.logic.craft.MatrixCraftingProfile;
 import com.moakiee.ae2lt.logic.craft.MatrixCraftingUnit;
 import com.moakiee.ae2lt.logic.craft.MatrixPatternCore;
@@ -36,7 +36,6 @@ import com.moakiee.thunderbolt.core.craft.MolecularCopyAssembler;
 import appeng.api.crafting.IPatternDetails;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.KeyCounter;
-
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -59,6 +58,7 @@ import net.minecraft.world.level.block.state.BlockState;
 public class MatrixControllerBlockEntity extends BlockEntity implements CraftingCoreHost {
     private static final long NO_SCHEDULED_SCAN = Long.MIN_VALUE;
     private static final int AUTO_BUILD_INTERVAL_TICKS = 1;
+    private static final int CHUNK_RECHECK_INTERVAL_TICKS = 20;
     private static final String TAG_FORMED = "Formed";
     private static final String TAG_ORIENTATION = "Orientation";
     private static final String TAG_PORT_POS = "PortPos";
@@ -68,7 +68,6 @@ public class MatrixControllerBlockEntity extends BlockEntity implements Crafting
     private static final String TAG_PATTERN_STORAGE_COUNT = "PatternStorageCount";
     private static final String TAG_CRAFTING_UNIT_COUNT = "CraftingUnitCount";
     private static final String TAG_MACHINE_ID = "MachineId";
-
     private boolean formed;
     private Direction orientation = Direction.NORTH;
     private BlockPos portPos;
@@ -108,13 +107,17 @@ public class MatrixControllerBlockEntity extends BlockEntity implements Crafting
     private List<MatrixPatternStorageBlockEntity> cachedPatternStorages = List.of();
     private List<MatrixCraftingUnit> cachedCraftingUnits = List.of();
     private boolean structureCacheValid;
+    private boolean structureAvailable;
+    private boolean waitingForChunks;
     private long scheduledScanTick = NO_SCHEDULED_SCAN;
+    private long nextChunkCheckTick;
     private List<MatrixAutoBuildPlan.Placement> autoBuildPlacements = List.of();
     private UUID autoBuildPlayerId;
     private Direction autoBuildFacing = Direction.NORTH;
     private int autoBuildPlacementIndex;
     private int autoBuildPlacedBlocks;
     private long nextAutoBuildTick;
+    private long lastObservedClusterThreads = -1L;
 
     public MatrixControllerBlockEntity(BlockPos pos, BlockState blockState) {
         super(ModBlockEntities.MATRIX_CONTROLLER.get(), pos, blockState);
@@ -132,7 +135,11 @@ public class MatrixControllerBlockEntity extends BlockEntity implements Crafting
             if (be.formed) be.deform();
             return;
         }
-        if (be.formed && !be.structureCacheValid) {
+        if ((be.formed || be.waitingForChunks) && level.getGameTime() >= be.nextChunkCheckTick) {
+            be.nextChunkCheckTick = level.getGameTime() + CHUNK_RECHECK_INTERVAL_TICKS;
+            be.checkChunkAvailability();
+        }
+        if (be.formed && be.structureAvailable && !be.structureCacheValid) {
             be.scheduleStructureCheck();
         }
         if (be.isAutoBuilding()) {
@@ -142,11 +149,16 @@ public class MatrixControllerBlockEntity extends BlockEntity implements Crafting
             be.refreshStructure();
         }
         be.persistRuntimeStateIfChanged();
+        long clusterThreads = be.cluster.threadsInFlight();
+        if (clusterThreads > 0 || clusterThreads != be.lastObservedClusterThreads) {
+            be.setChanged();
+        }
+        be.lastObservedClusterThreads = clusterThreads;
         be.syncRenderState();
     }
 
     public boolean isFormed() {
-        return formed;
+        return formed && structureAvailable;
     }
 
     public Direction getOrientation() {
@@ -155,6 +167,14 @@ public class MatrixControllerBlockEntity extends BlockEntity implements Crafting
 
     public BlockPos getPortPos() {
         return portPos;
+    }
+
+    public boolean ownsPort(BlockPos candidate) {
+        return formed && candidate != null && candidate.equals(portPos);
+    }
+
+    public boolean isPortActive(BlockPos candidate) {
+        return structureAvailable && ownsPort(candidate);
     }
 
     public int getMemberCount() {
@@ -205,6 +225,10 @@ public class MatrixControllerBlockEntity extends BlockEntity implements Crafting
         return cluster.previewSnapshot();
     }
 
+    public boolean isCraftingBusy() {
+        return cluster.isBusy();
+    }
+
     public void performAction(MatrixControllerActionPacket.Action action, ServerPlayer player) {
         if (level == null || level.isClientSide || !persistentStateOwner) {
             return;
@@ -216,10 +240,14 @@ public class MatrixControllerBlockEntity extends BlockEntity implements Crafting
     }
 
     public void scheduleStructureCheck() {
+        scheduleStructureCheck(1L);
+    }
+
+    private void scheduleStructureCheck(long delayTicks) {
         if (level == null || level.isClientSide) {
             return;
         }
-        long targetTick = level.getGameTime() + 1L;
+        long targetTick = level.getGameTime() + Math.max(1L, delayTicks);
         if (scheduledScanTick == NO_SCHEDULED_SCAN || targetTick < scheduledScanTick) {
             scheduledScanTick = targetTick;
         }
@@ -234,6 +262,10 @@ public class MatrixControllerBlockEntity extends BlockEntity implements Crafting
     public void scanAndForm(ServerPlayer player) {
         if (!persistentStateOwner) return;
         var attempt = scanCurrent();
+        if (attempt.chunksUnavailable()) {
+            suspendForUnloadedChunks();
+            return;
+        }
         if (!attempt.formed()) {
             deform();
             player.displayClientMessage(Component.translatable(
@@ -257,6 +289,9 @@ public class MatrixControllerBlockEntity extends BlockEntity implements Crafting
         if (isAutoBuilding()) {
             player.displayClientMessage(Component.translatable(
                     "ae2lt.matrix.build_in_progress").withStyle(ChatFormatting.YELLOW), true);
+            return;
+        }
+        if (!ensureStructureChunksLoaded()) {
             return;
         }
 
@@ -320,6 +355,10 @@ public class MatrixControllerBlockEntity extends BlockEntity implements Crafting
 
         var placement = autoBuildPlacements.get(autoBuildPlacementIndex);
         var pos = MatrixMultiblockScanner.worldPos(worldPosition, placement.localPos(), autoBuildFacing);
+        if (!level.isLoaded(pos)) {
+            nextAutoBuildTick = level.getGameTime() + CHUNK_RECHECK_INTERVAL_TICKS;
+            return;
+        }
         var current = MatrixMultiblockScanner.componentAt(level, pos);
         if (matchesAutoBuildTarget(current, placement.target())) {
             advanceAutoBuild(player, false);
@@ -433,6 +472,10 @@ public class MatrixControllerBlockEntity extends BlockEntity implements Crafting
 
     private void finishAutoBuild(ServerPlayer player, int placedBlocks) {
         var attempt = scanCurrent();
+        if (attempt.chunksUnavailable()) {
+            suspendForUnloadedChunks();
+            return;
+        }
         if (attempt.formed()) {
             form(attempt.result());
             Component message = placedBlocks == 0
@@ -451,6 +494,10 @@ public class MatrixControllerBlockEntity extends BlockEntity implements Crafting
 
     public void upgradePatternStorage(ServerPlayer player) {
         var attempt = scanCurrent();
+        if (attempt.chunksUnavailable()) {
+            suspendForUnloadedChunks();
+            return;
+        }
         if (!attempt.formed()) {
             player.displayClientMessage(Component.translatable(
                     "ae2lt.matrix.scan_failed",
@@ -496,7 +543,7 @@ public class MatrixControllerBlockEntity extends BlockEntity implements Crafting
     }
 
     public List<MatrixPatternStorageBlockEntity> findPatternStorages() {
-        if (level == null || !formed) {
+        if (level == null || !isFormed()) {
             return List.of();
         }
         ensureStructureCache();
@@ -504,7 +551,7 @@ public class MatrixControllerBlockEntity extends BlockEntity implements Crafting
     }
 
     public List<MatrixCraftingUnit> findCraftingUnits() {
-        if (level == null || !formed) {
+        if (level == null || !isFormed()) {
             return List.of();
         }
         ensureStructureCache();
@@ -610,7 +657,7 @@ public class MatrixControllerBlockEntity extends BlockEntity implements Crafting
     }
 
     private List<IPatternDetails> collectAvailablePatterns() {
-        if (!formed || level == null) return List.of();
+        if (!isFormed() || level == null) return List.of();
         var result = new ArrayList<IPatternDetails>();
         for (var storage : findPatternStorages()) {
             result.addAll(storage.getAvailablePatterns());
@@ -619,7 +666,7 @@ public class MatrixControllerBlockEntity extends BlockEntity implements Crafting
     }
 
     private boolean hasAvailablePattern(IPatternDetails details) {
-        if (details == null || !formed || level == null) return false;
+        if (details == null || !isFormed() || level == null) return false;
         for (var storage : findPatternStorages()) {
             if (storage.hasPattern(details)) return true;
         }
@@ -627,12 +674,11 @@ public class MatrixControllerBlockEntity extends BlockEntity implements Crafting
     }
 
     private MatrixMultiblockScanAttempt scanCurrent() {
-        return MatrixMultiblockScanner.scan(worldPosition, getOrientation(),
-                pos -> MatrixMultiblockScanner.componentAt(level, pos));
+        return MatrixMultiblockScanner.scan(level, worldPosition, getOrientation());
     }
 
     private MatrixPortBlockEntity getLinkedPort() {
-        if (level == null || !formed || portPos == null || !level.isLoaded(portPos)) {
+        if (level == null || !isFormed() || portPos == null || !level.isLoaded(portPos)) {
             return null;
         }
         return level.getBlockEntity(portPos) instanceof MatrixPortBlockEntity port
@@ -641,8 +687,23 @@ public class MatrixControllerBlockEntity extends BlockEntity implements Crafting
 
     private void form(MatrixMultiblockScanResult result) {
         persistRuntimeStateIfChanged();
-        clearBindingsInStoredBounds();
+        List<BlockPos> newPatternStoragePositions = result.patternMembers().stream()
+                .map(member -> member.worldPos().immutable())
+                .toList();
+        boolean bindingLayoutChanged = !formed
+                || orientation != result.orientation()
+                || !result.portPos().equals(portPos)
+                || !result.minPos().equals(minPos)
+                || !result.maxPos().equals(maxPos)
+                || !newPatternStoragePositions.equals(patternStoragePositions);
+        if (bindingLayoutChanged) {
+            setBoundsConnectedTextureFormed(false);
+            clearBindingsInStoredBounds();
+        }
         formed = true;
+        structureAvailable = true;
+        waitingForChunks = false;
+        nextChunkCheckTick = level.getGameTime() + CHUNK_RECHECK_INTERVAL_TICKS;
         orientation = result.orientation();
         portPos = result.portPos();
         minPos = result.minPos();
@@ -650,9 +711,7 @@ public class MatrixControllerBlockEntity extends BlockEntity implements Crafting
         memberCount = result.members().size();
         patternStorageCount = result.patternMembers().size();
         craftingUnitCount = result.craftingMembers().size();
-        patternStoragePositions = result.patternMembers().stream()
-                .map(member -> member.worldPos().immutable())
-                .toList();
+        patternStoragePositions = newPatternStoragePositions;
         cachedPatternStorages = resolvePatternStorages(result);
         cachedCraftingUnits = result.craftingUnits();
         structureCacheValid = true;
@@ -670,6 +729,9 @@ public class MatrixControllerBlockEntity extends BlockEntity implements Crafting
         clearBindingsInStoredBounds();
         setBoundsConnectedTextureFormed(false);
         formed = false;
+        structureAvailable = false;
+        waitingForChunks = false;
+        nextChunkCheckTick = 0L;
         portPos = null;
         minPos = null;
         maxPos = null;
@@ -696,7 +758,9 @@ public class MatrixControllerBlockEntity extends BlockEntity implements Crafting
 
     private void refreshStructure() {
         var attempt = scanCurrent();
-        if (attempt.formed()) {
+        if (attempt.chunksUnavailable()) {
+            suspendForUnloadedChunks();
+        } else if (attempt.formed()) {
             form(attempt.result());
         } else if (formed) {
             deform();
@@ -704,10 +768,46 @@ public class MatrixControllerBlockEntity extends BlockEntity implements Crafting
     }
 
     private void ensureStructureCache() {
-        if (!formed || structureCacheValid || level == null || level.isClientSide) {
+        if (!isFormed() || structureCacheValid || level == null || level.isClientSide) {
             return;
         }
         refreshStructure();
+    }
+
+    private void checkChunkAvailability() {
+        if (level == null || (!formed && !waitingForChunks)) {
+            return;
+        }
+        if (!MatrixMultiblockScanner.areRequiredChunksLoaded(level, worldPosition, getOrientation())) {
+            suspendForUnloadedChunks();
+        } else if (!structureAvailable || waitingForChunks) {
+            scheduleStructureCheck();
+        }
+    }
+
+    private void suspendForUnloadedChunks() {
+        boolean changed = !waitingForChunks || structureAvailable || structureCacheValid
+                || !cachedPatternStorages.isEmpty() || !cachedCraftingUnits.isEmpty();
+        waitingForChunks = true;
+        structureAvailable = false;
+        structureCacheValid = false;
+        cachedPatternStorages = List.of();
+        cachedCraftingUnits = List.of();
+        if (changed && level != null && portPos != null && level.isLoaded(portPos)
+                && level.getBlockEntity(portPos) instanceof MatrixPortBlockEntity port) {
+            port.suspendFromController(worldPosition);
+        }
+        if (changed) {
+            setChangedAndUpdate();
+        }
+    }
+
+    private boolean ensureStructureChunksLoaded() {
+        if (MatrixMultiblockScanner.areRequiredChunksLoaded(level, worldPosition, getOrientation())) {
+            return true;
+        }
+        suspendForUnloadedChunks();
+        return false;
     }
 
     private void bindMembers(MatrixMultiblockScanResult result) {
@@ -767,7 +867,7 @@ public class MatrixControllerBlockEntity extends BlockEntity implements Crafting
 
     // Toggle FORMED on connected-texture matrix blocks. Client-only update.
     private void setConnectedTextureFormed(BlockPos pos, boolean formedValue) {
-        if (level == null) {
+        if (level == null || !level.isLoaded(pos)) {
             return;
         }
         BlockState state = level.getBlockState(pos);
@@ -787,11 +887,12 @@ public class MatrixControllerBlockEntity extends BlockEntity implements Crafting
         if (!state.hasProperty(MatrixControllerBlock.FORMED) || !state.hasProperty(MatrixControllerBlock.WORKING)) {
             return;
         }
+        boolean activeFormed = isFormed();
         boolean working = isWorking();
-        if (state.getValue(MatrixControllerBlock.FORMED) != formed
+        if (state.getValue(MatrixControllerBlock.FORMED) != activeFormed
                 || state.getValue(MatrixControllerBlock.WORKING) != working) {
             level.setBlock(worldPosition, state
-                    .setValue(MatrixControllerBlock.FORMED, formed)
+                    .setValue(MatrixControllerBlock.FORMED, activeFormed)
                     .setValue(MatrixControllerBlock.WORKING, working), Block.UPDATE_CLIENTS);
         }
     }
@@ -1042,6 +1143,9 @@ public class MatrixControllerBlockEntity extends BlockEntity implements Crafting
         super.loadAdditional(tag, registries);
         formed = tag.getBoolean(TAG_FORMED);
         structureCacheValid = false;
+        structureAvailable = false;
+        waitingForChunks = false;
+        nextChunkCheckTick = 0L;
         patternStoragePositions = List.of();
         cachedPatternStorages = List.of();
         cachedCraftingUnits = List.of();
@@ -1062,6 +1166,7 @@ public class MatrixControllerBlockEntity extends BlockEntity implements Crafting
     public void onLoad() {
         super.onLoad();
         claimPersistentState();
+        nextChunkCheckTick = level != null ? level.getGameTime() : 0L;
         scheduleStructureCheck();
     }
 

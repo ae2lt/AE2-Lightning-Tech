@@ -5,13 +5,39 @@ import com.moakiee.ae2lt.block.TianshuSupercomputingUnitBlock;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.Level;
 
 public final class TianshuMultiblockScanner {
     public static TianshuMultiblockScanAttempt scan(Level level, BlockPos controllerPos, Direction orientation) {
+        if (!areRequiredChunksLoaded(level, controllerPos, orientation)) {
+            return new TianshuMultiblockScanAttempt(
+                    null,
+                    List.of(TianshuMultiblockScanIssue.CHUNKS_UNLOADED));
+        }
         return scan(controllerPos, orientation, pos -> componentAt(level, pos));
+    }
+
+    public static boolean areRequiredChunksLoaded(Level level,
+                                                  BlockPos controllerPos,
+                                                  Direction orientation) {
+        return areRequiredChunksLoaded(controllerPos, orientation, level::isLoaded);
+    }
+
+    static boolean areRequiredChunksLoaded(BlockPos controllerPos,
+                                           Direction orientation,
+                                           Predicate<BlockPos> loaded) {
+        // The horizontal footprint is 7x7, so its four corners cover every
+        // intersected chunk regardless of horizontal orientation.
+        return loaded.test(worldPos(controllerPos, new BlockPos(0, 0, 0), orientation))
+                && loaded.test(worldPos(controllerPos, new BlockPos(TianshuMultiblockTemplate.SIZE - 1, 0, 0), orientation))
+                && loaded.test(worldPos(controllerPos, new BlockPos(0, 0, TianshuMultiblockTemplate.SIZE - 1), orientation))
+                && loaded.test(worldPos(controllerPos, new BlockPos(
+                        TianshuMultiblockTemplate.SIZE - 1,
+                        0,
+                        TianshuMultiblockTemplate.SIZE - 1), orientation));
     }
 
     public static TianshuMultiblockScanAttempt scan(
@@ -58,6 +84,13 @@ public final class TianshuMultiblockScanner {
                                 members.add(world.immutable());
                             }
                         }
+                        case COOLING -> {
+                            if (component != TianshuMultiblockComponent.COOLING) {
+                                addOnce(issues, TianshuMultiblockScanIssue.MISSING_COOLING);
+                            } else {
+                                members.add(world.immutable());
+                            }
+                        }
                         case GLASS -> {
                             if (component != TianshuMultiblockComponent.GLASS) {
                                 addOnce(issues, TianshuMultiblockScanIssue.MISSING_GLASS);
@@ -69,10 +102,10 @@ public final class TianshuMultiblockScanner {
                             if (component == TianshuMultiblockComponent.PORT) {
                                 ports.add(world.immutable());
                                 members.add(world.immutable());
-                            } else if (component == TianshuMultiblockComponent.CASING) {
+                            } else if (component == TianshuMultiblockComponent.COOLING) {
                                 members.add(world.immutable());
                             } else {
-                                addOnce(issues, TianshuMultiblockScanIssue.MISSING_CASING);
+                                addOnce(issues, TianshuMultiblockScanIssue.MISSING_COOLING);
                             }
                         }
                         case CORE_RESERVED -> {
@@ -138,6 +171,7 @@ public final class TianshuMultiblockScanner {
         var state = level.getBlockState(pos);
         if (state.isAir()) return TianshuMultiblockComponent.AIR;
         if (state.is(ModBlocks.TIANSHU_SUPERCOMPUTER_CASING.get())) return TianshuMultiblockComponent.CASING;
+        if (state.is(ModBlocks.PHASE_CHANGE_COOLING_UNIT.get())) return TianshuMultiblockComponent.COOLING;
         if (state.is(ModBlocks.TIANSHU_SUPERCOMPUTER_GLASS.get())) return TianshuMultiblockComponent.GLASS;
         if (state.is(ModBlocks.TIANSHU_SUPERCOMPUTER_CONTROLLER.get())) return TianshuMultiblockComponent.CONTROLLER;
         if (state.is(ModBlocks.TIANSHU_SUPERCOMPUTER_PORT.get())) return TianshuMultiblockComponent.PORT;

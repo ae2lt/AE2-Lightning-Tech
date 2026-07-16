@@ -7,15 +7,15 @@
     "GHI"
   ],
   "key": {
-    "A": { "item": "ae2:ender_dust" },
+    "A": { "item": "minecraft:snowball" },
     "B": { "item": "ae2:fluix_crystal" },
-    "C": { "item": "ae2:ender_dust" },
+    "C": { "item": "minecraft:snowball" },
     "D": { "item": "ae2:fluix_crystal" },
     "E": { "item": "ae2lt:matter_warping_matrix_blank_sub_core" },
     "F": { "item": "ae2:fluix_crystal" },
-    "G": { "item": "ae2:ender_dust" },
+    "G": { "item": "minecraft:snowball" },
     "H": { "item": "ae2:fluix_crystal" },
-    "I": { "item": "ae2:ender_dust" }
+    "I": { "item": "minecraft:snowball" }
   },
   "result": {
     "count": 1,

@@ -1,1 +1,0 @@
-{"type":"minecraft:crafting_shaped","category":"misc","pattern":["ONO","NQN","ONO"],"key":{"O":{"item":"ae2lt:overload_crystal_block"},"N":{"item":"minecraft:nether_star"},"Q":{"item":"ae2lt:quantum_supercomputing_unit"}},"result":{"id":"ae2lt:overload_supercomputing_unit","count":1}}

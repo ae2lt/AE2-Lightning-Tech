@@ -19,6 +19,7 @@ import com.moakiee.ae2lt.menu.LightningAssemblyChamberMenu;
 import com.moakiee.ae2lt.menu.LightningCollectorMenu;
 import com.moakiee.ae2lt.menu.LightningSimulationChamberMenu;
 import com.moakiee.ae2lt.menu.MatrixControllerMenu;
+import com.moakiee.ae2lt.menu.MatrixPortMenu;
 import com.moakiee.ae2lt.menu.OverloadDeviceWorkbenchMenu;
 import com.moakiee.ae2lt.menu.OverloadPatternEncoderMenu;
 import com.moakiee.ae2lt.menu.OverloadProcessingFactoryMenu;
@@ -57,6 +58,7 @@ public class ModScreens {
         event.register(CrystalCatalyzerMenu.TYPE, ModScreens::createCrystalCatalyzerScreen);
         event.register(DeviceHubMenu.TYPE, DeviceHubScreen::new);
         event.register(MatrixControllerMenu.TYPE, MatrixControllerScreen::new);
+        event.register(MatrixPortMenu.TYPE, MatrixPortScreen::new);
         event.register(TianshuSupercomputerControllerMenu.TYPE, TianshuSupercomputerControllerScreen::new);
         event.register(TianshuPatternEncodingTermMenu.TYPE, ModScreens::createTianshuPatternEncodingTermScreen);
         event.register(TianshuSeedStorageMenu.TYPE, ModScreens::createTianshuSeedStorageScreen);

@@ -1,0 +1,61 @@
+{
+  "type": "ae2lt:lightning_assembly",
+  "priority": 0,
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "ae2lt:matter_warping_matrix_quantum_main_core"
+      },
+      "count": 8
+    },
+    {
+      "ingredient": {
+        "item": "ae2lt:lightning_collapse_matrix"
+      },
+      "count": 32
+    },
+    {
+      "ingredient": {
+        "item": "ae2lt:overload_alloy_plate"
+      },
+      "count": 4096
+    },
+    {
+      "ingredient": {
+        "item": "ae2:cell_component_256k"
+      },
+      "count": 8192
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:heavy_core"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "ae2lt:floating_matter"
+      },
+      "count": 64
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:ominous_trial_key"
+      },
+      "count": 16
+    },
+    {
+      "ingredient": {
+        "item": "ae2lt:pigmee_fumo"
+      },
+      "count": 1
+    }
+  ],
+  "result": {
+    "id": "ae2lt:matter_warping_matrix_overload_main_core",
+    "count": 1
+  },
+  "totalEnergy": 256000000,
+  "lightningCost": 16384,
+  "lightningTier": "extreme_high_voltage"
+}

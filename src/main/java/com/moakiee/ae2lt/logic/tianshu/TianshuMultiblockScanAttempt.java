@@ -8,4 +8,8 @@ public record TianshuMultiblockScanAttempt(
     public boolean formed() {
         return result != null && issues.isEmpty();
     }
+
+    public boolean chunksUnavailable() {
+        return issues.contains(TianshuMultiblockScanIssue.CHUNKS_UNLOADED);
+    }
 }

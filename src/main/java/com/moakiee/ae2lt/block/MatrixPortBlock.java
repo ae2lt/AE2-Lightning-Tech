@@ -3,13 +3,19 @@ package com.moakiee.ae2lt.block;
 import com.moakiee.ae2lt.blockentity.MatrixPortBlockEntity;
 import com.moakiee.ae2lt.logic.craft.MatrixMultiblockComponent;
 import com.moakiee.ae2lt.logic.craft.MatrixMultiblockUpdateScheduler;
+import com.moakiee.ae2lt.menu.MatrixPortMenu;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.SimpleMenuProvider;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
+import net.minecraft.world.phys.BlockHitResult;
 
 import appeng.block.AEBaseEntityBlock;
 
@@ -54,5 +60,25 @@ public class MatrixPortBlock extends AEBaseEntityBlock<MatrixPortBlockEntity>
                                 boolean movedByPiston) {
         super.neighborChanged(state, level, pos, block, fromPos, movedByPiston);
         MatrixMultiblockUpdateScheduler.scheduleNear(level, fromPos);
+    }
+
+    @Override
+    protected InteractionResult useWithoutItem(BlockState state,
+                                               Level level,
+                                               BlockPos pos,
+                                               Player player,
+                                               BlockHitResult hitResult) {
+        if (!(level.getBlockEntity(pos) instanceof MatrixPortBlockEntity port)) {
+            return InteractionResult.PASS;
+        }
+
+        if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) {
+            serverPlayer.openMenu(new SimpleMenuProvider(
+                    (id, inventory, ignored) -> new MatrixPortMenu(id, inventory, port),
+                    state.getBlock().getName()),
+                    buffer -> MatrixPortMenu.writeExtraData(buffer, port));
+        }
+
+        return InteractionResult.sidedSuccess(level.isClientSide);
     }
 }

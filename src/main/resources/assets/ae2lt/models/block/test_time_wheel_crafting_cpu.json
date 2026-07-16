@@ -1,7 +1,0 @@
-{
-  "parent": "block/cube_all",
-  "textures": {
-    "all": "ae2lt:block/overload_machine_frame",
-    "particle": "ae2lt:block/overload_machine_frame"
-  }
-}

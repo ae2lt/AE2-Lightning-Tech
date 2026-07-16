@@ -47,13 +47,16 @@ The Port:
 * Publishes the matrix as a crafting provider to the ME network
 * Aggregates and exposes all Pattern Storages
 * Receives ingredients from crafting jobs and inserts completed results directly into the network
-* Accepts ME cable connections on all six sides, uses 8 AE/t while idle, and does not consume a channel
+* Accepts ME cable connections on all six sides only after formation; cables cannot connect while the structure is unformed. It uses 8 AE/t while idle, and the formed multiblock consumes 1 channel
 
 The matrix accepts no new crafting work while the Port is disconnected from a powered network or belongs to an unformed structure.
+
+The matrix does not force-load any chunk in its footprint. If any structure chunk is unloaded, the Port disconnects and work pauses without clearing patterns, jobs, or the last confirmed structure data. It rescans and reconnects automatically after the complete structure is loaded again. A cross-chunk build therefore needs a chunk loader covering the whole matrix.
 
 ## Troubleshooting
 
 * **Structure does not form:** Check the central main core, all 80 sub cores, at least one Pattern Storage, the unique Port, and every fixed shell position
 * **Auto-build does nothing:** Remove invalid blocks from target positions and verify that all materials are in the player inventory
 * **Port is absent from the network:** Check the cable connection, network power, and formation state
+* **Port stays offline after a cross-chunk load:** Ensure the chunk loader covers the entire matrix and allow time for the automatic rescan
 * **A stored pattern is not selected for a job:** Confirm that the pattern is stored in this matrix and that the Port is online, then check for other providers advertising the same pattern

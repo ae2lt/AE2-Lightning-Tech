@@ -1,1 +1,0 @@
-{"type":"minecraft:crafting_shaped","category":"misc","pattern":["EDE","DBD","EDE"],"key":{"E":{"item":"minecraft:ender_eye"},"D":{"item":"minecraft:diamond_block"},"B":{"item":"ae2lt:baseline_supercomputing_unit"}},"result":{"id":"ae2lt:quantum_supercomputing_unit","count":1}}

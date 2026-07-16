@@ -30,8 +30,8 @@ import com.moakiee.ae2lt.blockentity.LightningSimulationChamberBlockEntity;
 import com.moakiee.ae2lt.blockentity.OverloadProcessingFactoryBlockEntity;
 import com.moakiee.ae2lt.blockentity.OverloadedPatternProviderBlockEntity;
 import com.moakiee.ae2lt.blockentity.OverloadedPowerSupplyBlockEntity;
+import com.moakiee.ae2lt.blockentity.PigmeeMentalmathUnitBlockEntity;
 import com.moakiee.ae2lt.blockentity.TeslaCoilBlockEntity;
-import com.moakiee.ae2lt.blockentity.TestTimeWheelCraftingCpuBlockEntity;
 import com.moakiee.ae2lt.block.TeslaCoilBlock;
 import com.moakiee.ae2lt.blockentity.AdvancedWirelessOverloadedControllerBlockEntity;
 import com.moakiee.ae2lt.blockentity.WirelessOverloadedControllerBlockEntity;
@@ -130,8 +130,9 @@ public class AE2LightningTech {
                         output.accept(ModBlocks.OVERLOADED_PATTERN_PROVIDER);
                         output.accept(ModBlocks.EXTENDED_OVERLOADED_PATTERN_PROVIDER);
                         output.accept(ModBlocks.OVERLOADED_INTERFACE);
-                        output.accept(ModBlocks.TEST_TIME_WHEEL_CRAFTING_CPU);
+                        output.accept(ModBlocks.PIGMEE_MENTALMATH_UNIT);
                         output.accept(ModBlocks.TIANSHU_SUPERCOMPUTER_CASING);
+                        output.accept(ModBlocks.PHASE_CHANGE_COOLING_UNIT);
                         output.accept(ModBlocks.TIANSHU_SUPERCOMPUTER_GLASS);
                         output.accept(ModBlocks.TIANSHU_SUPERCOMPUTER_CONTROLLER);
                         output.accept(ModBlocks.TIANSHU_SUPERCOMPUTER_PORT);
@@ -521,12 +522,17 @@ public class AE2LightningTech {
 
         event.registerBlockEntity(
                 AECapabilities.IN_WORLD_GRID_NODE_HOST,
-                ModBlockEntities.TEST_TIME_WHEEL_CRAFTING_CPU.get(),
+                ModBlockEntities.PIGMEE_MENTALMATH_UNIT.get(),
                 (blockEntity, context) -> (IInWorldGridNodeHost) blockEntity);
 
         event.registerBlockEntity(
                 AECapabilities.IN_WORLD_GRID_NODE_HOST,
                 ModBlockEntities.MATRIX_PORT.get(),
+                (blockEntity, context) -> (IInWorldGridNodeHost) blockEntity);
+
+        event.registerBlockEntity(
+                AECapabilities.IN_WORLD_GRID_NODE_HOST,
+                ModBlockEntities.TIANSHU_SUPERCOMPUTER_PORT.get(),
                 (blockEntity, context) -> (IInWorldGridNodeHost) blockEntity);
 
         event.registerBlockEntity(
@@ -739,11 +745,11 @@ public class AE2LightningTech {
                     ExtendedOverloadedPatternProviderBlockEntity::serverTick
             );
 
-            var testTimeWheelCraftingCpuBlock = ModBlocks.TEST_TIME_WHEEL_CRAFTING_CPU.get();
-            var testTimeWheelCraftingCpuBeType = ModBlockEntities.TEST_TIME_WHEEL_CRAFTING_CPU.get();
-            testTimeWheelCraftingCpuBlock.setBlockEntity(
-                    TestTimeWheelCraftingCpuBlockEntity.class,
-                    testTimeWheelCraftingCpuBeType,
+            var pigmeeMentalmathUnitBlock = ModBlocks.PIGMEE_MENTALMATH_UNIT.get();
+            var pigmeeMentalmathUnitBeType = ModBlockEntities.PIGMEE_MENTALMATH_UNIT.get();
+            pigmeeMentalmathUnitBlock.setBlockEntity(
+                    PigmeeMentalmathUnitBlockEntity.class,
+                    pigmeeMentalmathUnitBeType,
                     null,
                     null);
 
@@ -753,7 +759,7 @@ public class AE2LightningTech {
                     MatrixPortBlockEntity.class,
                     matrixPortBeType,
                     null,
-                    null);
+                    MatrixPortBlockEntity::serverTick);
 
             var tianshuPortBlock = ModBlocks.TIANSHU_SUPERCOMPUTER_PORT.get();
             var tianshuPortBeType = ModBlockEntities.TIANSHU_SUPERCOMPUTER_PORT.get();
@@ -761,7 +767,7 @@ public class AE2LightningTech {
                     TianshuSupercomputerPortBlockEntity.class,
                     tianshuPortBeType,
                     null,
-                    null);
+                    TianshuSupercomputerPortBlockEntity::serverTick);
 
             appeng.blockentity.AEBaseBlockEntity.registerBlockEntityItem(
                     ModBlockEntities.TIANSHU_SEED_STORAGE.get(),
@@ -798,8 +804,8 @@ public class AE2LightningTech {
                     ModBlockEntities.EXTENDED_OVERLOADED_PATTERN_PROVIDER.get(),
                     ModBlocks.EXTENDED_OVERLOADED_PATTERN_PROVIDER.get().asItem());
             appeng.blockentity.AEBaseBlockEntity.registerBlockEntityItem(
-                    testTimeWheelCraftingCpuBeType,
-                    testTimeWheelCraftingCpuBlock.asItem());
+                    pigmeeMentalmathUnitBeType,
+                    pigmeeMentalmathUnitBlock.asItem());
             appeng.blockentity.AEBaseBlockEntity.registerBlockEntityItem(
                     matrixPortBeType,
                     matrixPortBlock.asItem());

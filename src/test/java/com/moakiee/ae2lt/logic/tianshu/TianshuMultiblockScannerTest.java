@@ -130,10 +130,11 @@ class TianshuMultiblockScannerTest {
             var local = new BlockPos(x, y, z);
             var component = switch (TianshuMultiblockTemplate.roleAt(local)) {
                 case CASING -> TianshuMultiblockComponent.CASING;
+                case COOLING -> TianshuMultiblockComponent.COOLING;
                 case GLASS -> TianshuMultiblockComponent.GLASS;
                 case CONTROLLER -> TianshuMultiblockComponent.CONTROLLER;
                 case PORT_CANDIDATE -> local.equals(TianshuMultiblockTemplate.LOWER_PORT)
-                        ? TianshuMultiblockComponent.PORT : TianshuMultiblockComponent.CASING;
+                        ? TianshuMultiblockComponent.PORT : TianshuMultiblockComponent.COOLING;
                 case CORE_RESERVED -> local.equals(new BlockPos(3, 3, 3))
                         ? TianshuMultiblockComponent.MAIN_BASELINE
                         : local.equals(new BlockPos(2, 2, 2))
