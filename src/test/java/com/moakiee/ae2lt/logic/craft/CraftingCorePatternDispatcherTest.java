@@ -28,7 +28,7 @@ class CraftingCorePatternDispatcherTest {
         var core = new FakeBatchCore();
         var dispatcher = new CraftingCorePatternDispatcher(() -> true, pattern -> pattern == loaded, core::pushBatch);
 
-        int leftover = dispatcher.pushBatch(other, emptyInputs(), 7);
+        long leftover = dispatcher.pushBatch(other, emptyInputs(), 7L);
 
         assertEquals(7, leftover);
         assertEquals(0, core.calls);
@@ -40,7 +40,7 @@ class CraftingCorePatternDispatcherTest {
         var core = new FakeBatchCore();
         var dispatcher = new CraftingCorePatternDispatcher(() -> true, p -> p == pattern, core::pushBatch);
 
-        int leftover = dispatcher.pushBatch(pattern, emptyInputs(), 7);
+        long leftover = dispatcher.pushBatch(pattern, emptyInputs(), 7L);
 
         assertEquals(7, leftover);
         assertEquals(0, core.calls);
@@ -53,7 +53,7 @@ class CraftingCorePatternDispatcherTest {
         core.leftover = 2;
         var dispatcher = new CraftingCorePatternDispatcher(() -> true, p -> p == pattern, core::pushBatch);
 
-        int leftover = dispatcher.pushBatch(pattern, emptyInputs(), 7);
+        long leftover = dispatcher.pushBatch(pattern, emptyInputs(), 7L);
 
         assertEquals(2, leftover);
         assertEquals(1, core.calls);
@@ -68,7 +68,7 @@ class CraftingCorePatternDispatcherTest {
         Predicate<IPatternDetails> loaded = p -> p == pattern;
         var dispatcher = new CraftingCorePatternDispatcher(inactive, loaded, core::pushBatch);
 
-        int leftover = dispatcher.pushBatch(pattern, emptyInputs(), 7);
+        long leftover = dispatcher.pushBatch(pattern, emptyInputs(), 7L);
 
         assertEquals(7, leftover);
         assertEquals(0, core.calls);
@@ -80,10 +80,10 @@ class CraftingCorePatternDispatcherTest {
 
     private static final class FakeBatchCore {
         int calls;
-        int maxCraft;
-        int leftover;
+        long maxCraft;
+        long leftover;
 
-        int pushBatch(IPatternDetails details, KeyCounter[] scaledInputs, int maxCraft) {
+        long pushBatch(IPatternDetails details, KeyCounter[] scaledInputs, long maxCraft) {
             calls++;
             this.maxCraft = maxCraft;
             return leftover;

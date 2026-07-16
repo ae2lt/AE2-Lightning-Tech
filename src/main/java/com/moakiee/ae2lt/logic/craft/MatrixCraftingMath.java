@@ -82,9 +82,9 @@ public final class MatrixCraftingMath {
                 0.0D,
                 0.0D,
                 0.0D,
-                Integer.MAX_VALUE,
+                Long.MAX_VALUE,
                 1.0D,
-                Integer.MAX_VALUE,
+                Long.MAX_VALUE,
                 1.0D);
     }
 

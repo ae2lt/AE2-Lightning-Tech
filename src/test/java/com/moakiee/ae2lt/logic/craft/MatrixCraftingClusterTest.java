@@ -81,8 +81,8 @@ class MatrixCraftingClusterTest {
 
         assertEquals(3903, cluster.getBatchCapacity(PATTERN));
 
-        int firstLeftover = cluster.pushBatch(PATTERN, emptyInputs(), 5000);
-        int secondLeftover = cluster.pushBatch(PATTERN, emptyInputs(), 1);
+        long firstLeftover = cluster.pushBatch(PATTERN, emptyInputs(), 5000L);
+        long secondLeftover = cluster.pushBatch(PATTERN, emptyInputs(), 1L);
 
         assertEquals(1097, firstLeftover);
         assertEquals(1, secondLeftover);
@@ -235,7 +235,7 @@ class MatrixCraftingClusterTest {
 
     private static final class FakeLoopPattern extends FakePattern
             implements ClosedLoopBatchPatternDetails, BatchCopyLimitPattern {
-        @Override public int maxBatchCopies() { return 32; }
+        @Override public long maxBatchCopies() { return 32L; }
     }
 
     private static final class TestKey extends AEKey {

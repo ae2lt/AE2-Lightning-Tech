@@ -36,7 +36,7 @@ public final class MatrixCraftingCluster {
     private final CraftingCore engine;
     private double heat;
     private long lastLimiterTick = Long.MIN_VALUE;
-    private int limiterRemaining;
+    private long limiterRemaining;
     private MatrixCraftingMath.Snapshot lastLimiterSnapshot = MatrixCraftingMath.idleSnapshot(0.0D, 0.0D);
 
     public MatrixCraftingCluster(BooleanSupplier formed,
@@ -98,9 +98,9 @@ public final class MatrixCraftingCluster {
         return false;
     }
 
-    public int getBatchCapacity(IPatternDetails details) {
+    public long getBatchCapacity(IPatternDetails details) {
         if (!hasPattern(details)) return 0;
-        int capacity = availableCapacity();
+        long capacity = availableCapacity();
         if (details instanceof com.moakiee.thunderbolt.ae2.batch.BatchCopyLimitPattern limited) {
             capacity = Math.min(capacity, Math.max(1, limited.maxBatchCopies()));
         }
@@ -111,15 +111,15 @@ public final class MatrixCraftingCluster {
      * Rate limiter entry point: cap copies by the structure's free thread budget and schedule them
      * on the shared engine with the structure's delay. Inputs are a single-copy template.
      */
-    public int pushBatch(IPatternDetails details, KeyCounter[] oneCopyTemplate, int maxCraft) {
+    public long pushBatch(IPatternDetails details, KeyCounter[] oneCopyTemplate, long maxCraft) {
         if (!hasPattern(details)) return maxCraft;
-        int copies = Math.min(maxCraft, getBatchCapacity(details));
+        long copies = Math.min(maxCraft, getBatchCapacity(details));
         if (copies <= 0) return maxCraft;
         int delay = craftingProfile().mode() == MatrixCoreMode.CREATIVE
                 ? MatrixCraftingMath.CREATIVE_DELAY_TICKS
                 : MatrixCraftingMath.MATRIX_DELAY_TICKS;
-        int accepted = engine.pushBatch(details, oneCopyTemplate, copies, delay);
-        limiterRemaining = Math.max(0, limiterRemaining - accepted);
+        long accepted = engine.pushBatch(details, oneCopyTemplate, copies, delay);
+        limiterRemaining = Math.max(0L, limiterRemaining - accepted);
         return maxCraft - accepted;
     }
 
@@ -129,9 +129,9 @@ public final class MatrixCraftingCluster {
         int delay = craftingProfile().mode() == MatrixCoreMode.CREATIVE
                 ? MatrixCraftingMath.CREATIVE_DELAY_TICKS
                 : MatrixCraftingMath.MATRIX_DELAY_TICKS;
-        int accepted = engine.pushBatch(details, oneCopyTemplate, 1, delay);
-        limiterRemaining = Math.max(0, limiterRemaining - accepted);
-        return accepted == 1;
+        long accepted = engine.pushBatch(details, oneCopyTemplate, 1L, delay);
+        limiterRemaining = Math.max(0L, limiterRemaining - accepted);
+        return accepted == 1L;
     }
 
     public BatchDispatchMode batchDispatchMode() {
@@ -145,13 +145,13 @@ public final class MatrixCraftingCluster {
         return !formed.getAsBoolean() || availableCapacity() <= 0;
     }
 
-    public int availableCapacity() {
+    public long availableCapacity() {
         if (!formed.getAsBoolean()) return 0;
         refreshLimiterBudget();
         return limiterRemaining;
     }
 
-    public int threadsInFlight() {
+    public long threadsInFlight() {
         return engine.threadsInFlight();
     }
 
@@ -241,13 +241,8 @@ public final class MatrixCraftingCluster {
 
         lastLimiterSnapshot = craftingProfile().snapshot(heat);
         heat = lastLimiterSnapshot.heat();
-        limiterRemaining = saturateToInt(lastLimiterSnapshot.operationsPerTick());
+        limiterRemaining = Math.max(0L, lastLimiterSnapshot.operationsPerTick());
         lastLimiterTick = now;
-    }
-
-    private static int saturateToInt(long value) {
-        if (value <= 0L) return 0;
-        return value >= Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) value;
     }
 
     private final class MatrixHost implements CraftingCoreHost {

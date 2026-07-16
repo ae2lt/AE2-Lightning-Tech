@@ -219,7 +219,7 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
     }
 
     @Override
-    public int getBatchCapacity(IPatternDetails details) {
+    public long getBatchCapacity(IPatternDetails details) {
         var controller = getController();
         return controller != null ? controller.getBatchCapacity(details) : 0;
     }
@@ -236,7 +236,7 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
     }
 
     @Override
-    public int pushBatch(IPatternDetails details, KeyCounter[] oneCopyTemplate, int maxCraft) {
+    public long pushBatch(IPatternDetails details, KeyCounter[] oneCopyTemplate, long maxCraft) {
         var controller = getController();
         return controller != null
                 ? controller.pushBatch(details, oneCopyTemplate, maxCraft) : maxCraft;

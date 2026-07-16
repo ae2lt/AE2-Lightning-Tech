@@ -61,7 +61,7 @@ public final class MatrixMultiblockInterface implements IBatchCraftingProvider {
     }
 
     @Override
-    public int getBatchCapacity(IPatternDetails details) {
+    public long getBatchCapacity(IPatternDetails details) {
         return cluster.getBatchCapacity(details);
     }
 
@@ -71,7 +71,7 @@ public final class MatrixMultiblockInterface implements IBatchCraftingProvider {
     }
 
     @Override
-    public int pushBatch(IPatternDetails details, KeyCounter[] oneCopyTemplate, int maxCraft) {
+    public long pushBatch(IPatternDetails details, KeyCounter[] oneCopyTemplate, long maxCraft) {
         return cluster.pushBatch(details, oneCopyTemplate, maxCraft);
     }
 }

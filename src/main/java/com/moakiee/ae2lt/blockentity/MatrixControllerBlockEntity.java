@@ -519,7 +519,7 @@ public class MatrixControllerBlockEntity extends BlockEntity implements Crafting
         return cluster.isBusy();
     }
 
-    public int getBatchCapacity(IPatternDetails details) {
+    public long getBatchCapacity(IPatternDetails details) {
         return cluster.getBatchCapacity(details);
     }
 
@@ -527,8 +527,8 @@ public class MatrixControllerBlockEntity extends BlockEntity implements Crafting
         return cluster.batchDispatchMode();
     }
 
-    public int pushBatch(IPatternDetails details, KeyCounter[] oneCopyTemplate, int maxCraft) {
-        int remaining = cluster.pushBatch(details, oneCopyTemplate, maxCraft);
+    public long pushBatch(IPatternDetails details, KeyCounter[] oneCopyTemplate, long maxCraft) {
+        long remaining = cluster.pushBatch(details, oneCopyTemplate, maxCraft);
         if (remaining != maxCraft) persistRuntimeStateIfChanged();
         return remaining;
     }
