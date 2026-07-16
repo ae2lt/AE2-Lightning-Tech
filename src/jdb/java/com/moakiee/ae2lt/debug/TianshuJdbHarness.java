@@ -267,14 +267,14 @@ public final class TianshuJdbHarness {
             require(controller.isFormed(), direction + " did not form: " + controller.issueText());
             require(controller.memberCount() == 243, direction + " member count=" + controller.memberCount());
             var profile = controller.getCoreProfile();
-            require(profile.capacityCoreCount() == 11, direction + " storage cores=" + profile.capacityCoreCount());
-            require(profile.parallelCoreCount() == 11, direction + " parallel cores=" + profile.parallelCoreCount());
-            require(profile.storageBytes() == 11L * 64L * 1024L * 1024L,
+            require(profile.capacityCoreCount() == 12, direction + " storage cores=" + profile.capacityCoreCount());
+            require(profile.parallelCoreCount() == 12, direction + " parallel cores=" + profile.parallelCoreCount());
+            require(profile.storageBytes() == 12L * 64L * 1024L * 1024L,
                     direction + " storage bytes=" + profile.storageBytes());
-            require(profile.parallelism() == 11 * 128, direction + " parallelism=" + profile.parallelism());
+            require(profile.parallelism() == 12 * 128, direction + " parallelism=" + profile.parallelism());
             var functions = controller.getFunctionProfile();
-            require(functions.inventoryMaintenanceCoreCount() == 1, direction + " maintenance count mismatch");
-            require(functions.closedLoopPatternCoreCount() == 1, direction + " loop core count mismatch");
+            require(functions.supportsInventoryMaintenance(), direction + " maintenance was not built into main core");
+            require(functions.supportsClosedLoopPatterns(), direction + " closed loops were not built into main core");
             require(functions.closedLoopPatternCapacity() == 64, direction + " pattern capacity mismatch");
             require(functions.closedLoopSeedStorageCount() == 1,
                     direction + " seed drive count mismatch");
@@ -291,10 +291,10 @@ public final class TianshuJdbHarness {
             var seed = AEItemKey.of(new ItemStack(Items.NETHERITE_UPGRADE_SMITHING_TEMPLATE));
             require(seed != null && port.insertReusableSeed(seed, 3, Actionable.MODULATE) == 3,
                     direction + " seed insert failed");
-            BlockPos functionCore = peripheral(controllerPos, direction, 0);
-            level.setBlock(functionCore, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
+            BlockPos peripheralCore = peripheral(controllerPos, direction, 0);
+            level.setBlock(peripheralCore, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
             controller.scanNow();
-            require(!controller.isFormed(), direction + " stayed formed after function-core removal");
+            require(!controller.isFormed(), direction + " stayed formed after peripheral-core removal");
             require(!port.isFormed(), direction + " port stayed formed after breakup");
             require(port.getCableConnectionType(Direction.UP) == appeng.api.util.AECableType.NONE,
                     direction + " unformed port exposed AE cable");
@@ -302,14 +302,14 @@ public final class TianshuJdbHarness {
                     direction + " deform erased disk seed data");
             require(port.extractReusableSeed(seed, 1, Actionable.MODULATE) == 0,
                     direction + " unformed port allowed seed extraction");
-            level.setBlock(functionCore, ModBlocks.INVENTORY_MAINTENANCE_CORE.get().defaultBlockState(), Block.UPDATE_ALL);
+            level.setBlock(peripheralCore, ModBlocks.STORAGE_SUPERCOMPUTING_UNIT.get().defaultBlockState(), Block.UPDATE_ALL);
             controller.scanNow();
-            require(controller.isFormed(), direction + " did not reform after function-core repair");
+            require(controller.isFormed(), direction + " did not reform after peripheral-core repair");
             require(port.extractReusableSeed(seed, 1, Actionable.MODULATE) == 1,
                     direction + " reformed port lost seed access");
 
-            // Repeatedly replace functional units with ordinary valid cores. The structure stays
-            // formed, the corresponding capability disappears, and port-owned data must survive.
+            // Runtime/configuration belongs to the controller. Replacing ordinary cores may alter
+            // CPU capacity, but must not disable built-in functions or move state into the port.
             var ruleId = java.util.UUID.randomUUID();
             var rule = new InventoryMaintenanceRule(ruleId, seed, 2, 4, 1, true, false, null);
             require(port.getInventoryMaintenance().putRule(rule)
@@ -333,13 +333,13 @@ public final class TianshuJdbHarness {
             port.saveAdditional(savedPort, level.registryAccess());
             var loadedCopy = new TianshuSupercomputerPortBlockEntity(portPos, port.getBlockState());
             loadedCopy.loadTag(savedPort, level.registryAccess());
-            require(loadedCopy.getInventoryMaintenance().repository().getById(ruleId) != null,
-                    direction + " NBT reload lost maintenance rule");
-            require(loadedCopy.getInventoryMaintenance().reservedStock(ruleId).matchMode(seed)
-                            == com.moakiee.ae2lt.logic.tianshu.maintenance.ReservedStockMatchMode.IGNORE_SECONDARY,
-                    direction + " NBT reload lost ignore-NBT reserve mode");
-            require(loadedCopy.getClosedLoopPatternRepository().get(patternId) != null,
-                    direction + " NBT reload lost closed-loop pattern");
+            require(controllerPos.equals(loadedCopy.getControllerPos()),
+                    direction + " port NBT reload lost controller link position");
+            require(!loadedCopy.isFormed(), direction + " unbound port copy trusted cached link");
+            require(loadedCopy.getInventoryMaintenance() == null,
+                    direction + " port copy owned maintenance runtime");
+            require(loadedCopy.getClosedLoopPatternRepository() == null,
+                    direction + " port copy owned closed-loop runtime");
             var savedDrive = new net.minecraft.nbt.CompoundTag();
             seedDrive.saveAdditional(savedDrive, level.registryAccess());
             var loadedDrive = new TianshuSeedStorageBlockEntity(seedStoragePos, seedDrive.getBlockState());
@@ -347,7 +347,7 @@ public final class TianshuJdbHarness {
             require(loadedDrive.amount(seed, port.getActionSource()) == 2,
                     direction + " disk NBT reload lost seed contents");
 
-            BlockPos maintenanceCore = peripheral(controllerPos, direction, 0);
+            BlockPos ordinaryCore = peripheral(controllerPos, direction, 0);
             BlockPos loopStorage = peripheral(controllerPos, direction, 2);
             for (int cycle = 0; cycle < 3; cycle++) {
                 level.setBlock(seedStoragePos, ModBlocks.STORAGE_SUPERCOMPUTING_UNIT.get().defaultBlockState(), Block.UPDATE_ALL);
@@ -358,10 +358,13 @@ public final class TianshuJdbHarness {
                         direction + " disabled seed storage extracted cycle " + cycle);
                 level.setBlock(seedStoragePos, ModBlocks.CLOSED_LOOP_SEED_STORAGE.get().defaultBlockState(), Block.UPDATE_ALL);
 
-                level.setBlock(maintenanceCore, ModBlocks.PARALLEL_SUPERCOMPUTING_UNIT.get().defaultBlockState(), Block.UPDATE_ALL);
+                level.setBlock(ordinaryCore, ModBlocks.PARALLEL_SUPERCOMPUTING_UNIT.get().defaultBlockState(), Block.UPDATE_ALL);
                 controller.scanNow();
-                require(controller.isFormed(), direction + " maintenance removal deformed cycle " + cycle);
-                require(!port.getFunctionProfile().supportsInventoryMaintenance(), direction + " maintenance remained cycle " + cycle);
+                require(controller.isFormed(), direction + " ordinary-core replacement deformed cycle " + cycle);
+                require(port.getFunctionProfile().supportsInventoryMaintenance(),
+                        direction + " built-in maintenance disappeared cycle " + cycle);
+                require(port.getFunctionProfile().supportsClosedLoopPatterns(),
+                        direction + " built-in closed-loop planning disappeared cycle " + cycle);
                 require(port.getInventoryMaintenance().repository().getById(ruleId) != null,
                         direction + " maintenance rule lost cycle " + cycle);
                 require(port.getInventoryMaintenance().reservedStock(ruleId).reserve(seed) == 2,
@@ -369,7 +372,7 @@ public final class TianshuJdbHarness {
                 require(port.getInventoryMaintenance().reservedStock(ruleId).matchMode(seed)
                                 == com.moakiee.ae2lt.logic.tianshu.maintenance.ReservedStockMatchMode.IGNORE_SECONDARY,
                         direction + " reserve mode lost cycle " + cycle);
-                level.setBlock(maintenanceCore, ModBlocks.INVENTORY_MAINTENANCE_CORE.get().defaultBlockState(), Block.UPDATE_ALL);
+                level.setBlock(ordinaryCore, ModBlocks.STORAGE_SUPERCOMPUTING_UNIT.get().defaultBlockState(), Block.UPDATE_ALL);
 
                 level.setBlock(loopStorage, ModBlocks.STORAGE_SUPERCOMPUTING_UNIT.get().defaultBlockState(), Block.UPDATE_ALL);
                 controller.scanNow();
@@ -383,6 +386,7 @@ public final class TianshuJdbHarness {
                 require(controller.isFormed(), direction + " functional restore failed cycle " + cycle);
                 require(port.getFunctionProfile().supportsClosedLoopSeeds()
                                 && port.getFunctionProfile().supportsInventoryMaintenance()
+                                && port.getFunctionProfile().supportsClosedLoopPatterns()
                                 && port.getClosedLoopPatternRepository().capacity() == 64,
                         direction + " functional restore incomplete cycle " + cycle);
             }
@@ -434,8 +438,8 @@ public final class TianshuJdbHarness {
                         }
                         int index = peripheralIndex++;
                         yield switch (index) {
-                            case 0 -> ModBlocks.INVENTORY_MAINTENANCE_CORE.get().defaultBlockState();
-                            case 1 -> ModBlocks.CLOSED_LOOP_PATTERN_CORE.get().defaultBlockState();
+                            case 0 -> ModBlocks.STORAGE_SUPERCOMPUTING_UNIT.get().defaultBlockState();
+                            case 1 -> ModBlocks.PARALLEL_SUPERCOMPUTING_UNIT.get().defaultBlockState();
                             case 2 -> ModBlocks.CLOSED_LOOP_PATTERN_STORAGE.get().defaultBlockState();
                             case 3 -> ModBlocks.CLOSED_LOOP_SEED_STORAGE.get().defaultBlockState();
                             default -> index % 2 == 0

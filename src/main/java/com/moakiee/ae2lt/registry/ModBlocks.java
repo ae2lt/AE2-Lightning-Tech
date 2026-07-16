@@ -250,12 +250,6 @@ public final class ModBlocks {
     public static final DeferredBlock<TianshuSupercomputingUnitBlock> PARALLEL_SUPERCOMPUTING_UNIT = registerBlock(
             "parallel_supercomputing_unit", () -> new TianshuSupercomputingUnitBlock(
                     MATRIX_MACHINE_PROPERTIES, TianshuMultiblockComponent.PARALLEL_CORE));
-    public static final DeferredBlock<TianshuSupercomputingUnitBlock> INVENTORY_MAINTENANCE_CORE = registerBlock(
-            "inventory_maintenance_core", () -> new TianshuSupercomputingUnitBlock(
-                    MATRIX_MACHINE_PROPERTIES, TianshuMultiblockComponent.STORAGE_CORE));
-    public static final DeferredBlock<TianshuSupercomputingUnitBlock> CLOSED_LOOP_PATTERN_CORE = registerBlock(
-            "closed_loop_pattern_core", () -> new TianshuSupercomputingUnitBlock(
-                    MATRIX_MACHINE_PROPERTIES, TianshuMultiblockComponent.PARALLEL_CORE));
     public static final DeferredBlock<TianshuPatternStorageBlock> CLOSED_LOOP_PATTERN_STORAGE = registerBlock(
             "closed_loop_pattern_storage", () -> new TianshuPatternStorageBlock(MATRIX_MACHINE_PROPERTIES));
     public static final DeferredBlock<TianshuSeedStorageBlock> CLOSED_LOOP_SEED_STORAGE = registerBlock(
@@ -323,10 +317,6 @@ public final class ModBlocks {
     public static final DeferredBlock<MatrixFormedBlock> MATTER_WARPING_MATRIX_COOLING_SUB_CORE_T2 =
             registerBlock("matter_warping_matrix_cooling_sub_core_t2", () -> new MatrixFormedBlock(
                     MATRIX_MACHINE_PROPERTIES, MatrixMultiblockComponent.COOLING_SUB_CORE_T2));
-
-    public static final DeferredBlock<MatrixFormedBlock> MATTER_WARPING_MATRIX_CLOSED_LOOP_PROCESSOR =
-            registerBlock("matter_warping_matrix_closed_loop_processor", () -> new MatrixFormedBlock(
-                    MATRIX_MACHINE_PROPERTIES, MatrixMultiblockComponent.BLANK_SUB_CORE));
 
     public static final DeferredBlock<MatrixPatternStorageBlock> MATTER_WARPING_MATRIX_PATTERN_STORAGE_T1 =
             registerBlock("matter_warping_matrix_pattern_storage_t1", () -> new MatrixPatternStorageBlock(
