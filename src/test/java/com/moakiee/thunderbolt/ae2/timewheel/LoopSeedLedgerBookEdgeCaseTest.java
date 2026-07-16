@@ -143,9 +143,62 @@ class LoopSeedLedgerBookEdgeCaseTest {
         assertEquals(0L, ledgers.balance(secondPool, actual));
     }
 
+    @Test
+    void crossPatternMultiLoopReturnsItsDedicatedLedgerToTheInitialState() {
+        var a = key("cross_a", "");
+        var b = key("cross_b", "");
+        var c = key("cross_c", "");
+        var d = key("cross_d", "");
+        var group = UUID.randomUUID();
+        var pool = LoopSeedLedgerBook.poolFor(group, false);
+        var ledgers = new LoopSeedLedgerBook();
+        ledgers.initialize(Map.of(group, Map.of(a, 1L, c, 1L)), Set.of(group));
+
+        ledgers.recordDispatch(pool, counter(a, 1L), counter(b, 2L), 1L);
+        ledgers.recordDispatch(pool, counter(c, 1L), counter(d, 1L), 1L);
+        ledgers.recordDispatch(pool, counter(b, 1L), counter(a, 1L), 1L);
+        ledgers.recordDispatch(
+                pool, counter(Map.of(b, 1L, d, 1L)), counter(c, 1L), 1L);
+
+        assertEquals(Map.of(a, 1L, c, 1L), ledgers.positiveSnapshot());
+        assertEquals(0L, ledgers.balance(pool, b));
+        assertEquals(0L, ledgers.balance(pool, d));
+    }
+
+    @Test
+    void crossInputMultiLoopCanPrecreditBothDConsumersWithoutExtraSeed() {
+        var a = key("cross_input_a", "");
+        var b = key("cross_input_b", "");
+        var c = key("cross_input_c", "");
+        var d = key("cross_input_d", "");
+        var group = UUID.randomUUID();
+        var pool = LoopSeedLedgerBook.poolFor(group, false);
+        var ledgers = new LoopSeedLedgerBook();
+        ledgers.initialize(Map.of(group, Map.of(a, 1L, c, 1L)), Set.of(group));
+
+        ledgers.recordDispatch(pool, counter(c, 1L), counter(d, 2L), 1L);
+        ledgers.recordDispatch(
+                pool, counter(Map.of(a, 1L, d, 1L)), counter(b, 2L), 1L);
+        ledgers.recordDispatch(pool, counter(b, 1L), counter(a, 1L), 1L);
+        ledgers.recordDispatch(
+                pool, counter(Map.of(b, 1L, d, 1L)), counter(c, 1L), 1L);
+
+        assertEquals(Map.of(a, 1L, c, 1L), ledgers.positiveSnapshot());
+        assertEquals(0L, ledgers.balance(pool, b));
+        assertEquals(0L, ledgers.balance(pool, d));
+    }
+
     private static KeyCounter counter(AEKey key, long amount) {
         var result = new KeyCounter();
         result.add(key, amount);
+        return result;
+    }
+
+    private static KeyCounter counter(Map<AEKey, Long> amounts) {
+        var result = new KeyCounter();
+        for (var entry : amounts.entrySet()) {
+            result.add(entry.getKey(), entry.getValue());
+        }
         return result;
     }
 

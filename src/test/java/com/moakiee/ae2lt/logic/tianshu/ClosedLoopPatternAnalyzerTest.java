@@ -6,6 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Duration;
 import java.util.List;
@@ -238,7 +240,7 @@ class ClosedLoopPatternAnalyzerTest {
     }
 
     @Test
-    void downstreamConsumerIsRejectedByTheMinimalClosedLoopRule() {
+    void downstreamConsumerIsAcceptedWhenItConsumesAnInputSeed() {
         var seed = key("minimal_seed");
         var product = key("downstream_product");
         var grow = pattern(List.of(output(seed, 2)), input(seed, 1, null));
@@ -248,26 +250,41 @@ class ClosedLoopPatternAnalyzerTest {
         var solved = ClosedLoopPatternAnalyzer.solveCoefficients(members, product);
 
         assertEquals(com.moakiee.thunderbolt.core.planner.PositiveIntegerLinearSolver.Status.SOLVED,
-                solved.status(), "mass balance alone is feasible and must not hide the structure bug");
-        assertEquals(ClosedLoopPatternAnalyzer.StructureStatus.NOT_CONNECTED,
-                ClosedLoopPatternAnalyzer.validateMinimalStructure(members));
+                solved.status());
+        assertEquals(ClosedLoopPatternAnalyzer.StructureStatus.VALID,
+                ClosedLoopPatternAnalyzer.validateStructure(members));
+        var analyzed = new java.util.ArrayList<ClosedLoopPatternAnalyzer.Member>();
+        for (int i = 0; i < members.size(); i++) {
+            analyzed.add(new ClosedLoopPatternAnalyzer.Member(
+                    members.get(i), solved.coefficients()[i]));
+        }
+        var ordered = ClosedLoopPatternAnalyzer.analyzeBestOrder(analyzed, product);
+        assertNotNull(ordered);
+        assertEquals(2, ClosedLoopPatternAnalyzer.deriveMemberFlows(
+                ordered.members(), ordered.analysis().seeds()).size());
     }
 
     @Test
-    void connectedCompositeIsRejectedWhenOneMemberAlreadyFormsItsOwnLoop() {
+    void connectedCompositeIsAcceptedWhenOneMemberAlreadyFormsItsOwnLoop() {
         var seed = key("non_minimal_seed");
         var product = key("non_minimal_product");
         var selfReplicating = pattern(List.of(output(seed, 2)), input(seed, 1, null));
         var returnedSeedProduct = pattern(
                 List.of(output(seed, 1), output(product, 1)), input(seed, 1, null));
 
-        assertEquals(ClosedLoopPatternAnalyzer.StructureStatus.NOT_MINIMAL,
-                ClosedLoopPatternAnalyzer.validateMinimalStructure(
+        assertEquals(ClosedLoopPatternAnalyzer.StructureStatus.VALID,
+                ClosedLoopPatternAnalyzer.validateStructure(
                         List.of(selfReplicating, returnedSeedProduct)));
+        var ordered = ClosedLoopPatternAnalyzer.analyzeBestOrder(List.of(
+                new ClosedLoopPatternAnalyzer.Member(selfReplicating, 1),
+                new ClosedLoopPatternAnalyzer.Member(returnedSeedProduct, 1)), product);
+        assertNotNull(ordered);
+        assertTrue(ClosedLoopPatternAnalyzer.hasInputSeedPerMember(
+                ordered.members(), ordered.analysis().seeds()));
     }
 
     @Test
-    void balancedTwoMemberCycleIsConnectedMinimalAndRequiresASeed() {
+    void balancedTwoMemberCycleRequiresAnInputSeedPerMember() {
         var a = key("minimal_cycle_a");
         var b = key("minimal_cycle_b");
         var product = key("minimal_cycle_product");
@@ -276,7 +293,7 @@ class ClosedLoopPatternAnalyzerTest {
         var members = List.<IPatternDetails>of(first, second);
 
         assertEquals(ClosedLoopPatternAnalyzer.StructureStatus.VALID,
-                ClosedLoopPatternAnalyzer.validateMinimalStructure(members));
+                ClosedLoopPatternAnalyzer.validateStructure(members));
         var solved = ClosedLoopPatternAnalyzer.solveCoefficients(members, product);
         assertArrayEquals(new long[] {1, 1}, solved.coefficients());
         var analysis = ClosedLoopPatternAnalyzer.analyze(List.of(
@@ -340,8 +357,27 @@ class ClosedLoopPatternAnalyzerTest {
 
         assertEquals(com.moakiee.thunderbolt.core.planner.PositiveIntegerLinearSolver.Status.INFEASIBLE,
                 solved.status());
-        assertEquals(ClosedLoopPatternAnalyzer.StructureStatus.NOT_CONNECTED,
-                ClosedLoopPatternAnalyzer.validateMinimalStructure(List.of(seedless)));
+        assertNull(ClosedLoopPatternAnalyzer.analyzeBestOrder(List.of(
+                new ClosedLoopPatternAnalyzer.Member(seedless, 1)), product));
+    }
+
+    @Test
+    void otherwiseBalancedCompositeRejectsAMemberWithZeroInputSeedTypes() {
+        var seed = key("zero_input_seed");
+        var product = key("zero_input_seed_product");
+        var consumingLoop = pattern(
+                List.of(output(seed, 1), output(product, 1)), input(seed, 1, null));
+        var unseededProducer = pattern(List.of(output(seed, 1)));
+        var details = List.<IPatternDetails>of(consumingLoop, unseededProducer);
+
+        var solved = ClosedLoopPatternAnalyzer.solveCoefficients(details, product);
+
+        assertEquals(com.moakiee.thunderbolt.core.planner.PositiveIntegerLinearSolver.Status.SOLVED,
+                solved.status());
+        var members = List.of(
+                new ClosedLoopPatternAnalyzer.Member(consumingLoop, solved.coefficients()[0]),
+                new ClosedLoopPatternAnalyzer.Member(unseededProducer, solved.coefficients()[1]));
+        assertNull(ClosedLoopPatternAnalyzer.analyzeBestOrder(members, product));
     }
 
     @Test
@@ -384,6 +420,52 @@ class ClosedLoopPatternAnalyzerTest {
     }
 
     @Test
+    void fullCycleReturnsASeedAndExposesTheExtraReturnedSeedAsOutput() {
+        var a = key("cycle_surplus_a");
+        var b = key("cycle_surplus_b");
+        var aToTwoB = pattern(List.of(output(b, 2)), input(a, 1, null));
+        var bToA = pattern(List.of(output(a, 1)), input(b, 1, null));
+        var members = List.of(
+                new ClosedLoopPatternAnalyzer.Member(aToTwoB, 1),
+                new ClosedLoopPatternAnalyzer.Member(bToA, 2));
+
+        var analysis = ClosedLoopPatternAnalyzer.analyze(members, a);
+        assertNotNull(analysis);
+        assertAmount(analysis.seeds(), a, 1);
+        assertAmount(analysis.netOutputs(), a, 1);
+        assertAmount(analysis.netOutputs(), b, 0);
+
+        var flows = ClosedLoopPatternAnalyzer.deriveMemberFlows(members, analysis.seeds());
+        assertEquals(java.util.Map.of(a, 1L), flows.get(0).inputSeed());
+        assertEquals(java.util.Map.of(b, 2L), flows.get(0).outputSeed());
+        assertEquals(java.util.Map.of(b, 2L), flows.get(1).inputSeed());
+        assertEquals(java.util.Map.of(a, 1L), flows.get(1).outputSeed());
+    }
+
+    @Test
+    void fullCycleReturnsASeedAndExposesTheUnusedConnectedStateAsOutput() {
+        var a = key("cycle_remainder_a");
+        var b = key("cycle_remainder_b");
+        var aToTwoB = pattern(List.of(output(b, 2)), input(a, 1, null));
+        var bToA = pattern(List.of(output(a, 1)), input(b, 1, null));
+        var members = List.of(
+                new ClosedLoopPatternAnalyzer.Member(aToTwoB, 1),
+                new ClosedLoopPatternAnalyzer.Member(bToA, 1));
+
+        var analysis = ClosedLoopPatternAnalyzer.analyze(members, b);
+        assertNotNull(analysis);
+        assertAmount(analysis.seeds(), a, 1);
+        assertAmount(analysis.netOutputs(), a, 0);
+        assertAmount(analysis.netOutputs(), b, 1);
+
+        var flows = ClosedLoopPatternAnalyzer.deriveMemberFlows(members, analysis.seeds());
+        assertEquals(java.util.Map.of(a, 1L), flows.get(0).inputSeed());
+        assertEquals(java.util.Map.of(b, 1L), flows.get(0).outputSeed());
+        assertEquals(java.util.Map.of(b, 1L), flows.get(1).inputSeed());
+        assertEquals(java.util.Map.of(a, 1L), flows.get(1).outputSeed());
+    }
+
+    @Test
     void twoPatternsCanCarryTwoMaterialLoopsAsOneAtomicSeedState() {
         var a = key("two_loop_a");
         var b = key("two_loop_b");
@@ -399,7 +481,7 @@ class ClosedLoopPatternAnalyzerTest {
                 new ClosedLoopPatternAnalyzer.Member(second, 1));
 
         assertEquals(ClosedLoopPatternAnalyzer.StructureStatus.VALID,
-                ClosedLoopPatternAnalyzer.validateMinimalStructure(details));
+                ClosedLoopPatternAnalyzer.validateStructure(details));
         var analysis = ClosedLoopPatternAnalyzer.analyze(members, a);
         assertNotNull(analysis);
         assertEquals(2, analysis.seeds().size());
@@ -407,10 +489,94 @@ class ClosedLoopPatternAnalyzerTest {
         assertAmount(analysis.seeds(), c, 1);
 
         var flows = ClosedLoopPatternAnalyzer.deriveMemberFlows(members, analysis.seeds());
+        assertTrue(ClosedLoopPatternAnalyzer.hasInputSeedPerMember(members, analysis.seeds()));
+        assertTrue(flows.stream().anyMatch(flow -> flow.inputSeed().values().stream()
+                .filter(amount -> amount > 0)
+                .count() > 1));
         assertEquals(java.util.Map.of(a, 1L, c, 1L), flows.get(0).inputSeed());
         assertEquals(java.util.Map.of(b, 1L, d, 1L), flows.get(0).outputSeed());
         assertEquals(java.util.Map.of(b, 1L, d, 1L), flows.get(1).inputSeed());
         assertEquals(java.util.Map.of(a, 1L, c, 1L), flows.get(1).outputSeed());
+    }
+
+    @Test
+    void crossPatternMultiLoopCarriesBothSeedRingsThroughTheJoinMember() {
+        var a = key("cross_loop_a");
+        var b = key("cross_loop_b");
+        var c = key("cross_loop_c");
+        var d = key("cross_loop_d");
+        var aToTwoB = pattern(List.of(output(b, 2)), input(a, 1, null));
+        var cToTwoD = pattern(List.of(output(d, 2)), input(c, 1, null));
+        var bToA = pattern(List.of(output(a, 1)), input(b, 1, null));
+        var bAndDToC = pattern(List.of(output(c, 1)),
+                input(b, 1, null), input(d, 1, null));
+        var members = List.of(
+                new ClosedLoopPatternAnalyzer.Member(aToTwoB, 1),
+                new ClosedLoopPatternAnalyzer.Member(cToTwoD, 1),
+                new ClosedLoopPatternAnalyzer.Member(bToA, 1),
+                new ClosedLoopPatternAnalyzer.Member(bAndDToC, 1));
+
+        var analysis = ClosedLoopPatternAnalyzer.analyze(members, d);
+        assertNotNull(analysis);
+        assertAmount(analysis.seeds(), a, 1);
+        assertAmount(analysis.seeds(), c, 1);
+        assertAmount(analysis.netOutputs(), d, 1);
+
+        var flows = ClosedLoopPatternAnalyzer.deriveMemberFlows(members, analysis.seeds());
+        assertEquals(java.util.Map.of(a, 1L), flows.get(0).inputSeed());
+        assertEquals(java.util.Map.of(b, 2L), flows.get(0).outputSeed());
+        assertEquals(java.util.Map.of(c, 1L), flows.get(1).inputSeed());
+        assertEquals(java.util.Map.of(d, 1L), flows.get(1).outputSeed());
+        assertEquals(java.util.Map.of(b, 1L), flows.get(2).inputSeed());
+        assertEquals(java.util.Map.of(a, 1L), flows.get(2).outputSeed());
+        assertEquals(java.util.Map.of(b, 1L, d, 1L), flows.get(3).inputSeed());
+        assertEquals(java.util.Map.of(c, 1L), flows.get(3).outputSeed());
+        assertTrue(ClosedLoopPatternAnalyzer.hasInputSeedPerMember(
+                members, analysis.seeds()));
+    }
+
+    @Test
+    void crossInputMultiLoopReordersToAvoidAnUnnecessaryDSeed() {
+        var a = key("cross_input_a");
+        var b = key("cross_input_b");
+        var c = key("cross_input_c");
+        var d = key("cross_input_d");
+        var e = key("cross_input_e");
+        var aAndDToTwoBAndE = pattern(
+                List.of(output(b, 2), output(e, 1)),
+                input(a, 1, null), input(d, 1, null));
+        var cToTwoD = pattern(List.of(output(d, 2)), input(c, 1, null));
+        var bToA = pattern(List.of(output(a, 1)), input(b, 1, null));
+        var bAndDToC = pattern(List.of(output(c, 1)),
+                input(b, 1, null), input(d, 1, null));
+        var writtenOrder = List.of(
+                new ClosedLoopPatternAnalyzer.Member(aAndDToTwoBAndE, 1),
+                new ClosedLoopPatternAnalyzer.Member(cToTwoD, 1),
+                new ClosedLoopPatternAnalyzer.Member(bToA, 1),
+                new ClosedLoopPatternAnalyzer.Member(bAndDToC, 1));
+
+        var writtenAnalysis = ClosedLoopPatternAnalyzer.analyze(writtenOrder, e);
+        assertNotNull(writtenAnalysis);
+        assertAmount(writtenAnalysis.seeds(), a, 1);
+        assertAmount(writtenAnalysis.seeds(), c, 1);
+        assertAmount(writtenAnalysis.seeds(), d, 1);
+
+        var ordered = ClosedLoopPatternAnalyzer.analyzeBestOrder(writtenOrder, e);
+        assertNotNull(ordered);
+        assertTrue(ordered.members().getFirst().details() == cToTwoD);
+        assertAmount(ordered.analysis().seeds(), a, 1);
+        assertAmount(ordered.analysis().seeds(), c, 1);
+        assertAmount(ordered.analysis().seeds(), d, 0);
+        assertAmount(ordered.analysis().netOutputs(), e, 1);
+
+        var flows = ClosedLoopPatternAnalyzer.deriveMemberFlows(
+                ordered.members(), ordered.analysis().seeds());
+        assertEquals(java.util.Map.of(c, 1L), flows.get(0).inputSeed());
+        assertEquals(java.util.Map.of(d, 2L), flows.get(0).outputSeed());
+        assertEquals(java.util.Map.of(a, 1L, d, 1L), flows.get(1).inputSeed());
+        assertEquals(java.util.Map.of(b, 2L), flows.get(1).outputSeed());
+        assertTrue(ClosedLoopPatternAnalyzer.hasInputSeedPerMember(
+                ordered.members(), ordered.analysis().seeds()));
     }
 
     @Test

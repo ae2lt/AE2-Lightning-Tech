@@ -30,20 +30,18 @@ public final class ClosedLoopPatternValidator {
             members.add(new ClosedLoopPatternAnalyzer.Member(details, stored.copiesPerCycle()));
         }
 
-        var structure = ClosedLoopPatternAnalyzer.validateMinimalStructure(
+        var structure = ClosedLoopPatternAnalyzer.validateStructure(
                 members.stream().map(ClosedLoopPatternAnalyzer.Member::details).toList());
         if (structure != ClosedLoopPatternAnalyzer.StructureStatus.VALID) {
-            return invalid(switch (structure) {
-                case NOT_CONNECTED -> ClosedLoopValidationResult.Status.MEMBERS_NOT_CONNECTED;
-                case NOT_MINIMAL -> ClosedLoopValidationResult.Status.MEMBERS_NOT_MINIMAL;
-                case INVALID -> ClosedLoopValidationResult.Status.STRUCTURE_CHECK_FAILED;
-                case VALID -> throw new IllegalStateException("unreachable");
-            });
+            return invalid(ClosedLoopValidationResult.Status.STRUCTURE_CHECK_FAILED);
         }
 
         for (var declaredOutput : payload.netOutputs()) {
             var analysis = ClosedLoopPatternAnalyzer.analyze(members, declaredOutput.what());
             if (analysis == null) continue;
+            if (!ClosedLoopPatternAnalyzer.hasInputSeedPerMember(members, analysis.seeds())) {
+                return invalid(ClosedLoopValidationResult.Status.MEMBER_WITHOUT_INPUT_SEED);
+            }
             if (sameStacks(payload.seeds(), analysis.seeds())
                     && sameStacks(payload.externalInputs(), analysis.externalInputs())
                     && sameStacks(payload.netOutputs(), analysis.netOutputs())) {

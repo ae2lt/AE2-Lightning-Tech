@@ -17,8 +17,6 @@ public final class ClosedLoopPatternAuthoringService {
         VALID,
         MEMBER_UNDECODABLE,
         INVALID_MARKING,
-        NOT_CONNECTED,
-        NOT_MINIMAL,
         NOT_BALANCED
     }
 
@@ -44,14 +42,9 @@ public final class ClosedLoopPatternAuthoringService {
                     marked.details(), marked.copiesPerCycle()));
         }
 
-        var structure = ClosedLoopPatternAnalyzer.validateMinimalStructure(details);
+        var structure = ClosedLoopPatternAnalyzer.validateStructure(details);
         if (structure != ClosedLoopPatternAnalyzer.StructureStatus.VALID) {
-            return new Result(switch (structure) {
-                case NOT_CONNECTED -> Status.NOT_CONNECTED;
-                case NOT_MINIMAL -> Status.NOT_MINIMAL;
-                case INVALID -> Status.INVALID_MARKING;
-                case VALID -> throw new IllegalStateException("unreachable");
-            }, null);
+            return new Result(Status.INVALID_MARKING, null);
         }
 
         var ordered = ClosedLoopPatternAnalyzer.analyzeBestOrder(analyzed, mainOutput);
@@ -66,8 +59,8 @@ public final class ClosedLoopPatternAuthoringService {
             stored.add(new ClosedLoopMemberPattern(marked.snapshot(), member.copies()));
         }
         var analysis = ordered.analysis();
-        if (ClosedLoopPatternAnalyzer.deriveMemberFlows(
-                ordered.members(), analysis.seeds()).size() != ordered.members().size()) {
+        if (!ClosedLoopPatternAnalyzer.hasInputSeedPerMember(
+                ordered.members(), analysis.seeds())) {
             return new Result(Status.NOT_BALANCED, null);
         }
         var payload = new ClosedLoopPatternPayload(

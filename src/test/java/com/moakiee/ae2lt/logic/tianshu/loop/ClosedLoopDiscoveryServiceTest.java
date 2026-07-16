@@ -84,6 +84,90 @@ class ClosedLoopDiscoveryServiceTest {
     }
 
     @Test
+    void discoversASelfGrowthLoopThatFeedsADownstreamTarget() {
+        var seed = key("downstream_seed");
+        var target = key("downstream_target");
+        var downstream = pattern(List.of(stack(target, 1)), input(seed, 1, null));
+        var selfGrowth = pattern(List.of(stack(seed, 2)), input(seed, 1, null));
+        var patterns = Map.<AEKey, List<IPatternDetails>>of(
+                target, List.of(downstream), seed, List.of(selfGrowth));
+
+        var candidates = ClosedLoopDiscoveryService.resolveCandidates(
+                key -> patterns.getOrDefault(key, List.of()), target);
+
+        assertEquals(1, candidates.size());
+        var candidate = candidates.getFirst();
+        assertEquals(2, candidate.members().size());
+        assertEquals(1, amount(candidate.analysis().seeds(), seed));
+        assertEquals(1, amount(candidate.analysis().netOutputs(), target));
+    }
+
+    @Test
+    void discoversCrossConnectedSeedCyclesWithoutReportingTheirBridgeAsExternal() {
+        var a = key("cross_discovery_a");
+        var b = key("cross_discovery_b");
+        var c = key("cross_discovery_c");
+        var d = key("cross_discovery_d");
+        var aToTwoB = pattern(List.of(stack(b, 2)), input(a, 1, null));
+        var cToTwoD = pattern(List.of(stack(d, 2)), input(c, 1, null));
+        var bToA = pattern(List.of(stack(a, 1)), input(b, 1, null));
+        var bAndDToC = pattern(List.of(stack(c, 1)),
+                input(b, 1, null), input(d, 1, null));
+        var patterns = Map.<AEKey, List<IPatternDetails>>of(
+                a, List.of(bToA),
+                b, List.of(aToTwoB),
+                c, List.of(bAndDToC),
+                d, List.of(cToTwoD));
+
+        var candidates = ClosedLoopDiscoveryService.resolveCandidates(
+                key -> patterns.getOrDefault(key, List.of()), d);
+
+        var composite = candidates.stream()
+                .filter(candidate -> candidate.members().size() == 4)
+                .filter(candidate -> candidate.analysis().externalInputs().isEmpty())
+                .findFirst().orElseThrow();
+        assertEquals(1, amount(composite.analysis().seeds(), a));
+        assertEquals(1, amount(composite.analysis().seeds(), c));
+        assertEquals(1, amount(composite.analysis().netOutputs(), d));
+    }
+
+    @Test
+    void discoversCrossInputMultiLoopAndMovesTheDProducerBeforeItsConsumers() {
+        var a = key("cross_input_discovery_a");
+        var b = key("cross_input_discovery_b");
+        var c = key("cross_input_discovery_c");
+        var d = key("cross_input_discovery_d");
+        var e = key("cross_input_discovery_e");
+        var aAndDToTwoBAndE = pattern(
+                List.of(stack(b, 2), stack(e, 1)),
+                input(a, 1, null), input(d, 1, null));
+        var cToTwoD = pattern(List.of(stack(d, 2)), input(c, 1, null));
+        var bToA = pattern(List.of(stack(a, 1)), input(b, 1, null));
+        var bAndDToC = pattern(List.of(stack(c, 1)),
+                input(b, 1, null), input(d, 1, null));
+        var patterns = Map.<AEKey, List<IPatternDetails>>of(
+                a, List.of(bToA),
+                b, List.of(aAndDToTwoBAndE),
+                c, List.of(bAndDToC),
+                d, List.of(cToTwoD),
+                e, List.of(aAndDToTwoBAndE));
+
+        var candidates = ClosedLoopDiscoveryService.resolveCandidates(
+                key -> patterns.getOrDefault(key, List.of()), e);
+
+        var composite = candidates.stream()
+                .filter(candidate -> candidate.members().size() == 4)
+                .filter(candidate -> candidate.analysis().externalInputs().isEmpty())
+                .findFirst().orElseThrow();
+        assertEquals(1,
+                amount(composite.analysis().seeds(), a)
+                        + amount(composite.analysis().seeds(), b));
+        assertEquals(1, amount(composite.analysis().seeds(), c));
+        assertEquals(0, amount(composite.analysis().seeds(), d));
+        assertEquals(1, amount(composite.analysis().netOutputs(), e));
+    }
+
+    @Test
     void solvesNonUnitCoefficientsBeforeContractingTheLoop() {
         var target = key("ratio_target");
         var intermediate = key("ratio_intermediate");

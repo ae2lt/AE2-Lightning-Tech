@@ -15,8 +15,6 @@ public final class ClosedLoopPatternAnalyzer {
     public static final int MAX_MEMBERS = 6;
     public enum StructureStatus {
         VALID,
-        NOT_CONNECTED,
-        NOT_MINIMAL,
         INVALID
     }
 
@@ -76,30 +74,12 @@ public final class ClosedLoopPatternAnalyzer {
                 ? solved : solverResult(PositiveIntegerLinearSolver.Status.INTERNAL_ERROR);
     }
 
-    /**
-     * Requires every member to participate in one strongly connected material cycle and rejects a
-     * composite whenever a proper subset is already a valid closed loop of its own.
-     */
-    public static StructureStatus validateMinimalStructure(List<IPatternDetails> members) {
+    /** Checks only the static member boundary; loop membership is decided by input-seed flows. */
+    public static StructureStatus validateStructure(List<IPatternDetails> members) {
         if (members == null || members.isEmpty() || members.size() > MAX_MEMBERS) {
             return StructureStatus.INVALID;
         }
-        var prepared = prepareBalances(members);
-        if (prepared == null) return StructureStatus.INVALID;
-        if (!isStronglyConnected(prepared)) return StructureStatus.NOT_CONNECTED;
-        if (members.size() == 1) return StructureStatus.VALID;
-
-        int fullMask = (1 << members.size()) - 1;
-        for (int mask = 1; mask < fullMask; mask++) {
-            var subset = new ArrayList<IPatternDetails>();
-            for (int member = 0; member < members.size(); member++) {
-                if ((mask & (1 << member)) != 0) subset.add(members.get(member));
-            }
-            var subsetStatus = hasBalancedClosedLoop(subset);
-            if (subsetStatus == SubsetLoopStatus.ERROR) return StructureStatus.INVALID;
-            if (subsetStatus == SubsetLoopStatus.YES) return StructureStatus.NOT_MINIMAL;
-        }
-        return StructureStatus.VALID;
+        return prepareBalances(members) != null ? StructureStatus.VALID : StructureStatus.INVALID;
     }
 
     public static ClosedLoopAnalysis analyze(
@@ -240,6 +220,9 @@ public final class ClosedLoopPatternAnalyzer {
             }
             required.set(memberIndex, Map.copyOf(before));
         }
+        // The reusable state prepared before member 1 must be the same state retained after the
+        // last member. Any amount beyond this state is a public net output, not extra seed.
+        if (!required.getFirst().equals(seedAmounts)) return List.of();
 
         var result = new ArrayList<MemberFlow>(members.size());
         for (int memberIndex = 0; memberIndex < members.size(); memberIndex++) {
@@ -275,18 +258,34 @@ public final class ClosedLoopPatternAnalyzer {
         return List.copyOf(result);
     }
 
+    /** Every encoded member must consume at least one positive reusable-state type. */
+    public static boolean hasInputSeedPerMember(
+            List<Member> members, List<GenericStack> seeds) {
+        if (members == null || members.isEmpty()) return false;
+        var flows = deriveMemberFlows(members, seeds);
+        if (flows.size() != members.size()) return false;
+        for (var flow : flows) {
+            if (positiveInputSeedTypes(flow) < 1) return false;
+        }
+        return true;
+    }
+
     /** Classification used by the CPU's shared single-seed ledger. */
     static boolean hasSingleSeedInputPerMember(List<MemberFlow> flows) {
         if (flows == null || flows.isEmpty()) return false;
         for (var flow : flows) {
-            if (flow == null) return false;
-            int positiveTypes = 0;
-            for (var amount : flow.inputSeed().values()) {
-                if (amount != null && amount > 0 && ++positiveTypes > 1) return false;
-            }
-            if (positiveTypes != 1) return false;
+            if (positiveInputSeedTypes(flow) != 1) return false;
         }
         return true;
+    }
+
+    private static int positiveInputSeedTypes(MemberFlow flow) {
+        if (flow == null) return 0;
+        int positiveTypes = 0;
+        for (var amount : flow.inputSeed().values()) {
+            if (amount != null && amount > 0) positiveTypes++;
+        }
+        return positiveTypes;
     }
 
     private static void enumerateOrders(
@@ -294,7 +293,7 @@ public final class ClosedLoopPatternAnalyzer {
             ArrayList<Member> current, OrderedAnalysis[] best, long[] bestSeedTotal) {
         if (current.size() == source.size()) {
             var analysis = analyze(current, requestedOutput);
-            if (analysis == null) return;
+            if (analysis == null || !hasInputSeedPerMember(current, analysis.seeds())) return;
             long total = 0L;
             for (var seed : analysis.seeds()) total = Sat.add(total, seed.amount());
             if (best[0] == null || total < bestSeedTotal[0]) {
@@ -377,61 +376,6 @@ public final class ClosedLoopPatternAnalyzer {
             result.add(balance);
         }
         return List.copyOf(result);
-    }
-
-    private static boolean isStronglyConnected(List<Balance> balances) {
-        int size = balances.size();
-        var edges = new boolean[size][size];
-        for (int producer = 0; producer < size; producer++) {
-            for (int consumer = 0; consumer < size; consumer++) {
-                for (var key : balances.get(producer).produced().keySet()) {
-                    if (balances.get(producer).produced().getOrDefault(key, 0L) > 0
-                            && balances.get(consumer).consumed().getOrDefault(key, 0L) > 0) {
-                        edges[producer][consumer] = true;
-                        break;
-                    }
-                }
-            }
-        }
-        if (size == 1) return edges[0][0];
-        return reachesEveryMember(edges, false) && reachesEveryMember(edges, true);
-    }
-
-    private static boolean reachesEveryMember(boolean[][] edges, boolean reverse) {
-        var visited = new boolean[edges.length];
-        var pending = new java.util.ArrayDeque<Integer>();
-        visited[0] = true;
-        pending.add(0);
-        while (!pending.isEmpty()) {
-            int current = pending.removeFirst();
-            for (int next = 0; next < edges.length; next++) {
-                boolean linked = reverse ? edges[next][current] : edges[current][next];
-                if (linked && !visited[next]) {
-                    visited[next] = true;
-                    pending.addLast(next);
-                }
-            }
-        }
-        for (var member : visited) if (!member) return false;
-        return true;
-    }
-
-    private static SubsetLoopStatus hasBalancedClosedLoop(List<IPatternDetails> members) {
-        var balances = prepareBalances(members);
-        if (balances == null) return SubsetLoopStatus.ERROR;
-        if (!isStronglyConnected(balances)) return SubsetLoopStatus.NO;
-        var possibleOutputs = new java.util.LinkedHashSet<AEKey>();
-        for (var balance : balances) possibleOutputs.addAll(balance.produced().keySet());
-        for (var output : possibleOutputs) {
-            var solved = solveCoefficients(members, output);
-            if (solved.status() == PositiveIntegerLinearSolver.Status.SOLVED) {
-                return SubsetLoopStatus.YES;
-            }
-            if (solved.status() != PositiveIntegerLinearSolver.Status.INFEASIBLE) {
-                return SubsetLoopStatus.ERROR;
-            }
-        }
-        return SubsetLoopStatus.NO;
     }
 
     private static long[] netRow(List<Balance> balances, AEKey key) {
@@ -535,7 +479,5 @@ public final class ClosedLoopPatternAnalyzer {
     private record Balance(Map<AEKey, Long> consumed, Map<AEKey, Long> produced) { }
     private record LoopOutput(AEKey key, boolean fuzzy) { }
     private record LoopMatch(AEKey key, boolean forbidden) { }
-    private enum SubsetLoopStatus { YES, NO, ERROR }
-
     private ClosedLoopPatternAnalyzer() { }
 }

@@ -11,8 +11,7 @@ public record ClosedLoopValidationResult(
         VALID,
         MEMBER_UNDECODABLE,
         MEMBER_IS_CLOSED_LOOP,
-        MEMBERS_NOT_CONNECTED,
-        MEMBERS_NOT_MINIMAL,
+        MEMBER_WITHOUT_INPUT_SEED,
         STRUCTURE_CHECK_FAILED,
         DECLARATION_MISMATCH,
         NO_VALID_NET_OUTPUT

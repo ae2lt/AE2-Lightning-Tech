@@ -21,6 +21,7 @@ public final class ClosedLoopDiscoveryService {
     private static final int MAX_DEPTH = 8;
     private static final int MAX_PATHS_PER_INPUT = 32;
     private static final int MAX_MEMBER_COMBINATIONS = 128;
+    private static final int MAX_COMPOSITE_EXPANSIONS = 128;
 
     public static List<ClosedLoopDiscoveryCandidate> discover(
             ICraftingService crafting, Level level, AEKey requestedOutput) {
@@ -107,19 +108,97 @@ public final class ClosedLoopDiscoveryService {
         Function<AEKey, Iterable<AEKey>> cachedFuzzyCraftablesFor = template ->
                 fuzzyCache.computeIfAbsent(template.dropSecondary(), ignored ->
                         copyKeys(fuzzyCraftablesFor.apply(template)));
+        return resolveCandidates(
+                cachedPatternsFor, cachedFuzzyCraftablesFor, requestedOutput,
+                new HashSet<>(), 0);
+    }
+
+    /**
+     * Expands a directly closed candidate with independently closed loops that satisfy its
+     * remaining external bridge inputs. This is what joins, for example, an A/B seed loop to a
+     * C/D seed loop through a member that consumes both B and D.
+     */
+    private static List<ResolvedCandidate> resolveCandidates(
+            Function<AEKey, ? extends Iterable<IPatternDetails>> patternsFor,
+            Function<AEKey, ? extends Iterable<AEKey>> fuzzyCraftablesFor,
+            AEKey requestedOutput,
+            Set<AEKey> resolvingOutputs,
+            int depth) {
+        if (depth >= MAX_DEPTH || !resolvingOutputs.add(requestedOutput)) return List.of();
+        try {
+            var direct = resolveDirectCandidates(
+                    patternsFor, fuzzyCraftablesFor, requestedOutput);
+            if (direct.isEmpty()) return List.of();
+
+            var result = new ArrayList<>(direct);
+            var queue = new ArrayList<>(direct);
+            var signatures = new HashSet<Set<IPatternDetails>>();
+            for (var candidate : direct) signatures.add(Set.copyOf(candidate.members()));
+            var nestedByOutput = new HashMap<AEKey, List<ResolvedCandidate>>();
+            int queueIndex = 0;
+            int expansions = 0;
+            while (queueIndex < queue.size() && expansions < MAX_COMPOSITE_EXPANSIONS) {
+                var base = queue.get(queueIndex++);
+                if (base.members().size() >= ClosedLoopPatternAnalyzer.MAX_MEMBERS) continue;
+                var externalKeys = new LinkedHashSet<AEKey>();
+                for (var external : base.analysis().externalInputs()) {
+                    if (external != null && external.what() != null && external.amount() > 0) {
+                        externalKeys.add(external.what());
+                    }
+                }
+                for (var externalKey : externalKeys) {
+                    if (resolvingOutputs.contains(externalKey)) continue;
+                    var nested = nestedByOutput.get(externalKey);
+                    if (nested == null) {
+                        nested = resolveCandidates(
+                                patternsFor, fuzzyCraftablesFor, externalKey,
+                                resolvingOutputs, depth + 1);
+                        nestedByOutput.put(externalKey, nested);
+                    }
+                    for (var supplier : nested) {
+                        var combined = combineCandidates(base, supplier, requestedOutput);
+                        if (combined == null) continue;
+                        var signature = Set.copyOf(combined.members());
+                        if (!signatures.add(signature)) continue;
+                        result.add(combined);
+                        queue.add(combined);
+                        expansions++;
+                        if (expansions >= MAX_COMPOSITE_EXPANSIONS) break;
+                    }
+                    if (expansions >= MAX_COMPOSITE_EXPANSIONS) break;
+                }
+            }
+            return List.copyOf(result);
+        } finally {
+            resolvingOutputs.remove(requestedOutput);
+        }
+    }
+
+    private static List<ResolvedCandidate> resolveDirectCandidates(
+            Function<AEKey, ? extends Iterable<IPatternDetails>> patternsFor,
+            Function<AEKey, ? extends Iterable<AEKey>> fuzzyCraftablesFor,
+            AEKey requestedOutput) {
         var result = new ArrayList<ResolvedCandidate>();
         var memberSetSignatures = new HashSet<Set<IPatternDetails>>();
-        for (var root : safePatterns(cachedPatternsFor, requestedOutput)) {
+        for (var root : safePatterns(patternsFor, requestedOutput)) {
             var rootInputs = inputRequirements(root);
             var rootAnchors = exactOutputs(root, requestedOutput);
             if (rootInputs == null || rootAnchors.isEmpty()) continue;
+            var rootOutputs = outputs(root);
 
             var optionsByInput = new ArrayList<List<PathOption>>(rootInputs.size());
             for (var input : rootInputs) {
                 var options = new ArrayList<PathOption>();
-                options.add(new PathOption(List.of(), acceptsAny(input, rootAnchors)));
+                options.add(new PathOption(List.of(), acceptsAny(input, rootOutputs)));
+                var cycleAnchors = new LinkedHashSet<PatternOutput>(rootOutputs);
+                for (var key : input.keys()) {
+                    // A reusable state may close around the root input without ever becoming the
+                    // requested output, e.g. A -> 2A followed by A -> C.
+                    cycleAnchors.add(new PatternOutput(key, false));
+                }
                 for (var path : pathsBackToAnchor(
-                        cachedPatternsFor, cachedFuzzyCraftablesFor, input, rootAnchors,
+                        patternsFor, fuzzyCraftablesFor, input,
+                        List.copyOf(cycleAnchors),
                         new HashSet<>(), 0)) {
                     options.add(new PathOption(path, true));
                 }
@@ -137,7 +216,7 @@ public final class ClosedLoopDiscoveryService {
                         var coefficientResult = ClosedLoopPatternAnalyzer.solveCoefficients(
                                 memberList, requestedOutput);
                         if (!coefficientResult.solved()) return;
-                        if (ClosedLoopPatternAnalyzer.validateMinimalStructure(memberList)
+                        if (ClosedLoopPatternAnalyzer.validateStructure(memberList)
                                 != ClosedLoopPatternAnalyzer.StructureStatus.VALID) return;
                         long[] coefficients = coefficientResult.coefficients();
                         var ordered = analyzeBestOrder(memberList, coefficients, requestedOutput);
@@ -148,6 +227,34 @@ public final class ClosedLoopDiscoveryService {
                     });
         }
         return List.copyOf(result);
+    }
+
+    private static ResolvedCandidate combineCandidates(
+            ResolvedCandidate base,
+            ResolvedCandidate supplier,
+            AEKey requestedOutput) {
+        var members = new LinkedHashSet<IPatternDetails>();
+        members.addAll(base.members());
+        int baseSize = members.size();
+        members.addAll(supplier.members());
+        if (members.size() == baseSize
+                || members.size() > ClosedLoopPatternAnalyzer.MAX_MEMBERS) {
+            return null;
+        }
+        var memberList = List.copyOf(members);
+        var coefficientResult = ClosedLoopPatternAnalyzer.solveCoefficients(
+                memberList, requestedOutput);
+        if (!coefficientResult.solved()
+                || ClosedLoopPatternAnalyzer.validateStructure(memberList)
+                != ClosedLoopPatternAnalyzer.StructureStatus.VALID) {
+            return null;
+        }
+        var ordered = analyzeBestOrder(
+                memberList, coefficientResult.coefficients(), requestedOutput);
+        return ordered != null
+                ? new ResolvedCandidate(
+                        ordered.members(), ordered.coefficients(), ordered.analysis())
+                : null;
     }
 
     private static void enumerateMemberSets(
