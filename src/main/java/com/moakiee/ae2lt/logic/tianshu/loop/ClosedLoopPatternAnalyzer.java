@@ -3,13 +3,17 @@ package com.moakiee.ae2lt.logic.tianshu.loop;
 import appeng.api.crafting.IPatternDetails;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.GenericStack;
+import com.moakiee.thunderbolt.ae2.api.crafting.CraftingPatternDelegates;
+import com.moakiee.thunderbolt.ae2.overload.pattern.OverloadedProviderOnlyPatternDetails;
 import com.moakiee.thunderbolt.core.planner.Sat;
 import com.moakiee.thunderbolt.core.planner.PositiveIntegerLinearSolver;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public final class ClosedLoopPatternAnalyzer {
     public static final int MAX_MEMBERS = 6;
@@ -187,7 +191,7 @@ public final class ClosedLoopPatternAnalyzer {
             if (perCopy == null) return List.of();
             var consumed = scaledCopy(perCopy.consumed(), member.copies());
             var produced = scaledCopy(perCopy.produced(), member.copies());
-            scaled.add(new Balance(consumed, produced));
+            scaled.add(new Balance(consumed, produced, perCopy.inputSeedBySlot()));
             mergeScaled(totalConsumed, consumed, 1L);
             mergeScaled(totalProduced, produced, 1L);
         }
@@ -252,10 +256,152 @@ public final class ClosedLoopPatternAnalyzer {
                     if (seedOutput > 0) outputSeed.put(key, seedOutput);
                 }
             }
+            var inputSeedBySlot = new LinkedHashMap<Integer, AEKey>();
+            for (var entry : balance.inputSeedBySlot().entrySet()) {
+                if (cycleKeys.contains(entry.getValue())) {
+                    inputSeedBySlot.put(entry.getKey(), entry.getValue());
+                }
+            }
             result.add(new MemberFlow(
-                    Map.copyOf(inputSeed), Map.copyOf(outputSeed)));
+                    Map.copyOf(inputSeed), Map.copyOf(outputSeed),
+                    Map.copyOf(inputSeedBySlot)));
         }
-        return List.copyOf(result);
+        var immutable = List.copyOf(result);
+        return hasSafeDynamicSeedRouting(members, immutable) ? immutable : List.of();
+    }
+
+    /**
+     * Validates physical component-state capabilities after mass balance has selected planned
+     * keys. Exact outputs may feed every P2. Late-bound ID_ONLY outputs may only feed one-unit
+     * bundles whose consumers are also ID_ONLY; dispatch-known dynamic remainders may feed larger
+     * bundles, but every slot using that planned key must accept their full variant domain.
+     */
+    static boolean hasSafeDynamicSeedRouting(
+            List<Member> members, List<MemberFlow> flows) {
+        if (members == null || flows == null || members.size() != flows.size()) return false;
+        var requiredDomains = new LinkedHashMap<AEKey, DynamicSeedDomain>();
+        try {
+            for (int memberIndex = 0; memberIndex < members.size(); memberIndex++) {
+                var member = members.get(memberIndex);
+                var details = member.details();
+                var flow = flows.get(memberIndex);
+                var provider = CraftingPatternDelegates.forProviderLookup(details);
+                var overload = provider instanceof OverloadedProviderOnlyPatternDetails candidate
+                        ? candidate : null;
+                var exactCapacity = new LinkedHashMap<AEKey, Long>();
+                var dynamicCapacity = new LinkedHashMap<AEKey, DynamicSeedDomain>();
+
+                var outputs = details.getOutputs();
+                for (int slot = 0; slot < outputs.size(); slot++) {
+                    var output = outputs.get(slot);
+                    long amount = Sat.mul(output.amount(), member.copies());
+                    if (output.what() == null || amount <= 0) return false;
+                    if (overload != null && overload.isFuzzyOutput(slot)) {
+                        dynamicCapacity.computeIfAbsent(
+                                output.what(), ignored -> new DynamicSeedDomain())
+                                .markFuzzy(true);
+                    } else {
+                        exactCapacity.merge(output.what(), amount, Sat::add);
+                    }
+                }
+
+                var executionInputs = ClosedLoopExpandedPatternDetails.pinReusableSeedInputs(
+                        details, flow.inputSeedBySlot());
+                for (var mapped : flow.inputSeedBySlot().entrySet()) {
+                    int slot = mapped.getKey();
+                    if (slot < 0 || slot >= executionInputs.length) return false;
+                    var input = executionInputs[slot];
+                    var selected = mapped.getValue();
+                    var plannedRemainder = input.getRemainingKey(selected);
+                    if (plannedRemainder == null) continue;
+                    long amount = Sat.mul(input.getMultiplier(), member.copies());
+                    if (amount <= 0) return false;
+
+                    var domain = new DynamicSeedDomain();
+                    boolean dynamic = overload != null && overload.isFuzzyInput(slot)
+                            && plannedRemainder.dropSecondary().equals(selected.dropSecondary());
+                    if (dynamic) domain.markFuzzy(false);
+                    for (var possible : input.getPossibleInputs()) {
+                        if (possible.what() == null) return false;
+                        var actualRemainder = input.getRemainingKey(possible.what());
+                        if (actualRemainder == null) return false;
+                        if (!plannedRemainder.equals(actualRemainder)) {
+                            dynamic = true;
+                            domain.addVariant(actualRemainder);
+                        }
+                    }
+                    if (dynamic) {
+                        dynamicCapacity.merge(
+                                plannedRemainder, domain, DynamicSeedDomain::merge);
+                    } else {
+                        exactCapacity.merge(plannedRemainder, amount, Sat::add);
+                    }
+                }
+
+                for (var output : flow.outputSeed().entrySet()) {
+                    long exact = exactCapacity.getOrDefault(output.getKey(), 0L);
+                    if (output.getValue() <= exact) continue;
+                    var domain = dynamicCapacity.get(output.getKey());
+                    if (domain == null) return false;
+                    requiredDomains.merge(
+                            output.getKey(), domain.copy(), DynamicSeedDomain::merge);
+                }
+            }
+
+            for (var required : requiredDomains.entrySet()) {
+                var planned = required.getKey();
+                var domain = required.getValue();
+                for (int memberIndex = 0; memberIndex < members.size(); memberIndex++) {
+                    var flow = flows.get(memberIndex);
+                    if (flow.inputSeed().getOrDefault(planned, 0L) <= 0) continue;
+                    var details = members.get(memberIndex).details();
+                    var provider = CraftingPatternDelegates.forProviderLookup(details);
+                    var overload = provider instanceof OverloadedProviderOnlyPatternDetails candidate
+                            ? candidate : null;
+                    var inputs = ClosedLoopExpandedPatternDetails.pinReusableSeedInputs(
+                            details, flow.inputSeedBySlot());
+                    long bundleUnits = 0L;
+                    boolean mapped = false;
+                    for (var seedSlot : flow.inputSeedBySlot().entrySet()) {
+                        if (!planned.equals(seedSlot.getValue())) continue;
+                        mapped = true;
+                        int slot = seedSlot.getKey();
+                        boolean fuzzy = overload != null && overload.isFuzzyInput(slot);
+                        if (domain.fuzzy && !fuzzy) return false;
+                        var possible = inputs[slot].getPossibleInputs();
+                        long selectedAmount = 0L;
+                        for (var candidate : possible) {
+                            if (candidate.what() == null) return false;
+                            boolean selected = planned.equals(candidate.what())
+                                    || (fuzzy && planned.dropSecondary()
+                                            .equals(candidate.what().dropSecondary()));
+                            if (selected && selectedAmount == 0L) {
+                                selectedAmount = candidate.amount();
+                            }
+                        }
+                        if (selectedAmount <= 0) return false;
+                        for (var variant : domain.variants) {
+                            boolean accepted = fuzzy
+                                    ? planned.dropSecondary().equals(variant.dropSecondary())
+                                    : java.util.Arrays.stream(possible)
+                                            .anyMatch(candidate -> variant.equals(candidate.what()));
+                            if (!accepted) return false;
+                        }
+                        bundleUnits = Sat.add(bundleUnits,
+                                Sat.mul(selectedAmount, inputs[slot].getMultiplier()));
+                    }
+                    if (!mapped || bundleUnits <= 0) return false;
+                    // Consumer routing may split one logical input bundle across producer edges.
+                    // Without a pending-bundle quarantine, only unit bundles are safe for any
+                    // component-changing state. Runtime still enforces whole bundles defensively
+                    // for legacy or third-party execution wrappers.
+                    if (bundleUnits > 1L) return false;
+                }
+            }
+            return true;
+        } catch (RuntimeException ignored) {
+            return false;
+        }
     }
 
     /** Every encoded member must consume at least one positive reusable-state type. */
@@ -316,8 +462,12 @@ public final class ClosedLoopPatternAnalyzer {
         if (details == null || details instanceof TianshuClosedLoopPatternDetails) return null;
         var consumed = new LinkedHashMap<AEKey, Long>();
         var produced = new LinkedHashMap<AEKey, Long>();
+        var inputSeedBySlot = new LinkedHashMap<Integer, AEKey>();
         var inputs = details.getInputs();
-        var overload = details instanceof com.moakiee.thunderbolt.ae2.overload.pattern.OverloadedProviderOnlyPatternDetails value
+        var providerDetails = com.moakiee.thunderbolt.ae2.api.crafting.CraftingPatternDelegates
+                .forProviderLookup(details);
+        var overload = providerDetails instanceof
+                com.moakiee.thunderbolt.ae2.overload.pattern.OverloadedProviderOnlyPatternDetails value
                 ? value : null;
         for (int slot = 0; slot < inputs.length; slot++) {
             var input = inputs[slot];
@@ -329,30 +479,50 @@ public final class ClosedLoopPatternAnalyzer {
             AEKey concrete = loopMatch != null ? loopMatch.key() : null;
             if (concrete == null) concrete = possible[0].what();
             long templateAmount = possible[0].amount();
-            for (var candidate : possible) {
-                if (concrete.equals(candidate.what())) {
-                    templateAmount = candidate.amount();
-                    break;
+            boolean fuzzySlot = overload != null && overload.isFuzzyInput(slot);
+            if (fuzzySlot) {
+                Long matchedAmount = null;
+                for (var candidate : possible) {
+                    if (candidate.what() == null || !concrete.dropSecondary()
+                            .equals(candidate.what().dropSecondary())) continue;
+                    if (matchedAmount != null && matchedAmount != candidate.amount()) return null;
+                    matchedAmount = candidate.amount();
+                }
+                if (matchedAmount == null) return null;
+                templateAmount = matchedAmount;
+            } else {
+                for (var candidate : possible) {
+                    if (concrete.equals(candidate.what())) {
+                        templateAmount = candidate.amount();
+                        break;
+                    }
                 }
             }
             long amount = Sat.mul(templateAmount, input.getMultiplier());
             if (amount <= 0) return null;
             consumed.merge(concrete, amount, Sat::add);
+            inputSeedBySlot.put(slot, concrete);
             var remaining = input.getRemainingKey(concrete);
-            if (remaining != null) produced.merge(remaining, amount, Sat::add);
+            // AE2 returns one remainder per completed input-template operation, not one per
+            // physical item consumed by that template. E.g. a 2A template returning A is 2A->1A.
+            if (remaining != null) {
+                produced.merge(remaining, input.getMultiplier(), Sat::add);
+            }
         }
         for (var output : details.getOutputs()) {
             if (output.what() == null || output.amount() <= 0) return null;
             produced.merge(output.what(), output.amount(), Sat::add);
         }
-        return new Balance(consumed, produced);
+        return new Balance(consumed, produced, Map.copyOf(inputSeedBySlot));
     }
 
     private static List<LoopOutput> possibleLoopOutputs(List<IPatternDetails> members) {
         var result = new ArrayList<LoopOutput>();
         for (var member : members) {
             if (member == null) return null;
-            var overload = member instanceof
+            var providerDetails = com.moakiee.thunderbolt.ae2.api.crafting.CraftingPatternDelegates
+                    .forProviderLookup(member);
+            var overload = providerDetails instanceof
                     com.moakiee.thunderbolt.ae2.overload.pattern.OverloadedProviderOnlyPatternDetails value
                     ? value : null;
             var outputs = member.getOutputs();
@@ -395,16 +565,20 @@ public final class ClosedLoopPatternAnalyzer {
 
     private static LoopMatch matchingLoopOutput(
             GenericStack[] possibleInputs, List<LoopOutput> outputs, boolean ignoreSecondary) {
+        LoopMatch forbidden = null;
         for (var output : outputs) {
             for (var possible : possibleInputs) {
                 if (possible.what() == null) continue;
                 if (ignoreSecondary
                         && possible.what().dropSecondary().equals(output.key().dropSecondary())) {
-                    return new LoopMatch(output.key(), isDurabilityFuzzy(possible.what(), output.key()));
+                    var match = new LoopMatch(
+                            output.key(), isDurabilityFuzzy(possible.what(), output.key()));
+                    if (!match.forbidden()) return match;
+                    if (forbidden == null) forbidden = match;
                 }
                 if (!ignoreSecondary && output.fuzzy()
                         && possible.what().equals(output.key())) {
-                    return new LoopMatch(output.key(), true);
+                    if (forbidden == null) forbidden = new LoopMatch(output.key(), true);
                 }
                 if (!ignoreSecondary && !output.fuzzy()
                         && possible.what().equals(output.key())) {
@@ -412,7 +586,7 @@ public final class ClosedLoopPatternAnalyzer {
                 }
             }
         }
-        return null;
+        return forbidden;
     }
 
     /**
@@ -470,14 +644,52 @@ public final class ClosedLoopPatternAnalyzer {
     }
     public record MemberFlow(
             Map<AEKey, Long> inputSeed,
-            Map<AEKey, Long> outputSeed) {
+            Map<AEKey, Long> outputSeed,
+            Map<Integer, AEKey> inputSeedBySlot) {
+        public MemberFlow(Map<AEKey, Long> inputSeed, Map<AEKey, Long> outputSeed) {
+            this(inputSeed, outputSeed, Map.of());
+        }
+
         public MemberFlow {
             inputSeed = Map.copyOf(inputSeed);
             outputSeed = Map.copyOf(outputSeed);
+            inputSeedBySlot = Map.copyOf(inputSeedBySlot);
         }
     }
-    private record Balance(Map<AEKey, Long> consumed, Map<AEKey, Long> produced) { }
+    private record Balance(
+            Map<AEKey, Long> consumed,
+            Map<AEKey, Long> produced,
+            Map<Integer, AEKey> inputSeedBySlot) { }
     private record LoopOutput(AEKey key, boolean fuzzy) { }
     private record LoopMatch(AEKey key, boolean forbidden) { }
+
+    private static final class DynamicSeedDomain {
+        private boolean fuzzy;
+        private boolean lateBound;
+        private final Set<AEKey> variants = new LinkedHashSet<>();
+
+        private DynamicSeedDomain markFuzzy(boolean lateBound) {
+            this.fuzzy = true;
+            this.lateBound |= lateBound;
+            return this;
+        }
+
+        private DynamicSeedDomain addVariant(AEKey variant) {
+            if (variant != null) variants.add(variant);
+            return this;
+        }
+
+        private DynamicSeedDomain merge(DynamicSeedDomain other) {
+            if (other == null) return this;
+            fuzzy |= other.fuzzy;
+            lateBound |= other.lateBound;
+            variants.addAll(other.variants);
+            return this;
+        }
+
+        private DynamicSeedDomain copy() {
+            return new DynamicSeedDomain().merge(this);
+        }
+    }
     private ClosedLoopPatternAnalyzer() { }
 }

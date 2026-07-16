@@ -79,6 +79,31 @@ class ClosedLoopCycleKeysTest {
     }
 
     @Test
+    void consumerCreditRemaindersShareThePhysicalOutputCursor() {
+        var a = key("credit_split_input");
+        var b = key("credit_split_output");
+        var first = java.util.UUID.fromString("00000000-0000-0000-0000-000000000001");
+        var second = java.util.UUID.fromString("00000000-0000-0000-0000-000000000002");
+        var targets = new java.util.LinkedHashMap<java.util.UUID, java.util.Map<AEKey, Long>>();
+        targets.put(first, java.util.Map.of(b, 1L));
+        targets.put(second, java.util.Map.of(b, 1L));
+
+        var slices = Ae2ClosedLoopPatternDetails.splitMemberFlow(
+                new ClosedLoopPatternAnalyzer.MemberFlow(
+                        java.util.Map.of(a, 2L), java.util.Map.of(b, 2L)),
+                2L,
+                targets);
+
+        assertEquals(2, slices.size());
+        assertEquals(1L, slices.get(0).copiesPerCycle());
+        assertEquals(java.util.Map.of(first, java.util.Map.of(b, 1L)),
+                slices.get(0).outputSeedCredits());
+        assertEquals(1L, slices.get(1).copiesPerCycle());
+        assertEquals(java.util.Map.of(second, java.util.Map.of(b, 1L)),
+                slices.get(1).outputSeedCredits());
+    }
+
+    @Test
     void sharedLedgerClassificationRequiresExactlyOneInputSeedTypePerMember() {
         var a = key("classification_a");
         var b = key("classification_b");

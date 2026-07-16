@@ -11,10 +11,11 @@ class SingleSeedClosedLoopPatternDetails extends ClosedLoopExpandedPatternDetail
                                        java.util.Set<AEKey> cycleKeys,
                                        java.util.UUID seedGroupId,
                                        boolean singleSeedInputPerMember,
+                                       java.util.Map<Integer, AEKey> plannedSeedInputSlots,
                                        appeng.api.stacks.AEItemKey persistenceDefinition,
                                        int dispatchOrder) {
         super(delegate, seedAmounts, cycleKeys, seedGroupId, singleSeedInputPerMember,
-                persistenceDefinition, dispatchOrder);
+                plannedSeedInputSlots, persistenceDefinition, dispatchOrder);
     }
 
     @Override

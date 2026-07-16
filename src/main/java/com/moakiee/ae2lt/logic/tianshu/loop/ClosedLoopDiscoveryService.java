@@ -5,6 +5,7 @@ import appeng.api.crafting.PatternDetailsHelper;
 import appeng.api.networking.crafting.ICraftingService;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.GenericStack;
+import com.moakiee.thunderbolt.ae2.api.crafting.CraftingPatternDelegates;
 import com.moakiee.thunderbolt.ae2.overload.pattern.OverloadedProviderOnlyPatternDetails;
 import com.moakiee.thunderbolt.ae2.overload.pattern.SourcePatternSnapshot;
 import java.util.ArrayList;
@@ -394,7 +395,9 @@ public final class ClosedLoopDiscoveryService {
     private static List<InputRequirement> inputRequirements(IPatternDetails details) {
         if (details == null || details instanceof TianshuClosedLoopPatternDetails) return null;
         var inputs = details.getInputs();
-        var overload = details instanceof OverloadedProviderOnlyPatternDetails value ? value : null;
+        var providerDetails = CraftingPatternDelegates.forProviderLookup(details);
+        var overload = providerDetails instanceof OverloadedProviderOnlyPatternDetails value
+                ? value : null;
         var result = new ArrayList<InputRequirement>(inputs.length);
         for (int slot = 0; slot < inputs.length; slot++) {
             var input = inputs[slot];
@@ -448,7 +451,9 @@ public final class ClosedLoopDiscoveryService {
 
     private static List<PatternOutput> outputs(IPatternDetails details) {
         if (details == null) return List.of();
-        var overload = details instanceof OverloadedProviderOnlyPatternDetails value ? value : null;
+        var providerDetails = CraftingPatternDelegates.forProviderLookup(details);
+        var overload = providerDetails instanceof OverloadedProviderOnlyPatternDetails value
+                ? value : null;
         var outputs = details.getOutputs();
         var result = new ArrayList<PatternOutput>(outputs.size());
         for (int slot = 0; slot < outputs.size(); slot++) {

@@ -1,6 +1,7 @@
 package com.moakiee.thunderbolt.ae2.overload.cpu;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -9,6 +10,7 @@ import appeng.api.stacks.AEKey;
 import appeng.api.stacks.AEKeyType;
 import com.moakiee.thunderbolt.ae2.overload.pattern.SourcePatternSnapshot;
 import com.mojang.serialization.MapCodec;
+import java.math.BigInteger;
 import java.util.List;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
@@ -128,15 +130,101 @@ class OverloadSeedRoutingTest {
     }
 
     @Test
-    void mergedPendingOutputCannotSilentlyChangeItsDedicatedSeedOwner() {
+    void mergedPendingOutputKeepsDistinctConsumerCreditsInClaimOrder() {
         var fixture = fixture();
+        var firstConsumer = UUID.fromString("00000000-0000-0000-0000-000000000001");
+        var secondConsumer = UUID.fromString("00000000-0000-0000-0000-000000000002");
         fixture.state().registerExpectedOutput(
                 fixture.reference(), 0, fixture.itemId(), fixture.expectedKey(), 1L, false,
-                new OverloadReusableSeedMetadata(UUID.randomUUID(), false, 1L));
-
-        assertThrows(IllegalArgumentException.class, () -> fixture.state().registerExpectedOutput(
+                new OverloadReusableSeedMetadata(firstConsumer, false, 1L));
+        fixture.state().registerExpectedOutput(
                 fixture.reference(), 0, fixture.itemId(), fixture.expectedKey(), 1L, false,
-                new OverloadReusableSeedMetadata(UUID.randomUUID(), false, 1L)));
+                new OverloadReusableSeedMetadata(secondConsumer, false, 1L));
+
+        var first = fixture.state().claimByItemId(fixture.itemId(), 1L, true);
+        assertEquals(List.of(new OverloadConsumerCredit(firstConsumer, 1L)),
+                first.consumerCredits());
+        var second = fixture.state().claimByItemId(fixture.itemId(), 1L, true);
+        assertEquals(List.of(new OverloadConsumerCredit(secondConsumer, 1L)),
+                second.consumerCredits());
+        assertTrue(fixture.state().isEmpty());
+    }
+
+    @Test
+    void fuzzyClaimSelectsTheConsumerThatAcceptsTheConcreteVariant() {
+        var fixture = fixture();
+        var xConsumer = UUID.fromString("00000000-0000-0000-0000-000000000001");
+        var yConsumer = UUID.fromString("00000000-0000-0000-0000-000000000002");
+        fixture.state().registerExpectedOutput(
+                fixture.reference(), 0, fixture.itemId(), fixture.expectedKey(), 2L, false,
+                new OverloadReusableSeedMetadata(List.of(
+                        new OverloadConsumerCredit(xConsumer, 1L),
+                        new OverloadConsumerCredit(yConsumer, 1L))));
+
+        var yPreview = fixture.state().claimByItemId(
+                fixture.itemId(), 1L, false,
+                (consumer, expected) -> consumer.equals(yConsumer));
+        assertEquals(List.of(new OverloadConsumerCredit(yConsumer, 1L)),
+                yPreview.consumerCredits());
+
+        var yCommitted = fixture.state().commitPreview(yPreview);
+        assertEquals(List.of(new OverloadConsumerCredit(yConsumer, 1L)),
+                yCommitted.consumerCredits(),
+                "commit must preserve the consumer selected by simulation");
+        var stillPending = fixture.state().allPending().iterator().next();
+        assertEquals(List.of(new OverloadConsumerCredit(xConsumer, 1L)),
+                stillPending.consumerCredits());
+
+        var xReturn = fixture.state().claimByItemId(
+                fixture.itemId(), 1L, true,
+                (consumer, expected) -> consumer.equals(xConsumer));
+        assertEquals(List.of(new OverloadConsumerCredit(xConsumer, 1L)),
+                xReturn.consumerCredits());
+        assertTrue(fixture.state().isEmpty());
+    }
+
+    @Test
+    void requesterPartitionCommitsSeedAndExcessButLeavesRejectedDemandPending() {
+        var fixture = fixture();
+        var consumer = UUID.randomUUID();
+        fixture.state().registerExpectedOutput(
+                fixture.reference(), 0, fixture.itemId(), fixture.expectedKey(), 5L, true,
+                new OverloadReusableSeedMetadata(consumer, false, 1L));
+
+        var preview = fixture.state().claimByItemId(fixture.itemId(), 5L, false);
+        var committed = fixture.state().commitPreview(
+                preview.partitionRequester(2L, 1L));
+
+        assertEquals(4L, committed.claimedAmount());
+        assertEquals(3L, committed.claimedForInventory(),
+                "one seed plus two outputs beyond the requester limit stay in CPU inventory");
+        assertEquals(1L, committed.claimedForRequester());
+        assertEquals(List.of(new OverloadConsumerCredit(consumer, 1L)),
+                committed.consumerCredits());
+        var stillPending = fixture.state().allPending().iterator().next();
+        assertEquals(1L, stillPending.remainingAmount(),
+                "the rejected unit inside the requester limit must remain retryable");
+        assertEquals(0L, stillPending.remainingReusableSeedAmount());
+    }
+
+    @Test
+    void collidingPendingIdentityFailsBeforeItCanMergeDifferentTemplates() {
+        var fixture = fixture();
+        fixture.state().registerExpectedOutput(
+                fixture.reference(), 0, fixture.itemId(), fixture.expectedKey(), 1L, false, null);
+
+        assertThrows(IllegalStateException.class, () -> fixture.state().registerExpectedOutput(
+                fixture.reference(), 0, fixture.itemId(), key("pickaxe", "other_template"),
+                1L, false, null));
+    }
+
+    @Test
+    void nativeStrictDetectionDoesNotLoseDemandBehindLongSaturation() {
+        var saturatedIdOnly = BigInteger.valueOf(Long.MAX_VALUE);
+        assertFalse(OverloadCpuStateManager.hasNativeDemandBeyondIdOnly(
+                saturatedIdOnly, saturatedIdOnly));
+        assertTrue(OverloadCpuStateManager.hasNativeDemandBeyondIdOnly(
+                saturatedIdOnly.add(BigInteger.ONE), saturatedIdOnly));
     }
 
     private static Fixture fixture() {

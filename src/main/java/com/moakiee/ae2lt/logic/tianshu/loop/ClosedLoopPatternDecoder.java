@@ -51,11 +51,26 @@ public final class ClosedLoopPatternDecoder implements IPatternDetailsDecoder {
                 var memberFlows = ClosedLoopPatternAnalyzer.deriveMemberFlows(
                         analyzedMembers, payload.seeds());
                 if (memberFlows.size() != decodedMembers.size()) return null;
+                Ae2ClosedLoopPatternDetails.validateFuzzyOutputSeedConsumers(
+                        analyzedMembers, memberFlows);
+                var acceptedVariants = new java.util.LinkedHashMap<
+                        appeng.api.stacks.AEKey, java.util.Set<appeng.api.stacks.AEKey>>();
+                var fuzzySeeds = new java.util.LinkedHashSet<appeng.api.stacks.AEKey>();
+                Ae2ClosedLoopPatternDetails.collectAcceptedSeedVariants(
+                        decodedMembers, memberFlows, seedAmounts.keySet(),
+                        acceptedVariants, fuzzySeeds);
                 boolean singleSeedInputPerMember =
-                        ClosedLoopPatternAnalyzer.hasSingleSeedInputPerMember(memberFlows);
+                        Ae2ClosedLoopPatternDetails.isSharedSeedPoolSafe(
+                                ClosedLoopPatternAnalyzer.hasSingleSeedInputPerMember(memberFlows),
+                                seedAmounts.keySet(), acceptedVariants, fuzzySeeds);
+                var memberFlow = memberFlows.get(executionMember);
                 return ClosedLoopExpandedPatternDetails.wrap(
-                        delegate, seedAmounts, cycleKeys, payload.patternId(),
+                        delegate,
+                        Ae2ClosedLoopPatternDetails.memberSeedAmounts(
+                                seedAmounts, memberFlow.inputSeed().keySet()),
+                        cycleKeys, payload.patternId(),
                         singleSeedInputPerMember,
+                        memberFlow.inputSeedBySlot(),
                         payload.memberPatterns().size() == 1, what, executionMember);
             }
             if (!payload.enabled()) return null;
