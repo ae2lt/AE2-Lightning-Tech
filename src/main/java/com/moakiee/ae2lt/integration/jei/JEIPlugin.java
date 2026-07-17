@@ -176,13 +176,6 @@ public class JEIPlugin implements IModPlugin {
                 helper,
                 visibility));
 
-        if (ModList.get().isLoaded("ae2wtlib")) {
-            registration.addUniversalRecipeTransferHandler(new EncodePatternTransferHandler<>(
-                    com.moakiee.ae2lt.integration.ae2wtlib.TianshuWirelessPatternEncodingTermMenu.TYPE,
-                    com.moakiee.ae2lt.integration.ae2wtlib.TianshuWirelessPatternEncodingTermMenu.class,
-                    helper,
-                    visibility));
-        }
     }
 
     @Override

@@ -62,9 +62,6 @@ public class ModScreens {
         event.register(TianshuSupercomputerControllerMenu.TYPE, TianshuSupercomputerControllerScreen::new);
         event.register(TianshuPatternEncodingTermMenu.TYPE, ModScreens::createTianshuPatternEncodingTermScreen);
         event.register(TianshuSeedStorageMenu.TYPE, ModScreens::createTianshuSeedStorageScreen);
-        if (net.neoforged.fml.ModList.get().isLoaded("ae2wtlib")) {
-            com.moakiee.ae2lt.integration.ae2wtlib.Ae2wtlibIntegration.registerTerminalScreen(event);
-        }
     }
 
     private static TianshuPatternEncodingTermScreen<TianshuPatternEncodingTermMenu> createTianshuPatternEncodingTermScreen(

@@ -246,11 +246,6 @@ public final class ModItems {
                             TianshuPatternEncodingTerminalPart.class,
                             TianshuPatternEncodingTerminalPart::new));
 
-    public static final DeferredItem<Item> TIANSHU_WIRELESS_PATTERN_ENCODING_TERMINAL =
-            net.neoforged.fml.ModList.get().isLoaded("ae2wtlib")
-                    ? com.moakiee.ae2lt.integration.ae2wtlib.Ae2wtlibIntegration.registerTerminalItem(ITEMS)
-                    : null;
-
     public static final DeferredItem<Item> OVERLOADED_FILTER_COMPONENT = ITEMS.registerItem(
             "overloaded_filter_component",
             OverloadedFilterComponentItem::new,

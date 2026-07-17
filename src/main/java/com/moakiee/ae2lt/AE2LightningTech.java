@@ -137,9 +137,6 @@ public class AE2LightningTech {
                         output.accept(ModBlocks.TIANSHU_SUPERCOMPUTER_CONTROLLER);
                         output.accept(ModBlocks.TIANSHU_SUPERCOMPUTER_PORT);
                         output.accept(ModItems.TIANSHU_PATTERN_ENCODING_TERMINAL);
-                        if (ModItems.TIANSHU_WIRELESS_PATTERN_ENCODING_TERMINAL != null) {
-                            output.accept(ModItems.TIANSHU_WIRELESS_PATTERN_ENCODING_TERMINAL);
-                        }
                         output.accept(ModBlocks.BASELINE_SUPERCOMPUTING_UNIT);
                         output.accept(ModBlocks.QUANTUM_SUPERCOMPUTING_UNIT);
                         output.accept(ModBlocks.OVERLOAD_SUPERCOMPUTING_UNIT);
@@ -299,9 +296,6 @@ public class AE2LightningTech {
         CelestweaveArmorMaterials.ARMOR_MATERIALS.register(modEventBus);
         ModItems.ITEMS.register(modEventBus);
         ModMenuTypes.MENU_TYPES.register(modEventBus);
-        if (net.neoforged.fml.ModList.get().isLoaded("ae2wtlib")) {
-            com.moakiee.ae2lt.integration.ae2wtlib.Ae2wtlibIntegration.registerTerminalDefinition();
-        }
         ModRecipeTypes.RECIPE_SERIALIZERS.register(modEventBus);
         ModRecipeTypes.RECIPE_TYPES.register(modEventBus);
         ModDataComponents.DATA_COMPONENTS.register(modEventBus);

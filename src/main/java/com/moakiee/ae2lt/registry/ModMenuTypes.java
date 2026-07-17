@@ -125,11 +125,6 @@ public final class ModMenuTypes {
                     "tianshu_pattern_encoding_terminal",
                     () -> TianshuPatternEncodingTermMenu.TYPE);
 
-    public static final DeferredHolder<MenuType<?>, ?> TIANSHU_WIRELESS_PATTERN_ENCODING_TERMINAL =
-            net.neoforged.fml.ModList.get().isLoaded("ae2wtlib")
-                    ? com.moakiee.ae2lt.integration.ae2wtlib.Ae2wtlibIntegration.registerTerminalMenu(MENU_TYPES)
-                    : null;
-
     private ModMenuTypes() {
     }
 }

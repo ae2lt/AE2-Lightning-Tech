@@ -1000,7 +1000,6 @@
   "ae2lt.tianshu.issue.unexpected_block": "A required-air position contains an unexpected block",
   "ae2lt.tianshu.issue.unknown": "Structure is incomplete",
   "item.ae2lt.tianshu_pattern_encoding_terminal": "Tianshu Pattern Encoding Terminal",
-  "item.ae2lt.tianshu_wireless_pattern_encoding_terminal": "Tianshu Wireless Pattern Encoding Terminal",
   "ae2lt.tianshu.terminal.mode.advanced": "Advanced Pattern",
   "ae2lt.tianshu.terminal.mode.overload": "Overload Pattern",
   "ae2lt.tianshu.terminal.mode.closed_loop": "Closed-loop Pattern",
