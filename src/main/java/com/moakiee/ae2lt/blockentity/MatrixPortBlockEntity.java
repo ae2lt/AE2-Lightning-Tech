@@ -113,12 +113,14 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
         if (controllerPos != null) {
             throw new IllegalArgumentException("A matrix link requires its controller UUID");
         }
+        boolean bindingChanged = MultiblockPortBinding.changes(
+                formed, this.controllerPos, boundMachineId, null, null);
         boolean formedChanged = formed;
         this.controllerPos = null;
         this.boundMachineId = null;
         this.formed = false;
         if (formedChanged) onGridConnectableSidesChanged();
-        updateLinkState();
+        updateLinkState(bindingChanged);
     }
 
     public void bindToController(BlockPos controllerPos, UUID machineId) {
@@ -126,32 +128,38 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
             bindToController(null);
             return;
         }
+        boolean bindingChanged = MultiblockPortBinding.changes(
+                formed, this.controllerPos, boundMachineId, controllerPos, machineId);
         boolean formedChanged = !formed;
         this.controllerPos = controllerPos.immutable();
         this.boundMachineId = machineId;
         this.formed = true;
         if (formedChanged) onGridConnectableSidesChanged();
-        updateLinkState();
+        updateLinkState(bindingChanged);
     }
 
     public void suspendFromController(BlockPos expectedControllerPos) {
         if (formed && expectedControllerPos != null && expectedControllerPos.equals(controllerPos)) {
             formed = false;
             onGridConnectableSidesChanged();
-            updateLinkState();
+            updateLinkState(true);
         }
     }
 
-    private void updateLinkState() {
+    private void updateLinkState(boolean bindingChanged) {
+        boolean blockStateChanged = false;
         if (level != null && !level.isClientSide) {
             var state = getBlockState();
             if (state.hasProperty(MatrixPortBlock.FORMED)
                     && state.getValue(MatrixPortBlock.FORMED) != formed) {
                 level.setBlock(worldPosition, state.setValue(MatrixPortBlock.FORMED, formed), Block.UPDATE_ALL);
+                blockStateChanged = true;
             }
         }
         invalidateExposedPatternStorage();
-        if (level != null && !level.isClientSide) {
+        // Re-notifying an unchanged binding schedules another multiblock scan through
+        // neighborChanged, creating a permanent scan -> bind -> notify feedback loop.
+        if ((bindingChanged || blockStateChanged) && level != null && !level.isClientSide) {
             level.updateNeighborsAt(worldPosition, getBlockState().getBlock());
         }
         saveChanges();

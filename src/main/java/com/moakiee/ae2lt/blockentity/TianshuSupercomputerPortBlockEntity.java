@@ -111,13 +111,16 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
         if (controllerPos != null) {
             throw new IllegalArgumentException("A Tianshu link requires its controller UUID and CPU pool");
         }
+        boolean bindingChanged = MultiblockPortBinding.changes(
+                formed, this.controllerPos, boundMachineId, linkedCpuPool,
+                null, null, null);
         boolean formedChanged = formed;
         this.controllerPos = null;
         this.boundMachineId = null;
         this.linkedCpuPool = null;
         this.formed = false;
         if (formedChanged) onGridConnectableSidesChanged();
-        updateLinkState();
+        updateLinkState(bindingChanged);
     }
 
     public void bindToController(BlockPos controllerPos, UUID machineId,
@@ -126,6 +129,9 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
             bindToController(null);
             return;
         }
+        boolean bindingChanged = MultiblockPortBinding.changes(
+                formed, this.controllerPos, boundMachineId, linkedCpuPool,
+                controllerPos, machineId, cpuPool);
         boolean formedChanged = !formed;
         this.controllerPos = controllerPos.immutable();
         this.boundMachineId = machineId;
@@ -133,18 +139,19 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
         this.formed = true;
         this.legacyTianshuId = null;
         if (formedChanged) onGridConnectableSidesChanged();
-        updateLinkState();
+        updateLinkState(bindingChanged);
     }
 
     public void suspendFromController(BlockPos expectedControllerPos) {
         if (formed && expectedControllerPos != null && expectedControllerPos.equals(controllerPos)) {
             formed = false;
             onGridConnectableSidesChanged();
-            updateLinkState();
+            updateLinkState(true);
         }
     }
 
-    private void updateLinkState() {
+    private void updateLinkState(boolean bindingChanged) {
+        boolean blockStateChanged = false;
         if (level != null && !level.isClientSide) {
             var state = getBlockState();
             if (state.hasProperty(TianshuSupercomputerPortBlock.FORMED)
@@ -152,8 +159,13 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
                 level.setBlock(worldPosition,
                         state.setValue(TianshuSupercomputerPortBlock.FORMED, formed),
                         Block.UPDATE_ALL);
+                blockStateChanged = true;
             }
-            level.updateNeighborsAt(worldPosition, state.getBlock());
+            // Re-notifying an unchanged binding schedules another multiblock scan through
+            // neighborChanged, creating a permanent scan -> bind -> notify feedback loop.
+            if (bindingChanged || blockStateChanged) {
+                level.updateNeighborsAt(worldPosition, state.getBlock());
+            }
             refreshCraftingProvider();
         }
         saveChanges();
