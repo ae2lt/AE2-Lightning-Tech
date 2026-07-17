@@ -34,9 +34,9 @@ public final class ClosedLoopPatternValidator {
                 return invalid(ClosedLoopValidationResult.Status.MEMBER_IS_CLOSED_LOOP);
             }
             members.add(new ClosedLoopPatternAnalyzer.Member(
-                    details, stored.copiesPerCycle(), stored.seedWaveCopies()));
+                    details, stored.copiesPerCycle()));
         }
-        if (ClosedLoopPatternAnalyzer.seedWaveRepetitions(members) <= 0L) {
+        if (!ClosedLoopPatternAnalyzer.isPrimitiveCycle(members)) {
             return invalid(ClosedLoopValidationResult.Status.STRUCTURE_CHECK_FAILED);
         }
 

@@ -41,6 +41,14 @@ public record ClosedLoopPatternPayload(
         externalInputs = copyStacks(externalInputs, "externalInputs");
         netOutputs = copyStacks(netOutputs, "netOutputs");
         if (memberPatterns.isEmpty()) throw new IllegalArgumentException("closed-loop pattern requires members");
+        if (memberPatterns.size() > ClosedLoopPatternAnalyzer.MAX_MEMBERS) {
+            throw new IllegalArgumentException("closed-loop pattern has too many members");
+        }
+        if (!ClosedLoopPatternAnalyzer.isMinimalIntegerRatio(memberPatterns.stream()
+                .mapToLong(ClosedLoopMemberPattern::copiesPerCycle).toArray())) {
+            throw new IllegalArgumentException(
+                    "closed-loop member copies must use the minimal integer ratio");
+        }
         if (seeds.isEmpty()) throw new IllegalArgumentException("closed-loop pattern requires at least one seed");
         if (netOutputs.isEmpty()) throw new IllegalArgumentException("closed-loop pattern requires a net output");
         if (executionSeedMultiplier < 1) {
@@ -49,14 +57,6 @@ public record ClosedLoopPatternPayload(
         if (storedTaskMultiplier < 1) {
             throw new IllegalArgumentException("stored task multiplier must be positive");
         }
-        long seedWaveRepetitions = memberPatterns.getFirst().seedWaveRepetitions();
-        for (var member : memberPatterns) {
-            if (member.seedWaveRepetitions() != seedWaveRepetitions) {
-                throw new IllegalArgumentException(
-                        "all closed-loop members must use the same seed-wave repetition count");
-            }
-        }
-
         var outputKeys = new HashSet<>();
         for (var output : netOutputs) {
             if (!outputKeys.add(output.what())) {
@@ -99,11 +99,6 @@ public record ClosedLoopPatternPayload(
         if (enabled == newEnabled) return this;
         return new ClosedLoopPatternPayload(patternId, version + 1, memberPatterns, seeds,
                 externalInputs, netOutputs, executionSeedMultiplier, storedTaskMultiplier, newEnabled);
-    }
-
-    /** Derived execution scale; it is intentionally not a third persisted/UI multiplier. */
-    public long seedWaveRepetitions() {
-        return memberPatterns.getFirst().seedWaveRepetitions();
     }
 
     private static List<ClosedLoopMemberPattern> copyMembers(List<ClosedLoopMemberPattern> members) {

@@ -21,6 +21,7 @@ public final class ClosedLoopPatternAuthoringService {
         VALID,
         MEMBER_UNDECODABLE,
         INVALID_MARKING,
+        NON_MINIMAL_COPIES,
         NOT_BALANCED
     }
 
@@ -47,22 +48,19 @@ public final class ClosedLoopPatternAuthoringService {
             if (marked == null || marked.details() == null || marked.snapshot() == null
                     || marked.details() instanceof TianshuClosedLoopPatternDetails
                     || CLOSED_LOOP_PATTERN_ITEM_ID.equals(marked.snapshot().itemId())
-                    || marked.copiesPerCycle() < 1
-                    || marked.seedWaveCopies() < 1
-                    || marked.seedWaveCopies() > marked.copiesPerCycle()
-                    || marked.copiesPerCycle() % marked.seedWaveCopies() != 0L) {
+                    || marked.copiesPerCycle() < 1) {
                 return new Result(Status.INVALID_MARKING, null);
             }
             details.add(marked.details());
             var analyzerMember = new ClosedLoopPatternAnalyzer.Member(
-                    marked.details(), marked.copiesPerCycle(), marked.seedWaveCopies());
+                    marked.details(), marked.copiesPerCycle());
             analyzed.add(analyzerMember);
             byMember.put(analyzerMember, marked);
         }
-        if (ClosedLoopPatternAnalyzer.seedWaveRepetitions(analyzed) <= 0L) {
-            return new Result(Status.INVALID_MARKING, null);
+        if (!ClosedLoopPatternAnalyzer.isMinimalIntegerRatio(
+                analyzed.stream().mapToLong(ClosedLoopPatternAnalyzer.Member::copies).toArray())) {
+            return new Result(Status.NON_MINIMAL_COPIES, null);
         }
-
         var structure = ClosedLoopPatternAnalyzer.validateStructure(details);
         if (structure != ClosedLoopPatternAnalyzer.StructureStatus.VALID) {
             return new Result(Status.INVALID_MARKING, null);
@@ -74,12 +72,11 @@ public final class ClosedLoopPatternAuthoringService {
         var stored = new ArrayList<ClosedLoopMemberPattern>(ordered.members().size());
         for (var member : ordered.members()) {
             var marked = byMember.get(member);
-            if (marked == null || marked.copiesPerCycle() != member.copies()
-                    || marked.seedWaveCopies() != member.seedWaveCopies()) {
+            if (marked == null || marked.copiesPerCycle() != member.copies()) {
                 return new Result(Status.INVALID_MARKING, null);
             }
             stored.add(new ClosedLoopMemberPattern(
-                    marked.snapshot(), member.copies(), member.seedWaveCopies()));
+                    marked.snapshot(), member.copies()));
         }
         var analysis = ordered.analysis();
         if (!ClosedLoopPatternAnalyzer.hasInputSeedPerMember(
@@ -112,16 +109,18 @@ public final class ClosedLoopPatternAuthoringService {
         var flattened = ClosedLoopPatternFlattener.flatten(draftMembers, level);
         if (!flattened.valid()) {
             return new Result(
-                    flattened.status() == ClosedLoopPatternFlattener.Status.MEMBER_UNDECODABLE
-                            ? Status.MEMBER_UNDECODABLE
-                            : Status.INVALID_MARKING,
+                    switch (flattened.status()) {
+                        case MEMBER_UNDECODABLE -> Status.MEMBER_UNDECODABLE;
+                        case NON_MINIMAL_COPIES -> Status.NON_MINIMAL_COPIES;
+                        default -> Status.INVALID_MARKING;
+                    },
                     null);
         }
         var marked = new ArrayList<MarkedMember>(flattened.members().size());
         for (var stored : flattened.members()) {
             marked.add(new MarkedMember(
                     stored.details(), stored.snapshot(),
-                    stored.totalCopies(), stored.seedWaveCopies()));
+                    stored.totalCopies()));
         }
         return create(marked, mainOutput, executionSeedMultiplier, storedTaskMultiplier);
     }
@@ -139,24 +138,11 @@ public final class ClosedLoopPatternAuthoringService {
     public record MarkedMember(
             IPatternDetails details,
             SourcePatternSnapshot snapshot,
-            long copiesPerCycle,
-            long seedWaveCopies) {
-        public MarkedMember(
-                IPatternDetails details,
-                SourcePatternSnapshot snapshot,
-                long copiesPerCycle) {
-            this(details, snapshot, copiesPerCycle, copiesPerCycle);
-        }
-
+            long copiesPerCycle) {
         public MarkedMember {
             Objects.requireNonNull(details, "details");
             Objects.requireNonNull(snapshot, "snapshot");
             if (copiesPerCycle < 1) throw new IllegalArgumentException("copies must be positive");
-            if (seedWaveCopies < 1 || seedWaveCopies > copiesPerCycle
-                    || copiesPerCycle % seedWaveCopies != 0L) {
-                throw new IllegalArgumentException(
-                        "copies must be an integer multiple of seed-wave copies");
-            }
         }
     }
 

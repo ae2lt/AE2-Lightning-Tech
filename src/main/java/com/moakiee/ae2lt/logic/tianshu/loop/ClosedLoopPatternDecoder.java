@@ -49,8 +49,7 @@ public final class ClosedLoopPatternDecoder implements IPatternDetailsDecoder {
                 for (int i = 0; i < decodedMembers.size(); i++) {
                     analyzedMembers.add(new ClosedLoopPatternAnalyzer.Member(
                             decodedMembers.get(i),
-                            payload.memberPatterns().get(i).copiesPerCycle(),
-                            payload.memberPatterns().get(i).seedWaveCopies()));
+                            payload.memberPatterns().get(i).copiesPerCycle()));
                 }
                 var memberFlows = ClosedLoopPatternAnalyzer.deriveMemberFlows(
                         analyzedMembers, payload.seeds());

@@ -42,35 +42,17 @@ public final class ClosedLoopPatternFlattener {
             if (state.failure != null) return failure(state.failure);
         }
         if (state.leaves.isEmpty()) return failure(Status.INVALID_INPUT);
-
-        // Each recursively imported macro establishes a lower bound for one safe seed wave. The
-        // greatest common repeat shared by every leaf is the only repeat that can be removed while
-        // retaining one ordinary RoutingPlan. A top-level ordinary leaf has repeat 1 and therefore
-        // intentionally disables this optimization for the whole flat payload.
-        long commonRepeat = 0L;
-        for (var leaf : state.leaves) {
-            if (leaf.totalCopies % leaf.minimumSeedWaveCopies != 0L) {
-                return failure(Status.INCOMPATIBLE_SEED_WAVES);
-            }
-            long repeat = leaf.totalCopies / leaf.minimumSeedWaveCopies;
-            if (repeat < 1L) return failure(Status.INCOMPATIBLE_SEED_WAVES);
-            commonRepeat = commonRepeat == 0L ? repeat : gcd(commonRepeat, repeat);
+        if (!ClosedLoopPatternAnalyzer.isMinimalIntegerRatio(state.leaves.stream()
+                .mapToLong(leaf -> leaf.totalCopies).toArray())) {
+            return failure(Status.NON_MINIMAL_COPIES);
         }
-        if (commonRepeat < 1L) return failure(Status.INCOMPATIBLE_SEED_WAVES);
 
         var flattened = new ArrayList<LeafMember>(state.leaves.size());
         for (var leaf : state.leaves) {
-            if (leaf.totalCopies % commonRepeat != 0L) {
-                return failure(Status.INCOMPATIBLE_SEED_WAVES);
-            }
-            long seedWaveCopies = leaf.totalCopies / commonRepeat;
-            if (seedWaveCopies < leaf.minimumSeedWaveCopies) {
-                return failure(Status.INCOMPATIBLE_SEED_WAVES);
-            }
             flattened.add(new LeafMember(
-                    leaf.details, leaf.snapshot, leaf.totalCopies, seedWaveCopies));
+                    leaf.details, leaf.snapshot, leaf.totalCopies));
         }
-        return new Result(Status.VALID, flattened, commonRepeat);
+        return new Result(Status.VALID, flattened);
     }
 
     private static ResolvedMember resolve(SourcePatternSnapshot snapshot, Level level) {
@@ -99,17 +81,8 @@ public final class ClosedLoopPatternFlattener {
         }
     }
 
-    private static long gcd(long left, long right) {
-        while (right != 0L) {
-            long remainder = left % right;
-            left = right;
-            right = remainder;
-        }
-        return left;
-    }
-
     private static Result failure(Status status) {
-        return new Result(status, List.of(), 0L);
+        return new Result(status, List.of());
     }
 
     public enum Status {
@@ -120,35 +93,29 @@ public final class ClosedLoopPatternFlattener {
         NESTING_TOO_DEEP,
         CYCLIC_REFERENCE,
         TOO_MANY_MEMBERS,
-        ARITHMETIC_OVERFLOW,
-        INCOMPATIBLE_SEED_WAVES
+        NON_MINIMAL_COPIES,
+        ARITHMETIC_OVERFLOW
     }
 
     /** One fully decoded ordinary member in the canonical flat payload. */
     public record LeafMember(
             IPatternDetails details,
             SourcePatternSnapshot snapshot,
-            long totalCopies,
-            long seedWaveCopies) {
+            long totalCopies) {
         public LeafMember {
             Objects.requireNonNull(details, "details");
             Objects.requireNonNull(snapshot, "snapshot");
-            if (totalCopies < 1L || seedWaveCopies < 1L || seedWaveCopies > totalCopies
-                    || totalCopies % seedWaveCopies != 0L) {
-                throw new IllegalArgumentException("invalid closed-loop leaf wave counts");
-            }
+            if (totalCopies < 1L) throw new IllegalArgumentException("invalid closed-loop leaf copies");
         }
     }
 
-    public record Result(Status status, List<LeafMember> members, long commonRepeat) {
+    public record Result(Status status, List<LeafMember> members) {
         public Result {
             status = Objects.requireNonNull(status, "status");
             members = List.copyOf(members);
-            if (status == Status.VALID) {
-                if (members.isEmpty() || commonRepeat < 1L) {
-                    throw new IllegalArgumentException("valid flatten result requires members");
-                }
-            } else if (!members.isEmpty() || commonRepeat != 0L) {
+            if (status == Status.VALID && members.isEmpty()) {
+                throw new IllegalArgumentException("valid flatten result requires members");
+            } else if (status != Status.VALID && !members.isEmpty()) {
                 throw new IllegalArgumentException("failed flatten result must not expose members");
             }
         }
@@ -237,8 +204,7 @@ public final class ClosedLoopPatternFlattener {
                     return;
                 }
                 leaves.add(new RawLeaf(
-                        resolved.details(), member.pattern(), totalScale,
-                        member.seedWaveCopies()));
+                        resolved.details(), member.pattern(), totalScale));
                 return;
             }
 
@@ -265,8 +231,7 @@ public final class ClosedLoopPatternFlattener {
     private record RawLeaf(
             IPatternDetails details,
             SourcePatternSnapshot snapshot,
-            long totalCopies,
-            long minimumSeedWaveCopies) {
+            long totalCopies) {
     }
 
     private ClosedLoopPatternFlattener() {

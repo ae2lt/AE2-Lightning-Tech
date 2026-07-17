@@ -41,51 +41,50 @@ class ClosedLoopPatternFlattenerTest {
                 inner.itemId(), ClosedLoopPatternFlattener.ResolvedMember.macro(nested)));
 
         var result = ClosedLoopPatternFlattener.flatten(
-                List.of(new ClosedLoopMemberPattern(inner, 100L)), resolver);
+                List.of(new ClosedLoopMemberPattern(inner, 1L)), resolver);
 
         assertTrue(result.valid());
-        assertEquals(100L, result.commonRepeat());
         assertEquals(2, result.members().size());
         assertSame(firstDetails, result.members().get(0).details());
-        assertEquals(100L, result.members().get(0).totalCopies());
-        assertEquals(1L, result.members().get(0).seedWaveCopies());
+        assertEquals(1L, result.members().get(0).totalCopies());
         assertSame(secondDetails, result.members().get(1).details());
-        assertEquals(200L, result.members().get(1).totalCopies());
-        assertEquals(2L, result.members().get(1).seedWaveCopies());
+        assertEquals(2L, result.members().get(1).totalCopies());
     }
 
     @Test
-    void recursiveReferenceCountsMultiplyButTheDeepestCycleRemainsOneWave() {
+    void recursiveReferenceCountsRemainStoichiometricAndUseOneWave() {
         var first = snapshot("recursive_first");
         var second = snapshot("recursive_second");
+        var anchor = snapshot("recursive_anchor");
         var inner = snapshot("recursive_inner");
         var middle = snapshot("recursive_middle");
         var innerPayload = payload(UUID.randomUUID(), List.of(
                 new ClosedLoopMemberPattern(first, 1L),
                 new ClosedLoopMemberPattern(second, 2L)), 5, 7);
         var middlePayload = payload(UUID.randomUUID(), List.of(
-                new ClosedLoopMemberPattern(inner, 3L)), 11, 13);
+                new ClosedLoopMemberPattern(inner, 3L),
+                new ClosedLoopMemberPattern(anchor, 1L)), 11, 13);
         var resolver = resolver(Map.of(
                 first.itemId(), ClosedLoopPatternFlattener.ResolvedMember.leaf(
                         new FakePattern("recursive_first")),
                 second.itemId(), ClosedLoopPatternFlattener.ResolvedMember.leaf(
                         new FakePattern("recursive_second")),
+                anchor.itemId(), ClosedLoopPatternFlattener.ResolvedMember.leaf(
+                        new FakePattern("recursive_anchor")),
                 inner.itemId(), ClosedLoopPatternFlattener.ResolvedMember.macro(innerPayload),
                 middle.itemId(), ClosedLoopPatternFlattener.ResolvedMember.macro(middlePayload)));
 
         var result = ClosedLoopPatternFlattener.flatten(
-                List.of(new ClosedLoopMemberPattern(middle, 5L)), resolver);
+                List.of(new ClosedLoopMemberPattern(middle, 1L)), resolver);
 
         assertTrue(result.valid());
-        assertEquals(15L, result.commonRepeat());
-        assertEquals(15L, result.members().get(0).totalCopies());
-        assertEquals(1L, result.members().get(0).seedWaveCopies());
-        assertEquals(30L, result.members().get(1).totalCopies());
-        assertEquals(2L, result.members().get(1).seedWaveCopies());
+        assertEquals(3L, result.members().get(0).totalCopies());
+        assertEquals(6L, result.members().get(1).totalCopies());
+        assertEquals(1L, result.members().get(2).totalCopies());
     }
 
     @Test
-    void derivesTheGreatestRepeatSharedByIndependentNestedReferences() {
+    void rejectsACommonScaleAcrossIndependentNestedReferences() {
         var first = snapshot("gcd_first");
         var second = snapshot("gcd_second");
         var firstMacro = snapshot("gcd_first_macro");
@@ -106,14 +105,11 @@ class ClosedLoopPatternFlattenerTest {
                 new ClosedLoopMemberPattern(firstMacro, 100L),
                 new ClosedLoopMemberPattern(secondMacro, 50L)), resolver);
 
-        assertTrue(result.valid());
-        assertEquals(50L, result.commonRepeat());
-        assertEquals(2L, result.members().get(0).seedWaveCopies());
-        assertEquals(1L, result.members().get(1).seedWaveCopies());
+        assertEquals(ClosedLoopPatternFlattener.Status.NON_MINIMAL_COPIES, result.status());
     }
 
     @Test
-    void topLevelOrdinaryMemberKeepsTheCommonWaveConservative() {
+    void topLevelOrdinaryMemberKeepsThePrimitiveRatio() {
         var leaf = snapshot("mixed_leaf");
         var macro = snapshot("mixed_macro");
         var ordinary = snapshot("mixed_ordinary");
@@ -127,30 +123,25 @@ class ClosedLoopPatternFlattenerTest {
                         new FakePattern("mixed_ordinary"))));
 
         var result = ClosedLoopPatternFlattener.flatten(List.of(
-                new ClosedLoopMemberPattern(macro, 100L),
-                new ClosedLoopMemberPattern(ordinary, 4L)), resolver);
+                new ClosedLoopMemberPattern(macro, 25L),
+                new ClosedLoopMemberPattern(ordinary, 1L)), resolver);
 
         assertTrue(result.valid());
-        assertEquals(1L, result.commonRepeat());
-        assertEquals(100L, result.members().get(0).seedWaveCopies());
-        assertEquals(4L, result.members().get(1).seedWaveCopies());
+        assertEquals(25L, result.members().get(0).totalCopies());
+        assertEquals(1L, result.members().get(1).totalCopies());
     }
 
     @Test
-    void editingAnExistingFlatPayloadPreservesItsStoredSeedWave() {
+    void rejectsANonMinimalExistingFlatPayload() {
         var leaf = snapshot("stored_wave_leaf");
         var details = new FakePattern("stored_wave_leaf");
 
         var result = ClosedLoopPatternFlattener.flatten(
-                List.of(new ClosedLoopMemberPattern(leaf, 100L, 1L)),
+                List.of(new ClosedLoopMemberPattern(leaf, 100L)),
                 resolver(Map.of(
                         leaf.itemId(), ClosedLoopPatternFlattener.ResolvedMember.leaf(details))));
 
-        assertTrue(result.valid());
-        assertEquals(100L, result.commonRepeat());
-        assertSame(details, result.members().getFirst().details());
-        assertEquals(100L, result.members().getFirst().totalCopies());
-        assertEquals(1L, result.members().getFirst().seedWaveCopies());
+        assertEquals(ClosedLoopPatternFlattener.Status.NON_MINIMAL_COPIES, result.status());
     }
 
     @Test
@@ -170,7 +161,6 @@ class ClosedLoopPatternFlattenerTest {
 
         assertTrue(result.valid());
         assertEquals(2, result.members().size());
-        assertEquals(1L, result.commonRepeat());
     }
 
     @Test
@@ -224,26 +214,25 @@ class ClosedLoopPatternFlattenerTest {
             resolved.put(leaf.itemId(), ClosedLoopPatternFlattener.ResolvedMember.leaf(
                     new FakePattern("limit_leaf_" + i)));
         }
-        var macro = snapshot("limit_macro");
-        resolved.put(macro.itemId(), ClosedLoopPatternFlattener.ResolvedMember.macro(
-                payload(UUID.randomUUID(), members, 1, 1)));
-
-        var result = ClosedLoopPatternFlattener.flatten(
-                List.of(new ClosedLoopMemberPattern(macro, 1L)), resolver(resolved));
+        var result = ClosedLoopPatternFlattener.flatten(members, resolver(resolved));
 
         assertEquals(ClosedLoopPatternFlattener.Status.TOO_MANY_MEMBERS, result.status());
     }
 
     @Test
     void rejectsExactCopyCountOverflow() {
-        var leaf = snapshot("overflow_leaf");
+        var first = snapshot("overflow_first");
+        var second = snapshot("overflow_second");
         var macro = snapshot("overflow_macro");
         var resolver = resolver(Map.of(
-                leaf.itemId(), ClosedLoopPatternFlattener.ResolvedMember.leaf(
-                        new FakePattern("overflow_leaf")),
+                first.itemId(), ClosedLoopPatternFlattener.ResolvedMember.leaf(
+                        new FakePattern("overflow_first")),
+                second.itemId(), ClosedLoopPatternFlattener.ResolvedMember.leaf(
+                        new FakePattern("overflow_second")),
                 macro.itemId(), ClosedLoopPatternFlattener.ResolvedMember.macro(
                         payload(UUID.randomUUID(), List.of(
-                                new ClosedLoopMemberPattern(leaf, 2L)), 1, 1))));
+                                new ClosedLoopMemberPattern(first, 1L),
+                                new ClosedLoopMemberPattern(second, 2L)), 1, 1))));
 
         var result = ClosedLoopPatternFlattener.flatten(List.of(
                 new ClosedLoopMemberPattern(macro, Long.MAX_VALUE)), resolver);

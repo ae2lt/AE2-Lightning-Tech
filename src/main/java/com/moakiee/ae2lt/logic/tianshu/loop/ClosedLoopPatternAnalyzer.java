@@ -16,7 +16,8 @@ import java.util.Map;
 import java.util.Set;
 
 public final class ClosedLoopPatternAnalyzer {
-    public static final int MAX_MEMBERS = 6;
+    /** Shared storage, authoring, discovery and flattened-leaf limit. */
+    public static final int MAX_MEMBERS = 27;
     public enum StructureStatus {
         VALID,
         INVALID
@@ -70,12 +71,17 @@ public final class ClosedLoopPatternAnalyzer {
         if (!solved.solved()) return solved;
 
         var analyzed = new ArrayList<Member>(members.size());
-        var coefficients = solved.coefficients();
+        var coefficients = normalizeIntegerRatio(solved.coefficients());
+        if (coefficients == null) {
+            return solverResult(PositiveIntegerLinearSolver.Status.INTERNAL_ERROR);
+        }
         for (int i = 0; i < members.size(); i++) {
             analyzed.add(new Member(members.get(i), coefficients[i]));
         }
         return analyze(analyzed, requestedOutput) != null
-                ? solved : solverResult(PositiveIntegerLinearSolver.Status.INTERNAL_ERROR);
+                ? new PositiveIntegerLinearSolver.Result(
+                        PositiveIntegerLinearSolver.Status.SOLVED, coefficients)
+                : solverResult(PositiveIntegerLinearSolver.Status.INTERNAL_ERROR);
     }
 
     /** Checks only the static member boundary; loop membership is decided by input-seed flows. */
@@ -87,31 +93,65 @@ public final class ClosedLoopPatternAnalyzer {
     }
 
     /**
-     * Returns the one repetition scale shared by every member, or {@code 0} when the declaration
-     * would require independent/local seed waves. Local waves need separate routing groups and are
-     * deliberately rejected by this V1 execution model.
+     * Returns whether the positive member-copy vector is already its primitive integer ratio.
+     * A common factor belongs to requested macro firings and execution parallelism, not to one
+     * encoded cycle.
      */
-    public static long seedWaveRepetitions(List<Member> members) {
-        if (members == null || members.isEmpty()) return 0L;
-        long repetitions = 0L;
-        for (var member : members) {
-            if (member == null || member.details() == null || member.copies() <= 0L
-                    || member.seedWaveCopies() <= 0L
-                    || member.seedWaveCopies() > member.copies()
-                    || member.copies() % member.seedWaveCopies() != 0L) {
-                return 0L;
-            }
-            long memberRepetitions = member.copies() / member.seedWaveCopies();
-            if (repetitions == 0L) repetitions = memberRepetitions;
-            else if (repetitions != memberRepetitions) return 0L;
+    public static boolean isMinimalIntegerRatio(long[] copiesPerCycle) {
+        if (copiesPerCycle == null || copiesPerCycle.length == 0) return false;
+        long divisor = 0L;
+        for (long copies : copiesPerCycle) {
+            if (copies <= 0L) return false;
+            divisor = gcd(divisor, copies);
         }
-        return repetitions;
+        return divisor == 1L;
+    }
+
+    private static long[] normalizeIntegerRatio(long[] copiesPerCycle) {
+        if (copiesPerCycle == null || copiesPerCycle.length == 0) return null;
+        long divisor = 0L;
+        for (long copies : copiesPerCycle) {
+            if (copies <= 0L) return null;
+            divisor = gcd(divisor, copies);
+        }
+        if (divisor <= 0L) return null;
+        var normalized = copiesPerCycle.clone();
+        if (divisor > 1L) {
+            for (int i = 0; i < normalized.length; i++) normalized[i] /= divisor;
+        }
+        return normalized;
+    }
+
+    private static long gcd(long left, long right) {
+        while (right != 0L) {
+            long remainder = left % right;
+            left = right;
+            right = remainder;
+        }
+        return left;
+    }
+
+    /**
+     * Checks that the declaration represents exactly one primitive cycle. Execution parallelism
+     * belongs to {@code executionSeedMultiplier}, not to a common member-copy factor.
+     */
+    public static boolean isPrimitiveCycle(List<Member> members) {
+        if (members == null || members.isEmpty()) return false;
+        var copies = new long[members.size()];
+        for (int i = 0; i < members.size(); i++) {
+            var member = members.get(i);
+            if (member == null || member.details() == null || member.copies() <= 0L) {
+                return false;
+            }
+            copies[i] = member.copies();
+        }
+        return isMinimalIntegerRatio(copies);
     }
 
     public static ClosedLoopAnalysis analyze(
             List<Member> members, AEKey requestedOutput) {
         if (members == null || members.isEmpty() || requestedOutput == null) return null;
-        if (seedWaveRepetitions(members) <= 0L) return null;
+        if (!isPrimitiveCycle(members)) return null;
         var consumed = new LinkedHashMap<AEKey, Long>();
         var produced = new LinkedHashMap<AEKey, Long>();
         var perMember = new ArrayList<Balance>(members.size());
@@ -149,12 +189,12 @@ public final class ClosedLoopPatternAnalyzer {
             var balance = perMember.get(memberIndex);
             for (var key : cycleKeys) {
                 long consumedByGroup = Sat.mul(
-                        balance.consumed().getOrDefault(key, 0L), member.seedWaveCopies());
+                        balance.consumed().getOrDefault(key, 0L), member.copies());
                 long producedByGroup = Sat.mul(
-                        balance.produced().getOrDefault(key, 0L), member.seedWaveCopies());
+                        balance.produced().getOrDefault(key, 0L), member.copies());
                 long held = balances.getOrDefault(key, 0L);
-                // seedWaveCopies is one atomic dispatch group. Later copiesPerCycle waves may
-                // reuse this wave's returned state, but copies inside this wave stay simultaneous.
+                // One primitive member group is atomic. Additional requested macro firings may
+                // reuse its returned state; executionSeedMultiplier only controls concurrency.
                 long deficit = Math.max(0L, consumedByGroup - held);
                 if (deficit > 0L) seedAmounts.merge(key, deficit, Sat::add);
                 long afterConsumption = Math.max(held, consumedByGroup) - consumedByGroup;
@@ -176,27 +216,38 @@ public final class ClosedLoopPatternAnalyzer {
         return new ClosedLoopAnalysis(seeds, toStacks(external), toStacks(outputs));
     }
 
-    /** Chooses the member-group order with the smallest total simultaneous seed requirement. */
+    /**
+     * Chooses a low-seed member-group order without enumerating {@code memberCount!} permutations.
+     *
+     * <p>The written order is always considered first. We then run a deterministic greedy pass
+     * from every possible first member and retain the valid order with the smallest exact seed
+     * total. With {@code n} members and {@code k} reusable-state keys this is
+     * {@code O(n^3 * k)}, which keeps the 27-member authoring boundary practical. The exact
+     * analyzer remains the final authority for fuzzy/overload routing and seed-flow validity.</p>
+     */
     public static OrderedAnalysis analyzeBestOrder(
             List<Member> members, AEKey requestedOutput) {
         if (members == null || members.isEmpty() || members.size() > MAX_MEMBERS) return null;
         var source = List.copyOf(members);
-        var used = new boolean[source.size()];
-        var current = new ArrayList<Member>(source.size());
-        var best = new OrderedAnalysis[1];
-        var bestSeedTotal = new long[] {Long.MAX_VALUE};
-        enumerateOrders(source, requestedOutput, used, current, best, bestSeedTotal);
-        return best[0];
+        var model = OrderingModel.create(source);
+        if (model == null) return null;
+
+        var best = new BestOrder();
+        considerOrder(source, requestedOutput, best);
+        for (int first = 0; first < source.size(); first++) {
+            considerOrder(greedyOrder(model, first), requestedOutput, best);
+        }
+        return best.analysis;
     }
 
     /**
      * Derives the explicit virtual-inventory transition for every ordered member dispatch group.
-     * Values are totals for {@link Member#seedWaveCopies()} executions, not per-copy averages.
+     * Values are totals for {@link Member#copies()} executions, not per-copy averages.
      */
     public static List<MemberFlow> deriveMemberFlows(
             List<Member> members, List<GenericStack> seeds) {
         if (members == null || members.isEmpty() || seeds == null || seeds.isEmpty()
-                || seedWaveRepetitions(members) <= 0L) {
+                || !isPrimitiveCycle(members)) {
             return List.of();
         }
         var details = new ArrayList<IPatternDetails>(members.size());
@@ -213,8 +264,8 @@ public final class ClosedLoopPatternAnalyzer {
         for (var member : members) {
             var perCopy = balance(member.details(), possibleOutputs);
             if (perCopy == null) return List.of();
-            var consumed = scaledCopy(perCopy.consumed(), member.seedWaveCopies());
-            var produced = scaledCopy(perCopy.produced(), member.seedWaveCopies());
+            var consumed = scaledCopy(perCopy.consumed(), member.copies());
+            var produced = scaledCopy(perCopy.produced(), member.copies());
             scaled.add(new Balance(consumed, produced, perCopy.inputSeedBySlot()));
             mergeScaled(totalConsumed, consumed, 1L);
             mergeScaled(totalProduced, produced, 1L);
@@ -318,7 +369,7 @@ public final class ClosedLoopPatternAnalyzer {
                 var outputs = details.getOutputs();
                 for (int slot = 0; slot < outputs.size(); slot++) {
                     var output = outputs.get(slot);
-                    long amount = Sat.mul(output.amount(), member.seedWaveCopies());
+                    long amount = Sat.mul(output.amount(), member.copies());
                     if (output.what() == null || amount <= 0) return false;
                     if (overload != null && overload.isFuzzyOutput(slot)) {
                         dynamicCapacity.computeIfAbsent(
@@ -338,7 +389,7 @@ public final class ClosedLoopPatternAnalyzer {
                     var selected = mapped.getValue();
                     var plannedRemainder = input.getRemainingKey(selected);
                     if (plannedRemainder == null) continue;
-                    long amount = Sat.mul(input.getMultiplier(), member.seedWaveCopies());
+                    long amount = Sat.mul(input.getMultiplier(), member.copies());
                     if (amount <= 0) return false;
 
                     var domain = new DynamicSeedDomain();
@@ -458,28 +509,75 @@ public final class ClosedLoopPatternAnalyzer {
         return positiveTypes;
     }
 
-    private static void enumerateOrders(
-            List<Member> source, AEKey requestedOutput, boolean[] used,
-            ArrayList<Member> current, OrderedAnalysis[] best, long[] bestSeedTotal) {
-        if (current.size() == source.size()) {
-            var analysis = analyze(current, requestedOutput);
-            if (analysis == null || !hasInputSeedPerMember(current, analysis.seeds())) return;
-            long total = 0L;
-            for (var seed : analysis.seeds()) total = Sat.add(total, seed.amount());
-            if (best[0] == null || total < bestSeedTotal[0]) {
-                best[0] = new OrderedAnalysis(List.copyOf(current), analysis);
-                bestSeedTotal[0] = total;
+    private static void considerOrder(
+            List<Member> members, AEKey requestedOutput, BestOrder best) {
+        if (members == null || members.isEmpty()) return;
+        var analysis = analyze(members, requestedOutput);
+        if (analysis == null || !hasInputSeedPerMember(members, analysis.seeds())) return;
+        long seedTotal = 0L;
+        for (var seed : analysis.seeds()) seedTotal = Sat.add(seedTotal, seed.amount());
+        // Strict comparison intentionally preserves the written order when it is already tied
+        // for best. Manual authoring therefore does not get needlessly reshuffled.
+        if (best.analysis == null || seedTotal < best.seedTotal) {
+            best.analysis = new OrderedAnalysis(members, analysis);
+            best.seedTotal = seedTotal;
+        }
+    }
+
+    private static List<Member> greedyOrder(OrderingModel model, int forcedFirst) {
+        int memberCount = model.members.size();
+        var ordered = new ArrayList<Member>(memberCount);
+        var used = new boolean[memberCount];
+        var held = new LinkedHashMap<AEKey, Long>();
+
+        appendGreedyMember(model, forcedFirst, ordered, used, held);
+        while (ordered.size() < memberCount) {
+            int selected = -1;
+            long selectedDeficit = Long.MAX_VALUE;
+            for (int candidate = 0; candidate < memberCount; candidate++) {
+                if (used[candidate]) continue;
+                long deficit = incrementalSeedDeficit(
+                        model.scaledBalances.get(candidate), model.cycleKeys, held);
+                if (selected < 0 || deficit < selectedDeficit) {
+                    selected = candidate;
+                    selectedDeficit = deficit;
+                }
             }
-            return;
+            appendGreedyMember(model, selected, ordered, used, held);
         }
-        for (int i = 0; i < source.size(); i++) {
-            if (used[i]) continue;
-            used[i] = true;
-            current.add(source.get(i));
-            enumerateOrders(source, requestedOutput, used, current, best, bestSeedTotal);
-            current.removeLast();
-            used[i] = false;
+        return List.copyOf(ordered);
+    }
+
+    private static void appendGreedyMember(
+            OrderingModel model,
+            int memberIndex,
+            List<Member> ordered,
+            boolean[] used,
+            Map<AEKey, Long> held) {
+        if (memberIndex < 0 || memberIndex >= model.members.size() || used[memberIndex]) {
+            throw new IllegalArgumentException("invalid greedy member index");
         }
+        used[memberIndex] = true;
+        ordered.add(model.members.get(memberIndex));
+        var balance = model.scaledBalances.get(memberIndex);
+        for (var key : model.cycleKeys) {
+            long consumed = balance.consumed().getOrDefault(key, 0L);
+            long produced = balance.produced().getOrDefault(key, 0L);
+            long available = held.getOrDefault(key, 0L);
+            long afterConsumption = Math.max(available, consumed) - consumed;
+            held.put(key, Sat.add(afterConsumption, produced));
+        }
+    }
+
+    private static long incrementalSeedDeficit(
+            Balance balance, Set<AEKey> cycleKeys, Map<AEKey, Long> held) {
+        long result = 0L;
+        for (var key : cycleKeys) {
+            long consumed = balance.consumed().getOrDefault(key, 0L);
+            long deficit = Math.max(0L, consumed - held.getOrDefault(key, 0L));
+            result = Sat.add(result, deficit);
+        }
+        return result;
     }
 
     private static Balance balance(IPatternDetails details, List<LoopOutput> possibleLoopOutputs) {
@@ -660,15 +758,8 @@ public final class ClosedLoopPatternAnalyzer {
         return List.copyOf(result);
     }
 
-    /**
-     * Total physical copies and the smaller seed-routing wave for one member.
-     * The two-argument form preserves the legacy atomic-group behavior.
-     */
-    public record Member(IPatternDetails details, long copies, long seedWaveCopies) {
-        public Member(IPatternDetails details, long copies) {
-            this(details, copies, copies);
-        }
-    }
+    /** One member's coefficient in the primitive integer cycle ratio. */
+    public record Member(IPatternDetails details, long copies) { }
     public record OrderedAnalysis(List<Member> members, ClosedLoopAnalysis analysis) {
         public OrderedAnalysis {
             members = List.copyOf(members);
@@ -694,6 +785,52 @@ public final class ClosedLoopPatternAnalyzer {
             Map<Integer, AEKey> inputSeedBySlot) { }
     private record LoopOutput(AEKey key, boolean fuzzy) { }
     private record LoopMatch(AEKey key, boolean forbidden) { }
+
+    private record OrderingModel(
+            List<Member> members,
+            List<Balance> scaledBalances,
+            Set<AEKey> cycleKeys) {
+        private static OrderingModel create(List<Member> members) {
+            if (members == null || members.isEmpty()
+                    || !isPrimitiveCycle(members)) {
+                return null;
+            }
+            var details = new ArrayList<IPatternDetails>(members.size());
+            for (var member : members) {
+                if (member == null || member.details() == null) return null;
+                details.add(member.details());
+            }
+            var possibleOutputs = possibleLoopOutputs(details);
+            if (possibleOutputs == null) return null;
+
+            var scaledBalances = new ArrayList<Balance>(members.size());
+            var totalConsumed = new LinkedHashMap<AEKey, Long>();
+            var totalProduced = new LinkedHashMap<AEKey, Long>();
+            for (var member : members) {
+                var perCopy = balance(member.details(), possibleOutputs);
+                if (perCopy == null) return null;
+                var consumed = scaledCopy(perCopy.consumed(), member.copies());
+                var produced = scaledCopy(perCopy.produced(), member.copies());
+                scaledBalances.add(new Balance(
+                        consumed, produced, perCopy.inputSeedBySlot()));
+                mergeScaled(totalConsumed, consumed, 1L);
+                mergeScaled(totalProduced, produced, 1L);
+            }
+            var cycleKeys = new LinkedHashSet<AEKey>();
+            for (var key : totalConsumed.keySet()) {
+                if (totalProduced.getOrDefault(key, 0L) > 0L) cycleKeys.add(key);
+            }
+            if (cycleKeys.isEmpty()) return null;
+            return new OrderingModel(
+                    List.copyOf(members), List.copyOf(scaledBalances),
+                    java.util.Collections.unmodifiableSet(new LinkedHashSet<>(cycleKeys)));
+        }
+    }
+
+    private static final class BestOrder {
+        private OrderedAnalysis analysis;
+        private long seedTotal = Long.MAX_VALUE;
+    }
 
     private static final class DynamicSeedDomain {
         private boolean fuzzy;

@@ -76,53 +76,32 @@ class ClosedLoopPatternAnalyzerTest {
     }
 
     @Test
-    void memberCopiesAreOneDispatchGroupAndCannotRecycleOutputsInsideTheGroup() {
+    void nonMinimalSingleMemberCopiesAreRejected() {
         var seed = key("grouped_seed");
         var duplicate = pattern(List.of(output(seed, 2)), input(seed, 1, null));
 
         var analysis = ClosedLoopPatternAnalyzer.analyze(
                 List.of(new ClosedLoopPatternAnalyzer.Member(duplicate, 1_000)), seed);
 
-        assertNotNull(analysis);
-        assertStack(analysis.seeds(), seed, 1_000);
-        assertEquals(List.of(), analysis.externalInputs());
-        assertStack(analysis.netOutputs(), seed, 1_000);
+        assertNull(analysis);
     }
 
     @Test
-    void seedWaveSeparatesBorrowedSeedFromTotalSelfGrowthWork() {
-        var seed = key("wave_growth_seed");
-        var duplicate = pattern(List.of(output(seed, 2)), input(seed, 1, null));
-        var member = new ClosedLoopPatternAnalyzer.Member(duplicate, 1_000, 1);
-
-        var analysis = ClosedLoopPatternAnalyzer.analyze(List.of(member), seed);
-
-        assertNotNull(analysis);
-        assertEquals(1_000L, ClosedLoopPatternAnalyzer.seedWaveRepetitions(List.of(member)));
-        assertStack(analysis.seeds(), seed, 1);
-        assertStack(analysis.netOutputs(), seed, 1_000);
-        var flows = ClosedLoopPatternAnalyzer.deriveMemberFlows(
-                List.of(member), analysis.seeds());
-        assertEquals(java.util.Map.of(seed, 1L), flows.getFirst().inputSeed());
-        assertEquals(java.util.Map.of(seed, 1L), flows.getFirst().outputSeed());
-    }
-
-    @Test
-    void seedWavePreservesPrimitiveTwoMemberRatioWhileTotalsStayScaled() {
+    void primitiveTwoMemberRatioIsOneRoutingWave() {
         var a = key("wave_ratio_a");
         var b = key("wave_ratio_b");
         var aToTwoB = pattern(List.of(output(b, 2)), input(a, 1, null));
         var bToA = pattern(List.of(output(a, 1)), input(b, 1, null));
         var members = List.of(
-                new ClosedLoopPatternAnalyzer.Member(aToTwoB, 100, 1),
-                new ClosedLoopPatternAnalyzer.Member(bToA, 200, 2));
+                new ClosedLoopPatternAnalyzer.Member(aToTwoB, 1),
+                new ClosedLoopPatternAnalyzer.Member(bToA, 2));
 
         var analysis = ClosedLoopPatternAnalyzer.analyze(members, a);
 
         assertNotNull(analysis);
-        assertEquals(100L, ClosedLoopPatternAnalyzer.seedWaveRepetitions(members));
+        assertTrue(ClosedLoopPatternAnalyzer.isPrimitiveCycle(members));
         assertStack(analysis.seeds(), a, 1);
-        assertStack(analysis.netOutputs(), a, 100);
+        assertStack(analysis.netOutputs(), a, 1);
         var flows = ClosedLoopPatternAnalyzer.deriveMemberFlows(members, analysis.seeds());
         assertEquals(java.util.Map.of(a, 1L), flows.get(0).inputSeed());
         assertEquals(java.util.Map.of(b, 2L), flows.get(0).outputSeed());
@@ -131,7 +110,7 @@ class ClosedLoopPatternAnalyzerTest {
     }
 
     @Test
-    void repeatedForkRoutesOnePrimitiveWaveInsteadOfOneAggregateBatch() {
+    void forkRoutesOnePrimitiveWave() {
         var a = key("wave_fork_a");
         var b = key("wave_fork_b");
         var c = key("wave_fork_c");
@@ -143,57 +122,22 @@ class ClosedLoopPatternAnalyzerTest {
         var join = pattern(List.of(output(a, 1), output(product, 1)),
                 input(c, 1, null), input(d, 1, null));
         var members = List.of(
-                new ClosedLoopPatternAnalyzer.Member(aToTwoB, 100, 1),
-                new ClosedLoopPatternAnalyzer.Member(bToC, 100, 1),
-                new ClosedLoopPatternAnalyzer.Member(bToD, 100, 1),
-                new ClosedLoopPatternAnalyzer.Member(join, 100, 1));
+                new ClosedLoopPatternAnalyzer.Member(aToTwoB, 1),
+                new ClosedLoopPatternAnalyzer.Member(bToC, 1),
+                new ClosedLoopPatternAnalyzer.Member(bToD, 1),
+                new ClosedLoopPatternAnalyzer.Member(join, 1));
 
         var analysis = ClosedLoopPatternAnalyzer.analyze(members, product);
 
         assertNotNull(analysis);
         assertStack(analysis.seeds(), a, 1);
-        assertStack(analysis.netOutputs(), product, 100);
+        assertStack(analysis.netOutputs(), product, 1);
         var flows = ClosedLoopPatternAnalyzer.deriveMemberFlows(members, analysis.seeds());
         assertEquals(java.util.Map.of(b, 2L), flows.get(0).outputSeed());
         assertEquals(java.util.Map.of(b, 1L), flows.get(1).inputSeed());
         assertEquals(java.util.Map.of(b, 1L), flows.get(2).inputSeed());
         assertEquals(java.util.Map.of(c, 1L, d, 1L), flows.get(3).inputSeed());
         assertEquals(java.util.Map.of(a, 1L), flows.get(3).outputSeed());
-    }
-
-    @Test
-    void mismatchedSeedWaveRepetitionsFailClosed() {
-        var a = key("wave_mismatch_a");
-        var b = key("wave_mismatch_b");
-        var product = key("wave_mismatch_product");
-        var aToB = pattern(List.of(output(b, 1)), input(a, 1, null));
-        var bToA = pattern(
-                List.of(output(a, 1), output(product, 1)), input(b, 1, null));
-        var members = List.of(
-                new ClosedLoopPatternAnalyzer.Member(aToB, 100, 1),
-                new ClosedLoopPatternAnalyzer.Member(bToA, 100, 100));
-
-        assertEquals(0L, ClosedLoopPatternAnalyzer.seedWaveRepetitions(members));
-        assertNull(ClosedLoopPatternAnalyzer.analyze(members, product));
-        assertEquals(List.of(), ClosedLoopPatternAnalyzer.deriveMemberFlows(
-                members, List.of(output(a, 1))));
-    }
-
-    @Test
-    void hugeTotalCopiesWithOneSeedWaveStayConstantTime() {
-        var seed = key("huge_wave_seed");
-        var product = key("huge_wave_product");
-        var member = pattern(
-                List.of(output(seed, 2), output(product, 1)), input(seed, 1, null));
-
-        var analysis = assertTimeoutPreemptively(Duration.ofSeconds(1),
-                () -> ClosedLoopPatternAnalyzer.analyze(List.of(
-                        new ClosedLoopPatternAnalyzer.Member(
-                                member, Long.MAX_VALUE, 1)), product));
-
-        assertNotNull(analysis);
-        assertStack(analysis.seeds(), seed, 1);
-        assertAmount(analysis.netOutputs(), product, Long.MAX_VALUE / 4);
     }
 
     @Test
@@ -235,19 +179,23 @@ class ClosedLoopPatternAnalyzerTest {
     }
 
     @Test
-    void hugeCopyCountIsSaturatedAndDoesNotIteratePerCopy() {
+    void hugePrimitiveRatioIsSaturatedAndDoesNotIteratePerCopy() {
         var catalyst = key("catalyst");
         var product = key("product");
-        var member = new ClosedLoopPatternAnalyzer.Member(pattern(
+        var productive = new ClosedLoopPatternAnalyzer.Member(pattern(
                 List.of(output(catalyst, 1), output(product, Long.MAX_VALUE)),
                 input(catalyst, 1, null)), Long.MAX_VALUE);
+        var returnOnly = new ClosedLoopPatternAnalyzer.Member(pattern(
+                List.of(output(catalyst, 1)), input(catalyst, 1, null)),
+                Long.MAX_VALUE - 1L);
 
         var analysis = assertTimeoutPreemptively(Duration.ofSeconds(1),
-                () -> ClosedLoopPatternAnalyzer.analyze(List.of(member), product));
+                () -> ClosedLoopPatternAnalyzer.analyze(
+                        List.of(productive, returnOnly), product));
 
         assertNotNull(analysis);
-        // One member group cannot recycle its own outputs, so its whole saturated copy count is
-        // also the simultaneous catalyst seed requirement.
+        // The first primitive member group is atomic, so its saturated coefficient is also the
+        // simultaneous catalyst seed requirement.
         assertAmount(analysis.seeds(), catalyst, Long.MAX_VALUE / 4);
         // AE stack arithmetic intentionally clamps below Long.MAX_VALUE.
         assertAmount(analysis.netOutputs(), product, Long.MAX_VALUE / 4);
@@ -307,7 +255,7 @@ class ClosedLoopPatternAnalyzerTest {
     }
 
     @Test
-    void idOnlyOverloadSeedWaveKeepsOnePhysicalVariantBundle() {
+    void idOnlyOverloadPrimitiveCycleKeepsOnePhysicalVariantBundle() {
         var encoded = new TestKey("wave_overload_seed", "encoded");
         var returned = new TestKey("wave_overload_seed", "returned");
         var product = key("wave_overload_product");
@@ -316,13 +264,13 @@ class ClosedLoopPatternAnalyzerTest {
                 input(encoded, 1, null));
         var details = new FakeOverloadPattern(
                 base.inputs(), base.outputs(), true, false);
-        var member = new ClosedLoopPatternAnalyzer.Member(details, 100, 1);
+        var member = new ClosedLoopPatternAnalyzer.Member(details, 1);
 
         var analysis = ClosedLoopPatternAnalyzer.analyze(List.of(member), product);
 
         assertNotNull(analysis);
         assertStack(analysis.seeds(), returned, 1);
-        assertStack(analysis.netOutputs(), product, 100);
+        assertStack(analysis.netOutputs(), product, 1);
         var flows = ClosedLoopPatternAnalyzer.deriveMemberFlows(
                 List.of(member), analysis.seeds());
         assertEquals(java.util.Map.of(returned, 1L), flows.getFirst().inputSeed());
@@ -452,6 +400,39 @@ class ClosedLoopPatternAnalyzerTest {
     }
 
     @Test
+    void twentySevenMemberOrderingStaysBoundedAndFindsTheSingleSeedCycle() {
+        var cycleKeys = new java.util.ArrayList<AEKey>();
+        for (int i = 0; i < ClosedLoopPatternAnalyzer.MAX_MEMBERS; i++) {
+            cycleKeys.add(key("bounded_order_" + i));
+        }
+        var product = key("bounded_order_product");
+        var members = new java.util.ArrayList<ClosedLoopPatternAnalyzer.Member>();
+        for (int i = 0; i < cycleKeys.size(); i++) {
+            var outputs = new java.util.ArrayList<GenericStack>();
+            outputs.add(output(cycleKeys.get((i + 1) % cycleKeys.size()), 1));
+            if (i == cycleKeys.size() - 1) outputs.add(output(product, 1));
+            members.add(new ClosedLoopPatternAnalyzer.Member(
+                    pattern(outputs, input(cycleKeys.get(i), 1, null)), 1));
+        }
+        java.util.Collections.reverse(members);
+
+        var ordered = assertTimeoutPreemptively(Duration.ofSeconds(3),
+                () -> ClosedLoopPatternAnalyzer.analyzeBestOrder(members, product));
+
+        assertNotNull(ordered);
+        assertEquals(ClosedLoopPatternAnalyzer.MAX_MEMBERS, ordered.members().size());
+        assertEquals(1L, ordered.analysis().seeds().stream()
+                .mapToLong(GenericStack::amount).sum());
+        assertAmount(ordered.analysis().netOutputs(), product, 1);
+
+        var overLimit = new java.util.ArrayList<IPatternDetails>(members.stream()
+                .map(ClosedLoopPatternAnalyzer.Member::details).toList());
+        overLimit.add(members.getFirst().details());
+        assertEquals(ClosedLoopPatternAnalyzer.StructureStatus.INVALID,
+                ClosedLoopPatternAnalyzer.validateStructure(overLimit));
+    }
+
+    @Test
     void markedAuthoringDerivesSeedsConsumablesByproductsAndNetOutputs() {
         var seed = key("marked_seed");
         var material = key("marked_material");
@@ -464,7 +445,7 @@ class ClosedLoopPatternAnalyzerTest {
                 ResourceLocation.fromNamespaceAndPath("ae2lt_test", "marked_pattern"), null, null);
 
         var result = ClosedLoopPatternAuthoringService.create(List.of(
-                new ClosedLoopPatternAuthoringService.MarkedMember(member, snapshot, 1_000)),
+                new ClosedLoopPatternAuthoringService.MarkedMember(member, snapshot, 1)),
                 product, 8, 3);
 
         assertEquals(ClosedLoopPatternAuthoringService.Status.VALID, result.status());
@@ -472,15 +453,15 @@ class ClosedLoopPatternAnalyzerTest {
         assertNotNull(payload);
         assertEquals(8, payload.executionSeedMultiplier());
         assertEquals(3, payload.storedTaskMultiplier());
-        assertStack(payload.seeds(), seed, 1_000);
-        assertStack(payload.externalInputs(), material, 4_000);
-        assertAmount(payload.netOutputs(), seed, 1_000);
-        assertAmount(payload.netOutputs(), product, 1_000);
-        assertAmount(payload.netOutputs(), byproduct, 3_000);
+        assertStack(payload.seeds(), seed, 1);
+        assertStack(payload.externalInputs(), material, 4);
+        assertAmount(payload.netOutputs(), seed, 1);
+        assertAmount(payload.netOutputs(), product, 1);
+        assertAmount(payload.netOutputs(), byproduct, 3);
     }
 
     @Test
-    void markedAuthoringPersistsASeparateSeedWaveWithoutScalingDownTotalWork() {
+    void markedAuthoringUsesExecutionMultiplierInsteadOfACommonCopyScale() {
         var seed = key("marked_wave_seed");
         var material = key("marked_wave_material");
         var product = key("marked_wave_product");
@@ -491,22 +472,32 @@ class ClosedLoopPatternAnalyzerTest {
                 ResourceLocation.fromNamespaceAndPath("ae2lt_test", "marked_wave_pattern"),
                 null, null);
 
-        var result = ClosedLoopPatternAuthoringService.create(List.of(
-                new ClosedLoopPatternAuthoringService.MarkedMember(
-                        member, snapshot, 1_000, 1)),
+        var nonMinimal = ClosedLoopPatternAuthoringService.create(List.of(
+                new ClosedLoopPatternAuthoringService.MarkedMember(member, snapshot, 1_000)),
                 product, 3, 5);
+        assertEquals(ClosedLoopPatternAuthoringService.Status.NON_MINIMAL_COPIES,
+                nonMinimal.status());
 
+        var result = ClosedLoopPatternAuthoringService.create(List.of(
+                new ClosedLoopPatternAuthoringService.MarkedMember(member, snapshot, 1)),
+                product, 1_000, 5);
         assertEquals(ClosedLoopPatternAuthoringService.Status.VALID, result.status());
         var payload = result.payload();
         assertNotNull(payload);
-        assertEquals(1_000L, payload.seedWaveRepetitions());
-        assertEquals(1L, payload.memberPatterns().getFirst().seedWaveCopies());
+        assertEquals(1L, payload.memberPatterns().getFirst().copiesPerCycle());
         assertStack(payload.seeds(), seed, 1);
-        assertStack(payload.externalInputs(), material, 4_000);
-        assertAmount(payload.netOutputs(), seed, 1_000);
-        assertAmount(payload.netOutputs(), product, 1_000);
-        assertEquals(3, payload.executionSeedMultiplier());
+        assertStack(payload.externalInputs(), material, 4);
+        assertAmount(payload.netOutputs(), seed, 1);
+        assertAmount(payload.netOutputs(), product, 1);
+        assertEquals(1_000, payload.executionSeedMultiplier());
         assertEquals(5, payload.storedTaskMultiplier());
+    }
+
+    @Test
+    void memberCopiesMustUseTheMinimalIntegerRatio() {
+        assertTrue(ClosedLoopPatternAnalyzer.isMinimalIntegerRatio(new long[] {1, 2, 3}));
+        assertFalse(ClosedLoopPatternAnalyzer.isMinimalIntegerRatio(new long[] {2, 4, 6}));
+        assertFalse(ClosedLoopPatternAnalyzer.isMinimalIntegerRatio(new long[] {0, 1}));
     }
 
     @Test

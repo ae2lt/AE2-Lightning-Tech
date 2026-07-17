@@ -18,7 +18,7 @@ public final class ClosedLoopPatternPayloadTagCodec {
     private static final String TAG_SEEDS = "Seeds";
     private static final String TAG_INPUTS = "Inputs";
     private static final String TAG_OUTPUTS = "Outputs";
-    /** Legacy multiplier alias; seed-wave payloads only guarantee old-save to new-code upgrades. */
+    /** Legacy multiplier alias only; structural payload validation remains fail-closed. */
     private static final String TAG_SEED_MULTIPLIER = "SeedMultiplier";
     private static final String TAG_EXECUTION_SEED_MULTIPLIER = "ExecutionSeedMultiplier";
     private static final String TAG_STORED_TASK_MULTIPLIER = "StoredTaskMultiplier";
@@ -30,11 +30,7 @@ public final class ClosedLoopPatternPayloadTagCodec {
         tag.putLong(TAG_VERSION, payload.version());
         var members = new ListTag();
         for (var member : payload.memberPatterns()) {
-            var memberTag = new CompoundTag();
-            memberTag.put(TAG_MEMBER_PATTERN, member.pattern().toTag());
-            memberTag.putLong(TAG_MEMBER_COPIES, member.copiesPerCycle());
-            memberTag.putLong(TAG_MEMBER_SEED_WAVE_COPIES, member.seedWaveCopies());
-            members.add(memberTag);
+            members.add(writeMember(member));
         }
         tag.put(TAG_MEMBERS, members);
         tag.put(TAG_SEEDS, writeStacks(payload.seeds(), registries));
@@ -47,10 +43,20 @@ public final class ClosedLoopPatternPayloadTagCodec {
         return tag;
     }
 
+    static CompoundTag writeMember(ClosedLoopMemberPattern member) {
+        var memberTag = new CompoundTag();
+        memberTag.put(TAG_MEMBER_PATTERN, member.pattern().toTag());
+        memberTag.putLong(TAG_MEMBER_COPIES, member.copiesPerCycle());
+        return memberTag;
+    }
+
     public static ClosedLoopPatternPayload read(CompoundTag tag, HolderLookup.Provider registries) {
         if (!tag.hasUUID(TAG_ID)) throw new IllegalArgumentException("closed-loop payload is missing id");
         var members = new ArrayList<ClosedLoopMemberPattern>();
         var memberTags = tag.getList(TAG_MEMBERS, Tag.TAG_COMPOUND);
+        if (memberTags.size() > ClosedLoopPatternAnalyzer.MAX_MEMBERS) {
+            throw new IllegalArgumentException("closed-loop payload has too many members");
+        }
         for (int i = 0; i < memberTags.size(); i++) {
             members.add(readMember(memberTags.getCompound(i)));
         }
@@ -71,14 +77,14 @@ public final class ClosedLoopPatternPayloadTagCodec {
         var patternTag = memberTag.contains(TAG_MEMBER_PATTERN, Tag.TAG_COMPOUND)
                 ? memberTag.getCompound(TAG_MEMBER_PATTERN) : memberTag;
         long copies = Math.max(1L, memberTag.getLong(TAG_MEMBER_COPIES));
-        long seedWaveCopies = memberTag.contains(
-                TAG_MEMBER_SEED_WAVE_COPIES, Tag.TAG_ANY_NUMERIC)
-                ? memberTag.getLong(TAG_MEMBER_SEED_WAVE_COPIES)
-                : copies;
+        if (memberTag.contains(TAG_MEMBER_SEED_WAVE_COPIES, Tag.TAG_ANY_NUMERIC)
+                && memberTag.getLong(TAG_MEMBER_SEED_WAVE_COPIES) != copies) {
+            throw new IllegalArgumentException(
+                    "legacy seed-wave copies cannot encode execution repetition");
+        }
         return new ClosedLoopMemberPattern(
                 com.moakiee.thunderbolt.ae2.overload.pattern.SourcePatternSnapshot.fromTag(patternTag),
-                copies,
-                seedWaveCopies);
+                copies);
     }
 
     static SeedMultipliers readSeedMultipliers(CompoundTag tag) {

@@ -111,8 +111,7 @@ public final class Ae2ClosedLoopPatternDetails
         for (int i = 0; i < payload.memberPatterns().size(); i++) {
             analyzedMembers.add(new ClosedLoopPatternAnalyzer.Member(
                     rawMembers.get(i),
-                    payload.memberPatterns().get(i).copiesPerCycle(),
-                    payload.memberPatterns().get(i).seedWaveCopies()));
+                    payload.memberPatterns().get(i).copiesPerCycle()));
         }
         var memberFlows = ClosedLoopPatternAnalyzer.deriveMemberFlows(
                 analyzedMembers, payload.seeds());
@@ -157,14 +156,14 @@ public final class Ae2ClosedLoopPatternDetails
                             memberFlow.inputSeedBySlot(),
                             payload.memberPatterns().size() == 1,
                             persistenceDefinition, memberIndex),
-                    member.copiesPerCycle(), member.seedWaveCopies(), memberFlow));
+                    member.copiesPerCycle(), memberFlow));
             memberIndex++;
         }
         members = List.copyOf(decodedMembers);
         this.exactOnlyHostSeedKeys = exactOnlyHostSeedKeys(
                 memberFlows,
                 payload.memberPatterns().stream()
-                        .map(ClosedLoopMemberPattern::seedWaveCopies)
+                        .map(ClosedLoopMemberPattern::copiesPerCycle)
                         .toList(),
                 consumerRouting);
         this.availableSeedSnapshot = Map.copyOf(
@@ -200,11 +199,8 @@ public final class Ae2ClosedLoopPatternDetails
             var consumer = consumerRouting.consumers().get(memberIndex);
             var producer = consumerRouting.producers().get(memberIndex);
             for (var slice : splitMemberFlow(
-                    member.flow(), member.seedWaveCopies(), producer.targets())) {
-                long count = expandedSliceCount(
-                        macroFirings,
-                        payload.seedWaveRepetitions(),
-                        slice.copiesPerCycle());
+                    member.flow(), member.copiesPerCycle(), producer.targets())) {
+                long count = expandedSliceCount(macroFirings, slice.copiesPerCycle());
                 var sharedCredits = singleSeedInputPerMember
                         ? selectCredits(
                                 slice.outputSeedCredits(), producer.wrappedTargets(), true)
@@ -507,10 +503,9 @@ public final class Ae2ClosedLoopPatternDetails
         return List.copyOf(slices);
     }
 
-    static long expandedSliceCount(
-            long macroFirings, long seedWaveRepetitions, long sliceCopies) {
-        if (macroFirings <= 0L || seedWaveRepetitions <= 0L || sliceCopies <= 0L) return 0L;
-        return Sat.mul(macroFirings, Sat.mul(seedWaveRepetitions, sliceCopies));
+    static long expandedSliceCount(long macroFirings, long sliceCopies) {
+        if (macroFirings <= 0L || sliceCopies <= 0L) return 0L;
+        return Sat.mul(macroFirings, sliceCopies);
     }
 
     private static void addRemainderBoundaries(
@@ -725,7 +720,6 @@ public final class Ae2ClosedLoopPatternDetails
     private record ExpandedMember(
             IPatternDetails details,
             long copiesPerCycle,
-            long seedWaveCopies,
             ClosedLoopPatternAnalyzer.MemberFlow flow) {
     }
 }
