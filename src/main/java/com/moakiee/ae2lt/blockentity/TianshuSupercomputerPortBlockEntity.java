@@ -9,7 +9,6 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-import java.util.function.Predicate;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -17,7 +16,8 @@ import com.google.common.collect.ImmutableSet;
 import com.moakiee.ae2lt.logic.tianshu.TianshuFunctionProfile;
 import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternRepository;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.TianshuInventoryMaintenanceService;
-import com.moakiee.thunderbolt.ae2.timewheel.TimeWheelCraftingCpuPoolHost;
+import com.moakiee.thunderbolt.ae2.crafting.ExtendedCraftingCpuClusterProvider;
+import com.moakiee.thunderbolt.ae2.timewheel.TimeWheelCraftingCpuPoolProvider;
 
 import appeng.api.config.Actionable;
 import appeng.api.crafting.IPatternDetails;
@@ -39,7 +39,6 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
-import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
@@ -50,7 +49,7 @@ import net.minecraft.world.level.block.state.BlockState;
  * controller; this block entity only exposes them to the grid and keeps link/migration metadata.
  */
 public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
-        implements TimeWheelCraftingCpuPoolHost, ICraftingProvider, ICraftingRequester {
+        implements TimeWheelCraftingCpuPoolProvider, ICraftingProvider, ICraftingRequester {
     private static final String TAG_CONTROLLER_POS = "ControllerPos";
     private static final String TAG_FORMED = "Formed";
     private static final String TAG_CPU_POOL = "CpuPool";
@@ -92,6 +91,8 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
                 .setVisualRepresentation(ModBlocks.TIANSHU_SUPERCOMPUTER_PORT.get())
                 .setIdlePowerUsage(8.0D)
                 .setFlags(GridFlags.REQUIRE_CHANNEL)
+                .addService(ExtendedCraftingCpuClusterProvider.class, this)
+                .addService(TimeWheelCraftingCpuPoolProvider.class, this)
                 .addService(ICraftingProvider.class, this)
                 .addService(ICraftingRequester.class, this);
     }
@@ -113,6 +114,7 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
         boolean formedChanged = formed;
         this.controllerPos = null;
         this.boundMachineId = null;
+        this.linkedCpuPool = null;
         this.formed = false;
         if (formedChanged) onGridConnectableSidesChanged();
         updateLinkState();
@@ -240,22 +242,6 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
         if (controller != null) controller.jobStateChange(link);
     }
 
-    @Override
-    public long extractReusableSeed(AEKey key, long amount, Actionable mode) {
-        var controller = getController();
-        return controller != null ? controller.extractReusableSeed(key, amount, mode) : 0L;
-    }
-
-    @Override
-    public KeyCounter extractReusableSeedVariants(
-            AEKey planned, long amount, Predicate<AEKey> acceptsVariant, Actionable mode) {
-        var controller = getController();
-        return controller != null
-                ? controller.extractReusableSeedVariants(planned, amount, acceptsVariant, mode)
-                : new KeyCounter();
-    }
-
-    @Override
     public long insertReusableSeed(AEKey key, long amount, Actionable mode) {
         var controller = getController();
         return controller != null ? controller.insertReusableSeed(key, amount, mode) : 0L;
@@ -290,48 +276,22 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
 
     @Override
     public boolean isBusy() {
-        return !isCpuActive();
+        var controller = getController();
+        return controller == null || !controller.isCpuActive();
     }
 
     @Override
     @Nullable
     public TimeWheelCraftingCpuPool getTimeWheelCraftingCpuPool() {
-        return linkedCpuPool;
+        return isNetworkActive() && getController() != null ? linkedCpuPool : null;
     }
 
-    @Override
-    public boolean isCpuActive() {
-        var controller = getController();
-        return controller != null && controller.isCpuActive();
-    }
-
-    @Override
     public IGrid getGrid() {
         return formed ? getMainNode().getGrid() : null;
     }
 
-    public IGrid getLinkGrid() {
-        return formed ? getMainNode().getGrid() : null;
-    }
-
-    @Override
     public IActionSource getActionSource() {
         return actionSource;
-    }
-
-    public IActionSource getLinkActionSource() {
-        return actionSource;
-    }
-
-    @Override
-    public void markCpuDirty() {
-        var controller = getController();
-        if (controller != null) controller.markCpuDirty();
-    }
-
-    @Override
-    public Component getDisplayName() {
-        return Component.translatable("block.ae2lt.tianshu_supercomputer_controller");
     }
 
     public boolean isNetworkActive() {

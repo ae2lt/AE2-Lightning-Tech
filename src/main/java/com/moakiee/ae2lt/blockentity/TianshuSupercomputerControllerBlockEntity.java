@@ -538,7 +538,6 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
     private void bindFunctionalMembers(TianshuMultiblockScanResult result) {
         if (level.getBlockEntity(result.portPos()) instanceof TianshuSupercomputerPortBlockEntity port) {
             prepareRuntime(port);
-            port.bindToController(worldPosition, machineId, cpuPool);
             for (var patternStoragePos : result.patternStoragePositions()) {
                 if (level.getBlockEntity(patternStoragePos) instanceof TianshuPatternStorageBlockEntity storage) {
                     storage.bindToPort(portPos);
@@ -552,6 +551,9 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
             loadPatternsFromWarehouses(port);
             maintenance.functionCapacityChanged();
             cpuPool.resolvePendingLoad();
+            // Publishing the port mounts its crafting provider synchronously. Finish restoring
+            // every controller-owned service before AE2 calls getAvailablePatterns during mount.
+            port.bindToController(worldPosition, machineId, cpuPool);
         }
     }
 
@@ -661,13 +663,13 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
     @Override
     public IGrid getGrid() {
         var port = getLinkedPort();
-        return port != null ? port.getLinkGrid() : null;
+        return port != null ? port.getGrid() : null;
     }
 
     @Override
     public IActionSource getActionSource() {
         var port = getPortLinkEndpoint();
-        return port != null ? port.getLinkActionSource() : IActionSource.empty();
+        return port != null ? port.getActionSource() : IActionSource.empty();
     }
 
     @Override
