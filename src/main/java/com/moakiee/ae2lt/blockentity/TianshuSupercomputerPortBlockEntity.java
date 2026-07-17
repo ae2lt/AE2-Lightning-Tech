@@ -111,9 +111,10 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
         if (controllerPos != null) {
             throw new IllegalArgumentException("A Tianshu link requires its controller UUID and CPU pool");
         }
-        boolean bindingChanged = MultiblockPortBinding.changes(
-                formed, this.controllerPos, boundMachineId, linkedCpuPool,
-                null, null, null);
+        boolean bindingChanged = formed
+                || this.controllerPos != null
+                || boundMachineId != null
+                || linkedCpuPool != null;
         boolean formedChanged = formed;
         this.controllerPos = null;
         this.boundMachineId = null;
@@ -129,9 +130,10 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
             bindToController(null);
             return;
         }
-        boolean bindingChanged = MultiblockPortBinding.changes(
-                formed, this.controllerPos, boundMachineId, linkedCpuPool,
-                controllerPos, machineId, cpuPool);
+        boolean bindingChanged = !formed
+                || !controllerPos.equals(this.controllerPos)
+                || !machineId.equals(boundMachineId)
+                || linkedCpuPool != cpuPool;
         boolean formedChanged = !formed;
         this.controllerPos = controllerPos.immutable();
         this.boundMachineId = machineId;

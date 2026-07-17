@@ -113,8 +113,7 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
         if (controllerPos != null) {
             throw new IllegalArgumentException("A matrix link requires its controller UUID");
         }
-        boolean bindingChanged = MultiblockPortBinding.changes(
-                formed, this.controllerPos, boundMachineId, null, null);
+        boolean bindingChanged = formed || this.controllerPos != null || boundMachineId != null;
         boolean formedChanged = formed;
         this.controllerPos = null;
         this.boundMachineId = null;
@@ -128,8 +127,9 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
             bindToController(null);
             return;
         }
-        boolean bindingChanged = MultiblockPortBinding.changes(
-                formed, this.controllerPos, boundMachineId, controllerPos, machineId);
+        boolean bindingChanged = !formed
+                || !controllerPos.equals(this.controllerPos)
+                || !machineId.equals(boundMachineId);
         boolean formedChanged = !formed;
         this.controllerPos = controllerPos.immutable();
         this.boundMachineId = machineId;
