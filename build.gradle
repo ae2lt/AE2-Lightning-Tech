@@ -169,6 +169,13 @@ sourceSets.main.resources { srcDir 'src/generated/resources' }
 sourceSets.test.compileClasspath += sourceSets.main.compileClasspath
 sourceSets.test.runtimeClasspath += sourceSets.main.runtimeClasspath
 
+// Optional real-mod jars for JDB integration probes. Kept opt-in so normal builds and
+// published artifacts never depend on machine-local modpack paths.
+def jdbProbeModPaths = providers.gradleProperty('ae2ltJdbProbeMods')
+        .getOrElse('')
+        .split(java.io.File.pathSeparator)
+        .findAll { !it.isBlank() }
+
 dependencies {
     // Thunderbolt Core — the extracted AE2 infrastructure layer (fast crafting planner,
     // channel/batch/cell/matrix algorithms). Provided at runtime as a separate mod jar in the modpack,
@@ -176,6 +183,7 @@ dependencies {
     compileOnly "com.moakiee.thunderbolt:thunderbolt:2.0.0"
     runtimeOnly "com.moakiee.thunderbolt:thunderbolt:2.0.0"
     testRuntimeOnly "com.moakiee.thunderbolt:thunderbolt:2.0.0"
+    jdbProbeModPaths.each { runtimeOnly files(it) }
 
     implementation "curse.maven:applied-energistics-2-223794:7027323"
     implementation "de.mari_023:ae2wtlib_api:${ae2wtlib_version}"

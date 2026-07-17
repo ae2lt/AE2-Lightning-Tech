@@ -56,6 +56,128 @@ public final class TianshuJdbHarness {
 
     public static String lastReport() { return lastReport; }
 
+    /**
+     * Runs the exact reported order-two path with Mystical Agriculture's real recipe and item
+     * remainder implementation. This deliberately uses the ordinary decoded AE2 pattern, without
+     * a Tianshu/closed-loop wrapper, and submits both copies in one matrix push.
+     */
+    public static String runMasterInfusionCrystalOrderTwoProbe() {
+        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+        if (server == null) return "FAIL: no running Minecraft server";
+        if (!server.isSameThread()) return "FAIL: invoke from the suspended server tick thread";
+        try {
+            var level = server.overworld();
+            var recipeId = ResourceLocation.fromNamespaceAndPath(
+                    "mysticalagriculture", "prudentium_essence");
+            var rawRecipe = level.getRecipeManager().byKey(recipeId)
+                    .orElseThrow(() -> new IllegalStateException("prudentium recipe missing"));
+            if (!(rawRecipe.value() instanceof net.minecraft.world.item.crafting.CraftingRecipe recipe)) {
+                throw new IllegalStateException("prudentium recipe is not a crafting recipe");
+            }
+            var holder = new net.minecraft.world.item.crafting.RecipeHolder<>(rawRecipe.id(), recipe);
+
+            var masterItem = net.minecraft.core.registries.BuiltInRegistries.ITEM.get(
+                    ResourceLocation.fromNamespaceAndPath(
+                            "mysticalagriculture", "master_infusion_crystal"));
+            var inferiumItem = net.minecraft.core.registries.BuiltInRegistries.ITEM.get(
+                    ResourceLocation.fromNamespaceAndPath("mysticalagriculture", "inferium_essence"));
+            var prudentiumItem = net.minecraft.core.registries.BuiltInRegistries.ITEM.get(
+                    ResourceLocation.fromNamespaceAndPath("mysticalagriculture", "prudentium_essence"));
+            require(masterItem != Items.AIR && inferiumItem != Items.AIR && prudentiumItem != Items.AIR,
+                    "Mystical Agriculture probe items unavailable");
+
+            var masterStack = new ItemStack(masterItem);
+            var inferiumStack = new ItemStack(inferiumItem);
+            var prudentiumStack = new ItemStack(prudentiumItem);
+            var craftingGrid = new ItemStack[9];
+            java.util.Arrays.fill(craftingGrid, ItemStack.EMPTY);
+            craftingGrid[1] = inferiumStack.copy();
+            craftingGrid[3] = inferiumStack.copy();
+            craftingGrid[4] = masterStack.copy();
+            craftingGrid[5] = inferiumStack.copy();
+            craftingGrid[7] = inferiumStack.copy();
+            var encoded = appeng.api.crafting.PatternDetailsHelper.encodeCraftingPattern(
+                    holder, craftingGrid, prudentiumStack.copy(), false, false);
+            var decoded = appeng.api.crafting.PatternDetailsHelper.decodePattern(encoded, level);
+            require(decoded instanceof appeng.blockentity.crafting.IMolecularAssemblerSupportedPattern,
+                    "AE2 did not decode the prudentium crafting pattern");
+
+            var master = AEItemKey.of(masterStack);
+            var inferium = AEItemKey.of(inferiumStack);
+            var prudentium = AEItemKey.of(prudentiumStack);
+            require(master != null && inferium != null && prudentium != null,
+                    "AE2 probe keys unavailable");
+
+            var cpuInventory = new appeng.crafting.inv.ListCraftingInventory(ignored -> {});
+            var waitingFor = new appeng.crafting.inv.ListCraftingInventory(ignored -> {});
+            cpuInventory.insert(master, 1, Actionable.MODULATE);
+            cpuInventory.insert(inferium, 8, Actionable.MODULATE);
+            var job = new com.moakiee.thunderbolt.ae2.batch.BatchJobView() {
+                @Override public java.util.Iterator<com.moakiee.thunderbolt.ae2.batch.BatchTaskHandle>
+                taskIterator() { return java.util.Collections.emptyIterator(); }
+                @Override public appeng.crafting.inv.ListCraftingInventory waitingFor() {
+                    return waitingFor;
+                }
+                @Override public void addContainerMaxItems(long count, appeng.api.stacks.AEKeyType type) {
+                }
+            };
+            class ProbeHost implements com.moakiee.thunderbolt.core.craft.CraftingCoreHost {
+                long time;
+                long delivered;
+                @Override public long getGameTime() { return time; }
+                @Override public boolean isRemoved() { return false; }
+                @Override public boolean isConnected() { return true; }
+                @Override public long insertToNetwork(appeng.api.stacks.AEKey key, long amount) {
+                    long accepted = waitingFor.extract(key, amount, Actionable.SIMULATE);
+                    if (accepted <= 0) return 0L;
+                    waitingFor.extract(key, accepted, Actionable.MODULATE);
+                    if (prudentium.equals(key)) delivered += accepted;
+                    else cpuInventory.insert(key, accepted, Actionable.MODULATE);
+                    return accepted;
+                }
+                @Override public void spawnToWorld(appeng.api.stacks.AEKey key, long amount) {
+                    throw new IllegalStateException("probe output spawned into world");
+                }
+            }
+            var host = new ProbeHost();
+            var registry = new com.moakiee.thunderbolt.core.craft.CraftingCoreRegistry();
+            var core = new com.moakiee.thunderbolt.core.craft.CraftingCore(
+                    host, new com.moakiee.thunderbolt.core.craft.MolecularCopyAssembler(level), registry);
+
+            var bulk = com.moakiee.thunderbolt.ae2.batch.ParallelBatchCpuHelper.bulkExtract(
+                    decoded, cpuInventory, 2L);
+            require(bulk != null, "batch could not extract master crystal and essence");
+            require(bulk.actualCopies == 2L,
+                    "ordinary pattern was limited to " + bulk.actualCopies + " copy");
+            var oneCopy = com.moakiee.thunderbolt.ae2.batch.ParallelBatchCpuHelper
+                    .cloneSingleCopy(bulk);
+            require(core.pushBatch(decoded, oneCopy, 2L) == 2L,
+                    "matrix did not accept both copies in one push");
+            com.moakiee.thunderbolt.ae2.batch.ParallelBatchCpuHelper.markDispatched(bulk, 2L);
+            com.moakiee.thunderbolt.ae2.batch.ParallelBatchCpuHelper.registerExpectedOutputs(
+                    job, decoded, bulk, 2L);
+            com.moakiee.thunderbolt.ae2.batch.ParallelBatchCpuHelper.reinject(
+                    bulk, bulk.actualCopies - 2L, cpuInventory);
+            host.time = com.moakiee.thunderbolt.core.craft.CraftingCore.FLUSH_INTERVAL_TICKS;
+            core.sweepTick();
+            require(host.delivered == 2L, "both target outputs did not return");
+            require(cpuInventory.extract(master, Long.MAX_VALUE, Actionable.SIMULATE) == 1L,
+                    "master crystal did not return exactly once");
+            require(waitingFor.extract(master, Long.MAX_VALUE, Actionable.SIMULATE) == 0L,
+                    "master crystal is still waiting");
+            require(core.threadsInFlight() == 0L, "matrix still has an undelivered batch");
+
+            long essenceLeft = cpuInventory.extract(
+                    inferium, Long.MAX_VALUE, Actionable.SIMULATE);
+            return "PASS: ordinary Mystical Agriculture batch=2; prudentium=" + host.delivered
+                    + ", masterCrystal=1, inferiumLeft=" + essenceLeft
+                    + ", singleMatrixPush=true";
+        } catch (Throwable failure) {
+            failure.printStackTrace();
+            return "FAIL: " + failure.getClass().getSimpleName() + ": " + failure.getMessage();
+        }
+    }
+
     /** Probes MEGA's real runtime jar through AE2's standard CPU persistence decoder path. */
     public static String runMegaPatternDecodeProbe() {
         MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
@@ -76,7 +198,7 @@ public final class TianshuJdbHarness {
                     .createFromDraft(
                             java.util.List.of(new com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopMemberPattern(
                                     snapshot, 1L)),
-                            appeng.api.stacks.AEItemKey.of(Items.IRON_BLOCK), 1, level);
+                            appeng.api.stacks.AEItemKey.of(Items.IRON_BLOCK), 1, 1, level);
             var definitionTag = definition.toTag(level.registryAccess());
             definitionTag.putLong("#craftingProgress", 64L);
             var restoredDefinition = AEItemKey.fromTag(level.registryAccess(), definitionTag);
@@ -305,12 +427,12 @@ public final class TianshuJdbHarness {
                     direction + " unformed port exposed AE cable");
             require(seedDrive.amount(seed, port.getActionSource()) == 3,
                     direction + " deform erased disk seed data");
-            require(port.extractReusableSeed(seed, 1, Actionable.MODULATE) == 0,
+            require(controller.extractReusableSeed(seed, 1, Actionable.MODULATE) == 0,
                     direction + " unformed port allowed seed extraction");
             level.setBlock(peripheralCore, ModBlocks.STORAGE_SUPERCOMPUTING_UNIT.get().defaultBlockState(), Block.UPDATE_ALL);
             controller.scanNow();
             require(controller.isFormed(), direction + " did not reform after peripheral-core repair");
-            require(port.extractReusableSeed(seed, 1, Actionable.MODULATE) == 1,
+            require(controller.extractReusableSeed(seed, 1, Actionable.MODULATE) == 1,
                     direction + " reformed port lost seed access");
 
             // Runtime/configuration belongs to the controller. Replacing ordinary cores may alter
@@ -329,7 +451,7 @@ public final class TianshuJdbHarness {
                     List.of(new ClosedLoopMemberPattern(new SourcePatternSnapshot(
                             ResourceLocation.fromNamespaceAndPath("ae2", "encoded_processing_pattern"), null, null), 1)),
                     List.of(new appeng.api.stacks.GenericStack(seed, 1)), List.of(),
-                    List.of(new appeng.api.stacks.GenericStack(seed, 1)), 1, true);
+                    List.of(new appeng.api.stacks.GenericStack(seed, 1)), 1, 1, true);
             require(port.getClosedLoopPatternRepository().put(storedPattern)
                             == com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternRepository.PutResult.ADDED,
                     direction + " loop pattern insert failed");
@@ -359,7 +481,7 @@ public final class TianshuJdbHarness {
                 controller.scanNow();
                 require(controller.isFormed(), direction + " seed-storage removal deformed cycle " + cycle);
                 require(!port.getFunctionProfile().supportsClosedLoopSeeds(), direction + " seed ability remained cycle " + cycle);
-                require(port.extractReusableSeed(seed, 1, Actionable.MODULATE) == 0,
+                require(controller.extractReusableSeed(seed, 1, Actionable.MODULATE) == 0,
                         direction + " disabled seed storage extracted cycle " + cycle);
                 level.setBlock(seedStoragePos, ModBlocks.CLOSED_LOOP_SEED_STORAGE.get().defaultBlockState(), Block.UPDATE_ALL);
 

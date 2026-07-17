@@ -5,9 +5,6 @@ package com.moakiee.ae2lt.logic.craft;
  * these formulas only need aggregated chip powers and the current heat value.
  */
 public final class MatrixCraftingMath {
-    public static final int MATRIX_DELAY_TICKS = 5;
-    public static final int CREATIVE_DELAY_TICKS = 1;
-
     private static final double THREAD_SOFT_CAP = 80.0D;
     private static final double DISPATCH_MIN = 128.0D;
     private static final double DISPATCH_RANGE = 384.0D;

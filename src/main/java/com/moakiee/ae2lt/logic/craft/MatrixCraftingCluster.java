@@ -23,7 +23,8 @@ import com.moakiee.thunderbolt.ae2.api.crafting.BatchDispatchMode;
 /**
  * Multiblock-side rate limiter that wraps a shared {@link CraftingCore} engine: it aggregates the
  * pattern units and thread units of a formed structure, caps batch copies by the structure's thread
- * budget, and schedules them on the engine. The engine itself stays a pure assembler + time wheel.
+ * budget, and schedules them on the engine. The engine itself stays a pure assembler plus a
+ * five-tick aggregate output buffer.
  */
 public final class MatrixCraftingCluster {
     private static final String NBT_HEAT = "heat";
@@ -109,16 +110,13 @@ public final class MatrixCraftingCluster {
 
     /**
      * Rate limiter entry point: cap copies by the structure's free thread budget and schedule them
-     * on the shared engine with the structure's delay. Inputs are a single-copy template.
+     * on the shared engine. Inputs are a single-copy template.
      */
     public long pushBatch(IPatternDetails details, KeyCounter[] oneCopyTemplate, long maxCraft) {
         if (!hasPattern(details)) return maxCraft;
         long copies = Math.min(maxCraft, getBatchCapacity(details));
         if (copies <= 0) return maxCraft;
-        int delay = craftingProfile().mode() == MatrixCoreMode.CREATIVE
-                ? MatrixCraftingMath.CREATIVE_DELAY_TICKS
-                : MatrixCraftingMath.MATRIX_DELAY_TICKS;
-        long accepted = engine.pushBatch(details, oneCopyTemplate, copies, delay);
+        long accepted = engine.pushBatch(details, oneCopyTemplate, copies);
         limiterRemaining = Math.max(0L, limiterRemaining - accepted);
         return maxCraft - accepted;
     }
@@ -126,10 +124,7 @@ public final class MatrixCraftingCluster {
     /** Vanilla one-copy path through the matrix main core. */
     public boolean pushSingle(IPatternDetails details, KeyCounter[] oneCopyTemplate) {
         if (!hasPattern(details) || availableCapacity() <= 0) return false;
-        int delay = craftingProfile().mode() == MatrixCoreMode.CREATIVE
-                ? MatrixCraftingMath.CREATIVE_DELAY_TICKS
-                : MatrixCraftingMath.MATRIX_DELAY_TICKS;
-        long accepted = engine.pushBatch(details, oneCopyTemplate, 1L, delay);
+        long accepted = engine.pushBatch(details, oneCopyTemplate, 1L);
         limiterRemaining = Math.max(0L, limiterRemaining - accepted);
         return accepted == 1L;
     }

@@ -126,6 +126,21 @@ class ClosedLoopExecutionEdgeCaseTest {
     }
 
     @Test
+    void realImplementationInputArraysAreNormalizedBeforePinning() {
+        var seed = key("master_infusion_crystal", "");
+        var concreteInputs = new FakeInput[] {input(true, stack(seed, 1L))};
+        var delegate = new FakeLoopPattern(
+                concreteInputs, Set.of(), UUID.randomUUID());
+
+        var pinned = assertDoesNotThrow(
+                () -> ClosedLoopExpandedPatternDetails.pinReusableSeedInputs(
+                        delegate, Set.of(seed)));
+
+        assertEquals(IPatternDetails.IInput.class, pinned.getClass().getComponentType());
+        assertEquals(seed, pinned[0].getPossibleInputs()[0].what());
+    }
+
+    @Test
     void fuzzySeedCandidatesWithDifferentPhysicalAmountsAreRejected() {
         var plannedSeed = key("cell", "planned");
         var first = key("cell", "first");

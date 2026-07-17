@@ -34,22 +34,22 @@ import com.moakiee.thunderbolt.ae2.batch.SharedBatchInputPattern;
 
 class CraftingCoreTest {
     @Test
-    void assemblesOnceAndDeliversAfterDelay() {
+    void assemblesOnceAndFlushesAtTheNextFiveTickBoundary() {
         var host = new FakeHost(100);
         var registry = new CraftingCoreRegistry();
         var assembler = new FakeAssembler(key("diamond"), 2, stack(key("bucket"), 1));
         var core = new CraftingCore(host, assembler, registry);
 
-        core.pushBatch(new FakePattern(), inputs(key("stick"), 1), 5, 2);
+        core.pushBatch(new FakePattern(), inputs(key("stick"), 1), 5);
 
         assertEquals(1, assembler.calls);
         assertEquals(5, core.threadsInFlight());
 
-        host.time = 101;
+        host.time = 104;
         registry.tickAll();
         assertEquals(0, host.network.getLong(key("diamond")));
 
-        host.time = 102;
+        host.time = 105;
         registry.tickAll();
         assertEquals(10, host.network.getLong(key("diamond")));
         assertEquals(5, host.network.getLong(key("bucket")));
@@ -57,15 +57,23 @@ class CraftingCoreTest {
     }
 
     @Test
-    void getSizeReportsScheduledCopiesInTargetSlot() {
+    void multiplePushesAggregateIntoOnePendingFlush() {
         var host = new FakeHost(0);
-        var core = new CraftingCore(host, new FakeAssembler(key("diamond"), 1), new CraftingCoreRegistry());
+        var output = key("diamond");
+        var core = new CraftingCore(host, new FakeAssembler(output, 1), new CraftingCoreRegistry());
 
-        core.pushBatch(new FakePattern(), inputs(key("stick"), 1), 4, 3); // now=0, due=3 -> wheel[3]
+        core.pushBatch(new FakePattern(), inputs(key("stick"), 1), 4);
+        host.time = 2;
+        core.pushBatch(new FakePattern(), inputs(key("stick"), 1), 3);
 
-        assertEquals(4, core.getSize(3));
-        assertEquals(0, core.getSize(2));
-        assertEquals(4, core.threadsInFlight());
+        assertEquals(7, core.threadsInFlight());
+        host.time = 4;
+        core.sweepTick();
+        assertEquals(0, host.network.getLong(output));
+        host.time = 5;
+        core.sweepTick();
+        assertEquals(7, host.network.getLong(output));
+        assertEquals(0, core.threadsInFlight());
     }
 
     @Test
@@ -74,7 +82,7 @@ class CraftingCoreTest {
         var assembler = new FakeAssembler(key("diamond"), 1);
         var core = new CraftingCore(host, assembler, new CraftingCoreRegistry());
 
-        core.pushBatch(new FakePlainPattern(), inputs(key("stick"), 1), 3, 1);
+        core.pushBatch(new FakePlainPattern(), inputs(key("stick"), 1), 3);
 
         assertEquals(0, assembler.calls);
         assertEquals(0, core.threadsInFlight());
@@ -87,36 +95,48 @@ class CraftingCoreTest {
         var output = key("diamond");
         var core = new CraftingCore(host, new FakeAssembler(output, 5), new CraftingCoreRegistry());
 
-        core.pushBatch(new FakePattern(), inputs(key("stick"), 1), 2, 1); // now=0, due=1
+        core.pushBatch(new FakePattern(), inputs(key("stick"), 1), 2);
 
-        host.time = 1;
+        host.time = 5;
         core.sweepTick();
         assertEquals(3, host.network.getLong(output));
         assertEquals(2, core.threadsInFlight());
 
         host.maxInsertPerCall = Long.MAX_VALUE;
-        host.time = 2;
+        host.time = 6;
+        core.sweepTick();
+        assertEquals(3, host.network.getLong(output));
+        assertEquals(2, core.threadsInFlight());
+
+        host.time = 10;
         core.sweepTick();
         assertEquals(10, host.network.getLong(output));
         assertEquals(0, core.threadsInFlight());
     }
 
     @Test
-    void rejectsNewPushesWhileMaturedOutputsAreBlocked() {
+    void blockedFlushKeepsOneBufferAndRetriesAtTheNextBoundary() {
         var host = new FakeHost(0);
         host.maxInsertPerCall = 0;
         var assembler = new FakeAssembler(key("diamond"), 1);
         var core = new CraftingCore(host, assembler, new CraftingCoreRegistry());
 
-        long firstAccepted = core.pushBatch(new FakePattern(), inputs(key("stick"), 1), 2L, 1);
-        host.time = 1;
-        long blockedAccepted = core.pushBatch(new FakePattern(), inputs(key("stick"), 1), 3L, 1);
+        long firstAccepted = core.pushBatch(new FakePattern(), inputs(key("stick"), 1), 2L);
+        host.time = 5;
+        core.sweepTick();
+        long secondAccepted = core.pushBatch(new FakePattern(), inputs(key("stick"), 1), 3L);
 
         assertEquals(2, firstAccepted);
-        assertEquals(0, blockedAccepted);
-        assertEquals(1, assembler.calls);
-        assertEquals(2, core.threadsInFlight());
+        assertEquals(3, secondAccepted);
+        assertEquals(2, assembler.calls);
+        assertEquals(5, core.threadsInFlight());
         assertEquals(0, host.network.getLong(key("diamond")));
+
+        host.maxInsertPerCall = Long.MAX_VALUE;
+        host.time = 10;
+        core.sweepTick();
+        assertEquals(5, host.network.getLong(key("diamond")));
+        assertEquals(0, core.threadsInFlight());
     }
 
     @Test
@@ -125,29 +145,33 @@ class CraftingCoreTest {
         var core = new CraftingCore(host, new FakeAssembler(key("diamond"), 1), new CraftingCoreRegistry());
 
         long requested = (long) Integer.MAX_VALUE + 17L;
-        long accepted = core.pushBatch(new FakePattern(), inputs(key("stick"), 1), requested, 1);
+        long accepted = core.pushBatch(new FakePattern(), inputs(key("stick"), 1), requested);
 
         assertEquals(requested, accepted);
         assertEquals(requested, core.threadsInFlight());
-        assertEquals(requested, core.getSize(1));
     }
 
     @Test
-    void disconnectedHostKeepsOutputsInWheelUntilReconnect() {
+    void disconnectedHostKeepsOutputsBufferedUntilAReconnectBoundary() {
         var host = new FakeHost(0);
         host.connected = false;
         var output = key("diamond");
         var core = new CraftingCore(host, new FakeAssembler(output, 1), new CraftingCoreRegistry());
 
-        core.pushBatch(new FakePattern(), inputs(key("stick"), 1), 2, 1);
-        host.time = 1;
+        core.pushBatch(new FakePattern(), inputs(key("stick"), 1), 2);
+        host.time = 5;
         core.sweepTick();
 
         assertEquals(0, host.network.getLong(output));
         assertEquals(2, core.threadsInFlight());
 
         host.connected = true;
-        host.time = 2;
+        host.time = 6;
+        core.sweepTick();
+        assertEquals(0, host.network.getLong(output));
+        assertEquals(2, core.threadsInFlight());
+
+        host.time = 10;
         core.sweepTick();
 
         assertEquals(2, host.network.getLong(output));
@@ -161,7 +185,7 @@ class CraftingCoreTest {
         var output = key("diamond");
         var core = new CraftingCore(host, new FakeAssembler(output, 5), new CraftingCoreRegistry());
 
-        core.pushBatch(new FakePattern(), inputs(key("stick"), 1), 2, 20);
+        core.pushBatch(new FakePattern(), inputs(key("stick"), 1), 2);
         core.drainAll(false);
 
         assertEquals(3, host.network.getLong(output));
@@ -183,8 +207,8 @@ class CraftingCoreTest {
                 output, 1, List.of(), List.of(stack(seed, 1)));
         var core = new CraftingCore(host, assembler, new CraftingCoreRegistry());
 
-        assertEquals(8, core.pushBatch(new FakePattern(), inputs(seed, 1), 8, 1));
-        host.time = 1;
+        assertEquals(8, core.pushBatch(new FakePattern(), inputs(seed, 1), 8));
+        host.time = 5;
         core.sweepTick();
 
         assertEquals(8, host.network.getLong(output));
@@ -209,15 +233,15 @@ class CraftingCoreTest {
                 inputs(seed, 1)[0], inputs(essence, 4)[0]
         };
 
-        assertEquals(500, core.pushBatch(pattern, oneCopyInputs, 500, 1));
-        host.time = 1;
+        assertEquals(500, core.pushBatch(pattern, oneCopyInputs, 500));
+        host.time = 5;
         core.sweepTick();
         assertEquals(500, host.network.getLong(output));
         assertEquals(1, host.network.getLong(seed));
 
         host.network.removeLong(seed); // CPU borrows the returned seed for the second push
-        assertEquals(500, core.pushBatch(pattern, oneCopyInputs, 500, 1));
-        host.time = 2;
+        assertEquals(500, core.pushBatch(pattern, oneCopyInputs, 500));
+        host.time = 10;
         core.sweepTick();
 
         assertEquals(1, assemblerCalls[0], "the second push must exercise the assembly cache");
@@ -233,8 +257,8 @@ class CraftingCoreTest {
                 new FakeAssembler(template, 2), new CraftingCoreRegistry());
 
         assertEquals(5, core.pushBatch(new FakeSharedOutputPattern(template),
-                inputs(template, 1), 5, 1));
-        host.time = 1;
+                inputs(template, 1), 5));
+        host.time = 5;
         core.sweepTick();
 
         assertEquals(6, host.network.getLong(template));
@@ -247,7 +271,7 @@ class CraftingCoreTest {
         var registry = new CraftingCoreRegistry();
         var core = new CraftingCore(host, new FakeAssembler(output, 1), registry);
 
-        core.pushBatch(new FakePattern(), inputs(key("stick"), 1), 2, 1);
+        core.pushBatch(new FakePattern(), inputs(key("stick"), 1), 2);
         host.removed = true;
 
         assertFalse(core.sweepTick());
@@ -262,7 +286,7 @@ class CraftingCoreTest {
         var registry = new CraftingCoreRegistry();
         var core = new CraftingCore(host, new FakeAssembler(output, 1), registry);
 
-        core.pushBatch(new FakePattern(), inputs(key("stick"), 1), 2, 1);
+        core.pushBatch(new FakePattern(), inputs(key("stick"), 1), 2);
         core.suspend();
         host.removed = true;
         registry.tickAll();

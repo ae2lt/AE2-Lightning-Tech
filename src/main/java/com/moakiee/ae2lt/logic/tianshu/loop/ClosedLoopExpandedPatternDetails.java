@@ -237,7 +237,10 @@ public class ClosedLoopExpandedPatternDetails
     public static IInput[] pinReusableSeedInputs(
             IPatternDetails details, Set<appeng.api.stacks.AEKey> seedKeys) {
         var source = details.getInputs();
-        var result = source.clone();
+        // AE2's real crafting details may return an array whose runtime component type is its
+        // private input implementation. Cloning preserves that concrete array type, so storing
+        // our PinnedSeedInput would throw ArrayStoreException. Normalize to the API interface.
+        IInput[] result = java.util.Arrays.copyOf(source, source.length, IInput[].class);
         for (int slot = 0; slot < source.length; slot++) {
             var input = source[slot];
             var possible = input.getPossibleInputs();
@@ -302,7 +305,7 @@ public class ClosedLoopExpandedPatternDetails
             IPatternDetails details,
             Map<Integer, appeng.api.stacks.AEKey> plannedSeedInputSlots) {
         var source = details.getInputs();
-        var result = source.clone();
+        IInput[] result = java.util.Arrays.copyOf(source, source.length, IInput[].class);
         for (var entry : plannedSeedInputSlots.entrySet()) {
             int slot = entry.getKey();
             if (slot < 0 || slot >= source.length || entry.getValue() == null) {

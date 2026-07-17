@@ -180,6 +180,52 @@ class ParallelBatchCpuHelperTest {
     }
 
     @Test
+    void ordinarySelfReturningCatalystAutomaticallySharesAcrossBatch() {
+        var catalyst = key("master_infusion_crystal");
+        var essence = key("inferium_essence");
+        var inv = inventory();
+        inv.insert(catalyst, 1, Actionable.MODULATE);
+        inv.insert(essence, 8, Actionable.MODULATE);
+        var pattern = pattern(
+                returningInput(stack(catalyst, 1), 1, catalyst),
+                input(stack(essence, 4), 1));
+
+        var result = ParallelBatchCpuHelper.bulkExtract(pattern, inv, 2);
+
+        assertNotNull(result);
+        assertEquals(2, result.actualCopies);
+        assertEquals(1, result.scaledInputs[0].get(catalyst));
+        assertEquals(8, result.scaledInputs[1].get(essence));
+        assertEquals(0, inv.extract(catalyst, Long.MAX_VALUE, Actionable.SIMULATE));
+        assertEquals(0, inv.extract(essence, Long.MAX_VALUE, Actionable.SIMULATE));
+
+        var waiting = inventory();
+        ParallelBatchCpuHelper.registerExpectedOutputs(
+                new FakeBatchJobView(waiting), pattern, result, 2);
+        assertEquals(1, waiting.extract(catalyst, Long.MAX_VALUE, Actionable.SIMULATE));
+    }
+
+    @Test
+    void ordinaryChangingRemainderStillScalesPerCopy() {
+        var filledContainer = key("filled_container");
+        var emptyContainer = key("empty_container");
+        var inv = inventory();
+        inv.insert(filledContainer, 2, Actionable.MODULATE);
+        var pattern = pattern(returningInput(
+                stack(filledContainer, 1), 1, emptyContainer));
+
+        var result = ParallelBatchCpuHelper.bulkExtract(pattern, inv, 2);
+
+        assertNotNull(result);
+        assertEquals(2, result.actualCopies);
+        assertEquals(2, result.scaledInputs[0].get(filledContainer));
+        var waiting = inventory();
+        ParallelBatchCpuHelper.registerExpectedOutputs(
+                new FakeBatchJobView(waiting), pattern, result, 2);
+        assertEquals(2, waiting.extract(emptyContainer, Long.MAX_VALUE, Actionable.SIMULATE));
+    }
+
+    @Test
     void rejectedSingleSeedBatchReinjectsTheSeedExactlyOnce() {
         var seed = key("template");
         var material = key("diamond");
