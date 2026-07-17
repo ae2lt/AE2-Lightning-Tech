@@ -54,24 +54,13 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
         extends MEStorageScreen<M> {
     private final Map<EncodingMode, TianshuEncodingModePanel> modePanels =
             new EnumMap<>(EncodingMode.class);
-    private final Map<EncodingMode, TabButton> modeTabButtons =
-            new EnumMap<>(EncodingMode.class);
-    private final Map<TianshuEncodingMode, TabButton> extraTabs =
+    private final Map<TianshuEncodingMode, TabButton> modeTabs =
             new EnumMap<>(TianshuEncodingMode.class);
     private final DerivedModePanel derivedPanel = new DerivedModePanel();
-    private final AE2Button multiply2;
-    private final AE2Button multiply5;
-    private final AE2Button divide2;
-    private final AE2Button divide5;
-    private final AE2Button previousCandidate;
-    private final AE2Button nextCandidate;
-    private final AE2Button executionSeedDown;
-    private final AE2Button executionSeedUp;
-    private final AE2Button storedTaskDown;
-    private final AE2Button storedTaskUp;
+    private final List<AE2Button> processingModeButtons;
+    private final List<AE2Button> closedLoopModeButtons;
     private final AE2Button upload;
     private final AE2Button tianshuTarget;
-    private final TianshuViewModeButton viewModeButton;
     private final AE2Button globalReserve;
     private boolean awaitingMaintenanceEditor;
     private int requestedMaintenanceRevision;
@@ -97,10 +86,10 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
                     button -> menu.setMode(mode));
             tabButton.setStyle(Style.HORIZONTAL);
 
-            var modeIndex = modeTabButtons.size();
+            var modeIndex = modeTabs.size();
             widgets.add("modePanel" + modeIndex, panel);
             widgets.add("modeTabButton" + modeIndex, tabButton);
-            modeTabButtons.put(mode, tabButton);
+            modeTabs.put(TianshuEncodingMode.fromAe2(mode), tabButton);
             modePanels.put(mode, panel);
         }
 
@@ -114,26 +103,31 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
                 Component.translatable("ae2lt.tianshu.terminal.mode.closed_loop"), "modeTabButton6");
         widgets.add("derivedModePanel", derivedPanel);
 
-        multiply2 = widgets.addButton("processingMultiply2", Component.literal("×2"),
-                () -> menu.multiplyProcessing(hasShiftDown() ? 4 : 2));
-        multiply5 = widgets.addButton("processingMultiply5", Component.literal("×5"),
-                () -> menu.multiplyProcessing(hasShiftDown() ? 10 : 5));
-        divide2 = widgets.addButton("processingDivide2", Component.literal("÷2"),
-                () -> menu.multiplyProcessing(hasShiftDown() ? -4 : -2));
-        divide5 = widgets.addButton("processingDivide5", Component.literal("÷5"),
-                () -> menu.multiplyProcessing(hasShiftDown() ? -10 : -5));
-        previousCandidate = widgets.addButton("closedLoopPrevious", Component.literal("<"),
+        processingModeButtons = List.of(
+                widgets.addButton("processingMultiply2", Component.literal("×2"),
+                        () -> menu.multiplyProcessing(hasShiftDown() ? 4 : 2)),
+                widgets.addButton("processingMultiply5", Component.literal("×5"),
+                        () -> menu.multiplyProcessing(hasShiftDown() ? 10 : 5)),
+                widgets.addButton("processingDivide2", Component.literal("÷2"),
+                        () -> menu.multiplyProcessing(hasShiftDown() ? -4 : -2)),
+                widgets.addButton("processingDivide5", Component.literal("÷5"),
+                        () -> menu.multiplyProcessing(hasShiftDown() ? -10 : -5)));
+        var previousCandidate = widgets.addButton("closedLoopPrevious", Component.literal("<"),
                 () -> menu.selectClosedLoopCandidate(-1));
-        nextCandidate = widgets.addButton("closedLoopNext", Component.literal(">"),
+        var nextCandidate = widgets.addButton("closedLoopNext", Component.literal(">"),
                 () -> menu.selectClosedLoopCandidate(1));
-        executionSeedDown = widgets.addButton("closedLoopExecutionSeedDown", Component.literal("−"),
+        var executionSeedDown = widgets.addButton("closedLoopExecutionSeedDown", Component.literal("−"),
                 () -> menu.changeClosedLoopExecutionSeedMultiplier(hasShiftDown() ? -10 : -1));
-        executionSeedUp = widgets.addButton("closedLoopExecutionSeedUp", Component.literal("+"),
+        var executionSeedUp = widgets.addButton("closedLoopExecutionSeedUp", Component.literal("+"),
                 () -> menu.changeClosedLoopExecutionSeedMultiplier(hasShiftDown() ? 10 : 1));
-        storedTaskDown = widgets.addButton("closedLoopStoredTaskDown", Component.literal("−"),
+        var storedTaskDown = widgets.addButton("closedLoopStoredTaskDown", Component.literal("−"),
                 () -> menu.changeClosedLoopStoredTaskMultiplier(hasShiftDown() ? -10 : -1));
-        storedTaskUp = widgets.addButton("closedLoopStoredTaskUp", Component.literal("+"),
+        var storedTaskUp = widgets.addButton("closedLoopStoredTaskUp", Component.literal("+"),
                 () -> menu.changeClosedLoopStoredTaskMultiplier(hasShiftDown() ? 10 : 1));
+        closedLoopModeButtons = List.of(
+                previousCandidate, nextCandidate,
+                executionSeedDown, executionSeedUp,
+                storedTaskDown, storedTaskUp);
         var executionSeedTooltip = net.minecraft.client.gui.components.Tooltip.create(
                 Component.translatable(
                         "ae2lt.tianshu.terminal.closed_loop.execution_seed_multiplier.tooltip"));
@@ -148,7 +142,7 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
                 this::openUploadScreen);
         tianshuTarget = widgets.addButton("tianshuTarget", Component.empty(),
                 () -> menu.cycleTianshuTarget(hasShiftDown() ? -1 : 1));
-        viewModeButton = replaceViewModeButton();
+        replaceViewModeButton();
         globalReserve = widgets.addButton("globalReserve",
                 Component.translatable("ae2lt.tianshu.reserve.button"),
                 () -> switchToScreen(new TianshuGlobalReserveScreen<>(this)));
@@ -160,7 +154,7 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
         var tab = new TabButton(icon, tooltip, button -> menu.setTianshuMode(mode));
         tab.setStyle(Style.HORIZONTAL);
         widgets.add(widgetId, tab);
-        extraTabs.put(mode, tab);
+        modeTabs.put(mode, tab);
     }
 
     @Override
@@ -169,9 +163,9 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
         var selected = menu.tianshuMode;
         for (var mode : EncodingMode.values()) {
             var modeSelected = selected.ae2Mode() == mode;
-            modeTabButtons.get(mode).setSelected(modeSelected);
             modePanels.get(mode).setVisible(modeSelected);
         }
+        modeTabs.forEach((mode, button) -> button.setSelected(mode == selected));
         if (observedTianshuSelectionRevision != menu.tianshuSelectionRevision) {
             observedTianshuSelectionRevision = menu.tianshuSelectionRevision;
             awaitingMaintenanceEditor = false;
@@ -190,21 +184,12 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
         }
         boolean derived = !selected.isAe2Mode();
         derivedPanel.mode = derived ? selected : null;
-        extraTabs.forEach((mode, button) -> button.setSelected(mode == selected));
-        var advancedTab = extraTabs.get(TianshuEncodingMode.ADVANCED);
+        var advancedTab = modeTabs.get(TianshuEncodingMode.ADVANCED);
         if (advancedTab != null) advancedTab.visible = AdvancedAECompat.isLoaded();
         boolean processing = selected == TianshuEncodingMode.PROCESSING;
-        multiply2.visible = processing;
-        multiply5.visible = processing;
-        divide2.visible = processing;
-        divide5.visible = processing;
+        processingModeButtons.forEach(button -> button.visible = processing);
         boolean closedLoop = selected == TianshuEncodingMode.CLOSED_LOOP;
-        previousCandidate.visible = closedLoop;
-        nextCandidate.visible = closedLoop;
-        executionSeedDown.visible = closedLoop;
-        executionSeedUp.visible = closedLoop;
-        storedTaskDown.visible = closedLoop;
-        storedTaskUp.visible = closedLoop;
+        closedLoopModeButtons.forEach(button -> button.visible = closedLoop);
         upload.visible = true;
         upload.active = closedLoop
                 ? menu.encodedClosedLoop && !menu.isTianshuSelectionPending()
