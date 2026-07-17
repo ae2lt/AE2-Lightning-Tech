@@ -44,15 +44,25 @@ import org.junit.jupiter.api.Test;
 
 class ClosedLoopPatternRepositoryTest {
     @Test
-    void seedMultiplierScalesStorageTargetButNotTheComputedBaseSeed() {
+    void executionAndStoredTaskMultipliersScaleDifferentSeedCapacityAxes() {
         var base = payload(UUID.randomUUID(), 1);
-        var scaled = base.withSeedMultiplier(1_000);
+        var executionScaled = base.withExecutionSeedMultiplier(1_000);
+        var storageScaled = base.withStoredTaskMultiplier(8);
+        var combined = base.withSeedMultipliers(1_000, 8);
         var seed = base.seeds().getFirst();
 
         assertEquals(1, seed.amount());
-        assertEquals(1_000, scaled.seedMultiplier());
+        assertEquals(1_000, executionScaled.executionSeedMultiplier());
+        assertEquals(1, executionScaled.storedTaskMultiplier());
+        assertEquals(1, storageScaled.executionSeedMultiplier());
+        assertEquals(8, storageScaled.storedTaskMultiplier());
         assertEquals(1_000,
-                TianshuSeedRefillService.requirements(scaled).get(seed.what()));
+                TianshuSeedRefillService.requirements(executionScaled).get(seed.what()));
+        assertEquals(8,
+                TianshuSeedRefillService.requirements(storageScaled).get(seed.what()));
+        assertEquals(8_000,
+                TianshuSeedRefillService.requirements(combined).get(seed.what()));
+        assertEquals(base.version() + 1, combined.version());
     }
 
     @Test
@@ -70,7 +80,7 @@ class ClosedLoopPatternRepositoryTest {
         assertEquals(List.of(first), repository.overflowedPatterns());
         assertEquals(List.of(), repository.activePatterns());
         assertEquals(ClosedLoopPatternRepository.PutResult.UPDATED,
-                repository.put(first.withSeedMultiplier(8)));
+                repository.put(first.withStoredTaskMultiplier(8)));
         capacity[0] = 1;
         assertEquals(1, repository.activePatterns().size());
     }
@@ -486,7 +496,7 @@ class ClosedLoopPatternRepositoryTest {
                 List.of(new GenericStack(new TestKey("template"), 1)),
                 List.of(new GenericStack(new TestKey("diamond"), 7)),
                 List.of(new GenericStack(new TestKey("template"), 1)),
-                1, true);
+                1, 1, true);
     }
 
     private static final class TestKey extends AEKey {

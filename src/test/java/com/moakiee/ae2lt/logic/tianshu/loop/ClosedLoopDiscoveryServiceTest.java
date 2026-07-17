@@ -4,12 +4,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
 import com.moakiee.thunderbolt.ae2.overload.pattern.OverloadPatternDetails;
 import com.moakiee.thunderbolt.ae2.overload.pattern.OverloadedProviderOnlyPatternDetails;
 import com.moakiee.thunderbolt.ae2.overload.pattern.PatternExecutionHostKind;
+import com.moakiee.thunderbolt.ae2.overload.pattern.SourcePatternSnapshot;
 import com.mojang.serialization.MapCodec;
 
 import net.minecraft.core.BlockPos;
@@ -100,6 +102,43 @@ class ClosedLoopDiscoveryServiceTest {
         assertEquals(2, candidate.members().size());
         assertEquals(1, amount(candidate.analysis().seeds(), seed));
         assertEquals(1, amount(candidate.analysis().netOutputs(), target));
+    }
+
+    @Test
+    void discoversAnOuterLoopThroughAClosedLoopMacroWithoutInheritingItsMultipliers() {
+        var innerSeed = key("nested_discovery_seed");
+        var intermediate = key("nested_discovery_intermediate");
+        var target = key("nested_discovery_target");
+        var innerPayload = new ClosedLoopPatternPayload(
+                UUID.randomUUID(), 1L,
+                List.of(new ClosedLoopMemberPattern(
+                        new SourcePatternSnapshot(
+                                ResourceLocation.fromNamespaceAndPath(
+                                        "ae2lt_test", "nested_discovery_leaf"),
+                                null, null),
+                        1L)),
+                List.of(stack(innerSeed, 1L)),
+                List.of(),
+                List.of(stack(intermediate, 1L)),
+                37, 41, true);
+        var innerMacro = new FakeClosedLoopPattern(
+                innerPayload,
+                new IPatternDetails.IInput[] {input(innerSeed, 37L, null)});
+        var downstream = pattern(
+                List.of(stack(target, 1L)), input(intermediate, 1L, null));
+        var patterns = Map.<AEKey, List<IPatternDetails>>of(
+                target, List.of(downstream),
+                intermediate, List.of(innerMacro));
+
+        var candidates = ClosedLoopDiscoveryService.resolveCandidates(
+                key -> patterns.getOrDefault(key, List.of()), target);
+
+        var candidate = candidates.stream()
+                .filter(value -> value.members().size() == 2)
+                .findFirst().orElseThrow();
+        assertEquals(1L, amount(candidate.analysis().seeds(), innerSeed));
+        assertEquals(0L, amount(candidate.analysis().externalInputs(), innerSeed));
+        assertEquals(1L, amount(candidate.analysis().netOutputs(), target));
     }
 
     @Test
@@ -319,6 +358,19 @@ class ClosedLoopDiscoveryServiceTest {
         @Override public boolean hasFuzzyInputs() { return inputFuzzy; }
         @Override public boolean isFuzzyInput(int slot) { return inputFuzzy && slot == 0; }
         @Override public boolean isFuzzyOutput(int slot) { return outputFuzzy && slot == 0; }
+    }
+
+    private record FakeClosedLoopPattern(
+            ClosedLoopPatternPayload closedLoopPayload,
+            IPatternDetails.IInput[] misleadingRuntimeInputs)
+            implements TianshuClosedLoopPatternDetails {
+        @Override public AEItemKey getDefinition() { return null; }
+        @Override public IPatternDetails.IInput[] getInputs() {
+            return misleadingRuntimeInputs;
+        }
+        @Override public List<GenericStack> getOutputs() {
+            return closedLoopPayload.netOutputs();
+        }
     }
 
     private record FakeInput(GenericStack[] possibleInputs, AEKey remaining)

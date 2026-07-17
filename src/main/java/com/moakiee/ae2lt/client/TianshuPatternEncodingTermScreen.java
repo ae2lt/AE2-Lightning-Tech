@@ -47,8 +47,10 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
     private final AE2Button divide5;
     private final AE2Button previousCandidate;
     private final AE2Button nextCandidate;
-    private final AE2Button parallelDown;
-    private final AE2Button parallelUp;
+    private final AE2Button executionSeedDown;
+    private final AE2Button executionSeedUp;
+    private final AE2Button storedTaskDown;
+    private final AE2Button storedTaskUp;
     private final AE2Button upload;
     private final AE2Button tianshuTarget;
     private final TianshuViewModeButton viewModeButton;
@@ -83,10 +85,24 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
                 () -> menu.selectClosedLoopCandidate(-1));
         nextCandidate = widgets.addButton("closedLoopNext", Component.literal(">"),
                 () -> menu.selectClosedLoopCandidate(1));
-        parallelDown = widgets.addButton("closedLoopParallelDown", Component.literal("−"),
-                () -> menu.changeClosedLoopSeedMultiplier(hasShiftDown() ? -10 : -1));
-        parallelUp = widgets.addButton("closedLoopParallelUp", Component.literal("+"),
-                () -> menu.changeClosedLoopSeedMultiplier(hasShiftDown() ? 10 : 1));
+        executionSeedDown = widgets.addButton("closedLoopExecutionSeedDown", Component.literal("−"),
+                () -> menu.changeClosedLoopExecutionSeedMultiplier(hasShiftDown() ? -10 : -1));
+        executionSeedUp = widgets.addButton("closedLoopExecutionSeedUp", Component.literal("+"),
+                () -> menu.changeClosedLoopExecutionSeedMultiplier(hasShiftDown() ? 10 : 1));
+        storedTaskDown = widgets.addButton("closedLoopStoredTaskDown", Component.literal("−"),
+                () -> menu.changeClosedLoopStoredTaskMultiplier(hasShiftDown() ? -10 : -1));
+        storedTaskUp = widgets.addButton("closedLoopStoredTaskUp", Component.literal("+"),
+                () -> menu.changeClosedLoopStoredTaskMultiplier(hasShiftDown() ? 10 : 1));
+        var executionSeedTooltip = net.minecraft.client.gui.components.Tooltip.create(
+                Component.translatable(
+                        "ae2lt.tianshu.terminal.closed_loop.execution_seed_multiplier.tooltip"));
+        executionSeedDown.setTooltip(executionSeedTooltip);
+        executionSeedUp.setTooltip(executionSeedTooltip);
+        var storedTaskTooltip = net.minecraft.client.gui.components.Tooltip.create(
+                Component.translatable(
+                        "ae2lt.tianshu.terminal.closed_loop.stored_task_multiplier.tooltip"));
+        storedTaskDown.setTooltip(storedTaskTooltip);
+        storedTaskUp.setTooltip(storedTaskTooltip);
         upload = widgets.addButton("tianshuUpload", Component.translatable("ae2lt.tianshu.terminal.upload"),
                 this::openUploadScreen);
         tianshuTarget = widgets.addButton("tianshuTarget", Component.empty(),
@@ -153,8 +169,10 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
         boolean closedLoop = selected == TianshuEncodingMode.CLOSED_LOOP;
         previousCandidate.visible = closedLoop;
         nextCandidate.visible = closedLoop;
-        parallelDown.visible = closedLoop;
-        parallelUp.visible = closedLoop;
+        executionSeedDown.visible = closedLoop;
+        executionSeedUp.visible = closedLoop;
+        storedTaskDown.visible = closedLoop;
+        storedTaskUp.visible = closedLoop;
         upload.visible = true;
         upload.active = closedLoop
                 ? menu.encodedClosedLoop && !menu.isTianshuSelectionPending()
@@ -368,8 +386,9 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
                     menu.closedLoopCandidateCount == 0 ? 0 : menu.closedLoopCandidateIndex + 1,
                     menu.closedLoopCandidateCount), x + 8, y + 29, 0x666666, false);
             graphics.drawString(font, Component.translatable(
-                    "ae2lt.tianshu.terminal.closed_loop.seed_multiplier",
-                    menu.closedLoopSeedMultiplier),
+                    "ae2lt.tianshu.terminal.closed_loop.seed_multipliers",
+                    menu.closedLoopExecutionSeedMultiplier,
+                    menu.closedLoopStoredTaskMultiplier),
                     x + 8, y + 43, 0x666666, false);
             if (menu.closedLoopEncodeState != 0) {
                 graphics.drawString(font, Component.translatable(

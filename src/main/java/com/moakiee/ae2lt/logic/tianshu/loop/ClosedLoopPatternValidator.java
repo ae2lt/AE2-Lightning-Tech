@@ -3,6 +3,7 @@ package com.moakiee.ae2lt.logic.tianshu.loop;
 import appeng.api.crafting.PatternDetailsHelper;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.GenericStack;
+import com.moakiee.ae2lt.item.ClosedLoopPatternItem;
 import com.moakiee.thunderbolt.core.planner.Sat;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -19,15 +20,24 @@ public final class ClosedLoopPatternValidator {
 
         var members = new ArrayList<ClosedLoopPatternAnalyzer.Member>(payload.memberPatterns().size());
         for (var stored : payload.memberPatterns()) {
-            var details = PatternDetailsHelper.decodePattern(
-                    stored.pattern().toItemStack(level.registryAccess()), level);
+            var stack = stored.pattern().toItemStack(level.registryAccess());
+            // A persisted execution-member stack decodes as an expanded ordinary delegate. Check
+            // the raw item first so neither it nor an unflattened macro can cross this boundary.
+            if (stack.getItem() instanceof ClosedLoopPatternItem) {
+                return invalid(ClosedLoopValidationResult.Status.MEMBER_IS_CLOSED_LOOP);
+            }
+            var details = PatternDetailsHelper.decodePattern(stack, level);
             if (details == null) {
                 return invalid(ClosedLoopValidationResult.Status.MEMBER_UNDECODABLE);
             }
             if (details instanceof TianshuClosedLoopPatternDetails) {
                 return invalid(ClosedLoopValidationResult.Status.MEMBER_IS_CLOSED_LOOP);
             }
-            members.add(new ClosedLoopPatternAnalyzer.Member(details, stored.copiesPerCycle()));
+            members.add(new ClosedLoopPatternAnalyzer.Member(
+                    details, stored.copiesPerCycle(), stored.seedWaveCopies()));
+        }
+        if (ClosedLoopPatternAnalyzer.seedWaveRepetitions(members) <= 0L) {
+            return invalid(ClosedLoopValidationResult.Status.STRUCTURE_CHECK_FAILED);
         }
 
         var structure = ClosedLoopPatternAnalyzer.validateStructure(

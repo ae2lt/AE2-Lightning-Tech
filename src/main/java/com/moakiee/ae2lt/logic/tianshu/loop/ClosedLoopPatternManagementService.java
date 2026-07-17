@@ -19,19 +19,36 @@ public final class ClosedLoopPatternManagementService {
         return store(target, payload.withEnabled(enabled));
     }
 
+    public static ClosedLoopPatternRepository.PutResult setExecutionSeedMultiplier(
+            TianshuSupercomputerPortBlockEntity target, UUID patternId, int executionSeedMultiplier) {
+        var payload = editable(target, patternId);
+        return updateSeedMultipliers(target, payload,
+                executionSeedMultiplier,
+                payload != null ? payload.storedTaskMultiplier() : 1);
+    }
+
+    /** Legacy name; stored-task capacity remains an independent setting. */
+    @Deprecated
     public static ClosedLoopPatternRepository.PutResult setSeedMultiplier(
             TianshuSupercomputerPortBlockEntity target, UUID patternId, int seedMultiplier) {
-        if (seedMultiplier < 1) return ClosedLoopPatternRepository.PutResult.INVALID;
+        return setExecutionSeedMultiplier(target, patternId, seedMultiplier);
+    }
+
+    public static ClosedLoopPatternRepository.PutResult setStoredTaskMultiplier(
+            TianshuSupercomputerPortBlockEntity target, UUID patternId, int storedTaskMultiplier) {
         var payload = editable(target, patternId);
-        if (payload == null) return ClosedLoopPatternRepository.PutResult.UNAVAILABLE;
-        if (target.getLevel() == null
-                || !ClosedLoopPatternValidator.validate(payload, target.getLevel()).valid()) {
-            return ClosedLoopPatternRepository.PutResult.INVALID;
-        }
-        if (payload.seedMultiplier() == seedMultiplier) {
-            return ClosedLoopPatternRepository.PutResult.UPDATED;
-        }
-        return store(target, payload.withSeedMultiplier(seedMultiplier));
+        return updateSeedMultipliers(target, payload,
+                payload != null ? payload.executionSeedMultiplier() : 1,
+                storedTaskMultiplier);
+    }
+
+    public static ClosedLoopPatternRepository.PutResult setSeedMultipliers(
+            TianshuSupercomputerPortBlockEntity target,
+            UUID patternId,
+            int executionSeedMultiplier,
+            int storedTaskMultiplier) {
+        return updateSeedMultipliers(target, editable(target, patternId),
+                executionSeedMultiplier, storedTaskMultiplier);
     }
 
     public static boolean remove(
@@ -66,6 +83,27 @@ public final class ClosedLoopPatternManagementService {
         return TianshuTerminalCapabilities.forTianshu(
                 target.isFormed(), target.getFunctionProfile())
                 .allows(TianshuTerminalAction.UPLOAD_CLOSED_LOOP_PATTERN);
+    }
+
+    private static ClosedLoopPatternRepository.PutResult updateSeedMultipliers(
+            TianshuSupercomputerPortBlockEntity target,
+            ClosedLoopPatternPayload payload,
+            int executionSeedMultiplier,
+            int storedTaskMultiplier) {
+        if (executionSeedMultiplier < 1 || storedTaskMultiplier < 1) {
+            return ClosedLoopPatternRepository.PutResult.INVALID;
+        }
+        if (payload == null) return ClosedLoopPatternRepository.PutResult.UNAVAILABLE;
+        if (target.getLevel() == null
+                || !ClosedLoopPatternValidator.validate(payload, target.getLevel()).valid()) {
+            return ClosedLoopPatternRepository.PutResult.INVALID;
+        }
+        if (payload.executionSeedMultiplier() == executionSeedMultiplier
+                && payload.storedTaskMultiplier() == storedTaskMultiplier) {
+            return ClosedLoopPatternRepository.PutResult.UPDATED;
+        }
+        return store(target, payload.withSeedMultipliers(
+                executionSeedMultiplier, storedTaskMultiplier));
     }
 
     private static ClosedLoopPatternRepository.PutResult store(

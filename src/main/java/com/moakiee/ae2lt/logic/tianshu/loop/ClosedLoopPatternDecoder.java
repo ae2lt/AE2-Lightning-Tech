@@ -32,8 +32,10 @@ public final class ClosedLoopPatternDecoder implements IPatternDetailsDecoder {
                 var decodedMembers = new java.util.ArrayList<IPatternDetails>(
                         payload.memberPatterns().size());
                 for (var stored : payload.memberPatterns()) {
+                    var memberStack = stored.pattern().toItemStack(level.registryAccess());
+                    if (memberStack.getItem() instanceof ClosedLoopPatternItem) return null;
                     var decoded = appeng.api.crafting.PatternDetailsHelper.decodePattern(
-                            stored.pattern().toItemStack(level.registryAccess()), level);
+                            memberStack, level);
                     if (decoded == null || decoded instanceof TianshuClosedLoopPatternDetails) return null;
                     decodedMembers.add(decoded);
                 }
@@ -46,7 +48,9 @@ public final class ClosedLoopPatternDecoder implements IPatternDetailsDecoder {
                         decodedMembers.size());
                 for (int i = 0; i < decodedMembers.size(); i++) {
                     analyzedMembers.add(new ClosedLoopPatternAnalyzer.Member(
-                            decodedMembers.get(i), payload.memberPatterns().get(i).copiesPerCycle()));
+                            decodedMembers.get(i),
+                            payload.memberPatterns().get(i).copiesPerCycle(),
+                            payload.memberPatterns().get(i).seedWaveCopies()));
                 }
                 var memberFlows = ClosedLoopPatternAnalyzer.deriveMemberFlows(
                         analyzedMembers, payload.seeds());

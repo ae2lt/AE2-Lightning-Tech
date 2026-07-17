@@ -5,6 +5,7 @@ import appeng.api.crafting.PatternDetailsHelper;
 import appeng.api.networking.crafting.ICraftingService;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.GenericStack;
+import com.moakiee.ae2lt.item.ClosedLoopPatternItem;
 import com.moakiee.thunderbolt.ae2.api.crafting.CraftingPatternDelegates;
 import com.moakiee.thunderbolt.ae2.overload.pattern.OverloadedProviderOnlyPatternDetails;
 import com.moakiee.thunderbolt.ae2.overload.pattern.SourcePatternSnapshot;
@@ -51,6 +52,12 @@ public final class ClosedLoopDiscoveryService {
                     valid = false;
                     break;
                 }
+                var definitionStack = definition.toStack();
+                if (definitionStack.getItem() instanceof ClosedLoopPatternItem item
+                        && item.readExecutionMember(definitionStack) >= 0) {
+                    valid = false;
+                    break;
+                }
                 var decoded = PatternDetailsHelper.decodePattern(definition, level);
                 // Only persist members that participate in AE2's standard save/load decoder path.
                 if (decoded == null) {
@@ -71,7 +78,7 @@ public final class ClosedLoopDiscoveryService {
             var analysis = resolved.analysis();
             result.add(new ClosedLoopDiscoveryCandidate(new ClosedLoopPatternPayload(
                     UUID.randomUUID(), 1L, storedMembers, analysis.seeds(), analysis.externalInputs(),
-                    analysis.netOutputs(), 1, true)));
+                    analysis.netOutputs(), 1, 1, true)));
         }
         return new DiscoveryResult(result, rejectedUndecodablePattern);
     }
@@ -360,7 +367,11 @@ public final class ClosedLoopDiscoveryService {
         if (patterns == null) return List.of();
         var result = new ArrayList<IPatternDetails>();
         for (var pattern : patterns) {
-            if (pattern != null) result.add(pattern);
+            if (pattern instanceof TianshuClosedLoopPatternDetails nested) {
+                result.add(new ClosedLoopMacroDiscoveryView(nested));
+            } else if (pattern != null) {
+                result.add(pattern);
+            }
         }
         return List.copyOf(result);
     }
@@ -477,6 +488,90 @@ public final class ClosedLoopDiscoveryService {
         return ClosedLoopPatternAnalyzer.acceptsLoopOutput(
                 requirement.possibleInputs(), requirement.fuzzy(),
                 output.key(), output.fuzzy());
+    }
+
+    /**
+     * Authoring-only atomic view of an already encoded loop.
+     *
+     * <p>Base seeds are exact reusable inputs, whose remainders expose their return to the
+     * mass-balance solver. The nested pattern's execution and stored-task multipliers are not part
+     * of this view; after discovery, {@link ClosedLoopPatternFlattener} replaces the macro with its
+     * ordinary leaves.</p>
+     */
+    private static final class ClosedLoopMacroDiscoveryView implements IPatternDetails {
+        private final TianshuClosedLoopPatternDetails delegate;
+        private final IInput[] inputs;
+
+        private ClosedLoopMacroDiscoveryView(TianshuClosedLoopPatternDetails delegate) {
+            this.delegate = java.util.Objects.requireNonNull(delegate, "delegate");
+            var payload = java.util.Objects.requireNonNull(
+                    delegate.closedLoopPayload(), "closedLoopPayload");
+            var result = new ArrayList<IInput>(
+                    payload.seeds().size() + payload.externalInputs().size());
+            for (var seed : payload.seeds()) {
+                result.add(new MacroInput(seed.what(), seed.amount(), true));
+            }
+            for (var external : payload.externalInputs()) {
+                result.add(new MacroInput(external.what(), external.amount(), false));
+            }
+            this.inputs = result.toArray(IInput[]::new);
+        }
+
+        @Override
+        public appeng.api.stacks.AEItemKey getDefinition() {
+            return delegate.getDefinition();
+        }
+
+        @Override
+        public IInput[] getInputs() {
+            return inputs.clone();
+        }
+
+        @Override
+        public List<GenericStack> getOutputs() {
+            return delegate.closedLoopPayload().netOutputs();
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof ClosedLoopMacroDiscoveryView other
+                    && delegate.equals(other.delegate);
+        }
+
+        @Override
+        public int hashCode() {
+            return delegate.hashCode();
+        }
+    }
+
+    private record MacroInput(AEKey key, long amount, boolean reusable)
+            implements IPatternDetails.IInput {
+        private MacroInput {
+            java.util.Objects.requireNonNull(key, "key");
+            if (amount < 1L) throw new IllegalArgumentException("macro input must be positive");
+        }
+
+        @Override
+        public GenericStack[] getPossibleInputs() {
+            // One logical operation repeated `amount` times makes the normal remainder rule
+            // return every borrowed seed unit, including seed requirements greater than one.
+            return new GenericStack[] {new GenericStack(key, 1L)};
+        }
+
+        @Override
+        public long getMultiplier() {
+            return amount;
+        }
+
+        @Override
+        public boolean isValid(AEKey candidate, Level level) {
+            return key.equals(candidate);
+        }
+
+        @Override
+        public AEKey getRemainingKey(AEKey template) {
+            return reusable && key.equals(template) ? key : null;
+        }
     }
 
     static record ResolvedCandidate(

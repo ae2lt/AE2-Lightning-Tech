@@ -86,9 +86,32 @@ public final class ClosedLoopPatternAnalyzer {
         return prepareBalances(members) != null ? StructureStatus.VALID : StructureStatus.INVALID;
     }
 
+    /**
+     * Returns the one repetition scale shared by every member, or {@code 0} when the declaration
+     * would require independent/local seed waves. Local waves need separate routing groups and are
+     * deliberately rejected by this V1 execution model.
+     */
+    public static long seedWaveRepetitions(List<Member> members) {
+        if (members == null || members.isEmpty()) return 0L;
+        long repetitions = 0L;
+        for (var member : members) {
+            if (member == null || member.details() == null || member.copies() <= 0L
+                    || member.seedWaveCopies() <= 0L
+                    || member.seedWaveCopies() > member.copies()
+                    || member.copies() % member.seedWaveCopies() != 0L) {
+                return 0L;
+            }
+            long memberRepetitions = member.copies() / member.seedWaveCopies();
+            if (repetitions == 0L) repetitions = memberRepetitions;
+            else if (repetitions != memberRepetitions) return 0L;
+        }
+        return repetitions;
+    }
+
     public static ClosedLoopAnalysis analyze(
             List<Member> members, AEKey requestedOutput) {
         if (members == null || members.isEmpty() || requestedOutput == null) return null;
+        if (seedWaveRepetitions(members) <= 0L) return null;
         var consumed = new LinkedHashMap<AEKey, Long>();
         var produced = new LinkedHashMap<AEKey, Long>();
         var perMember = new ArrayList<Balance>(members.size());
@@ -101,7 +124,7 @@ public final class ClosedLoopPatternAnalyzer {
         if (possibleLoopOutputs == null) return null;
         for (var member : members) {
             var balance = balance(member.details(), possibleLoopOutputs);
-            if (balance == null || member.copies() <= 0) return null;
+            if (balance == null) return null;
             perMember.add(balance);
             mergeScaled(consumed, balance.consumed(), member.copies());
             mergeScaled(produced, balance.produced(), member.copies());
@@ -126,12 +149,12 @@ public final class ClosedLoopPatternAnalyzer {
             var balance = perMember.get(memberIndex);
             for (var key : cycleKeys) {
                 long consumedByGroup = Sat.mul(
-                        balance.consumed().getOrDefault(key, 0L), member.copies());
+                        balance.consumed().getOrDefault(key, 0L), member.seedWaveCopies());
                 long producedByGroup = Sat.mul(
-                        balance.produced().getOrDefault(key, 0L), member.copies());
+                        balance.produced().getOrDefault(key, 0L), member.seedWaveCopies());
                 long held = balances.getOrDefault(key, 0L);
-                // copiesPerCycle is one atomic dispatch group. Outputs from copy 1 are therefore
-                // not available to satisfy copy 2 inside the same member group.
+                // seedWaveCopies is one atomic dispatch group. Later copiesPerCycle waves may
+                // reuse this wave's returned state, but copies inside this wave stay simultaneous.
                 long deficit = Math.max(0L, consumedByGroup - held);
                 if (deficit > 0L) seedAmounts.merge(key, deficit, Sat::add);
                 long afterConsumption = Math.max(held, consumedByGroup) - consumedByGroup;
@@ -168,16 +191,17 @@ public final class ClosedLoopPatternAnalyzer {
 
     /**
      * Derives the explicit virtual-inventory transition for every ordered member dispatch group.
-     * Values are totals for {@link Member#copies()} executions, not per-copy averages.
+     * Values are totals for {@link Member#seedWaveCopies()} executions, not per-copy averages.
      */
     public static List<MemberFlow> deriveMemberFlows(
             List<Member> members, List<GenericStack> seeds) {
-        if (members == null || members.isEmpty() || seeds == null || seeds.isEmpty()) {
+        if (members == null || members.isEmpty() || seeds == null || seeds.isEmpty()
+                || seedWaveRepetitions(members) <= 0L) {
             return List.of();
         }
         var details = new ArrayList<IPatternDetails>(members.size());
         for (var member : members) {
-            if (member == null || member.details() == null || member.copies() <= 0) return List.of();
+            if (member == null || member.details() == null) return List.of();
             details.add(member.details());
         }
         var possibleOutputs = possibleLoopOutputs(details);
@@ -189,8 +213,8 @@ public final class ClosedLoopPatternAnalyzer {
         for (var member : members) {
             var perCopy = balance(member.details(), possibleOutputs);
             if (perCopy == null) return List.of();
-            var consumed = scaledCopy(perCopy.consumed(), member.copies());
-            var produced = scaledCopy(perCopy.produced(), member.copies());
+            var consumed = scaledCopy(perCopy.consumed(), member.seedWaveCopies());
+            var produced = scaledCopy(perCopy.produced(), member.seedWaveCopies());
             scaled.add(new Balance(consumed, produced, perCopy.inputSeedBySlot()));
             mergeScaled(totalConsumed, consumed, 1L);
             mergeScaled(totalProduced, produced, 1L);
@@ -294,7 +318,7 @@ public final class ClosedLoopPatternAnalyzer {
                 var outputs = details.getOutputs();
                 for (int slot = 0; slot < outputs.size(); slot++) {
                     var output = outputs.get(slot);
-                    long amount = Sat.mul(output.amount(), member.copies());
+                    long amount = Sat.mul(output.amount(), member.seedWaveCopies());
                     if (output.what() == null || amount <= 0) return false;
                     if (overload != null && overload.isFuzzyOutput(slot)) {
                         dynamicCapacity.computeIfAbsent(
@@ -314,7 +338,7 @@ public final class ClosedLoopPatternAnalyzer {
                     var selected = mapped.getValue();
                     var plannedRemainder = input.getRemainingKey(selected);
                     if (plannedRemainder == null) continue;
-                    long amount = Sat.mul(input.getMultiplier(), member.copies());
+                    long amount = Sat.mul(input.getMultiplier(), member.seedWaveCopies());
                     if (amount <= 0) return false;
 
                     var domain = new DynamicSeedDomain();
@@ -636,7 +660,15 @@ public final class ClosedLoopPatternAnalyzer {
         return List.copyOf(result);
     }
 
-    public record Member(IPatternDetails details, long copies) { }
+    /**
+     * Total physical copies and the smaller seed-routing wave for one member.
+     * The two-argument form preserves the legacy atomic-group behavior.
+     */
+    public record Member(IPatternDetails details, long copies, long seedWaveCopies) {
+        public Member(IPatternDetails details, long copies) {
+            this(details, copies, copies);
+        }
+    }
     public record OrderedAnalysis(List<Member> members, ClosedLoopAnalysis analysis) {
         public OrderedAnalysis {
             members = List.copyOf(members);

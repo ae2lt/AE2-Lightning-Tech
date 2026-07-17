@@ -104,6 +104,15 @@ class ClosedLoopCycleKeysTest {
     }
 
     @Test
+    void expandedSliceCountRestoresTotalCopiesAfterWaveRouting() {
+        assertEquals(600L, Ae2ClosedLoopPatternDetails.expandedSliceCount(3, 100, 2));
+        assertEquals(com.moakiee.thunderbolt.core.planner.Sat.SAT,
+                Ae2ClosedLoopPatternDetails.expandedSliceCount(
+                        Long.MAX_VALUE, Long.MAX_VALUE, Long.MAX_VALUE));
+        assertEquals(0L, Ae2ClosedLoopPatternDetails.expandedSliceCount(1, 0, 1));
+    }
+
+    @Test
     void sharedLedgerClassificationRequiresExactlyOneInputSeedTypePerMember() {
         var a = key("classification_a");
         var b = key("classification_b");

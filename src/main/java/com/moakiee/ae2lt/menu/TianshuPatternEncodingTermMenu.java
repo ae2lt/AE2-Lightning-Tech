@@ -78,7 +78,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     @GuiSync(114)
     public int closedLoopCandidateIndex;
     @GuiSync(115)
-    public int closedLoopSeedMultiplier = 1;
+    public int closedLoopExecutionSeedMultiplier = 1;
     @GuiSync(116)
     public int uploadState;
     @GuiSync(117)
@@ -102,6 +102,12 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     public int availableTianshuCount;
     @GuiSync(130)
     public int tianshuSelectionRevision;
+    @GuiSync(131)
+    public int closedLoopStoredTaskMultiplier = 1;
+    /** Read-only compatibility mirror for integrations compiled against the single multiplier. */
+    @Deprecated
+    @GuiSync(132)
+    public int closedLoopSeedMultiplier = 1;
 
     protected final TianshuPatternTerminalHost tianshuHost;
     @Nullable private TianshuTerminalTarget boundTianshuTarget;
@@ -149,8 +155,12 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         registerClientAction("toggleOverloadInput", Integer.class, this::toggleOverloadInputServer);
         registerClientAction("toggleOverloadOutput", Integer.class, this::toggleOverloadOutputServer);
         registerClientAction("selectClosedLoopCandidate", Integer.class, this::selectClosedLoopCandidateServer);
+        registerClientAction("changeClosedLoopExecutionSeedMultiplier", Integer.class,
+                this::changeClosedLoopExecutionSeedMultiplierServer);
         registerClientAction("changeClosedLoopSeedMultiplier", Integer.class,
                 this::changeClosedLoopSeedMultiplierServer);
+        registerClientAction("changeClosedLoopStoredTaskMultiplier", Integer.class,
+                this::changeClosedLoopStoredTaskMultiplierServer);
         registerClientAction("uploadTianshuPattern", Integer.class, this::uploadTianshuPatternServer);
         registerClientAction("uploadTianshuCraftingPattern", this::uploadTianshuCraftingPatternServer);
         registerClientAction("setMaintainableView", Boolean.class, this::setMaintainableViewServer);
@@ -166,6 +176,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
             maintenanceAvailable = selected != null
                     && selected.getFunctionProfile().supportsInventoryMaintenance();
             refreshDerivedConfiguration();
+            closedLoopSeedMultiplier = closedLoopExecutionSeedMultiplier;
         }
         super.broadcastChanges();
         if (isServerSide()) sendMaintenanceSummaryIfNeeded();
@@ -367,16 +378,44 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         broadcastChanges();
     }
 
+    public void changeClosedLoopExecutionSeedMultiplier(int delta) {
+        if (isClientSide()) sendClientAction("changeClosedLoopExecutionSeedMultiplier", delta);
+        else changeClosedLoopExecutionSeedMultiplierServer(delta);
+    }
+
+    private void changeClosedLoopExecutionSeedMultiplierServer(int delta) {
+        if (!isServerSide() || delta == 0) return;
+        closedLoopExecutionSeedMultiplier = adjustPositiveMultiplier(
+                closedLoopExecutionSeedMultiplier, delta);
+        closedLoopSeedMultiplier = closedLoopExecutionSeedMultiplier;
+        broadcastChanges();
+    }
+
+    /** Legacy action name; changes only the per-job borrowed seed multiplier. */
+    @Deprecated
     public void changeClosedLoopSeedMultiplier(int delta) {
         if (isClientSide()) sendClientAction("changeClosedLoopSeedMultiplier", delta);
         else changeClosedLoopSeedMultiplierServer(delta);
     }
 
     private void changeClosedLoopSeedMultiplierServer(int delta) {
+        changeClosedLoopExecutionSeedMultiplierServer(delta);
+    }
+
+    public void changeClosedLoopStoredTaskMultiplier(int delta) {
+        if (isClientSide()) sendClientAction("changeClosedLoopStoredTaskMultiplier", delta);
+        else changeClosedLoopStoredTaskMultiplierServer(delta);
+    }
+
+    private void changeClosedLoopStoredTaskMultiplierServer(int delta) {
         if (!isServerSide() || delta == 0) return;
-        closedLoopSeedMultiplier = (int) Math.max(1L, Math.min(
-                Integer.MAX_VALUE, (long) closedLoopSeedMultiplier + delta));
+        closedLoopStoredTaskMultiplier = adjustPositiveMultiplier(
+                closedLoopStoredTaskMultiplier, delta);
         broadcastChanges();
+    }
+
+    private static int adjustPositiveMultiplier(int value, int delta) {
+        return (int) Math.max(1L, Math.min(Integer.MAX_VALUE, (long) value + delta));
     }
 
     public void uploadTianshuPattern() {
@@ -623,7 +662,9 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         if (source.getItem() instanceof ClosedLoopPatternItem closedLoopItem) {
             var payload = closedLoopItem.readPayload(source, getPlayer().level()).orElse(null);
             if (payload != null) {
-                closedLoopSeedMultiplier = payload.seedMultiplier();
+                closedLoopExecutionSeedMultiplier = payload.executionSeedMultiplier();
+                closedLoopSeedMultiplier = closedLoopExecutionSeedMultiplier;
+                closedLoopStoredTaskMultiplier = payload.storedTaskMultiplier();
                 closedLoopDraftMembers = payload.memberPatterns();
                 if (!payload.netOutputs().isEmpty()) {
                     closedLoopMainOutput = payload.netOutputs().getFirst().what();
@@ -1036,7 +1077,9 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         }
         var authored = ClosedLoopPatternAuthoringService.createFromDraft(
                 closedLoopDraftMembers, closedLoopMainOutput,
-                closedLoopSeedMultiplier, getPlayer().level());
+                closedLoopExecutionSeedMultiplier,
+                closedLoopStoredTaskMultiplier,
+                getPlayer().level());
         if (!authored.valid()) {
             closedLoopEncodeState = authored.status()
                     == ClosedLoopPatternAuthoringService.Status.MEMBER_UNDECODABLE ? 1 : 2;

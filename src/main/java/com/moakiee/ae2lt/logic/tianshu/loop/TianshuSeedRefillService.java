@@ -40,7 +40,8 @@ public final class TianshuSeedRefillService {
         var result = new LinkedHashMap<AEKey, Long>();
         if (payload != null) {
             for (var seed : payload.seeds()) {
-                result.merge(seed.what(), Sat.mul(seed.amount(), payload.seedMultiplier()), Sat::add);
+                long perTask = Sat.mul(seed.amount(), payload.executionSeedMultiplier());
+                result.merge(seed.what(), Sat.mul(perTask, payload.storedTaskMultiplier()), Sat::add);
             }
         }
         return Map.copyOf(result);

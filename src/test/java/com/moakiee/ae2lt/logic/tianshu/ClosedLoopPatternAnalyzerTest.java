@@ -90,6 +90,113 @@ class ClosedLoopPatternAnalyzerTest {
     }
 
     @Test
+    void seedWaveSeparatesBorrowedSeedFromTotalSelfGrowthWork() {
+        var seed = key("wave_growth_seed");
+        var duplicate = pattern(List.of(output(seed, 2)), input(seed, 1, null));
+        var member = new ClosedLoopPatternAnalyzer.Member(duplicate, 1_000, 1);
+
+        var analysis = ClosedLoopPatternAnalyzer.analyze(List.of(member), seed);
+
+        assertNotNull(analysis);
+        assertEquals(1_000L, ClosedLoopPatternAnalyzer.seedWaveRepetitions(List.of(member)));
+        assertStack(analysis.seeds(), seed, 1);
+        assertStack(analysis.netOutputs(), seed, 1_000);
+        var flows = ClosedLoopPatternAnalyzer.deriveMemberFlows(
+                List.of(member), analysis.seeds());
+        assertEquals(java.util.Map.of(seed, 1L), flows.getFirst().inputSeed());
+        assertEquals(java.util.Map.of(seed, 1L), flows.getFirst().outputSeed());
+    }
+
+    @Test
+    void seedWavePreservesPrimitiveTwoMemberRatioWhileTotalsStayScaled() {
+        var a = key("wave_ratio_a");
+        var b = key("wave_ratio_b");
+        var aToTwoB = pattern(List.of(output(b, 2)), input(a, 1, null));
+        var bToA = pattern(List.of(output(a, 1)), input(b, 1, null));
+        var members = List.of(
+                new ClosedLoopPatternAnalyzer.Member(aToTwoB, 100, 1),
+                new ClosedLoopPatternAnalyzer.Member(bToA, 200, 2));
+
+        var analysis = ClosedLoopPatternAnalyzer.analyze(members, a);
+
+        assertNotNull(analysis);
+        assertEquals(100L, ClosedLoopPatternAnalyzer.seedWaveRepetitions(members));
+        assertStack(analysis.seeds(), a, 1);
+        assertStack(analysis.netOutputs(), a, 100);
+        var flows = ClosedLoopPatternAnalyzer.deriveMemberFlows(members, analysis.seeds());
+        assertEquals(java.util.Map.of(a, 1L), flows.get(0).inputSeed());
+        assertEquals(java.util.Map.of(b, 2L), flows.get(0).outputSeed());
+        assertEquals(java.util.Map.of(b, 2L), flows.get(1).inputSeed());
+        assertEquals(java.util.Map.of(a, 1L), flows.get(1).outputSeed());
+    }
+
+    @Test
+    void repeatedForkRoutesOnePrimitiveWaveInsteadOfOneAggregateBatch() {
+        var a = key("wave_fork_a");
+        var b = key("wave_fork_b");
+        var c = key("wave_fork_c");
+        var d = key("wave_fork_d");
+        var product = key("wave_fork_product");
+        var aToTwoB = pattern(List.of(output(b, 2)), input(a, 1, null));
+        var bToC = pattern(List.of(output(c, 1)), input(b, 1, null));
+        var bToD = pattern(List.of(output(d, 1)), input(b, 1, null));
+        var join = pattern(List.of(output(a, 1), output(product, 1)),
+                input(c, 1, null), input(d, 1, null));
+        var members = List.of(
+                new ClosedLoopPatternAnalyzer.Member(aToTwoB, 100, 1),
+                new ClosedLoopPatternAnalyzer.Member(bToC, 100, 1),
+                new ClosedLoopPatternAnalyzer.Member(bToD, 100, 1),
+                new ClosedLoopPatternAnalyzer.Member(join, 100, 1));
+
+        var analysis = ClosedLoopPatternAnalyzer.analyze(members, product);
+
+        assertNotNull(analysis);
+        assertStack(analysis.seeds(), a, 1);
+        assertStack(analysis.netOutputs(), product, 100);
+        var flows = ClosedLoopPatternAnalyzer.deriveMemberFlows(members, analysis.seeds());
+        assertEquals(java.util.Map.of(b, 2L), flows.get(0).outputSeed());
+        assertEquals(java.util.Map.of(b, 1L), flows.get(1).inputSeed());
+        assertEquals(java.util.Map.of(b, 1L), flows.get(2).inputSeed());
+        assertEquals(java.util.Map.of(c, 1L, d, 1L), flows.get(3).inputSeed());
+        assertEquals(java.util.Map.of(a, 1L), flows.get(3).outputSeed());
+    }
+
+    @Test
+    void mismatchedSeedWaveRepetitionsFailClosed() {
+        var a = key("wave_mismatch_a");
+        var b = key("wave_mismatch_b");
+        var product = key("wave_mismatch_product");
+        var aToB = pattern(List.of(output(b, 1)), input(a, 1, null));
+        var bToA = pattern(
+                List.of(output(a, 1), output(product, 1)), input(b, 1, null));
+        var members = List.of(
+                new ClosedLoopPatternAnalyzer.Member(aToB, 100, 1),
+                new ClosedLoopPatternAnalyzer.Member(bToA, 100, 100));
+
+        assertEquals(0L, ClosedLoopPatternAnalyzer.seedWaveRepetitions(members));
+        assertNull(ClosedLoopPatternAnalyzer.analyze(members, product));
+        assertEquals(List.of(), ClosedLoopPatternAnalyzer.deriveMemberFlows(
+                members, List.of(output(a, 1))));
+    }
+
+    @Test
+    void hugeTotalCopiesWithOneSeedWaveStayConstantTime() {
+        var seed = key("huge_wave_seed");
+        var product = key("huge_wave_product");
+        var member = pattern(
+                List.of(output(seed, 2), output(product, 1)), input(seed, 1, null));
+
+        var analysis = assertTimeoutPreemptively(Duration.ofSeconds(1),
+                () -> ClosedLoopPatternAnalyzer.analyze(List.of(
+                        new ClosedLoopPatternAnalyzer.Member(
+                                member, Long.MAX_VALUE, 1)), product));
+
+        assertNotNull(analysis);
+        assertStack(analysis.seeds(), seed, 1);
+        assertAmount(analysis.netOutputs(), product, Long.MAX_VALUE / 4);
+    }
+
+    @Test
     void reactionChamberLoopContractsToNetCertusOutput() {
         var charged = key("charged_certus_quartz_crystal");
         var dust = key("certus_quartz_dust");
@@ -197,6 +304,29 @@ class ClosedLoopPatternAnalyzerTest {
                 "ID_ONLY output must enter ID_ONLY input");
         assertNull(analyzeOverloadEdge(exact, exact, product, false, true),
                 "ID_ONLY output cannot guarantee a STRICT input");
+    }
+
+    @Test
+    void idOnlyOverloadSeedWaveKeepsOnePhysicalVariantBundle() {
+        var encoded = new TestKey("wave_overload_seed", "encoded");
+        var returned = new TestKey("wave_overload_seed", "returned");
+        var product = key("wave_overload_product");
+        var base = pattern(
+                List.of(output(returned, 1), output(product, 1)),
+                input(encoded, 1, null));
+        var details = new FakeOverloadPattern(
+                base.inputs(), base.outputs(), true, false);
+        var member = new ClosedLoopPatternAnalyzer.Member(details, 100, 1);
+
+        var analysis = ClosedLoopPatternAnalyzer.analyze(List.of(member), product);
+
+        assertNotNull(analysis);
+        assertStack(analysis.seeds(), returned, 1);
+        assertStack(analysis.netOutputs(), product, 100);
+        var flows = ClosedLoopPatternAnalyzer.deriveMemberFlows(
+                List.of(member), analysis.seeds());
+        assertEquals(java.util.Map.of(returned, 1L), flows.getFirst().inputSeed());
+        assertEquals(java.util.Map.of(returned, 1L), flows.getFirst().outputSeed());
     }
 
     @Test
@@ -335,17 +465,93 @@ class ClosedLoopPatternAnalyzerTest {
 
         var result = ClosedLoopPatternAuthoringService.create(List.of(
                 new ClosedLoopPatternAuthoringService.MarkedMember(member, snapshot, 1_000)),
-                product, 8);
+                product, 8, 3);
 
         assertEquals(ClosedLoopPatternAuthoringService.Status.VALID, result.status());
         var payload = result.payload();
         assertNotNull(payload);
-        assertEquals(8, payload.seedMultiplier());
+        assertEquals(8, payload.executionSeedMultiplier());
+        assertEquals(3, payload.storedTaskMultiplier());
         assertStack(payload.seeds(), seed, 1_000);
         assertStack(payload.externalInputs(), material, 4_000);
         assertAmount(payload.netOutputs(), seed, 1_000);
         assertAmount(payload.netOutputs(), product, 1_000);
         assertAmount(payload.netOutputs(), byproduct, 3_000);
+    }
+
+    @Test
+    void markedAuthoringPersistsASeparateSeedWaveWithoutScalingDownTotalWork() {
+        var seed = key("marked_wave_seed");
+        var material = key("marked_wave_material");
+        var product = key("marked_wave_product");
+        var member = pattern(
+                List.of(output(seed, 2), output(product, 1)),
+                input(seed, 1, null), input(material, 4, null));
+        var snapshot = new SourcePatternSnapshot(
+                ResourceLocation.fromNamespaceAndPath("ae2lt_test", "marked_wave_pattern"),
+                null, null);
+
+        var result = ClosedLoopPatternAuthoringService.create(List.of(
+                new ClosedLoopPatternAuthoringService.MarkedMember(
+                        member, snapshot, 1_000, 1)),
+                product, 3, 5);
+
+        assertEquals(ClosedLoopPatternAuthoringService.Status.VALID, result.status());
+        var payload = result.payload();
+        assertNotNull(payload);
+        assertEquals(1_000L, payload.seedWaveRepetitions());
+        assertEquals(1L, payload.memberPatterns().getFirst().seedWaveCopies());
+        assertStack(payload.seeds(), seed, 1);
+        assertStack(payload.externalInputs(), material, 4_000);
+        assertAmount(payload.netOutputs(), seed, 1_000);
+        assertAmount(payload.netOutputs(), product, 1_000);
+        assertEquals(3, payload.executionSeedMultiplier());
+        assertEquals(5, payload.storedTaskMultiplier());
+    }
+
+    @Test
+    void markedAuthoringAllowsARepeatedLeafDelegateAfterNestedFlattening() {
+        var seed = key("repeated_leaf_seed");
+        var product = key("repeated_leaf_product");
+        var repeated = pattern(
+                List.of(output(seed, 2), output(product, 1)),
+                input(seed, 1, null));
+        var first = new SourcePatternSnapshot(
+                ResourceLocation.fromNamespaceAndPath("ae2lt_test", "repeated_leaf_first"),
+                null, null);
+        var second = new SourcePatternSnapshot(
+                ResourceLocation.fromNamespaceAndPath("ae2lt_test", "repeated_leaf_second"),
+                null, null);
+
+        var result = ClosedLoopPatternAuthoringService.create(List.of(
+                new ClosedLoopPatternAuthoringService.MarkedMember(repeated, first, 1),
+                new ClosedLoopPatternAuthoringService.MarkedMember(repeated, second, 1)),
+                product, 1, 1);
+
+        assertEquals(ClosedLoopPatternAuthoringService.Status.VALID, result.status());
+        assertNotNull(result.payload());
+        assertEquals(2, result.payload().memberPatterns().size());
+        assertStack(result.payload().seeds(), seed, 1);
+        assertAmount(result.payload().netOutputs(), product, 2);
+    }
+
+    @Test
+    void directAuthoringRejectsAnExecutionMemberSnapshotMasqueradingAsOrdinary() {
+        var seed = key("execution_member_seed");
+        var product = key("execution_member_product");
+        var masqueradingDelegate = pattern(
+                List.of(output(seed, 2), output(product, 1)),
+                input(seed, 1, null));
+        var executionMemberSnapshot = new SourcePatternSnapshot(
+                ResourceLocation.fromNamespaceAndPath("ae2lt", "closed_loop_pattern"),
+                null, null);
+
+        var result = ClosedLoopPatternAuthoringService.create(List.of(
+                new ClosedLoopPatternAuthoringService.MarkedMember(
+                        masqueradingDelegate, executionMemberSnapshot, 1)),
+                product, 1, 1);
+
+        assertEquals(ClosedLoopPatternAuthoringService.Status.INVALID_MARKING, result.status());
     }
 
     @Test
