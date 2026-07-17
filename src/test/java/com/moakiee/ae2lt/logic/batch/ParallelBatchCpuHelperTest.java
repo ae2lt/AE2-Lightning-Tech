@@ -142,6 +142,44 @@ class ParallelBatchCpuHelperTest {
     }
 
     @Test
+    void partialSingleSeedAcceptanceReinjectsOnlyUnacceptedConsumables() {
+        var seed = key("master_infusion_crystal");
+        var essence = key("inferium_essence");
+        var upgraded = key("prudentium_essence");
+        var inv = inventory();
+        inv.insert(seed, 1, Actionable.MODULATE);
+        inv.insert(essence, 4_000, Actionable.MODULATE);
+        var pattern = new FakeReturnedSeedPattern(
+                new IPatternDetails.IInput[] {
+                        returningInput(stack(seed, 1), 1, seed), input(stack(essence, 4), 1)
+                }, seed, upgraded);
+
+        var first = ParallelBatchCpuHelper.bulkExtract(pattern, inv, 1_000);
+        assertNotNull(first);
+
+        ParallelBatchCpuHelper.markDispatched(first, 500);
+        var waiting = inventory();
+        ParallelBatchCpuHelper.registerExpectedOutputs(
+                new FakeBatchJobView(waiting), pattern, first, 500);
+        ParallelBatchCpuHelper.reinject(first, 500, inv);
+
+        assertEquals(0, inv.extract(seed, Long.MAX_VALUE, Actionable.SIMULATE));
+        assertEquals(2_000, inv.extract(essence, Long.MAX_VALUE, Actionable.SIMULATE));
+        assertEquals(1, waiting.extract(seed, Long.MAX_VALUE, Actionable.SIMULATE));
+        assertEquals(500, waiting.extract(upgraded, Long.MAX_VALUE, Actionable.SIMULATE));
+        assertEquals(0, first.scaledInputs[0].get(seed));
+        assertEquals(0, first.scaledInputs[1].get(essence));
+
+        inv.insert(seed, 1, Actionable.MODULATE); // first physical batch returned its seed
+        var second = ParallelBatchCpuHelper.bulkExtract(pattern, inv, 500);
+
+        assertNotNull(second);
+        assertEquals(500, second.actualCopies);
+        assertEquals(1, second.scaledInputs[0].get(seed));
+        assertEquals(2_000, second.scaledInputs[1].get(essence));
+    }
+
+    @Test
     void rejectedSingleSeedBatchReinjectsTheSeedExactlyOnce() {
         var seed = key("template");
         var material = key("diamond");
@@ -254,6 +292,11 @@ class ParallelBatchCpuHelperTest {
         return new FakeInput(new GenericStack[] {stack}, multiplier);
     }
 
+    private static IPatternDetails.IInput returningInput(
+            GenericStack stack, long multiplier, AEKey remainder) {
+        return new FakeReturningInput(new GenericStack[] {stack}, multiplier, remainder);
+    }
+
     private record FakePattern(IPatternDetails.IInput[] inputs) implements IPatternDetails {
         @Override
         public AEItemKey getDefinition() {
@@ -291,6 +334,17 @@ class ParallelBatchCpuHelperTest {
         }
         @Override public long sharedBatchOutputAmount(AEKey outputKey) {
             return seed.equals(outputKey) ? 1L : 0L;
+        }
+    }
+
+    private record FakeReturnedSeedPattern(
+            IPatternDetails.IInput[] inputs, AEKey seed, AEKey output)
+            implements IPatternDetails, SharedBatchInputPattern {
+        @Override public AEItemKey getDefinition() { return null; }
+        @Override public IPatternDetails.IInput[] getInputs() { return inputs; }
+        @Override public List<GenericStack> getOutputs() { return List.of(stack(output, 1)); }
+        @Override public boolean isSharedBatchInput(int slot, AEKey concreteKey) {
+            return slot == 0 && seed.equals(concreteKey);
         }
     }
 
@@ -332,6 +386,20 @@ class ParallelBatchCpuHelperTest {
         public AEKey getRemainingKey(AEKey template) {
             return null;
         }
+    }
+
+    private record FakeReturningInput(
+            GenericStack[] possibleInputs, long multiplier, AEKey remainder)
+            implements IPatternDetails.IInput {
+        @Override public GenericStack[] getPossibleInputs() { return possibleInputs; }
+        @Override public long getMultiplier() { return multiplier; }
+        @Override public boolean isValid(AEKey key, Level level) {
+            for (var possible : possibleInputs) {
+                if (possible.what().equals(key)) return true;
+            }
+            return false;
+        }
+        @Override public AEKey getRemainingKey(AEKey template) { return remainder; }
     }
 
     private static final class FakeProvider implements ICraftingProvider {

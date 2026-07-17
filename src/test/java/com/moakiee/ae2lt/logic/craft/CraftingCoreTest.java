@@ -192,6 +192,40 @@ class CraftingCoreTest {
     }
 
     @Test
+    void cachedAssemblyReturnsSharedSeedAfterEveryPartialPush() {
+        var host = new FakeHost(0);
+        var output = key("prudentium_essence");
+        var seed = key("master_infusion_crystal");
+        var essence = key("inferium_essence");
+        var assemblerCalls = new int[1];
+        CopyAssembler assembler = (details, inputs) -> {
+            assemblerCalls[0]++;
+            return new CopyAssembler.AssembledCopy(
+                    output, 1, List.of(), List.of(stack(seed, 1)));
+        };
+        var core = new CraftingCore(host, assembler, new CraftingCoreRegistry());
+        var pattern = new FakeOutputPattern(output, 1);
+        var oneCopyInputs = new KeyCounter[] {
+                inputs(seed, 1)[0], inputs(essence, 4)[0]
+        };
+
+        assertEquals(500, core.pushBatch(pattern, oneCopyInputs, 500, 1));
+        host.time = 1;
+        core.sweepTick();
+        assertEquals(500, host.network.getLong(output));
+        assertEquals(1, host.network.getLong(seed));
+
+        host.network.removeLong(seed); // CPU borrows the returned seed for the second push
+        assertEquals(500, core.pushBatch(pattern, oneCopyInputs, 500, 1));
+        host.time = 2;
+        core.sweepTick();
+
+        assertEquals(1, assemblerCalls[0], "the second push must exercise the assembly cache");
+        assertEquals(1_000, host.network.getLong(output));
+        assertEquals(1, host.network.getLong(seed));
+    }
+
+    @Test
     void regeneratedSeedOutputIsReturnedOnceAndOnlyNetGainScales() {
         var host = new FakeHost(0);
         var template = key("smithing_template");
@@ -366,6 +400,21 @@ class CraftingCoreTest {
         @Override
         public NonNullList<ItemStack> getRemainingItems(CraftingInput input) {
             return NonNullList.create();
+        }
+    }
+
+    private static final class FakeOutputPattern extends FakePattern {
+        private final AEKey output;
+        private final long amount;
+
+        private FakeOutputPattern(AEKey output, long amount) {
+            this.output = output;
+            this.amount = amount;
+        }
+
+        @Override
+        public List<GenericStack> getOutputs() {
+            return List.of(new GenericStack(output, amount));
         }
     }
 
