@@ -76,7 +76,9 @@ neoForge {
     runs {
         client {
             client()
-            jvmArguments.addAll '-Xdock:name=Minecraft AE2LT Dev', '-Dapple.awt.application.name=Minecraft AE2LT Dev'
+            if (System.getProperty('os.name').toLowerCase().contains('mac')) {
+                jvmArguments.addAll '-Xdock:name=Minecraft AE2LT Dev', '-Dapple.awt.application.name=Minecraft AE2LT Dev'
+            }
 
             // Comma-separated list of namespaces to load gametests from. Empty = all namespaces.
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id

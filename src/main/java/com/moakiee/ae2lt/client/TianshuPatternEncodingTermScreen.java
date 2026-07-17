@@ -3,26 +3,39 @@ package com.moakiee.ae2lt.client;
 import appeng.client.Point;
 import appeng.client.gui.Icon;
 import appeng.client.gui.ICompositeWidget;
-import appeng.client.gui.me.items.PatternEncodingTermScreen;
+import appeng.client.gui.me.common.MEStorageScreen;
+import appeng.client.gui.me.common.StackSizeRenderer;
 import appeng.client.gui.style.ScreenStyle;
 import appeng.client.gui.widgets.AE2Button;
+import appeng.client.gui.widgets.ActionButton;
 import appeng.client.gui.widgets.IconButton;
 import appeng.client.gui.widgets.SettingToggleButton;
 import appeng.client.gui.widgets.TabButton;
 import appeng.client.gui.widgets.TabButton.Style;
+import appeng.api.behaviors.ContainerItemStrategies;
+import appeng.api.behaviors.EmptyingAction;
+import appeng.api.config.ActionItems;
 import appeng.api.config.Settings;
 import appeng.api.config.ViewItems;
+import appeng.api.stacks.GenericStack;
 import appeng.core.localization.ButtonToolTips;
+import appeng.core.localization.Tooltips;
+import appeng.core.network.ServerboundPacket;
+import appeng.core.network.serverbound.InventoryActionPacket;
+import appeng.helpers.InventoryAction;
 import appeng.menu.SlotSemantics;
+import appeng.parts.encoding.EncodingMode;
 import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuEncodingMode;
 import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuPatternUploadRouting;
 import com.moakiee.ae2lt.menu.TianshuPatternEncodingTermMenu;
-import com.moakiee.ae2lt.mixin.client.PatternEncodingTermScreenAccessor;
 import com.moakiee.ae2lt.mixin.client.AEBaseScreenAccessor;
 import com.moakiee.ae2lt.mixin.client.VerticalButtonBarAccessor;
 import com.moakiee.ae2lt.registry.ModItems;
+import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Map;
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.network.chat.Component;
@@ -34,10 +47,15 @@ import org.lwjgl.glfw.GLFW;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.InventoryMaintenanceBadge;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
+import net.neoforged.neoforge.network.PacketDistributor;
 import com.moakiee.ae2lt.logic.AdvancedAECompat;
 
 public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTermMenu>
-        extends PatternEncodingTermScreen<M> {
+        extends MEStorageScreen<M> {
+    private final Map<EncodingMode, TianshuEncodingModePanel> modePanels =
+            new EnumMap<>(EncodingMode.class);
+    private final Map<EncodingMode, TabButton> modeTabButtons =
+            new EnumMap<>(EncodingMode.class);
     private final Map<TianshuEncodingMode, TabButton> extraTabs =
             new EnumMap<>(TianshuEncodingMode.class);
     private final DerivedModePanel derivedPanel = new DerivedModePanel();
@@ -65,6 +83,29 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
             Component title,
             ScreenStyle style) {
         super(menu, inventory, title, style);
+
+        for (var mode : EncodingMode.values()) {
+            var panel = switch (mode) {
+                case CRAFTING -> new TianshuCraftingEncodingPanel(this, widgets);
+                case PROCESSING -> new TianshuProcessingEncodingPanel(this, widgets);
+                case SMITHING_TABLE -> new TianshuSmithingTableEncodingPanel(this, widgets);
+                case STONECUTTING -> new TianshuStonecuttingEncodingPanel(this, widgets);
+            };
+            var tabButton = new TabButton(
+                    panel.getIcon(),
+                    panel.getTabTooltip(),
+                    button -> menu.setMode(mode));
+            tabButton.setStyle(Style.HORIZONTAL);
+
+            var modeIndex = modeTabButtons.size();
+            widgets.add("modePanel" + modeIndex, panel);
+            widgets.add("modeTabButton" + modeIndex, tabButton);
+            modeTabButtons.put(mode, tabButton);
+            modePanels.put(mode, panel);
+        }
+
+        widgets.add("encodePattern", new ActionButton(ActionItems.ENCODE, action -> menu.encode()));
+
         addExtraTab(TianshuEncodingMode.ADVANCED, ModItems.OVERLOAD_PATTERN.get().getDefaultInstance(),
                 Component.translatable("ae2lt.tianshu.terminal.mode.advanced"), "modeTabButton4");
         addExtraTab(TianshuEncodingMode.OVERLOAD, ModItems.OVERLOAD_PATTERN.get().getDefaultInstance(),
@@ -125,6 +166,12 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
     @Override
     protected void updateBeforeRender() {
         super.updateBeforeRender();
+        var selected = menu.tianshuMode;
+        for (var mode : EncodingMode.values()) {
+            var modeSelected = selected.ae2Mode() == mode;
+            modeTabButtons.get(mode).setSelected(modeSelected);
+            modePanels.get(mode).setVisible(modeSelected);
+        }
         if (observedTianshuSelectionRevision != menu.tianshuSelectionRevision) {
             observedTianshuSelectionRevision = menu.tianshuSelectionRevision;
             awaitingMaintenanceEditor = false;
@@ -141,22 +188,7 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
             switchToScreen(new TianshuMaintenanceRuleScreen<>(this, menu.getMaintenanceEditorData()));
             return;
         }
-        var selected = menu.tianshuMode;
         boolean derived = !selected.isAe2Mode();
-        if (derived) {
-            var accessor = (PatternEncodingTermScreenAccessor) this;
-            accessor.ae2lt$getModePanels().values().forEach(panel -> panel.setVisible(false));
-            accessor.ae2lt$getModeTabButtons().values().forEach(button -> button.setSelected(false));
-            setSlotsHidden(SlotSemantics.CRAFTING_GRID, true);
-            setSlotsHidden(SlotSemantics.CRAFTING_RESULT, true);
-            setSlotsHidden(SlotSemantics.PROCESSING_INPUTS, true);
-            setSlotsHidden(SlotSemantics.PROCESSING_OUTPUTS, true);
-            setSlotsHidden(SlotSemantics.SMITHING_TABLE_TEMPLATE, true);
-            setSlotsHidden(SlotSemantics.SMITHING_TABLE_BASE, true);
-            setSlotsHidden(SlotSemantics.SMITHING_TABLE_ADDITION, true);
-            setSlotsHidden(SlotSemantics.SMITHING_TABLE_RESULT, true);
-            setSlotsHidden(SlotSemantics.STONECUTTING_INPUT, true);
-        }
         derivedPanel.mode = derived ? selected : null;
         extraTabs.forEach((mode, button) -> button.setSelected(mode == selected));
         var advancedTab = extraTabs.get(TianshuEncodingMode.ADVANCED);
@@ -297,7 +329,54 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
                 return true;
             }
         }
+
+        if (minecraft.options.keyPickItem.matchesMouse(button)) {
+            var slot = getSlotUnderMouse();
+            if (menu.canModifyAmountForSlot(slot)) {
+                var currentStack = GenericStack.fromItemStack(slot.getItem());
+                if (currentStack != null) {
+                    switchToScreen(new TianshuSetProcessingPatternAmountScreen<>(
+                            this,
+                            currentStack,
+                            newStack -> {
+                                ServerboundPacket message = new InventoryActionPacket(
+                                        InventoryAction.SET_FILTER,
+                                        slot.index,
+                                        GenericStack.wrapInItemStack(newStack));
+                                PacketDistributor.sendToServer(message);
+                            }));
+                    return true;
+                }
+            }
+        }
+
         return super.mouseClicked(mouseX, mouseY, button);
+    }
+
+    @Override
+    protected void renderTooltip(GuiGraphics graphics, int x, int y) {
+        if (menu.getCarried().isEmpty() && menu.canModifyAmountForSlot(hoveredSlot)) {
+            var itemTooltip = new ArrayList<>(getTooltipFromContainerItem(hoveredSlot.getItem()));
+            var unwrapped = GenericStack.fromItemStack(hoveredSlot.getItem());
+            if (unwrapped != null) {
+                itemTooltip.add(Tooltips.getAmountTooltip(ButtonToolTips.Amount, unwrapped));
+            }
+            itemTooltip.add(Tooltips.getSetAmountTooltip());
+            drawTooltip(graphics, x, y, itemTooltip);
+        } else {
+            super.renderTooltip(graphics, x, y);
+        }
+    }
+
+    @Override
+    protected EmptyingAction getEmptyingAction(Slot slot, ItemStack carried) {
+        if (menu.isProcessingPatternSlot(slot)) {
+            var emptyingAction = ContainerItemStrategies.getEmptyingAction(carried);
+            if (emptyingAction != null) {
+                return emptyingAction;
+            }
+        }
+        return super.getEmptyingAction(slot, carried);
     }
 
     /** Also used by the dedicated maintenance overview for zero-stock entries. */
@@ -311,6 +390,15 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
     @Override
     public void renderSlot(GuiGraphics graphics, Slot slot) {
         super.renderSlot(graphics, slot);
+
+        if (shouldShowCraftableIndicatorForSlot(slot)) {
+            var poseStack = graphics.pose();
+            poseStack.pushPose();
+            poseStack.translate(0, 0, 100);
+            StackSizeRenderer.renderSizeLabel(graphics, font, slot.x - 11, slot.y - 11, "+", false);
+            poseStack.popPose();
+        }
+
         if (!(slot instanceof RepoSlot repoSlot) || repoSlot.getEntry() == null) return;
         var summary = menu.getMaintenanceSummary().get(repoSlot.getEntry().getWhat());
         if (summary == null) return;
@@ -321,6 +409,38 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
             case GRAY -> 0xFF888888;
         };
         graphics.fill(slot.x + 12, slot.y, slot.x + 16, slot.y + 4, color);
+    }
+
+    @Override
+    protected List<Component> getTooltipFromContainerItem(ItemStack stack) {
+        var lines = super.getTooltipFromContainerItem(stack);
+        if (hoveredSlot != null && shouldShowCraftableIndicatorForSlot(hoveredSlot)) {
+            lines = new ArrayList<>(lines);
+            lines.add(ButtonToolTips.Craftable.text().withStyle(ChatFormatting.DARK_GRAY));
+        }
+        return lines;
+    }
+
+    private boolean shouldShowCraftableIndicatorForSlot(Slot slot) {
+        var semantic = menu.getSlotSemantic(slot);
+        if (semantic == SlotSemantics.CRAFTING_GRID
+                || semantic == SlotSemantics.PROCESSING_INPUTS
+                || semantic == SlotSemantics.SMITHING_TABLE_ADDITION
+                || semantic == SlotSemantics.SMITHING_TABLE_BASE
+                || semantic == SlotSemantics.SMITHING_TABLE_TEMPLATE
+                || semantic == SlotSemantics.STONECUTTING_INPUT) {
+            var slotContent = GenericStack.fromItemStack(slot.getItem());
+            return slotContent != null && repo.isCraftable(slotContent.what());
+        }
+        return false;
+    }
+
+    @Override
+    public void onClose() {
+        if (config.isClearGridOnClose()) {
+            menu.clear();
+        }
+        super.onClose();
     }
 
     private final class DerivedModePanel implements ICompositeWidget {

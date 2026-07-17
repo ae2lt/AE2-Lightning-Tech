@@ -21,7 +21,6 @@
     "client.CableBusBakedModelMixin",
     "client.EapSettingToggleButtonMixin",
     "client.PatternProviderScreenAccessor",
-    "client.PatternEncodingTermScreenAccessor",
     "client.RailgunHumanoidModelMixin",
     "client.AEBaseScreenAccessor",
     "client.VerticalButtonBarAccessor",
