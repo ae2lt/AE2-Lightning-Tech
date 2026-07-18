@@ -45,6 +45,10 @@
       "count": 16
     }
   ],
+  "inputFluid": {
+    "id": "minecraft:lava",
+    "amount": 100
+  },
   "results": [
     {
       "id": "ae2lt:hyperdimensional_topological_lattice",

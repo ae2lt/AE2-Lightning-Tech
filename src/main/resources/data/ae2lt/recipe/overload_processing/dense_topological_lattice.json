@@ -12,7 +12,7 @@
       "ingredient": {
         "item": "minecraft:terracotta"
       },
-      "count": 32
+      "count": 2
     },
     {
       "ingredient": {
@@ -33,6 +33,10 @@
       "count": 32
     }
   ],
+  "inputFluid": {
+    "id": "minecraft:lava",
+    "amount": 100
+  },
   "results": [
     {
       "id": "ae2lt:dense_topological_lattice",

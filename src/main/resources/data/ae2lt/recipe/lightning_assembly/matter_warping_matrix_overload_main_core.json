@@ -12,19 +12,19 @@
       "ingredient": {
         "item": "ae2lt:lightning_collapse_matrix"
       },
-      "count": 32
+      "count": 64
     },
     {
       "ingredient": {
-        "item": "ae2lt:overload_alloy_plate"
+        "item": "ae2lt:overload_machine_frame"
       },
-      "count": 4096
+      "count": 1024
     },
     {
       "ingredient": {
-        "item": "ae2:cell_component_256k"
+        "item": "ae2lt:hyperdimensional_topological_lattice"
       },
-      "count": 8192
+      "count": 1
     },
     {
       "ingredient": {
@@ -42,7 +42,7 @@
       "ingredient": {
         "item": "minecraft:ominous_trial_key"
       },
-      "count": 16
+      "count": 2
     },
     {
       "ingredient": {

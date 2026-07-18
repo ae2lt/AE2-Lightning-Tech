@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "ae2lt:pigmee_fumo"
+    },
+    {
+      "item": "ae2:crafting_accelerator"
+    },
+    {
+      "item": "ae2:crafting_unit"
+    }
+  ],
+  "result": {
+    "count": 1,
+    "id": "ae2lt:pigmee_mentalmath_unit"
+  }
+}

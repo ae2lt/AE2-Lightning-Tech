@@ -12,31 +12,37 @@
       "ingredient": {
         "item": "ae2lt:lightning_collapse_matrix"
       },
-      "count": 16
+      "count": 8
     },
     {
       "ingredient": {
         "item": "ae2lt:firmament_essence"
       },
-      "count": 64
+      "count": 256
     },
     {
       "ingredient": {
         "item": "ae2lt:firmament_alloy_ingot"
       },
-      "count": 64
+      "count": 256
     },
     {
       "ingredient": {
-        "item": "ae2:cell_component_256k"
+        "item": "ae2lt:overload_machine_frame"
       },
-      "count": 1024
+      "count": 256
     },
     {
       "ingredient": {
         "item": "ae2:molecular_assembler"
       },
       "count": 8192
+    },
+    {
+      "ingredient": {
+        "item": "ae2lt:entangled_topological_lattice"
+      },
+      "count": 16
     }
   ],
   "result": {

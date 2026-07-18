@@ -18,7 +18,7 @@
       "ingredient": {
         "item": "minecraft:prismarine_crystals"
       },
-      "count": 1024
+      "count": 512
     },
     {
       "ingredient": {
@@ -33,6 +33,10 @@
       "count": 1024
     }
   ],
+  "inputFluid": {
+    "id": "minecraft:lava",
+    "amount": 100
+  },
   "results": [
     {
       "id": "ae2lt:entangled_topological_lattice",

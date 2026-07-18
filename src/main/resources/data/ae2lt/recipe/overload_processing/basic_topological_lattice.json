@@ -18,7 +18,7 @@
       "ingredient": {
         "item": "minecraft:lapis_lazuli"
       },
-      "count": 8
+      "count": 4
     },
     {
       "ingredient": {
@@ -33,6 +33,10 @@
       "count": 8
     }
   ],
+  "inputFluid": {
+    "id": "minecraft:lava",
+    "amount": 100
+  },
   "results": [
     {
       "id": "ae2lt:basic_topological_lattice",
