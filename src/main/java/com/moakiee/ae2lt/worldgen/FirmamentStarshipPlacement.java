@@ -34,6 +34,11 @@ public final class FirmamentStarshipPlacement {
         return new Position(center.x() - sizeX / 2, center.y(), center.z() - sizeZ / 2);
     }
 
+    public static int clampStartY(int desiredY, int minBuildHeight, int maxBuildHeight, int templateHeight) {
+        int maxStartY = Math.max(minBuildHeight, maxBuildHeight - templateHeight);
+        return Math.max(minBuildHeight, Math.min(desiredY, maxStartY));
+    }
+
     public record Position(int x, int y, int z) {
     }
 }
