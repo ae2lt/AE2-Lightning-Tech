@@ -1,0 +1,23 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "ABC",
+    "DEF",
+    "GHI"
+  ],
+  "key": {
+    "A": { "item": "ae2lt:tianshu_supercomputer_casing" },
+    "B": { "item": "ae2lt:overload_crystal_block" },
+    "C": { "item": "ae2lt:tianshu_supercomputer_casing" },
+    "D": { "item": "ae2lt:overload_processor" },
+    "E": { "item": "ae2:singularity" },
+    "F": { "item": "ae2lt:overload_processor" },
+    "G": { "item": "ae2lt:tianshu_supercomputer_casing" },
+    "H": { "item": "ae2lt:overload_crystal_block" },
+    "I": { "item": "ae2lt:tianshu_supercomputer_casing" }
+  },
+  "result": {
+    "id": "ae2lt:tianshu_supercomputer_controller",
+    "count": 1
+  }
+}
