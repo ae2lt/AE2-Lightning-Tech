@@ -10,6 +10,11 @@ item_ids:
   - ae2lt:tianshu_supercomputer_glass
   - ae2lt:tianshu_supercomputer_controller
   - ae2lt:tianshu_supercomputer_port
+  - ae2lt:blank_supercomputing_unit
+  - ae2lt:storage_supercomputing_unit
+  - ae2lt:parallel_supercomputing_unit
+  - ae2lt:closed_loop_pattern_storage
+  - ae2lt:closed_loop_seed_storage
 ---
 
 # 结构与自动搭建
@@ -43,8 +48,13 @@ item_ids:
 | 核心舱单元 | 数量 | 说明 |
 |------------|-----:|------|
 | 任意一种主超算单元 | 1 | 只能放在核心舱正中心 |
-| <ItemLink id="ae2lt:storage_supercomputing_unit" /> | 1–25 | 与并行超算单元合计 26 个，且至少需要 1 个 |
-| <ItemLink id="ae2lt:parallel_supercomputing_unit" /> | 1–25 | 与存储超算单元合计 26 个，且至少需要 1 个 |
+| <ItemLink id="ae2lt:blank_supercomputing_unit" /> | 0–24 | 填充外围槽位，但不提供任何属性 |
+| <ItemLink id="ae2lt:storage_supercomputing_unit" /> | 1–25 | 至少需要 1 个以提供合成容量 |
+| <ItemLink id="ae2lt:parallel_supercomputing_unit" /> | 1–25 | 至少需要 1 个以提供并行数 |
+| <ItemLink id="ae2lt:closed_loop_pattern_storage" /> | 0–24 | 占用外围槽位并保存闭环样板 |
+| <ItemLink id="ae2lt:closed_loop_seed_storage" /> | 0–24 | 占用外围槽位并保存闭环种子 |
+
+以上五类外围单元共同填满中心以外的 26 格。空白单元和两类闭环存储设备不计入存储、并行超算单元数量，因此不能完全替代这两类必需单元。
 
 因此，从空场地开始需要 **1 个控制器、215 个由按钮放置的非核心方块，以及 27 个核心舱单元**，合计 243 个结构成员。
 
@@ -53,7 +63,7 @@ item_ids:
 1. 放置控制器，并按其朝向预留完整的 7×7×7 空间
 2. 将外壳、相变冷却单元、玻璃与端口放入**玩家背包**
 3. 右击控制器并执行「自动搭建外壳」
-4. 外壳搭建完成后，手动安装主超算单元、存储超算单元与并行超算单元
+4. 外壳搭建完成后，手动安装主超算单元与 26 个合法外围单元
 
 自动搭建只读取玩家背包，不会从 ME 网络或相邻容器提取方块。开始前会核对完整材料，并以每 tick 一个方块的速度逐步放置；搭建期间应将所需材料保留在背包内。
 
@@ -65,7 +75,8 @@ item_ids:
 
 * 两个端口候选位中必须**恰好一个**放置天枢超算端口，另一个必须使用相变冷却单元
 * 核心舱中心必须放置一种主超算单元；主超算单元不能出现在其余 26 格
-* 其余 26 个核心位置必须由存储与并行超算单元填满，并且两种单元均至少安装一个
+* 其余 26 个核心位置必须安装空白、存储或并行超算单元、闭环样板仓或闭环种子存储器
+* 存储与并行超算单元仍均至少需要一个；空白超算单元只用于填充不需要属性的槽位
 * 展示结构中省略的 100 个位置属于必要空气区域，不能放置装饰方块、线缆或其他设备
 
 最后一个必要方块放置后，结构会自动重新扫描并成形，无需再次执行自动搭建。

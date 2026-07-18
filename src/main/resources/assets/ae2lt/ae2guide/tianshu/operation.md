@@ -61,7 +61,7 @@ Fast-planning eligibility is aggregated across the entire ME network. If another
 
 ## Troubleshooting
 
-* **The structure will not form:** Check every fixed casing, glass, and cooling position; require exactly one port, one centered main unit, 26 filled peripheral cells, and at least one unit of each peripheral type
+* **The structure will not form:** Check every fixed casing, glass, and cooling position; require exactly one port, one centered main unit, 26 valid peripheral units, and at least one Storage and one Parallel Unit
 * **All visible structure blocks are present:** Clear the required-air positions omitted from the displayed structure; cables, lights, and decorations are not permitted there
 * **Auto-build does not start:** Clear the coordinates reported by the controller and ensure all materials are in the player inventory
 * **The CPU is absent from crafting confirmation:** Check the port's cable connection, ME power, and structure formation state

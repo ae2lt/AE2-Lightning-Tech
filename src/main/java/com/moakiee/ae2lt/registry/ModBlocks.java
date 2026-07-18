@@ -247,6 +247,9 @@ public final class ModBlocks {
     public static final DeferredBlock<TianshuSupercomputingUnitBlock> MULTIDIMENSIONAL_SUPERCOMPUTING_UNIT = registerBlock(
             "multidimensional_supercomputing_unit", () -> new TianshuSupercomputingUnitBlock(
                     MATRIX_MACHINE_PROPERTIES, TianshuMultiblockComponent.MAIN_MULTIDIMENSIONAL));
+    public static final DeferredBlock<TianshuSupercomputingUnitBlock> BLANK_SUPERCOMPUTING_UNIT = registerBlock(
+            "blank_supercomputing_unit", () -> new TianshuSupercomputingUnitBlock(
+                    MATRIX_MACHINE_PROPERTIES, TianshuMultiblockComponent.BLANK_CORE));
     public static final DeferredBlock<TianshuSupercomputingUnitBlock> STORAGE_SUPERCOMPUTING_UNIT = registerBlock(
             "storage_supercomputing_unit", () -> new TianshuSupercomputingUnitBlock(
                     MATRIX_MACHINE_PROPERTIES, TianshuMultiblockComponent.STORAGE_CORE));

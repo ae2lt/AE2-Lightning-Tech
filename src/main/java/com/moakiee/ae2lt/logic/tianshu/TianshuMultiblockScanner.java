@@ -119,6 +119,8 @@ public final class TianshuMultiblockScanner {
                                     mainCore = tier;
                                     members.add(world.immutable());
                                 }
+                            } else if (component == TianshuMultiblockComponent.BLANK_CORE) {
+                                members.add(world.immutable());
                             } else if (component == TianshuMultiblockComponent.STORAGE_CORE) {
                                 capacityCores++;
                                 members.add(world.immutable());

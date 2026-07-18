@@ -11,6 +11,7 @@ public enum TianshuMultiblockComponent {
     MAIN_QUANTUM,
     MAIN_OVERLOAD,
     MAIN_MULTIDIMENSIONAL,
+    BLANK_CORE,
     STORAGE_CORE,
     PARALLEL_CORE,
     CLOSED_LOOP_PATTERN_STORAGE,

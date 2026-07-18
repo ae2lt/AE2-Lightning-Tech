@@ -10,6 +10,11 @@ item_ids:
   - ae2lt:tianshu_supercomputer_glass
   - ae2lt:tianshu_supercomputer_controller
   - ae2lt:tianshu_supercomputer_port
+  - ae2lt:blank_supercomputing_unit
+  - ae2lt:storage_supercomputing_unit
+  - ae2lt:parallel_supercomputing_unit
+  - ae2lt:closed_loop_pattern_storage
+  - ae2lt:closed_loop_seed_storage
 ---
 
 # Structure and Auto-build
@@ -43,8 +48,13 @@ The controller is already present and is not consumed by the button. Auto-build 
 | Core-chamber Unit | Count | Requirement |
 |-------------------|------:|-------------|
 | Any main Supercomputing Unit | 1 | Must occupy the exact chamber center |
-| <ItemLink id="ae2lt:storage_supercomputing_unit" /> | 1–25 | Combined with Parallel Units for 26 total; at least one required |
-| <ItemLink id="ae2lt:parallel_supercomputing_unit" /> | 1–25 | Combined with Storage Units for 26 total; at least one required |
+| <ItemLink id="ae2lt:blank_supercomputing_unit" /> | 0–24 | Fills a peripheral cell without providing an attribute |
+| <ItemLink id="ae2lt:storage_supercomputing_unit" /> | 1–25 | At least one is required for crafting storage |
+| <ItemLink id="ae2lt:parallel_supercomputing_unit" /> | 1–25 | At least one is required for parallelism |
+| <ItemLink id="ae2lt:closed_loop_pattern_storage" /> | 0–24 | Uses a peripheral cell to store closed-loop patterns |
+| <ItemLink id="ae2lt:closed_loop_seed_storage" /> | 0–24 | Uses a peripheral cell to store closed-loop seeds |
+
+The five peripheral unit types together occupy all 26 non-center cells. Blank and closed-loop storage units do not count as Storage or Parallel Units, so neither mandatory type can be replaced completely.
 
 Starting from an empty site therefore requires **one controller, 215 non-core blocks placed by the button, and 27 core-chamber units**, for 243 structure members in total.
 
@@ -53,7 +63,7 @@ Starting from an empty site therefore requires **one controller, 215 non-core bl
 1. Place the controller and reserve the full 7×7×7 volume in its facing direction
 2. Put the casing, Phase-Change Cooling Units, glass, and port in the **player inventory**
 3. Open the controller and select **Auto-build Shell**
-4. After shell construction finishes, install the main, Storage, and Parallel Supercomputing Units manually
+4. After shell construction finishes, install the main unit and 26 valid peripheral units manually
 
 Auto-build reads only the player inventory; it does not extract blocks from the ME network or adjacent containers. It verifies the full material requirement before starting, then places one block per tick. Keep all required materials in the inventory until construction finishes.
 
@@ -65,7 +75,8 @@ If any casing, cooling, glass, or port position handled by auto-build contains a
 
 * Exactly **one** of the two port candidates must contain a Tianshu Port; the other requires a Phase-Change Cooling Unit
 * The chamber center requires one main unit, and main units are invalid in the other 26 cells
-* All 26 peripheral cells require Storage or Parallel Units, with at least one of each type
+* All 26 peripheral cells must contain Blank, Storage, or Parallel Supercomputing Units, Closed-Loop Pattern Storage, or Closed-Loop Seed Storage
+* At least one Storage Supercomputing Unit and one Parallel Supercomputing Unit are still required; Blank Units only fill otherwise unused cells
 * The 100 omitted positions in the displayed structure are required air; decorations, cables, and other devices cannot occupy them
 
 The structure rescans and forms automatically after the final required block is placed.

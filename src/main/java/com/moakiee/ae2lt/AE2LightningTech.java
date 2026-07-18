@@ -141,6 +141,7 @@ public class AE2LightningTech {
                         output.accept(ModBlocks.QUANTUM_SUPERCOMPUTING_UNIT);
                         output.accept(ModBlocks.OVERLOAD_SUPERCOMPUTING_UNIT);
                         output.accept(ModBlocks.MULTIDIMENSIONAL_SUPERCOMPUTING_UNIT);
+                        output.accept(ModBlocks.BLANK_SUPERCOMPUTING_UNIT);
                         output.accept(ModBlocks.STORAGE_SUPERCOMPUTING_UNIT);
                         output.accept(ModBlocks.PARALLEL_SUPERCOMPUTING_UNIT);
                         output.accept(ModBlocks.CLOSED_LOOP_PATTERN_STORAGE);

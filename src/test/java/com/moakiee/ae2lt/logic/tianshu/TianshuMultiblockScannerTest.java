@@ -77,6 +77,34 @@ class TianshuMultiblockScannerTest {
     }
 
     @Test
+    void blankUnitsFillPeripheralCellsWithoutProvidingAttributes() {
+        var blocks = completeStructure(Direction.WEST);
+        for (int x = 2; x <= 4; x++) {
+            for (int y = 2; y <= 4; y++) {
+                for (int z = 2; z <= 4; z++) {
+                    var local = new BlockPos(x, y, z);
+                    if (!local.equals(new BlockPos(3, 3, 3))) {
+                        blocks.put(TianshuMultiblockScanner.worldPos(CONTROLLER, local, Direction.WEST),
+                                TianshuMultiblockComponent.BLANK_CORE);
+                    }
+                }
+            }
+        }
+        blocks.put(TianshuMultiblockScanner.worldPos(CONTROLLER, new BlockPos(2, 2, 2), Direction.WEST),
+                TianshuMultiblockComponent.STORAGE_CORE);
+        blocks.put(TianshuMultiblockScanner.worldPos(CONTROLLER, new BlockPos(2, 2, 3), Direction.WEST),
+                TianshuMultiblockComponent.PARALLEL_CORE);
+
+        var attempt = TianshuMultiblockScanner.scan(CONTROLLER, Direction.WEST, blocks::get);
+
+        assertTrue(attempt.formed(), attempt.issues().toString());
+        assertEquals(1, attempt.result().coreProfile().capacityCoreCount());
+        assertEquals(1, attempt.result().coreProfile().parallelCoreCount());
+        assertEquals(CpuInternalCoreCalculator.STORAGE_PER_CORE, attempt.result().coreProfile().storageBytes());
+        assertEquals(CpuInternalCoreCalculator.PARALLEL_PER_CORE, attempt.result().coreProfile().parallelism());
+    }
+
+    @Test
     void requiredAirRejectsUnexpectedBlocks() {
         var blocks = completeStructure(Direction.NORTH);
         var airLocal = new BlockPos(0, 1, 1);
