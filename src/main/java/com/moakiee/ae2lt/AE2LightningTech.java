@@ -205,6 +205,10 @@ public class AE2LightningTech {
                         output.accept(ModItems.OVERLOAD_ALLOY_PLATE);
                         output.accept(ModItems.OVERLOAD_SINGULARITY);
                         output.accept(ModItems.ULTIMATE_OVERLOAD_CORE);
+                        output.accept(ModItems.BASIC_TOPOLOGICAL_LATTICE);
+                        output.accept(ModItems.DENSE_TOPOLOGICAL_LATTICE);
+                        output.accept(ModItems.ENTANGLED_TOPOLOGICAL_LATTICE);
+                        output.accept(ModItems.HYPERDIMENSIONAL_TOPOLOGICAL_LATTICE);
                         output.accept(ModItems.LIGHTNING_COLLAPSE_MATRIX);
                         output.accept(ModItems.FLOATING_MATTER);
                         output.accept(ModItems.UNOVERLOADED_CIRCUIT_BOARD);

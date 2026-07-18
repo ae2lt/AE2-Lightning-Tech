@@ -1,0 +1,57 @@
+{
+  "type": "ae2lt:overload_processing",
+  "priority": 0,
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "ae2lt:entangled_topological_lattice"
+      },
+      "count": 128
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:sculk"
+      },
+      "count": 1024
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:crying_obsidian"
+      },
+      "count": 1024
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:shulker_shell"
+      },
+      "count": 256
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:breeze_rod"
+      },
+      "count": 256
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:dragon_breath"
+      },
+      "count": 256
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:sculk_catalyst"
+      },
+      "count": 16
+    }
+  ],
+  "results": [
+    {
+      "id": "ae2lt:hyperdimensional_topological_lattice",
+      "count": 1
+    }
+  ],
+  "totalEnergy": 10000000,
+  "lightningCost": 1,
+  "lightningTier": "high_voltage"
+}

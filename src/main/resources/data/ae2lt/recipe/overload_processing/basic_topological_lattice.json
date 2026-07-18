@@ -1,0 +1,45 @@
+{
+  "type": "ae2lt:overload_processing",
+  "priority": 0,
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "minecraft:glass"
+      },
+      "count": 8
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:quartz"
+      },
+      "count": 8
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:lapis_lazuli"
+      },
+      "count": 8
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:glowstone_dust"
+      },
+      "count": 8
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:redstone"
+      },
+      "count": 8
+    }
+  ],
+  "results": [
+    {
+      "id": "ae2lt:basic_topological_lattice",
+      "count": 1
+    }
+  ],
+  "totalEnergy": 10000000,
+  "lightningCost": 1,
+  "lightningTier": "high_voltage"
+}

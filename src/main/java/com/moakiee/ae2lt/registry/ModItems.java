@@ -124,6 +124,18 @@ public final class ModItems {
     public static final DeferredItem<Item> ULTIMATE_OVERLOAD_CORE =
             ITEMS.registerSimpleItem("ultimate_overload_core", new Item.Properties());
 
+    public static final DeferredItem<Item> BASIC_TOPOLOGICAL_LATTICE =
+            ITEMS.registerSimpleItem("basic_topological_lattice", new Item.Properties());
+
+    public static final DeferredItem<Item> DENSE_TOPOLOGICAL_LATTICE =
+            ITEMS.registerSimpleItem("dense_topological_lattice", new Item.Properties());
+
+    public static final DeferredItem<Item> ENTANGLED_TOPOLOGICAL_LATTICE =
+            ITEMS.registerSimpleItem("entangled_topological_lattice", new Item.Properties());
+
+    public static final DeferredItem<Item> HYPERDIMENSIONAL_TOPOLOGICAL_LATTICE =
+            ITEMS.registerSimpleItem("hyperdimensional_topological_lattice", new Item.Properties());
+
     public static final DeferredItem<LightningCollapseMatrixItem> LIGHTNING_COLLAPSE_MATRIX = ITEMS.registerItem(
             "lightning_collapse_matrix",
             LightningCollapseMatrixItem::new,

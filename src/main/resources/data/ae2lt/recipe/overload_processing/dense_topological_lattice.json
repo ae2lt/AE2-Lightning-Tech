@@ -1,0 +1,45 @@
+{
+  "type": "ae2lt:overload_processing",
+  "priority": 0,
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "ae2lt:basic_topological_lattice"
+      },
+      "count": 64
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:terracotta"
+      },
+      "count": 32
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:obsidian"
+      },
+      "count": 32
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:emerald"
+      },
+      "count": 32
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:diamond"
+      },
+      "count": 32
+    }
+  ],
+  "results": [
+    {
+      "id": "ae2lt:dense_topological_lattice",
+      "count": 1
+    }
+  ],
+  "totalEnergy": 10000000,
+  "lightningCost": 1,
+  "lightningTier": "high_voltage"
+}

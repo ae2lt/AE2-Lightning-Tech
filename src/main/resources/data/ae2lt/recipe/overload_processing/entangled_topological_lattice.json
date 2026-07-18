@@ -1,0 +1,45 @@
+{
+  "type": "ae2lt:overload_processing",
+  "priority": 0,
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "ae2lt:dense_topological_lattice"
+      },
+      "count": 64
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:prismarine_shard"
+      },
+      "count": 1024
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:prismarine_crystals"
+      },
+      "count": 1024
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:blaze_rod"
+      },
+      "count": 1024
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:end_stone"
+      },
+      "count": 1024
+    }
+  ],
+  "results": [
+    {
+      "id": "ae2lt:entangled_topological_lattice",
+      "count": 1
+    }
+  ],
+  "totalEnergy": 10000000,
+  "lightningCost": 1,
+  "lightningTier": "high_voltage"
+}

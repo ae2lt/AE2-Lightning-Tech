@@ -1,1 +1,6 @@
-{"parent":"minecraft:block/cube_all","textures":{"all":"ae2lt:block/matter_warping_matrix/matter_warping_matrix_pattern_storage_t2"}}
+{
+  "parent": "minecraft:block/cube_all",
+  "textures": {
+    "all": "ae2lt:block/closed_loop_pattern_storage"
+  }
+}
