@@ -69,17 +69,23 @@ public final class FirmamentStarshipStructure extends Structure {
 
     @Override
     protected Optional<Structure.GenerationStub> findGenerationPoint(Structure.GenerationContext context) {
-        return findBestAnchor(context)
-                .map(anchor -> createGenerationStub(context, anchor));
+        return Optional.of(createGenerationStub(context, findBestAnchorHeight(context)));
     }
 
-    private Structure.GenerationStub createGenerationStub(Structure.GenerationContext context, Anchor anchor) {
+    private Structure.GenerationStub createGenerationStub(Structure.GenerationContext context, int anchorHeight) {
         RandomSource random = context.random();
         int yOffset = this.minYOffset + random.nextInt(this.maxYOffset - this.minYOffset + 1);
         ChunkPos chunkPos = context.chunkPos();
         StructureTemplate structureTemplate = context.structureTemplateManager().getOrCreate(this.template);
-        FirmamentStarshipPlacement.Position center = FirmamentStarshipPlacement.offsetFromStartChunk(
-                chunkPos.getMiddleBlockX(), anchor.y(), chunkPos.getMiddleBlockZ(), this.horizontalOffset, yOffset);
+        FirmamentStarshipPlacement.Position desiredCenter = FirmamentStarshipPlacement.offsetFromStartChunk(
+                chunkPos.getMiddleBlockX(), anchorHeight, chunkPos.getMiddleBlockZ(), this.horizontalOffset, yOffset);
+        int startY = FirmamentStarshipPlacement.clampStartY(
+                desiredCenter.y(),
+                context.heightAccessor().getMinBuildHeight(),
+                context.heightAccessor().getMaxBuildHeight(),
+                structureTemplate.getSize().getY());
+        FirmamentStarshipPlacement.Position center =
+                new FirmamentStarshipPlacement.Position(desiredCenter.x(), startY, desiredCenter.z());
         FirmamentStarshipPlacement.Position origin = FirmamentStarshipPlacement.originFromCenter(
                 center,
                 structureTemplate.getSize().getX(),
@@ -94,11 +100,12 @@ public final class FirmamentStarshipStructure extends Structure {
                 context.structureTemplateManager(), this.template, startPos, rotation, rotationPivot)));
     }
 
-    private Optional<Anchor> findBestAnchor(Structure.GenerationContext context) {
+    private int findBestAnchorHeight(Structure.GenerationContext context) {
         ChunkPos chunkPos = context.chunkPos();
         int centerX = chunkPos.getMiddleBlockX();
         int centerZ = chunkPos.getMiddleBlockZ();
-        Anchor best = null;
+        // The structure set already controls rarity; missing nearby terrain should not cancel a candidate.
+        int bestHeight = this.minAnchorHeight;
 
         for (int dx = -this.searchRadius; dx <= this.searchRadius; dx += this.sampleStep) {
             for (int dz = -this.searchRadius; dz <= this.searchRadius; dz += this.sampleStep) {
@@ -110,20 +117,17 @@ public final class FirmamentStarshipStructure extends Structure {
                         Heightmap.Types.WORLD_SURFACE_WG,
                         context.heightAccessor(),
                         context.randomState());
-                if (y >= this.minAnchorHeight && (best == null || y > best.y())) {
-                    best = new Anchor(x, y, z);
+                if (y > bestHeight) {
+                    bestHeight = y;
                 }
             }
         }
 
-        return Optional.ofNullable(best);
+        return bestHeight;
     }
 
     @Override
     public StructureType<?> type() {
         return ModStructureTypes.FIRMAMENT_STARSHIP.get();
-    }
-
-    private record Anchor(int x, int y, int z) {
     }
 }
