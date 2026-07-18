@@ -60,7 +60,9 @@ public class WirelessOverloadedControllerBlockEntity extends OverloadedControlle
 
     @Override
     public int getWirelessChannelCap(ChannelMode mode) {
-        return isAdvanced() ? Integer.MAX_VALUE / 2 : 32 * mode.getCableCapacityFactor();
+        return isAdvanced() || mode == ChannelMode.INFINITE
+                ? Integer.MAX_VALUE / 2
+                : 32 * mode.getCableCapacityFactor();
     }
 
     // ── WirelessTransmitterNodeProvider ──

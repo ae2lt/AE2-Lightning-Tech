@@ -82,7 +82,12 @@ public abstract class PathingCalculationCapMixin {
         var channelMode = grid.getPathingService().getChannelMode();
         ae2lt$useMaxFlow = hasControllers && channelMode != ChannelMode.INFINITE;
 
-        if (overloaded.size() <= 1) {
+        // Controller-root unification is part of our max-flow path. In infinite
+        // mode AE2's own allocator already has unbounded capacity, so it must
+        // keep its native multi-root routing tree intact. Applying only this
+        // preprocessing step while falling back to vanilla assignment can drop
+        // one of two adjacent devices from the final propagation tree.
+        if (!ae2lt$useMaxFlow || overloaded.size() <= 1) {
             return;
         }
 
