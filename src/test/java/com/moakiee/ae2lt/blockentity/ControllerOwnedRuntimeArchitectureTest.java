@@ -47,10 +47,21 @@ class ControllerOwnedRuntimeArchitectureTest {
     }
 
     @Test
-    void fastPlanningIsNotAControllerOwnedToggle() {
-        assertFalse(Arrays.stream(TianshuSupercomputerControllerBlockEntity.class.getDeclaredFields())
-                .anyMatch(field -> field.getName().toLowerCase().contains("fastplanning")));
-        assertFalse(Arrays.stream(TianshuSupercomputerControllerBlockEntity.class.getDeclaredMethods())
-                .anyMatch(method -> method.getName().toLowerCase().contains("fastplanning")));
+    void fastPlanningToggleIsOwnedByControllerAndAppliedToItsPool() throws Exception {
+        assertEquals(boolean.class, TianshuSupercomputerControllerBlockEntity.class
+                .getDeclaredField("fastPlanningEnabled").getType());
+        assertEquals(boolean.class, TianshuSupercomputerControllerBlockEntity.class
+                .getDeclaredMethod("isFastPlanningEnabled").getReturnType());
+        assertEquals(void.class, TianshuSupercomputerControllerBlockEntity.class
+                .getDeclaredMethod("toggleFastPlanning").getReturnType());
+        assertEquals(boolean.class, TimeWheelCraftingCpuPool.class
+                .getDeclaredMethod("isFastPlanningEnabled").getReturnType());
+        assertEquals(void.class, TimeWheelCraftingCpuPool.class
+                .getDeclaredMethod("setFastPlanningEnabled", boolean.class).getReturnType());
+
+        var pool = new TimeWheelCraftingCpuPool(null, 1L, 0, 1L, false);
+        assertTrue(pool.isFastPlanningEnabled());
+        pool.setFastPlanningEnabled(false);
+        assertFalse(pool.isFastPlanningEnabled());
     }
 }
