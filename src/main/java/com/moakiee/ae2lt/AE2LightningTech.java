@@ -144,6 +144,7 @@ public class AE2LightningTech {
                         output.accept(ModBlocks.BLANK_SUPERCOMPUTING_UNIT);
                         output.accept(ModBlocks.STORAGE_SUPERCOMPUTING_UNIT);
                         output.accept(ModBlocks.PARALLEL_SUPERCOMPUTING_UNIT);
+                        output.accept(ModBlocks.AMPLIFIER_SUPERCOMPUTING_UNIT);
                         output.accept(ModBlocks.CLOSED_LOOP_PATTERN_STORAGE);
                         output.accept(ModBlocks.CLOSED_LOOP_SEED_STORAGE);
                         output.accept(ModBlocks.MATTER_WARPING_MATRIX_CASING);

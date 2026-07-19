@@ -151,6 +151,9 @@ public class MatrixControllerBlockEntity extends BlockEntity implements Crafting
             be.scheduledScanTick = NO_SCHEDULED_SCAN;
             be.refreshStructure();
         }
+        if (be.isFormed()) {
+            be.cluster.tickLimiter();
+        }
         be.persistRuntimeStateIfChanged();
         long clusterThreads = be.cluster.threadsInFlight();
         if (clusterThreads > 0 || clusterThreads != be.lastObservedClusterThreads) {

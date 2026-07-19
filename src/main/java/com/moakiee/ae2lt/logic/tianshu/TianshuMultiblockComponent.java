@@ -14,6 +14,7 @@ public enum TianshuMultiblockComponent {
     BLANK_CORE,
     STORAGE_CORE,
     PARALLEL_CORE,
+    AMPLIFIER_CORE,
     CLOSED_LOOP_PATTERN_STORAGE,
     CLOSED_LOOP_SEED_STORAGE,
     OTHER

@@ -100,8 +100,47 @@ class TianshuMultiblockScannerTest {
         assertTrue(attempt.formed(), attempt.issues().toString());
         assertEquals(1, attempt.result().coreProfile().capacityCoreCount());
         assertEquals(1, attempt.result().coreProfile().parallelCoreCount());
-        assertEquals(CpuInternalCoreCalculator.STORAGE_PER_CORE, attempt.result().coreProfile().storageBytes());
+        assertEquals((1L << 20) + CpuInternalCoreCalculator.STORAGE_PER_CORE,
+                attempt.result().coreProfile().storageBytes());
         assertEquals(CpuInternalCoreCalculator.PARALLEL_PER_CORE, attempt.result().coreProfile().parallelism());
+    }
+
+    @Test
+    void amplifierUnitsAreCountedAndValidatedByMainCoreTier() {
+        var quantum = completeStructure(Direction.WEST);
+        quantum.put(
+                TianshuMultiblockScanner.worldPos(
+                        CONTROLLER, new BlockPos(3, 3, 3), Direction.WEST),
+                TianshuMultiblockComponent.MAIN_QUANTUM);
+        int amplifiers = 0;
+        for (int x = 2; x <= 4 && amplifiers < 15; x++) {
+            for (int y = 2; y <= 4 && amplifiers < 15; y++) {
+                for (int z = 2; z <= 4 && amplifiers < 15; z++) {
+                    var local = new BlockPos(x, y, z);
+                    if (local.equals(new BlockPos(3, 3, 3)) || local.equals(new BlockPos(2, 2, 2))) continue;
+                    quantum.put(
+                            TianshuMultiblockScanner.worldPos(CONTROLLER, local, Direction.WEST),
+                            TianshuMultiblockComponent.AMPLIFIER_CORE);
+                    amplifiers++;
+                }
+            }
+        }
+
+        var quantumAttempt = TianshuMultiblockScanner.scan(
+                CONTROLLER, Direction.WEST, quantum::get);
+        assertTrue(quantumAttempt.formed(), quantumAttempt.issues().toString());
+        assertEquals(15, quantumAttempt.result().coreProfile().amplifierCoreCount());
+        assertEquals(3_072, quantumAttempt.result().coreProfile().successfulDispatchesPerTick());
+
+        quantum.put(
+                TianshuMultiblockScanner.worldPos(
+                        CONTROLLER, new BlockPos(3, 3, 3), Direction.WEST),
+                TianshuMultiblockComponent.MAIN_BASELINE);
+        var baselineAttempt = TianshuMultiblockScanner.scan(
+                CONTROLLER, Direction.WEST, quantum::get);
+        assertFalse(baselineAttempt.formed());
+        assertTrue(baselineAttempt.issues().contains(
+                TianshuMultiblockScanIssue.AMPLIFIER_CORE_NOT_SUPPORTED));
     }
 
     @Test

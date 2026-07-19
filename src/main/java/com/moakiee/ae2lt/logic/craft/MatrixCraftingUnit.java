@@ -27,11 +27,11 @@ public record MatrixCraftingUnit(Kind kind, MatrixCoreMode coreMode, int power, 
     }
 
     public static MatrixCraftingUnit t1Threader() {
-        return threadPower(2);
+        return threadPower(1);
     }
 
     public static MatrixCraftingUnit t2Threader() {
-        return threadPower(4);
+        return threadPower(1);
     }
 
     public static MatrixCraftingUnit threadPower(int power) {
@@ -43,7 +43,7 @@ public record MatrixCraftingUnit(Kind kind, MatrixCoreMode coreMode, int power, 
     }
 
     public static MatrixCraftingUnit t2Multiplier() {
-        return multiplierPower(2);
+        return multiplierPower(1);
     }
 
     public static MatrixCraftingUnit multiplierPower(int power) {
@@ -55,7 +55,7 @@ public record MatrixCraftingUnit(Kind kind, MatrixCoreMode coreMode, int power, 
     }
 
     public static MatrixCraftingUnit t2Cooler(int distance) {
-        return coolerPower(2, distance);
+        return coolerPower(1, distance);
     }
 
     public static MatrixCraftingUnit coolerPower(int power, int distance) {

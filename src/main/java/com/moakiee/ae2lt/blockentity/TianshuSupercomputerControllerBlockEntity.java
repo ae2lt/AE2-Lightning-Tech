@@ -78,6 +78,7 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
     private static final String TAG_MAIN_CORE = "MainCore";
     private static final String TAG_CAPACITY_CORES = "CapacityCores";
     private static final String TAG_PARALLEL_CORES = "ParallelCores";
+    private static final String TAG_AMPLIFIER_CORES = "AmplifierCores";
     private static final String TAG_CLOSED_LOOP_STORAGES = "ClosedLoopStorages";
     private static final String TAG_SEED_STORAGES = "SeedStorages";
     private static final String TAG_MACHINE_ID = "MachineId";
@@ -115,6 +116,8 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
     private long lastCpuDirtyTick = Long.MIN_VALUE;
     private long pendingStorage = -1L;
     private int pendingParallel = -1;
+    private long pendingMaxCopiesPerTick = -1L;
+    private boolean pendingUnboundedBatch;
 
     public TianshuSupercomputerControllerBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.TIANSHU_SUPERCOMPUTER_CONTROLLER.get(), pos, state);
@@ -622,22 +625,40 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
         if (!machineId.equals(loadedRuntimeId)) {
             maintenance.shutdownCalculations();
             clearTransientRuntime();
-            cpuPool.reconfigure(coreProfile.storageBytes(), coreProfile.parallelism());
+            reconfigureCpuPool(coreProfile);
             loadRuntimeState(port);
         } else if (cpuPool.getTotalStorage() != coreProfile.storageBytes()
-                || cpuPool.getCoProcessors() != coreProfile.parallelism()) {
+                || cpuPool.getCoProcessors() != coreProfile.coProcessors()
+                || cpuPool.getMaxCopiesPerTick() != coreProfile.maxCopiesPerTick()
+                || cpuPool.hasUnboundedBatch() != coreProfile.unboundedBatch()) {
             pendingStorage = coreProfile.storageBytes();
-            pendingParallel = coreProfile.parallelism();
+            pendingParallel = coreProfile.coProcessors();
+            pendingMaxCopiesPerTick = coreProfile.maxCopiesPerTick();
+            pendingUnboundedBatch = coreProfile.unboundedBatch();
             applyPendingProfile();
         }
     }
 
     private void applyPendingProfile() {
         if (pendingStorage >= 0L && !cpuPool.hasPersistentState()) {
-            cpuPool.reconfigure(pendingStorage, pendingParallel);
+            cpuPool.reconfigure(
+                    pendingStorage,
+                    pendingParallel,
+                    pendingMaxCopiesPerTick,
+                    pendingUnboundedBatch);
             pendingStorage = -1L;
             pendingParallel = -1;
+            pendingMaxCopiesPerTick = -1L;
+            pendingUnboundedBatch = false;
         }
+    }
+
+    private void reconfigureCpuPool(CpuInternalCoreProfile profile) {
+        cpuPool.reconfigure(
+                profile.storageBytes(),
+                profile.coProcessors(),
+                profile.maxCopiesPerTick(),
+                profile.unboundedBatch());
     }
 
     public ClosedLoopPatternRepository getClosedLoopPatternRepository() {
@@ -910,6 +931,8 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
         loadedRuntimeId = null;
         pendingStorage = -1L;
         pendingParallel = -1;
+        pendingMaxCopiesPerTick = -1L;
+        pendingUnboundedBatch = false;
     }
 
     private void suspendRuntime() {
@@ -1062,6 +1085,7 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
             tag.putString(TAG_MAIN_CORE, coreProfile.mainCore().name());
             tag.putInt(TAG_CAPACITY_CORES, coreProfile.capacityCoreCount());
             tag.putInt(TAG_PARALLEL_CORES, coreProfile.parallelCoreCount());
+            tag.putInt(TAG_AMPLIFIER_CORES, coreProfile.amplifierCoreCount());
         }
         tag.putInt(TAG_CLOSED_LOOP_STORAGES, functionProfile.closedLoopPatternStorageCount());
         tag.putInt(TAG_SEED_STORAGES, functionProfile.closedLoopSeedStorageCount());
@@ -1083,7 +1107,10 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
             try {
                 var tier = CpuMainCoreTier.valueOf(tag.getString(TAG_MAIN_CORE));
                 coreProfile = com.moakiee.ae2lt.logic.tianshu.CpuInternalCoreCalculator.calculate(
-                        tier, tag.getInt(TAG_CAPACITY_CORES), tag.getInt(TAG_PARALLEL_CORES));
+                        tier,
+                        tag.getInt(TAG_CAPACITY_CORES),
+                        tag.getInt(TAG_PARALLEL_CORES),
+                        tag.getInt(TAG_AMPLIFIER_CORES));
             } catch (IllegalArgumentException ignored) {
                 coreProfile = CpuInternalCoreProfile.empty();
             }

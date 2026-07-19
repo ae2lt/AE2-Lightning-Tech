@@ -11,7 +11,7 @@ public record MatrixCraftingProfile(
         double coolPower,
         int multiplierCount,
         boolean multiplierLimitExceeded) {
-    public static final int MULTIPLIER_LIMIT = 10;
+    public static final int MULTIPLIER_LIMIT = 15;
 
     public MatrixCraftingProfile {
         mode = mode == null ? MatrixCoreMode.NONE : mode;
@@ -49,10 +49,12 @@ public record MatrixCraftingProfile(
                 }
                 case THREAD -> threadPower += unit.power();
                 case MULTIPLIER -> {
-                    multiplierCount++;
-                    if (multiplierCount <= MULTIPLIER_LIMIT) {
-                        multiPower += unit.power();
-                    }
+                    int previousCount = multiplierCount;
+                    multiplierCount = saturatedAdd(previousCount, unit.power());
+                    int acceptedPower = Math.min(
+                            unit.power(),
+                            Math.max(0, MULTIPLIER_LIMIT - previousCount));
+                    multiPower += acceptedPower;
                 }
                 case COOLER -> coolPower += unit.adjustedCoolPower();
             }
@@ -110,6 +112,13 @@ public record MatrixCraftingProfile(
         if (multiplierLimitExceeded) {
             issues.add(MatrixProfileIssue.MULTIPLIER_LIMIT_EXCEEDED);
         }
+        if (coreCount == 1 && (mode == MatrixCoreMode.STABLE || mode == MatrixCoreMode.CREATIVE)
+                && multiplierCount > 0) {
+            issues.add(MatrixProfileIssue.AMPLIFIER_NOT_SUPPORTED);
+        }
+        if (coreCount == 1 && mode != MatrixCoreMode.CREATIVE && threadPower <= 0.0D) {
+            issues.add(MatrixProfileIssue.MISSING_DISPATCH_UNIT);
+        }
         return issues.isEmpty() ? Set.of() : Set.copyOf(issues);
     }
 
@@ -123,5 +132,10 @@ public record MatrixCraftingProfile(
             case CREATIVE -> MatrixCraftingMath.creativeSnapshot();
             default -> MatrixCraftingMath.quantumSnapshot(heat, threadPower, multiPower, coolPower);
         };
+    }
+
+    private static int saturatedAdd(int left, int right) {
+        long result = (long) left + right;
+        return result >= Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) result;
     }
 }

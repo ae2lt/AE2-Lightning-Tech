@@ -41,6 +41,41 @@ class MatrixMultiblockScannerTest {
         assertTrue(attempt.result().craftingProfile().isValid());
     }
 
+    @Test
+    void scannerEnforcesSharedAmplifierRules() {
+        var stableWithAmplifier = completeStructure();
+        stableWithAmplifier.put(
+                worldPos(secondNonCenterCraftingSlot()),
+                MatrixMultiblockComponent.MULTIPLIER_SUB_CORE_T1);
+
+        var stableAttempt = MatrixMultiblockScanner.scan(
+                CONTROLLER, ORIENTATION, stableWithAmplifier::get);
+        assertFalse(stableAttempt.formed());
+        assertTrue(stableAttempt.issues().contains(MatrixMultiblockScanIssue.AMPLIFIER_NOT_SUPPORTED));
+
+        var quantumWithSixteen = completeStructure();
+        quantumWithSixteen.put(
+                worldPos(MatrixMultiblockTemplate.CRAFTING_CENTER_LOCAL),
+                MatrixMultiblockComponent.QUANTUM_MAIN_CORE);
+        int placed = 0;
+        for (var entry : MatrixMultiblockTemplate.entries()) {
+            if (entry.role() == MatrixMultiblockRole.CRAFTING_BAY
+                    && !entry.localPos().equals(MatrixMultiblockTemplate.CRAFTING_CENTER_LOCAL)
+                    && !entry.localPos().equals(firstNonCenterCraftingSlot())
+                    && placed < 16) {
+                quantumWithSixteen.put(
+                        worldPos(entry.localPos()), MatrixMultiblockComponent.MULTIPLIER_SUB_CORE_T1);
+                placed++;
+            }
+        }
+
+        var quantumAttempt = MatrixMultiblockScanner.scan(
+                CONTROLLER, ORIENTATION, quantumWithSixteen::get);
+        assertFalse(quantumAttempt.formed());
+        assertTrue(quantumAttempt.issues().contains(
+                MatrixMultiblockScanIssue.MULTIPLIER_LIMIT_EXCEEDED));
+    }
+
     private static Map<BlockPos, MatrixMultiblockComponent> completeStructure() {
         var components = new HashMap<BlockPos, MatrixMultiblockComponent>();
         for (var entry : MatrixMultiblockTemplate.entries()) {
@@ -62,7 +97,9 @@ class MatrixMultiblockScannerTest {
             case PATTERN_BAY -> MatrixMultiblockComponent.PATTERN_STORAGE_T1;
             case CRAFTING_BAY -> entry.localPos().equals(MatrixMultiblockTemplate.CRAFTING_CENTER_LOCAL)
                     ? MatrixMultiblockComponent.STABLE_MAIN_CORE
-                    : MatrixMultiblockComponent.BLANK_SUB_CORE;
+                    : entry.localPos().equals(firstNonCenterCraftingSlot())
+                            ? MatrixMultiblockComponent.THREAD_SUB_CORE_T1
+                            : MatrixMultiblockComponent.BLANK_SUB_CORE;
         };
     }
 
@@ -74,6 +111,18 @@ class MatrixMultiblockScannerTest {
             }
         }
         throw new IllegalStateException("matrix template has no non-center crafting slot");
+    }
+
+    private static BlockPos secondNonCenterCraftingSlot() {
+        boolean skippedFirst = false;
+        for (var entry : MatrixMultiblockTemplate.entries()) {
+            if (entry.role() == MatrixMultiblockRole.CRAFTING_BAY
+                    && !entry.localPos().equals(MatrixMultiblockTemplate.CRAFTING_CENTER_LOCAL)) {
+                if (skippedFirst) return entry.localPos();
+                skippedFirst = true;
+            }
+        }
+        throw new IllegalStateException("matrix template has fewer than two non-center crafting slots");
     }
 
     private static BlockPos worldPos(BlockPos localPos) {

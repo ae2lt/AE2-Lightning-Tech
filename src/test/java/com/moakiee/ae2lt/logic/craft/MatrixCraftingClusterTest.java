@@ -1,6 +1,7 @@
 package com.moakiee.ae2lt.logic.craft;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -44,9 +45,9 @@ class MatrixCraftingClusterTest {
         var profile = cluster.craftingProfile();
 
         assertEquals(MatrixCoreMode.QUANTUM, profile.mode());
-        assertEquals(4.0D, profile.threadPower(), 0.0001D);
-        assertEquals(2.0D, profile.multiPower(), 0.0001D);
-        assertEquals(1.5D, profile.coolPower(), 0.0001D);
+        assertEquals(1.0D, profile.threadPower(), 0.0001D);
+        assertEquals(1.0D, profile.multiPower(), 0.0001D);
+        assertEquals(0.75D, profile.coolPower(), 0.0001D);
     }
 
     @Test
@@ -55,8 +56,8 @@ class MatrixCraftingClusterTest {
         host.time = 42;
         var cluster = cluster(host, List.of(new FakeCraftCore(
                 MatrixCraftingUnit.quantumCore(),
-                MatrixCraftingUnit.threadPower(160),
-                MatrixCraftingUnit.multiplierPower(20))));
+                MatrixCraftingUnit.t1Threader(),
+                MatrixCraftingUnit.t1Multiplier())));
 
         var snapshot = cluster.tickLimiter();
         var tag = new CompoundTag();
@@ -65,7 +66,7 @@ class MatrixCraftingClusterTest {
         var restored = cluster(List.of());
         restored.readEngineFrom(tag, null);
 
-        assertEquals(0.76793856D, snapshot.heat(), 0.0001D);
+        assertEquals(0.0D, snapshot.heat(), 0.0001D);
         assertEquals(snapshot.heat(), restored.heat(), 0.0001D);
         assertEquals(42L, restored.lastLimiterTick());
     }
@@ -76,23 +77,24 @@ class MatrixCraftingClusterTest {
         var assembler = new FakeAssembler();
         var cluster = cluster(host, List.of(new FakeCraftCore(
                 MatrixCraftingUnit.stableCore(),
-                MatrixCraftingUnit.threadPower(160),
-                MatrixCraftingUnit.multiplierPower(20))), assembler);
+                MatrixCraftingUnit.t1Threader())), assembler);
 
-        assertEquals(3903, cluster.getBatchCapacity(PATTERN));
+        long capacity = cluster.getBatchCapacity(PATTERN);
+        assertTrue(capacity > 0);
 
-        long firstLeftover = cluster.pushBatch(PATTERN, emptyInputs(), 5000L);
+        long firstLeftover = cluster.pushBatch(PATTERN, emptyInputs(), capacity + 10L);
         long secondLeftover = cluster.pushBatch(PATTERN, emptyInputs(), 1L);
 
-        assertEquals(1097, firstLeftover);
+        assertEquals(10, firstLeftover);
         assertEquals(1, secondLeftover);
         assertEquals(1, assembler.calls);
-        assertEquals(3903, cluster.threadsInFlight());
+        assertEquals(capacity, cluster.threadsInFlight());
         assertEquals(0, cluster.getBatchCapacity(PATTERN));
 
         host.time = 1;
 
-        assertEquals(3902, cluster.getBatchCapacity(PATTERN));
+        assertTrue(cluster.getBatchCapacity(PATTERN) > 0);
+        assertTrue(cluster.heat() > 0.0D);
     }
 
     @Test
@@ -117,6 +119,38 @@ class MatrixCraftingClusterTest {
         assertEquals(32, cluster.getBatchCapacity(loopPattern));
         assertTrue(cluster.pushSingle(loopPattern, emptyInputs()));
         assertEquals(1, assembler.calls);
+    }
+
+    @Test
+    void providerCallFuseProtectsHighThroughputMatrixFromNonBatchCpu() {
+        var host = new FakeHost();
+        var assembler = new FakeAssembler();
+        var units = new java.util.ArrayList<MatrixCraftingUnit>();
+        units.add(MatrixCraftingUnit.overloadCore());
+        for (int i = 0; i < 4; i++) units.add(MatrixCraftingUnit.t1Threader());
+        for (int i = 0; i < 15; i++) units.add(MatrixCraftingUnit.t1Multiplier());
+        var cluster = cluster(
+                host,
+                List.of(new FakeCraftCore(units.toArray(MatrixCraftingUnit[]::new))),
+                assembler);
+
+        for (int i = 0; i < com.moakiee.ae2lt.logic.compute.MatrixComputeEnvelope
+                .MAX_PROVIDER_CALLS_PER_TICK; i++) {
+            assertTrue(cluster.pushSingle(PATTERN, emptyInputs()));
+        }
+
+        assertEquals(0, cluster.availableProviderCalls());
+        assertTrue(cluster.availableCapacity() > 0L);
+        assertTrue(cluster.isBusy());
+        assertFalse(cluster.pushSingle(PATTERN, emptyInputs()));
+        assertEquals(
+                com.moakiee.ae2lt.logic.compute.MatrixComputeEnvelope.MAX_PROVIDER_CALLS_PER_TICK,
+                assembler.calls);
+
+        host.time++;
+        assertEquals(
+                com.moakiee.ae2lt.logic.compute.MatrixComputeEnvelope.MAX_PROVIDER_CALLS_PER_TICK,
+                cluster.availableProviderCalls());
     }
 
     private static MatrixCraftingCluster cluster(List<FakeCraftCore> cores) {

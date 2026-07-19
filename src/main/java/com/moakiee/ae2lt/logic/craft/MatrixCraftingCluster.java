@@ -29,6 +29,8 @@ import com.moakiee.thunderbolt.ae2.api.crafting.BatchDispatchMode;
 public final class MatrixCraftingCluster {
     private static final String NBT_HEAT = "heat";
     private static final String NBT_LAST_LIMITER_TICK = "lastLimiterTick";
+    private static final String NBT_CONSUMED_OPERATIONS = "consumedOperations";
+    private static final String NBT_LAST_OPERATIONS_PER_TICK = "lastOperationsPerTick";
 
     private final BooleanSupplier formed;
     private final List<MatrixPatternCore> patternCores;
@@ -38,6 +40,9 @@ public final class MatrixCraftingCluster {
     private double heat;
     private long lastLimiterTick = Long.MIN_VALUE;
     private long limiterRemaining;
+    private int providerCallsRemaining;
+    private long operationsConsumedThisTick;
+    private long lastOperationsPerTick;
     private MatrixCraftingMath.Snapshot lastLimiterSnapshot = MatrixCraftingMath.idleSnapshot(0.0D, 0.0D);
 
     public MatrixCraftingCluster(BooleanSupplier formed,
@@ -101,6 +106,8 @@ public final class MatrixCraftingCluster {
 
     public long getBatchCapacity(IPatternDetails details) {
         if (!hasPattern(details)) return 0;
+        refreshLimiterBudget();
+        if (providerCallsRemaining <= 0) return 0;
         long capacity = availableCapacity();
         if (details instanceof com.moakiee.thunderbolt.ae2.batch.BatchCopyLimitPattern limited) {
             capacity = Math.min(capacity, Math.max(1, limited.maxBatchCopies()));
@@ -116,16 +123,20 @@ public final class MatrixCraftingCluster {
         if (!hasPattern(details)) return maxCraft;
         long copies = Math.min(maxCraft, getBatchCapacity(details));
         if (copies <= 0) return maxCraft;
+        providerCallsRemaining--;
         long accepted = engine.pushBatch(details, oneCopyTemplate, copies);
         limiterRemaining = Math.max(0L, limiterRemaining - accepted);
+        operationsConsumedThisTick = saturatedAdd(operationsConsumedThisTick, accepted);
         return maxCraft - accepted;
     }
 
     /** Vanilla one-copy path through the matrix main core. */
     public boolean pushSingle(IPatternDetails details, KeyCounter[] oneCopyTemplate) {
-        if (!hasPattern(details) || availableCapacity() <= 0) return false;
+        if (!hasPattern(details) || availableCapacity() <= 0 || providerCallsRemaining <= 0) return false;
+        providerCallsRemaining--;
         long accepted = engine.pushBatch(details, oneCopyTemplate, 1L);
         limiterRemaining = Math.max(0L, limiterRemaining - accepted);
+        operationsConsumedThisTick = saturatedAdd(operationsConsumedThisTick, accepted);
         return accepted == 1L;
     }
 
@@ -137,13 +148,19 @@ public final class MatrixCraftingCluster {
     }
 
     public boolean isBusy() {
-        return !formed.getAsBoolean() || availableCapacity() <= 0;
+        return !formed.getAsBoolean() || availableCapacity() <= 0 || providerCallsRemaining <= 0;
     }
 
     public long availableCapacity() {
         if (!formed.getAsBoolean()) return 0;
         refreshLimiterBudget();
         return limiterRemaining;
+    }
+
+    public int availableProviderCalls() {
+        if (!formed.getAsBoolean()) return 0;
+        refreshLimiterBudget();
+        return providerCallsRemaining;
     }
 
     public long threadsInFlight() {
@@ -187,6 +204,8 @@ public final class MatrixCraftingCluster {
         engine.writeTo(tag, registries);
         tag.putDouble(NBT_HEAT, heat);
         tag.putLong(NBT_LAST_LIMITER_TICK, lastLimiterTick);
+        tag.putLong(NBT_CONSUMED_OPERATIONS, operationsConsumedThisTick);
+        tag.putLong(NBT_LAST_OPERATIONS_PER_TICK, lastOperationsPerTick);
     }
 
     public void readEngineFrom(CompoundTag tag, HolderLookup.Provider registries) {
@@ -194,6 +213,11 @@ public final class MatrixCraftingCluster {
         heat = tag.contains(NBT_HEAT, Tag.TAG_DOUBLE) ? tag.getDouble(NBT_HEAT) : 0.0D;
         lastLimiterTick = tag.contains(NBT_LAST_LIMITER_TICK, Tag.TAG_LONG) ? tag.getLong(NBT_LAST_LIMITER_TICK) : Long.MIN_VALUE;
         limiterRemaining = 0;
+        providerCallsRemaining = 0;
+        operationsConsumedThisTick = tag.contains(NBT_CONSUMED_OPERATIONS, Tag.TAG_LONG)
+                ? Math.max(0L, tag.getLong(NBT_CONSUMED_OPERATIONS)) : 0L;
+        lastOperationsPerTick = tag.contains(NBT_LAST_OPERATIONS_PER_TICK, Tag.TAG_LONG)
+                ? Math.max(0L, tag.getLong(NBT_LAST_OPERATIONS_PER_TICK)) : 0L;
         lastLimiterSnapshot = MatrixCraftingMath.idleSnapshot(heat, 0.0D);
     }
 
@@ -203,6 +227,9 @@ public final class MatrixCraftingCluster {
         heat = 0.0D;
         lastLimiterTick = Long.MIN_VALUE;
         limiterRemaining = 0;
+        providerCallsRemaining = 0;
+        operationsConsumedThisTick = 0L;
+        lastOperationsPerTick = 0L;
         lastLimiterSnapshot = MatrixCraftingMath.idleSnapshot(0.0D, 0.0D);
     }
 
@@ -234,10 +261,30 @@ public final class MatrixCraftingCluster {
         long now = host.getGameTime();
         if (lastLimiterTick == now) return;
 
-        lastLimiterSnapshot = craftingProfile().snapshot(heat);
+        var profile = craftingProfile();
+        if (lastLimiterTick != Long.MIN_VALUE) {
+            heat = MatrixCraftingMath.advanceHeatForCompletedTick(
+                    heat,
+                    profile.mode(),
+                    operationsConsumedThisTick,
+                    lastOperationsPerTick,
+                    profile.threadPower(),
+                    profile.coolPower());
+        }
+        operationsConsumedThisTick = 0L;
+        lastLimiterSnapshot = profile.snapshot(heat);
         heat = lastLimiterSnapshot.heat();
         limiterRemaining = Math.max(0L, lastLimiterSnapshot.operationsPerTick());
+        lastOperationsPerTick = limiterRemaining;
+        providerCallsRemaining = com.moakiee.ae2lt.logic.compute.MatrixComputeEnvelope
+                .MAX_PROVIDER_CALLS_PER_TICK;
         lastLimiterTick = now;
+    }
+
+    private static long saturatedAdd(long left, long right) {
+        if (right <= 0L) return left;
+        if (left > Long.MAX_VALUE - right) return Long.MAX_VALUE;
+        return left + right;
     }
 
     private final class MatrixHost implements CraftingCoreHost {

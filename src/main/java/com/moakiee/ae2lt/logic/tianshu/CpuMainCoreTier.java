@@ -1,24 +1,20 @@
 package com.moakiee.ae2lt.logic.tianshu;
 
+import com.moakiee.ae2lt.logic.compute.ComputeTier;
+
 public enum CpuMainCoreTier {
-    BASELINE(1L, 1),
-    QUANTUM(16L, 3),
-    OVERLOAD(256L, 6),
-    MULTIDIMENSIONAL(Long.MAX_VALUE, 8);
+    BASELINE(ComputeTier.BASELINE),
+    QUANTUM(ComputeTier.QUANTUM),
+    OVERLOAD(ComputeTier.OVERLOAD),
+    MULTIDIMENSIONAL(ComputeTier.MULTIDIMENSIONAL);
 
-    private final long storageMultiplier;
-    private final int parallelMultiplier;
+    private final ComputeTier computeTier;
 
-    CpuMainCoreTier(long storageMultiplier, int parallelMultiplier) {
-        this.storageMultiplier = storageMultiplier;
-        this.parallelMultiplier = parallelMultiplier;
+    CpuMainCoreTier(ComputeTier computeTier) {
+        this.computeTier = computeTier;
     }
 
-    public long storageMultiplier() {
-        return storageMultiplier;
-    }
-
-    public int parallelMultiplier() {
-        return parallelMultiplier;
+    public ComputeTier computeTier() {
+        return computeTier;
     }
 }

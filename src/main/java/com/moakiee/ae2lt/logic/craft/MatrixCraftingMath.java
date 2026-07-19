@@ -1,50 +1,46 @@
 package com.moakiee.ae2lt.logic.craft;
 
-/**
- * Pure limiter math for the matrix crafting multiblock. The formed structure can change later;
- * these formulas only need aggregated chip powers and the current heat value.
- */
+import com.moakiee.ae2lt.logic.compute.ComputeTier;
+import com.moakiee.ae2lt.logic.compute.ComputingUnitTotals;
+import com.moakiee.ae2lt.logic.compute.UnifiedCraftingComputeCalculator;
+
+/** Pure thermal and logical-operation math for the matrix crafting multiblock. */
 public final class MatrixCraftingMath {
-    private static final double THREAD_SOFT_CAP = 80.0D;
-    private static final double DISPATCH_MIN = 128.0D;
-    private static final double DISPATCH_RANGE = 384.0D;
-    private static final double BASE_BATCH_MIN = 4.0D;
-    private static final double BASE_BATCH_PER_POWER = 0.4D;
-    private static final double BATCH_LOAD_LOG_WEIGHT = 0.18D;
     private static final double HEAT_CAPACITY_BASE = 2048.0D;
     private static final double HEAT_CAPACITY_PER_COOL_UNIT = 150.0D;
     private static final double COOLING_BASE = 0.00008D;
     private static final double COOLING_PER_COOL_UNIT = 0.000025D;
-    private static final double QUANTUM_HEAT_GAIN = 0.002D;
-    private static final double QUANTUM_COLD_FACTOR_FLOOR = 0.45D;
-    private static final double QUANTUM_BATCH_FACTOR = 64.0D;
-    private static final double OVERLOAD_HEAT_GAIN = 0.0094D;
-    private static final double OVERLOAD_FACTOR_RANGE = 1250.0D;
+    private static final double NORMAL_HEAT_GAIN_PER_DISPATCH_UNIT = 0.256D;
+    private static final double OVERLOAD_HEAT_GAIN_PER_DISPATCH_UNIT = 1.2032D;
+    private static final double COLD_EFFICIENCY_FLOOR = 0.45D;
+    private static final double OVERLOAD_EFFICIENCY_FLOOR = 0.05D;
 
     private MatrixCraftingMath() {
     }
 
-    public static double dispatchBase(double threadPower) {
-        double power = nonNegative(threadPower);
-        return DISPATCH_MIN + DISPATCH_RANGE * power / (power + THREAD_SOFT_CAP);
+    /** Raw contribution before main-core gain; retained for status/UI compatibility. */
+    public static double dispatchBase(double dispatchUnits) {
+        return UnifiedCraftingComputeCalculator.DISPATCH_PER_UNIT * nonNegative(dispatchUnits);
     }
 
-    public static double baseBatch(double multiPower) {
-        return BASE_BATCH_MIN + BASE_BATCH_PER_POWER * nonNegative(multiPower);
+    /** External amplifier width R; retained under the old accessor name for menu compatibility. */
+    public static double baseBatch(double amplifierUnits) {
+        return 1.0D + nonNegative(amplifierUnits);
     }
 
-    public static double batchLoad(double batchSize, double baseBatch) {
-        double n = nonNegative(batchSize);
-        double base = Math.max(baseBatch, 0.000001D);
-        return 1.0D + BATCH_LOAD_LOG_WEIGHT * log2(1.0D + n / base);
+    /** A batch with q operation lanes can carry q² logical copies. */
+    public static double batchLoad(double copies, double batchOps) {
+        double q = Math.max(1.0D, nonNegative(batchOps));
+        return nonNegative(copies) / (q * q);
     }
 
-    public static double dispatches(double dispatchBase, double batchSize, double baseBatch) {
-        return nonNegative(dispatchBase) / batchLoad(batchSize, baseBatch);
+    public static double dispatches(double operationsPerTick, double batchCopies) {
+        double copies = nonNegative(batchCopies);
+        return copies <= 0.0D ? 0.0D : nonNegative(operationsPerTick) / copies;
     }
 
     public static double coolUnits(double coolPower) {
-        return nonNegative(coolPower) / 2.0D;
+        return nonNegative(coolPower);
     }
 
     public static double heatCapacity(double coolUnits) {
@@ -78,63 +74,104 @@ public final class MatrixCraftingMath {
                 0.0D,
                 0.0D,
                 0.0D,
-                0.0D,
+                Integer.MAX_VALUE,
                 Long.MAX_VALUE,
                 1.0D,
                 Long.MAX_VALUE,
                 1.0D);
     }
 
-    public static Snapshot stableSnapshot(double heat, double threadPower, double multiPower, double coolPower) {
-        double dispatchBase = dispatchBase(threadPower);
-        double baseBatch = baseBatch(multiPower);
-        double nextHeat = advanceHeat(heat, dispatchBase * QUANTUM_HEAT_GAIN, coolPower);
-        double normalizedHeat = normalizedHeat(nextHeat, coolPower);
-        double coldFactor = clamp(1.0D - normalizedHeat, QUANTUM_COLD_FACTOR_FLOOR, 1.0D);
-        return snapshot(nextHeat, normalizedHeat, dispatchBase, baseBatch, baseBatch * coldFactor, coldFactor);
+    public static Snapshot stableSnapshot(
+            double heat, double dispatchUnits, double amplifierUnits, double coolPower) {
+        return coldSnapshot(ComputeTier.BASELINE, heat, dispatchUnits, amplifierUnits, coolPower);
     }
 
-    public static Snapshot quantumSnapshot(double heat, double threadPower, double multiPower, double coolPower) {
-        double dispatchBase = dispatchBase(threadPower);
-        double baseBatch = baseBatch(multiPower);
-        double nextHeat = advanceHeat(heat, dispatchBase * QUANTUM_HEAT_GAIN, coolPower);
-        double normalizedHeat = normalizedHeat(nextHeat, coolPower);
-        double coldFactor = clamp(1.0D - normalizedHeat, QUANTUM_COLD_FACTOR_FLOOR, 1.0D);
-        double quantumFactor = QUANTUM_BATCH_FACTOR * coldFactor;
-        return snapshot(nextHeat, normalizedHeat, dispatchBase, baseBatch, baseBatch * quantumFactor, quantumFactor);
+    public static Snapshot quantumSnapshot(
+            double heat, double dispatchUnits, double amplifierUnits, double coolPower) {
+        return coldSnapshot(ComputeTier.QUANTUM, heat, dispatchUnits, amplifierUnits, coolPower);
     }
 
-    public static Snapshot overloadSnapshot(double heat, double threadPower, double multiPower, double coolPower) {
-        double dispatchBase = dispatchBase(threadPower);
-        double baseBatch = baseBatch(multiPower);
-        double nextHeat = advanceHeat(heat, dispatchBase * OVERLOAD_HEAT_GAIN, coolPower);
-        double normalizedHeat = normalizedHeat(nextHeat, coolPower);
-        double overloadFactor = 1.0D + OVERLOAD_FACTOR_RANGE * overloadHeatCurve(normalizedHeat);
-        return snapshot(nextHeat, normalizedHeat, dispatchBase, baseBatch, baseBatch * overloadFactor, overloadFactor);
+    public static Snapshot overloadSnapshot(
+            double heat, double dispatchUnits, double amplifierUnits, double coolPower) {
+        double currentHeat = nonNegative(heat);
+        double normalizedHeat = normalizedHeat(currentHeat, coolPower);
+        double efficiency = OVERLOAD_EFFICIENCY_FLOOR
+                + (1.0D - OVERLOAD_EFFICIENCY_FLOOR) * overloadHeatCurve(normalizedHeat);
+        return snapshot(
+                ComputeTier.OVERLOAD,
+                currentHeat,
+                normalizedHeat,
+                dispatchUnits,
+                amplifierUnits,
+                coolPower,
+                efficiency);
     }
 
-    private static Snapshot snapshot(double heat,
-                                     double normalizedHeat,
-                                     double dispatchBase,
-                                     double baseBatch,
-                                     double batchSize,
-                                     double efficiencyFactor) {
-        double dispatches = dispatches(dispatchBase, batchSize, baseBatch);
+    private static Snapshot coldSnapshot(
+            ComputeTier tier,
+            double heat,
+            double dispatchUnits,
+            double amplifierUnits,
+            double coolPower) {
+        double currentHeat = nonNegative(heat);
+        double normalizedHeat = normalizedHeat(currentHeat, coolPower);
+        double efficiency = clamp(1.0D - normalizedHeat, COLD_EFFICIENCY_FLOOR, 1.0D);
+        return snapshot(
+                tier,
+                currentHeat,
+                normalizedHeat,
+                dispatchUnits,
+                amplifierUnits,
+                coolPower,
+                efficiency);
+    }
+
+    private static Snapshot snapshot(
+            ComputeTier tier,
+            double heat,
+            double normalizedHeat,
+            double dispatchUnits,
+            double amplifierUnits,
+            double coolPower,
+            double efficiency) {
+        int dispatchCount = floorToInt(dispatchUnits);
+        int amplifierCount = floorToInt(amplifierUnits);
+        int coolingCount = floorToInt(coolPower);
+        var units = new ComputingUnitTotals(dispatchCount, amplifierCount, 0, coolingCount);
+        var envelope = UnifiedCraftingComputeCalculator.matrixEnvelope(tier, units, efficiency);
+        int copyGain = UnifiedCraftingComputeCalculator.copyGain(tier, amplifierCount);
+        // Legacy menu fields retain the old names until the separate UI redesign. They are
+        // diagnostic projections only and do not impose a per-call batch width.
+        long batchCopies = UnifiedCraftingComputeCalculator.saturatedMultiply(copyGain, copyGain);
+        double rawDispatch = UnifiedCraftingComputeCalculator.saturatedMultiply(
+                UnifiedCraftingComputeCalculator.DISPATCH_PER_UNIT * (long) dispatchCount,
+                UnifiedCraftingComputeCalculator.dispatchGain(tier, amplifierCount));
         return new Snapshot(
                 heat,
                 normalizedHeat,
-                dispatchBase,
-                baseBatch,
-                batchSize,
-                dispatches,
-                floorToLong(batchSize * dispatches),
-                efficiencyFactor);
+                rawDispatch,
+                copyGain,
+                batchCopies,
+                dispatches(envelope.operationsPerTick(), batchCopies),
+                envelope.operationsPerTick(),
+                envelope.thermalEfficiency());
     }
 
-    private static double advanceHeat(double heat, double heatGain, double coolPower) {
-        double coolUnits = coolUnits(coolPower);
-        double nextHeat = nonNegative(heat) + nonNegative(heatGain);
-        nextHeat -= coolingRate(coolUnits) * nextHeat;
+    public static double advanceHeatForCompletedTick(
+            double heat,
+            MatrixCoreMode mode,
+            long acceptedOperations,
+            long availableOperations,
+            double dispatchUnits,
+            double coolPower) {
+        double load = availableOperations <= 0L
+                ? 0.0D
+                : clamp((double) Math.max(0L, acceptedOperations) / availableOperations, 0.0D, 1.0D);
+        double gainPerUnit = mode == MatrixCoreMode.OVERLOAD
+                ? OVERLOAD_HEAT_GAIN_PER_DISPATCH_UNIT
+                : NORMAL_HEAT_GAIN_PER_DISPATCH_UNIT;
+        double nextHeat = nonNegative(heat) + nonNegative(dispatchUnits) * gainPerUnit * load;
+        nextHeat -= coolingRate(coolUnits(coolPower)) * nextHeat;
         return nonNegative(nextHeat);
     }
 
@@ -142,12 +179,14 @@ public final class MatrixCraftingMath {
         return clamp01(nonNegative(heat) / heatCapacity(coolUnits(coolPower)));
     }
 
-    private static double log2(double value) {
-        return Math.log(value) / Math.log(2.0D);
+    private static int floorToInt(double value) {
+        if (!Double.isFinite(value) || value <= 0.0D) return 0;
+        if (value >= Integer.MAX_VALUE) return Integer.MAX_VALUE;
+        return (int) Math.floor(value);
     }
 
     private static double nonNegative(double value) {
-        if (Double.isNaN(value) || value <= 0.0D) return 0.0D;
+        if (!Double.isFinite(value) || value <= 0.0D) return 0.0D;
         return value;
     }
 
@@ -156,14 +195,8 @@ public final class MatrixCraftingMath {
     }
 
     private static double clamp(double value, double min, double max) {
-        if (Double.isNaN(value)) return min;
+        if (!Double.isFinite(value)) return min;
         return Math.max(min, Math.min(max, value));
-    }
-
-    private static long floorToLong(double value) {
-        if (Double.isNaN(value) || value <= 0.0D) return 0L;
-        if (value >= Long.MAX_VALUE) return Long.MAX_VALUE;
-        return (long) Math.floor(value);
     }
 
     public record Snapshot(

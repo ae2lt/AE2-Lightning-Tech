@@ -37,6 +37,7 @@
     "ae2lt:blank_supercomputing_unit",
     "ae2lt:storage_supercomputing_unit",
     "ae2lt:parallel_supercomputing_unit",
+    "ae2lt:amplifier_supercomputing_unit",
     "ae2lt:matter_warping_matrix_casing",
     "ae2lt:matter_warping_matrix_constraint_frame",
     "ae2lt:matter_warping_matrix_glass",

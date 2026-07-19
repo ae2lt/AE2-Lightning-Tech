@@ -256,6 +256,9 @@ public final class ModBlocks {
     public static final DeferredBlock<TianshuSupercomputingUnitBlock> PARALLEL_SUPERCOMPUTING_UNIT = registerBlock(
             "parallel_supercomputing_unit", () -> new TianshuSupercomputingUnitBlock(
                     MATRIX_MACHINE_PROPERTIES, TianshuMultiblockComponent.PARALLEL_CORE));
+    public static final DeferredBlock<TianshuSupercomputingUnitBlock> AMPLIFIER_SUPERCOMPUTING_UNIT = registerBlock(
+            "amplifier_supercomputing_unit", () -> new TianshuSupercomputingUnitBlock(
+                    MATRIX_MACHINE_PROPERTIES, TianshuMultiblockComponent.AMPLIFIER_CORE));
     public static final DeferredBlock<TianshuPatternStorageBlock> CLOSED_LOOP_PATTERN_STORAGE = registerBlock(
             "closed_loop_pattern_storage", () -> new TianshuPatternStorageBlock(MATRIX_MACHINE_PROPERTIES));
     public static final DeferredBlock<TianshuSeedStorageBlock> CLOSED_LOOP_SEED_STORAGE = registerBlock(

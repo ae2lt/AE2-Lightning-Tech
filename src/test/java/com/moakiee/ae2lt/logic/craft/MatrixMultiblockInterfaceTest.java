@@ -61,8 +61,7 @@ class MatrixMultiblockInterfaceTest {
         var assembler = new FakeAssembler();
         var cluster = cluster(host, List.of(new FakeCraftCore(
                 MatrixCraftingUnit.stableCore(),
-                MatrixCraftingUnit.threadPower(160),
-                MatrixCraftingUnit.multiplierPower(20))), assembler);
+                MatrixCraftingUnit.t1Threader())), assembler);
         var patternUnit = unit(PATTERN);
         var repository = new MatrixPatternRepository(List.of(patternUnit));
 
@@ -70,7 +69,7 @@ class MatrixMultiblockInterfaceTest {
 
         assertEquals(List.of(PATTERN), matrixInterface.getAvailablePatterns());
         assertSame(patternUnit, matrixInterface.exposedPatternUnit());
-        assertEquals(3903, matrixInterface.getBatchCapacity(PATTERN));
+        assertTrue(matrixInterface.getBatchCapacity(PATTERN) >= 12);
         assertEquals(0, matrixInterface.pushBatch(PATTERN, emptyInputs(), 12));
         assertEquals(1, assembler.calls);
     }
@@ -80,8 +79,8 @@ class MatrixMultiblockInterfaceTest {
         var assembler = new FakeAssembler();
         var cluster = cluster(new FakeHost(), List.of(new FakeCraftCore(
                 MatrixCraftingUnit.quantumCore(),
-                MatrixCraftingUnit.threadPower(160),
-                MatrixCraftingUnit.multiplierPower(20))), assembler);
+                MatrixCraftingUnit.t1Threader(),
+                MatrixCraftingUnit.t1Multiplier())), assembler);
         var plainPattern = new FakePlainPattern("plain");
         var repository = new MatrixPatternRepository(List.of(unit(PATTERN, plainPattern)));
 

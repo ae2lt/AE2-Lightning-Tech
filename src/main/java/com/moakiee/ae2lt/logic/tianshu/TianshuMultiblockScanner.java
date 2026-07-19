@@ -53,6 +53,7 @@ public final class TianshuMultiblockScanner {
         CpuMainCoreTier mainCore = null;
         int capacityCores = 0;
         int parallelCores = 0;
+        int amplifierCores = 0;
         int closedLoopPatternStorages = 0;
         int closedLoopSeedStorages = 0;
         BlockPos min = null;
@@ -127,6 +128,9 @@ public final class TianshuMultiblockScanner {
                             } else if (component == TianshuMultiblockComponent.PARALLEL_CORE) {
                                 parallelCores++;
                                 members.add(world.immutable());
+                            } else if (component == TianshuMultiblockComponent.AMPLIFIER_CORE) {
+                                amplifierCores++;
+                                members.add(world.immutable());
                             } else if (component == TianshuMultiblockComponent.CLOSED_LOOP_PATTERN_STORAGE) {
                                 closedLoopPatternStorages++;
                                 patternStorages.add(world.immutable());
@@ -154,12 +158,23 @@ public final class TianshuMultiblockScanner {
         } else if (ports.size() > 1) {
             addOnce(issues, TianshuMultiblockScanIssue.MULTIPLE_PORTS);
         }
-        if (capacityCores == 0) addOnce(issues, TianshuMultiblockScanIssue.MISSING_STORAGE_CORE);
-        if (parallelCores == 0) addOnce(issues, TianshuMultiblockScanIssue.MISSING_PARALLEL_CORE);
+        if (mainCore != CpuMainCoreTier.MULTIDIMENSIONAL && parallelCores == 0) {
+            addOnce(issues, TianshuMultiblockScanIssue.MISSING_PARALLEL_CORE);
+        }
+        if (mainCore == CpuMainCoreTier.MULTIDIMENSIONAL
+                && capacityCores + parallelCores + amplifierCores > 0) {
+            addOnce(issues, TianshuMultiblockScanIssue.INVALID_PERIPHERAL_CORE);
+        }
+        if (mainCore != null && amplifierCores > mainCore.computeTier().maxAmplifierUnits()) {
+            addOnce(issues, mainCore.computeTier().maxAmplifierUnits() == 0
+                    ? TianshuMultiblockScanIssue.AMPLIFIER_CORE_NOT_SUPPORTED
+                    : TianshuMultiblockScanIssue.TOO_MANY_AMPLIFIER_CORES);
+        }
         if (!issues.isEmpty()) {
             return new TianshuMultiblockScanAttempt(null, List.copyOf(issues));
         }
-        var profile = CpuInternalCoreCalculator.calculate(mainCore, capacityCores, parallelCores);
+        var profile = CpuInternalCoreCalculator.calculate(
+                mainCore, capacityCores, parallelCores, amplifierCores);
         var functionProfile = new TianshuFunctionProfile(
                 closedLoopPatternStorages, closedLoopSeedStorages);
         return new TianshuMultiblockScanAttempt(new TianshuMultiblockScanResult(

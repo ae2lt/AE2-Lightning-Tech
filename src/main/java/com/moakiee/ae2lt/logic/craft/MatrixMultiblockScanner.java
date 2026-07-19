@@ -99,6 +99,8 @@ public final class MatrixMultiblockScanner {
         BlockPos portPos = null;
         int portCount = 0;
         int multiplierCount = 0;
+        int dispatchCount = 0;
+        int nonBlankSubCoreCount = 0;
         boolean hasMainCoreAtCenter = false;
         MatrixMultiblockComponent mainCoreAtCenter = null;
         boolean hasMainCoreOutsideCenter = false;
@@ -144,6 +146,15 @@ public final class MatrixMultiblockScanner {
                 if (component.isMultiplierSubCore()) {
                     multiplierCount++;
                 }
+                if (!localPos.equals(MatrixMultiblockTemplate.CRAFTING_CENTER_LOCAL)) {
+                    if (component == MatrixMultiblockComponent.THREAD_SUB_CORE_T1
+                            || component == MatrixMultiblockComponent.THREAD_SUB_CORE_T2) {
+                        dispatchCount++;
+                    }
+                    if (component != MatrixMultiblockComponent.BLANK_SUB_CORE) {
+                        nonBlankSubCoreCount++;
+                    }
+                }
             }
 
             if (component != MatrixMultiblockComponent.AIR && role != MatrixMultiblockRole.EMPTY) {
@@ -174,6 +185,18 @@ public final class MatrixMultiblockScanner {
         if (mainCoreAtCenter != MatrixMultiblockComponent.CREATIVE_MAIN_CORE
                 && multiplierCount > MatrixCraftingProfile.MULTIPLIER_LIMIT) {
             addIssue(issues, MatrixMultiblockScanIssue.MULTIPLIER_LIMIT_EXCEEDED);
+        }
+        if (mainCoreAtCenter != null
+                && mainCoreAtCenter != MatrixMultiblockComponent.CREATIVE_MAIN_CORE
+                && dispatchCount == 0) {
+            addIssue(issues, MatrixMultiblockScanIssue.MISSING_DISPATCH_UNIT);
+        }
+        if (mainCoreAtCenter == MatrixMultiblockComponent.STABLE_MAIN_CORE && multiplierCount > 0) {
+            addIssue(issues, MatrixMultiblockScanIssue.AMPLIFIER_NOT_SUPPORTED);
+        }
+        if (mainCoreAtCenter == MatrixMultiblockComponent.CREATIVE_MAIN_CORE
+                && nonBlankSubCoreCount > 0) {
+            addIssue(issues, MatrixMultiblockScanIssue.MULTIDIMENSIONAL_UNIT_NOT_SUPPORTED);
         }
 
         MatrixMultiblockScanResult result = null;
