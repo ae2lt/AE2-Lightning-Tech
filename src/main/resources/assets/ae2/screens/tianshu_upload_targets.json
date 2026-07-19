@@ -8,9 +8,9 @@
     }
   },
   "widgets": {
-    "scrollbar": { "left": 175, "top": 34 },
-    "field_search": { "left": 7, "top": 18, "width": 98, "height": 12 },
-    "field_alias": { "left": 108, "top": 18, "width": 61, "height": 12 },
-    "button_back": { "left": 171, "top": -5, "width": 20, "height": 20 }
+    "scrollbar": { "left": 175, "top": 33 },
+    "field_search": { "left": 7, "top": 16, "width": 81, "height": 13 },
+    "field_alias": { "left": 90, "top": 16, "width": 79, "height": 13 },
+    "button_back": { "left": 166, "top": -5, "width": 20, "height": 20 }
   }
 }

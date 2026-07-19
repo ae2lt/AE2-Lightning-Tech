@@ -29,14 +29,9 @@ import net.pedroksl.advanced_ae.common.definitions.AAEText;
  */
 final class TianshuAdvancedPatternConfigScreen<M extends TianshuPatternEncodingTermMenu>
         extends AESubScreen<M, TianshuPatternEncodingTermScreen<M>> {
-    private static final int GUI_WIDTH = 195;
-    private static final int HEADER_HEIGHT = 20;
-    private static final int ROW_HEIGHT = 20;
-    private static final int VISIBLE_ROWS = 5;
-    private static final int FOOTER_HEIGHT = 26;
-    private static final int ROW_LEFT = 8;
-    private static final int ROW_RIGHT = 169;
+    private static final int ROW_CONTENT_Y_OFFSET = 4;
     private static final int BUTTONS_LEFT = 34;
+    private static final int BUTTONS_Y_OFFSET = 5;
     private static final int DIR_BUTTON_WIDTH = 12;
     private static final int DIR_BUTTON_HEIGHT = 14;
     private static final int DIR_COUNT = 7;
@@ -47,8 +42,8 @@ final class TianshuAdvancedPatternConfigScreen<M extends TianshuPatternEncodingT
 
     TianshuAdvancedPatternConfigScreen(TianshuPatternEncodingTermScreen<M> parent) {
         super(parent, "/screens/tianshu_advanced_pattern_config.json");
-        imageWidth = GUI_WIDTH;
-        imageHeight = HEADER_HEIGHT + VISIBLE_ROWS * ROW_HEIGHT + FOOTER_HEIGHT;
+        imageWidth = TianshuPatternConfigLayout.GUI_WIDTH;
+        imageHeight = TianshuPatternConfigLayout.GUI_HEIGHT;
 
         widgets.add("button_back", new TabButton(Icon.BACK,
                 Component.translatable("gui.back"), ignored -> returnToParent()));
@@ -89,8 +84,8 @@ final class TianshuAdvancedPatternConfigScreen<M extends TianshuPatternEncodingT
             }
             rowButtons.add(buttons);
         }
-        scrollbar.setHeight(VISIBLE_ROWS * ROW_HEIGHT - 2);
-        scrollbar.setRange(0, Math.max(0, rows.size() - VISIBLE_ROWS), 2);
+        scrollbar.setHeight(TianshuPatternConfigLayout.SCROLLBAR_HEIGHT);
+        scrollbar.setRange(0, Math.max(0, rows.size() - TianshuPatternConfigLayout.VISIBLE_ROWS), 2);
         setSlotsHidden(SlotSemantics.TOOLBOX, true);
     }
 
@@ -133,49 +128,48 @@ final class TianshuAdvancedPatternConfigScreen<M extends TianshuPatternEncodingT
             for (var button : buttons) button.visible = false;
         }
         int scroll = scrollbar.getCurrentScroll();
-        for (int visible = 0; visible < VISIBLE_ROWS; visible++) {
+        for (int visible = 0; visible < TianshuPatternConfigLayout.VISIBLE_ROWS; visible++) {
             int index = scroll + visible;
             if (index >= rows.size()) break;
             var row = rows.get(index);
-            int rowY = HEADER_HEIGHT + visible * ROW_HEIGHT;
-            graphics.renderItem(row.key.wrapForDisplayOrFilter(), ROW_LEFT + 2, rowY + 2);
+            int rowY = TianshuPatternConfigLayout.HEADER_HEIGHT
+                    + visible * TianshuPatternConfigLayout.ROW_HEIGHT;
+            graphics.renderItem(row.key.wrapForDisplayOrFilter(),
+                    TianshuPatternConfigLayout.ROW_LEFT + 2
+                            + TianshuPatternConfigLayout.ROW_CONTENT_X_OFFSET,
+                    rowY + ROW_CONTENT_Y_OFFSET);
             var buttons = rowButtons.get(index);
             int highlighted = columnForDirection(row.direction);
             for (int col = 0; col < DIR_COUNT; col++) {
                 var button = buttons[col];
-                button.setPosition(leftPos + BUTTONS_LEFT + col * (DIR_BUTTON_WIDTH + 1),
-                        topPos + rowY + 3);
+                button.setPosition(leftPos + BUTTONS_LEFT
+                                + TianshuPatternConfigLayout.ROW_CONTENT_X_OFFSET
+                                + col * (DIR_BUTTON_WIDTH + 1),
+                        topPos + rowY + BUTTONS_Y_OFFSET);
                 button.setHighlighted(col == highlighted);
                 button.visible = true;
             }
         }
         if (rows.isEmpty()) {
             var text = Component.translatable("ae2lt.tianshu.pattern_config.empty");
-            graphics.drawString(font, text, (GUI_WIDTH - font.width(text)) / 2,
-                    HEADER_HEIGHT + (VISIBLE_ROWS * ROW_HEIGHT) / 2 - 4, 0xFF777777, false);
+            graphics.drawString(font, text,
+                    (TianshuPatternConfigLayout.GUI_WIDTH - font.width(text)) / 2,
+                    TianshuPatternConfigLayout.HEADER_HEIGHT
+                            + (TianshuPatternConfigLayout.VISIBLE_ROWS
+                            * TianshuPatternConfigLayout.ROW_HEIGHT) / 2 - 4,
+                    0xFF777777, false);
         }
     }
 
     @Override
     public void drawBG(GuiGraphics graphics, int offsetX, int offsetY,
                        int mouseX, int mouseY, float partialTicks) {
-        int bottom = offsetY + imageHeight;
-        graphics.fill(offsetX, offsetY, offsetX + GUI_WIDTH, bottom, 0xFFC6C6D2);
-        graphics.fill(offsetX, offsetY, offsetX + GUI_WIDTH, offsetY + 1, 0xFFFFFFFF);
-        graphics.fill(offsetX, offsetY, offsetX + 1, bottom, 0xFFFFFFFF);
-        graphics.fill(offsetX + GUI_WIDTH - 1, offsetY + 1, offsetX + GUI_WIDTH, bottom, 0xFF555563);
-        graphics.fill(offsetX + 1, bottom - 1, offsetX + GUI_WIDTH, bottom, 0xFF555563);
-        for (int visible = 0; visible < VISIBLE_ROWS; visible++) {
-            int top = offsetY + HEADER_HEIGHT + visible * ROW_HEIGHT;
-            int color = (visible & 1) == 0 ? 0xFFB4B5C6 : 0xFF989AAC;
-            graphics.fill(offsetX + ROW_LEFT - 1, top, offsetX + ROW_RIGHT, top + ROW_HEIGHT - 1, color);
-            graphics.fill(offsetX + ROW_LEFT - 1, top, offsetX + ROW_RIGHT, top + 1, 0xFFE8E8F0);
-        }
+        TianshuPatternConfigLayout.drawBackground(graphics, offsetX, offsetY);
     }
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double deltaX, double deltaY) {
-        if (deltaY != 0 && rows.size() > VISIBLE_ROWS) {
+        if (deltaY != 0 && rows.size() > TianshuPatternConfigLayout.VISIBLE_ROWS) {
             scrollbar.setCurrentScroll(scrollbar.getCurrentScroll() + (deltaY > 0 ? -1 : 1));
             return true;
         }

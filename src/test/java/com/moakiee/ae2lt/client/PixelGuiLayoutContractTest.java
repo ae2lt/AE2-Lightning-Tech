@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.awt.image.BufferedImage;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 import javax.imageio.ImageIO;
 
@@ -132,6 +133,82 @@ final class PixelGuiLayoutContractTest {
         assertFalse(english.contains("ae2lt.device_hub.appflux"));
         assertFalse(chinese.contains("ae2lt.device_hub.workbench_hint"));
         assertFalse(chinese.contains("ae2lt.device_hub.module.state.active"));
+    }
+
+    @Test
+    void tianshuUploadScreenUsesProvidedPixelAtlas() throws Exception {
+        Path texture = Path.of("src/main/resources/assets/ae2lt/textures/gui/tianshu_upload_targets.png");
+        assertSprite(texture, 256, 256);
+
+        String screen = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/client/TianshuUploadTargetScreen.java"));
+        String style = Files.readString(Path.of(
+                "src/main/resources/assets/ae2/screens/tianshu_upload_targets.json"));
+
+        assertTrue(screen.contains("\"textures/gui/tianshu_upload_targets.png\""));
+        assertTrue(screen.contains("TEXTURE_SIZE = 256"));
+        assertTrue(screen.contains("GUI_WIDTH = 190"));
+        assertTrue(screen.contains("GUI_HEADER_HEIGHT = 33"));
+        assertTrue(screen.contains("GUI_FOOTER_HEIGHT = 18"));
+        assertTrue(screen.contains("ROW_HEIGHT = 17"));
+        assertTrue(screen.contains("ROW_TEXTURE_X = 9"));
+        assertTrue(screen.contains("ROW_TEXTURE_WIDTH = 158"));
+        assertTrue(screen.contains("ROW_NORMAL_TEXTURE_Y = 222"));
+        assertTrue(screen.contains("ROW_SELECTED_TEXTURE_Y = 239"));
+        assertTrue(screen.contains("Scrollbar.SMALL"));
+        assertTrue(screen.contains("visibleRows * ROW_HEIGHT - 1"));
+        assertTrue(screen.contains("HIDDEN_SLOT_POS = -10_000"));
+        assertTrue(screen.contains("protected void updateBeforeRender()"));
+        assertTrue(screen.contains("hideAllMenuSlots();"));
+        assertTrue(screen.contains("slot.x = HIDDEN_SLOT_POS"));
+        assertTrue(screen.contains("slot.y = HIDDEN_SLOT_POS"));
+        assertFalse(screen.contains("public void renderSlot(GuiGraphics graphics, Slot slot)"));
+        assertFalse(screen.contains("hideParentSlots();"));
+        assertFalse(screen.contains("graphics.fill(offsetX"));
+
+        assertTrue(style.contains("\"scrollbar\": { \"left\": 175, \"top\": 33 }"));
+        assertTrue(style.contains("\"field_search\": { \"left\": 7, \"top\": 16, \"width\": 81, \"height\": 13 }"));
+        assertTrue(style.contains("\"field_alias\": { \"left\": 90, \"top\": 16, \"width\": 79, \"height\": 13 }"));
+    }
+
+    @Test
+    void tianshuPatternConfigScreensShareProvidedPixelAtlas() throws Exception {
+        Path texture = Path.of("src/main/resources/assets/ae2lt/textures/gui/tianshu_pattern_config.png");
+        assertSprite(texture, 256, 256);
+
+        String advanced = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/client/TianshuAdvancedPatternConfigScreen.java"));
+        String overload = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/client/TianshuOverloadPatternConfigScreen.java"));
+        String layout = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/client/TianshuPatternConfigLayout.java"));
+        String advancedStyle = Files.readString(Path.of(
+                "src/main/resources/assets/ae2/screens/tianshu_advanced_pattern_config.json"));
+        String overloadStyle = Files.readString(Path.of(
+                "src/main/resources/assets/ae2/screens/tianshu_overload_pattern_config.json"));
+
+        assertTrue(layout.contains("\"textures/gui/tianshu_pattern_config.png\""));
+        assertTrue(layout.contains("TEXTURE_SIZE = 256"));
+        assertTrue(layout.contains("GUI_WIDTH = 190"));
+        assertTrue(layout.contains("HEADER_HEIGHT = 32"));
+        assertTrue(layout.contains("ROW_HEIGHT = 25"));
+        assertTrue(layout.contains("FOOTER_HEIGHT = 30"));
+        assertTrue(layout.contains("ROW_TEXTURE_X = 9"));
+        assertTrue(layout.contains("ROW_TEXTURE_Y = 190"));
+        assertTrue(layout.contains("ROW_TEXTURE_WIDTH = 158"));
+        assertTrue(layout.contains("ROW_CONTENT_X_OFFSET = 4"));
+        assertTrue(layout.contains("SCROLLBAR_HEIGHT = 129"));
+
+        for (String screen : List.of(advanced, overload)) {
+            assertTrue(screen.contains("TianshuPatternConfigLayout.drawBackground"));
+            assertFalse(screen.contains("graphics.fill(offsetX"));
+        }
+
+        for (String style : List.of(advancedStyle, overloadStyle)) {
+            assertTrue(style.contains("\"scrollbar\": { \"left\": 175, \"top\": 30 }"));
+            assertTrue(style.contains("\"button_back\": { \"left\": 166"));
+            assertTrue(style.contains("\"save\": { \"left\": 121, \"top\": 165"));
+        }
     }
 
     private static void assertSprite(Path texture, int expectedWidth, int expectedHeight) throws Exception {

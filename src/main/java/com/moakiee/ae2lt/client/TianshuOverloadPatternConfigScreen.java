@@ -21,25 +21,21 @@ import org.jetbrains.annotations.Nullable;
 /** Popup arming the next processing encode as an overload pattern with per-slot match modes. */
 final class TianshuOverloadPatternConfigScreen<M extends TianshuPatternEncodingTermMenu>
         extends AESubScreen<M, TianshuPatternEncodingTermScreen<M>> {
-    private static final int GUI_WIDTH = 195;
-    private static final int HEADER_HEIGHT = 20;
-    private static final int ROW_HEIGHT = 20;
-    private static final int VISIBLE_ROWS = 5;
-    private static final int FOOTER_HEIGHT = 26;
-    private static final int ROW_LEFT = 8;
-    private static final int ROW_RIGHT = 169;
+    private static final int ROW_ICON_Y_OFFSET = 4;
+    private static final int ROW_TEXT_Y_OFFSET = 8;
     private static final int TOGGLE_LEFT = 120;
+    private static final int TOGGLE_Y_OFFSET = 4;
     private static final int TOGGLE_WIDTH = 46;
     private static final int TOGGLE_HEIGHT = 16;
 
     private final Scrollbar scrollbar;
     private final List<Row> rows = new ArrayList<>();
-    private final AE2Button[] toggleButtons = new AE2Button[VISIBLE_ROWS];
+    private final AE2Button[] toggleButtons = new AE2Button[TianshuPatternConfigLayout.VISIBLE_ROWS];
 
     TianshuOverloadPatternConfigScreen(TianshuPatternEncodingTermScreen<M> parent) {
         super(parent, "/screens/tianshu_overload_pattern_config.json");
-        imageWidth = GUI_WIDTH;
-        imageHeight = HEADER_HEIGHT + VISIBLE_ROWS * ROW_HEIGHT + FOOTER_HEIGHT;
+        imageWidth = TianshuPatternConfigLayout.GUI_WIDTH;
+        imageHeight = TianshuPatternConfigLayout.GUI_HEIGHT;
 
         widgets.add("button_back", new TabButton(Icon.BACK,
                 Component.translatable("gui.back"), ignored -> returnToParent()));
@@ -83,7 +79,7 @@ final class TianshuOverloadPatternConfigScreen<M extends TianshuPatternEncodingT
         super.init();
         var modeTooltip = Tooltip.create(
                 Component.translatable("ae2lt.tianshu.overload_config.mode.tooltip"));
-        for (int i = 0; i < VISIBLE_ROWS; i++) {
+        for (int i = 0; i < TianshuPatternConfigLayout.VISIBLE_ROWS; i++) {
             int visibleIndex = i;
             var button = new AE2Button(0, 0, TOGGLE_WIDTH, TOGGLE_HEIGHT,
                     Component.empty(), ignored -> toggleRow(visibleIndex));
@@ -91,8 +87,8 @@ final class TianshuOverloadPatternConfigScreen<M extends TianshuPatternEncodingT
             button.visible = false;
             toggleButtons[i] = addRenderableWidget(button);
         }
-        scrollbar.setHeight(VISIBLE_ROWS * ROW_HEIGHT - 2);
-        scrollbar.setRange(0, Math.max(0, rows.size() - VISIBLE_ROWS), 2);
+        scrollbar.setHeight(TianshuPatternConfigLayout.SCROLLBAR_HEIGHT);
+        scrollbar.setRange(0, Math.max(0, rows.size() - TianshuPatternConfigLayout.VISIBLE_ROWS), 2);
         setSlotsHidden(SlotSemantics.TOOLBOX, true);
     }
 
@@ -132,57 +128,58 @@ final class TianshuOverloadPatternConfigScreen<M extends TianshuPatternEncodingT
         for (var button : toggleButtons) button.visible = false;
         int textColor = style.getColor(PaletteColor.DEFAULT_TEXT_COLOR).toARGB();
         int scroll = scrollbar.getCurrentScroll();
-        for (int visible = 0; visible < VISIBLE_ROWS; visible++) {
+        for (int visible = 0; visible < TianshuPatternConfigLayout.VISIBLE_ROWS; visible++) {
             int index = scroll + visible;
             if (index >= rows.size()) break;
             var row = rows.get(index);
-            int rowY = HEADER_HEIGHT + visible * ROW_HEIGHT;
+            int rowY = TianshuPatternConfigLayout.HEADER_HEIGHT
+                    + visible * TianshuPatternConfigLayout.ROW_HEIGHT;
             if (row.header != null) {
-                graphics.drawString(font, row.header, ROW_LEFT + 4, rowY + 6, textColor, false);
+                graphics.drawString(font, row.header,
+                        TianshuPatternConfigLayout.ROW_LEFT + 4
+                                + TianshuPatternConfigLayout.ROW_CONTENT_X_OFFSET,
+                        rowY + ROW_TEXT_Y_OFFSET, textColor, false);
                 continue;
             }
-            graphics.renderItem(row.stack.what().wrapForDisplayOrFilter(), ROW_LEFT + 2, rowY + 2);
+            graphics.renderItem(row.stack.what().wrapForDisplayOrFilter(),
+                    TianshuPatternConfigLayout.ROW_LEFT + 2
+                            + TianshuPatternConfigLayout.ROW_CONTENT_X_OFFSET,
+                    rowY + ROW_ICON_Y_OFFSET);
             var name = row.stack.what().getDisplayName();
             graphics.drawString(font, Language.getInstance().getVisualOrder(
-                    font.substrByWidth(name, TOGGLE_LEFT - ROW_LEFT - 24)),
-                    ROW_LEFT + 22, rowY + 6, textColor, false);
+                    font.substrByWidth(name,
+                            TOGGLE_LEFT - TianshuPatternConfigLayout.ROW_LEFT - 24
+                                    - TianshuPatternConfigLayout.ROW_CONTENT_X_OFFSET)),
+                    TianshuPatternConfigLayout.ROW_LEFT + 22
+                            + TianshuPatternConfigLayout.ROW_CONTENT_X_OFFSET,
+                    rowY + ROW_TEXT_Y_OFFSET, textColor, false);
             var button = toggleButtons[visible];
             button.setMessage(Component.translatable(row.idOnly
                     ? "ae2lt.tianshu.overload_config.id_only"
                     : "ae2lt.tianshu.overload_config.strict"));
-            button.setPosition(leftPos + TOGGLE_LEFT, topPos + rowY + 1);
+            button.setPosition(leftPos + TOGGLE_LEFT, topPos + rowY + TOGGLE_Y_OFFSET);
             button.visible = true;
         }
         if (rows.isEmpty()) {
             var text = Component.translatable("ae2lt.tianshu.pattern_config.empty");
-            graphics.drawString(font, text, (GUI_WIDTH - font.width(text)) / 2,
-                    HEADER_HEIGHT + (VISIBLE_ROWS * ROW_HEIGHT) / 2 - 4, 0xFF777777, false);
+            graphics.drawString(font, text,
+                    (TianshuPatternConfigLayout.GUI_WIDTH - font.width(text)) / 2,
+                    TianshuPatternConfigLayout.HEADER_HEIGHT
+                            + (TianshuPatternConfigLayout.VISIBLE_ROWS
+                            * TianshuPatternConfigLayout.ROW_HEIGHT) / 2 - 4,
+                    0xFF777777, false);
         }
     }
 
     @Override
     public void drawBG(GuiGraphics graphics, int offsetX, int offsetY,
                        int mouseX, int mouseY, float partialTicks) {
-        int bottom = offsetY + imageHeight;
-        graphics.fill(offsetX, offsetY, offsetX + GUI_WIDTH, bottom, 0xFFC6C6D2);
-        graphics.fill(offsetX, offsetY, offsetX + GUI_WIDTH, offsetY + 1, 0xFFFFFFFF);
-        graphics.fill(offsetX, offsetY, offsetX + 1, bottom, 0xFFFFFFFF);
-        graphics.fill(offsetX + GUI_WIDTH - 1, offsetY + 1, offsetX + GUI_WIDTH, bottom, 0xFF555563);
-        graphics.fill(offsetX + 1, bottom - 1, offsetX + GUI_WIDTH, bottom, 0xFF555563);
-        int scroll = scrollbar == null ? 0 : scrollbar.getCurrentScroll();
-        for (int visible = 0; visible < VISIBLE_ROWS; visible++) {
-            int index = scroll + visible;
-            int top = offsetY + HEADER_HEIGHT + visible * ROW_HEIGHT;
-            boolean header = index < rows.size() && rows.get(index).header != null;
-            int color = header ? 0xFFA0A2B8 : (visible & 1) == 0 ? 0xFFB4B5C6 : 0xFF989AAC;
-            graphics.fill(offsetX + ROW_LEFT - 1, top, offsetX + ROW_RIGHT, top + ROW_HEIGHT - 1, color);
-            graphics.fill(offsetX + ROW_LEFT - 1, top, offsetX + ROW_RIGHT, top + 1, 0xFFE8E8F0);
-        }
+        TianshuPatternConfigLayout.drawBackground(graphics, offsetX, offsetY);
     }
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double deltaX, double deltaY) {
-        if (deltaY != 0 && rows.size() > VISIBLE_ROWS) {
+        if (deltaY != 0 && rows.size() > TianshuPatternConfigLayout.VISIBLE_ROWS) {
             scrollbar.setCurrentScroll(scrollbar.getCurrentScroll() + (deltaY > 0 ? -1 : 1));
             return true;
         }

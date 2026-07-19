@@ -13,6 +13,7 @@ import appeng.client.gui.widgets.SettingToggleButton;
 import appeng.client.gui.widgets.TabButton;
 import appeng.core.AEConfig;
 import appeng.menu.SlotSemantics;
+import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.config.AE2LTClientConfig;
 import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuUploadTargetData;
 import com.moakiee.ae2lt.menu.TianshuPatternEncodingTermMenu;
@@ -29,6 +30,7 @@ import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.client.sounds.SoundManager;
 import net.minecraft.locale.Language;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.item.ItemStack;
 import org.lwjgl.glfw.GLFW;
@@ -37,13 +39,26 @@ import org.lwjgl.glfw.GLFW;
 public final class TianshuUploadTargetScreen<M extends TianshuPatternEncodingTermMenu>
         extends AESubScreen<M, TianshuPatternEncodingTermScreen<M>> {
     private static final String STYLE = "/screens/tianshu_upload_targets.json";
-    private static final int GUI_WIDTH = 195;
-    private static final int GUI_HEADER_HEIGHT = 34;
-    private static final int GUI_FOOTER_HEIGHT = 8;
+    private static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath(
+            AE2LightningTech.MODID, "textures/gui/tianshu_upload_targets.png");
+    private static final int TEXTURE_SIZE = 256;
+    private static final int GUI_WIDTH = 190;
+    private static final int GUI_HEADER_HEIGHT = 33;
+    private static final int GUI_FOOTER_HEIGHT = 18;
     private static final int GUI_VERTICAL_PADDING = 54;
-    private static final int ROW_HEIGHT = 18;
+    private static final int ROW_HEIGHT = 17;
     private static final int ROW_LEFT = 7;
     private static final int ROW_RIGHT = 169;
+    private static final int ROW_TEXTURE_X = 9;
+    private static final int ROW_TEXTURE_WIDTH = 158;
+    private static final int ROW_NORMAL_TEXTURE_Y = 222;
+    private static final int ROW_SELECTED_TEXTURE_Y = 239;
+    private static final int ROW_LABEL_WIDTH = 136;
+    private static final int BACKGROUND_TOP_HEIGHT = 35;
+    private static final int BACKGROUND_STRETCH_TEXTURE_Y = 35;
+    private static final int BACKGROUND_BOTTOM_BORDER_TEXTURE_Y = 202;
+    private static final int BACKGROUND_FOOTER_TEXTURE_Y = 203;
+    private static final int HIDDEN_SLOT_POS = -10_000;
 
     private final AETextField sourceField;
     private final AETextField aliasField;
@@ -76,7 +91,7 @@ public final class TianshuUploadTargetScreen<M extends TianshuPatternEncodingTer
         addToLeftToolbar(new AliasActionButton(Icon.CLEAR,
                 Component.translatable("ae2lt.tianshu.upload.alias.remove"), this::removeMappings));
 
-        scrollbar = widgets.addScrollBar("scrollbar", Scrollbar.BIG);
+        scrollbar = widgets.addScrollBar("scrollbar", Scrollbar.SMALL);
         sourceField = widgets.addTextField("field_search");
         sourceField.setMaxLength(256);
         sourceField.setPlaceholder(Component.translatable("ae2lt.tianshu.upload.keyword"));
@@ -130,9 +145,23 @@ public final class TianshuUploadTargetScreen<M extends TianshuPatternEncodingTer
         visibleRows = Math.max(6, config.getTerminalStyle().getRows(
                 (height - GUI_HEADER_HEIGHT - GUI_FOOTER_HEIGHT - GUI_VERTICAL_PADDING) / ROW_HEIGHT));
         imageHeight = GUI_HEADER_HEIGHT + GUI_FOOTER_HEIGHT + visibleRows * ROW_HEIGHT;
-        scrollbar.setHeight(visibleRows * ROW_HEIGHT);
+        scrollbar.setHeight(visibleRows * ROW_HEIGHT - 1);
         super.init();
+        hideAllMenuSlots();
         queryRefresh = true;
+    }
+
+    @Override
+    protected void updateBeforeRender() {
+        super.updateBeforeRender();
+        hideAllMenuSlots();
+    }
+
+    private void hideAllMenuSlots() {
+        for (var slot : menu.slots) {
+            slot.x = HIDDEN_SLOT_POS;
+            slot.y = HIDDEN_SLOT_POS;
+        }
     }
 
     @Override
@@ -229,7 +258,7 @@ public final class TianshuUploadTargetScreen<M extends TianshuPatternEncodingTer
             String suffix = " [\u2248" + target.availableSlots() + "]";
             var label = target.group().name().copy().append(suffix);
             graphics.drawString(font, Language.getInstance().getVisualOrder(
-                            font.substrByWidth(label, 145)), ROW_LEFT + 22,
+                            font.substrByWidth(label, ROW_LABEL_WIDTH)), ROW_LEFT + 22,
                     y + 4, target.availableSlots() > 0 ? textColor : 0xFFAA3333, false);
         }
 
@@ -256,21 +285,35 @@ public final class TianshuUploadTargetScreen<M extends TianshuPatternEncodingTer
     @Override
     public void drawBG(GuiGraphics graphics, int offsetX, int offsetY,
                        int mouseX, int mouseY, float partialTicks) {
-        int bottom = offsetY + imageHeight;
-        graphics.fill(offsetX, offsetY, offsetX + GUI_WIDTH, bottom, 0xFFC6C6D2);
-        graphics.fill(offsetX, offsetY, offsetX + GUI_WIDTH, offsetY + 1, 0xFFFFFFFF);
-        graphics.fill(offsetX, offsetY, offsetX + 1, bottom, 0xFFFFFFFF);
-        graphics.fill(offsetX + GUI_WIDTH - 1, offsetY + 1, offsetX + GUI_WIDTH, bottom, 0xFF555563);
-        graphics.fill(offsetX + 1, bottom - 1, offsetX + GUI_WIDTH, bottom, 0xFF555563);
+        int rowAreaHeight = visibleRows * ROW_HEIGHT;
+        graphics.blit(TEXTURE, offsetX, offsetY,
+                0, 0, GUI_WIDTH, BACKGROUND_TOP_HEIGHT, TEXTURE_SIZE, TEXTURE_SIZE);
+
+        int stretchHeight = Math.max(0, rowAreaHeight - 3);
+        if (stretchHeight > 0) {
+            graphics.blit(TEXTURE, offsetX, offsetY + BACKGROUND_TOP_HEIGHT,
+                    GUI_WIDTH, stretchHeight,
+                    0, BACKGROUND_STRETCH_TEXTURE_Y, GUI_WIDTH, 1,
+                    TEXTURE_SIZE, TEXTURE_SIZE);
+        }
+
+        int bottomBorderY = offsetY + BACKGROUND_TOP_HEIGHT + stretchHeight;
+        graphics.blit(TEXTURE, offsetX, bottomBorderY,
+                0, BACKGROUND_BOTTOM_BORDER_TEXTURE_Y, GUI_WIDTH, 1,
+                TEXTURE_SIZE, TEXTURE_SIZE);
+        graphics.blit(TEXTURE, offsetX, bottomBorderY + 1,
+                0, BACKGROUND_FOOTER_TEXTURE_Y, GUI_WIDTH, GUI_FOOTER_HEIGHT,
+                TEXTURE_SIZE, TEXTURE_SIZE);
 
         int start = scrollbar.getCurrentScroll();
         for (int row = 0; row < visibleRows; row++) {
             int index = start + row;
             int top = offsetY + GUI_HEADER_HEIGHT + row * ROW_HEIGHT;
-            int color = index == focusedIndex ? 0xFF78B9E6
-                    : (row & 1) == 0 ? 0xFFB4B5C6 : 0xFF989AAC;
-            graphics.fill(offsetX + ROW_LEFT, top, offsetX + ROW_RIGHT, top + ROW_HEIGHT - 1, color);
-            graphics.fill(offsetX + ROW_LEFT, top, offsetX + ROW_RIGHT, top + 1, 0xFFE8E8F0);
+            graphics.blit(TEXTURE, offsetX + ROW_TEXTURE_X, top,
+                    ROW_TEXTURE_X,
+                    index == focusedIndex ? ROW_SELECTED_TEXTURE_Y : ROW_NORMAL_TEXTURE_Y,
+                    ROW_TEXTURE_WIDTH, ROW_HEIGHT,
+                    TEXTURE_SIZE, TEXTURE_SIZE);
         }
     }
 
