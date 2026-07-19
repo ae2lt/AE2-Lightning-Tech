@@ -35,7 +35,7 @@ Unlike a conventional crafting CPU, the Tianshu Supercomputer can retain and exe
 * Each new job reserves its plan's byte requirement from the total crafting storage
 * Additional jobs can use the same supercomputer while sufficient unreserved storage remains
 * Completing or cancelling a job releases its reservation
-* All active jobs share the core configuration's successful-dispatch budget; each job receives its own full per-tick copy budget
+* All active jobs share the core configuration's successful-dispatch budget; each job receives its own full per-tick copy budget, but only batch-compatible patterns and targets can use more than one copy per dispatch
 
 If the crafting confirmation screen reports insufficient CPU storage, wait for active jobs to release capacity, add Storage Units, or install a higher-tier main unit.
 
@@ -46,7 +46,7 @@ Use the <ItemLink id="ae2lt:tianshu_supercomputer_controller" /> to view:
 * Formation state and the first detected problem when unformed
 * Current main-unit tier
 * Storage, Parallel, and Amplifier Unit counts
-* Total crafting storage, successful dispatches per tick, maximum copies per tick, and dispatch-cap status
+* Total crafting storage, successful dispatches per tick, maximum copies per tick, and dispatch-cap status; the AE2 CPU selection list reports parallelism from successful dispatches only
 * Controls for shell auto-build and Fast Planning
 
 Replacing a core-chamber unit temporarily unforms the structure. If the port still retains active jobs, the new profile takes effect after all existing jobs end; restoring the structure and network allows retained jobs to continue.
@@ -67,4 +67,5 @@ Fast-planning eligibility is aggregated across the entire ME network. If another
 * **The CPU is absent from crafting confirmation:** Check the port's cable connection, ME power, and structure formation state
 * **The Port stays offline after a cross-chunk load:** Ensure the chunk loader covers the entire Tianshu structure and allow time for the automatic rescan
 * **The CPU rejects a new job:** Check remaining crafting storage; active jobs may already reserve the total capacity
-* **High dispatch or copy budgets do not improve throughput:** Check Pattern Provider and processing-machine counts, machine speed, material supply, and network transfer capacity
+* **A high dispatch budget does not improve throughput:** Check Pattern Provider and processing-machine counts, machine speed, material supply, and network transfer capacity
+* **A high copy budget still sends ordinary processing patterns one at a time:** General AE2 processing machines use the native single-copy path; batch copies require compatible patterns, providers, and targets

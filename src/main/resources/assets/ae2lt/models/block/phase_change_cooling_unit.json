@@ -1,1 +1,7 @@
-{"parent":"minecraft:block/cube_all","textures":{"all":"ae2lt:block/tianshu/phase_change_cooling_unit"}}
+{
+  "parent": "minecraft:block/cube_all",
+  "textures": {
+    "all": "ae2lt:block/tianshu/phase_change_cooling_unit",
+    "particle": "ae2lt:block/tianshu/phase_change_cooling_unit"
+  }
+}

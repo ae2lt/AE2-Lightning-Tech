@@ -1,0 +1,10 @@
+{
+  "loader": "ae2lt:connected_texture",
+  "render_type": "minecraft:solid",
+  "connection": "ae2lt:tianshu_formed_same_block",
+  "textures": {
+    "base": "ae2lt:block/tianshu/phase_change_cooling_unit_formed",
+    "ctm": "ae2lt:block/tianshu/phase_change_cooling_unit_ctm",
+    "particle": "ae2lt:block/tianshu/phase_change_cooling_unit_formed"
+  }
+}

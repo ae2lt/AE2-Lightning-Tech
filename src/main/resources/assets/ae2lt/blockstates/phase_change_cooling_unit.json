@@ -1,1 +1,10 @@
-{"variants":{"formed=false":{"model":"ae2lt:block/phase_change_cooling_unit"},"formed=true":{"model":"ae2lt:block/phase_change_cooling_unit"}}}
+{
+  "variants": {
+    "formed=false": {
+      "model": "ae2lt:block/phase_change_cooling_unit"
+    },
+    "formed=true": {
+      "model": "ae2lt:block/phase_change_cooling_unit_formed"
+    }
+  }
+}
