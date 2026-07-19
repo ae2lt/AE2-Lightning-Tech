@@ -64,12 +64,6 @@ public final class AdvancedAECompat {
         return encodeWithDirections(source, level, List.of());
     }
 
-    /** Icon stack for UI entry points; empty when AdvancedAE is absent. */
-    public static ItemStack advancedPatternIcon() {
-        if (!isLoaded()) return ItemStack.EMPTY;
-        return net.pedroksl.advanced_ae.common.definitions.AAEItems.ADV_PROCESSING_PATTERN.stack();
-    }
-
     /**
      * Converts a processing pattern while assigning a side to each sparse input.
      * Values use {@code 0 = any side} and {@code Direction.ordinal() + 1}.

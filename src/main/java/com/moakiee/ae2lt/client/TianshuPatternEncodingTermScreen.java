@@ -37,7 +37,10 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import net.minecraft.ChatFormatting;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
@@ -58,8 +61,8 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
     private final DerivedModePanel derivedPanel = new DerivedModePanel();
     private final List<AE2Button> processingModeButtons;
     private final List<AE2Button> closedLoopModeButtons;
-    private final TabButton advancedEncoding;
-    private final TabButton overloadEncoding;
+    private final AE2Button advancedEncoding;
+    private final AE2Button overloadEncoding;
     private final AE2Button upload;
     private final AE2Button tianshuTarget;
     private final AE2Button globalReserve;
@@ -101,24 +104,20 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
         widgets.add("derivedModePanel", derivedPanel);
 
         processingModeButtons = List.of(
-                widgets.addButton("processingMultiply2", Component.literal("×2"),
+                addCompactButton("processingMultiply2", Component.literal("×2"),
                         () -> menu.multiplyProcessing(hasShiftDown() ? 4 : 2)),
-                widgets.addButton("processingMultiply5", Component.literal("×5"),
+                addCompactButton("processingMultiply5", Component.literal("×5"),
                         () -> menu.multiplyProcessing(hasShiftDown() ? 10 : 5)),
-                widgets.addButton("processingDivide2", Component.literal("÷2"),
+                addCompactButton("processingDivide2", Component.literal("÷2"),
                         () -> menu.multiplyProcessing(hasShiftDown() ? -4 : -2)),
-                widgets.addButton("processingDivide5", Component.literal("÷5"),
+                addCompactButton("processingDivide5", Component.literal("÷5"),
                         () -> menu.multiplyProcessing(hasShiftDown() ? -10 : -5)));
-        advancedEncoding = new TabButton(AdvancedAECompat.advancedPatternIcon(),
-                Component.translatable("ae2lt.tianshu.terminal.encoding.advanced"),
-                button -> switchToScreen(new TianshuAdvancedPatternConfigScreen<>(this)));
-        advancedEncoding.setStyle(Style.HORIZONTAL);
-        widgets.add("advancedEncodingButton", advancedEncoding);
-        overloadEncoding = new TabButton(ModItems.OVERLOAD_PATTERN.get().getDefaultInstance(),
-                Component.translatable("ae2lt.tianshu.terminal.encoding.overload"),
-                button -> switchToScreen(new TianshuOverloadPatternConfigScreen<>(this)));
-        overloadEncoding.setStyle(Style.HORIZONTAL);
-        widgets.add("overloadEncodingButton", overloadEncoding);
+        advancedEncoding = addCompactButton("advancedEncodingButton",
+                Component.translatable("ae2lt.tianshu.terminal.encoding.advanced.short"),
+                () -> switchToScreen(new TianshuAdvancedPatternConfigScreen<>(this)));
+        overloadEncoding = addCompactButton("overloadEncodingButton",
+                Component.translatable("ae2lt.tianshu.terminal.encoding.overload.short"),
+                () -> switchToScreen(new TianshuOverloadPatternConfigScreen<>(this)));
         var previousCandidate = widgets.addButton("closedLoopPrevious", Component.literal("<"),
                 () -> menu.selectClosedLoopCandidate(-1));
         var nextCandidate = widgets.addButton("closedLoopNext", Component.literal(">"),
@@ -153,6 +152,12 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
         globalReserve = widgets.addButton("globalReserve",
                 Component.translatable("ae2lt.tianshu.reserve.button"),
                 () -> switchToScreen(new TianshuGlobalReserveScreen<>(this)));
+    }
+
+    private AE2Button addCompactButton(String widgetId, Component label, Runnable onPress) {
+        var button = new CompactAE2Button(label, ignored -> onPress.run());
+        widgets.add(widgetId, button);
+        return button;
     }
 
     private void addExtraTab(
@@ -220,14 +225,16 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
         globalReserve.active = menu.maintenanceAvailable && !menu.isTianshuSelectionPending();
     }
 
-    private void updateEncodingButton(TabButton button, ProcessingPatternEncodingType type,
+    private void updateEncodingButton(AE2Button button, ProcessingPatternEncodingType type,
                                       boolean visible, boolean enabled, String key) {
         button.visible = visible;
         button.active = enabled;
         boolean armed = menu.processingEncodingType == type;
-        button.setSelected(armed);
         button.setMessage(Component.translatable(
-                "ae2lt.tianshu.terminal.encoding." + key + (armed ? ".armed" : "")));
+                "ae2lt.tianshu.terminal.encoding." + key + ".short")
+                .withStyle(armed ? ChatFormatting.GREEN : ChatFormatting.WHITE));
+        button.setTooltip(Tooltip.create(Component.translatable(
+                "ae2lt.tianshu.terminal.encoding." + key + (armed ? ".armed" : ""))));
     }
 
     private boolean hasProcessingDraftInput() {
@@ -496,6 +503,48 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
                                 : "ae2lt.tianshu.terminal.upload.failed"),
                         x + 8, y + 55, menu.uploadState == 1 ? 0x228822 : 0xAA2222, false);
             }
+        }
+    }
+
+    /** AE2 button visuals with a compact text layer for the processing-mode controls. */
+    private static final class CompactAE2Button extends AE2Button {
+        private static final float TEXT_SCALE = 0.65F;
+
+        private CompactAE2Button(Component message, Button.OnPress onPress) {
+            super(message, onPress);
+        }
+
+        @Override
+        protected void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+            var message = getMessage();
+            setMessage(Component.empty());
+            super.renderWidget(graphics, mouseX, mouseY, partialTick);
+            setMessage(message);
+
+            var font = Minecraft.getInstance().font;
+            int color;
+            int yOffset;
+            if (!active) {
+                color = 0xFF413F54;
+                yOffset = -1;
+            } else if (isHovered()) {
+                color = 0xFF517497;
+                yOffset = 0;
+            } else {
+                color = 0xFFF2F2F2;
+                yOffset = 1;
+            }
+
+            float virtualWidth = getWidth() / TEXT_SCALE;
+            float virtualHeight = getHeight() / TEXT_SCALE;
+            float textX = (virtualWidth - font.width(message)) / 2.0F;
+            float textY = (virtualHeight - 9.0F) / 2.0F + 1.0F - yOffset / TEXT_SCALE;
+            var pose = graphics.pose();
+            pose.pushPose();
+            pose.translate(getX(), getY(), 10.0F);
+            pose.scale(TEXT_SCALE, TEXT_SCALE, 1.0F);
+            graphics.drawString(font, message, Math.round(textX), Math.round(textY), color, false);
+            pose.popPose();
         }
     }
 
