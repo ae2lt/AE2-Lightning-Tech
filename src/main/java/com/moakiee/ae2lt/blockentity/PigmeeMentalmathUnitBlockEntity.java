@@ -36,7 +36,9 @@ public final class PigmeeMentalmathUnitBlockEntity extends CraftingBlockEntity {
     private final TimeWheelCraftingCpuPool legacyCpuPool = new TimeWheelCraftingCpuPool(
             legacyMigrationHost,
             com.moakiee.ae2lt.logic.craft.PigmeeCraftingUnitType.STORAGE_BYTES,
-            1);
+            1,
+            1L,
+            false);
     private boolean legacyCpuMigrationPending;
     private boolean legacyCpuMigrationScheduled;
 

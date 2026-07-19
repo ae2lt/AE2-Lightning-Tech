@@ -32,7 +32,7 @@ class PigmeeLegacyCpuMigrationTest {
     @Test
     void loadingWithoutLegacyTagClearsPreviouslyDecodedPoolState() {
         var host = new FakeHost();
-        var pool = new TimeWheelCraftingCpuPool(host, 256L, 1);
+        var pool = new TimeWheelCraftingCpuPool(host, 256L, 1, 1L, false);
         host.pool = pool;
 
         var ownerTag = new CompoundTag();

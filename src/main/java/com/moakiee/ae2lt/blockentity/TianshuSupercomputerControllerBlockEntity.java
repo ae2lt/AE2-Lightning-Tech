@@ -91,7 +91,8 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
     private int memberCount;
     private CpuInternalCoreProfile coreProfile = CpuInternalCoreProfile.empty();
     private TianshuFunctionProfile functionProfile = TianshuFunctionProfile.empty();
-    private final TimeWheelCraftingCpuPool cpuPool = new TimeWheelCraftingCpuPool(this);
+    private final TimeWheelCraftingCpuPool cpuPool = new TimeWheelCraftingCpuPool(
+            this, 0L, 0, 1L, false);
     private final ClosedLoopPatternRepository closedLoopPatterns =
             new ClosedLoopPatternRepository(() -> functionProfile.closedLoopPatternCapacity());
     private final TianshuInventoryMaintenanceService maintenance =
