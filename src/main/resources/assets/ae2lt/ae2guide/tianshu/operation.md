@@ -35,7 +35,7 @@ Unlike a conventional crafting CPU, the Tianshu Supercomputer can retain and exe
 * Each new job reserves its plan's byte requirement from the total crafting storage
 * Additional jobs can use the same supercomputer while sufficient unreserved storage remains
 * Completing or cancelling a job releases its reservation
-* Every active job can use the parallelism shown for the current core configuration
+* All active jobs share the core configuration's successful-dispatch budget; each job receives its own full per-tick copy budget
 
 If the crafting confirmation screen reports insufficient CPU storage, wait for active jobs to release capacity, add Storage Units, or install a higher-tier main unit.
 
@@ -45,8 +45,8 @@ Use the <ItemLink id="ae2lt:tianshu_supercomputer_controller" /> to view:
 
 * Formation state and the first detected problem when unformed
 * Current main-unit tier
-* Storage and Parallel Unit counts
-* Total crafting storage, parallelism, and cap status
+* Storage, Parallel, and Amplifier Unit counts
+* Total crafting storage, successful dispatches per tick, maximum copies per tick, and dispatch-cap status
 * Controls for shell auto-build and Fast Planning
 
 Replacing a core-chamber unit temporarily unforms the structure. If the port still retains active jobs, the new profile takes effect after all existing jobs end; restoring the structure and network allows retained jobs to continue.
@@ -61,10 +61,10 @@ Fast-planning eligibility is aggregated across the entire ME network. If another
 
 ## Troubleshooting
 
-* **The structure will not form:** Check every fixed casing, glass, and cooling position; require exactly one port, one centered main unit, 26 valid peripheral units, and at least one Storage and one Parallel Unit
+* **The structure will not form:** Check every fixed casing, glass, and cooling position; require exactly one port, one centered main unit, and 26 peripherals valid for that tier. Finite tiers require a Parallel Unit; Multidimensional rejects Storage, Parallel, and Amplifier Units
 * **All visible structure blocks are present:** Clear the required-air positions omitted from the displayed structure; cables, lights, and decorations are not permitted there
 * **Auto-build does not start:** Clear the coordinates reported by the controller and ensure all materials are in the player inventory
 * **The CPU is absent from crafting confirmation:** Check the port's cable connection, ME power, and structure formation state
 * **The Port stays offline after a cross-chunk load:** Ensure the chunk loader covers the entire Tianshu structure and allow time for the automatic rescan
 * **The CPU rejects a new job:** Check remaining crafting storage; active jobs may already reserve the total capacity
-* **High parallelism does not improve throughput:** Check Pattern Provider and processing-machine counts, machine speed, material supply, and network transfer capacity
+* **High dispatch or copy budgets do not improve throughput:** Check Pattern Provider and processing-machine counts, machine speed, material supply, and network transfer capacity

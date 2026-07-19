@@ -13,6 +13,7 @@ item_ids:
   - ae2lt:blank_supercomputing_unit
   - ae2lt:storage_supercomputing_unit
   - ae2lt:parallel_supercomputing_unit
+  - ae2lt:amplifier_supercomputing_unit
   - ae2lt:closed_loop_pattern_storage
   - ae2lt:closed_loop_seed_storage
 ---
@@ -48,13 +49,14 @@ item_ids:
 | 核心舱单元 | 数量 | 说明 |
 |------------|-----:|------|
 | 任意一种主超算单元 | 1 | 只能放在核心舱正中心 |
-| <ItemLink id="ae2lt:blank_supercomputing_unit" /> | 0–24 | 填充外围槽位，但不提供任何属性 |
-| <ItemLink id="ae2lt:storage_supercomputing_unit" /> | 1–25 | 至少需要 1 个以提供合成容量 |
-| <ItemLink id="ae2lt:parallel_supercomputing_unit" /> | 1–25 | 至少需要 1 个以提供并行数 |
-| <ItemLink id="ae2lt:closed_loop_pattern_storage" /> | 0–24 | 占用外围槽位并保存闭环样板 |
-| <ItemLink id="ae2lt:closed_loop_seed_storage" /> | 0–24 | 占用外围槽位并保存闭环种子 |
+| <ItemLink id="ae2lt:blank_supercomputing_unit" /> | 0–26 | 填充外围槽位，但不提供任何属性 |
+| <ItemLink id="ae2lt:storage_supercomputing_unit" /> | 0–25 | 可选；增加有限等级的合成容量 |
+| <ItemLink id="ae2lt:parallel_supercomputing_unit" /> | 0–26 | 基础、量子和过载核心至少需要 1 个；多维核心不允许使用 |
+| <ItemLink id="ae2lt:amplifier_supercomputing_unit" /> | 0–15 | 仅量子和过载核心允许使用 |
+| <ItemLink id="ae2lt:closed_loop_pattern_storage" /> | 0–26 | 占用外围槽位并保存闭环样板 |
+| <ItemLink id="ae2lt:closed_loop_seed_storage" /> | 0–26 | 占用外围槽位并保存闭环种子 |
 
-以上五类外围单元共同填满中心以外的 26 格。空白单元和两类闭环存储设备不计入存储、并行超算单元数量，因此不能完全替代这两类必需单元。
+以上六类外围单元共同填满中心以外的 26 格。基础核心不允许增幅单元；量子和过载核心最多允许 15 个增幅单元，并且三种有限核心都至少需要 1 个并行单元。多维核心不允许存储、并行或增幅单元，只能使用空白单元和两类闭环存储填满外围。存储单元不再是任何等级的成形条件。
 
 因此，从空场地开始需要 **1 个控制器、215 个由按钮放置的非核心方块，以及 27 个核心舱单元**，合计 243 个结构成员。
 
@@ -75,8 +77,10 @@ item_ids:
 
 * 两个端口候选位中必须**恰好一个**放置天枢超算端口，另一个必须使用相变冷却单元
 * 核心舱中心必须放置一种主超算单元；主超算单元不能出现在其余 26 格
-* 其余 26 个核心位置必须安装空白、存储或并行超算单元、闭环样板仓或闭环种子存储器
-* 存储与并行超算单元仍均至少需要一个；空白超算单元只用于填充不需要属性的槽位
+* 其余 26 个核心位置必须安装当前主核心支持的空白、存储、并行、增幅或闭环存储单元
+* 基础、量子和过载核心至少需要一个并行单元；存储单元可选
+* 基础核心不支持增幅；量子和过载最多使用 15 个增幅单元
+* 多维核心只能搭配空白单元、闭环样板仓和闭环种子存储器
 * 展示结构中省略的 100 个位置属于必要空气区域，不能放置装饰方块、线缆或其他设备
 
 最后一个必要方块放置后，结构会自动重新扫描并成形，无需再次执行自动搭建。

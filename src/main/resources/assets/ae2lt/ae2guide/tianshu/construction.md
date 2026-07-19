@@ -13,6 +13,7 @@ item_ids:
   - ae2lt:blank_supercomputing_unit
   - ae2lt:storage_supercomputing_unit
   - ae2lt:parallel_supercomputing_unit
+  - ae2lt:amplifier_supercomputing_unit
   - ae2lt:closed_loop_pattern_storage
   - ae2lt:closed_loop_seed_storage
 ---
@@ -48,13 +49,14 @@ The controller is already present and is not consumed by the button. Auto-build 
 | Core-chamber Unit | Count | Requirement |
 |-------------------|------:|-------------|
 | Any main Supercomputing Unit | 1 | Must occupy the exact chamber center |
-| <ItemLink id="ae2lt:blank_supercomputing_unit" /> | 0–24 | Fills a peripheral cell without providing an attribute |
-| <ItemLink id="ae2lt:storage_supercomputing_unit" /> | 1–25 | At least one is required for crafting storage |
-| <ItemLink id="ae2lt:parallel_supercomputing_unit" /> | 1–25 | At least one is required for parallelism |
-| <ItemLink id="ae2lt:closed_loop_pattern_storage" /> | 0–24 | Uses a peripheral cell to store closed-loop patterns |
-| <ItemLink id="ae2lt:closed_loop_seed_storage" /> | 0–24 | Uses a peripheral cell to store closed-loop seeds |
+| <ItemLink id="ae2lt:blank_supercomputing_unit" /> | 0–26 | Fills a peripheral cell without providing an attribute |
+| <ItemLink id="ae2lt:storage_supercomputing_unit" /> | 0–25 | Optional; increases crafting storage for finite tiers |
+| <ItemLink id="ae2lt:parallel_supercomputing_unit" /> | 0–26 | Baseline, Quantum, and Overload require at least one; Multidimensional rejects them |
+| <ItemLink id="ae2lt:amplifier_supercomputing_unit" /> | 0–15 | Accepted only by Quantum and Overload |
+| <ItemLink id="ae2lt:closed_loop_pattern_storage" /> | 0–26 | Uses a peripheral cell to store closed-loop patterns |
+| <ItemLink id="ae2lt:closed_loop_seed_storage" /> | 0–26 | Uses a peripheral cell to store closed-loop seeds |
 
-The five peripheral unit types together occupy all 26 non-center cells. Blank and closed-loop storage units do not count as Storage or Parallel Units, so neither mandatory type can be replaced completely.
+These six peripheral unit types together occupy all 26 non-center cells. Baseline rejects Amplifier Units; Quantum and Overload accept at most 15 and all three finite tiers require at least one Parallel Unit. Multidimensional rejects Storage, Parallel, and Amplifier Units, so fill its periphery with Blank Units and the two closed-loop storage types. Storage Units are no longer a formation requirement for any tier.
 
 Starting from an empty site therefore requires **one controller, 215 non-core blocks placed by the button, and 27 core-chamber units**, for 243 structure members in total.
 
@@ -75,8 +77,10 @@ If any casing, cooling, glass, or port position handled by auto-build contains a
 
 * Exactly **one** of the two port candidates must contain a Tianshu Port; the other requires a Phase-Change Cooling Unit
 * The chamber center requires one main unit, and main units are invalid in the other 26 cells
-* All 26 peripheral cells must contain Blank, Storage, or Parallel Supercomputing Units, Closed-Loop Pattern Storage, or Closed-Loop Seed Storage
-* At least one Storage Supercomputing Unit and one Parallel Supercomputing Unit are still required; Blank Units only fill otherwise unused cells
+* All 26 peripheral cells must contain Blank, Storage, Parallel, Amplifier, or closed-loop storage units supported by the selected main core
+* Baseline, Quantum, and Overload require at least one Parallel Unit; Storage Units are optional
+* Baseline rejects Amplifier Units; Quantum and Overload accept at most 15
+* Multidimensional accepts only Blank Units, Closed-Loop Pattern Storage, and Closed-Loop Seed Storage
 * The 100 omitted positions in the displayed structure are required air; decorations, cables, and other devices cannot occupy them
 
 The structure rescans and forms automatically after the final required block is placed.

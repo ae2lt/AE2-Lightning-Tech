@@ -156,9 +156,11 @@ public final class MultiblockStructureRecipes {
         Block blank = ModBlocks.BLANK_SUPERCOMPUTING_UNIT.get();
         Block storage = ModBlocks.STORAGE_SUPERCOMPUTING_UNIT.get();
         Block parallel = ModBlocks.PARALLEL_SUPERCOMPUTING_UNIT.get();
+        Block amplifier = ModBlocks.AMPLIFIER_SUPERCOMPUTING_UNIT.get();
         Block patternStorage = ModBlocks.CLOSED_LOOP_PATTERN_STORAGE.get();
         Block seedStorage = ModBlocks.CLOSED_LOOP_SEED_STORAGE.get();
-        List<Block> peripheralUnits = List.of(blank, storage, parallel, patternStorage, seedStorage);
+        List<Block> peripheralUnits = List.of(
+                blank, storage, parallel, amplifier, patternStorage, seedStorage);
         List<Block> mainCores = List.of(
                 ModBlocks.BASELINE_SUPERCOMPUTING_UNIT.get(),
                 ModBlocks.QUANTUM_SUPERCOMPUTING_UNIT.get(),
@@ -244,6 +246,7 @@ public final class MultiblockStructureRecipes {
                 material(blank, peripheralRule),
                 material(storage, peripheralRule),
                 material(parallel, peripheralRule),
+                material(amplifier, peripheralRule),
                 material(patternStorage, peripheralRule),
                 material(seedStorage, peripheralRule));
 

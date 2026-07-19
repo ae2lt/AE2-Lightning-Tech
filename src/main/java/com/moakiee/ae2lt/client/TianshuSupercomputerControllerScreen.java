@@ -16,7 +16,7 @@ public class TianshuSupercomputerControllerScreen
     public TianshuSupercomputerControllerScreen(
             TianshuSupercomputerControllerMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title);
-        imageWidth = 220;
+        imageWidth = 280;
         imageHeight = 172;
         inventoryLabelY = 10_000;
     }
@@ -54,12 +54,15 @@ public class TianshuSupercomputerControllerScreen
         }
         graphics.drawString(font, Component.translatable("ae2lt.tianshu.gui.tier", tierName()), 14, 72, 0xE8F4FF, false);
         graphics.drawString(font, Component.translatable("ae2lt.tianshu.gui.cores",
-                menu.getCapacityCores(), menu.getParallelCores()), 14, 88, 0xB7C8D8, false);
+                menu.getCapacityCores(), menu.getParallelCores(), menu.getAmplifierCores()), 14, 86, 0xB7C8D8, false);
         graphics.drawString(font, Component.translatable("ae2lt.tianshu.gui.storage", formatStorage(menu.getStorageBytes())),
-                14, 104, 0xB7C8D8, false);
-        graphics.drawString(font, Component.translatable("ae2lt.tianshu.gui.parallel",
-                menu.getParallelism(), menu.isCapped() ? Component.translatable("ae2lt.tianshu.gui.capped") : Component.empty()),
-                14, 120, menu.isCapped() ? 0xF2D37A : 0xB7C8D8, false);
+                14, 100, 0xB7C8D8, false);
+        graphics.drawString(font, Component.translatable("ae2lt.tianshu.gui.dispatches",
+                menu.getSuccessfulDispatchesPerTick(),
+                menu.isCapped() ? Component.translatable("ae2lt.tianshu.gui.capped") : Component.empty()),
+                14, 114, menu.isCapped() ? 0xF2D37A : 0xB7C8D8, false);
+        graphics.drawString(font, Component.translatable("ae2lt.tianshu.gui.copies",
+                formatBudget(menu.getMaxCopiesPerTick())), 14, 128, 0xB7C8D8, false);
     }
 
     private Component issueText() {
@@ -77,6 +80,10 @@ public class TianshuSupercomputerControllerScreen
         if (bytes == Long.MAX_VALUE) return "∞";
         if (bytes >= 1024L * 1024L * 1024L) return String.format(Locale.ROOT, "%.2f GiB", bytes / (1024.0 * 1024 * 1024));
         return String.format(Locale.ROOT, "%.0f MiB", bytes / (1024.0 * 1024));
+    }
+
+    private static String formatBudget(long value) {
+        return value == Long.MAX_VALUE ? "∞" : String.format(Locale.ROOT, "%,d", value);
     }
 
     @Override
