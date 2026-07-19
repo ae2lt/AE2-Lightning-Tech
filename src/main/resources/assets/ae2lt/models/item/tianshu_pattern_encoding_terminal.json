@@ -2,7 +2,7 @@
   "parent": "ae2:item/display_base",
   "textures": {
     "front_bright": "ae2lt:part/tianshu_pattern_encoding_terminal_bright",
-    "front_medium": "ae2lt:part/tianshu_pattern_encoding_terminal_medium",
-    "front_dark": "ae2lt:part/tianshu_pattern_encoding_terminal_dark"
+    "front_medium": "ae2lt:part/tianshu_pattern_encoding_terminal_dark",
+    "front_dark": "ae2lt:part/tianshu_pattern_encoding_terminal_medium"
   }
 }

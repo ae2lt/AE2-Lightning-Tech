@@ -231,6 +231,7 @@ public class AE2LightningTech {
                         output.accept(ModItems.LIGHTNING_STORAGE_COMPONENT_IV);
                         output.accept(ModItems.LIGHTNING_STORAGE_COMPONENT_V);
                         output.accept(ModItems.BULK_LIGHTNING_STORAGE_COMPONENT);
+                        output.accept(ModItems.BULK_LIGHTNING_CELL_COMPONENT);
                         output.accept(ModItems.LIGHTNING_CELL_COMPONENT_I);
                         output.accept(ModItems.LIGHTNING_CELL_COMPONENT_II);
                         output.accept(ModItems.LIGHTNING_CELL_COMPONENT_III);

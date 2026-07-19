@@ -1,5 +1,5 @@
 {
-  "parent": "minecraft:block/cube",
+  "parent": "minecraft:block/block",
   "textures": {
     "down": "ae2lt:block/pigmee_mentalmath_unit_bottom",
     "up": "ae2lt:block/pigmee_mentalmath_unit_top",
@@ -8,5 +8,38 @@
     "west": "ae2lt:block/pigmee_mentalmath_unit_side",
     "east": "ae2lt:block/pigmee_mentalmath_unit_side",
     "particle": "ae2lt:block/pigmee_mentalmath_unit_side"
-  }
+  },
+  "elements": [
+    {
+      "from": [0, 0, 0],
+      "to": [16, 16, 16],
+      "faces": {
+        "down": {
+          "texture": "#down",
+          "cullface": "down"
+        },
+        "up": {
+          "texture": "#up",
+          "cullface": "up"
+        },
+        "north": {
+          "texture": "#north",
+          "cullface": "north"
+        },
+        "south": {
+          "texture": "#south",
+          "cullface": "south"
+        },
+        "west": {
+          "texture": "#west",
+          "cullface": "west"
+        },
+        "east": {
+          "uv": [16, 0, 0, 16],
+          "texture": "#east",
+          "cullface": "east"
+        }
+      }
+    }
+  ]
 }

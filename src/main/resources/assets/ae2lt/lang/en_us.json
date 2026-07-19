@@ -74,6 +74,7 @@
   "item.ae2lt.lightning_storage_component_iv": "Lightning Storage Cell IV",
   "item.ae2lt.lightning_storage_component_v": "Lightning Storage Cell V",
   "item.ae2lt.bulk_lightning_storage_component": "Bulk Lightning Storage Cell",
+  "item.ae2lt.bulk_lightning_cell_component": "Bulk Lightning Storage Component",
   "tooltip.ae2lt.bulk_lightning_storage.capacity": "Capacity: Infinite",
   "tooltip.ae2lt.bulk_lightning_storage.high_voltage": "High Voltage Lightning: %s",
   "tooltip.ae2lt.bulk_lightning_storage.extreme_high_voltage": "Extreme High Voltage Lightning: %s",

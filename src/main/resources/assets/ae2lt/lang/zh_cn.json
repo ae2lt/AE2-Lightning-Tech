@@ -73,6 +73,7 @@
   "item.ae2lt.lightning_storage_component_iv": "闪电存储元件 IV",
   "item.ae2lt.lightning_storage_component_v": "闪电存储元件 V",
   "item.ae2lt.bulk_lightning_storage_component": "大宗闪电存储元件",
+  "item.ae2lt.bulk_lightning_cell_component": "大宗闪电存储组件",
   "tooltip.ae2lt.bulk_lightning_storage.capacity": "容量：无限",
   "tooltip.ae2lt.bulk_lightning_storage.high_voltage": "高压闪电：%s",
   "tooltip.ae2lt.bulk_lightning_storage.extreme_high_voltage": "极高压闪电：%s",

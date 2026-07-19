@@ -1,8 +1,8 @@
 {
   "textures": {
     "lightsBright": "ae2lt:part/tianshu_pattern_encoding_terminal_bright",
-    "lightsMedium": "ae2lt:part/tianshu_pattern_encoding_terminal_medium",
-    "lightsDark": "ae2lt:part/tianshu_pattern_encoding_terminal_dark"
+    "lightsMedium": "ae2lt:part/tianshu_pattern_encoding_terminal_dark",
+    "lightsDark": "ae2lt:part/tianshu_pattern_encoding_terminal_medium"
   },
   "elements": [
     {

@@ -13,6 +13,7 @@ import net.neoforged.neoforge.client.extensions.common.RegisterClientExtensionsE
 import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
 
 import appeng.api.client.AEKeyRendering;
+import appeng.api.util.AEColor;
 import appeng.items.storage.BasicStorageCell;
 
 import com.moakiee.ae2lt.AE2LightningTech;
@@ -74,6 +75,11 @@ public final class LightningKeyClientInit {
 
     @SubscribeEvent
     public static void registerItemColors(RegisterColorHandlersEvent.Item event) {
+        event.register(
+                (stack, tintIndex) -> FastColor.ARGB32.opaque(
+                        AEColor.TRANSPARENT.getVariantByTintIndex(tintIndex)),
+                ModItems.TIANSHU_PATTERN_ENCODING_TERMINAL.get());
+
         event.register(
                 (stack, tintIndex) -> FastColor.ARGB32.opaque(BasicStorageCell.getColor(stack, tintIndex)),
                 ModItems.LIGHTNING_STORAGE_COMPONENT_I.get(),

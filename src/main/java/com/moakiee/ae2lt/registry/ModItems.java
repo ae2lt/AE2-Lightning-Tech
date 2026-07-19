@@ -52,9 +52,11 @@ import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
 import appeng.api.client.StorageCellModels;
+import appeng.api.parts.PartModels;
 import appeng.api.util.AEColor;
 import appeng.items.parts.ColoredPartItem;
 import appeng.items.parts.PartItem;
+import appeng.items.parts.PartModelsHelper;
 
 public final class ModItems {
     public static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(AE2LightningTech.MODID);
@@ -192,6 +194,9 @@ public final class ModItems {
                     "bulk_lightning_storage_component",
                     () -> new BulkLightningStorageCellItem(new Item.Properties(), 32));
 
+    public static final DeferredItem<Item> BULK_LIGHTNING_CELL_COMPONENT =
+            ITEMS.registerSimpleItem("bulk_lightning_cell_component", new Item.Properties());
+
     public static final DeferredItem<Item> LIGHTNING_CELL_COMPONENT_I =
             ITEMS.registerSimpleItem("lightning_cell_component_i", new Item.Properties());
     public static final DeferredItem<Item> LIGHTNING_CELL_COMPONENT_II =
@@ -251,6 +256,10 @@ public final class ModItems {
             "overload_pattern_encoder",
             OverloadPatternEncoderItem::new,
             new Item.Properties());
+
+    static {
+        PartModels.registerModels(PartModelsHelper.createModels(TianshuPatternEncodingTerminalPart.class));
+    }
 
     public static final DeferredItem<PartItem<TianshuPatternEncodingTerminalPart>> TIANSHU_PATTERN_ENCODING_TERMINAL =
             ITEMS.register("tianshu_pattern_encoding_terminal",
@@ -454,6 +463,7 @@ public final class ModItems {
         registerStorageCellModel(LIGHTNING_STORAGE_COMPONENT_III);
         registerStorageCellModel(LIGHTNING_STORAGE_COMPONENT_IV);
         registerStorageCellModel(LIGHTNING_STORAGE_COMPONENT_V);
+        registerStorageCellModel(BULK_LIGHTNING_STORAGE_COMPONENT);
         registerStorageCellModel(INFINITE_STORAGE_CELL);
         registerStorageCellModel(MYSTERIOUS_CELL, "256k_item_cell");
     }
