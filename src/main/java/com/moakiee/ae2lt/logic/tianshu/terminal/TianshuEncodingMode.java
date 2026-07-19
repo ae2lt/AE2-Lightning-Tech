@@ -8,8 +8,6 @@ public enum TianshuEncodingMode {
     PROCESSING(EncodingMode.PROCESSING),
     STONECUTTING(EncodingMode.STONECUTTING),
     SMITHING_TABLE(EncodingMode.SMITHING_TABLE),
-    ADVANCED(null),
-    OVERLOAD(null),
     CLOSED_LOOP(null);
 
     @Nullable

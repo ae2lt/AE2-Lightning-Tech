@@ -13,6 +13,7 @@ import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopMemberPattern;
 import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternAuthoringService;
 import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternUploadService;
 import com.moakiee.ae2lt.logic.tianshu.terminal.ProcessingPatternMultiplier;
+import com.moakiee.ae2lt.logic.tianshu.terminal.ProcessingPatternEncodingType;
 import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuEncodingMode;
 import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuPatternTerminalHost;
 import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuTerminalTarget;
@@ -35,10 +36,9 @@ import com.moakiee.ae2lt.overload.pattern.PatternConversionService;
 import com.moakiee.ae2lt.registry.ModItems;
 import com.moakiee.ae2lt.item.ClosedLoopPatternItem;
 import com.moakiee.ae2lt.item.OverloadPatternItem;
+import com.moakiee.thunderbolt.ae2.overload.model.EncodedOverloadPattern;
+import com.moakiee.thunderbolt.ae2.overload.model.MatchMode;
 import com.moakiee.thunderbolt.ae2.overload.pattern.Ae2PlainPatternResolver;
-import com.moakiee.thunderbolt.ae2.overload.pattern.EditableOverloadPatternState;
-import com.moakiee.thunderbolt.ae2.overload.pattern.OverloadPatternEditState;
-import com.moakiee.thunderbolt.ae2.overload.pattern.ParsedPatternDefinition;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.PacketDistributor;
 import appeng.helpers.patternprovider.PatternProviderLogicHost;
@@ -70,9 +70,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     public TianshuEncodingMode tianshuMode = TianshuEncodingMode.CRAFTING;
 
     @GuiSync(111)
-    public OverloadPatternEditState overloadState = OverloadPatternEditState.empty();
-    @GuiSync(112)
-    public int advancedDirections;
+    public ProcessingPatternEncodingType processingEncodingType = ProcessingPatternEncodingType.NORMAL;
     @GuiSync(113)
     public int closedLoopCandidateCount;
     @GuiSync(114)
@@ -113,7 +111,8 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     @Nullable private TianshuTerminalTarget boundTianshuTarget;
     private final PatternConversionService conversionService = new PatternConversionService();
     private ItemStack configuredSource = ItemStack.EMPTY;
-    @Nullable private ParsedPatternDefinition overloadSource;
+    @Nullable private ProcessingPatternEncodingType.AdvancedConfig advancedEncodingConfig;
+    @Nullable private ProcessingPatternEncodingType.OverloadConfig overloadEncodingConfig;
     private List<ClosedLoopDiscoveryCandidate> closedLoopCandidates = List.of();
     private List<ClosedLoopMemberPattern> closedLoopDraftMembers = List.of();
     @Nullable private appeng.api.stacks.AEKey closedLoopMainOutput;
@@ -151,9 +150,10 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         this.tianshuMode = host.getTianshuEncodingMode();
         registerClientAction("setTianshuMode", TianshuEncodingMode.class, this::setTianshuModeServer);
         registerClientAction("multiplyProcessing", Integer.class, this::multiplyProcessingServer);
-        registerClientAction("cycleAdvancedDirection", Integer.class, this::cycleAdvancedDirectionServer);
-        registerClientAction("toggleOverloadInput", Integer.class, this::toggleOverloadInputServer);
-        registerClientAction("toggleOverloadOutput", Integer.class, this::toggleOverloadOutputServer);
+        registerClientAction("armAdvancedEncoding",
+                ProcessingPatternEncodingType.AdvancedConfig.class, this::armAdvancedEncodingServer);
+        registerClientAction("armOverloadEncoding",
+                ProcessingPatternEncodingType.OverloadConfig.class, this::armOverloadEncodingServer);
         registerClientAction("selectClosedLoopCandidate", Integer.class, this::selectClosedLoopCandidateServer);
         registerClientAction("changeClosedLoopExecutionSeedMultiplier", Integer.class,
                 this::changeClosedLoopExecutionSeedMultiplierServer);
@@ -300,7 +300,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
 
     private void setTianshuModeServer(TianshuEncodingMode mode) {
         if (!isServerSide() || mode == null) return;
-        if (mode == TianshuEncodingMode.ADVANCED && !AdvancedAECompat.isLoaded()) return;
+        if (tianshuMode != mode) resetProcessingEncodingType();
         tianshuMode = mode;
         tianshuHost.setTianshuEncodingMode(mode);
         if (mode.ae2Mode() != null && getMode() != mode.ae2Mode()) super.setMode(mode.ae2Mode());
@@ -326,43 +326,69 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
                 || factor == -2 || factor == -4 || factor == -5 || factor == -10;
     }
 
-    public void cycleAdvancedDirection(int slot) {
-        if (isClientSide()) sendClientAction("cycleAdvancedDirection", slot);
-        else cycleAdvancedDirectionServer(slot);
+    public void armAdvancedEncoding(ProcessingPatternEncodingType.AdvancedConfig config) {
+        if (config == null) return;
+        if (isClientSide()) {
+            advancedEncodingConfig = config;
+            sendClientAction("armAdvancedEncoding", config);
+        } else {
+            armAdvancedEncodingServer(config);
+        }
     }
 
-    private void cycleAdvancedDirectionServer(int slot) {
-        if (!isServerSide() || slot < 0 || slot >= 9 || tianshuMode != TianshuEncodingMode.ADVANCED) return;
-        int shift = slot * 3;
-        int next = (((advancedDirections >>> shift) & 7) + 1) % 7;
-        advancedDirections = (advancedDirections & ~(7 << shift)) | (next << shift);
+    private void armAdvancedEncodingServer(ProcessingPatternEncodingType.AdvancedConfig config) {
+        if (!isServerSide() || config == null || config.directions() == null
+                || config.directions().length > getProcessingInputSlots().length
+                || !AdvancedAECompat.isLoaded()
+                || tianshuMode != TianshuEncodingMode.PROCESSING) return;
+        advancedEncodingConfig = config;
+        overloadEncodingConfig = null;
+        processingEncodingType = ProcessingPatternEncodingType.ADVANCED;
         broadcastChanges();
     }
 
-    public int getAdvancedDirection(int slot) {
-        return slot >= 0 && slot < 9 ? (advancedDirections >>> (slot * 3)) & 7 : 0;
+    public void armOverloadEncoding(ProcessingPatternEncodingType.OverloadConfig config) {
+        if (config == null) return;
+        if (isClientSide()) {
+            overloadEncodingConfig = config;
+            sendClientAction("armOverloadEncoding", config);
+        } else {
+            armOverloadEncodingServer(config);
+        }
     }
 
-    public void toggleOverloadInput(int slot) {
-        if (isClientSide()) sendClientAction("toggleOverloadInput", slot);
-        else toggleOverloadInputServer(slot);
-    }
-
-    public void toggleOverloadOutput(int slot) {
-        if (isClientSide()) sendClientAction("toggleOverloadOutput", slot);
-        else toggleOverloadOutputServer(slot);
-    }
-
-    private void toggleOverloadInputServer(int slot) {
-        if (!isServerSide() || tianshuMode != TianshuEncodingMode.OVERLOAD || overloadSource == null) return;
-        overloadState = overloadState.toggleInputMode(slot);
+    private void armOverloadEncodingServer(ProcessingPatternEncodingType.OverloadConfig config) {
+        if (!isServerSide() || config == null
+                || config.inputIdOnly() == null || config.outputIdOnly() == null
+                || config.inputIdOnly().length > getProcessingInputSlots().length
+                || config.outputIdOnly().length > getProcessingOutputSlots().length
+                || tianshuMode != TianshuEncodingMode.PROCESSING) return;
+        overloadEncodingConfig = config;
+        advancedEncodingConfig = null;
+        processingEncodingType = ProcessingPatternEncodingType.OVERLOAD;
         broadcastChanges();
     }
 
-    private void toggleOverloadOutputServer(int slot) {
-        if (!isServerSide() || tianshuMode != TianshuEncodingMode.OVERLOAD || overloadSource == null) return;
-        overloadState = overloadState.toggleOutputMode(slot);
-        broadcastChanges();
+    @Nullable
+    public ProcessingPatternEncodingType.AdvancedConfig getAdvancedEncodingConfig() {
+        return advancedEncodingConfig;
+    }
+
+    @Nullable
+    public ProcessingPatternEncodingType.OverloadConfig getOverloadEncodingConfig() {
+        return overloadEncodingConfig;
+    }
+
+    private void resetProcessingEncodingType() {
+        processingEncodingType = ProcessingPatternEncodingType.NORMAL;
+        advancedEncodingConfig = null;
+        overloadEncodingConfig = null;
+    }
+
+    @Override
+    public void clear() {
+        resetProcessingEncodingType();
+        super.clear();
     }
 
     public void selectClosedLoopCandidate(int delta) {
@@ -642,12 +668,9 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         if (ItemStack.matches(configuredSource, source)) return;
         configuredSource = source.copy();
         encodedClosedLoop = source.getItem() instanceof ClosedLoopPatternItem;
-        advancedDirections = 0;
         // Preserve the result when a successful provider upload empties the source slot.
         // A newly inserted/encoded pattern starts a fresh upload state.
         if (!source.isEmpty()) uploadState = 0;
-        overloadSource = null;
-        overloadState = OverloadPatternEditState.empty();
         closedLoopCandidates = List.of();
         closedLoopDraftMembers = List.of();
         closedLoopMainOutput = null;
@@ -655,10 +678,6 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         closedLoopCandidateIndex = 0;
         closedLoopEncodeState = 0;
         if (source.isEmpty()) return;
-        var savedDirections = AdvancedAECompat.readDirections(source, getPlayer().level());
-        for (int i = 0; i < Math.min(9, savedDirections.size()); i++) {
-            advancedDirections |= (savedDirections.get(i) & 7) << (i * 3);
-        }
         if (source.getItem() instanceof ClosedLoopPatternItem closedLoopItem) {
             var payload = closedLoopItem.readPayload(source, getPlayer().level()).orElse(null);
             if (payload != null) {
@@ -679,21 +698,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
             }
             return;
         }
-        refreshOverload(source);
         refreshClosedLoops(source);
-    }
-
-    private void refreshOverload(ItemStack source) {
-        try {
-            EditableOverloadPatternState editable = conversionService.resolveEditableSource(
-                    source, new Ae2PlainPatternResolver(getPlayer().level()), registryAccess()).orElse(null);
-            if (editable == null) return;
-            overloadSource = editable.parsedPattern();
-            overloadState = conversionService.createEditState(
-                    editable.parsedPattern(), editable.encodedPattern(),
-                    source.getItem() instanceof OverloadPatternItem);
-        } catch (RuntimeException ignored) {
-        }
     }
 
     private void refreshClosedLoops(ItemStack source) {
@@ -1023,10 +1028,12 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         }
         if (tianshuMode.isAe2Mode()) {
             super.encode();
-            var encoded = tianshuHost.getLogic().getEncodedPatternInv().getStackInSlot(0);
-            if (isServerSide() && TianshuPatternUploadRouting.isValidEncodingResult(
-                    encoded, getPlayer().level())) {
-                triggeredUploadAck++;
+            if (isServerSide()) {
+                applyOneShotProcessingConversion();
+                var encoded = tianshuHost.getLogic().getEncodedPatternInv().getStackInSlot(0);
+                if (TianshuPatternUploadRouting.isValidEncodingResult(encoded, getPlayer().level())) {
+                    triggeredUploadAck++;
+                }
                 broadcastChanges();
             }
             return;
@@ -1048,26 +1055,65 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
 
     private ItemStack encodeDerivedPattern() {
         var source = tianshuHost.getLogic().getEncodedPatternInv().getStackInSlot(0);
-        if (source.isEmpty()) return ItemStack.EMPTY;
-        return switch (tianshuMode) {
-            case ADVANCED -> AdvancedAECompat.encodeWithDirections(
-                    source, getPlayer().level(), advancedDirectionList());
-            case OVERLOAD -> encodeConfiguredOverload();
-            case CLOSED_LOOP -> encodeSelectedClosedLoopCandidate();
-            default -> ItemStack.EMPTY;
+        if (source.isEmpty() || tianshuMode != TianshuEncodingMode.CLOSED_LOOP) return ItemStack.EMPTY;
+        return encodeSelectedClosedLoopCandidate();
+    }
+
+    /** Consumes the armed one-shot configuration and converts the freshly encoded pattern. */
+    private void applyOneShotProcessingConversion() {
+        if (tianshuMode != TianshuEncodingMode.PROCESSING
+                || processingEncodingType == ProcessingPatternEncodingType.NORMAL) return;
+        var type = processingEncodingType;
+        var advancedConfig = advancedEncodingConfig;
+        var overloadConfig = overloadEncodingConfig;
+        resetProcessingEncodingType();
+        var inventory = tianshuHost.getLogic().getEncodedPatternInv();
+        var source = inventory.getStackInSlot(0);
+        if (source.isEmpty()) return;
+        var converted = switch (type) {
+            case ADVANCED -> convertToAdvanced(source, advancedConfig);
+            case OVERLOAD -> convertToOverload(source, overloadConfig);
+            case NORMAL -> null;
         };
+        if (converted != null && !converted.isEmpty()) {
+            inventory.setItemDirect(0, converted);
+        }
     }
 
-    private List<Integer> advancedDirectionList() {
-        var result = new ArrayList<Integer>(9);
-        for (int i = 0; i < 9; i++) result.add(getAdvancedDirection(i));
-        return result;
+    @Nullable
+    private ItemStack convertToAdvanced(
+            ItemStack source, @Nullable ProcessingPatternEncodingType.AdvancedConfig config) {
+        if (config == null) return null;
+        int slotCount = getProcessingInputSlots().length;
+        var sides = new ArrayList<Integer>(slotCount);
+        for (int i = 0; i < slotCount; i++) sides.add(config.direction(i));
+        return AdvancedAECompat.encodeWithDirections(source, getPlayer().level(), sides);
     }
 
-    private ItemStack encodeConfiguredOverload() {
-        if (overloadSource == null || !overloadState.canEncode()) return ItemStack.EMPTY;
-        return conversionService.createOverloadPatternStack(
-                (OverloadPatternItem) ModItems.OVERLOAD_PATTERN.get(), overloadSource, overloadState);
+    @Nullable
+    private ItemStack convertToOverload(
+            ItemStack source, @Nullable ProcessingPatternEncodingType.OverloadConfig config) {
+        if (config == null) return null;
+        try {
+            var editable = conversionService.resolveEditableSource(
+                    source, new Ae2PlainPatternResolver(getPlayer().level()), registryAccess())
+                    .orElse(null);
+            if (editable == null) return null;
+            var parsed = editable.parsedPattern();
+            var builder = EncodedOverloadPattern.builder();
+            for (var input : parsed.inputs()) {
+                builder.input(input.slotIndex(), config.isInputIdOnly(input.slotIndex())
+                        ? MatchMode.ID_ONLY : MatchMode.STRICT);
+            }
+            for (var output : parsed.outputs()) {
+                builder.output(output.slotIndex(), config.isOutputIdOnly(output.slotIndex())
+                        ? MatchMode.ID_ONLY : MatchMode.STRICT);
+            }
+            return conversionService.createOverloadPatternStack(
+                    (OverloadPatternItem) ModItems.OVERLOAD_PATTERN.get(), parsed, builder.build());
+        } catch (RuntimeException ignored) {
+            return null;
+        }
     }
 
     private ItemStack encodeSelectedClosedLoopCandidate() {

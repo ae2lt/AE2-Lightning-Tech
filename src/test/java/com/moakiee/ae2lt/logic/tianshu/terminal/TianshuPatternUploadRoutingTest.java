@@ -27,10 +27,6 @@ class TianshuPatternUploadRoutingTest {
                 TianshuPatternUploadRouting.forEncodingMode(TianshuEncodingMode.SMITHING_TABLE));
         assertEquals(TianshuPatternUploadRouting.Route.PROCESSING_PROVIDER,
                 TianshuPatternUploadRouting.forEncodingMode(TianshuEncodingMode.PROCESSING));
-        assertEquals(TianshuPatternUploadRouting.Route.PROCESSING_PROVIDER,
-                TianshuPatternUploadRouting.forEncodingMode(TianshuEncodingMode.ADVANCED));
-        assertEquals(TianshuPatternUploadRouting.Route.PROCESSING_PROVIDER,
-                TianshuPatternUploadRouting.forEncodingMode(TianshuEncodingMode.OVERLOAD));
         assertEquals(TianshuPatternUploadRouting.Route.CLOSED_LOOP_STORAGE,
                 TianshuPatternUploadRouting.forEncodingMode(TianshuEncodingMode.CLOSED_LOOP));
     }

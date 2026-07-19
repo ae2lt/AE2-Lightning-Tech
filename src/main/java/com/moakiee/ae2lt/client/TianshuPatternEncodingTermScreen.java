@@ -25,6 +25,7 @@ import appeng.core.network.serverbound.InventoryActionPacket;
 import appeng.helpers.InventoryAction;
 import appeng.menu.SlotSemantics;
 import appeng.parts.encoding.EncodingMode;
+import com.moakiee.ae2lt.logic.tianshu.terminal.ProcessingPatternEncodingType;
 import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuEncodingMode;
 import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuPatternUploadRouting;
 import com.moakiee.ae2lt.menu.TianshuPatternEncodingTermMenu;
@@ -40,8 +41,6 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.core.Direction;
-import com.moakiee.thunderbolt.ae2.overload.model.MatchMode;
 import appeng.client.gui.me.common.RepoSlot;
 import org.lwjgl.glfw.GLFW;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.InventoryMaintenanceBadge;
@@ -59,6 +58,8 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
     private final DerivedModePanel derivedPanel = new DerivedModePanel();
     private final List<AE2Button> processingModeButtons;
     private final List<AE2Button> closedLoopModeButtons;
+    private final TabButton advancedEncoding;
+    private final TabButton overloadEncoding;
     private final AE2Button upload;
     private final AE2Button tianshuTarget;
     private final AE2Button globalReserve;
@@ -95,12 +96,8 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
 
         widgets.add("encodePattern", new ActionButton(ActionItems.ENCODE, action -> menu.encode()));
 
-        addExtraTab(TianshuEncodingMode.ADVANCED, ModItems.OVERLOAD_PATTERN.get().getDefaultInstance(),
-                Component.translatable("ae2lt.tianshu.terminal.mode.advanced"), "modeTabButton4");
-        addExtraTab(TianshuEncodingMode.OVERLOAD, ModItems.OVERLOAD_PATTERN.get().getDefaultInstance(),
-                Component.translatable("ae2lt.tianshu.terminal.mode.overload"), "modeTabButton5");
         addExtraTab(TianshuEncodingMode.CLOSED_LOOP, ModItems.CLOSED_LOOP_PATTERN.get().getDefaultInstance(),
-                Component.translatable("ae2lt.tianshu.terminal.mode.closed_loop"), "modeTabButton6");
+                Component.translatable("ae2lt.tianshu.terminal.mode.closed_loop"), "modeTabButton4");
         widgets.add("derivedModePanel", derivedPanel);
 
         processingModeButtons = List.of(
@@ -112,6 +109,16 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
                         () -> menu.multiplyProcessing(hasShiftDown() ? -4 : -2)),
                 widgets.addButton("processingDivide5", Component.literal("÷5"),
                         () -> menu.multiplyProcessing(hasShiftDown() ? -10 : -5)));
+        advancedEncoding = new TabButton(AdvancedAECompat.advancedPatternIcon(),
+                Component.translatable("ae2lt.tianshu.terminal.encoding.advanced"),
+                button -> switchToScreen(new TianshuAdvancedPatternConfigScreen<>(this)));
+        advancedEncoding.setStyle(Style.HORIZONTAL);
+        widgets.add("advancedEncodingButton", advancedEncoding);
+        overloadEncoding = new TabButton(ModItems.OVERLOAD_PATTERN.get().getDefaultInstance(),
+                Component.translatable("ae2lt.tianshu.terminal.encoding.overload"),
+                button -> switchToScreen(new TianshuOverloadPatternConfigScreen<>(this)));
+        overloadEncoding.setStyle(Style.HORIZONTAL);
+        widgets.add("overloadEncodingButton", overloadEncoding);
         var previousCandidate = widgets.addButton("closedLoopPrevious", Component.literal("<"),
                 () -> menu.selectClosedLoopCandidate(-1));
         var nextCandidate = widgets.addButton("closedLoopNext", Component.literal(">"),
@@ -184,10 +191,13 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
         }
         boolean derived = !selected.isAe2Mode();
         derivedPanel.mode = derived ? selected : null;
-        var advancedTab = modeTabs.get(TianshuEncodingMode.ADVANCED);
-        if (advancedTab != null) advancedTab.visible = AdvancedAECompat.isLoaded();
         boolean processing = selected == TianshuEncodingMode.PROCESSING;
         processingModeButtons.forEach(button -> button.visible = processing);
+        boolean hasDraftInput = hasProcessingDraftInput();
+        updateEncodingButton(advancedEncoding, ProcessingPatternEncodingType.ADVANCED,
+                processing && AdvancedAECompat.isLoaded(), hasDraftInput, "advanced");
+        updateEncodingButton(overloadEncoding, ProcessingPatternEncodingType.OVERLOAD,
+                processing, hasDraftInput, "overload");
         boolean closedLoop = selected == TianshuEncodingMode.CLOSED_LOOP;
         closedLoopModeButtons.forEach(button -> button.visible = closedLoop);
         upload.visible = true;
@@ -208,6 +218,23 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
                 && (menu.availableTianshuCount > 1
                 || menu.selectedTianshuIndex < 0 && menu.availableTianshuCount > 0);
         globalReserve.active = menu.maintenanceAvailable && !menu.isTianshuSelectionPending();
+    }
+
+    private void updateEncodingButton(TabButton button, ProcessingPatternEncodingType type,
+                                      boolean visible, boolean enabled, String key) {
+        button.visible = visible;
+        button.active = enabled;
+        boolean armed = menu.processingEncodingType == type;
+        button.setSelected(armed);
+        button.setMessage(Component.translatable(
+                "ae2lt.tianshu.terminal.encoding." + key + (armed ? ".armed" : "")));
+    }
+
+    private boolean hasProcessingDraftInput() {
+        for (var slot : menu.getProcessingInputSlots()) {
+            if (!slot.getItem().isEmpty()) return true;
+        }
+        return false;
     }
 
     private void openUploadScreen() {
@@ -440,49 +467,11 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
 
         @Override
         public void drawForegroundLayer(GuiGraphics graphics, Rect2i bounds, Point mouse) {
-            if (mode == null) return;
-            var label = switch (mode) {
-                case ADVANCED -> Component.translatable("ae2lt.tianshu.terminal.mode.advanced");
-                case OVERLOAD -> Component.translatable("ae2lt.tianshu.terminal.mode.overload");
-                case CLOSED_LOOP -> Component.translatable("ae2lt.tianshu.terminal.mode.closed_loop");
-                default -> Component.empty();
-            };
-            graphics.drawString(font, label, x + 8, y + 12, 0x404040, false);
-            if (mode == TianshuEncodingMode.ADVANCED) drawAdvanced(graphics);
-            else if (mode == TianshuEncodingMode.OVERLOAD) drawOverload(graphics);
-            else drawClosedLoop(graphics);
-        }
-
-        private void drawAdvanced(GuiGraphics graphics) {
-            for (int i = 0; i < 9; i++) {
-                var stack = menu.getProcessingInputSlots()[i].getItem();
-                if (stack.isEmpty()) continue;
-                int sx = x + 8 + i * 17;
-                int sy = y + 30;
-                graphics.renderItem(stack, sx, sy);
-                int direction = menu.getAdvancedDirection(i);
-                String marker = direction == 0 ? "*" : shortDirection(Direction.values()[direction - 1]);
-                graphics.drawString(font, marker, sx + 10, sy + 10, 0xFFFFFF, true);
-            }
-        }
-
-        private void drawOverload(GuiGraphics graphics) {
-            for (int i = 0; i < Math.min(9, menu.overloadState.inputSlots().size()); i++) {
-                var stack = menu.getProcessingInputSlots()[i].getItem();
-                int sx = x + 8 + i * 17;
-                int sy = y + 27;
-                graphics.renderItem(stack, sx, sy);
-                int color = menu.overloadState.inputMode(i) == MatchMode.ID_ONLY ? 0xFFFF55 : 0x55FF55;
-                graphics.fill(sx + 12, sy + 12, sx + 16, sy + 16, color);
-            }
-            for (int i = 0; i < Math.min(9, menu.overloadState.outputSlots().size()); i++) {
-                var stack = menu.getProcessingOutputSlots()[i].getItem();
-                int sx = x + 8 + i * 17;
-                int sy = y + 45;
-                graphics.renderItem(stack, sx, sy);
-                int color = menu.overloadState.outputMode(i) == MatchMode.ID_ONLY ? 0xFFFF55 : 0x55FF55;
-                graphics.fill(sx + 12, sy + 12, sx + 16, sy + 16, color);
-            }
+            if (mode != TianshuEncodingMode.CLOSED_LOOP) return;
+            graphics.drawString(font,
+                    Component.translatable("ae2lt.tianshu.terminal.mode.closed_loop"),
+                    x + 8, y + 12, 0x404040, false);
+            drawClosedLoop(graphics);
         }
 
         private void drawClosedLoop(GuiGraphics graphics) {
@@ -507,49 +496,6 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
                                 : "ae2lt.tianshu.terminal.upload.failed"),
                         x + 8, y + 55, menu.uploadState == 1 ? 0x228822 : 0xAA2222, false);
             }
-        }
-
-        @Override
-        public boolean onMouseDown(Point mouse, int button) {
-            if (button != 0 || mode == null) return false;
-            if (mode == TianshuEncodingMode.ADVANCED) {
-                int slot = iconAt(mouse, y + 30);
-                if (slot >= 0 && !menu.getProcessingInputSlots()[slot].getItem().isEmpty()) {
-                    menu.cycleAdvancedDirection(slot);
-                    return true;
-                }
-            } else if (mode == TianshuEncodingMode.OVERLOAD) {
-                int input = iconAt(mouse, y + 27);
-                if (input >= 0 && input < menu.overloadState.inputSlots().size()) {
-                    menu.toggleOverloadInput(input);
-                    return true;
-                }
-                int output = iconAt(mouse, y + 45);
-                if (output >= 0 && output < menu.overloadState.outputSlots().size()) {
-                    menu.toggleOverloadOutput(output);
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        private int iconAt(Point mouse, int rowY) {
-            if (mouse.getY() < rowY || mouse.getY() >= rowY + 16
-                    || mouse.getX() < x + 8 || mouse.getX() >= x + 161) return -1;
-            int slot = (mouse.getX() - x - 8) / 17;
-            int within = (mouse.getX() - x - 8) % 17;
-            return within < 16 && slot < 9 ? slot : -1;
-        }
-
-        private String shortDirection(Direction direction) {
-            return switch (direction) {
-                case DOWN -> "D";
-                case UP -> "U";
-                case NORTH -> "N";
-                case SOUTH -> "S";
-                case WEST -> "W";
-                case EAST -> "E";
-            };
         }
     }
 

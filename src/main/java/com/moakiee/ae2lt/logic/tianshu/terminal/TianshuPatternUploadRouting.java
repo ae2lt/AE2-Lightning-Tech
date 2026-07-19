@@ -23,7 +23,7 @@ public final class TianshuPatternUploadRouting {
         return switch (mode) {
             case CLOSED_LOOP -> Route.CLOSED_LOOP_STORAGE;
             case CRAFTING, STONECUTTING, SMITHING_TABLE -> Route.CRAFTING_ASSEMBLER;
-            case PROCESSING, ADVANCED, OVERLOAD -> Route.PROCESSING_PROVIDER;
+            case PROCESSING -> Route.PROCESSING_PROVIDER;
         };
     }
 
