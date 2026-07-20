@@ -20,6 +20,7 @@ import com.moakiee.ae2lt.logic.craft.MatrixCraftingUnit;
 import com.moakiee.ae2lt.logic.craft.MatrixPatternCore;
 import com.moakiee.ae2lt.logic.craft.MatrixMultiblockMember;
 import com.moakiee.ae2lt.logic.craft.MatrixMultiblockScanAttempt;
+import com.moakiee.ae2lt.logic.craft.MatrixMultiblockScanIssue;
 import com.moakiee.ae2lt.logic.craft.MatrixMultiblockScanResult;
 import com.moakiee.ae2lt.logic.craft.MatrixMultiblockScanner;
 import com.moakiee.ae2lt.logic.craft.MatrixMultiblockTemplate;
@@ -78,6 +79,7 @@ public class MatrixControllerBlockEntity extends BlockEntity implements Crafting
     private int memberCount;
     private int patternStorageCount;
     private int craftingUnitCount;
+    private MatrixMultiblockScanIssue primaryScanIssue;
     private UUID machineId = UUID.randomUUID();
     private boolean persistentStateOwner;
     private final MatrixPatternCore patternCore = new MatrixPatternCore() {
@@ -195,6 +197,10 @@ public class MatrixControllerBlockEntity extends BlockEntity implements Crafting
         return craftingUnitCount;
     }
 
+    public int getPrimaryIssueOrdinal() {
+        return primaryScanIssue == null ? -1 : primaryScanIssue.ordinal();
+    }
+
     public UUID getMachineId() {
         return machineId;
     }
@@ -229,6 +235,10 @@ public class MatrixControllerBlockEntity extends BlockEntity implements Crafting
 
     public MatrixCraftingMath.Snapshot getLimiterSnapshot() {
         return cluster.previewSnapshot();
+    }
+
+    public int getAvailableProviderCalls() {
+        return cluster.availableProviderCalls();
     }
 
     public boolean isCraftingBusy() {
@@ -682,7 +692,9 @@ public class MatrixControllerBlockEntity extends BlockEntity implements Crafting
     }
 
     private MatrixMultiblockScanAttempt scanCurrent() {
-        return MatrixMultiblockScanner.scan(level, worldPosition, getOrientation());
+        var attempt = MatrixMultiblockScanner.scan(level, worldPosition, getOrientation());
+        primaryScanIssue = attempt.issues().isEmpty() ? null : attempt.issues().getFirst();
+        return attempt;
     }
 
     private MatrixPortBlockEntity getLinkedPort() {
@@ -709,6 +721,7 @@ public class MatrixControllerBlockEntity extends BlockEntity implements Crafting
             clearBindingsInStoredBounds();
         }
         formed = true;
+        primaryScanIssue = null;
         structureAvailable = true;
         waitingForChunks = false;
         nextChunkCheckTick = level.getGameTime() + CHUNK_RECHECK_INTERVAL_TICKS;

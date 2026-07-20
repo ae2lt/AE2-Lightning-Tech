@@ -1,6 +1,7 @@
 package com.moakiee.ae2lt.client;
 
 import com.moakiee.ae2lt.logic.tianshu.TianshuMultiblockScanIssue;
+import com.moakiee.ae2lt.logic.compute.UnifiedCraftingComputeCalculator;
 import com.moakiee.ae2lt.menu.TianshuSupercomputerControllerMenu;
 import com.moakiee.ae2lt.network.TianshuControllerActionPacket;
 import java.util.Locale;
@@ -18,8 +19,8 @@ public class TianshuSupercomputerControllerScreen
     public TianshuSupercomputerControllerScreen(
             TianshuSupercomputerControllerMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title);
-        imageWidth = 280;
-        imageHeight = 172;
+        imageWidth = 360;
+        imageHeight = 204;
         inventoryLabelY = 10_000;
     }
 
@@ -31,14 +32,14 @@ public class TianshuSupercomputerControllerScreen
                 button -> PacketDistributor.sendToServer(
                         new TianshuControllerActionPacket(menu.token(), menu.getBlockPos(),
                                 TianshuControllerActionPacket.Action.AUTO_BUILD)))
-                .bounds(leftPos + 10, topPos + 140, 96, 20)
+                .bounds(leftPos + 10, topPos + 172, 108, 20)
                 .build());
         fastPlanningButton = addRenderableWidget(Button.builder(
                 fastPlanningText(),
                 button -> PacketDistributor.sendToServer(
                         new TianshuControllerActionPacket(menu.token(), menu.getBlockPos(),
                                 TianshuControllerActionPacket.Action.TOGGLE_FAST_PLANNING)))
-                .bounds(leftPos + 114, topPos + 140, 96, 20)
+                .bounds(leftPos + 126, topPos + 172, 108, 20)
                 .build());
     }
 
@@ -59,7 +60,7 @@ public class TianshuSupercomputerControllerScreen
         graphics.fill(leftPos, topPos, leftPos + imageWidth, topPos + imageHeight, 0xFF181D24);
         graphics.fill(leftPos + 4, topPos + 4, leftPos + imageWidth - 4, topPos + imageHeight - 4, 0xFF27313D);
         graphics.fill(leftPos + 10, topPos + 30, leftPos + imageWidth - 10, topPos + 58, 0xFF11161C);
-        graphics.fill(leftPos + 10, topPos + 66, leftPos + imageWidth - 10, topPos + 132, 0xFF202832);
+        graphics.fill(leftPos + 10, topPos + 66, leftPos + imageWidth - 10, topPos + 164, 0xFF202832);
     }
 
     @Override
@@ -73,17 +74,36 @@ public class TianshuSupercomputerControllerScreen
             graphics.drawString(font, issueText(), 14, 72, 0xFFB8A8, false);
             return;
         }
-        graphics.drawString(font, Component.translatable("ae2lt.tianshu.gui.tier", tierName()), 14, 72, 0xE8F4FF, false);
+        var computeTier = menu.getTier().computeTier();
+        long rawDispatch = UnifiedCraftingComputeCalculator.DISPATCH_PER_UNIT
+                * (long) menu.getParallelCores();
+        long dispatchGain = UnifiedCraftingComputeCalculator.dispatchGain(
+                computeTier, menu.getAmplifierCores());
+        long storageGain = UnifiedCraftingComputeCalculator.storageGain(
+                computeTier, menu.getAmplifierCores());
+        long externalStorage = UnifiedCraftingComputeCalculator.saturatedMultiply(
+                UnifiedCraftingComputeCalculator.STORAGE_PER_UNIT * (long) menu.getCapacityCores(),
+                storageGain);
+        graphics.drawString(font, Component.translatable("ae2lt.tianshu.gui.tier", tierName()),
+                14, 72, 0xE8F4FF, false);
         graphics.drawString(font, Component.translatable("ae2lt.tianshu.gui.cores",
-                menu.getCapacityCores(), menu.getParallelCores(), menu.getAmplifierCores()), 14, 86, 0xB7C8D8, false);
-        graphics.drawString(font, Component.translatable("ae2lt.tianshu.gui.storage", formatStorage(menu.getStorageBytes())),
+                menu.getParallelCores(), menu.getAmplifierCores(), menu.getCapacityCores()),
+                14, 86, 0xB7C8D8, false);
+        graphics.drawString(font, Component.translatable("ae2lt.tianshu.gui.functional_storages",
+                menu.getClosedLoopPatternStorages(), menu.getClosedLoopSeedStorages()),
                 14, 100, 0xB7C8D8, false);
-        graphics.drawString(font, Component.translatable("ae2lt.tianshu.gui.dispatches",
-                menu.getSuccessfulDispatchesPerTick(),
+        graphics.drawString(font, Component.translatable("ae2lt.tianshu.gui.gains",
+                1 + menu.getAmplifierCores(), formatBudget(dispatchGain), formatBudget(storageGain)),
+                14, 114, 0xB7C8D8, false);
+        graphics.drawString(font, Component.translatable("ae2lt.tianshu.gui.dispatch_budget",
+                formatBudget(rawDispatch), menu.getSuccessfulDispatchesPerTick(),
                 menu.isCapped() ? Component.translatable("ae2lt.tianshu.gui.capped") : Component.empty()),
-                14, 114, menu.isCapped() ? 0xF2D37A : 0xB7C8D8, false);
+                14, 128, menu.isCapped() ? 0xF2D37A : 0xB7C8D8, false);
+        graphics.drawString(font, Component.translatable("ae2lt.tianshu.gui.storage_split",
+                formatStorage(computeTier.internalStorage()), formatStorage(externalStorage),
+                formatStorage(menu.getStorageBytes())), 14, 142, 0xB7C8D8, false);
         graphics.drawString(font, Component.translatable("ae2lt.tianshu.gui.copies",
-                formatBudget(menu.getMaxCopiesPerTick())), 14, 128, 0xB7C8D8, false);
+                formatBudget(menu.getMaxCopiesPerTick())), 14, 156, 0xB7C8D8, false);
     }
 
     private Component issueText() {

@@ -1,6 +1,7 @@
 package com.moakiee.thunderbolt.ae2.crafting;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -58,6 +59,11 @@ class LoopCraftingPlanTest {
                 fast.hostReusableSeedAllocations().stream()
                         .map(LoopCraftingPlan.HostReusableSeedAllocation::reusableSeedGroupId)
                         .collect(java.util.stream.Collectors.toSet()));
+        assertSame(delegate, LoopCraftingPlan.unwrapForSummary(fast),
+                "summary integrations see the concrete AE2 plan without changing the wrapped job");
+        assertSame(delegate, fast.delegate());
+        assertSame(delegate, LoopCraftingPlan.unwrapForSummary(delegate),
+                "ordinary AE2 plans pass through the summary compatibility view unchanged");
     }
 
     @Test

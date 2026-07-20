@@ -63,7 +63,7 @@ If any Casing, Frame, Glass, Port candidate, or Pattern Storage bay contains an 
 * Exactly **one** of the three Port candidates must contain a Matrix Port; the other two must be Constraint Frames
 * The 50 Pattern Storage bays may be empty or contain T1/T2 storages, but at least one storage is required
 * None of the 81 core positions may be empty: the center must be a main core and all other positions must be sub cores
-* Non-Creative configurations allow at most 10 Batch Multiplier Sub Cores
+* Quantum and Overload Main Cores allow at most 15 Amplifier Sub Cores; Stable rejects amplifiers, while Creative only accepts Blank Sub Cores
 * Open gaps shown by the structure are not structure members and do not need to be sealed
 
 When the final required block is placed, the matrix rescans and forms automatically. The Auto-build button does not need to be pressed again.

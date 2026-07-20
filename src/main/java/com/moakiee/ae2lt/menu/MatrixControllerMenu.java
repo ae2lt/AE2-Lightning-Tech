@@ -26,12 +26,14 @@ public class MatrixControllerMenu extends AbstractContainerMenu {
     private final DataSlot patternSlotCountSlot = DataSlot.standalone();
     private final DataSlot craftingUnitCountSlot = DataSlot.standalone();
     private final DataSlot modeSlot = DataSlot.standalone();
-    private final DataSlot dispatchBaseSlot = DataSlot.standalone();
-    private final DataSlot baseBatchSlot = DataSlot.standalone();
-    private final DataSlot batchSizeSlot = DataSlot.standalone();
-    private final DataSlot dispatchesSlot = DataSlot.standalone();
+    private final DataSlot issueSlot = DataSlot.standalone();
+    private final DataSlot dispatchUnitCountSlot = DataSlot.standalone();
+    private final DataSlot amplifierUnitCountSlot = DataSlot.standalone();
+    private final DataSlot coolingUnitCountSlot = DataSlot.standalone();
+    private final DataSlot coolingPowerSlot = DataSlot.standalone();
     private final DataSlot heatSlot = DataSlot.standalone();
     private final DataSlot efficiencySlot = DataSlot.standalone();
+    private final DataSlot providerCallsRemainingSlot = DataSlot.standalone();
     private final DataSlot operationsPerTickHighSlot = DataSlot.standalone();
     private final DataSlot operationsPerTickLowSlot = DataSlot.standalone();
 
@@ -51,12 +53,14 @@ public class MatrixControllerMenu extends AbstractContainerMenu {
                                  int patternSlotCount,
                                  int craftingUnitCount,
                                  int mode,
-                                 int dispatchBase,
-                                 int baseBatch,
-                                 int batchSize,
-                                 int dispatches,
+                                 int issue,
+                                 int dispatchUnitCount,
+                                 int amplifierUnitCount,
+                                 int coolingUnitCount,
+                                 int coolingPower,
                                  int heat,
                                  int efficiency,
+                                 int providerCallsRemaining,
                                  int operationsPerTick) {
         super(TYPE, containerId);
         this.blockPos = blockPos;
@@ -67,12 +71,14 @@ public class MatrixControllerMenu extends AbstractContainerMenu {
         patternSlotCountSlot.set(patternSlotCount);
         craftingUnitCountSlot.set(craftingUnitCount);
         modeSlot.set(mode);
-        dispatchBaseSlot.set(dispatchBase);
-        baseBatchSlot.set(baseBatch);
-        batchSizeSlot.set(batchSize);
-        dispatchesSlot.set(dispatches);
+        issueSlot.set(issue);
+        dispatchUnitCountSlot.set(dispatchUnitCount);
+        amplifierUnitCountSlot.set(amplifierUnitCount);
+        coolingUnitCountSlot.set(coolingUnitCount);
+        coolingPowerSlot.set(coolingPower);
         heatSlot.set(heat);
         efficiencySlot.set(efficiency);
+        providerCallsRemainingSlot.set(providerCallsRemaining);
         setOperationsPerTick(operationsPerTick);
         addSyncSlots();
     }
@@ -82,6 +88,8 @@ public class MatrixControllerMenu extends AbstractContainerMenu {
                 containerId,
                 buf.readBlockPos(),
                 buf.readBoolean(),
+                buf.readVarInt(),
+                buf.readVarInt(),
                 buf.readVarInt(),
                 buf.readVarInt(),
                 buf.readVarInt(),
@@ -106,12 +114,14 @@ public class MatrixControllerMenu extends AbstractContainerMenu {
         buf.writeVarInt(be.getPatternSlotCount());
         buf.writeVarInt(be.getCraftingUnitCount());
         buf.writeVarInt(profile.mode().ordinal());
-        buf.writeVarInt(scaleValue(snapshot.dispatchBase()));
-        buf.writeVarInt(scaleValue(snapshot.baseBatch()));
-        buf.writeVarInt(scaleLargeValue(snapshot.batchSize()));
-        buf.writeVarInt(scaleValue(snapshot.dispatches()));
+        buf.writeVarInt(be.getPrimaryIssueOrdinal());
+        buf.writeVarInt(profile.dispatchUnitCount());
+        buf.writeVarInt(profile.multiplierCount());
+        buf.writeVarInt(profile.coolingUnitCount());
+        buf.writeVarInt(scaleValue(profile.coolPower()));
         buf.writeVarInt(scaleHeat(snapshot.normalizedHeat()));
         buf.writeVarInt(scaleValue(snapshot.efficiencyFactor()));
+        buf.writeVarInt(be.getAvailableProviderCalls());
         buf.writeVarInt(saturate(snapshot.operationsPerTick()));
     }
 
@@ -182,20 +192,24 @@ public class MatrixControllerMenu extends AbstractContainerMenu {
         return ordinal >= 0 && ordinal < values.length ? values[ordinal] : MatrixCoreMode.NONE;
     }
 
-    public double getDispatchBase() {
-        return unscaleValue(dispatchBaseSlot.get());
+    public int getIssue() {
+        return issueSlot.get();
     }
 
-    public double getBaseBatch() {
-        return unscaleValue(baseBatchSlot.get());
+    public int getDispatchUnitCount() {
+        return dispatchUnitCountSlot.get();
     }
 
-    public double getBatchSize() {
-        return unscaleLargeValue(batchSizeSlot.get());
+    public int getAmplifierUnitCount() {
+        return amplifierUnitCountSlot.get();
     }
 
-    public double getDispatches() {
-        return unscaleValue(dispatchesSlot.get());
+    public int getCoolingUnitCount() {
+        return coolingUnitCountSlot.get();
+    }
+
+    public double getCoolingPower() {
+        return unscaleValue(coolingPowerSlot.get());
     }
 
     public double getNormalizedHeat() {
@@ -204,6 +218,10 @@ public class MatrixControllerMenu extends AbstractContainerMenu {
 
     public double getEfficiencyFactor() {
         return unscaleValue(efficiencySlot.get());
+    }
+
+    public int getProviderCallsRemaining() {
+        return providerCallsRemainingSlot.get();
     }
 
     public int getOperationsPerTick() {
@@ -220,12 +238,14 @@ public class MatrixControllerMenu extends AbstractContainerMenu {
         patternSlotCountSlot.set(host.getPatternSlotCount());
         craftingUnitCountSlot.set(host.getCraftingUnitCount());
         modeSlot.set(profile.mode().ordinal());
-        dispatchBaseSlot.set(scaleValue(snapshot.dispatchBase()));
-        baseBatchSlot.set(scaleValue(snapshot.baseBatch()));
-        batchSizeSlot.set(scaleLargeValue(snapshot.batchSize()));
-        dispatchesSlot.set(scaleValue(snapshot.dispatches()));
+        issueSlot.set(host.getPrimaryIssueOrdinal());
+        dispatchUnitCountSlot.set(profile.dispatchUnitCount());
+        amplifierUnitCountSlot.set(profile.multiplierCount());
+        coolingUnitCountSlot.set(profile.coolingUnitCount());
+        coolingPowerSlot.set(scaleValue(profile.coolPower()));
         heatSlot.set(scaleHeat(snapshot.normalizedHeat()));
         efficiencySlot.set(scaleValue(snapshot.efficiencyFactor()));
+        providerCallsRemainingSlot.set(host.getAvailableProviderCalls());
         setOperationsPerTick(saturate(snapshot.operationsPerTick()));
     }
 
@@ -236,12 +256,14 @@ public class MatrixControllerMenu extends AbstractContainerMenu {
         addDataSlot(patternSlotCountSlot);
         addDataSlot(craftingUnitCountSlot);
         addDataSlot(modeSlot);
-        addDataSlot(dispatchBaseSlot);
-        addDataSlot(baseBatchSlot);
-        addDataSlot(batchSizeSlot);
-        addDataSlot(dispatchesSlot);
+        addDataSlot(issueSlot);
+        addDataSlot(dispatchUnitCountSlot);
+        addDataSlot(amplifierUnitCountSlot);
+        addDataSlot(coolingUnitCountSlot);
+        addDataSlot(coolingPowerSlot);
         addDataSlot(heatSlot);
         addDataSlot(efficiencySlot);
+        addDataSlot(providerCallsRemainingSlot);
         addDataSlot(operationsPerTickHighSlot);
         addDataSlot(operationsPerTickLowSlot);
     }
@@ -261,17 +283,6 @@ public class MatrixControllerMenu extends AbstractContainerMenu {
 
     private static double unscaleValue(int value) {
         return value / 10.0D;
-    }
-
-    private static int scaleLargeValue(double value) {
-        if (Double.isNaN(value) || value <= 0.0D) {
-            return 0;
-        }
-        return value >= Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) Math.round(value);
-    }
-
-    private static double unscaleLargeValue(int value) {
-        return value;
     }
 
     private static int scaleHeat(double value) {

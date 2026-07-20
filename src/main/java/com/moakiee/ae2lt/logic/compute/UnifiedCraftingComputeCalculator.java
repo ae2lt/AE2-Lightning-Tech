@@ -7,6 +7,16 @@ public final class UnifiedCraftingComputeCalculator {
     private UnifiedCraftingComputeCalculator() {
     }
 
+    public static long rawDispatch(ComputingUnitTotals units) {
+        if (units == null) throw new IllegalArgumentException("Units are required");
+        return saturatedMultiply(DISPATCH_PER_UNIT, units.dispatchUnits());
+    }
+
+    public static long rawExternalStorage(ComputingUnitTotals units) {
+        if (units == null) throw new IllegalArgumentException("Units are required");
+        return saturatedMultiply(STORAGE_PER_UNIT, units.storageUnits());
+    }
+
     public static CraftingComputeEnvelope cpuEnvelope(ComputeTier tier, ComputingUnitTotals units) {
         validate(tier, units, true);
         if (tier.multidimensional()) {
@@ -19,12 +29,11 @@ public final class UnifiedCraftingComputeCalculator {
         }
 
         long dispatchGain = dispatchGain(tier, units.amplifierUnits());
-        long rawDispatch = saturatedMultiply(
-                saturatedMultiply(DISPATCH_PER_UNIT, units.dispatchUnits()), dispatchGain);
+        long rawDispatch = saturatedMultiply(rawDispatch(units), dispatchGain);
         int successfulDispatches = (int) Math.min(rawDispatch, tier.dispatchCap());
         boolean dispatchCapped = rawDispatch >= tier.dispatchCap();
 
-        long externalStorage = saturatedMultiply(STORAGE_PER_UNIT, units.storageUnits());
+        long externalStorage = rawExternalStorage(units);
         long storage = saturatedAdd(
                 tier.internalStorage(),
                 saturatedMultiply(externalStorage, storageGain(tier, units.amplifierUnits())));
@@ -51,7 +60,7 @@ public final class UnifiedCraftingComputeCalculator {
 
         long baseOperations = saturatedMultiply(
                 saturatedMultiply(
-                        saturatedMultiply(DISPATCH_PER_UNIT, units.dispatchUnits()),
+                        rawDispatch(units),
                         dispatchGain(tier, units.amplifierUnits())),
                 copyGain(tier, units.amplifierUnits()));
         baseOperations = Math.min(baseOperations, tier.copyCap());

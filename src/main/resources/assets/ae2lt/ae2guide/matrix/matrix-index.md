@@ -8,7 +8,7 @@ navigation:
 
 # Matter Warping Matrix
 
-The **Matter Warping Matrix** is a large ME-network crafting multiblock. It executes patterns stored in its Pattern Storages, using configurable parallelism, batch size, and thermal control for high-throughput production of base materials and intermediate components.
+The **Matter Warping Matrix** is a large ME-network crafting multiblock. It executes patterns stored in its Pattern Storages, using configurable dispatch, amplification, and thermal control for high-throughput production of base materials and intermediate components.
 
 The matrix is a **crafting provider**, not crafting storage. An ME Crafting CPU still plans each job and supplies its ingredients. The matrix accepts the work, assembles the results, and inserts them directly back into the network.
 

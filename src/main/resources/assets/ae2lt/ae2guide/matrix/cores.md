@@ -30,25 +30,25 @@ The core chamber contains 81 positions. Its geometric center must hold one main 
 
 ## Main Core Modes
 
-| Main core | Operating behavior | Thermal strategy |
-|-----------|--------------------|------------------|
-| Stable Main Core | Runs at the base batch size; efficiency falls as heat rises but never below 45% | Keep it cool for consistently high throughput |
-| Quantum Main Core | Applies a Quantum factor of up to 64× to the base batch; the factor bottoms out at 28.8× when hot | Lower heat provides a higher factor |
-| Overload Main Core | Drives its Overload factor with heat; the factor peaks around 50% heat and collapses toward both extremes | Hold heat within the 42%–58% sweet spot |
-| Creative Main Core | Unbounded dispatch and ignores sub-core attributes, heat, and the Multiplier limit | No thermal management is required |
+| Main Core | Unified gain | Thermal strategy |
+|-----------|--------------|------------------|
+| Stable Main Core | `Gd=1`, `Gt=2`, up to 1,024 operations/t | Keep it cool; efficiency falls with heat but never below 45% |
+| Quantum Main Core | `Gd=2R`, `Gt=R`, up to 10,240 operations/t | Lower heat provides higher efficiency |
+| Overload Main Core | `Gd=2R`, `Gt=R²`, up to 4,194,304 operations/t | Peak efficiency is near 50% heat; keep it in the 42%–58% sweet spot |
+| Creative Main Core | Logical operations are unbounded, but provider calls retain the 16,384/t fuse | Heat is ignored; all other 80 slots must be Blank Sub Cores |
 
-The main core selects the batch-factor formula, while practical throughput remains dependent on the sub-core configuration.
+Here `R=1+N`, where `N` is the number of Amplifier Sub Cores. The matrix calculates base operations as `128×P×Gd×Gt`, then applies the tier ceiling and thermal efficiency. It does not maintain the CPU successful-dispatch budget `D` and has no separate batch width `q`.
 
 ## Sub Cores
 
-| Sub core | T1 | T2 | Effect |
-|----------|---:|---:|--------|
-| Parallel Sub Core | Parallel power 2 | Parallel power 4 | Raises the base dispatch capacity per tick; the gain has a soft cap and is not linear |
-| Batch Multiplier Sub Core | Batch power 1 | Batch power 2 | Adds 0.4 to the base batch for every point of power; the starting base is 4 |
-| Cooling Sub Core | Cooling power 1 | Cooling power 2 | Raises heat capacity and cooling rate; its effect depends on distance from the main core |
-| Blank Sub Core | — | — | Fills a required core position without contributing performance |
+| Sub Core | T1 raw contribution | T2 raw contribution | Purpose |
+|----------|--------------------:|--------------------:|---------|
+| Parallel Sub Core | `P+1` | `P+1` | Each supplies 128 raw dispatch points, amplified by the main core's `Gd` |
+| Amplifier Sub Core | `N+1` | `N+1` | Raises `Gd` and `Gt` for Quantum and Overload cores |
+| Cooling Sub Core | cooling `+1` | cooling `+1` | Raises heat capacity and cooling rate; effective cooling still depends on distance from the main core |
+| Blank Sub Core | — | — | Fills a required core slot without adding performance attributes |
 
-A non-Creative configuration may contain at most **10 Batch Multiplier Sub Cores**. An eleventh makes the core configuration invalid and prevents the matrix from providing crafting capacity.
+T1/T2 blocks remain as structural and progression variants, but contribute the same raw logical unit under the unified model. Quantum and Overload configurations allow at most **15 Amplifier Sub Cores**; a sixteenth invalidates the configuration. Stable and Creative Main Cores reject amplifiers.
 
 ## Cooling Distance
 

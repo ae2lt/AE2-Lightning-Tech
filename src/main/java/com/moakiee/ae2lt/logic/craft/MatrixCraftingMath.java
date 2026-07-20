@@ -18,27 +18,6 @@ public final class MatrixCraftingMath {
     private MatrixCraftingMath() {
     }
 
-    /** Raw contribution before main-core gain; retained for status/UI compatibility. */
-    public static double dispatchBase(double dispatchUnits) {
-        return UnifiedCraftingComputeCalculator.DISPATCH_PER_UNIT * nonNegative(dispatchUnits);
-    }
-
-    /** External amplifier width R; retained under the old accessor name for menu compatibility. */
-    public static double baseBatch(double amplifierUnits) {
-        return 1.0D + nonNegative(amplifierUnits);
-    }
-
-    /** A batch with q operation lanes can carry q² logical copies. */
-    public static double batchLoad(double copies, double batchOps) {
-        double q = Math.max(1.0D, nonNegative(batchOps));
-        return nonNegative(copies) / (q * q);
-    }
-
-    public static double dispatches(double operationsPerTick, double batchCopies) {
-        double copies = nonNegative(batchCopies);
-        return copies <= 0.0D ? 0.0D : nonNegative(operationsPerTick) / copies;
-    }
-
     public static double coolUnits(double coolPower) {
         return nonNegative(coolPower);
     }
@@ -61,10 +40,6 @@ public final class MatrixCraftingMath {
         return new Snapshot(
                 currentHeat,
                 normalizedHeat(currentHeat, coolPower),
-                0.0D,
-                0.0D,
-                0.0D,
-                0.0D,
                 0L,
                 0.0D);
     }
@@ -73,10 +48,6 @@ public final class MatrixCraftingMath {
         return new Snapshot(
                 0.0D,
                 0.0D,
-                0.0D,
-                Integer.MAX_VALUE,
-                Long.MAX_VALUE,
-                1.0D,
                 Long.MAX_VALUE,
                 1.0D);
     }
@@ -139,20 +110,9 @@ public final class MatrixCraftingMath {
         int coolingCount = floorToInt(coolPower);
         var units = new ComputingUnitTotals(dispatchCount, amplifierCount, 0, coolingCount);
         var envelope = UnifiedCraftingComputeCalculator.matrixEnvelope(tier, units, efficiency);
-        int copyGain = UnifiedCraftingComputeCalculator.copyGain(tier, amplifierCount);
-        // Legacy menu fields retain the old names until the separate UI redesign. They are
-        // diagnostic projections only and do not impose a per-call batch width.
-        long batchCopies = UnifiedCraftingComputeCalculator.saturatedMultiply(copyGain, copyGain);
-        double rawDispatch = UnifiedCraftingComputeCalculator.saturatedMultiply(
-                UnifiedCraftingComputeCalculator.DISPATCH_PER_UNIT * (long) dispatchCount,
-                UnifiedCraftingComputeCalculator.dispatchGain(tier, amplifierCount));
         return new Snapshot(
                 heat,
                 normalizedHeat,
-                rawDispatch,
-                copyGain,
-                batchCopies,
-                dispatches(envelope.operationsPerTick(), batchCopies),
                 envelope.operationsPerTick(),
                 envelope.thermalEfficiency());
     }
@@ -202,10 +162,6 @@ public final class MatrixCraftingMath {
     public record Snapshot(
             double heat,
             double normalizedHeat,
-            double dispatchBase,
-            double baseBatch,
-            double batchSize,
-            double dispatches,
             long operationsPerTick,
             double efficiencyFactor) {
     }

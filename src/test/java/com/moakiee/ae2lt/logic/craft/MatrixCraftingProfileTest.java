@@ -30,7 +30,9 @@ class MatrixCraftingProfileTest {
         assertEquals(2.0D, profile.threadPower(), 0.0001D);
         assertEquals(2.0D, profile.multiPower(), 0.0001D);
         assertEquals(2.0D, profile.coolPower(), 0.0001D);
+        assertEquals(2, profile.dispatchUnitCount());
         assertEquals(2, profile.multiplierCount());
+        assertEquals(4, profile.coolingUnitCount());
         assertTrue(profile.isValid());
     }
 
@@ -93,8 +95,6 @@ class MatrixCraftingProfileTest {
 
         var snapshot = profile.snapshot(1024);
 
-        assertEquals(256.0D, snapshot.baseBatch(), 0.0001D);
-        assertEquals(65_536.0D, snapshot.batchSize(), 0.0001D);
         assertTrue(snapshot.operationsPerTick() > 4_000_000L);
         assertTrue(snapshot.operationsPerTick() <= 4_194_304L);
     }

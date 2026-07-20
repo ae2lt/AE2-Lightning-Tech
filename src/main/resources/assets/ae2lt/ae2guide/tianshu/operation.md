@@ -40,8 +40,9 @@ Use the <ItemLink id="ae2lt:tianshu_supercomputer_controller" /> to view:
 
 * Formation state and the first detected problem when unformed
 * Current main-unit tier
-* Storage, Parallel, and Amplifier Unit counts
-* Total crafting storage, successful dispatches per tick, maximum copies per tick, and dispatch-cap status; the AE2 CPU selection list reports parallelism from successful dispatches only
+* Counts of Dispatch, Amplifier, and Capacity Supercomputing Units, plus Closed-Loop Pattern and Seed Storage counts
+* `R`, dispatch gain `Gd`, storage gain `Gs`, raw dispatch, and the effective successful-dispatch budget `D`
+* Internal capacity, amplified external capacity, total crafting storage, each virtual CPU's per-tick copy budget `T`, and dispatch-cap status; the AE2 CPU selection list reports parallelism from successful dispatches only
 * Controls for shell auto-build and Fast Planning
 
 Replacing a core-chamber unit, or removing closed-loop storage from a cooling-compatible position, temporarily unforms the structure while the position is empty. If the port retains active jobs, the new profile takes effect after all existing jobs end; restoring the structure and network allows retained jobs to continue. A Phase-Change Cooling Unit is valid in the same cooling-compatible position but provides no corresponding closed-loop capacity.

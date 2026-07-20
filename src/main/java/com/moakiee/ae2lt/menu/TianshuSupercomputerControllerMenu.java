@@ -22,6 +22,8 @@ public class TianshuSupercomputerControllerMenu extends AbstractContainerMenu {
     private final DataSlot capacityCores = DataSlot.standalone();
     private final DataSlot parallelCores = DataSlot.standalone();
     private final DataSlot amplifierCores = DataSlot.standalone();
+    private final DataSlot closedLoopPatternStorages = DataSlot.standalone();
+    private final DataSlot closedLoopSeedStorages = DataSlot.standalone();
     private final DataSlot parallelism = DataSlot.standalone();
     private final DataSlot capped = DataSlot.standalone();
     private final DataSlot fastPlanning = DataSlot.standalone();
@@ -42,6 +44,7 @@ public class TianshuSupercomputerControllerMenu extends AbstractContainerMenu {
 
     private TianshuSupercomputerControllerMenu(int id, BlockPos pos, boolean formed, int tier,
                                                 int capacity, int parallel, int amplifier,
+                                                int patternStorages, int seedStorages,
                                                 long storage, int parallelism, long maxCopiesPerTick,
                                                 boolean capped, boolean fastPlanning, int issue) {
         super(TYPE, id);
@@ -52,6 +55,8 @@ public class TianshuSupercomputerControllerMenu extends AbstractContainerMenu {
         capacityCores.set(capacity);
         parallelCores.set(parallel);
         amplifierCores.set(amplifier);
+        closedLoopPatternStorages.set(patternStorages);
+        closedLoopSeedStorages.set(seedStorages);
         this.parallelism.set(parallelism);
         this.capped.set(capped ? 1 : 0);
         this.fastPlanning.set(fastPlanning ? 1 : 0);
@@ -63,7 +68,8 @@ public class TianshuSupercomputerControllerMenu extends AbstractContainerMenu {
 
     private static TianshuSupercomputerControllerMenu clientCreate(int id, Inventory inventory, FriendlyByteBuf buf) {
         return new TianshuSupercomputerControllerMenu(id, buf.readBlockPos(), buf.readBoolean(), buf.readVarInt(),
-                buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readLong(), buf.readVarInt(),
+                buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readVarInt(),
+                buf.readLong(), buf.readVarInt(),
                 buf.readLong(), buf.readBoolean(), buf.readBoolean(), buf.readVarInt());
     }
 
@@ -75,6 +81,8 @@ public class TianshuSupercomputerControllerMenu extends AbstractContainerMenu {
         buf.writeVarInt(profile.capacityCoreCount());
         buf.writeVarInt(profile.parallelCoreCount());
         buf.writeVarInt(profile.amplifierCoreCount());
+        buf.writeVarInt(host.getFunctionProfile().closedLoopPatternStorageCount());
+        buf.writeVarInt(host.getFunctionProfile().closedLoopSeedStorageCount());
         buf.writeLong(profile.storageBytes());
         buf.writeVarInt(profile.parallelism());
         buf.writeLong(profile.maxCopiesPerTick());
@@ -96,6 +104,8 @@ public class TianshuSupercomputerControllerMenu extends AbstractContainerMenu {
         capacityCores.set(profile.capacityCoreCount());
         parallelCores.set(profile.parallelCoreCount());
         amplifierCores.set(profile.amplifierCoreCount());
+        closedLoopPatternStorages.set(host.getFunctionProfile().closedLoopPatternStorageCount());
+        closedLoopSeedStorages.set(host.getFunctionProfile().closedLoopSeedStorageCount());
         parallelism.set(profile.parallelism());
         capped.set(profile.parallelCapped() ? 1 : 0);
         fastPlanning.set(host.isFastPlanningEnabled() ? 1 : 0);
@@ -107,6 +117,7 @@ public class TianshuSupercomputerControllerMenu extends AbstractContainerMenu {
     private void addSlots() {
         addDataSlot(formed); addDataSlot(tier); addDataSlot(capacityCores); addDataSlot(parallelCores);
         addDataSlot(amplifierCores);
+        addDataSlot(closedLoopPatternStorages); addDataSlot(closedLoopSeedStorages);
         addDataSlot(parallelism); addDataSlot(capped); addDataSlot(fastPlanning); addDataSlot(issue);
         for (var slot : storage) addDataSlot(slot);
         for (var slot : maxCopiesPerTick) addDataSlot(slot);
@@ -130,6 +141,8 @@ public class TianshuSupercomputerControllerMenu extends AbstractContainerMenu {
     public int getCapacityCores() { return capacityCores.get(); }
     public int getParallelCores() { return parallelCores.get(); }
     public int getAmplifierCores() { return amplifierCores.get(); }
+    public int getClosedLoopPatternStorages() { return closedLoopPatternStorages.get(); }
+    public int getClosedLoopSeedStorages() { return closedLoopSeedStorages.get(); }
     public int getSuccessfulDispatchesPerTick() { return parallelism.get(); }
     public boolean isCapped() { return capped.get() != 0; }
     public boolean isFastPlanningEnabled() { return fastPlanning.get() != 0; }

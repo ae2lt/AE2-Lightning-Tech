@@ -89,14 +89,10 @@ To illustrate how the two budgets relate, consider a configuration with 512 succ
 * **Amplifier Units scale dispatch, external storage, and batch copies simultaneously** and are the main lever for Quantum and Overload cores; note that any formula result beyond the main unit's cap is wasted
 * **Multidimensional** provides every parameter from the main core itself; simply fill the periphery with Blank Units — no ratios to balance
 
-## Amplifier and Blank Core Units
+## Amplifier, Blank, and Closed-Loop Storage
 
 The <ItemLink id="ae2lt:amplifier_supercomputing_unit" /> increases dispatch, external-storage, and batch-copy capacity for Quantum and Overload cores. Baseline and Multidimensional reject Amplifier Units; Quantum and Overload accept at most 15.
 
 The <ItemLink id="ae2lt:blank_supercomputing_unit" /> is a neutral placeholder comparable to the Matter Warping Matrix's Blank Sub Core. It keeps a peripheral cell structurally valid but contributes no crafting storage, dispatch capacity, amplification, pattern slots, or seed capacity.
 
-## Closed-Loop Storage in the Cooling Layer
-
-<ItemLink id="ae2lt:closed_loop_pattern_storage" /> and <ItemLink id="ae2lt:closed_loop_seed_storage" /> are cooling-compatible structure blocks, not peripheral core units. Either may replace any Phase-Change Cooling Unit position, including whichever of the two port candidates does not contain the Port. Each replacement supplies its corresponding physical pattern or seed storage.
-
-The two storage types do not count toward **S**, **P**, or **A**, and they cannot fill any of the 26 core-chamber peripheral cells. Replacing one with a Phase-Change Cooling Unit keeps the structure valid but immediately removes the associated pattern capacity or seed-storage capability.
+Closed-loop analysis and execution are built into the main unit and require no separate closed-loop compute core. Closed-Loop Pattern Storage and Closed-Loop Seed Storage remain external physical storage installed in the shell's cooling-compatible positions, where each replaces a Phase-Change Cooling Unit. They provide pattern capacity or seed storage but do not occupy the 26 core-chamber peripheral cells and do not count toward **S**, **P**, or **A**. Use Blank Units for core-chamber cells that need no compute attribute.

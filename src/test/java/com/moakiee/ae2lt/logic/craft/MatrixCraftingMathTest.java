@@ -1,26 +1,16 @@
 package com.moakiee.ae2lt.logic.craft;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
 class MatrixCraftingMathTest {
     @Test
-    void exposesUnifiedRawUnitAndSquareBatchSemantics() {
-        assertEquals(256.0D, MatrixCraftingMath.dispatchBase(2), 0.0001D);
-        assertEquals(16.0D, MatrixCraftingMath.baseBatch(15), 0.0001D);
-        assertEquals(1.0D, MatrixCraftingMath.batchLoad(65_536, 256), 0.0001D);
-    }
-
-    @Test
     void baselineComputesOperationsDirectlyWithoutRuntimeDispatchBudget() {
         var snapshot = MatrixCraftingMath.stableSnapshot(0, 4, 0, 0);
 
-        assertEquals(2.0D, snapshot.baseBatch(), 0.0001D);
-        assertEquals(4.0D, snapshot.batchSize(), 0.0001D);
-        assertTrue(snapshot.operationsPerTick() > 1_000L);
-        assertTrue(snapshot.operationsPerTick() <= 1_024L);
+        assertEquals(1_024L, snapshot.operationsPerTick());
+        assertEquals(1.0D, snapshot.efficiencyFactor(), 0.0001D);
     }
 
     @Test
@@ -31,10 +21,8 @@ class MatrixCraftingMathTest {
 
         var snapshot = MatrixCraftingMath.overloadSnapshot(1024, 4, 15, 0);
 
-        assertEquals(256.0D, snapshot.baseBatch(), 0.0001D);
-        assertEquals(65_536.0D, snapshot.batchSize(), 0.0001D);
-        assertTrue(snapshot.operationsPerTick() > 4_000_000L);
-        assertTrue(snapshot.operationsPerTick() <= 4_194_304L);
+        assertEquals(4_194_304L, snapshot.operationsPerTick());
+        assertEquals(1.0D, snapshot.efficiencyFactor(), 0.0001D);
     }
 
     @Test

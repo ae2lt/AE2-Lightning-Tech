@@ -9,7 +9,9 @@ public record MatrixCraftingProfile(
         double threadPower,
         double multiPower,
         double coolPower,
+        int dispatchUnitCount,
         int multiplierCount,
+        int coolingUnitCount,
         boolean multiplierLimitExceeded) {
     public static final int MULTIPLIER_LIMIT = 15;
 
@@ -19,11 +21,14 @@ public record MatrixCraftingProfile(
         threadPower = Math.max(0.0D, threadPower);
         multiPower = Math.max(0.0D, multiPower);
         coolPower = Math.max(0.0D, coolPower);
+        dispatchUnitCount = Math.max(0, dispatchUnitCount);
         multiplierCount = Math.max(0, multiplierCount);
+        coolingUnitCount = Math.max(0, coolingUnitCount);
     }
 
     public static MatrixCraftingProfile empty() {
-        return new MatrixCraftingProfile(MatrixCoreMode.NONE, 0, 0.0D, 0.0D, 0.0D, 0, false);
+        return new MatrixCraftingProfile(
+                MatrixCoreMode.NONE, 0, 0.0D, 0.0D, 0.0D, 0, 0, 0, false);
     }
 
     public static MatrixCraftingProfile fromUnits(List<MatrixCraftingUnit> units) {
@@ -34,7 +39,9 @@ public record MatrixCraftingProfile(
         double threadPower = 0.0D;
         double multiPower = 0.0D;
         double coolPower = 0.0D;
+        int dispatchUnitCount = 0;
         int multiplierCount = 0;
+        int coolingUnitCount = 0;
 
         for (var unit : units) {
             if (unit == null) continue;
@@ -47,7 +54,10 @@ public record MatrixCraftingProfile(
                         mode = MatrixCoreMode.CONFLICT;
                     }
                 }
-                case THREAD -> threadPower += unit.power();
+                case THREAD -> {
+                    dispatchUnitCount++;
+                    threadPower += unit.power();
+                }
                 case MULTIPLIER -> {
                     int previousCount = multiplierCount;
                     multiplierCount = saturatedAdd(previousCount, unit.power());
@@ -56,7 +66,10 @@ public record MatrixCraftingProfile(
                             Math.max(0, MULTIPLIER_LIMIT - previousCount));
                     multiPower += acceptedPower;
                 }
-                case COOLER -> coolPower += unit.adjustedCoolPower();
+                case COOLER -> {
+                    coolingUnitCount++;
+                    coolPower += unit.adjustedCoolPower();
+                }
             }
         }
 
@@ -75,6 +88,8 @@ public record MatrixCraftingProfile(
                     0.0D,
                     0.0D,
                     0,
+                    0,
+                    0,
                     false);
         }
 
@@ -84,7 +99,9 @@ public record MatrixCraftingProfile(
                 threadPower,
                 multiPower,
                 coolPower,
+                dispatchUnitCount,
                 multiplierCount,
+                coolingUnitCount,
                 multiplierLimitExceeded);
     }
 
