@@ -21,10 +21,13 @@ import com.moakiee.ae2lt.config.AE2LTCommonConfig;
 import com.moakiee.ae2lt.item.railgun.ElectromagneticRailgunItem;
 import com.moakiee.ae2lt.item.railgun.RailgunSettings;
 import com.moakiee.ae2lt.network.hub.DeviceHubSyncPacket;
-import com.moakiee.ae2lt.celestweave.BaseCelestweaveArmorItem;
 import com.moakiee.ae2lt.celestweave.CelestweaveArmorState;
 import com.moakiee.ae2lt.celestweave.module.FlightSpeedOption;
+import com.moakiee.ae2lt.celestweave.module.PhaseFlightSubmodule;
 import com.moakiee.ae2lt.registry.ModDataComponents;
+import com.moakiee.ae2lt.celestweave.phase.CelestweaveEquipmentAccess;
+import com.moakiee.ae2lt.celestweave.phase.PhaseLockService;
+import com.moakiee.ae2lt.celestweave.module.PhaseLockSubmodule;
 
 /**
  * Unified device hub menu — no item slots, pure status viewer + configuration.
@@ -326,6 +329,9 @@ public class DeviceHubMenu extends AbstractContainerMenu {
         var sub = submodules.get(moduleIndex);
         boolean current = CelestweaveArmorState.isSubmoduleEnabled(deviceStack, sub);
         CelestweaveArmorState.setSubmoduleEnabled(deviceStack, sub, !current);
+        if (current && PhaseLockSubmodule.INSTANCE.id().equals(sub.id())) {
+            PhaseLockService.release(player);
+        }
     }
 
     public void toggleRailgunTerrain() {
@@ -369,7 +375,9 @@ public class DeviceHubMenu extends AbstractContainerMenu {
         submodule.setConfig(deviceStack, config.key(), next);
         // sync inertia to client when flight module config changes
         if ("flight_inertia".equals(config.key())
-                || FlightSpeedOption.CONFIG_KEY.equals(config.key())) {
+                || FlightSpeedOption.CONFIG_KEY.equals(config.key())
+                || PhaseFlightSubmodule.BLOCK_EXTERNAL_FORCES_CONFIG_KEY.equals(config.key())
+                || PhaseFlightSubmodule.BLOCK_EXTERNAL_TELEPORTS_CONFIG_KEY.equals(config.key())) {
             CelestweaveArmorState.syncFlightInertiaToClientIfFlight(player, deviceStack);
         }
     }
@@ -387,8 +395,7 @@ public class DeviceHubMenu extends AbstractContainerMenu {
     }
 
     private static ItemStack findArmor(Player player, EquipmentSlot slot) {
-        ItemStack stack = player.getItemBySlot(slot);
-        return stack.getItem() instanceof BaseCelestweaveArmorItem ? stack : ItemStack.EMPTY;
+        return CelestweaveEquipmentAccess.findArmor(player, slot);
     }
 
     private static ItemStack findRailgun(Player player) {

@@ -34,6 +34,8 @@ import com.moakiee.ae2lt.item.SaturationSubmoduleItem;
 import com.moakiee.ae2lt.item.DigAffinitySubmoduleItem;
 import com.moakiee.ae2lt.item.ReachSubmoduleItem;
 import com.moakiee.ae2lt.item.PhaseFlightSubmoduleItem;
+import com.moakiee.ae2lt.item.PhaseLockProjectionItem;
+import com.moakiee.ae2lt.item.PhaseLockSubmoduleItem;
 import com.moakiee.ae2lt.item.PerfectElectroChimeCrystalItem;
 import com.moakiee.ae2lt.item.ResearchNoteItem;
 import com.moakiee.ae2lt.item.WeatherCondensateItem;
@@ -361,6 +363,32 @@ public final class ModItems {
             "module_phase_flight",
             PhaseFlightSubmoduleItem::new,
             new Item.Properties());
+
+    public static final DeferredItem<PhaseLockSubmoduleItem> CELESTWEAVE_SUBMODULE_PHASE_LOCK = ITEMS.registerItem(
+            "module_phase_lock",
+            PhaseLockSubmoduleItem::new,
+            new Item.Properties().rarity(Rarity.EPIC));
+
+    /** Generated runtime projection; intentionally omitted from creative tabs and recipes. */
+    public static final DeferredItem<PhaseLockProjectionItem> PHASE_LOCK_PROJECTION = ITEMS.registerItem(
+            "phase_lock_projection",
+            properties -> new PhaseLockProjectionItem(properties, net.minecraft.world.entity.EquipmentSlot.CHEST),
+            new Item.Properties().rarity(Rarity.EPIC));
+
+    public static final DeferredItem<PhaseLockProjectionItem> PHASE_LOCK_PROJECTION_HEAD = ITEMS.registerItem(
+            "phase_lock_projection_head",
+            properties -> new PhaseLockProjectionItem(properties, net.minecraft.world.entity.EquipmentSlot.HEAD),
+            new Item.Properties().rarity(Rarity.EPIC));
+
+    public static final DeferredItem<PhaseLockProjectionItem> PHASE_LOCK_PROJECTION_LEGS = ITEMS.registerItem(
+            "phase_lock_projection_legs",
+            properties -> new PhaseLockProjectionItem(properties, net.minecraft.world.entity.EquipmentSlot.LEGS),
+            new Item.Properties().rarity(Rarity.EPIC));
+
+    public static final DeferredItem<PhaseLockProjectionItem> PHASE_LOCK_PROJECTION_FEET = ITEMS.registerItem(
+            "phase_lock_projection_feet",
+            properties -> new PhaseLockProjectionItem(properties, net.minecraft.world.entity.EquipmentSlot.FEET),
+            new Item.Properties().rarity(Rarity.EPIC));
 
     public static final DeferredItem<ArmorEnergyModuleItem> ENERGY_MODULE_T1 = ITEMS.register(
             "energy_module_t1",

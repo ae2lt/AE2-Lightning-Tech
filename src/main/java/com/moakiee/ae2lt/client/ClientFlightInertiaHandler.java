@@ -11,6 +11,7 @@ import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 
 import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.celestweave.CelestweaveArmorState;
+import com.moakiee.ae2lt.celestweave.PhaseFlightMovementGuard;
 
 @EventBusSubscriber(modid = AE2LightningTech.MODID, value = Dist.CLIENT)
 public final class ClientFlightInertiaHandler {
@@ -57,7 +58,10 @@ public final class ClientFlightInertiaHandler {
             if (wasNoPhysics) {
                 player.noPhysics = false;
             }
-            player.setDeltaMovement(new Vec3(x, y, z));
+            Vec3 adjusted = new Vec3(x, y, z);
+            PhaseFlightMovementGuard.runAsSelfMovement(
+                    player,
+                    () -> player.setDeltaMovement(adjusted));
             if (wasNoPhysics) {
                 player.noPhysics = true;
             }

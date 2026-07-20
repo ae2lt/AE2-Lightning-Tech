@@ -18,6 +18,7 @@ import com.moakiee.ae2lt.menu.hub.DeviceHubMenu;
 import com.moakiee.ae2lt.network.DashPacket;
 import com.moakiee.ae2lt.network.hub.OpenDeviceHubPacket;
 import com.moakiee.ae2lt.celestweave.BaseCelestweaveArmorItem;
+import com.moakiee.ae2lt.item.PhaseLockProjectionItem;
 import com.moakiee.ae2lt.item.railgun.ElectromagneticRailgunItem;
 
 @EventBusSubscriber(modid = AE2LightningTech.MODID, bus = EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
@@ -67,16 +68,25 @@ public final class DeviceHubKeyMappings {
                 }
 
                 if (defaultTab < 0) {
+                    for (EquipmentSlot slot : new EquipmentSlot[]{
+                            EquipmentSlot.CHEST,
+                            EquipmentSlot.HEAD,
+                            EquipmentSlot.LEGS,
+                            EquipmentSlot.FEET}) {
+                        if (minecraft.player.getItemBySlot(slot).getItem()
+                                instanceof PhaseLockProjectionItem projection
+                                && projection.equipmentSlot() == slot) {
+                            defaultTab = tabFor(slot);
+                            break;
+                        }
+                    }
+                }
+
+                if (defaultTab < 0) {
                     for (EquipmentSlot slot : new EquipmentSlot[]{EquipmentSlot.CHEST, EquipmentSlot.HEAD, EquipmentSlot.LEGS, EquipmentSlot.FEET}) {
                         ItemStack armor = minecraft.player.getItemBySlot(slot);
                         if (armor.getItem() instanceof BaseCelestweaveArmorItem) {
-                            defaultTab = switch (slot) {
-                                case HEAD -> DeviceHubMenu.TAB_HELMET;
-                                case CHEST -> DeviceHubMenu.TAB_CHESTPLATE;
-                                case LEGS -> DeviceHubMenu.TAB_LEGGINGS;
-                                case FEET -> DeviceHubMenu.TAB_BOOTS;
-                                default -> DeviceHubMenu.TAB_CHESTPLATE;
-                            };
+                            defaultTab = tabFor(slot);
                             break;
                         }
                     }
@@ -86,6 +96,16 @@ public final class DeviceHubKeyMappings {
                     PacketDistributor.sendToServer(new OpenDeviceHubPacket(defaultTab));
                 }
             }
+        }
+
+        private static int tabFor(EquipmentSlot slot) {
+            return switch (slot) {
+                case HEAD -> DeviceHubMenu.TAB_HELMET;
+                case CHEST -> DeviceHubMenu.TAB_CHESTPLATE;
+                case LEGS -> DeviceHubMenu.TAB_LEGGINGS;
+                case FEET -> DeviceHubMenu.TAB_BOOTS;
+                default -> -1;
+            };
         }
     }
 }

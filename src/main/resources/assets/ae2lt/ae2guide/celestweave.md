@@ -23,6 +23,7 @@ item_ids:
   - ae2lt:module_purification
   - ae2lt:module_creative_flight
   - ae2lt:module_phase_flight
+  - ae2lt:module_phase_lock
   - ae2lt:module_dash
   - ae2lt:module_dig_affinity
 ---
@@ -80,6 +81,7 @@ If FE or required Lightning is missing, the affected effects cannot be maintaine
 | Reflect | Reflects up to 30% of attacker damage, spending FE and HV |
 | Undying | Intercepts fatal damage, spending large FE and EHV costs |
 | Purification | Removes and blocks configured status effects; by default, harmful effects only |
+| Phase Lock | Uses the chestplate as controller and moves the currently worn Celestweave set into four UUID-bound private slots. Stateless Binding-Cursed projections occupy those armor slots. Replacing one projection costs 1,000,000 FE; failure releases and re-equips the entire real set. Newly worn Celestweave pieces join the lock automatically. |
 
 Matrix Shield and Phase Shield share the same install group, so only one of them can be installed on the chestplate.
 

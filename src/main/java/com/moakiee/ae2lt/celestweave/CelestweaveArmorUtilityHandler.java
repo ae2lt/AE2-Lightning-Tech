@@ -26,6 +26,8 @@ import com.moakiee.ae2lt.celestweave.module.SaturationSubmodule;
 import com.moakiee.ae2lt.celestweave.service.ArmorCapabilityCollector;
 import com.moakiee.ae2lt.celestweave.service.ArmorCapabilityCollector.ActiveCapability;
 import com.moakiee.ae2lt.celestweave.service.ArmorInteractionRangeService;
+import com.moakiee.ae2lt.celestweave.phase.CelestweaveEquipmentAccess;
+import com.moakiee.ae2lt.celestweave.phase.PhaseLockService;
 
 @EventBusSubscriber(modid = AE2LightningTech.MODID)
 public final class CelestweaveArmorUtilityHandler {
@@ -37,6 +39,7 @@ public final class CelestweaveArmorUtilityHandler {
         if (!(event.getEntity() instanceof ServerPlayer player)) {
             return;
         }
+        PhaseLockService.tick(player);
         var capabilities = ArmorCapabilityCollector.collectPerInstalledStack(player);
         extinguishShieldedPlayer(player, capabilities);
         ArmorInteractionRangeService.tick(player, capabilities);
@@ -231,8 +234,8 @@ public final class CelestweaveArmorUtilityHandler {
                 EquipmentSlot.CHEST,
                 EquipmentSlot.LEGS,
                 EquipmentSlot.FEET)) {
-            ItemStack armor = player.getItemBySlot(slot);
-            if (armor.isEmpty() || !(armor.getItem() instanceof BaseCelestweaveArmorItem)) {
+            ItemStack armor = CelestweaveEquipmentAccess.findArmor(player, slot);
+            if (armor.isEmpty()) {
                 continue;
             }
             if (CelestweaveArmorState.isSubmoduleInstalled(
@@ -270,8 +273,8 @@ public final class CelestweaveArmorUtilityHandler {
                 EquipmentSlot.CHEST,
                 EquipmentSlot.LEGS,
                 EquipmentSlot.FEET)) {
-            ItemStack armor = player.getItemBySlot(slot);
-            if (armor.isEmpty() || !(armor.getItem() instanceof BaseCelestweaveArmorItem)) {
+            ItemStack armor = CelestweaveEquipmentAccess.findArmor(player, slot);
+            if (armor.isEmpty()) {
                 continue;
             }
             // Re-assert the authoritative phase-flight push after a dimension change; every other
@@ -294,8 +297,8 @@ public final class CelestweaveArmorUtilityHandler {
                 EquipmentSlot.CHEST,
                 EquipmentSlot.LEGS,
                 EquipmentSlot.FEET)) {
-            ItemStack armor = player.getItemBySlot(slot);
-            if (!armor.isEmpty() && armor.getItem() instanceof BaseCelestweaveArmorItem) {
+            ItemStack armor = CelestweaveEquipmentAccess.findArmor(player, slot);
+            if (!armor.isEmpty()) {
                 CelestweaveArmorState.clearTransientRuntimeAndCaches(armor);
             }
         }

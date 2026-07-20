@@ -34,6 +34,8 @@ public final class CelestweaveArmorState {
     private static final int MAX_MODULE_TYPES = 32;
     private static volatile boolean CLIENT_FLIGHT_INERTIA = true;
     private static volatile UUID CLIENT_FLIGHT_INERTIA_ARMOR_ID = null;
+    private static volatile boolean CLIENT_PHASE_BLOCK_EXTERNAL_FORCES = true;
+    private static volatile boolean CLIENT_PHASE_BLOCK_EXTERNAL_TELEPORTS = true;
     // Client-side set of armor ids whose phase flight is active (authoritative, pushed from server).
     private static final Set<UUID> CLIENT_PHASE_FLIGHT_ACTIVE = ConcurrentHashMap.newKeySet();
 
@@ -535,6 +537,8 @@ public final class CelestweaveArmorState {
         CLIENT_PHASE_FLIGHT_ACTIVE.clear();
         CLIENT_FLIGHT_INERTIA = true;
         CLIENT_FLIGHT_INERTIA_ARMOR_ID = null;
+        CLIENT_PHASE_BLOCK_EXTERNAL_FORCES = true;
+        CLIENT_PHASE_BLOCK_EXTERNAL_TELEPORTS = true;
     }
 
     public static void forgetSubmoduleActiveCache(UUID armorId) {
@@ -637,13 +641,27 @@ public final class CelestweaveArmorState {
         ArmorPersistentData.setSubmoduleData(armor, submoduleId, data);
     }
 
-    public static void setClientFlightInertia(UUID armorId, boolean inertiaEnabled) {
+    public static void setClientFlightSettings(
+            UUID armorId,
+            boolean inertiaEnabled,
+            boolean blockExternalForces,
+            boolean blockExternalTeleports) {
         CLIENT_FLIGHT_INERTIA = inertiaEnabled;
         CLIENT_FLIGHT_INERTIA_ARMOR_ID = armorId;
+        CLIENT_PHASE_BLOCK_EXTERNAL_FORCES = blockExternalForces;
+        CLIENT_PHASE_BLOCK_EXTERNAL_TELEPORTS = blockExternalTeleports;
     }
 
     public static boolean getClientFlightInertia() {
         return CLIENT_FLIGHT_INERTIA;
+    }
+
+    public static boolean getClientPhaseBlockExternalForces() {
+        return CLIENT_PHASE_BLOCK_EXTERNAL_FORCES;
+    }
+
+    public static boolean getClientPhaseBlockExternalTeleports() {
+        return CLIENT_PHASE_BLOCK_EXTERNAL_TELEPORTS;
     }
 
     private static void syncFlightInertiaToClient(ServerPlayer player, ItemStack armor, UUID armorId) {
@@ -654,7 +672,11 @@ public final class CelestweaveArmorState {
                 FlightSubmodule.isInertiaEnabled(armor),
                 phaseFlightActive,
                 PhaseFlightSubmodule.isInertiaEnabled(armor));
-        PacketDistributor.sendToPlayer(player, new FlightInertiaSyncPacket(armorId, inertia));
+        PacketDistributor.sendToPlayer(player, new FlightInertiaSyncPacket(
+                armorId,
+                inertia,
+                phaseFlightActive && PhaseFlightSubmodule.blocksExternalForces(armor),
+                phaseFlightActive && PhaseFlightSubmodule.blocksExternalTeleports(armor)));
     }
 
     public static void syncFlightInertiaToClientIfFlight(ServerPlayer player, ItemStack armor) {

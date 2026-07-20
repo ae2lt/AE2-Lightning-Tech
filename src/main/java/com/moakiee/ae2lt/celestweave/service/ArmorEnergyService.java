@@ -24,6 +24,7 @@ import com.moakiee.ae2lt.celestweave.ArmorOverloadRules;
 import com.moakiee.ae2lt.celestweave.BaseCelestweaveArmorItem;
 import com.moakiee.ae2lt.celestweave.CelestweaveArmorState;
 import com.moakiee.ae2lt.celestweave.service.ArmorLightningService.LightningCost;
+import com.moakiee.ae2lt.celestweave.phase.CelestweaveEquipmentAccess;
 
 public final class ArmorEnergyService {
     private static final ConcurrentHashMap<UUID, Long> NEXT_NETWORK_RETRY_TICK = new ConcurrentHashMap<>();
@@ -120,10 +121,14 @@ public final class ArmorEnergyService {
         }
 
         long received = ArmorEnergyBuffer.refillFromNetwork(armor, player, request);
-        if (received >= request) {
+        long storedAfter = ArmorEnergyBuffer.read(armor, player.registryAccess());
+        long capacity = ArmorEnergyBuffer.capacity(armor, player.registryAccess());
+        if (storedAfter >= capacity) {
             NEXT_NETWORK_RETRY_TICK.remove(armorId);
-        } else {
+        } else if (ArmorNetworkRechargePolicy.shouldThrottlePassiveRetry(storedAfter, capacity, received)) {
             NEXT_NETWORK_RETRY_TICK.put(armorId, ArmorNetworkRechargePolicy.nextRetryTick(now));
+        } else {
+            NEXT_NETWORK_RETRY_TICK.remove(armorId);
         }
         return received;
     }
@@ -179,7 +184,7 @@ public final class ArmorEnergyService {
             candidates.add(preferredArmor);
         }
         for (EquipmentSlot slot : ARMOR_SLOTS) {
-            ItemStack equipped = player.getItemBySlot(slot);
+            ItemStack equipped = CelestweaveEquipmentAccess.findArmor(player, slot);
             if (!isEnergyCandidate(equipped) || containsSameArmor(candidates, equipped)) {
                 continue;
             }

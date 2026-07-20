@@ -9,7 +9,11 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import com.moakiee.ae2lt.celestweave.CelestweaveArmorState;
 
-public record FlightInertiaSyncPacket(UUID armorId, boolean inertiaEnabled)
+public record FlightInertiaSyncPacket(
+        UUID armorId,
+        boolean inertiaEnabled,
+        boolean blockExternalForces,
+        boolean blockExternalTeleports)
         implements CustomPacketPayload {
 
     public static final Type<FlightInertiaSyncPacket> TYPE =
@@ -26,17 +30,23 @@ public record FlightInertiaSyncPacket(UUID armorId, boolean inertiaEnabled)
     public static FlightInertiaSyncPacket decode(RegistryFriendlyByteBuf buf) {
         return new FlightInertiaSyncPacket(
                 buf.readUUID(),
+                buf.readBoolean(),
+                buf.readBoolean(),
                 buf.readBoolean());
     }
 
     public void write(RegistryFriendlyByteBuf buf) {
         buf.writeUUID(armorId);
         buf.writeBoolean(inertiaEnabled);
+        buf.writeBoolean(blockExternalForces);
+        buf.writeBoolean(blockExternalTeleports);
     }
 
     public static void handle(FlightInertiaSyncPacket payload, IPayloadContext context) {
-        context.enqueueWork(() -> CelestweaveArmorState.setClientFlightInertia(
+        context.enqueueWork(() -> CelestweaveArmorState.setClientFlightSettings(
                 payload.armorId(),
-                payload.inertiaEnabled()));
+                payload.inertiaEnabled(),
+                payload.blockExternalForces(),
+                payload.blockExternalTeleports()));
     }
 }

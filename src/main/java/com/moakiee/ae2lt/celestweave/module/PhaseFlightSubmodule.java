@@ -19,6 +19,7 @@ import com.moakiee.ae2lt.config.AE2LTCommonConfig;
 import com.moakiee.ae2lt.celestweave.ArmorOverloadRules;
 import com.moakiee.ae2lt.celestweave.ArmorFlightSpeedRules;
 import com.moakiee.ae2lt.celestweave.CelestweaveArmorState;
+import com.moakiee.ae2lt.celestweave.PhaseFlightMovementGuard;
 import com.moakiee.ae2lt.celestweave.service.ArmorLightningService;
 import com.moakiee.ae2lt.celestweave.service.ArmorResourceFeedback;
 import com.moakiee.ae2lt.me.key.LightningKey;
@@ -28,6 +29,8 @@ public final class PhaseFlightSubmodule extends AbstractCelestweaveArmorSubmodul
     public static final PhaseFlightSubmodule INSTANCE = new PhaseFlightSubmodule();
 
     public static final String INERTIA_CONFIG_KEY = "flight_inertia";
+    public static final String BLOCK_EXTERNAL_FORCES_CONFIG_KEY = "phase_block_external_forces";
+    public static final String BLOCK_EXTERNAL_TELEPORTS_CONFIG_KEY = "phase_block_external_teleports";
 
     private static final String TAG_HAD_MAYFLY = "PhaseHadMayfly";
     private static final String TAG_WAS_FLYING = "PhaseWasFlying";
@@ -102,7 +105,11 @@ public final class PhaseFlightSubmodule extends AbstractCelestweaveArmorSubmodul
 
     @Override
     public List<CelestweaveArmorSubmoduleConfig> getConfigs(ItemStack armor) {
-        return List.of(speedConfig(armor), inertiaConfig(armor));
+        return List.of(
+                speedConfig(armor),
+                inertiaConfig(armor),
+                blockExternalForcesConfig(armor),
+                blockExternalTeleportsConfig(armor));
     }
 
     @Override
@@ -117,6 +124,13 @@ public final class PhaseFlightSubmodule extends AbstractCelestweaveArmorSubmodul
         if (INERTIA_CONFIG_KEY.equals(key)) {
             var options = getOptions(armor);
             options.put(INERTIA_CONFIG_KEY, value instanceof ByteTag bt ? bt : ByteTag.valueOf(true));
+            setOptions(armor, options);
+            return true;
+        }
+        if (BLOCK_EXTERNAL_FORCES_CONFIG_KEY.equals(key)
+                || BLOCK_EXTERNAL_TELEPORTS_CONFIG_KEY.equals(key)) {
+            var options = getOptions(armor);
+            options.put(key, value instanceof ByteTag bt ? bt : ByteTag.valueOf(true));
             setOptions(armor, options);
             return true;
         }
@@ -164,6 +178,37 @@ public final class PhaseFlightSubmodule extends AbstractCelestweaveArmorSubmodul
         return options.getBoolean(INERTIA_CONFIG_KEY);
     }
 
+    public static boolean blocksExternalForces(ItemStack armor) {
+        return booleanOption(armor, BLOCK_EXTERNAL_FORCES_CONFIG_KEY, true);
+    }
+
+    public static boolean blocksExternalTeleports(ItemStack armor) {
+        return booleanOption(armor, BLOCK_EXTERNAL_TELEPORTS_CONFIG_KEY, true);
+    }
+
+    private CelestweaveArmorSubmoduleConfig blockExternalForcesConfig(ItemStack armor) {
+        return config(
+                BLOCK_EXTERNAL_FORCES_CONFIG_KEY,
+                Component.translatable("ae2lt.celestweave.config.phase_block_external_forces"),
+                ByteTag.valueOf(blocksExternalForces(armor)),
+                booleanChoices(),
+                Component.translatable("ae2lt.celestweave.config.phase_block_external_forces.hint"));
+    }
+
+    private CelestweaveArmorSubmoduleConfig blockExternalTeleportsConfig(ItemStack armor) {
+        return config(
+                BLOCK_EXTERNAL_TELEPORTS_CONFIG_KEY,
+                Component.translatable("ae2lt.celestweave.config.phase_block_external_teleports"),
+                ByteTag.valueOf(blocksExternalTeleports(armor)),
+                booleanChoices(),
+                Component.translatable("ae2lt.celestweave.config.phase_block_external_teleports.hint"));
+    }
+
+    private static boolean booleanOption(ItemStack armor, String key, boolean defaultValue) {
+        var options = INSTANCE.getOptions(armor);
+        return options.contains(key, Tag.TAG_BYTE) ? options.getBoolean(key) : defaultValue;
+    }
+
     private FlightSpeedOption getSelectedSpeed(ItemStack armor) {
         var options = getOptions(armor);
         return FlightSpeedOption.fromTag(options.get(FlightSpeedOption.CONFIG_KEY));
@@ -174,6 +219,7 @@ public final class PhaseFlightSubmodule extends AbstractCelestweaveArmorSubmodul
         var abilities = player.getAbilities();
         clearEscapePhaseIfPresent(player);
         markPhaseStateIfNeeded(player);
+        updateMovementGuards(player, armor);
         if (!data.contains(TAG_HAD_MAYFLY, CompoundTag.TAG_BYTE)) {
             data.putBoolean(TAG_HAD_MAYFLY, abilities.mayfly);
             data.putBoolean(TAG_WAS_FLYING, abilities.flying);
@@ -187,12 +233,15 @@ public final class PhaseFlightSubmodule extends AbstractCelestweaveArmorSubmodul
     private static void maintainPhaseFlight(Player player, ItemStack armor) {
         clearEscapePhaseIfPresent(player);
         markPhaseStateIfNeeded(player);
+        updateMovementGuards(player, armor);
         updateAbilitiesIfChanged(player, true, true, ArmorFlightSpeedRules.activeFlightSpeed(armor));
     }
 
     private static void revokePhaseFlight(Player player, ItemStack armor) {
+        // Movement protection follows the active module, not the temporary no-clip escape state.
+        PhaseFlightMovementGuard.clear(player);
         if (player.isInWall() && !escapeFromBlocks(player)) {
-            beginEscapePhase(player, armor);
+            beginEscapePhase(player);
             restoreStoredAbilities(player, armor);
             return;
         }
@@ -289,7 +338,9 @@ public final class PhaseFlightSubmodule extends AbstractCelestweaveArmorSubmodul
         if (!level.noCollision(player, player.getBoundingBox().move(target.subtract(player.position())))) {
             return false;
         }
-        player.teleportTo(target.x, target.y, target.z);
+        PhaseFlightMovementGuard.runAsSelfMovement(
+                player,
+                () -> player.teleportTo(target.x, target.y, target.z));
         return true;
     }
 
@@ -315,6 +366,7 @@ public final class PhaseFlightSubmodule extends AbstractCelestweaveArmorSubmodul
         player.noPhysics = false;
         player.setNoGravity(false);
         player.getPersistentData().remove(PLAYER_PHASE_TAG);
+        PhaseFlightMovementGuard.clear(player);
         clearEscapePhase(player);
     }
 
@@ -346,9 +398,16 @@ public final class PhaseFlightSubmodule extends AbstractCelestweaveArmorSubmodul
         return true;
     }
 
-    private static void beginEscapePhase(Player player, ItemStack armor) {
+    private static void beginEscapePhase(Player player) {
         applyTransientPhaseState(player);
         player.getPersistentData().putInt(PLAYER_ESCAPE_TICKS_TAG, ESCAPE_PHASE_TICKS);
+    }
+
+    private static void updateMovementGuards(Player player, ItemStack armor) {
+        PhaseFlightMovementGuard.updateServerSettings(
+                player,
+                blocksExternalForces(armor),
+                blocksExternalTeleports(armor));
     }
 
     private static void clearEscapePhase(Player player) {

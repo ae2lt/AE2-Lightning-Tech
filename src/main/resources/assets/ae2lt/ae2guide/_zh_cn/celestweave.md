@@ -23,6 +23,7 @@ item_ids:
   - ae2lt:module_purification
   - ae2lt:module_creative_flight
   - ae2lt:module_phase_flight
+  - ae2lt:module_phase_lock
   - ae2lt:module_dash
   - ae2lt:module_dig_affinity
 ---
@@ -80,6 +81,7 @@ item_ids:
 | 反伤模块 | 将来自攻击者的部分伤害反弹，消耗 FE 与高压闪电 |
 | 不死模块 | 拦截致死伤害，消耗大量 FE 与极高压闪电 |
 | 净化模块 | 移除并阻止配置允许的状态效果；默认只处理负面效果 |
+| 相位锁定模块 | 以胸甲为控制器，将当前穿戴的整套苍穹织雷转移到 UUID 绑定的四个私有槽；各护甲栏仅保留带绑定诅咒的无数据占位符。单个占位符被替换时消耗 1,000,000 FE 重建，支付失败则整体解除并穿回全部真护甲。锁定期间新穿上的苍穹织雷部件也会自动纳入。 |
 
 矩阵护盾与相位护盾属于同一安装组，胸甲上只能安装其中一种。
 

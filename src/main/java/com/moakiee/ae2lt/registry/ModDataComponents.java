@@ -3,6 +3,7 @@ package com.moakiee.ae2lt.registry;
 import com.mojang.serialization.Codec;
 
 import com.moakiee.ae2lt.AE2LightningTech;
+import com.moakiee.ae2lt.celestweave.phase.PhaseLockProjectionLink;
 import com.moakiee.ae2lt.celestweave.state.CelestweaveModuleContainer;
 import com.moakiee.ae2lt.item.railgun.RailgunModuleEntries;
 import com.moakiee.ae2lt.item.railgun.RailgunSettings;
@@ -119,4 +120,20 @@ public final class ModDataComponents {
                     "celestweave_modules_powered",
                     builder -> builder
                             .networkSynchronized(ByteBufCodecs.BOOL));
+
+    /** UUID and monotonic mirror version carried only by a phase-lock projection. */
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<PhaseLockProjectionLink>>
+            PHASE_LOCK_PROJECTION_LINK = DATA_COMPONENTS.registerComponentType(
+                    "phase_lock_projection_link",
+                    builder -> builder
+                            .persistent(PhaseLockProjectionLink.CODEC)
+                            .networkSynchronized(PhaseLockProjectionLink.STREAM_CODEC));
+
+    /** Monotonic mirror version carried only by authoritative phase-locked armor. */
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<Long>>
+            PHASE_LOCK_ARMOR_UPDATE = DATA_COMPONENTS.registerComponentType(
+                    "phase_lock_armor_update",
+                    builder -> builder
+                            .persistent(Codec.LONG)
+                            .networkSynchronized(ByteBufCodecs.VAR_LONG));
 }

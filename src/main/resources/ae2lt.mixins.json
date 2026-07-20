@@ -11,7 +11,11 @@
     "LivingEntityUndyingMixin",
     "LivingEntityShieldHitFeedbackMixin",
     "ServerPlayerUndyingMixin",
+    "ServerPlayerPhaseMovementMixin",
+    "EntityPhaseMovementMixin",
     "PlayerPhaseFlightMixin",
+    "BlockItemPhasePlacementMixin",
+    "ServerGamePacketListenerPhaseMovementMixin",
     "ControllerValidatorMixin",
     "AnnihilationPlaneShulkerMixin"
   ],
@@ -27,6 +31,8 @@
     "client.AEBaseScreenFrequencyTerminalButtonMixin",
     "client.ClientPacketListenerShieldHitFeedbackMixin",
     "client.LocalPlayerShieldHitFeedbackMixin",
+    "client.LocalPlayerPhaseMovementMixin",
+    "client.LevelRendererPhaseFlightMixin",
     "client.EntityShieldFireVisualMixin"
   ],
   "injectors": {

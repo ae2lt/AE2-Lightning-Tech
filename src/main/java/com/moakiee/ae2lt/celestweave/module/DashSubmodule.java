@@ -12,6 +12,7 @@ import net.neoforged.api.distmarker.Dist;
 
 import com.moakiee.ae2lt.celestweave.ArmorOverloadRules;
 import com.moakiee.ae2lt.celestweave.CelestweaveArmorState;
+import com.moakiee.ae2lt.celestweave.PhaseFlightMovementGuard;
 import com.moakiee.ae2lt.celestweave.service.ArmorEnergyService;
 import com.moakiee.ae2lt.celestweave.service.ArmorResourceFeedback;
 
@@ -76,10 +77,12 @@ public final class DashSubmodule extends AbstractCelestweaveArmorSubmodule {
             return;
         }
         var look = player.getLookAngle();
-        player.setDeltaMovement(
-                player.getDeltaMovement().x + look.x * IMPULSE,
-                Math.max(player.getDeltaMovement().y, 0.0D) + 0.3D,
-                player.getDeltaMovement().z + look.z * IMPULSE);
+        PhaseFlightMovementGuard.runAsSelfMovement(
+                player,
+                () -> player.setDeltaMovement(
+                        player.getDeltaMovement().x + look.x * IMPULSE,
+                        Math.max(player.getDeltaMovement().y, 0.0D) + 0.3D,
+                        player.getDeltaMovement().z + look.z * IMPULSE));
         player.hurtMarked = true;
         player.resetFallDistance();
         setCooldown(armor, player, COOLDOWN_TICKS);

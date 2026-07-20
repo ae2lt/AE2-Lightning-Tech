@@ -13,10 +13,10 @@ import net.minecraft.world.level.Level;
 
 import com.moakiee.ae2lt.device.capability.DeviceCapability;
 import com.moakiee.ae2lt.device.module.OverloadDeviceModuleItem;
-import com.moakiee.ae2lt.celestweave.BaseCelestweaveArmorItem;
 import com.moakiee.ae2lt.celestweave.CelestweaveArmorState;
 import com.moakiee.ae2lt.celestweave.module.CelestweaveArmorSubmodule;
 import com.moakiee.ae2lt.celestweave.module.CelestweaveArmorSubmoduleItem;
+import com.moakiee.ae2lt.celestweave.phase.CelestweaveEquipmentAccess;
 
 public final class ArmorCapabilityCollector {
     private static final ConcurrentHashMap<UUID, CachedCapabilities> CACHE = new ConcurrentHashMap<>();
@@ -49,8 +49,8 @@ public final class ArmorCapabilityCollector {
     private static List<ActiveCapability> collectUncached(Player player, boolean expandByCount) {
         var out = new ArrayList<ActiveCapability>();
         for (EquipmentSlot slot : ARMOR_SLOTS) {
-            ItemStack armor = player.getItemBySlot(slot);
-            if (armor.isEmpty() || !(armor.getItem() instanceof BaseCelestweaveArmorItem)) {
+            ItemStack armor = CelestweaveEquipmentAccess.findArmor(player, slot);
+            if (armor.isEmpty()) {
                 continue;
             }
 

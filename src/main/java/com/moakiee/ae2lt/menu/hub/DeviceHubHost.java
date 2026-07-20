@@ -9,8 +9,8 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.ItemStack;
 
-import com.moakiee.ae2lt.celestweave.BaseCelestweaveArmorItem;
 import com.moakiee.ae2lt.item.railgun.ElectromagneticRailgunItem;
+import com.moakiee.ae2lt.celestweave.phase.CelestweaveEquipmentAccess;
 
 /**
  * MenuProvider that opens the unified DeviceHub UI.
@@ -76,8 +76,7 @@ public class DeviceHubHost implements MenuProvider {
     }
 
     private static boolean hasArmor(Player player, EquipmentSlot slot) {
-        ItemStack stack = player.getItemBySlot(slot);
-        return stack.getItem() instanceof BaseCelestweaveArmorItem;
+        return !CelestweaveEquipmentAccess.findArmor(player, slot).isEmpty();
     }
 
     private static boolean hasRailgun(Player player) {

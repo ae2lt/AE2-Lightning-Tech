@@ -8,9 +8,11 @@ import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.network.PacketDistributor;
 
 import com.moakiee.ae2lt.config.RailgunDefaults;
+import com.moakiee.ae2lt.celestweave.PhaseFlightMovementGuard;
 import com.moakiee.ae2lt.item.railgun.RailgunChargeTier;
 import com.moakiee.ae2lt.network.railgun.RailgunRecoilFxPacket;
 import com.moakiee.ae2lt.registry.ModItems;
+import com.moakiee.ae2lt.celestweave.phase.CelestweaveEquipmentAccess;
 
 /**
  * Applies recoil to charged-fire only. Pushes the player backward + fires a
@@ -60,7 +62,9 @@ public final class RailgunRecoilService {
         }
 
         Vec3 push = backDir.scale(speed);
-        player.setDeltaMovement(player.getDeltaMovement().add(push));
+        PhaseFlightMovementGuard.runAsSelfMovement(
+                player,
+                () -> player.setDeltaMovement(player.getDeltaMovement().add(push)));
         player.hurtMarked = true;
         player.fallDistance = 0.0F;
         player.getPersistentData().putLong(RECOIL_GRACE_TAG, level.getGameTime() + 60L);
@@ -69,10 +73,10 @@ public final class RailgunRecoilService {
     }
 
     private static boolean wearingFullCelestweaveSet(ServerPlayer player) {
-        return player.getItemBySlot(EquipmentSlot.HEAD).is(ModItems.CELESTWEAVE_OCULUS.get())
-                && player.getItemBySlot(EquipmentSlot.CHEST).is(ModItems.CELESTWEAVE_CORE.get())
-                && player.getItemBySlot(EquipmentSlot.LEGS).is(ModItems.CELESTWEAVE_CONDUIT.get())
-                && player.getItemBySlot(EquipmentSlot.FEET).is(ModItems.CELESTWEAVE_STRIDE.get());
+        return CelestweaveEquipmentAccess.findArmor(player, EquipmentSlot.HEAD).is(ModItems.CELESTWEAVE_OCULUS.get())
+                && CelestweaveEquipmentAccess.findArmor(player, EquipmentSlot.CHEST).is(ModItems.CELESTWEAVE_CORE.get())
+                && CelestweaveEquipmentAccess.findArmor(player, EquipmentSlot.LEGS).is(ModItems.CELESTWEAVE_CONDUIT.get())
+                && CelestweaveEquipmentAccess.findArmor(player, EquipmentSlot.FEET).is(ModItems.CELESTWEAVE_STRIDE.get());
     }
 
     public static boolean inRecoilGrace(ServerPlayer player) {

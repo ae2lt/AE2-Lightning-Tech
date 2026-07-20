@@ -93,6 +93,10 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
     private static final int CONFIG_BUTTON_W = 40;
     private static final int CONFIG_BUTTON_H = 12;
     private static final int CONFIG_ROW_H = 16;
+    private static final int CONFIG_VISIBLE_ROWS = 3;
+    private static final int CONFIG_SCROLL_X = 168;
+    private static final int CONFIG_SCROLL_Y = CONFIG_Y;
+    private static final int CONFIG_SCROLL_H = 46;
 
     private static final int CHECKBOX_WIDTH = 22;
     private static final int CHECKBOX_HEIGHT = 12;
@@ -115,6 +119,9 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
     };
 
     private int scrollOffset = 0;
+    private int configScrollOffset = 0;
+    private int lastConfigTab = -1;
+    private int lastConfigModule = -1;
 
     public DeviceHubScreen(DeviceHubMenu menu, Inventory inv, Component title) {
         super(menu, inv, title);
@@ -144,6 +151,7 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
         int selectedTab = menu.getSelectedTab();
         int tabMask = menu.getTabAvailability();
         boolean railgunTab = selectedTab == DeviceHubMenu.TAB_RAILGUN;
+        resetConfigScrollWhenSelectionChanges(selectedTab, menu.getSelectedModuleIndex());
 
         renderTabIcons(gfx);
 
@@ -309,14 +317,23 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
             return;
         }
 
+        configScrollOffset = DeviceHubDisplayRules.clampScrollOffset(
+                configScrollOffset, count, CONFIG_VISIBLE_ROWS);
         int rowY = y;
-        for (int i = 0; i < Math.min(count, 2); i++) {
-            String value = menu.getModuleConfigValues().get(i);
-            boolean editable = menu.getModuleConfigEditable().get(i);
-            gfx.drawString(font, moduleConfigLabel(i),
+        for (int i = 0; i < Math.min(count, CONFIG_VISIBLE_ROWS); i++) {
+            int configIndex = i + configScrollOffset;
+            if (configIndex >= count) {
+                break;
+            }
+            String value = menu.getModuleConfigValues().get(configIndex);
+            boolean editable = menu.getModuleConfigEditable().get(configIndex);
+            gfx.drawString(font, moduleConfigLabel(configIndex),
                     x, rowY + 1, TEXT_ON_DARK_BG, false);
             drawConfigValueButton(gfx, leftPos + CONFIG_BUTTON_X, rowY - 1, value, editable, mouseX, mouseY);
             rowY += CONFIG_ROW_H;
+        }
+        if (count > CONFIG_VISIBLE_ROWS) {
+            renderConfigScrollBar(gfx, count, mouseX, mouseY);
         }
     }
 
@@ -381,15 +398,19 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
         }
         int rowY = topPos + CONFIG_Y;
         int buttonX = leftPos + CONFIG_BUTTON_X;
-        for (int i = 0; i < Math.min(count, 2); i++) {
-            boolean editable = menu.getModuleConfigEditable().get(i);
+        for (int i = 0; i < Math.min(count, CONFIG_VISIBLE_ROWS); i++) {
+            int configIndex = i + configScrollOffset;
+            if (configIndex >= count) {
+                break;
+            }
+            boolean editable = menu.getModuleConfigEditable().get(configIndex);
             if (editable
                     && mouseX >= buttonX
                     && mouseX <= buttonX + CONFIG_BUTTON_W
                     && mouseY >= rowY - 1
                     && mouseY <= rowY - 1 + CONFIG_BUTTON_H) {
                 PacketDistributor.sendToServer(new DeviceHubActionPacket(
-                        DeviceHubActionPacket.ACTION_CYCLE_MODULE_CONFIG, i));
+                        DeviceHubActionPacket.ACTION_CYCLE_MODULE_CONFIG, configIndex));
                 return true;
             }
             rowY += CONFIG_ROW_H;
@@ -532,22 +553,68 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
-        if (mouseX < leftPos + 8
-                || mouseX > leftPos + 168
-                || mouseY < topPos + 78
-                || mouseY > topPos + 142) {
-            return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+        if (mouseX >= leftPos + 8
+                && mouseX <= leftPos + 168
+                && mouseY >= topPos + 78
+                && mouseY <= topPos + 142) {
+            List<String> moduleNames = menu.getModuleNameKeys();
+            scrollOffset = scroll(scrollOffset, scrollY);
+            scrollOffset = DeviceHubDisplayRules.clampScrollOffset(
+                    scrollOffset, moduleNames.size(), MODULE_VISIBLE_ROWS);
+            return true;
         }
 
-        List<String> moduleNames = menu.getModuleNameKeys();
-        if (scrollY > 0 && scrollOffset > 0) {
-            scrollOffset--;
-        } else if (scrollY < 0) {
-            scrollOffset++;
+        if (menu.getSelectedTab() != DeviceHubMenu.TAB_RAILGUN
+                && mouseX >= leftPos + 8
+                && mouseX <= leftPos + 175
+                && mouseY >= topPos + CONFIG_HEADER_Y
+                && mouseY <= topPos + GUI_HEIGHT) {
+            configScrollOffset = scroll(configScrollOffset, scrollY);
+            configScrollOffset = DeviceHubDisplayRules.clampScrollOffset(
+                    configScrollOffset, moduleConfigCount(), CONFIG_VISIBLE_ROWS);
+            return true;
         }
-        scrollOffset = DeviceHubDisplayRules.clampScrollOffset(
-                scrollOffset, moduleNames.size(), MODULE_VISIBLE_ROWS);
-        return true;
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+    }
+
+    private void renderConfigScrollBar(GuiGraphics gfx, int configCount, int mouseX, int mouseY) {
+        int thumbRange = CONFIG_SCROLL_H - SCROLL_SRC_H;
+        int thumbY = topPos + CONFIG_SCROLL_Y
+                + thumbRange * configScrollOffset / Math.max(1, configCount - CONFIG_VISIBLE_ROWS);
+        int thumbX = leftPos + CONFIG_SCROLL_X;
+        boolean hovered = mouseX >= thumbX
+                && mouseX < thumbX + SCROLL_SRC_W
+                && mouseY >= thumbY
+                && mouseY < thumbY + SCROLL_SRC_H;
+        gfx.blit(
+                TEXTURE,
+                thumbX,
+                thumbY,
+                SCROLL_SRC_X,
+                hovered ? SCROLL_HOVER_SRC_Y : SCROLL_SRC_Y,
+                SCROLL_SRC_W,
+                hovered ? SCROLL_HOVER_SRC_H : SCROLL_SRC_H,
+                TEXTURE_SIZE,
+                TEXTURE_SIZE);
+    }
+
+    private void resetConfigScrollWhenSelectionChanges(int selectedTab, int selectedModule) {
+        if (selectedTab == lastConfigTab && selectedModule == lastConfigModule) {
+            return;
+        }
+        lastConfigTab = selectedTab;
+        lastConfigModule = selectedModule;
+        configScrollOffset = 0;
+    }
+
+    private static int scroll(int offset, double scrollY) {
+        if (scrollY > 0 && offset > 0) {
+            return offset - 1;
+        }
+        if (scrollY < 0) {
+            return offset + 1;
+        }
+        return offset;
     }
 
     private void renderTabTooltips(GuiGraphics gfx, int mouseX, int mouseY, int tabMask) {
