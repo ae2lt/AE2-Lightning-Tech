@@ -23,7 +23,6 @@ import appeng.core.network.serverbound.InventoryActionPacket;
 import appeng.helpers.InventoryAction;
 import appeng.menu.SlotSemantics;
 import appeng.parts.encoding.EncodingMode;
-import appeng.util.ReadableNumberConverter;
 import appeng.api.stacks.AEItemKey;
 import com.moakiee.ae2lt.logic.tianshu.terminal.ProcessingPatternEncodingType;
 import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuEncodingMode;
@@ -430,12 +429,6 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
     @Override
     public void renderSlot(GuiGraphics graphics, Slot slot) {
         super.renderSlot(graphics, slot);
-
-        if (isClosedLoopMemberSlot(slot) && slot.hasItem()) {
-            long copies = Math.max(1L, menu.closedLoopDraftSync.copies(slot.getContainerSlot()));
-            StackSizeRenderer.renderSizeLabel(graphics, font, slot.x, slot.y,
-                    ReadableNumberConverter.format(copies, 4));
-        }
 
         if (shouldShowCraftableIndicatorForSlot(slot)) {
             var poseStack = graphics.pose();

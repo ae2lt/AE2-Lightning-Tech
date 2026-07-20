@@ -7,11 +7,14 @@
 package com.moakiee.ae2lt.client;
 
 import appeng.api.crafting.PatternDetailsHelper;
+import appeng.api.config.ActionItems;
 import appeng.client.Point;
 import appeng.client.gui.ICompositeWidget;
 import appeng.client.gui.WidgetContainer;
 import appeng.client.gui.style.Blitter;
 import appeng.client.gui.widgets.AE2Button;
+import appeng.client.gui.widgets.AETextField;
+import appeng.client.gui.widgets.ActionButton;
 import appeng.client.gui.widgets.Scrollbar;
 import com.moakiee.ae2lt.item.ClosedLoopPatternItem;
 import com.moakiee.ae2lt.menu.Ae2ltSlotSemantics;
@@ -21,7 +24,6 @@ import java.util.Locale;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.network.chat.Component;
@@ -31,6 +33,11 @@ import net.minecraft.world.level.Level;
 /** Inline closed-loop editor shown in the terminal's encoding area, mirroring the processing panel. */
 final class TianshuClosedLoopEncodingPanel implements ICompositeWidget {
     private static final Blitter BG = Blitter.texture("guis/pattern_modes.png").src(0, 70, 124, 66);
+    // Reuse a blank part of AE2's processing panel to remove its input-to-output arrow.
+    private static final Blitter ARROW_COVER =
+            Blitter.texture("guis/pattern_modes.png").src(73, 77, 23, 16);
+    private static final int ARROW_X = 73;
+    private static final int ARROW_Y = 25;
     private static final int PANEL_WIDTH = 124;
     private static final int PANEL_HEIGHT = 66;
     // Offsets relative to the panel anchor (JSON "closedLoopPanel": left 9 / bottom 166).
@@ -51,8 +58,9 @@ final class TianshuClosedLoopEncodingPanel implements ICompositeWidget {
     private final Scrollbar scrollbar;
     private final AE2Button detailButton;
     private final AE2Button autoFillButton;
-    private final EditBox executionField;
-    private final EditBox storedField;
+    private final ActionButton clearButton;
+    private final AETextField executionField;
+    private final AETextField storedField;
     private boolean visible;
     private boolean syncing;
     private int x;
@@ -77,21 +85,22 @@ final class TianshuClosedLoopEncodingPanel implements ICompositeWidget {
         autoFillButton = widgets.addButton("closedLoopAutoFill",
                 Component.translatable("ae2lt.tianshu.closed_loop.auto_fill"),
                 menu::autoFillClosedLoop);
+        clearButton = new ActionButton(ActionItems.S_CLOSE, menu::clearClosedLoopDraft);
+        clearButton.setHalfSize(true);
+        clearButton.setDisableBackground(true);
+        widgets.add("closedLoopClear", clearButton);
 
-        var font = Minecraft.getInstance().font;
-        executionField = new EditBox(font, 0, 0, CONTROL_WIDTH, 12, Component.empty());
-        storedField = new EditBox(font, 0, 0, CONTROL_WIDTH, 12, Component.empty());
+        executionField = widgets.addTextField("closedLoopExecMultiplier");
+        storedField = widgets.addTextField("closedLoopStoredMultiplier");
         for (var field : List.of(executionField, storedField)) {
             field.setMaxLength(9);
             field.setFilter(TianshuClosedLoopEncodingPanel::isPositiveIntDraft);
             field.setResponder(ignored -> submitMultipliers());
         }
-        executionField.setTooltip(Tooltip.create(Component.translatable(
+        executionField.setTooltipMessage(List.of(Component.translatable(
                 "ae2lt.tianshu.terminal.closed_loop.execution_seed_multiplier.tooltip")));
-        storedField.setTooltip(Tooltip.create(Component.translatable(
+        storedField.setTooltipMessage(List.of(Component.translatable(
                 "ae2lt.tianshu.terminal.closed_loop.stored_task_multiplier.tooltip")));
-        widgets.add("closedLoopExecMultiplier", executionField);
-        widgets.add("closedLoopStoredMultiplier", storedField);
     }
 
     @Override
@@ -119,8 +128,9 @@ final class TianshuClosedLoopEncodingPanel implements ICompositeWidget {
         scrollbar.setVisible(visible);
         detailButton.visible = visible;
         autoFillButton.visible = visible;
-        executionField.visible = visible;
-        storedField.visible = visible;
+        clearButton.setVisibility(visible);
+        executionField.setVisible(visible);
+        storedField.setVisible(visible);
         screen.setSlotsHidden(Ae2ltSlotSemantics.TIANSHU_CLOSED_LOOP_MEMBER, !visible);
         screen.setSlotsHidden(Ae2ltSlotSemantics.TIANSHU_CLOSED_LOOP_OUTPUT_MARK, !visible);
     }
@@ -159,27 +169,19 @@ final class TianshuClosedLoopEncodingPanel implements ICompositeWidget {
 
     @Override
     public void drawBackgroundLayer(GuiGraphics graphics, Rect2i bounds, Point mouse) {
-        BG.dest(bounds.getX() + x - 1, bounds.getY() + y + 1).blit(graphics);
+        int panelX = bounds.getX() + x - 1;
+        int panelY = bounds.getY() + y + 1;
+        BG.dest(panelX, panelY).blit(graphics);
+        ARROW_COVER.dest(panelX + ARROW_X, panelY + ARROW_Y).blit(graphics);
     }
 
     @Override
     public void drawForegroundLayer(GuiGraphics graphics, Rect2i bounds, Point mouse) {
-        var font = Minecraft.getInstance().font;
         drawScaledLabel(graphics, Component.translatable(
                 "ae2lt.tianshu.closed_loop.execution_multiplier.short"), EXEC_LABEL_Y);
         drawScaledLabel(graphics, Component.translatable(
                 "ae2lt.tianshu.closed_loop.stored_multiplier.short"), STORED_LABEL_Y);
-
-        var status = statusText();
-        graphics.fill(x + CONTROL_X, y + STATUS_Y,
-                x + CONTROL_X + CONTROL_WIDTH, y + STATUS_Y + STATUS_HEIGHT, 0xFF000000 | statusColor());
-        var pose = graphics.pose();
-        pose.pushPose();
-        pose.translate(x + CONTROL_X + 1, y + STATUS_Y + 1, 0);
-        pose.scale(LABEL_SCALE, LABEL_SCALE, 1.0F);
-        graphics.drawString(font, font.plainSubstrByWidth(
-                status.getString(), (int) ((CONTROL_WIDTH - 2) / LABEL_SCALE)), 0, 0, 0xFFFFFF, false);
-        pose.popPose();
+        drawStatus(graphics);
     }
 
     private void drawScaledLabel(GuiGraphics graphics, Component text, int labelY) {
@@ -190,6 +192,19 @@ final class TianshuClosedLoopEncodingPanel implements ICompositeWidget {
         pose.scale(LABEL_SCALE, LABEL_SCALE, 1.0F);
         graphics.drawString(font, font.plainSubstrByWidth(
                 text.getString(), (int) (CONTROL_WIDTH / LABEL_SCALE)), 0, 0, 0x404040, false);
+        pose.popPose();
+    }
+
+    private void drawStatus(GuiGraphics graphics) {
+        var font = Minecraft.getInstance().font;
+        var text = font.plainSubstrByWidth(
+                statusText().getString(), (int) (CONTROL_WIDTH / LABEL_SCALE));
+        float textWidth = font.width(text) * LABEL_SCALE;
+        var pose = graphics.pose();
+        pose.pushPose();
+        pose.translate(x + CONTROL_X + (CONTROL_WIDTH - textWidth) / 2.0F, y + STATUS_Y, 0);
+        pose.scale(LABEL_SCALE, LABEL_SCALE, 1.0F);
+        graphics.drawString(font, text, 0, 0, statusColor(), false);
         pose.popPose();
     }
 

@@ -256,6 +256,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         registerClientAction("setClosedLoopMultipliers", ClosedLoopMultiplierEdit.class,
                 this::setClosedLoopMultipliersServer);
         registerClientAction("autoFillClosedLoop", this::autoFillClosedLoopServer);
+        registerClientAction("clearClosedLoopDraft", this::clearClosedLoopDraftServer);
         registerClientAction("uploadEncodedPattern", Integer.class, this::uploadEncodedPatternServer);
         registerClientAction("setMaintainableView", Boolean.class, this::setMaintainableViewServer);
         registerClientAction("cycleTianshuTarget", Integer.class, this::cycleTianshuTargetServer);
@@ -618,6 +619,19 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     public void autoFillClosedLoop() {
         if (isClientSide()) sendClientAction("autoFillClosedLoop");
         else autoFillClosedLoopServer();
+    }
+
+    /** Clears the editable closed-loop draft while keeping the encoded source available for refilling. */
+    public void clearClosedLoopDraft() {
+        if (isClientSide()) sendClientAction("clearClosedLoopDraft");
+        else clearClosedLoopDraftServer();
+    }
+
+    private void clearClosedLoopDraftServer() {
+        if (!isServerSide() || tianshuMode != TianshuEncodingMode.CLOSED_LOOP) return;
+        resetClosedLoopDraft();
+        uploadState = 0;
+        broadcastChanges();
     }
 
     private void autoFillClosedLoopServer() {
@@ -1029,7 +1043,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
                 var member = payload.memberPatterns().get(i);
                 var stack = member.pattern().toItemStack(registryAccess());
                 if (stack.isEmpty()) continue;
-                closedLoopMemberInventory.setItemDirect(i, stack);
+                closedLoopMemberInventory.setItemDirect(i, stack.copyWithCount(1));
                 closedLoopMemberCopies[i] = member.copiesPerCycle();
             }
             int outputCount = Math.min(CLOSED_LOOP_OUTPUT_SLOTS, payload.netOutputs().size());
@@ -1687,6 +1701,11 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         private ClosedLoopMemberSlot(AppEngInternalInventory inventory, int slot) {
             super(inventory, slot);
             setHideAmount(true);
+        }
+
+        @Override
+        public void set(ItemStack stack) {
+            super.set(stack.isEmpty() ? ItemStack.EMPTY : stack.copyWithCount(1));
         }
 
         @Override

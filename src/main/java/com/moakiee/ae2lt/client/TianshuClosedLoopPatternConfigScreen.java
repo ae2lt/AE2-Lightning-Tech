@@ -4,6 +4,7 @@ import appeng.api.stacks.GenericStack;
 import appeng.client.gui.AESubScreen;
 import appeng.client.gui.Icon;
 import appeng.client.gui.widgets.AE2Button;
+import appeng.client.gui.widgets.AETextField;
 import appeng.client.gui.widgets.IconButton;
 import appeng.client.gui.widgets.Scrollbar;
 import appeng.client.gui.widgets.TabButton;
@@ -18,7 +19,6 @@ import java.util.Locale;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
@@ -35,6 +35,8 @@ final class TianshuClosedLoopPatternConfigScreen<M extends TianshuPatternEncodin
     private static final int RESULT_NAME_WIDTH = 130;
     private static final int MEMBER_AMOUNT_X = 96;
     private static final int MEMBER_AMOUNT_WIDTH = 36;
+    private static final int MEMBER_AMOUNT_Y_OFFSET = 6;
+    private static final int NUMBER_FIELD_HEIGHT = 12;
     private static final int MEMBER_UP_X = 134;
     private static final int MEMBER_DOWN_X = 150;
     private static final int ROLE_X = 111;
@@ -43,15 +45,15 @@ final class TianshuClosedLoopPatternConfigScreen<M extends TianshuPatternEncodin
 
     private final Scrollbar scrollbar;
     private final List<AE2Button> pageButtons;
-    private final EditBox[] memberAmounts = new EditBox[TianshuPatternConfigLayout.VISIBLE_ROWS];
+    private final AETextField[] memberAmounts = new AETextField[TianshuPatternConfigLayout.VISIBLE_ROWS];
     private final int[] memberRows = new int[TianshuPatternConfigLayout.VISIBLE_ROWS];
     private final ArrowButton[] memberUp = new ArrowButton[TianshuPatternConfigLayout.VISIBLE_ROWS];
     private final ArrowButton[] memberDown = new ArrowButton[TianshuPatternConfigLayout.VISIBLE_ROWS];
     private final Button[] outputRoles = new Button[TianshuPatternConfigLayout.VISIBLE_ROWS];
     private final int[] outputRows = new int[TianshuPatternConfigLayout.VISIBLE_ROWS];
     private Page page = Page.MEMBERS;
-    private EditBox executionMultiplier;
-    private EditBox storedMultiplier;
+    private AETextField executionMultiplier;
+    private AETextField storedMultiplier;
     private ArrowButton previousCandidate;
     private ArrowButton nextCandidate;
     private boolean syncingFields;
@@ -85,11 +87,12 @@ final class TianshuClosedLoopPatternConfigScreen<M extends TianshuPatternEncodin
             final int visibleRow = row;
             int rowY = TianshuPatternConfigLayout.HEADER_HEIGHT
                     + row * TianshuPatternConfigLayout.ROW_HEIGHT;
-            var amount = new EditBox(font, leftPos + MEMBER_AMOUNT_X,
-                    topPos + rowY + 4, MEMBER_AMOUNT_WIDTH, 16, Component.empty());
+            var amount = numberField(MEMBER_AMOUNT_X, rowY + MEMBER_AMOUNT_Y_OFFSET,
+                    MEMBER_AMOUNT_WIDTH);
+            amount.setMaxLength(19);
             amount.setFilter(TianshuClosedLoopPatternConfigScreen::isPositiveLongDraft);
             amount.setResponder(value -> submitMemberAmount(visibleRow, value));
-            memberAmounts[row] = addRenderableWidget(amount);
+            memberAmounts[row] = amount;
 
             memberUp[row] = addRenderableWidget(new ArrowButton(
                     Icon.ARROW_UP,
@@ -109,18 +112,16 @@ final class TianshuClosedLoopPatternConfigScreen<M extends TianshuPatternEncodin
             outputRoles[row] = addRenderableWidget(role);
         }
 
-        executionMultiplier = numberBox(106, TianshuPatternConfigLayout.HEADER_HEIGHT + 29,
+        executionMultiplier = numberBox(106, TianshuPatternConfigLayout.HEADER_HEIGHT + 32,
                 menu.closedLoopExecutionSeedMultiplier);
-        storedMultiplier = numberBox(106, TianshuPatternConfigLayout.HEADER_HEIGHT + 61,
+        storedMultiplier = numberBox(106, TianshuPatternConfigLayout.HEADER_HEIGHT + 64,
                 menu.closedLoopStoredTaskMultiplier);
         executionMultiplier.setResponder(ignored -> submitMultipliers());
         storedMultiplier.setResponder(ignored -> submitMultipliers());
-        var executionTooltip = Tooltip.create(Component.translatable(
-                "ae2lt.tianshu.terminal.closed_loop.execution_seed_multiplier.tooltip"));
-        var storedTooltip = Tooltip.create(Component.translatable(
-                "ae2lt.tianshu.terminal.closed_loop.stored_task_multiplier.tooltip"));
-        executionMultiplier.setTooltip(executionTooltip);
-        storedMultiplier.setTooltip(storedTooltip);
+        executionMultiplier.setTooltipMessage(List.of(Component.translatable(
+                "ae2lt.tianshu.terminal.closed_loop.execution_seed_multiplier.tooltip")));
+        storedMultiplier.setTooltipMessage(List.of(Component.translatable(
+                "ae2lt.tianshu.terminal.closed_loop.stored_task_multiplier.tooltip")));
 
         previousCandidate = addRenderableWidget(new ArrowButton(
                 Icon.ARROW_LEFT,
@@ -137,12 +138,20 @@ final class TianshuClosedLoopPatternConfigScreen<M extends TianshuPatternEncodin
         configurePage();
     }
 
-    private EditBox numberBox(int x, int y, int value) {
-        var field = new EditBox(font, leftPos + x, topPos + y, 59, 16, Component.empty());
+    private AETextField numberBox(int x, int y, int value) {
+        var field = numberField(x, y, 59);
+        field.setMaxLength(9);
         field.setFilter(TianshuClosedLoopPatternConfigScreen::isPositiveIntDraft);
         syncingFields = true;
         field.setValue(Integer.toString(value));
         syncingFields = false;
+        return field;
+    }
+
+    private AETextField numberField(int x, int y, int width) {
+        var field = new AETextField(style, font, leftPos + x, topPos + y,
+                width, NUMBER_FIELD_HEIGHT);
+        field.setBordered(false);
         return addRenderableWidget(field);
     }
 
@@ -232,8 +241,9 @@ final class TianshuClosedLoopPatternConfigScreen<M extends TianshuPatternEncodin
                     && memberIndex < TianshuPatternEncodingTermMenu.CLOSED_LOOP_MEMBER_SLOTS;
             var memberSlot = memberPage ? menu.getClosedLoopMemberSlots().get(memberIndex) : null;
             boolean memberPresent = memberSlot != null && !memberSlot.getItem().isEmpty();
-            memberAmounts[visible].visible = memberPage;
+            memberAmounts[visible].setVisible(memberPage);
             memberAmounts[visible].active = memberPresent;
+            memberAmounts[visible].setEditable(memberPresent);
             memberUp[visible].visible = memberPage;
             memberDown[visible].visible = memberPage;
             memberUp[visible].active = memberPresent && memberIndex > 0;
@@ -252,8 +262,8 @@ final class TianshuClosedLoopPatternConfigScreen<M extends TianshuPatternEncodin
                     menu.closedLoopDraftSync.outputRole(outputIndex)));
         }
         boolean settings = page == Page.SETTINGS;
-        executionMultiplier.visible = settings;
-        storedMultiplier.visible = settings;
+        executionMultiplier.setVisible(settings);
+        storedMultiplier.setVisible(settings);
         previousCandidate.visible = settings;
         nextCandidate.visible = settings;
         previousCandidate.active = menu.closedLoopCandidateCount > 1;
