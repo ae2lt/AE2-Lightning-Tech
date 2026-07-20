@@ -5,9 +5,13 @@ import com.moakiee.ae2lt.logic.tianshu.TianshuMultiblockUpdateScheduler;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityTicker;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import appeng.block.AEBaseEntityBlock;
+import org.jetbrains.annotations.Nullable;
 
 public class TianshuSupercomputerPortBlock extends AEBaseEntityBlock<TianshuSupercomputerPortBlockEntity> {
     public static final net.minecraft.world.level.block.state.properties.BooleanProperty FORMED =
@@ -22,6 +26,17 @@ public class TianshuSupercomputerPortBlock extends AEBaseEntityBlock<TianshuSupe
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
         super.createBlockStateDefinition(builder);
         builder.add(FORMED);
+    }
+
+    @Nullable
+    @Override
+    public <T extends BlockEntity> BlockEntityTicker<T> getTicker(
+            Level level, BlockState state, BlockEntityType<T> type) {
+        return level.isClientSide ? null : (tickLevel, pos, tickState, blockEntity) -> {
+            if (blockEntity instanceof TianshuSupercomputerPortBlockEntity port) {
+                TianshuSupercomputerPortBlockEntity.serverTick(tickLevel, pos, tickState, port);
+            }
+        };
     }
 
     @Override
