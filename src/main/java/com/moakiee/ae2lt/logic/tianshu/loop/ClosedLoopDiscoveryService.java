@@ -71,14 +71,27 @@ public final class ClosedLoopDiscoveryService {
                         resolved.coefficients()[i]));
             }
             if (!valid) continue;
+            if (storedMembers.size() > ClosedLoopPatternAnalyzer.MAX_MEMBERS) continue;
             String signature = storedMembers.stream()
                     .map(member -> member.pattern().toTag() + "x" + member.copiesPerCycle())
                     .sorted().reduce("", (a, b) -> a + "|" + b);
             if (!signatures.add(signature)) continue;
             var analysis = resolved.analysis();
+            var declaredOutputs = new ArrayList<GenericStack>(
+                    Math.min(ClosedLoopPatternPayload.MAX_NET_OUTPUTS, analysis.netOutputs().size()));
+            for (var output : analysis.netOutputs()) {
+                if (output.what().equals(requestedOutput)) {
+                    declaredOutputs.add(output);
+                    break;
+                }
+            }
+            for (var output : analysis.netOutputs()) {
+                if (declaredOutputs.size() >= ClosedLoopPatternPayload.MAX_NET_OUTPUTS) break;
+                if (!output.what().equals(requestedOutput)) declaredOutputs.add(output);
+            }
             result.add(new ClosedLoopDiscoveryCandidate(new ClosedLoopPatternPayload(
                     UUID.randomUUID(), 1L, storedMembers, analysis.seeds(), analysis.externalInputs(),
-                    analysis.netOutputs(), 1, 1, true)));
+                    declaredOutputs, 1, 1, true)));
         }
         return new DiscoveryResult(result, rejectedUndecodablePattern);
     }

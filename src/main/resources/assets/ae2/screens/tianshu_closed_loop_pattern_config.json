@@ -1,0 +1,13 @@
+{
+  "$schema": "schema.json",
+  "includes": ["common/common.json"],
+  "widgets": {
+    "button_back": { "left": 166, "top": -5, "width": 20, "height": 20 },
+    "page_members": { "left": 8, "top": 16, "width": 32, "height": 14 },
+    "page_outputs": { "left": 41, "top": 16, "width": 32, "height": 14 },
+    "page_inputs": { "left": 74, "top": 16, "width": 32, "height": 14 },
+    "page_seeds": { "left": 107, "top": 16, "width": 32, "height": 14 },
+    "page_settings": { "left": 140, "top": 16, "width": 32, "height": 14 },
+    "scrollbar": { "left": 175, "top": 30 }
+  }
+}

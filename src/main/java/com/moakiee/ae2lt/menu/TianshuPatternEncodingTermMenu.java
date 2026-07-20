@@ -5,13 +5,23 @@ import appeng.menu.implementations.MenuTypeBuilder;
 import appeng.menu.me.items.PatternEncodingTermMenu;
 import appeng.parts.encoding.EncodingMode;
 import appeng.api.crafting.PatternDetailsHelper;
+import appeng.api.stacks.AEKey;
+import appeng.api.stacks.GenericStack;
+import appeng.menu.slot.AppEngSlot;
+import appeng.menu.slot.FakeSlot;
+import appeng.util.inv.AppEngInternalInventory;
+import appeng.util.inv.InternalInventoryHost;
 import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.logic.AdvancedAECompat;
 import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopDiscoveryService;
 import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopDiscoveryCandidate;
 import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopMemberPattern;
+import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternAnalyzer;
 import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternAuthoringService;
+import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternPayload;
 import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternUploadService;
+import com.moakiee.ae2lt.logic.tianshu.terminal.ClosedLoopDraftStatus;
+import com.moakiee.ae2lt.logic.tianshu.terminal.ClosedLoopDraftSync;
 import com.moakiee.ae2lt.logic.tianshu.terminal.ProcessingPatternMultiplier;
 import com.moakiee.ae2lt.logic.tianshu.terminal.ProcessingPatternEncodingType;
 import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuEncodingMode;
@@ -53,11 +63,19 @@ import com.moakiee.ae2lt.network.tianshu.RequestUploadTargetsPacket;
 import com.moakiee.ae2lt.network.tianshu.UploadPatternToTargetPacket;
 import com.moakiee.ae2lt.network.tianshu.UploadTargetsSyncPacket;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Set;
 import com.moakiee.ae2lt.network.tianshu.SaveGlobalReservePacket;
 import com.moakiee.ae2lt.network.tianshu.TianshuPacketLimits;
+import com.moakiee.thunderbolt.ae2.overload.pattern.SourcePatternSnapshot;
+import net.minecraft.world.entity.player.Player;
 
 public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
+    public static final int CLOSED_LOOP_MEMBER_SLOTS = ClosedLoopDraftSync.MEMBER_SLOTS;
+    public static final int CLOSED_LOOP_OUTPUT_SLOTS = ClosedLoopDraftSync.OUTPUT_SLOTS;
+    public static final int CLOSED_LOOP_RESULT_SLOTS = ClosedLoopPatternAnalyzer.MAX_MEMBERS * 9;
+    private static final int CLOSED_LOOP_OFFSCREEN = -10000;
     private static final MenuTypeBuilder.MenuFactory<
             TianshuPatternEncodingTermMenu, TianshuPatternTerminalHost> FACTORY =
             TianshuPatternEncodingTermMenu::new;
@@ -106,6 +124,14 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     @Deprecated
     @GuiSync(132)
     public int closedLoopSeedMultiplier = 1;
+    @GuiSync(133)
+    public ClosedLoopDraftSync closedLoopDraftSync = ClosedLoopDraftSync.empty();
+    @GuiSync(134)
+    public ClosedLoopDraftStatus closedLoopDraftStatus = ClosedLoopDraftStatus.EMPTY;
+    @GuiSync(135)
+    public int closedLoopExternalInputCount;
+    @GuiSync(136)
+    public int closedLoopSeedInputCount;
 
     protected final TianshuPatternTerminalHost tianshuHost;
     @Nullable private TianshuTerminalTarget boundTianshuTarget;
@@ -115,7 +141,23 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     @Nullable private ProcessingPatternEncodingType.OverloadConfig overloadEncodingConfig;
     private List<ClosedLoopDiscoveryCandidate> closedLoopCandidates = List.of();
     private List<ClosedLoopMemberPattern> closedLoopDraftMembers = List.of();
-    @Nullable private appeng.api.stacks.AEKey closedLoopMainOutput;
+    @Nullable private AEKey closedLoopMainOutput;
+    private final AppEngInternalInventory closedLoopMemberInventory;
+    private final AppEngInternalInventory closedLoopOutputInventory;
+    private final AppEngInternalInventory closedLoopExternalInputInventory;
+    private final AppEngInternalInventory closedLoopSeedInventory;
+    private final List<AppEngSlot> closedLoopMemberSlots = new ArrayList<>();
+    private final List<AppEngSlot> closedLoopOutputSlots = new ArrayList<>();
+    private final List<AppEngSlot> closedLoopExternalInputSlots = new ArrayList<>();
+    private final List<AppEngSlot> closedLoopSeedSlots = new ArrayList<>();
+    private final long[] closedLoopMemberCopies = new long[CLOSED_LOOP_MEMBER_SLOTS];
+    private final int[] closedLoopOutputRoles = new int[CLOSED_LOOP_OUTPUT_SLOTS];
+    private boolean closedLoopBulkUpdating;
+    private boolean closedLoopDraftDirty;
+    private boolean closedLoopDraftRepresentsEncoded;
+    @Nullable private ClosedLoopPatternPayload closedLoopPreparedPayload;
+    @Nullable private UUID closedLoopOriginalPatternId;
+    private long closedLoopOriginalPatternVersion;
     @Nullable private MaintenanceEditorData maintenanceEditorData;
     private int maintenanceEditorRevision;
     private int maintenanceEditorSelectionRevision = Integer.MIN_VALUE;
@@ -144,6 +186,49 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
             MenuType<?> type, int id, Inventory inventory, TianshuPatternTerminalHost host) {
         super(type, id, inventory, host, true);
         this.tianshuHost = host;
+        this.closedLoopMemberInventory = new AppEngInternalInventory(new InternalInventoryHost() {
+            @Override
+            public void saveChangedInventory(AppEngInternalInventory inv) {
+                if (!closedLoopBulkUpdating) {
+                    closedLoopDraftRepresentsEncoded = false;
+                    closedLoopDraftDirty = true;
+                }
+            }
+
+            @Override
+            public boolean isClientSide() {
+                return TianshuPatternEncodingTermMenu.this.isClientSide();
+            }
+        }, CLOSED_LOOP_MEMBER_SLOTS, 1);
+        this.closedLoopOutputInventory = new AppEngInternalInventory(null, CLOSED_LOOP_OUTPUT_SLOTS, 1);
+        this.closedLoopExternalInputInventory = new AppEngInternalInventory(null, CLOSED_LOOP_RESULT_SLOTS, 1);
+        this.closedLoopSeedInventory = new AppEngInternalInventory(null, CLOSED_LOOP_RESULT_SLOTS, 1);
+        for (int i = 0; i < CLOSED_LOOP_MEMBER_SLOTS; i++) {
+            var slot = new ClosedLoopMemberSlot(closedLoopMemberInventory, i);
+            slot.x = CLOSED_LOOP_OFFSCREEN;
+            slot.y = CLOSED_LOOP_OFFSCREEN;
+            addSlot(slot, Ae2ltSlotSemantics.TIANSHU_CLOSED_LOOP_MEMBER);
+            closedLoopMemberSlots.add(slot);
+        }
+        for (int i = 0; i < CLOSED_LOOP_OUTPUT_SLOTS; i++) {
+            var slot = new ClosedLoopReadonlySlot(closedLoopOutputInventory, i);
+            slot.x = CLOSED_LOOP_OFFSCREEN;
+            slot.y = CLOSED_LOOP_OFFSCREEN;
+            addSlot(slot, Ae2ltSlotSemantics.TIANSHU_CLOSED_LOOP_OUTPUT_MARK);
+            closedLoopOutputSlots.add(slot);
+        }
+        for (int i = 0; i < CLOSED_LOOP_RESULT_SLOTS; i++) {
+            var external = new ClosedLoopReadonlySlot(closedLoopExternalInputInventory, i);
+            external.x = CLOSED_LOOP_OFFSCREEN;
+            external.y = CLOSED_LOOP_OFFSCREEN;
+            addSlot(external, Ae2ltSlotSemantics.TIANSHU_CLOSED_LOOP_EXTERNAL_INPUT);
+            closedLoopExternalInputSlots.add(external);
+            var seed = new ClosedLoopReadonlySlot(closedLoopSeedInventory, i);
+            seed.x = CLOSED_LOOP_OFFSCREEN;
+            seed.y = CLOSED_LOOP_OFFSCREEN;
+            addSlot(seed, Ae2ltSlotSemantics.TIANSHU_CLOSED_LOOP_SEED_INPUT);
+            closedLoopSeedSlots.add(seed);
+        }
         this.boundTianshuTarget = inventory.player.level().isClientSide
                 ? null : host.selectTianshuTarget();
         if (boundTianshuTarget != null) tianshuSelectionRevision = 1;
@@ -161,6 +246,14 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
                 this::changeClosedLoopSeedMultiplierServer);
         registerClientAction("changeClosedLoopStoredTaskMultiplier", Integer.class,
                 this::changeClosedLoopStoredTaskMultiplierServer);
+        registerClientAction("setClosedLoopMemberCopies", ClosedLoopMemberEdit.class,
+                this::setClosedLoopMemberCopiesServer);
+        registerClientAction("moveClosedLoopMember", ClosedLoopMemberMove.class,
+                this::moveClosedLoopMemberServer);
+        registerClientAction("setClosedLoopOutputRole", ClosedLoopOutputEdit.class,
+                this::setClosedLoopOutputRoleServer);
+        registerClientAction("setClosedLoopMultipliers", ClosedLoopMultiplierEdit.class,
+                this::setClosedLoopMultipliersServer);
         registerClientAction("uploadTianshuPattern", Integer.class, this::uploadTianshuPatternServer);
         registerClientAction("uploadTianshuCraftingPattern", this::uploadTianshuCraftingPatternServer);
         registerClientAction("setMaintainableView", Boolean.class, this::setMaintainableViewServer);
@@ -176,7 +269,9 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
             maintenanceAvailable = selected != null
                     && selected.getFunctionProfile().supportsInventoryMaintenance();
             refreshDerivedConfiguration();
+            if (closedLoopDraftDirty) rebuildClosedLoopDraft();
             closedLoopSeedMultiplier = closedLoopExecutionSeedMultiplier;
+            refreshClosedLoopDraftSync();
         }
         super.broadcastChanges();
         if (isServerSide()) sendMaintenanceSummaryIfNeeded();
@@ -391,6 +486,128 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         super.clear();
     }
 
+    public List<AppEngSlot> getClosedLoopMemberSlots() {
+        return closedLoopMemberSlots;
+    }
+
+    public List<AppEngSlot> getClosedLoopOutputSlots() {
+        return closedLoopOutputSlots;
+    }
+
+    public List<AppEngSlot> getClosedLoopExternalInputSlots() {
+        return closedLoopExternalInputSlots;
+    }
+
+    public List<AppEngSlot> getClosedLoopSeedSlots() {
+        return closedLoopSeedSlots;
+    }
+
+    public long getClosedLoopMemberCopies(int slot) {
+        return slot >= 0 && slot < closedLoopMemberCopies.length
+                ? closedLoopMemberCopies[slot] : 0L;
+    }
+
+    public int getClosedLoopOutputRole(int slot) {
+        return slot >= 0 && slot < closedLoopOutputRoles.length
+                ? closedLoopOutputRoles[slot] : 0;
+    }
+
+    public void setClosedLoopMemberCopies(int slot, long copies) {
+        if (isClientSide()) {
+            sendClientAction("setClosedLoopMemberCopies", new ClosedLoopMemberEdit(slot, copies));
+        } else {
+            setClosedLoopMemberCopiesServer(new ClosedLoopMemberEdit(slot, copies));
+        }
+    }
+
+    private void setClosedLoopMemberCopiesServer(ClosedLoopMemberEdit edit) {
+        if (!isServerSide() || tianshuMode != TianshuEncodingMode.CLOSED_LOOP
+                || edit == null || edit.slot() < 0 || edit.slot() >= CLOSED_LOOP_MEMBER_SLOTS
+                || edit.copies() < 1L || edit.copies() == Long.MAX_VALUE) return;
+        if (closedLoopMemberInventory.getStackInSlot(edit.slot()).isEmpty()) return;
+        closedLoopMemberCopies[edit.slot()] = edit.copies();
+        closedLoopDraftRepresentsEncoded = false;
+        closedLoopDraftDirty = true;
+        broadcastChanges();
+    }
+
+    public void moveClosedLoopMember(int slot, int direction) {
+        if (isClientSide()) {
+            sendClientAction("moveClosedLoopMember", new ClosedLoopMemberMove(slot, direction));
+        } else {
+            moveClosedLoopMemberServer(new ClosedLoopMemberMove(slot, direction));
+        }
+    }
+
+    private void moveClosedLoopMemberServer(ClosedLoopMemberMove move) {
+        if (!isServerSide() || tianshuMode != TianshuEncodingMode.CLOSED_LOOP
+                || move == null || (move.direction() != -1 && move.direction() != 1)) return;
+        int source = move.slot();
+        int target = source + move.direction();
+        if (source < 0 || source >= CLOSED_LOOP_MEMBER_SLOTS
+                || target < 0 || target >= CLOSED_LOOP_MEMBER_SLOTS) return;
+        closedLoopBulkUpdating = true;
+        try {
+            var left = closedLoopMemberInventory.getStackInSlot(source).copy();
+            var right = closedLoopMemberInventory.getStackInSlot(target).copy();
+            closedLoopMemberInventory.setItemDirect(source, right);
+            closedLoopMemberInventory.setItemDirect(target, left);
+            long copies = closedLoopMemberCopies[source];
+            closedLoopMemberCopies[source] = closedLoopMemberCopies[target];
+            closedLoopMemberCopies[target] = copies;
+        } finally {
+            closedLoopBulkUpdating = false;
+        }
+        closedLoopDraftRepresentsEncoded = false;
+        closedLoopDraftDirty = true;
+        broadcastChanges();
+    }
+
+    public void setClosedLoopOutputRole(int slot, int role) {
+        if (isClientSide()) {
+            sendClientAction("setClosedLoopOutputRole", new ClosedLoopOutputEdit(slot, role));
+        } else {
+            setClosedLoopOutputRoleServer(new ClosedLoopOutputEdit(slot, role));
+        }
+    }
+
+    private void setClosedLoopOutputRoleServer(ClosedLoopOutputEdit edit) {
+        if (!isServerSide() || tianshuMode != TianshuEncodingMode.CLOSED_LOOP
+                || edit == null || edit.slot() < 0 || edit.slot() >= CLOSED_LOOP_OUTPUT_SLOTS
+                || edit.role() < 0 || edit.role() > 2) return;
+        if (closedLoopOutputInventory.getStackInSlot(edit.slot()).isEmpty()) return;
+        if (edit.role() == 1) {
+            for (int i = 0; i < closedLoopOutputRoles.length; i++) {
+                if (closedLoopOutputRoles[i] == 1) closedLoopOutputRoles[i] = 0;
+            }
+            closedLoopOutputRoles[edit.slot()] = 1;
+        } else {
+            closedLoopOutputRoles[edit.slot()] = edit.role();
+        }
+        closedLoopDraftRepresentsEncoded = false;
+        closedLoopDraftDirty = true;
+        broadcastChanges();
+    }
+
+    public void setClosedLoopMultipliers(int execution, int stored) {
+        if (isClientSide()) {
+            sendClientAction("setClosedLoopMultipliers", new ClosedLoopMultiplierEdit(execution, stored));
+        } else {
+            setClosedLoopMultipliersServer(new ClosedLoopMultiplierEdit(execution, stored));
+        }
+    }
+
+    private void setClosedLoopMultipliersServer(ClosedLoopMultiplierEdit edit) {
+        if (!isServerSide() || tianshuMode != TianshuEncodingMode.CLOSED_LOOP || edit == null
+                || edit.execution() < 1 || edit.stored() < 1) return;
+        closedLoopExecutionSeedMultiplier = edit.execution();
+        closedLoopStoredTaskMultiplier = edit.stored();
+        closedLoopSeedMultiplier = closedLoopExecutionSeedMultiplier;
+        closedLoopDraftRepresentsEncoded = false;
+        closedLoopDraftDirty = true;
+        broadcastChanges();
+    }
+
     public void selectClosedLoopCandidate(int delta) {
         if (isClientSide()) sendClientAction("selectClosedLoopCandidate", delta);
         else selectClosedLoopCandidateServer(delta);
@@ -414,6 +631,8 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         closedLoopExecutionSeedMultiplier = adjustPositiveMultiplier(
                 closedLoopExecutionSeedMultiplier, delta);
         closedLoopSeedMultiplier = closedLoopExecutionSeedMultiplier;
+        closedLoopDraftRepresentsEncoded = false;
+        closedLoopDraftDirty = true;
         broadcastChanges();
     }
 
@@ -437,6 +656,8 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         if (!isServerSide() || delta == 0) return;
         closedLoopStoredTaskMultiplier = adjustPositiveMultiplier(
                 closedLoopStoredTaskMultiplier, delta);
+        closedLoopDraftRepresentsEncoded = false;
+        closedLoopDraftDirty = true;
         broadcastChanges();
     }
 
@@ -671,12 +892,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         // Preserve the result when a successful provider upload empties the source slot.
         // A newly inserted/encoded pattern starts a fresh upload state.
         if (!source.isEmpty()) uploadState = 0;
-        closedLoopCandidates = List.of();
-        closedLoopDraftMembers = List.of();
-        closedLoopMainOutput = null;
-        closedLoopCandidateCount = 0;
-        closedLoopCandidateIndex = 0;
-        closedLoopEncodeState = 0;
+        resetClosedLoopDraft();
         if (source.isEmpty()) return;
         if (source.getItem() instanceof ClosedLoopPatternItem closedLoopItem) {
             var payload = closedLoopItem.readPayload(source, getPlayer().level()).orElse(null);
@@ -684,17 +900,13 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
                 closedLoopExecutionSeedMultiplier = payload.executionSeedMultiplier();
                 closedLoopSeedMultiplier = closedLoopExecutionSeedMultiplier;
                 closedLoopStoredTaskMultiplier = payload.storedTaskMultiplier();
-                closedLoopDraftMembers = payload.memberPatterns();
-                if (!payload.netOutputs().isEmpty()) {
-                    closedLoopMainOutput = payload.netOutputs().getFirst().what();
-                }
-                var validation = com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternValidator
-                        .validate(payload, getPlayer().level());
-                if (!validation.valid()) {
-                    closedLoopEncodeState = validation.status()
-                            == com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopValidationResult.Status.MEMBER_UNDECODABLE
-                            ? 1 : 2;
-                }
+                closedLoopOriginalPatternId = payload.patternId();
+                closedLoopOriginalPatternVersion = payload.version();
+                fillClosedLoopDraft(payload, true);
+                closedLoopDraftRepresentsEncoded = true;
+            } else {
+                closedLoopDraftStatus = ClosedLoopDraftStatus.MEMBER_UNDECODABLE;
+                closedLoopEncodeState = 1;
             }
             return;
         }
@@ -704,6 +916,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     private void refreshClosedLoops(ItemStack source) {
         var details = PatternDetailsHelper.decodePattern(source, getPlayer().level());
         if (details == null) {
+            closedLoopDraftStatus = ClosedLoopDraftStatus.MEMBER_UNDECODABLE;
             closedLoopEncodeState = 1;
             return;
         }
@@ -718,7 +931,10 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         closedLoopCandidates = discovery.candidates();
         closedLoopCandidateCount = closedLoopCandidates.size();
         if (closedLoopCandidates.isEmpty() && discovery.rejectedUndecodablePattern()) {
+            closedLoopDraftStatus = ClosedLoopDraftStatus.MEMBER_UNDECODABLE;
             closedLoopEncodeState = 1;
+        } else if (closedLoopCandidates.isEmpty()) {
+            closedLoopDraftStatus = ClosedLoopDraftStatus.NO_CANDIDATE;
         }
         fillClosedLoopDraftFromSelectedCandidate();
     }
@@ -728,8 +944,296 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         if (closedLoopCandidates.isEmpty()) return;
         int index = Math.max(0, Math.min(
                 closedLoopCandidateIndex, closedLoopCandidates.size() - 1));
-        closedLoopDraftMembers = List.copyOf(
-                closedLoopCandidates.get(index).payload().memberPatterns());
+        fillClosedLoopDraft(closedLoopCandidates.get(index).payload(), true);
+        closedLoopDraftRepresentsEncoded = false;
+    }
+
+    private void resetClosedLoopDraft() {
+        closedLoopBulkUpdating = true;
+        try {
+            clearInventory(closedLoopMemberInventory);
+            clearInventory(closedLoopOutputInventory);
+            clearInventory(closedLoopExternalInputInventory);
+            clearInventory(closedLoopSeedInventory);
+        } finally {
+            closedLoopBulkUpdating = false;
+        }
+        java.util.Arrays.fill(closedLoopMemberCopies, 0L);
+        java.util.Arrays.fill(closedLoopOutputRoles, 0);
+        closedLoopCandidates = List.of();
+        closedLoopDraftMembers = List.of();
+        closedLoopMainOutput = null;
+        closedLoopCandidateCount = 0;
+        closedLoopCandidateIndex = 0;
+        closedLoopEncodeState = 0;
+        closedLoopDraftStatus = ClosedLoopDraftStatus.EMPTY;
+        closedLoopPreparedPayload = null;
+        closedLoopOriginalPatternId = null;
+        closedLoopOriginalPatternVersion = 0L;
+        closedLoopExternalInputCount = 0;
+        closedLoopSeedInputCount = 0;
+        closedLoopDraftDirty = false;
+        closedLoopDraftRepresentsEncoded = false;
+    }
+
+    /** Atomically replaces the editable draft and candidate marks. */
+    private void fillClosedLoopDraft(ClosedLoopPatternPayload payload, boolean markOutputs) {
+        if (payload == null) return;
+        closedLoopBulkUpdating = true;
+        try {
+            clearInventory(closedLoopMemberInventory);
+            clearInventory(closedLoopOutputInventory);
+            clearInventory(closedLoopExternalInputInventory);
+            clearInventory(closedLoopSeedInventory);
+            java.util.Arrays.fill(closedLoopMemberCopies, 0L);
+            java.util.Arrays.fill(closedLoopOutputRoles, 0);
+            int memberCount = Math.min(CLOSED_LOOP_MEMBER_SLOTS, payload.memberPatterns().size());
+            for (int i = 0; i < memberCount; i++) {
+                var member = payload.memberPatterns().get(i);
+                var stack = member.pattern().toItemStack(registryAccess());
+                if (stack.isEmpty()) continue;
+                closedLoopMemberInventory.setItemDirect(i, stack);
+                closedLoopMemberCopies[i] = member.copiesPerCycle();
+            }
+            int outputCount = Math.min(CLOSED_LOOP_OUTPUT_SLOTS, payload.netOutputs().size());
+            for (int i = 0; i < outputCount; i++) {
+                closedLoopOutputInventory.setItemDirect(
+                        i, GenericStack.wrapInItemStack(payload.netOutputs().get(i)));
+                if (markOutputs) closedLoopOutputRoles[i] = i == 0 ? 1 : 2;
+            }
+            closedLoopMainOutput = payload.netOutputs().isEmpty()
+                    ? null : payload.netOutputs().getFirst().what();
+            closedLoopDraftMembers = List.copyOf(payload.memberPatterns());
+        } finally {
+            closedLoopBulkUpdating = false;
+        }
+        closedLoopDraftDirty = true;
+    }
+
+    private static void clearInventory(appeng.api.inventories.InternalInventory inventory) {
+        if (inventory == null) return;
+        for (int i = 0; i < inventory.size(); i++) inventory.setItemDirect(i, ItemStack.EMPTY);
+    }
+
+    private void rebuildClosedLoopDraft() {
+        if (!isServerSide() || tianshuMode != TianshuEncodingMode.CLOSED_LOOP) return;
+        closedLoopDraftDirty = false;
+        var draft = new ArrayList<ClosedLoopMemberPattern>();
+        for (int i = 0; i < CLOSED_LOOP_MEMBER_SLOTS; i++) {
+            var stack = closedLoopMemberInventory.getStackInSlot(i);
+            if (stack.isEmpty()) {
+                closedLoopMemberCopies[i] = 0L;
+                continue;
+            }
+            if (!PatternDetailsHelper.isEncodedPattern(stack)
+                    || isExecutionMemberReference(stack)) {
+                setClosedLoopInvalid(ClosedLoopDraftStatus.MEMBER_UNDECODABLE);
+                return;
+            }
+            long copies = closedLoopMemberCopies[i];
+            if (copies < 1L) copies = 1L;
+            closedLoopMemberCopies[i] = copies;
+            try {
+                draft.add(new ClosedLoopMemberPattern(
+                        SourcePatternSnapshot.fromItemStack(stack, registryAccess()), copies));
+            } catch (RuntimeException ignored) {
+                setClosedLoopInvalid(ClosedLoopDraftStatus.MEMBER_UNDECODABLE);
+                return;
+            }
+        }
+        closedLoopDraftMembers = List.copyOf(draft);
+        if (draft.isEmpty()) {
+            clearClosedLoopComputedResults();
+            closedLoopDraftStatus = closedLoopCandidates.isEmpty()
+                    ? ClosedLoopDraftStatus.NO_CANDIDATE : ClosedLoopDraftStatus.EMPTY;
+            return;
+        }
+        if (!ClosedLoopPatternAnalyzer.isMinimalIntegerRatio(
+                draft.stream().mapToLong(ClosedLoopMemberPattern::copiesPerCycle).toArray())) {
+            setClosedLoopInvalid(ClosedLoopDraftStatus.NON_MINIMAL_COPIES);
+            return;
+        }
+
+        var priorRoles = new LinkedHashMap<AEKey, Integer>();
+        AEKey priorPrimary = null;
+        for (int i = 0; i < CLOSED_LOOP_OUTPUT_SLOTS; i++) {
+            var stack = closedLoopOutputInventory.getStackInSlot(i);
+            var generic = GenericStack.fromItemStack(stack);
+            if (generic == null || generic.what() == null) continue;
+            int role = closedLoopOutputRoles[i];
+            priorRoles.put(generic.what(), role);
+            if (role == 1) priorPrimary = generic.what();
+        }
+        var requestedKeys = new LinkedHashSet<AEKey>();
+        if (priorPrimary != null) requestedKeys.add(priorPrimary);
+        if (closedLoopMainOutput != null) requestedKeys.add(closedLoopMainOutput);
+        collectDraftOutputKeys(draft, requestedKeys);
+
+        ClosedLoopPatternAuthoringService.Result authored = null;
+        ClosedLoopPatternAuthoringService.Result firstFailure = null;
+        for (var key : requestedKeys) {
+            var attempt = ClosedLoopPatternAuthoringService.createFromDraft(
+                    draft, key, closedLoopExecutionSeedMultiplier,
+                    closedLoopStoredTaskMultiplier, getPlayer().level());
+            if (attempt.valid()) {
+                authored = attempt;
+                break;
+            }
+            if (firstFailure == null) firstFailure = attempt;
+        }
+        if (authored == null || !authored.valid()) {
+            clearClosedLoopComputedResults();
+            setClosedLoopInvalid(mapAuthoringStatus(firstFailure));
+            return;
+        }
+
+        var candidatePayload = authored.payload();
+        writeOutputCandidates(candidatePayload.netOutputs(), priorRoles);
+        if (priorPrimary == null) {
+            clearClosedLoopComputedResults();
+            closedLoopPreparedPayload = null;
+            closedLoopDraftStatus = ClosedLoopDraftStatus.MISSING_PRIMARY_OUTPUT;
+            closedLoopEncodeState = 2;
+            return;
+        }
+        var declared = new ArrayList<AEKey>();
+        declared.add(priorPrimary);
+        for (int i = 0; i < CLOSED_LOOP_OUTPUT_SLOTS; i++) {
+            if (closedLoopOutputRoles[i] != 2) continue;
+            var generic = GenericStack.fromItemStack(closedLoopOutputInventory.getStackInSlot(i));
+            if (generic != null && generic.what() != null && !declared.contains(generic.what())) {
+                declared.add(generic.what());
+            }
+        }
+        var selected = ClosedLoopPatternAuthoringService.createFromDraft(
+                draft, declared, closedLoopExecutionSeedMultiplier,
+                closedLoopStoredTaskMultiplier, getPlayer().level());
+        if (!selected.valid()) {
+            clearClosedLoopComputedResults();
+            setClosedLoopInvalid(mapAuthoringStatus(selected));
+            return;
+        }
+        var payload = selected.payload();
+        if (closedLoopOriginalPatternId != null) {
+            long version = closedLoopOriginalPatternVersion == Long.MAX_VALUE
+                    ? Long.MAX_VALUE : Math.max(1L, closedLoopOriginalPatternVersion + 1L);
+            payload = new ClosedLoopPatternPayload(
+                    closedLoopOriginalPatternId, version, payload.memberPatterns(), payload.seeds(),
+                    payload.externalInputs(), payload.netOutputs(), payload.executionSeedMultiplier(),
+                    payload.storedTaskMultiplier(), payload.enabled());
+        }
+        closedLoopPreparedPayload = payload;
+        fillClosedLoopComputedResults(payload);
+        closedLoopDraftStatus = closedLoopDraftRepresentsEncoded
+                ? ClosedLoopDraftStatus.ENCODED : ClosedLoopDraftStatus.VALID;
+        closedLoopEncodeState = 0;
+    }
+
+    private void collectDraftOutputKeys(
+            List<ClosedLoopMemberPattern> draft, Set<AEKey> target) {
+        for (var member : draft) {
+            try {
+                var details = PatternDetailsHelper.decodePattern(
+                        member.pattern().toItemStack(registryAccess()), getPlayer().level());
+                if (details == null) continue;
+                for (var output : details.getOutputs()) {
+                    if (output != null && output.what() != null) target.add(output.what());
+                }
+            } catch (RuntimeException ignored) {
+                // The authoritative authoring call below reports undecodable members.
+            }
+            if (target.size() >= CLOSED_LOOP_RESULT_SLOTS) return;
+        }
+    }
+
+    private void writeOutputCandidates(
+            List<GenericStack> outputs, Map<AEKey, Integer> priorRoles) {
+        closedLoopBulkUpdating = true;
+        try {
+            clearInventory(closedLoopOutputInventory);
+            java.util.Arrays.fill(closedLoopOutputRoles, 0);
+            int count = Math.min(CLOSED_LOOP_OUTPUT_SLOTS, outputs.size());
+            int primary = -1;
+            for (int i = 0; i < count; i++) {
+                var output = outputs.get(i);
+                closedLoopOutputInventory.setItemDirect(i, GenericStack.wrapInItemStack(output));
+                int role = priorRoles.getOrDefault(output.what(), 0);
+                closedLoopOutputRoles[i] = role;
+                if (role == 1 && primary < 0) primary = i;
+            }
+            for (int i = 0; i < count; i++) {
+                if (i != primary && closedLoopOutputRoles[i] == 1) closedLoopOutputRoles[i] = 0;
+            }
+        } finally {
+            closedLoopBulkUpdating = false;
+        }
+    }
+
+    private void fillClosedLoopComputedResults(ClosedLoopPatternPayload payload) {
+        closedLoopBulkUpdating = true;
+        try {
+            clearInventory(closedLoopExternalInputInventory);
+            clearInventory(closedLoopSeedInventory);
+            closedLoopExternalInputCount = payload.externalInputs().size();
+            closedLoopSeedInputCount = payload.seeds().size();
+            for (int i = 0; i < Math.min(CLOSED_LOOP_RESULT_SLOTS, payload.externalInputs().size()); i++) {
+                closedLoopExternalInputInventory.setItemDirect(
+                        i, GenericStack.wrapInItemStack(payload.externalInputs().get(i)));
+            }
+            for (int i = 0; i < Math.min(CLOSED_LOOP_RESULT_SLOTS, payload.seeds().size()); i++) {
+                closedLoopSeedInventory.setItemDirect(
+                        i, GenericStack.wrapInItemStack(payload.seeds().get(i)));
+            }
+        } finally {
+            closedLoopBulkUpdating = false;
+        }
+    }
+
+    private void clearClosedLoopComputedResults() {
+        closedLoopPreparedPayload = null;
+        closedLoopExternalInputCount = 0;
+        closedLoopSeedInputCount = 0;
+        closedLoopBulkUpdating = true;
+        try {
+            clearInventory(closedLoopExternalInputInventory);
+            clearInventory(closedLoopSeedInventory);
+        } finally {
+            closedLoopBulkUpdating = false;
+        }
+    }
+
+    private void setClosedLoopInvalid(ClosedLoopDraftStatus status) {
+        clearClosedLoopComputedResults();
+        closedLoopDraftStatus = status == null ? ClosedLoopDraftStatus.INVALID_OUTPUT_MARKING : status;
+        closedLoopEncodeState = 2;
+    }
+
+    private static ClosedLoopDraftStatus mapAuthoringStatus(
+            @Nullable ClosedLoopPatternAuthoringService.Result result) {
+        if (result == null) return ClosedLoopDraftStatus.NOT_BALANCED;
+        return switch (result.status()) {
+            case MEMBER_UNDECODABLE -> ClosedLoopDraftStatus.MEMBER_UNDECODABLE;
+            case TOO_MANY_MEMBERS -> ClosedLoopDraftStatus.TOO_MANY_MEMBERS;
+            case NON_MINIMAL_COPIES -> ClosedLoopDraftStatus.NON_MINIMAL_COPIES;
+            case INVALID_SEED_ROUTING -> ClosedLoopDraftStatus.INVALID_SEED_ROUTING;
+            case INVALID_MARKING -> ClosedLoopDraftStatus.INVALID_OUTPUT_MARKING;
+            case NOT_BALANCED -> ClosedLoopDraftStatus.NOT_BALANCED;
+            case VALID -> ClosedLoopDraftStatus.NOT_BALANCED;
+        };
+    }
+
+    private void refreshClosedLoopDraftSync() {
+        var copies = new ArrayList<Long>(CLOSED_LOOP_MEMBER_SLOTS);
+        for (long value : closedLoopMemberCopies) copies.add(value);
+        var roles = new ArrayList<Integer>(CLOSED_LOOP_OUTPUT_SLOTS);
+        for (int value : closedLoopOutputRoles) roles.add(value);
+        closedLoopDraftSync = new com.moakiee.ae2lt.logic.tianshu.terminal.ClosedLoopDraftSync(
+                copies, roles);
+    }
+
+    private boolean isExecutionMemberReference(ItemStack stack) {
+        return stack.getItem() instanceof ClosedLoopPatternItem item
+                && item.readExecutionMember(stack) >= 0;
     }
 
     public void requestMaintenanceEditor(appeng.api.stacks.AEKey key) {
@@ -1117,22 +1621,78 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     }
 
     private ItemStack encodeSelectedClosedLoopCandidate() {
-        if (closedLoopDraftMembers.isEmpty() || closedLoopMainOutput == null) {
-            if (closedLoopEncodeState == 0) closedLoopEncodeState = 2;
-            return ItemStack.EMPTY;
-        }
-        var authored = ClosedLoopPatternAuthoringService.createFromDraft(
-                closedLoopDraftMembers, closedLoopMainOutput,
-                closedLoopExecutionSeedMultiplier,
-                closedLoopStoredTaskMultiplier,
-                getPlayer().level());
-        if (!authored.valid()) {
-            closedLoopEncodeState = authored.status()
-                    == ClosedLoopPatternAuthoringService.Status.MEMBER_UNDECODABLE ? 1 : 2;
+        if (closedLoopDraftDirty) rebuildClosedLoopDraft();
+        if (closedLoopPreparedPayload == null
+                || closedLoopDraftStatus != ClosedLoopDraftStatus.VALID
+                && closedLoopDraftStatus != ClosedLoopDraftStatus.ENCODED) {
+            closedLoopEncodeState = closedLoopDraftStatus == ClosedLoopDraftStatus.MEMBER_UNDECODABLE
+                    ? 1 : 2;
             broadcastChanges();
             return ItemStack.EMPTY;
         }
         return ((ClosedLoopPatternItem) ModItems.CLOSED_LOOP_PATTERN.get()).createStack(
-                authored.payload(), registryAccess());
+                closedLoopPreparedPayload, registryAccess());
+    }
+
+    public record ClosedLoopMemberEdit(int slot, long copies) {
+    }
+
+    public record ClosedLoopMemberMove(int slot, int direction) {
+    }
+
+    public record ClosedLoopOutputEdit(int slot, int role) {
+    }
+
+    public record ClosedLoopMultiplierEdit(int execution, int stored) {
+    }
+
+    private final class ClosedLoopMemberSlot extends FakeSlot {
+        private ClosedLoopMemberSlot(AppEngInternalInventory inventory, int slot) {
+            super(inventory, slot);
+            setHideAmount(true);
+        }
+
+        @Override
+        public boolean mayPlace(ItemStack stack) {
+            return canUseAsClosedLoopMember(stack);
+        }
+
+        @Override
+        public boolean canSetFilterTo(ItemStack stack) {
+            return stack.isEmpty() || canUseAsClosedLoopMember(stack);
+        }
+
+        @Override
+        public void setFilterTo(ItemStack stack) {
+            if (canSetFilterTo(stack)) super.setFilterTo(stack);
+        }
+
+        private boolean canUseAsClosedLoopMember(ItemStack stack) {
+            return stack != null && !stack.isEmpty()
+                    && PatternDetailsHelper.isEncodedPattern(stack)
+                    && !isExecutionMemberReference(stack);
+        }
+    }
+
+    private static final class ClosedLoopReadonlySlot extends AppEngSlot {
+        private ClosedLoopReadonlySlot(AppEngInternalInventory inventory, int slot) {
+            super(inventory, slot);
+            setNotDraggable();
+        }
+
+        @Override
+        public boolean mayPlace(ItemStack stack) {
+            return false;
+        }
+
+        @Override
+        public boolean mayPickup(Player player) {
+            return false;
+        }
+
+        @Override
+        public ItemStack remove(int amount) {
+            return ItemStack.EMPTY;
+        }
     }
 }

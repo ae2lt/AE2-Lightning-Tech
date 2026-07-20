@@ -6,6 +6,8 @@ import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.thunderbolt.ae2.overload.pattern.SourcePatternSnapshot;
 import java.util.ArrayList;
 import java.util.IdentityHashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -20,9 +22,11 @@ public final class ClosedLoopPatternAuthoringService {
     public enum Status {
         VALID,
         MEMBER_UNDECODABLE,
+        TOO_MANY_MEMBERS,
         INVALID_MARKING,
         NON_MINIMAL_COPIES,
-        NOT_BALANCED
+        NOT_BALANCED,
+        INVALID_SEED_ROUTING
     }
 
     public static Result create(
@@ -63,11 +67,18 @@ public final class ClosedLoopPatternAuthoringService {
         }
         var structure = ClosedLoopPatternAnalyzer.validateStructure(details);
         if (structure != ClosedLoopPatternAnalyzer.StructureStatus.VALID) {
-            return new Result(Status.INVALID_MARKING, null);
+            return new Result(Status.INVALID_SEED_ROUTING, null);
         }
 
         var ordered = ClosedLoopPatternAnalyzer.analyzeBestOrder(analyzed, mainOutput);
-        if (ordered == null) return new Result(Status.NOT_BALANCED, null);
+        if (ordered == null) {
+            var writtenAnalysis = ClosedLoopPatternAnalyzer.analyze(analyzed, mainOutput);
+            if (writtenAnalysis != null && !ClosedLoopPatternAnalyzer.hasInputSeedPerMember(
+                    analyzed, writtenAnalysis.seeds())) {
+                return new Result(Status.INVALID_SEED_ROUTING, null);
+            }
+            return new Result(Status.NOT_BALANCED, null);
+        }
 
         var stored = new ArrayList<ClosedLoopMemberPattern>(ordered.members().size());
         for (var member : ordered.members()) {
@@ -83,9 +94,21 @@ public final class ClosedLoopPatternAuthoringService {
                 ordered.members(), analysis.seeds())) {
             return new Result(Status.NOT_BALANCED, null);
         }
+        var declaredOutputs = new ArrayList<appeng.api.stacks.GenericStack>(
+                Math.min(ClosedLoopPatternPayload.MAX_NET_OUTPUTS, analysis.netOutputs().size()));
+        for (var output : analysis.netOutputs()) {
+            if (output.what().equals(mainOutput)) {
+                declaredOutputs.add(output);
+                break;
+            }
+        }
+        for (var output : analysis.netOutputs()) {
+            if (declaredOutputs.size() >= ClosedLoopPatternPayload.MAX_NET_OUTPUTS) break;
+            if (!output.what().equals(mainOutput)) declaredOutputs.add(output);
+        }
         var payload = new ClosedLoopPatternPayload(
                 UUID.randomUUID(), 1L, stored, analysis.seeds(), analysis.externalInputs(),
-                analysis.netOutputs(), executionSeedMultiplier, storedTaskMultiplier, true);
+                declaredOutputs, executionSeedMultiplier, storedTaskMultiplier, true);
         return new Result(Status.VALID, payload);
     }
 
@@ -111,8 +134,10 @@ public final class ClosedLoopPatternAuthoringService {
             return new Result(
                     switch (flattened.status()) {
                         case MEMBER_UNDECODABLE -> Status.MEMBER_UNDECODABLE;
+                        case TOO_MANY_MEMBERS -> Status.TOO_MANY_MEMBERS;
                         case NON_MINIMAL_COPIES -> Status.NON_MINIMAL_COPIES;
-                        default -> Status.INVALID_MARKING;
+                        case INVALID_INPUT -> Status.INVALID_MARKING;
+                        default -> Status.MEMBER_UNDECODABLE;
                     },
                     null);
         }
@@ -133,6 +158,44 @@ public final class ClosedLoopPatternAuthoringService {
             int seedMultiplier,
             Level level) {
         return createFromDraft(draftMembers, mainOutput, seedMultiplier, 1, level);
+    }
+
+    /**
+     * Authors a draft while declaring only the UI-marked output subset. The first key is the
+     * primary request target and the remaining keys are secondary outputs.
+     */
+    public static Result createFromDraft(
+            List<ClosedLoopMemberPattern> draftMembers,
+            List<AEKey> declaredOutputs,
+            int executionSeedMultiplier,
+            int storedTaskMultiplier,
+            Level level) {
+        if (declaredOutputs == null || declaredOutputs.isEmpty()
+                || declaredOutputs.size() > ClosedLoopPatternPayload.MAX_NET_OUTPUTS
+                || new LinkedHashSet<>(declaredOutputs).size() != declaredOutputs.size()
+                || declaredOutputs.stream().anyMatch(Objects::isNull)) {
+            return new Result(Status.INVALID_MARKING, null);
+        }
+        var authored = createFromDraft(
+                draftMembers, declaredOutputs.getFirst(), executionSeedMultiplier,
+                storedTaskMultiplier, level);
+        if (!authored.valid()) return authored;
+
+        var analyzedOutputs = new LinkedHashMap<AEKey, appeng.api.stacks.GenericStack>();
+        for (var output : authored.payload().netOutputs()) {
+            analyzedOutputs.put(output.what(), output);
+        }
+        var selected = new ArrayList<appeng.api.stacks.GenericStack>(declaredOutputs.size());
+        for (var key : declaredOutputs) {
+            var output = analyzedOutputs.get(key);
+            if (output == null) return new Result(Status.INVALID_MARKING, null);
+            selected.add(output);
+        }
+        var payload = authored.payload();
+        return new Result(Status.VALID, new ClosedLoopPatternPayload(
+                payload.patternId(), payload.version(), payload.memberPatterns(), payload.seeds(),
+                payload.externalInputs(), selected, payload.executionSeedMultiplier(),
+                payload.storedTaskMultiplier(), payload.enabled()));
     }
 
     public record MarkedMember(

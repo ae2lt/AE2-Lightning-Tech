@@ -118,32 +118,10 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
         overloadEncoding = addCompactButton("overloadEncodingButton",
                 Component.translatable("ae2lt.tianshu.terminal.encoding.overload.short"),
                 () -> switchToScreen(new TianshuOverloadPatternConfigScreen<>(this)));
-        var previousCandidate = widgets.addButton("closedLoopPrevious", Component.literal("<"),
-                () -> menu.selectClosedLoopCandidate(-1));
-        var nextCandidate = widgets.addButton("closedLoopNext", Component.literal(">"),
-                () -> menu.selectClosedLoopCandidate(1));
-        var executionSeedDown = widgets.addButton("closedLoopExecutionSeedDown", Component.literal("−"),
-                () -> menu.changeClosedLoopExecutionSeedMultiplier(hasShiftDown() ? -10 : -1));
-        var executionSeedUp = widgets.addButton("closedLoopExecutionSeedUp", Component.literal("+"),
-                () -> menu.changeClosedLoopExecutionSeedMultiplier(hasShiftDown() ? 10 : 1));
-        var storedTaskDown = widgets.addButton("closedLoopStoredTaskDown", Component.literal("−"),
-                () -> menu.changeClosedLoopStoredTaskMultiplier(hasShiftDown() ? -10 : -1));
-        var storedTaskUp = widgets.addButton("closedLoopStoredTaskUp", Component.literal("+"),
-                () -> menu.changeClosedLoopStoredTaskMultiplier(hasShiftDown() ? 10 : 1));
-        closedLoopModeButtons = List.of(
-                previousCandidate, nextCandidate,
-                executionSeedDown, executionSeedUp,
-                storedTaskDown, storedTaskUp);
-        var executionSeedTooltip = net.minecraft.client.gui.components.Tooltip.create(
-                Component.translatable(
-                        "ae2lt.tianshu.terminal.closed_loop.execution_seed_multiplier.tooltip"));
-        executionSeedDown.setTooltip(executionSeedTooltip);
-        executionSeedUp.setTooltip(executionSeedTooltip);
-        var storedTaskTooltip = net.minecraft.client.gui.components.Tooltip.create(
-                Component.translatable(
-                        "ae2lt.tianshu.terminal.closed_loop.stored_task_multiplier.tooltip"));
-        storedTaskDown.setTooltip(storedTaskTooltip);
-        storedTaskUp.setTooltip(storedTaskTooltip);
+        var closedLoopEdit = widgets.addButton("closedLoopEdit",
+                Component.translatable("ae2lt.tianshu.terminal.closed_loop.edit"),
+                () -> switchToScreen(new TianshuClosedLoopPatternConfigScreen<>(this)));
+        closedLoopModeButtons = List.of(closedLoopEdit);
         upload = widgets.addButton("tianshuUpload", Component.translatable("ae2lt.tianshu.terminal.upload"),
                 this::openUploadScreen);
         tianshuTarget = widgets.addButton("tianshuTarget", Component.empty(),
@@ -205,6 +183,7 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
                 processing, hasDraftInput, "overload");
         boolean closedLoop = selected == TianshuEncodingMode.CLOSED_LOOP;
         closedLoopModeButtons.forEach(button -> button.visible = closedLoop);
+        hideClosedLoopEditorSlots();
         upload.visible = true;
         upload.active = closedLoop
                 ? menu.encodedClosedLoop && !menu.isTianshuSelectionPending()
@@ -242,6 +221,20 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
             if (!slot.getItem().isEmpty()) return true;
         }
         return false;
+    }
+
+    private void hideClosedLoopEditorSlots() {
+        for (var slots : List.of(
+                menu.getClosedLoopMemberSlots(),
+                menu.getClosedLoopOutputSlots(),
+                menu.getClosedLoopExternalInputSlots(),
+                menu.getClosedLoopSeedSlots())) {
+            for (var slot : slots) {
+                slot.setActive(false);
+                slot.x = -10000;
+                slot.y = -10000;
+            }
+        }
     }
 
     private void openUploadScreen() {
@@ -491,17 +484,23 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
                     menu.closedLoopExecutionSeedMultiplier,
                     menu.closedLoopStoredTaskMultiplier),
                     x + 8, y + 43, 0x666666, false);
-            if (menu.closedLoopEncodeState != 0) {
-                graphics.drawString(font, Component.translatable(
-                        menu.closedLoopEncodeState == 1
-                                ? "ae2lt.tianshu.terminal.closed_loop.invalid_pattern"
-                                : "ae2lt.tianshu.terminal.closed_loop.invalid_configuration"),
-                        x + 8, y + 55, 0xAA2222, false);
-            } else if (menu.uploadState != 0) {
+            if (menu.uploadState != 0) {
                 graphics.drawString(font, Component.translatable(
                         menu.uploadState == 1 ? "ae2lt.tianshu.terminal.upload.success"
                                 : "ae2lt.tianshu.terminal.upload.failed"),
                         x + 8, y + 55, menu.uploadState == 1 ? 0x228822 : 0xAA2222, false);
+            } else if (menu.closedLoopDraftStatus != null) {
+                var status = Component.translatable(
+                        "ae2lt.tianshu.closed_loop.status."
+                                + menu.closedLoopDraftStatus.name().toLowerCase(java.util.Locale.ROOT));
+                int color = switch (menu.closedLoopDraftStatus) {
+                    case VALID, ENCODED -> 0x228822;
+                    case EMPTY, NO_CANDIDATE -> 0x666666;
+                    case MISSING_PRIMARY_OUTPUT -> 0xAA7700;
+                    default -> 0xAA2222;
+                };
+                graphics.drawString(font, font.plainSubstrByWidth(status.getString(), 144),
+                        x + 8, y + 55, color, false);
             }
         }
     }

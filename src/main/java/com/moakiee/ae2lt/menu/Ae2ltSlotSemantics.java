@@ -65,6 +65,17 @@ public final class Ae2ltSlotSemantics {
     public static final SlotSemantic OVERLOADED_POWER_SUPPLY_CELL =
             SlotSemantics.register("AE2LT_OVERLOADED_POWER_SUPPLY_CELL", false);
 
+    // Tianshu closed-loop authoring. These slots are positioned only by the
+    // closed-loop editor sub-screen; the terminal screen keeps them hidden.
+    public static final SlotSemantic TIANSHU_CLOSED_LOOP_MEMBER =
+            SlotSemantics.register("AE2LT_TIANSHU_CLOSED_LOOP_MEMBER", false);
+    public static final SlotSemantic TIANSHU_CLOSED_LOOP_OUTPUT_MARK =
+            SlotSemantics.register("AE2LT_TIANSHU_CLOSED_LOOP_OUTPUT_MARK", false);
+    public static final SlotSemantic TIANSHU_CLOSED_LOOP_EXTERNAL_INPUT =
+            SlotSemantics.register("AE2LT_TIANSHU_CLOSED_LOOP_EXTERNAL_INPUT", false);
+    public static final SlotSemantic TIANSHU_CLOSED_LOOP_SEED_INPUT =
+            SlotSemantics.register("AE2LT_TIANSHU_CLOSED_LOOP_SEED_INPUT", false);
+
     // Overload Device Workbench
     public static final SlotSemantic OVERLOAD_DEVICE_WORKBENCH_DEVICE =
             SlotSemantics.register("AE2LT_OVERLOAD_DEVICE_WORKBENCH_DEVICE", false);

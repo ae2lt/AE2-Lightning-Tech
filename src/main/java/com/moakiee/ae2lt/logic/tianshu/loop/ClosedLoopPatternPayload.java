@@ -17,6 +17,7 @@ public record ClosedLoopPatternPayload(
         int executionSeedMultiplier,
         int storedTaskMultiplier,
         boolean enabled) {
+    public static final int MAX_NET_OUTPUTS = 9;
 
     /** Binary/source compatibility for integrations compiled against the single multiplier API. */
     @Deprecated
@@ -51,6 +52,9 @@ public record ClosedLoopPatternPayload(
         }
         if (seeds.isEmpty()) throw new IllegalArgumentException("closed-loop pattern requires at least one seed");
         if (netOutputs.isEmpty()) throw new IllegalArgumentException("closed-loop pattern requires a net output");
+        if (netOutputs.size() > MAX_NET_OUTPUTS) {
+            throw new IllegalArgumentException("closed-loop pattern has too many declared outputs");
+        }
         if (executionSeedMultiplier < 1) {
             throw new IllegalArgumentException("execution seed multiplier must be positive");
         }

@@ -46,21 +46,32 @@ public final class ClosedLoopPatternValidator {
             return invalid(ClosedLoopValidationResult.Status.STRUCTURE_CHECK_FAILED);
         }
 
-        for (var declaredOutput : payload.netOutputs()) {
-            var analysis = ClosedLoopPatternAnalyzer.analyze(members, declaredOutput.what());
-            if (analysis == null) continue;
-            if (!ClosedLoopPatternAnalyzer.hasInputSeedPerMember(members, analysis.seeds())) {
-                return invalid(ClosedLoopValidationResult.Status.MEMBER_WITHOUT_INPUT_SEED);
-            }
-            if (sameStacks(payload.seeds(), analysis.seeds())
-                    && sameStacks(payload.externalInputs(), analysis.externalInputs())
-                    && sameStacks(payload.netOutputs(), analysis.netOutputs())) {
-                return new ClosedLoopValidationResult(ClosedLoopValidationResult.Status.VALID, analysis);
-            }
+        var primary = payload.netOutputs().getFirst();
+        var analysis = ClosedLoopPatternAnalyzer.analyze(members, primary.what());
+        if (analysis == null) {
+            return invalid(ClosedLoopValidationResult.Status.NO_VALID_NET_OUTPUT);
+        }
+        if (!ClosedLoopPatternAnalyzer.hasInputSeedPerMember(members, analysis.seeds())) {
+            return invalid(ClosedLoopValidationResult.Status.MEMBER_WITHOUT_INPUT_SEED);
+        }
+        if (!sameStacks(payload.seeds(), analysis.seeds())
+                || !sameStacks(payload.externalInputs(), analysis.externalInputs())) {
             return new ClosedLoopValidationResult(
                     ClosedLoopValidationResult.Status.DECLARATION_MISMATCH, analysis);
         }
-        return invalid(ClosedLoopValidationResult.Status.NO_VALID_NET_OUTPUT);
+        var analyzedOutputs = amounts(analysis.netOutputs());
+        for (var declared : payload.netOutputs()) {
+            if (!declared.what().equals(primary.what())
+                    && !analyzedOutputs.containsKey(declared.what())) {
+                return new ClosedLoopValidationResult(
+                        ClosedLoopValidationResult.Status.DECLARATION_MISMATCH, analysis);
+            }
+            if (analyzedOutputs.getOrDefault(declared.what(), 0L) != declared.amount()) {
+                return new ClosedLoopValidationResult(
+                        ClosedLoopValidationResult.Status.DECLARATION_MISMATCH, analysis);
+            }
+        }
+        return new ClosedLoopValidationResult(ClosedLoopValidationResult.Status.VALID, analysis);
     }
 
     private static boolean sameStacks(List<GenericStack> left, List<GenericStack> right) {
