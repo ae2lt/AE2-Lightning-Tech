@@ -77,6 +77,9 @@ public sealed interface DeviceCapability {
     /** Configurable block and entity interaction reach. */
     record InteractionRange() implements DeviceCapability {}
 
+    /** Configurable walking, sprinting, sneaking and automatic step assistance. */
+    record MovementAssist() implements DeviceCapability {}
+
     /** Fall damage reduction. */
     record FallProtection(double damageReduction) implements DeviceCapability {}
 

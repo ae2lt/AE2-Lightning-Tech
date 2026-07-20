@@ -27,6 +27,7 @@ item_ids:
   - ae2lt:module_phase_lock
   - ae2lt:module_dash
   - ae2lt:module_dig_affinity
+  - ae2lt:module_movement_assist
 ---
 
 # Celestweave
@@ -102,6 +103,7 @@ Creative Flight and Phase Flight share the same install group, so only one can b
 |--------|--------|
 | Dash | Press the Dash key, default V, to dash forward; 40 tick cooldown |
 | Dig Affinity | Compensates underwater and airborne mining penalties |
+| Movement Assist | Separately tunes walking, sprinting and sneaking speed (0.5x-4x), plus automatic step height (0.6-3 blocks) |
 
 ## Cost Notes
 

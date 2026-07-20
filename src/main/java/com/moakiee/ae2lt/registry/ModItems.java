@@ -32,6 +32,7 @@ import com.moakiee.ae2lt.item.FlightSubmoduleItem;
 import com.moakiee.ae2lt.item.PurificationSubmoduleItem;
 import com.moakiee.ae2lt.item.SaturationSubmoduleItem;
 import com.moakiee.ae2lt.item.DigAffinitySubmoduleItem;
+import com.moakiee.ae2lt.item.MovementAssistSubmoduleItem;
 import com.moakiee.ae2lt.item.ReachSubmoduleItem;
 import com.moakiee.ae2lt.item.PhaseFlightSubmoduleItem;
 import com.moakiee.ae2lt.item.PhaseLockProjectionItem;
@@ -357,6 +358,11 @@ public final class ModItems {
     public static final DeferredItem<DigAffinitySubmoduleItem> CELESTWEAVE_SUBMODULE_DIG_AFFINITY = ITEMS.registerItem(
             "module_dig_affinity",
             DigAffinitySubmoduleItem::new,
+            new Item.Properties());
+
+    public static final DeferredItem<MovementAssistSubmoduleItem> CELESTWEAVE_SUBMODULE_MOVEMENT_ASSIST = ITEMS.registerItem(
+            "module_movement_assist",
+            MovementAssistSubmoduleItem::new,
             new Item.Properties());
 
     public static final DeferredItem<PhaseFlightSubmoduleItem> CELESTWEAVE_SUBMODULE_PHASE_FLIGHT = ITEMS.registerItem(

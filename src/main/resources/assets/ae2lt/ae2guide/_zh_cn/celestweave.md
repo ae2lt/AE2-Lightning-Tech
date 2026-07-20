@@ -27,6 +27,7 @@ item_ids:
   - ae2lt:module_phase_lock
   - ae2lt:module_dash
   - ae2lt:module_dig_affinity
+  - ae2lt:module_movement_assist
 ---
 
 # 苍穹织雷
@@ -102,6 +103,7 @@ item_ids:
 |------|------|
 | 冲刺模块 | 默认按 V 向视角方向冲刺，冷却 40 tick |
 | 挖掘适应模块 | 减轻水下与空中挖掘惩罚 |
+| 步行辅助模块 | 分别调节步行、奔跑、潜行速度（0.5×～4×）与自动爬坡高度（0.6～3 格） |
 
 ## 消耗说明
 

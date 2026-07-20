@@ -26,6 +26,7 @@ import com.moakiee.ae2lt.celestweave.module.SaturationSubmodule;
 import com.moakiee.ae2lt.celestweave.service.ArmorCapabilityCollector;
 import com.moakiee.ae2lt.celestweave.service.ArmorCapabilityCollector.ActiveCapability;
 import com.moakiee.ae2lt.celestweave.service.ArmorInteractionRangeService;
+import com.moakiee.ae2lt.celestweave.service.ArmorMovementAssistService;
 import com.moakiee.ae2lt.celestweave.phase.CelestweaveEquipmentAccess;
 import com.moakiee.ae2lt.celestweave.phase.PhaseLockService;
 
@@ -43,6 +44,7 @@ public final class CelestweaveArmorUtilityHandler {
         var capabilities = ArmorCapabilityCollector.collectPerInstalledStack(player);
         extinguishShieldedPlayer(player, capabilities);
         ArmorInteractionRangeService.tick(player, capabilities);
+        ArmorMovementAssistService.tick(player, capabilities);
         tickPurification(player, capabilities);
         tickFoodSustain(player, capabilities);
         if (hasActivePhaseFlight(capabilities)) {

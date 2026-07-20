@@ -1,0 +1,37 @@
+{
+  "type": "ae2lt:lightning_assembly",
+  "priority": 0,
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "ae2lt:overload_module_base"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:rabbit_foot"
+      },
+      "count": 32
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:sugar"
+      },
+      "count": 128
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:slime_block"
+      },
+      "count": 16
+    }
+  ],
+  "result": {
+    "id": "ae2lt:module_movement_assist",
+    "count": 1
+  },
+  "totalEnergy": 4000000,
+  "lightningCost": 16,
+  "lightningTier": "high_voltage"
+}
