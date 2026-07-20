@@ -1,0 +1,14 @@
+{
+  "required": false,
+  "minVersion": "0.8",
+  "package": "com.moakiee.ae2lt.mixin.recipeviewer",
+  "compatibilityLevel": "JAVA_21",
+  "plugin": "com.moakiee.ae2lt.mixin.recipeviewer.RecipeViewerMixinPlugin",
+  "client": [
+    "jei.JeiEncodePatternTransferMixin",
+    "emi.EmiEncodePatternTransferMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 0
+  }
+}

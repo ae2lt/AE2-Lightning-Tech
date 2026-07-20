@@ -38,6 +38,11 @@ description = '''${mod_description}'''
 [[mixins]]
 config = "${mod_id}.mixins.json"
 
+# Optional JEI/EMI recipe-transfer hooks. A config plugin applies each mixin only
+# when its viewer and integration target are present.
+[[mixins]]
+config = "${mod_id}.recipeviewer.mixins.json"
+
 # Optional ae2wtlib integration mixins. The config's plugin disables every
 # mixin in it when ae2wtlib is absent, so this is safe to always declare.
 [[mixins]]
@@ -165,6 +170,13 @@ side = "BOTH"
 
 [[dependencies."${mod_id}"]]
 modId = "jei"
+type = "optional"
+versionRange = "[0,)"
+ordering = "AFTER"
+side = "CLIENT"
+
+[[dependencies."${mod_id}"]]
+modId = "emi"
 type = "optional"
 versionRange = "[0,)"
 ordering = "AFTER"

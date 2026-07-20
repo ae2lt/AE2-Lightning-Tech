@@ -12,6 +12,13 @@ repositories {
     mavenLocal()
     mavenCentral()
     maven {
+        name = "TerraformersMC"
+        url = "https://maven.terraformersmc.com/releases/"
+        content {
+            includeGroup "dev.emi"
+        }
+    }
+    maven {
         url = "https://modmaven.dev/"
         content {
             includeGroup "de.mari_023"
@@ -197,6 +204,7 @@ dependencies {
     runtimeOnly "org.appliedenergistics:guideme:${guideme_version}"
     compileOnly "curse.maven:jei-238222:7391682"
     runtimeOnly "curse.maven:jei-238222:7391682"
+    compileOnly "dev.emi:emi-neoforge:1.1.10+1.21"
     compileOnly "curse.maven:jade-324717:6291517"
     runtimeOnly "curse.maven:jade-324717:6291517"
     runtimeOnly "curse.maven:mekanism-268560:7621971"
@@ -258,6 +266,16 @@ dependencies {
 
 tasks.named('test', Test) {
     useJUnitPlatform()
+}
+
+// Keep the source and adapted third-party licensing notices inside every published mod jar.
+tasks.named('jar', Jar) {
+    from('LICENSE') {
+        into 'META-INF'
+    }
+    from('THIRD_PARTY_NOTICES.md') {
+        into 'META-INF'
+    }
 }
 
 // This block of code expands all declared replace properties in the specified resource targets.

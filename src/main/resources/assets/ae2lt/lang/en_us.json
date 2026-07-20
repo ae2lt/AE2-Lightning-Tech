@@ -1091,6 +1091,7 @@
   "ae2lt.tianshu.upload.alias.added": "[Tianshu] Added alias mapping: %s → %s",
   "ae2lt.tianshu.upload.alias.removed": "[Tianshu] Removed %s alias mapping(s): %s",
   "ae2lt.tianshu.upload.alias.not_found": "[Tianshu] No mapping uses alias %s",
+  "ae2lt.tianshu.upload.alias.quick_bind": "Shift + Right-click: bind the machine ID or custom name as the alias",
   "ae2lt.tianshu.settings.title": "Tianshu Terminal Settings",
   "ae2lt.tianshu.settings.upload_trigger": "Upload trigger after encoding",
   "ae2lt.tianshu.settings.upload_trigger.hint": "When the condition matches, encoding enters the upload flow for that pattern type. The manual upload button remains available.",
