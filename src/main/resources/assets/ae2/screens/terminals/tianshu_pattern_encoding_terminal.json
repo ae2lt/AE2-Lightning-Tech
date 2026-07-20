@@ -21,9 +21,6 @@
     "closedLoopAutoFill": { "left": 97, "bottom": 178, "width": 33, "height": 12 },
     "closedLoopClear": { "left": 58, "bottom": 176, "width": 8, "height": 8 },
     "closedLoopExecMultiplier": { "left": 79, "bottom": 148, "width": 26, "height": 12 },
-    "closedLoopStoredMultiplier": { "left": 79, "bottom": 123, "width": 26, "height": 12 },
-    "tianshuUpload": { "left": 196, "bottom": 111, "width": 50, "height": 18 },
-    "tianshuTarget": { "left": 196, "bottom": 90, "width": 50, "height": 18 },
-    "globalReserve": { "left": 196, "bottom": 52, "width": 50, "height": 18 }
+    "closedLoopStoredMultiplier": { "left": 79, "bottom": 123, "width": 26, "height": 12 }
   }
 }
