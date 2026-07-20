@@ -1045,7 +1045,7 @@
   "ae2lt.tianshu.terminal.upload.success": "已上传到天枢",
   "ae2lt.tianshu.terminal.upload.failed": "上传失败或无可用天枢",
   "ae2lt.tianshu.terminal.closed_loop.candidate": "候选：%s / %s",
-  "ae2lt.tianshu.terminal.closed_loop.seed_multipliers": "任务种子 ×%s；预存任务 ×%s",
+  "ae2lt.tianshu.terminal.closed_loop.seed_multipliers": "借种 ×%s / 预存 ×%s",
   "ae2lt.tianshu.terminal.closed_loop.execution_seed_multiplier.tooltip": "调整单个合成任务启动时借用的基础种子套数",
   "ae2lt.tianshu.terminal.closed_loop.stored_task_multiplier.tooltip": "调整天枢预存种子最多能同时供应的任务数",
   "ae2lt.tianshu.terminal.closed_loop.invalid_pattern": "无效样板（无法解码）",

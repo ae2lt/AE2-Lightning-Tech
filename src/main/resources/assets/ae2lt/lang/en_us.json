@@ -1045,7 +1045,7 @@
   "ae2lt.tianshu.terminal.upload.success": "Uploaded to Tianshu",
   "ae2lt.tianshu.terminal.upload.failed": "Upload failed or no Tianshu is available",
   "ae2lt.tianshu.terminal.closed_loop.candidate": "Candidate: %s / %s",
-  "ae2lt.tianshu.terminal.closed_loop.seed_multipliers": "Job seeds ×%s; stored jobs ×%s",
+  "ae2lt.tianshu.terminal.closed_loop.seed_multipliers": "Seeds ×%s / Stored ×%s",
   "ae2lt.tianshu.terminal.closed_loop.execution_seed_multiplier.tooltip": "Adjust the base seed sets borrowed when one crafting job starts",
   "ae2lt.tianshu.terminal.closed_loop.stored_task_multiplier.tooltip": "Adjust how many jobs the seeds stored in Tianshu can supply at once",
   "ae2lt.tianshu.terminal.closed_loop.invalid_pattern": "Invalid pattern (cannot be decoded)",

@@ -1,6 +1,12 @@
 {
   "$schema": "schema.json",
   "includes": ["common/common.json"],
+  "text": {
+    "dialog_title": {
+      "text": { "translate": "ae2lt.tianshu.closed_loop.title" },
+      "position": { "left": 8, "top": 6 }
+    }
+  },
   "widgets": {
     "button_back": { "left": 166, "top": -5, "width": 20, "height": 20 },
     "page_members": { "left": 8, "top": 16, "width": 32, "height": 14 },

@@ -456,6 +456,12 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
     }
 
     private final class DerivedModePanel implements ICompositeWidget {
+        // Matches the 124x66 dark panel area shared by all AE2 encoding mode panels.
+        private static final int PANEL_WIDTH = 124;
+        private static final int PANEL_HEIGHT = 66;
+        private static final int TEXT_X = 8;
+        private static final int TEXT_WIDTH = 112;
+
         private int x;
         private int y;
         private TianshuEncodingMode mode;
@@ -463,32 +469,30 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
         @Override public boolean isVisible() { return mode != null; }
         @Override public void setPosition(Point position) { x = position.getX(); y = position.getY(); }
         @Override public void setSize(int width, int height) { }
-        @Override public Rect2i getBounds() { return new Rect2i(x, y, 158, 66); }
+        @Override public Rect2i getBounds() { return new Rect2i(x, y, PANEL_WIDTH, PANEL_HEIGHT); }
 
         @Override
         public void drawForegroundLayer(GuiGraphics graphics, Rect2i bounds, Point mouse) {
             if (mode != TianshuEncodingMode.CLOSED_LOOP) return;
-            graphics.drawString(font,
-                    Component.translatable("ae2lt.tianshu.terminal.mode.closed_loop"),
-                    x + 8, y + 12, 0x404040, false);
+            drawLine(graphics, Component.translatable(
+                    "ae2lt.tianshu.terminal.mode.closed_loop"), 7, 0x404040);
             drawClosedLoop(graphics);
         }
 
         private void drawClosedLoop(GuiGraphics graphics) {
-            graphics.drawString(font, Component.translatable(
+            drawLine(graphics, Component.translatable(
                     "ae2lt.tianshu.terminal.closed_loop.candidate",
                     menu.closedLoopCandidateCount == 0 ? 0 : menu.closedLoopCandidateIndex + 1,
-                    menu.closedLoopCandidateCount), x + 8, y + 29, 0x666666, false);
-            graphics.drawString(font, Component.translatable(
+                    menu.closedLoopCandidateCount), 19, 0x666666);
+            drawLine(graphics, Component.translatable(
                     "ae2lt.tianshu.terminal.closed_loop.seed_multipliers",
                     menu.closedLoopExecutionSeedMultiplier,
-                    menu.closedLoopStoredTaskMultiplier),
-                    x + 8, y + 43, 0x666666, false);
+                    menu.closedLoopStoredTaskMultiplier), 30, 0x666666);
             if (menu.uploadState != 0) {
-                graphics.drawString(font, Component.translatable(
+                drawLine(graphics, Component.translatable(
                         menu.uploadState == 1 ? "ae2lt.tianshu.terminal.upload.success"
                                 : "ae2lt.tianshu.terminal.upload.failed"),
-                        x + 8, y + 55, menu.uploadState == 1 ? 0x228822 : 0xAA2222, false);
+                        41, menu.uploadState == 1 ? 0x228822 : 0xAA2222);
             } else if (menu.closedLoopDraftStatus != null) {
                 var status = Component.translatable(
                         "ae2lt.tianshu.closed_loop.status."
@@ -499,9 +503,13 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
                     case MISSING_PRIMARY_OUTPUT -> 0xAA7700;
                     default -> 0xAA2222;
                 };
-                graphics.drawString(font, font.plainSubstrByWidth(status.getString(), 144),
-                        x + 8, y + 55, color, false);
+                drawLine(graphics, status, 41, color);
             }
+        }
+
+        private void drawLine(GuiGraphics graphics, Component text, int lineY, int color) {
+            graphics.drawString(font, font.plainSubstrByWidth(text.getString(), TEXT_WIDTH),
+                    x + TEXT_X, y + lineY, color, false);
         }
     }
 
