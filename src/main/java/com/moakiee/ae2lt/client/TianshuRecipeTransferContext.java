@@ -3,11 +3,10 @@ package com.moakiee.ae2lt.client;
 import appeng.integration.modules.itemlists.EncodingHelper;
 import com.moakiee.ae2lt.menu.TianshuPatternEncodingTermMenu;
 import java.lang.ref.WeakReference;
-import java.util.Collections;
-import java.util.Map;
-import java.util.TreeMap;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
 
@@ -16,8 +15,11 @@ import net.minecraft.world.item.crafting.RecipeHolder;
  * Recipe transfer deliberately does not start encoding; callers keep the normal AE2 encode
  * lifecycle and this class remains a small metadata bridge that other integrations can reuse.
  *
- * <p>The priority scheme and JEI/EMI capture behavior are adapted from ExtendedAE Plus
- * [ClientPlus], revision 07f8373c590c0c6d845f794e7c25090e5ef5703e (GNU LGPL 3.0).
+ * <p>The JEI/EMI capture behavior is adapted from ExtendedAE Plus [ClientPlus], revision
+ * 07f8373c590c0c6d845f794e7c25090e5ef5703e (GNU LGPL 3.0). Unlike ClientPlus, this bridge does
+ * not expose multiple switchable search conditions: the picker has one source field and one
+ * alias field. Viewer keywords are retained only as default values that can be copied into the
+ * alias field.
  */
 public final class TianshuRecipeTransferContext {
     private static WeakReference<TianshuPatternEncodingTermMenu> owner = new WeakReference<>(null);
@@ -31,7 +33,7 @@ public final class TianshuRecipeTransferContext {
                 && EncodingHelper.isSupportedCraftingRecipe(holder.value());
     }
 
-    /** Captures the portable recipe type/id keywords available to the JEI integration. */
+    /** Captures the stable recipe type and exact recipe ID available to the JEI integration. */
     public static void captureVanillaRecipe(
             TianshuPatternEncodingTermMenu menu, Object recipeBase) {
         Recipe<?> recipe = switch (recipeBase) {
@@ -39,50 +41,49 @@ public final class TianshuRecipeTransferContext {
             case Recipe<?> direct -> direct;
             default -> null;
         };
-        var queries = new TreeMap<Integer, Component>();
         String sourceKey = "";
         String recipeId = "";
+        var defaultAliases = new ArrayList<String>();
         if (recipe != null) {
             var typeId = BuiltInRegistries.RECIPE_TYPE.getKey(recipe.getType());
             sourceKey = typeId != null ? typeId.toString() : recipe.getType().toString();
-            add(queries, 0, sourceKey);
+            addDefaultAlias(defaultAliases, sourceKey);
         }
         if (recipeBase instanceof RecipeHolder<?> holder) {
             recipeId = holder.id().toString();
-            add(queries, 1000, firstPathSegment(holder.id().getPath()));
+            addDefaultAlias(defaultAliases, firstPathSegment(holder.id().getPath()));
         }
-        publish(menu, sourceKey, recipeId, queries);
+        publish(menu, sourceKey, recipeId, defaultAliases);
     }
 
-    /** Publishes viewer-specific keywords without exposing optional viewer types to common code. */
+    /** Publishes viewer metadata without exposing optional viewer types to common code. */
     public static synchronized void publish(
             TianshuPatternEncodingTermMenu menu,
             String sourceKey,
             String recipeId,
-            Map<Integer, Component> queries) {
+            Iterable<String> defaultAliases) {
         if (menu == null) return;
-        var ordered = new TreeMap<Integer, Component>();
-        if (queries != null) {
-            queries.forEach((priority, value) -> {
-                if (priority != null && value != null && !value.getString().isBlank()) {
-                    ordered.putIfAbsent(priority, value.copy());
-                }
+        var aliases = new LinkedHashSet<String>();
+        if (defaultAliases != null) {
+            defaultAliases.forEach(value -> {
+                if (value != null && !value.isBlank()) aliases.add(value);
             });
         }
         owner = new WeakReference<>(menu);
         snapshot = new Snapshot(
                 sourceKey == null ? "" : sourceKey,
                 recipeId == null ? "" : recipeId,
-                Collections.unmodifiableMap(ordered));
+                List.copyOf(aliases));
     }
 
     public static synchronized Snapshot snapshotFor(TianshuPatternEncodingTermMenu menu) {
         return owner.get() == menu ? snapshot : Snapshot.EMPTY;
     }
 
-    public static void add(Map<Integer, Component> queries, int priority, String value) {
-        if (queries == null || value == null || value.isBlank()) return;
-        queries.putIfAbsent(priority, Component.literal(value));
+    public static void addDefaultAlias(List<String> aliases, String value) {
+        if (aliases != null && value != null && !value.isBlank() && !aliases.contains(value)) {
+            aliases.add(value);
+        }
     }
 
     public static String firstPathSegment(String path) {
@@ -91,17 +92,13 @@ public final class TianshuRecipeTransferContext {
         return slash >= 0 ? path.substring(0, slash) : path;
     }
 
-    public record Snapshot(String sourceKey, String recipeId, Map<Integer, Component> queries) {
-        private static final Snapshot EMPTY = new Snapshot("", "", Map.of());
+    public record Snapshot(String sourceKey, String recipeId, List<String> defaultAliases) {
+        private static final Snapshot EMPTY = new Snapshot("", "", List.of());
 
         public Snapshot {
             sourceKey = sourceKey == null ? "" : sourceKey;
             recipeId = recipeId == null ? "" : recipeId;
-            queries = queries == null ? Map.of() : Map.copyOf(queries);
-        }
-
-        public boolean present() {
-            return !queries.isEmpty();
+            defaultAliases = defaultAliases == null ? List.of() : List.copyOf(defaultAliases);
         }
     }
 }
