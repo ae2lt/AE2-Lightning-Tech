@@ -4,6 +4,7 @@ import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.BooleanSupplier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
@@ -18,8 +19,10 @@ import com.moakiee.ae2lt.celestweave.CelestweaveArmorState;
 import com.moakiee.ae2lt.celestweave.module.PhaseLockSubmodule;
 import com.moakiee.ae2lt.celestweave.service.ArmorCapabilityCollector;
 import com.moakiee.ae2lt.celestweave.service.ArmorEnergyService;
+import com.moakiee.ae2lt.celestweave.service.ArmorLightningService;
 import com.moakiee.ae2lt.celestweave.service.ArmorTickService;
 import com.moakiee.ae2lt.item.PhaseLockProjectionItem;
+import com.moakiee.ae2lt.me.key.LightningKey;
 import com.moakiee.ae2lt.registry.ModItems;
 
 /** Owns all transfers between vanilla armor slots and the UUID-bound private armor vault. */
@@ -72,7 +75,14 @@ public final class PhaseLockService {
                         player,
                         armor,
                         ArmorOverloadRules.PHASE_LOCK_REGEN_COST_FE);
-                if (!payment.paid()) {
+                if (!completeRegenerationPayment(
+                        payment.paid(),
+                        () -> ArmorLightningService.consume(
+                                player,
+                                armor,
+                                LightningKey.EXTREME_HIGH_VOLTAGE,
+                                ArmorOverloadRules.PHASE_LOCK_REGEN_COST_EHV),
+                        payment::refund)) {
                     release(player, true);
                     return;
                 }
@@ -108,6 +118,20 @@ public final class PhaseLockService {
                         before);
             }
         }
+    }
+
+    static boolean completeRegenerationPayment(
+            boolean fePaid,
+            BooleanSupplier consumeExtremeHighVoltage,
+            Runnable refundFe) {
+        if (!fePaid) {
+            return false;
+        }
+        if (consumeExtremeHighVoltage.getAsBoolean()) {
+            return true;
+        }
+        refundFe.run();
+        return false;
     }
 
     public static boolean hasPrivateArmor(ServerPlayer player, EquipmentSlot slot) {

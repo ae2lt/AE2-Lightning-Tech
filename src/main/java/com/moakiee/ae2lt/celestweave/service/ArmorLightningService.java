@@ -6,6 +6,7 @@ import net.minecraft.world.item.ItemStack;
 import appeng.api.config.Actionable;
 import appeng.api.networking.security.IActionSource;
 
+import com.moakiee.ae2lt.device.energy.LightningCompensationPolicy;
 import com.moakiee.ae2lt.device.network.ArmorNetworkBinding;
 import com.moakiee.ae2lt.me.key.LightningKey;
 
@@ -17,53 +18,106 @@ public final class ArmorLightningService {
         if (amount <= 0L) {
             return true;
         }
-        return extract(player, armor, key, amount, Actionable.SIMULATE) >= amount;
+        if (key == null) {
+            return false;
+        }
+        return hasCost(
+                player,
+                armor,
+                key == LightningKey.EXTREME_HIGH_VOLTAGE
+                        ? LightningCost.ehv(amount)
+                        : LightningCost.hv(amount));
     }
 
     public static boolean hasCost(ServerPlayer player, ItemStack armor, LightningCost cost) {
         if (cost.isEmpty()) {
             return true;
         }
-        return hasCost(player, armor, LightningKey.HIGH_VOLTAGE, cost.highVoltage())
-                && hasCost(player, armor, LightningKey.EXTREME_HIGH_VOLTAGE, cost.extremeHighVoltage());
+        return plan(player, armor, cost).canPay();
     }
 
     public static boolean consume(ServerPlayer player, ItemStack armor, LightningKey key, long amount) {
         if (amount <= 0L) {
             return true;
         }
-        long got = extract(player, armor, key, amount, Actionable.MODULATE);
-        if (got >= amount) {
-            return true;
+        if (key == null) {
+            return false;
         }
-        refund(player, armor, key, got);
-        return false;
+        return consume(
+                player,
+                armor,
+                key == LightningKey.EXTREME_HIGH_VOLTAGE
+                        ? LightningCost.ehv(amount)
+                        : LightningCost.hv(amount));
     }
 
     public static boolean consume(ServerPlayer player, ItemStack armor, LightningCost cost) {
         if (cost.isEmpty()) {
             return true;
         }
-        if (!hasCost(player, armor, cost)) {
-            return false;
-        }
-        long gotHv = extract(player, armor, LightningKey.HIGH_VOLTAGE, cost.highVoltage(), Actionable.MODULATE);
-        if (gotHv < cost.highVoltage()) {
-            refund(player, armor, LightningKey.HIGH_VOLTAGE, gotHv);
+        var plan = plan(player, armor, cost);
+        if (!plan.canPay()) {
             return false;
         }
         long gotEhv = extract(
                 player,
                 armor,
                 LightningKey.EXTREME_HIGH_VOLTAGE,
-                cost.extremeHighVoltage(),
+                plan.extremeHighVoltageToConsume(),
                 Actionable.MODULATE);
-        if (gotEhv < cost.extremeHighVoltage()) {
+        if (gotEhv < plan.extremeHighVoltageToConsume()) {
+            refund(player, armor, LightningKey.EXTREME_HIGH_VOLTAGE, gotEhv);
+            return false;
+        }
+        long gotHv = extract(
+                player,
+                armor,
+                LightningKey.HIGH_VOLTAGE,
+                plan.highVoltageToConsume(),
+                Actionable.MODULATE);
+        if (gotHv < plan.highVoltageToConsume()) {
             refund(player, armor, LightningKey.HIGH_VOLTAGE, gotHv);
             refund(player, armor, LightningKey.EXTREME_HIGH_VOLTAGE, gotEhv);
             return false;
         }
         return true;
+    }
+
+    private static LightningCompensationPolicy.Plan plan(
+            ServerPlayer player,
+            ItemStack armor,
+            LightningCost cost) {
+        long availableEhv = cost.extremeHighVoltage() <= 0L
+                ? 0L
+                : extract(
+                        player,
+                        armor,
+                        LightningKey.EXTREME_HIGH_VOLTAGE,
+                        Long.MAX_VALUE,
+                        Actionable.SIMULATE);
+        boolean needsCompensation = availableEhv < cost.extremeHighVoltage();
+        int compensationRatio = !needsCompensation || player == null
+                ? 0
+                : LightningCompensationPolicy.bestRatio(
+                        ArmorCapabilityCollector.collectPerInstalledStack(player).stream()
+                                .map(ArmorCapabilityCollector.ActiveCapability::capability)
+                                .toList());
+        boolean needsHighVoltage = cost.highVoltage() > 0L
+                || (needsCompensation && compensationRatio > 0);
+        long availableHv = needsHighVoltage
+                ? extract(
+                        player,
+                        armor,
+                        LightningKey.HIGH_VOLTAGE,
+                        Long.MAX_VALUE,
+                        Actionable.SIMULATE)
+                : 0L;
+        return LightningCompensationPolicy.plan(
+                cost.highVoltage(),
+                cost.extremeHighVoltage(),
+                availableHv,
+                availableEhv,
+                compensationRatio);
     }
 
     private static long extract(ServerPlayer player, ItemStack armor, LightningKey key, long amount, Actionable action) {

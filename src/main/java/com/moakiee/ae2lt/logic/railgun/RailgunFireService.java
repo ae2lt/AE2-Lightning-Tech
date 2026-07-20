@@ -31,6 +31,7 @@ import appeng.api.networking.security.IActionSource;
 import com.moakiee.ae2lt.config.AE2LTCommonConfig;
 import com.moakiee.ae2lt.config.RailgunDefaults;
 import com.moakiee.ae2lt.device.capability.DeviceCapability;
+import com.moakiee.ae2lt.device.energy.LightningCompensationPolicy;
 import com.moakiee.ae2lt.item.railgun.RailgunChargeTier;
 import com.moakiee.ae2lt.item.railgun.RailgunModuleEntries;
 import com.moakiee.ae2lt.item.railgun.RailgunStructuralCore;
@@ -116,13 +117,14 @@ public final class RailgunFireService {
         long ehvGot = inv.extract(LightningKey.EXTREME_HIGH_VOLTAGE, ehvNeeded, Actionable.MODULATE, src);
         long ehvShort = ehvNeeded - ehvGot;
         if (ehvShort > 0L) {
-            if (!mods.hasCore()) {
+            int compensationRatio = LightningCompensationPolicy.bestRatio(mods.capabilities());
+            if (compensationRatio <= 0) {
                 inv.insert(LightningKey.EXTREME_HIGH_VOLTAGE, ehvGot, Actionable.MODULATE, src);
                 RailgunEnergyBuffer.refund(stack, cost.feEnergy());
                 sendFail(player, "ae2lt.railgun.fail.no_ehv");
                 return;
             }
-            long needHv = ehvShort * RailgunDefaults.COMPENSATION_RATIO;
+            long needHv = LightningCompensationPolicy.highVoltageRequired(ehvShort, compensationRatio);
             long gotHv = inv.extract(LightningKey.HIGH_VOLTAGE, needHv, Actionable.MODULATE, src);
             if (gotHv < needHv) {
                 inv.insert(LightningKey.EXTREME_HIGH_VOLTAGE, ehvGot, Actionable.MODULATE, src);

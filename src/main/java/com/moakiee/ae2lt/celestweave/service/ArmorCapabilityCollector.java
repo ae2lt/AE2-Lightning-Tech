@@ -60,14 +60,23 @@ public final class ArmorCapabilityCollector {
             }
 
             for (ItemStack moduleStack : CelestweaveArmorState.loadModuleStacks(armor, player.level().registryAccess())) {
-                if (!(moduleStack.getItem() instanceof OverloadDeviceModuleItem module)
-                        || !(moduleStack.getItem() instanceof CelestweaveArmorSubmoduleItem submoduleProvider)) {
+                if (!(moduleStack.getItem() instanceof OverloadDeviceModuleItem module)) {
+                    continue;
+                }
+                var armorPart = CelestweaveArmorState.armorPart(armor);
+                if (!module.accepts(armorPart.deviceKind(), armorPart.moduleSlot())) {
                     continue;
                 }
 
                 int iterations = expandByCount ? Math.max(1, moduleStack.getCount()) : 1;
                 for (int i = 0; i < iterations; i++) {
                     ItemStack unit = moduleStack.copyWithCount(1);
+                    if (!(moduleStack.getItem() instanceof CelestweaveArmorSubmoduleItem submoduleProvider)) {
+                        for (var capability : module.capabilities(unit)) {
+                            out.add(new ActiveCapability(armor, module.moduleTypeId(unit), capability));
+                        }
+                        continue;
+                    }
                     submoduleProvider.collectSubmodules(unit, submodule -> {
                         if (submodule == null || !isSubmoduleActiveForSide(player, armor, submodule)) {
                             return;

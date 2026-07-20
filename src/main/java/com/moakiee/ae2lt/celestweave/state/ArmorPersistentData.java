@@ -16,7 +16,6 @@ import com.moakiee.ae2lt.device.module.OverloadDeviceModuleItem;
 import com.moakiee.ae2lt.celestweave.ArmorEnergyModuleItem;
 import com.moakiee.ae2lt.celestweave.ArmorPart;
 import com.moakiee.ae2lt.celestweave.BaseCelestweaveArmorItem;
-import com.moakiee.ae2lt.celestweave.module.CelestweaveArmorSubmoduleItem;
 import com.moakiee.ae2lt.registry.ModDataComponents;
 
 /**
@@ -201,19 +200,10 @@ public final class ArmorPersistentData {
     }
 
     private static String resolveModuleTypeId(ItemStack stack) {
-        if (stack != null && !stack.isEmpty() && stack.getItem() instanceof ArmorEnergyModuleItem) {
-            return ArmorEnergyModuleItem.MODULE_TYPE_ID;
-        }
-        if (stack == null || stack.isEmpty() || !(stack.getItem() instanceof CelestweaveArmorSubmoduleItem provider)) {
+        if (stack == null || stack.isEmpty() || !(stack.getItem() instanceof OverloadDeviceModuleItem provider)) {
             return "";
         }
-        String[] ref = {""};
-        provider.collectSubmodules(stack, submodule -> {
-            if (submodule != null && !submodule.id().isBlank() && ref[0].isEmpty()) {
-                ref[0] = submodule.id();
-            }
-        });
-        return ref[0];
+        return provider.moduleTypeId(stack);
     }
 
     private static long energyCapacityFe(ItemStack stack) {
