@@ -27,7 +27,7 @@ class TianshuRecipeViewerIntegrationSourceContractTest {
     }
 
     @Test
-    void bothViewersObserveOnlyActualTransfersAndCaptureProcessingKeywords() throws Exception {
+    void bothViewersObserveOnlyActualTransfersAndCaptureStableRecipeIdentity() throws Exception {
         String jei = Files.readString(Path.of(
                 "src/main/java/com/moakiee/ae2lt/mixin/recipeviewer/jei/JeiEncodePatternTransferMixin.java"));
         String emi = Files.readString(Path.of(
@@ -38,10 +38,14 @@ class TianshuRecipeViewerIntegrationSourceContractTest {
         assertTrue(jei.contains("!doTransfer"));
         assertTrue(jei.contains("captureVanillaRecipe"));
         assertTrue(emi.contains("!doTransfer"));
+        assertTrue(emi.contains("category.getId().toString()"));
+        assertTrue(emi.contains("emiRecipe.getId().toString()"));
         assertTrue(emi.contains("getWorkstations"));
+        assertTrue(emi.contains("addDefaultAlias"));
         assertTrue(context.contains("BuiltInRegistries.RECIPE_TYPE"));
         assertTrue(context.contains("WeakReference<TianshuPatternEncodingTermMenu>"));
         assertTrue(context.contains("String recipeId"));
+        org.junit.jupiter.api.Assertions.assertFalse(context.contains("Map<Integer, Component>"));
     }
 
     @Test
@@ -54,6 +58,25 @@ class TianshuRecipeViewerIntegrationSourceContractTest {
         assertTrue(picker.contains("TianshuRecipeTransferContext.snapshotFor(menu)"));
         assertTrue(picker.contains("recipeContext.sourceKey()"));
         assertTrue(context.contains("does not start encoding"));
+    }
+
+    @Test
+    void providerPickerCyclesDefaultAliasValuesWithoutASeparateFilterMode() throws Exception {
+        String picker = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/client/TianshuUploadTargetScreen.java"));
+
+        assertTrue(picker.contains("sourceField.setValue(sourceKey)"));
+        assertTrue(picker.contains("aliasField.setValue(storedAlias)"));
+        assertTrue(picker.contains("String source = sourceField.getValue().strip()"));
+        assertTrue(picker.contains("String query = aliasField.getValue().strip()"));
+        assertTrue(picker.contains("defaultAliases.get(defaultAliasIndex)"));
+        assertTrue(picker.contains("public boolean mouseScrolled"));
+        assertTrue(picker.contains("aliasField.setValue(\"\")"));
+        org.junit.jupiter.api.Assertions.assertFalse(picker.contains("sourceField.setResponder"));
+        org.junit.jupiter.api.Assertions.assertFalse(picker.contains("recipeContext.queries()"));
+        org.junit.jupiter.api.Assertions.assertFalse(picker.contains("selectedQueryIndex"));
+        org.junit.jupiter.api.Assertions.assertFalse(picker.contains("selectedQuery()"));
+        org.junit.jupiter.api.Assertions.assertFalse(picker.contains("rebuildCandidateTooltip"));
     }
 
     @Test

@@ -20,9 +20,6 @@ import com.moakiee.ae2lt.menu.TianshuPatternEncodingTermMenu;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
-import java.util.NavigableMap;
-import java.util.TreeMap;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.ComponentPath;
@@ -64,20 +61,20 @@ public final class TianshuUploadTargetScreen<M extends TianshuPatternEncodingTer
     private final AETextField sourceField;
     private final AETextField aliasField;
     private final Scrollbar scrollbar;
-    private final NavigableMap<Integer, Component> queries = new TreeMap<>();
+    private final List<String> defaultAliases = new ArrayList<>();
     private final List<IndexedTarget> filtered = new ArrayList<>();
-    private final String primarySourceKey;
 
     private int visibleRows;
-    private int selectedQueryIndex;
+    private int defaultAliasIndex = -1;
     private int focusedIndex = -1;
     private int requestedRevision;
-    private String customQuery = "";
     private boolean queryRefresh = true;
-    private boolean updatingFields;
     private boolean awaitingTargets = true;
     private boolean awaitingUpload;
     private boolean uploadFailed;
+    private boolean updatingAliasField;
+    private boolean configuredAliasInserted;
+    private String configuredAlias = "";
 
     public TianshuUploadTargetScreen(TianshuPatternEncodingTermScreen<M> parent) {
         super(parent, STYLE);
@@ -100,68 +97,90 @@ public final class TianshuUploadTargetScreen<M extends TianshuPatternEncodingTer
         aliasField.setMaxLength(256);
         aliasField.setPlaceholder(Component.translatable("ae2lt.tianshu.upload.alias"));
 
-        primarySourceKey = collectQueries();
-        sourceField.setValue(primarySourceKey);
-        String storedAlias = AE2LTClientConfig.findUploadAlias(primarySourceKey);
-        if (storedAlias != null) queries.put(1, Component.literal(storedAlias));
-        selectedQueryIndex = storedAlias == null ? initialQueryIndex() : 1;
-        aliasField.setValue(selectedQuery().getString());
-
-        sourceField.setResponder(value -> {
-            if (updatingFields || !aliasField.getValue().isBlank()) return;
-            selectedQueryIndex = -1;
-            customQuery = value;
-            queryRefresh = true;
-        });
+        SourceSelection selection = collectSourceSelection();
+        String sourceKey = selection.sourceKey();
+        defaultAliases.addAll(selection.defaultAliases());
+        sourceField.setValue(sourceKey);
+        String storedAlias = AE2LTClientConfig.findUploadAlias(sourceKey);
+        if (storedAlias != null && !storedAlias.isBlank()) {
+            setConfiguredAlias(storedAlias);
+            defaultAliasIndex = indexOfDefaultAlias(storedAlias);
+            aliasField.setValue(storedAlias);
+        } else if (selection.selectFirstDefault() && !defaultAliases.isEmpty()) {
+            defaultAliasIndex = 0;
+            aliasField.setValue(defaultAliases.getFirst());
+        }
         aliasField.setResponder(value -> {
-            if (updatingFields) return;
-            selectedQueryIndex = -1;
-            customQuery = value;
+            if (!updatingAliasField) defaultAliasIndex = indexOfDefaultAlias(value);
             queryRefresh = true;
         });
+        rebuildDefaultAliasTooltip();
 
         requestedRevision = menu.getUploadTargetsRevision();
         menu.requestUploadTargets();
     }
 
-    private String collectQueries() {
+    private SourceSelection collectSourceSelection() {
         var recipeContext = TianshuRecipeTransferContext.snapshotFor(menu);
-        queries.putAll(recipeContext.queries());
+        if (!recipeContext.sourceKey().isBlank()) {
+            return new SourceSelection(
+                    recipeContext.sourceKey(), recipeContext.defaultAliases(), true);
+        }
         ItemStack stack = menu.getSlots(SlotSemantics.ENCODED_PATTERN).stream()
                 .map(slot -> slot.getItem()).filter(item -> !item.isEmpty())
                 .findFirst().orElse(ItemStack.EMPTY);
         var player = Minecraft.getInstance().player;
-        if (stack.isEmpty() || player == null) {
-            queries.putIfAbsent(0, Component.empty());
-            return recipeContext.sourceKey();
-        }
+        if (stack.isEmpty() || player == null) return SourceSelection.EMPTY;
         var details = PatternDetailsHelper.decodePattern(stack, player.level());
         var output = details == null ? null : details.getPrimaryOutput();
-        if (output == null || output.what() == null) {
-            queries.putIfAbsent(0, Component.empty());
-            return recipeContext.sourceKey();
-        }
+        if (output == null || output.what() == null) return SourceSelection.EMPTY;
         var key = output.what();
-        String id = key.getId().toString();
-        if (recipeContext.present()) {
-            queries.putIfAbsent(100, key.getDisplayName());
-            queries.putIfAbsent(101, Component.literal(key.getModId()));
-            queries.put(Integer.MAX_VALUE, Component.empty());
-        } else {
-            // Preserve the manual-encoding behavior: show all groups until the user selects a
-            // primary-output keyword or has configured an alias for that output.
-            queries.put(0, Component.empty());
-            queries.put(2, key.getDisplayName());
-            queries.put(3, Component.literal(key.getModId()));
-        }
-        return recipeContext.sourceKey().isBlank() ? id : recipeContext.sourceKey();
+        return new SourceSelection(
+                key.getId().toString(),
+                List.of(key.getDisplayName().getString(), key.getModId()),
+                false);
     }
 
-    private int initialQueryIndex() {
-        for (var entry : queries.entrySet()) {
-            if (!entry.getValue().getString().isBlank()) return entry.getKey();
+    private void setConfiguredAlias(String alias) {
+        clearConfiguredAliasCandidate();
+        configuredAlias = alias == null ? "" : alias;
+        if (configuredAlias.isBlank() || indexOfDefaultAlias(configuredAlias) >= 0) return;
+        defaultAliases.add(Math.min(1, defaultAliases.size()), configuredAlias);
+        configuredAliasInserted = true;
+    }
+
+    private void clearConfiguredAliasCandidate() {
+        if (configuredAliasInserted) {
+            int index = indexOfDefaultAlias(configuredAlias);
+            if (index >= 0) defaultAliases.remove(index);
         }
-        return queries.isEmpty() ? -1 : queries.firstKey();
+        configuredAlias = "";
+        configuredAliasInserted = false;
+    }
+
+    private int indexOfDefaultAlias(String alias) {
+        if (alias == null) return -1;
+        for (int i = 0; i < defaultAliases.size(); i++) {
+            if (defaultAliases.get(i).equalsIgnoreCase(alias)) return i;
+        }
+        return -1;
+    }
+
+    private void rebuildDefaultAliasTooltip() {
+        if (defaultAliases.size() <= 1) {
+            aliasField.setTooltipMessage(List.of());
+            return;
+        }
+        var lines = new ArrayList<Component>();
+        lines.add(Component.translatable("ae2lt.tianshu.upload.alias.defaults")
+                .withStyle(ChatFormatting.WHITE, ChatFormatting.BOLD));
+        for (int i = 0; i < defaultAliases.size(); i++) {
+            lines.add(Component.literal(i == defaultAliasIndex ? "\u2192 " : "  ")
+                    .withStyle(i == defaultAliasIndex
+                            ? ChatFormatting.GREEN : ChatFormatting.GRAY)
+                    .append(defaultAliases.get(i)));
+        }
+        aliasField.setTooltipMessage(lines);
     }
 
     @Override
@@ -213,18 +232,13 @@ public final class TianshuUploadTargetScreen<M extends TianshuPatternEncodingTer
         }
         if (queryRefresh) {
             queryRefresh = false;
-            if (selectedQueryIndex >= 0) {
-                updatingFields = true;
-                aliasField.setValue(selectedQuery().getString());
-                updatingFields = false;
-            }
-            rebuildCandidateTooltip();
+            rebuildDefaultAliasTooltip();
             rebuildFilteredTargets();
         }
     }
 
     private void rebuildFilteredTargets() {
-        String query = selectedQuery().getString().strip().toLowerCase(Locale.ROOT);
+        String query = aliasField.getValue().strip().toLowerCase(Locale.ROOT);
         filtered.clear();
         var targets = menu.getUploadTargets();
         for (int i = 0; i < targets.size(); i++) {
@@ -237,25 +251,6 @@ public final class TianshuUploadTargetScreen<M extends TianshuPatternEncodingTer
 
     private static boolean matches(TianshuUploadTargetData target, String query) {
         return TianshuUploadTargetMatcher.matches(target, query);
-    }
-
-    private Component selectedQuery() {
-        return queries.getOrDefault(selectedQueryIndex, Component.literal(customQuery));
-    }
-
-    private void rebuildCandidateTooltip() {
-        var lines = new ArrayList<Component>();
-        lines.add(Component.translatable("ae2lt.tianshu.upload.alias.candidates")
-                .withStyle(ChatFormatting.WHITE, ChatFormatting.BOLD));
-        for (var entry : queries.entrySet()) {
-            Component value = entry.getValue().getString().isEmpty()
-                    ? Component.translatable("ae2lt.tianshu.upload.alias.all") : entry.getValue();
-            lines.add(Component.literal(entry.getKey() == selectedQueryIndex ? "\u2192 " : "  ")
-                    .withStyle(entry.getKey() == selectedQueryIndex
-                            ? ChatFormatting.GREEN : ChatFormatting.GRAY)
-                    .append(value));
-        }
-        aliasField.setTooltipMessage(lines);
     }
 
     @Override
@@ -401,12 +396,16 @@ public final class TianshuUploadTargetScreen<M extends TianshuPatternEncodingTer
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double deltaX, double deltaY) {
-        if (queries.size() > 1 && aliasField.isMouseOver(mouseX, mouseY)) {
-            var keys = new ArrayList<>(queries.keySet());
-            int position = keys.indexOf(selectedQueryIndex);
-            if (position < 0) position = 0;
-            position = Math.floorMod(position + (deltaY > 0 ? -1 : 1), keys.size());
-            selectedQueryIndex = keys.get(position);
+        if (defaultAliases.size() > 1 && aliasField.isMouseOver(mouseX, mouseY)) {
+            if (defaultAliasIndex < 0) {
+                defaultAliasIndex = deltaY > 0 ? defaultAliases.size() - 1 : 0;
+            } else {
+                defaultAliasIndex = Math.floorMod(
+                        defaultAliasIndex + (deltaY > 0 ? -1 : 1), defaultAliases.size());
+            }
+            updatingAliasField = true;
+            aliasField.setValue(defaultAliases.get(defaultAliasIndex));
+            updatingAliasField = false;
             queryRefresh = true;
             if (minecraft.player != null) {
                 minecraft.player.playSound(SoundEvents.UI_BUTTON_CLICK.value(), 0.1F, 1.0F);
@@ -470,8 +469,8 @@ public final class TianshuUploadTargetScreen<M extends TianshuPatternEncodingTer
                     : "ae2lt.tianshu.upload.alias.empty_alias"));
             return;
         }
-        queries.put(1, Component.literal(alias));
-        selectedQueryIndex = 1;
+        setConfiguredAlias(alias);
+        defaultAliasIndex = indexOfDefaultAlias(alias);
         queryRefresh = true;
         showMessage(Component.translatable("ae2lt.tianshu.upload.alias.added", source, alias));
     }
@@ -499,8 +498,9 @@ public final class TianshuUploadTargetScreen<M extends TianshuPatternEncodingTer
             showMessage(Component.translatable("ae2lt.tianshu.upload.alias.not_found", alias));
             return;
         }
-        queries.remove(1);
-        selectedQueryIndex = 0;
+        if (configuredAlias.equalsIgnoreCase(alias)) clearConfiguredAliasCandidate();
+        defaultAliasIndex = -1;
+        aliasField.setValue("");
         queryRefresh = true;
         showMessage(Component.translatable("ae2lt.tianshu.upload.alias.removed", removed, alias));
     }
@@ -523,6 +523,16 @@ public final class TianshuUploadTargetScreen<M extends TianshuPatternEncodingTer
     }
 
     private record IndexedTarget(int sourceIndex, TianshuUploadTargetData target) { }
+
+    private record SourceSelection(
+            String sourceKey, List<String> defaultAliases, boolean selectFirstDefault) {
+        private static final SourceSelection EMPTY = new SourceSelection("", List.of(), false);
+
+        private SourceSelection {
+            sourceKey = sourceKey == null ? "" : sourceKey;
+            defaultAliases = defaultAliases == null ? List.of() : List.copyOf(defaultAliases);
+        }
+    }
 
     private static final class AliasActionButton extends IconButton {
         private final Icon icon;
