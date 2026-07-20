@@ -113,7 +113,4 @@ public final class RailgunDefaults {
     /** Max breakable hardness for penetration tunnel. */
     public static final double PENETRATION_DESTROY_HARDNESS = 25.0D;
 
-    // ── EHV → HV compensation (with core module) ──────────────────────────
-    /** With core module installed: 1 EHV = N HV when EHV is depleted. */
-    public static final int COMPENSATION_RATIO = 16;
 }

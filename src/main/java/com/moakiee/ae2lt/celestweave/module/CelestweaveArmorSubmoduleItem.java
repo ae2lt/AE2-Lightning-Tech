@@ -36,6 +36,17 @@ public interface CelestweaveArmorSubmoduleItem extends OverloadDeviceModuleItem 
     }
 
     @Override
+    default String moduleTypeId(ItemStack stack) {
+        var id = new String[]{""};
+        collectSubmodules(stack, submodule -> {
+            if (submodule != null && !submodule.id().isBlank() && id[0].isEmpty()) {
+                id[0] = submodule.id();
+            }
+        });
+        return id[0];
+    }
+
+    @Override
     default List<DeviceCapability> capabilities(ItemStack stack) {
         return List.of();
     }

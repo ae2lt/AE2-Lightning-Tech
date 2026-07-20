@@ -46,6 +46,21 @@ public final class ArmorEnergyModuleItem extends Item implements OverloadDeviceM
         return DeviceSlotType.OVERLOAD_EXECUTION;
     }
 
+    @Override
+    public boolean accepts(DeviceKind deviceKind, DeviceSlotType slotType) {
+        return acceptableDevices().contains(deviceKind) && acceptableSlotFor(deviceKind) == slotType;
+    }
+
+    @Override
+    public String moduleTypeId(ItemStack stack) {
+        return MODULE_TYPE_ID;
+    }
+
+    @Override
+    public int getMaxInstallAmount() {
+        return 1;
+    }
+
     public static DeviceSlotType acceptableSlotFor(DeviceKind kind) {
         return switch (kind) {
             case CELESTWEAVE_OCULUS -> DeviceSlotType.HEAD_MODULE;

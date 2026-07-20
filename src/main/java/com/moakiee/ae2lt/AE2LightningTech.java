@@ -271,6 +271,7 @@ public class AE2LightningTech {
                         output.accept(ModItems.CELESTWEAVE_SUBMODULE_PURIFICATION);
                         output.accept(ModItems.CELESTWEAVE_SUBMODULE_SATURATION);
                         output.accept(ModItems.CELESTWEAVE_SUBMODULE_DIG_AFFINITY);
+                        output.accept(ModItems.CELESTWEAVE_SUBMODULE_MOVEMENT_ASSIST);
                         output.accept(ModItems.CELESTWEAVE_SUBMODULE_PHASE_FLIGHT);
                         output.accept(ModItems.CELESTWEAVE_SUBMODULE_PHASE_LOCK);
                         // 电磁炮 + 模块

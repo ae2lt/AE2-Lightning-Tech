@@ -15,7 +15,6 @@ import net.minecraft.world.item.ItemStack;
 
 import com.moakiee.ae2lt.device.capability.DeviceCapability;
 import com.moakiee.ae2lt.device.module.OverloadDeviceModuleItem;
-import com.moakiee.ae2lt.celestweave.ArmorEnergyModuleItem;
 
 /**
  * Dynamic per-stack railgun module list. Each entry is one module type, and
@@ -115,11 +114,8 @@ public record RailgunModuleEntries(List<ItemStack> entries) {
         if (stack == null || stack.isEmpty()) {
             return "";
         }
-        if (stack.getItem() instanceof ArmorEnergyModuleItem) {
-            return ArmorEnergyModuleItem.MODULE_TYPE_ID;
-        }
-        if (stack.getItem() instanceof RailgunModuleItem module) {
-            return module.moduleType().getSerializedName();
+        if (stack.getItem() instanceof OverloadDeviceModuleItem module) {
+            return module.moduleTypeId(stack);
         }
         return "";
     }

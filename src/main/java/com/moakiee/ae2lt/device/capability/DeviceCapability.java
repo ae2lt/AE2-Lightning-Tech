@@ -27,6 +27,13 @@ public sealed interface DeviceCapability {
     /** Active FE cost declared by a triggerable module behavior. */
     record ActiveCost(String trigger, long fe) implements DeviceCapability {}
 
+    /** Allows missing EHV to be paid from HV using the declared HV-per-EHV ratio. */
+    record LightningCompensation(int highVoltagePerExtremeHighVoltage) implements DeviceCapability {
+        public LightningCompensation {
+            highVoltagePerExtremeHighVoltage = Math.max(0, highVoltagePerExtremeHighVoltage);
+        }
+    }
+
     // --- railgun only ---
 
     /** Lightning chain segments / forks / hard-cap bonus, packed. */
@@ -69,6 +76,9 @@ public sealed interface DeviceCapability {
 
     /** Configurable block and entity interaction reach. */
     record InteractionRange() implements DeviceCapability {}
+
+    /** Configurable walking, sprinting, sneaking and automatic step assistance. */
+    record MovementAssist() implements DeviceCapability {}
 
     /** Fall damage reduction. */
     record FallProtection(double damageReduction) implements DeviceCapability {}

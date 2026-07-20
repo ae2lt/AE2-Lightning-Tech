@@ -28,6 +28,7 @@ import appeng.parts.encoding.EncodingMode;
 import com.moakiee.ae2lt.logic.tianshu.terminal.ProcessingPatternEncodingType;
 import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuEncodingMode;
 import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuPatternUploadRouting;
+import com.moakiee.ae2lt.item.ClosedLoopPatternItem;
 import com.moakiee.ae2lt.menu.TianshuPatternEncodingTermMenu;
 import com.moakiee.ae2lt.mixin.client.AEBaseScreenAccessor;
 import com.moakiee.ae2lt.mixin.client.VerticalButtonBarAccessor;
@@ -241,12 +242,18 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
         var stack = menu.getSlots(SlotSemantics.ENCODED_PATTERN).stream()
                 .map(Slot::getItem).filter(item -> !item.isEmpty()).findFirst().orElse(ItemStack.EMPTY);
         if (stack.isEmpty()) return;
+        // The server is authoritative for validating a closed-loop payload. Routing by the
+        // item type here keeps the shared upload button responsive even when the client cannot
+        // decode a registry-backed payload and lets the server report a proper upload failure.
+        if (stack.getItem() instanceof ClosedLoopPatternItem) {
+            menu.uploadEncodedPattern();
+            return;
+        }
         var route = minecraft.level != null
                 ? TianshuPatternUploadRouting.classify(stack, minecraft.level)
                 : TianshuPatternUploadRouting.Route.INVALID;
         switch (route) {
-            case CLOSED_LOOP_STORAGE -> menu.uploadTianshuPattern();
-            case CRAFTING_ASSEMBLER -> menu.uploadTianshuCraftingPattern();
+            case CLOSED_LOOP_STORAGE, CRAFTING_ASSEMBLER -> menu.uploadEncodedPattern();
             case PROCESSING_PROVIDER -> switchToScreen(new TianshuUploadTargetScreen<>(this));
             case INVALID -> { }
         }

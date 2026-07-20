@@ -15,13 +15,12 @@ import com.moakiee.ae2lt.device.DeviceSlotType;
 import com.moakiee.ae2lt.device.energy.DeviceEnergyBuffer;
 import com.moakiee.ae2lt.device.module.ArmorModuleStorage;
 import com.moakiee.ae2lt.device.module.DeviceModuleStorage;
+import com.moakiee.ae2lt.device.module.OverloadDeviceModuleItem;
 import com.moakiee.ae2lt.device.network.ArmorNetworkBinding;
 import com.moakiee.ae2lt.device.network.DeviceNetworkBinding;
 import com.moakiee.ae2lt.celestweave.ArmorDeviceEnergyBuffer;
-import com.moakiee.ae2lt.celestweave.ArmorEnergyModuleItem;
 import com.moakiee.ae2lt.celestweave.ArmorPart;
 import com.moakiee.ae2lt.celestweave.CelestweaveArmorState;
-import com.moakiee.ae2lt.celestweave.module.CelestweaveArmorSubmoduleItem;
 import com.moakiee.ae2lt.registry.ModItems;
 
 public final class ArmorWorkbenchAdapter implements DeviceWorkbenchAdapter {
@@ -68,8 +67,7 @@ public final class ArmorWorkbenchAdapter implements DeviceWorkbenchAdapter {
 
     @Override
     public Predicate<ItemStack> moduleInputValidator(ItemStack device, HolderLookup.Provider registries) {
-        return stack -> (stack.getItem() instanceof CelestweaveArmorSubmoduleItem
-                || stack.getItem() instanceof ArmorEnergyModuleItem)
+        return stack -> stack.getItem() instanceof OverloadDeviceModuleItem
                 && CelestweaveArmorState.canInstallModule(device, registries, stack);
     }
 

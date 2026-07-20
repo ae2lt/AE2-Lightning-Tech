@@ -12,6 +12,7 @@ item_ids:
   - ae2lt:energy_module_t1
   - ae2lt:energy_module_t2
   - ae2lt:energy_module_t3
+  - ae2lt:railgun_module_core
   - ae2lt:module_night_vision
   - ae2lt:module_water_breathing
   - ae2lt:module_saturation
@@ -26,6 +27,7 @@ item_ids:
   - ae2lt:module_phase_lock
   - ae2lt:module_dash
   - ae2lt:module_dig_affinity
+  - ae2lt:module_movement_assist
 ---
 
 # Celestweave
@@ -81,7 +83,8 @@ If FE or required Lightning is missing, the affected effects cannot be maintaine
 | Reflect | Reflects up to 30% of attacker damage, spending FE and HV |
 | Undying | Intercepts fatal damage, spending large FE and EHV costs |
 | Purification | Removes and blocks configured status effects; by default, harmful effects only |
-| Phase Lock | Uses the chestplate as controller and moves the currently worn Celestweave set into four UUID-bound private slots. Stateless Binding-Cursed projections occupy those armor slots. Replacing one projection costs 1,000,000 FE; failure releases and re-equips the entire real set. Newly worn Celestweave pieces join the lock automatically. |
+| Phase Lock | Uses the chestplate as controller and moves the currently worn Celestweave set into four UUID-bound private slots. Stateless Binding-Cursed projections occupy those armor slots. Replacing one projection costs 1,000,000 FE and 16 EHV; failure releases and re-equips the entire real set. Newly worn Celestweave pieces join the lock automatically. |
+| Overload Core Module | Unlocks lightning compensation for the armor set. Existing EHV is consumed first, then any shortfall is paid at 16 HV per EHV |
 
 Matrix Shield and Phase Shield share the same install group, so only one of them can be installed on the chestplate.
 
@@ -100,7 +103,8 @@ Creative Flight and Phase Flight share the same install group, so only one can b
 |--------|--------|
 | Dash | Press the Dash key, default V, to dash forward; 40 tick cooldown |
 | Dig Affinity | Compensates underwater and airborne mining penalties |
+| Movement Assist | Separately tunes walking, sprinting and sneaking speed (0.5x-4x), plus automatic step height (0.6-3 blocks) |
 
 ## Cost Notes
 
-Most active modules consume 1 HV per tick in addition to their FE drain. Creative Flight uses more HV while flying, and Phase Flight consumes EHV every tick. Shield, Purification and Undying costs increase when they trigger repeatedly in a short time.
+Most active modules consume 1 HV per tick in addition to their FE drain. Creative Flight uses more HV while flying, and Phase Flight consumes EHV every tick. Shield, Purification and Undying costs increase when they trigger repeatedly in a short time. Installing an Overload Core Module in the chestplate allows the whole set to compensate missing EHV at 16 HV per EHV.

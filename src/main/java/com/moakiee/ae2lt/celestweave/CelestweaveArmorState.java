@@ -23,6 +23,7 @@ import com.moakiee.ae2lt.celestweave.module.FlightSubmodule;
 import com.moakiee.ae2lt.celestweave.module.PhaseFlightSubmodule;
 import com.moakiee.ae2lt.celestweave.module.CelestweaveArmorSubmodule;
 import com.moakiee.ae2lt.celestweave.module.CelestweaveArmorSubmoduleItem;
+import com.moakiee.ae2lt.device.module.OverloadDeviceModuleItem;
 import com.moakiee.ae2lt.registry.ModItems;
 import com.moakiee.ae2lt.registry.ModDataComponents;
 import com.moakiee.ae2lt.celestweave.state.ArmorPersistentData;
@@ -106,11 +107,11 @@ public final class CelestweaveArmorState {
             }
             return getInstalledUnitCount(armor, registries) < part.moduleSlotCount();
         }
-        if (!(candidate.getItem() instanceof CelestweaveArmorSubmoduleItem provider)) {
+        if (!(candidate.getItem() instanceof OverloadDeviceModuleItem provider)) {
             return false;
         }
         ArmorPart part = armorPart(armor);
-        if (provider.armorPart() != part || provider.acceptableSlot() != part.moduleSlot()) {
+        if (!provider.accepts(part.deviceKind(), part.moduleSlot())) {
             return false;
         }
         String id = resolveSubmoduleId(candidate);
@@ -260,7 +261,9 @@ public final class CelestweaveArmorState {
         if (stack != null && stack.getItem() instanceof ArmorEnergyModuleItem) {
             return 1;
         }
-        int max = 0;
+        int max = stack != null && stack.getItem() instanceof OverloadDeviceModuleItem provider
+                ? Math.max(0, provider.getMaxInstallAmount())
+                : 0;
         if (stack != null && stack.getItem() instanceof CelestweaveArmorSubmoduleItem provider) {
             var values = new ArrayList<Integer>();
             provider.collectSubmodules(stack, submodule -> values.add(Math.max(0, submodule.getMaxInstallAmount())));
@@ -557,27 +560,23 @@ public final class CelestweaveArmorState {
     }
 
     private static String resolveSubmoduleId(ItemStack stack) {
-        if (stack != null && !stack.isEmpty() && stack.getItem() instanceof ArmorEnergyModuleItem) {
-            return ArmorEnergyModuleItem.MODULE_TYPE_ID;
-        }
-        if (stack == null || stack.isEmpty() || !(stack.getItem() instanceof CelestweaveArmorSubmoduleItem provider)) {
+        if (stack == null
+                || stack.isEmpty()
+                || !(stack.getItem() instanceof OverloadDeviceModuleItem provider)) {
             return "";
         }
-        var ref = new String[]{""};
-        provider.collectSubmodules(stack, submodule -> {
-            if (submodule != null && !submodule.id().isBlank() && ref[0].isEmpty()) {
-                ref[0] = submodule.id();
-            }
-        });
-        return ref[0];
+        return provider.moduleTypeId(stack);
     }
 
     private static String resolveSubmoduleGroupId(ItemStack stack) {
         if (stack != null && !stack.isEmpty() && stack.getItem() instanceof ArmorEnergyModuleItem) {
             return ArmorEnergyModuleItem.MODULE_TYPE_ID;
         }
-        if (stack == null || stack.isEmpty() || !(stack.getItem() instanceof CelestweaveArmorSubmoduleItem provider)) {
+        if (stack == null || stack.isEmpty()) {
             return "";
+        }
+        if (!(stack.getItem() instanceof CelestweaveArmorSubmoduleItem provider)) {
+            return resolveSubmoduleId(stack);
         }
         var ref = new String[]{""};
         provider.collectSubmodules(stack, submodule -> {
