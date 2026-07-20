@@ -77,6 +77,19 @@ class TianshuMultiblockScannerTest {
     }
 
     @Test
+    void closedLoopStorageIsRejectedInsideTheCoreChamber() {
+        var blocks = completeStructure(Direction.WEST);
+        var peripheral = TianshuMultiblockScanner.worldPos(
+                CONTROLLER, new BlockPos(4, 4, 4), Direction.WEST);
+        blocks.put(peripheral, TianshuMultiblockComponent.CLOSED_LOOP_PATTERN_STORAGE);
+
+        var attempt = TianshuMultiblockScanner.scan(CONTROLLER, Direction.WEST, blocks::get);
+
+        assertFalse(attempt.formed());
+        assertTrue(attempt.issues().contains(TianshuMultiblockScanIssue.INVALID_PERIPHERAL_CORE));
+    }
+
+    @Test
     void blankUnitsFillPeripheralCellsWithoutProvidingAttributes() {
         var blocks = completeStructure(Direction.WEST);
         for (int x = 2; x <= 4; x++) {
@@ -158,21 +171,12 @@ class TianshuMultiblockScannerTest {
     @Test
     void mainCoreProvidesFunctionsWhilePhysicalWarehousesProvideCapacity() {
         var blocks = completeStructure(Direction.WEST);
-        var functionComponents = new TianshuMultiblockComponent[] {
-                TianshuMultiblockComponent.CLOSED_LOOP_PATTERN_STORAGE,
-                TianshuMultiblockComponent.CLOSED_LOOP_SEED_STORAGE
-        };
-        int index = 0;
-        for (int x = 2; x <= 4 && index < functionComponents.length; x++) {
-            for (int y = 2; y <= 4 && index < functionComponents.length; y++) {
-                for (int z = 2; z <= 4 && index < functionComponents.length; z++) {
-                    var local = new BlockPos(x, y, z);
-                    if (local.equals(new BlockPos(3, 3, 3)) || local.equals(new BlockPos(2, 2, 2))) continue;
-                    blocks.put(TianshuMultiblockScanner.worldPos(CONTROLLER, local, Direction.WEST),
-                            functionComponents[index++]);
-                }
-            }
-        }
+        var patternStorageLocal = new BlockPos(2, 0, 2);
+        var seedStorageLocal = TianshuMultiblockTemplate.UPPER_PORT;
+        blocks.put(TianshuMultiblockScanner.worldPos(CONTROLLER, patternStorageLocal, Direction.WEST),
+                TianshuMultiblockComponent.CLOSED_LOOP_PATTERN_STORAGE);
+        blocks.put(TianshuMultiblockScanner.worldPos(CONTROLLER, seedStorageLocal, Direction.WEST),
+                TianshuMultiblockComponent.CLOSED_LOOP_SEED_STORAGE);
 
         var attempt = TianshuMultiblockScanner.scan(CONTROLLER, Direction.WEST, blocks::get);
 
@@ -185,11 +189,82 @@ class TianshuMultiblockScannerTest {
                 profile.maintenanceRuleCapacity());
         assertEquals(64, profile.closedLoopPatternCapacity());
         assertEquals(List.of(TianshuMultiblockScanner.worldPos(
-                        CONTROLLER, new BlockPos(2, 2, 3), Direction.WEST)),
+                        CONTROLLER, patternStorageLocal, Direction.WEST)),
                 attempt.result().patternStoragePositions());
         assertEquals(List.of(TianshuMultiblockScanner.worldPos(
-                        CONTROLLER, new BlockPos(2, 2, 4), Direction.WEST)),
+                        CONTROLLER, seedStorageLocal, Direction.WEST)),
                 attempt.result().seedStoragePositions());
+    }
+
+    @Test
+    void multidimensionalCoreUsesBlankPeripheryWithStorageInCoolingPositions() {
+        var blocks = completeStructure(Direction.WEST);
+        for (int x = 2; x <= 4; x++) {
+            for (int y = 2; y <= 4; y++) {
+                for (int z = 2; z <= 4; z++) {
+                    var local = new BlockPos(x, y, z);
+                    blocks.put(TianshuMultiblockScanner.worldPos(CONTROLLER, local, Direction.WEST),
+                            local.equals(new BlockPos(3, 3, 3))
+                                    ? TianshuMultiblockComponent.MAIN_MULTIDIMENSIONAL
+                                    : TianshuMultiblockComponent.BLANK_CORE);
+                }
+            }
+        }
+        var seedStorageLocal = new BlockPos(2, 0, 2);
+        blocks.put(TianshuMultiblockScanner.worldPos(
+                        CONTROLLER, TianshuMultiblockTemplate.LOWER_PORT, Direction.WEST),
+                TianshuMultiblockComponent.CLOSED_LOOP_PATTERN_STORAGE);
+        blocks.put(TianshuMultiblockScanner.worldPos(
+                        CONTROLLER, TianshuMultiblockTemplate.UPPER_PORT, Direction.WEST),
+                TianshuMultiblockComponent.PORT);
+        blocks.put(TianshuMultiblockScanner.worldPos(CONTROLLER, seedStorageLocal, Direction.WEST),
+                TianshuMultiblockComponent.CLOSED_LOOP_SEED_STORAGE);
+
+        var attempt = TianshuMultiblockScanner.scan(CONTROLLER, Direction.WEST, blocks::get);
+
+        assertTrue(attempt.formed(), attempt.issues().toString());
+        assertEquals(CpuMainCoreTier.MULTIDIMENSIONAL, attempt.result().coreProfile().mainCore());
+        assertEquals(1, attempt.result().functionProfile().closedLoopPatternStorageCount());
+        assertEquals(1, attempt.result().functionProfile().closedLoopSeedStorageCount());
+    }
+
+    @Test
+    void autoBuildPreservesClosedLoopStorageInCoolingPositions() {
+        var patternStorageLocal = new BlockPos(2, 0, 2);
+        var seedStorageLocal = TianshuMultiblockTemplate.UPPER_PORT;
+        var plan = TianshuAutoBuildPlan.create(local -> {
+            if (local.equals(TianshuMultiblockTemplate.LOWER_PORT)) {
+                return TianshuMultiblockComponent.PORT;
+            }
+            if (local.equals(patternStorageLocal)) {
+                return TianshuMultiblockComponent.CLOSED_LOOP_PATTERN_STORAGE;
+            }
+            if (local.equals(seedStorageLocal)) {
+                return TianshuMultiblockComponent.CLOSED_LOOP_SEED_STORAGE;
+            }
+            return TianshuMultiblockComponent.AIR;
+        });
+
+        assertFalse(plan.blocked().contains(patternStorageLocal));
+        assertFalse(plan.blocked().contains(seedStorageLocal));
+        assertFalse(plan.placements().stream().anyMatch(placement ->
+                placement.localPos().equals(patternStorageLocal)
+                        || placement.localPos().equals(seedStorageLocal)));
+    }
+
+    @Test
+    void autoBuildUsesTheOtherPortCandidateWhenLowerCandidateContainsStorage() {
+        var plan = TianshuAutoBuildPlan.create(local ->
+                local.equals(TianshuMultiblockTemplate.LOWER_PORT)
+                        ? TianshuMultiblockComponent.CLOSED_LOOP_PATTERN_STORAGE
+                        : TianshuMultiblockComponent.AIR);
+
+        assertFalse(plan.blocked().contains(TianshuMultiblockTemplate.LOWER_PORT));
+        assertFalse(plan.placements().stream().anyMatch(placement ->
+                placement.localPos().equals(TianshuMultiblockTemplate.LOWER_PORT)));
+        assertTrue(plan.placements().stream().anyMatch(placement ->
+                placement.localPos().equals(TianshuMultiblockTemplate.UPPER_PORT)
+                        && placement.target() == TianshuAutoBuildPlan.Target.PORT));
     }
 
     private static Map<BlockPos, TianshuMultiblockComponent> completeStructure(Direction direction) {

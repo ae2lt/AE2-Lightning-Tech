@@ -358,7 +358,7 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
             TianshuAutoBuildPlan.Target target) {
         return switch (target) {
             case CASING -> component == TianshuMultiblockComponent.CASING;
-            case COOLING -> component == TianshuMultiblockComponent.COOLING;
+            case COOLING -> component.fillsCoolingPosition();
             case GLASS -> component == TianshuMultiblockComponent.GLASS;
             case PORT -> component == TianshuMultiblockComponent.PORT;
         };

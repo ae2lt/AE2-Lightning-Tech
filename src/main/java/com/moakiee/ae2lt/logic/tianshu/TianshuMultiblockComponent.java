@@ -17,5 +17,14 @@ public enum TianshuMultiblockComponent {
     AMPLIFIER_CORE,
     CLOSED_LOOP_PATTERN_STORAGE,
     CLOSED_LOOP_SEED_STORAGE,
-    OTHER
+    OTHER;
+
+    /** Blocks accepted anywhere the shell normally uses a phase-change cooling unit. */
+    public boolean fillsCoolingPosition() {
+        return this == COOLING || isClosedLoopStorage();
+    }
+
+    public boolean isClosedLoopStorage() {
+        return this == CLOSED_LOOP_PATTERN_STORAGE || this == CLOSED_LOOP_SEED_STORAGE;
+    }
 }

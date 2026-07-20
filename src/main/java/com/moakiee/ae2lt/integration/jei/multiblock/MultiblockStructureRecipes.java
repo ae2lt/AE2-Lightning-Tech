@@ -24,6 +24,8 @@ public final class MultiblockStructureRecipes {
     private static final BlockPos MATRIX_DEFAULT_PATTERN = new BlockPos(1, 1, 1);
     private static final BlockPos MATRIX_DEFAULT_PORT = new BlockPos(6, 5, 3);
     private static final int TIANSHU_DEFAULT_STORAGE_CORES = 16;
+    private static final BlockPos TIANSHU_DEFAULT_PATTERN_STORAGE = new BlockPos(2, 6, 2);
+    private static final BlockPos TIANSHU_DEFAULT_SEED_STORAGE = new BlockPos(4, 6, 2);
 
     public static List<MultiblockStructureRecipe> all() {
         return List.of(matrix(), tianshu());
@@ -159,8 +161,8 @@ public final class MultiblockStructureRecipes {
         Block amplifier = ModBlocks.AMPLIFIER_SUPERCOMPUTING_UNIT.get();
         Block patternStorage = ModBlocks.CLOSED_LOOP_PATTERN_STORAGE.get();
         Block seedStorage = ModBlocks.CLOSED_LOOP_SEED_STORAGE.get();
-        List<Block> peripheralUnits = List.of(
-                blank, storage, parallel, amplifier, patternStorage, seedStorage);
+        List<Block> coolingPositionBlocks = List.of(cooling, patternStorage, seedStorage);
+        List<Block> peripheralUnits = List.of(blank, storage, parallel, amplifier);
         List<Block> mainCores = List.of(
                 ModBlocks.BASELINE_SUPERCOMPUTING_UNIT.get(),
                 ModBlocks.QUANTUM_SUPERCOMPUTING_UNIT.get(),
@@ -176,6 +178,7 @@ public final class MultiblockStructureRecipes {
         Component peripheralRole = role("peripheral_core");
 
         Component portRule = rule("tianshu_port");
+        Component coolingRule = rule("tianshu_cooling");
         Component mainCoreRule = rule("tianshu_main_core");
         Component peripheralRule = rule("tianshu_peripheral");
 
@@ -191,7 +194,18 @@ public final class MultiblockStructureRecipes {
                             // Required air is omitted from the rendered model and material list.
                         }
                         case CASING -> cells.add(cell(pos, casing, casingRole, List.of(casing), true));
-                        case COOLING -> cells.add(cell(pos, cooling, coolingRole, List.of(cooling), true));
+                        case COOLING -> {
+                            Block displayed = pos.equals(TIANSHU_DEFAULT_PATTERN_STORAGE)
+                                    ? patternStorage
+                                    : pos.equals(TIANSHU_DEFAULT_SEED_STORAGE) ? seedStorage : cooling;
+                            cells.add(cell(
+                                    pos,
+                                    displayed,
+                                    coolingRole,
+                                    coolingPositionBlocks,
+                                    List.of(coolingRule),
+                                    true));
+                        }
                         case GLASS -> cells.add(cell(pos, glass, glassRole, List.of(glass), true));
                         case CONTROLLER -> cells.add(cell(
                                 pos,
@@ -206,7 +220,7 @@ public final class MultiblockStructureRecipes {
                                     pos,
                                     displayed,
                                     portRole,
-                                    List.of(port, cooling),
+                                    List.of(port, cooling, patternStorage, seedStorage),
                                     List.of(portRule),
                                     false));
                         }
@@ -238,7 +252,9 @@ public final class MultiblockStructureRecipes {
 
         List<MultiblockStructureRecipe.MaterialSpec> materialOrder = List.of(
                 material(casing),
-                material(cooling, portRule),
+                material(cooling, coolingRule),
+                material(patternStorage, coolingRule),
+                material(seedStorage, coolingRule),
                 material(glass),
                 material(controller),
                 material(port, portRule),
@@ -246,9 +262,7 @@ public final class MultiblockStructureRecipes {
                 material(blank, peripheralRule),
                 material(storage, peripheralRule),
                 material(parallel, peripheralRule),
-                material(amplifier, peripheralRule),
-                material(patternStorage, peripheralRule),
-                material(seedStorage, peripheralRule));
+                material(amplifier, peripheralRule));
 
         return MultiblockStructureRecipe.create(
                 id("tianshu_supercomputer"),

@@ -6,7 +6,10 @@ import java.util.List;
 import java.util.Objects;
 import net.minecraft.core.BlockPos;
 
-/** Plans construction of the Tianshu shell without touching its 3x3x3 core chamber. */
+/**
+ * Plans construction of the Tianshu shell without touching its 3x3x3 core chamber.
+ * Closed-loop storage blocks already installed in cooling positions are preserved.
+ */
 public final class TianshuAutoBuildPlan {
     private final List<Placement> placements;
     private final List<BlockPos> blocked;
@@ -68,9 +71,19 @@ public final class TianshuAutoBuildPlan {
             return TianshuMultiblockTemplate.LOWER_PORT;
         }
         var upper = normalize(resolver.componentAt(TianshuMultiblockTemplate.UPPER_PORT));
-        return upper == TianshuMultiblockComponent.PORT
-                ? TianshuMultiblockTemplate.UPPER_PORT
-                : TianshuMultiblockTemplate.LOWER_PORT;
+        if (upper == TianshuMultiblockComponent.PORT) {
+            return TianshuMultiblockTemplate.UPPER_PORT;
+        }
+        if (lower.isClosedLoopStorage() && !upper.isClosedLoopStorage()) {
+            return TianshuMultiblockTemplate.UPPER_PORT;
+        }
+        if (upper.isClosedLoopStorage() && !lower.isClosedLoopStorage()) {
+            return TianshuMultiblockTemplate.LOWER_PORT;
+        }
+        if (lower.fillsCoolingPosition() && upper == TianshuMultiblockComponent.AIR) {
+            return TianshuMultiblockTemplate.UPPER_PORT;
+        }
+        return TianshuMultiblockTemplate.LOWER_PORT;
     }
 
     private static Target targetFor(TianshuMultiblockRole role, BlockPos local, BlockPos portTarget) {
@@ -86,7 +99,7 @@ public final class TianshuAutoBuildPlan {
     private static boolean matchesTarget(TianshuMultiblockComponent component, Target target) {
         return switch (target) {
             case CASING -> component == TianshuMultiblockComponent.CASING;
-            case COOLING -> component == TianshuMultiblockComponent.COOLING;
+            case COOLING -> component.fillsCoolingPosition();
             case GLASS -> component == TianshuMultiblockComponent.GLASS;
             case PORT -> component == TianshuMultiblockComponent.PORT;
         };

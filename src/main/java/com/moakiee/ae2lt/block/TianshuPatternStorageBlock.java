@@ -9,7 +9,7 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
 
-/** Physical warehouse for encoded Tianshu closed-loop patterns. */
+/** Physical warehouse installed in a Tianshu cooling position for encoded closed-loop patterns. */
 public final class TianshuPatternStorageBlock extends TianshuSupercomputingUnitBlock
         implements EntityBlock {
     public TianshuPatternStorageBlock(Properties properties) {

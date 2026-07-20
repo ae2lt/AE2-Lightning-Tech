@@ -54,8 +54,6 @@ public final class TianshuMultiblockScanner {
         int capacityCores = 0;
         int parallelCores = 0;
         int amplifierCores = 0;
-        int closedLoopPatternStorages = 0;
-        int closedLoopSeedStorages = 0;
         BlockPos min = null;
         BlockPos max = null;
 
@@ -86,9 +84,10 @@ public final class TianshuMultiblockScanner {
                             }
                         }
                         case COOLING -> {
-                            if (component != TianshuMultiblockComponent.COOLING) {
+                            if (!component.fillsCoolingPosition()) {
                                 addOnce(issues, TianshuMultiblockScanIssue.MISSING_COOLING);
                             } else {
+                                trackClosedLoopStorage(component, world, patternStorages, seedStorages);
                                 members.add(world.immutable());
                             }
                         }
@@ -103,7 +102,8 @@ public final class TianshuMultiblockScanner {
                             if (component == TianshuMultiblockComponent.PORT) {
                                 ports.add(world.immutable());
                                 members.add(world.immutable());
-                            } else if (component == TianshuMultiblockComponent.COOLING) {
+                            } else if (component.fillsCoolingPosition()) {
+                                trackClosedLoopStorage(component, world, patternStorages, seedStorages);
                                 members.add(world.immutable());
                             } else {
                                 addOnce(issues, TianshuMultiblockScanIssue.MISSING_COOLING);
@@ -130,14 +130,6 @@ public final class TianshuMultiblockScanner {
                                 members.add(world.immutable());
                             } else if (component == TianshuMultiblockComponent.AMPLIFIER_CORE) {
                                 amplifierCores++;
-                                members.add(world.immutable());
-                            } else if (component == TianshuMultiblockComponent.CLOSED_LOOP_PATTERN_STORAGE) {
-                                closedLoopPatternStorages++;
-                                patternStorages.add(world.immutable());
-                                members.add(world.immutable());
-                            } else if (component == TianshuMultiblockComponent.CLOSED_LOOP_SEED_STORAGE) {
-                                closedLoopSeedStorages++;
-                                seedStorages.add(world.immutable());
                                 members.add(world.immutable());
                             } else {
                                 if (tier != null) addOnce(issues, TianshuMultiblockScanIssue.MAIN_CORE_OUTSIDE_CENTER);
@@ -176,7 +168,7 @@ public final class TianshuMultiblockScanner {
         var profile = CpuInternalCoreCalculator.calculate(
                 mainCore, capacityCores, parallelCores, amplifierCores);
         var functionProfile = new TianshuFunctionProfile(
-                closedLoopPatternStorages, closedLoopSeedStorages);
+                patternStorages.size(), seedStorages.size());
         return new TianshuMultiblockScanAttempt(new TianshuMultiblockScanResult(
                 controllerPos.immutable(), orientation, min, max, ports.getFirst(),
                 List.copyOf(members), List.copyOf(cores), List.copyOf(patternStorages),
@@ -204,6 +196,18 @@ public final class TianshuMultiblockScanner {
             case MAIN_MULTIDIMENSIONAL -> CpuMainCoreTier.MULTIDIMENSIONAL;
             default -> null;
         };
+    }
+
+    private static void trackClosedLoopStorage(
+            TianshuMultiblockComponent component,
+            BlockPos world,
+            List<BlockPos> patternStorages,
+            List<BlockPos> seedStorages) {
+        if (component == TianshuMultiblockComponent.CLOSED_LOOP_PATTERN_STORAGE) {
+            patternStorages.add(world.immutable());
+        } else if (component == TianshuMultiblockComponent.CLOSED_LOOP_SEED_STORAGE) {
+            seedStorages.add(world.immutable());
+        }
     }
 
     public static BlockPos worldPos(BlockPos controllerPos, BlockPos local, Direction orientation) {

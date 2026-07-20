@@ -212,9 +212,9 @@
         {pos: [6, 6, 1], state: "ae2lt:tianshu_supercomputer_casing{formed:true}"},
         {pos: [0, 6, 2], state: "ae2lt:tianshu_supercomputer_casing{formed:true}"},
         {pos: [1, 6, 2], state: "ae2lt:tianshu_supercomputer_casing{formed:true}"},
-        {pos: [2, 6, 2], state: "ae2lt:phase_change_cooling_unit{formed:true}"},
+        {pos: [2, 6, 2], state: "ae2lt:closed_loop_pattern_storage{formed:true}"},
         {pos: [3, 6, 2], state: "ae2lt:phase_change_cooling_unit{formed:true}"},
-        {pos: [4, 6, 2], state: "ae2lt:phase_change_cooling_unit{formed:true}"},
+        {pos: [4, 6, 2], state: "ae2lt:closed_loop_seed_storage{formed:true}"},
         {pos: [5, 6, 2], state: "ae2lt:tianshu_supercomputer_casing{formed:true}"},
         {pos: [6, 6, 2], state: "ae2lt:tianshu_supercomputer_casing{formed:true}"},
         {pos: [0, 6, 3], state: "ae2lt:tianshu_supercomputer_casing{formed:true}"},
@@ -255,6 +255,8 @@
         "ae2lt:tianshu_supercomputer_port{formed:true}",
         "ae2lt:baseline_supercomputing_unit{formed:true}",
         "ae2lt:storage_supercomputing_unit{formed:true}",
-        "ae2lt:parallel_supercomputing_unit{formed:true}"
+        "ae2lt:parallel_supercomputing_unit{formed:true}",
+        "ae2lt:closed_loop_pattern_storage{formed:true}",
+        "ae2lt:closed_loop_seed_storage{formed:true}"
     ]
 }

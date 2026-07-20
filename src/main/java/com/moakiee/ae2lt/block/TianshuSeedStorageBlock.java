@@ -12,7 +12,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import org.jetbrains.annotations.Nullable;
 
-/** Private arbitrary-cell drive used by a formed Tianshu for reusable closed-loop seeds. */
+/** Cooling-position drive used by a formed Tianshu for reusable closed-loop seeds. */
 public final class TianshuSeedStorageBlock extends TianshuSupercomputingUnitBlock implements EntityBlock {
     public TianshuSeedStorageBlock(Properties properties) {
         super(properties, TianshuMultiblockComponent.CLOSED_LOOP_SEED_STORAGE);

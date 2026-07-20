@@ -24,7 +24,7 @@ The supercomputer does not force-load any chunk in its footprint. If any structu
 
 The <ItemLink id="ae2lt:tianshu_pattern_encoding_terminal" /> extends the normal Pattern Encoding Terminal with closed-loop authoring, upload routing, and inventory-maintenance controls. The menu binds the first available formed Tianshu in stable order; if none is available when it opens, it can perform that initial binding when the first Tianshu comes online. Once a machine UUID is bound, that menu session never switches or falls back to another machine, and related writes fail if the bound machine becomes unavailable.
 
-The bound Tianshu's closed-loop pattern warehouse is added to this terminal's network-content list. It is exposed only while the Tianshu CPU is formed and its port is online, and disappears immediately if the structure becomes invalid. Patterns can be extracted for inspection or editing; returning them to the warehouse still uses the terminal's explicit upload action.
+The bound Tianshu's closed-loop pattern warehouse installed in a cooling-compatible position is added to this terminal's network-content list. It is exposed only while the Tianshu CPU is formed and its port is online, and disappears immediately if the structure becomes invalid. Patterns can be extracted for inspection or editing; returning them to the warehouse uses the terminal's explicit upload action.
 
 Use the maintenance overview to see configured items even when their stored amount is zero. Shift-click an entry there to edit its maintenance rule. If migrated data exceeds the current hard limit, the overview marks the bounded recovery page explicitly; deleting visible entries reveals the remaining persisted entries in later revisions.
 
@@ -51,7 +51,7 @@ Use the <ItemLink id="ae2lt:tianshu_supercomputer_controller" /> to view:
 * Total crafting storage, successful dispatches per tick, maximum copies per tick, and dispatch-cap status; the AE2 CPU selection list reports parallelism from successful dispatches only
 * Controls for shell auto-build and Fast Planning
 
-Replacing a core-chamber unit temporarily unforms the structure. If the port still retains active jobs, the new profile takes effect after all existing jobs end; restoring the structure and network allows retained jobs to continue.
+Replacing a core-chamber unit, or removing closed-loop storage from a cooling-compatible position, temporarily unforms the structure while the position is empty. If the port retains active jobs, the new profile takes effect after all existing jobs end; restoring the structure and network allows retained jobs to continue. A Phase-Change Cooling Unit is valid in the same cooling-compatible position but provides no corresponding closed-loop capacity.
 
 ## Fast Planning
 
@@ -63,7 +63,7 @@ Fast-planning eligibility is aggregated across the entire ME network. If another
 
 ## Troubleshooting
 
-* **The structure will not form:** Check every fixed casing, glass, and cooling position; require exactly one port, one centered main unit, and 26 peripherals valid for that tier. Finite tiers require a Parallel Unit; Multidimensional rejects Storage, Parallel, and Amplifier Units
+* **The structure will not form:** Check every fixed casing and glass position; ensure all 17 non-port cooling-compatible positions contain a Phase-Change Cooling Unit or closed-loop storage, require exactly one port and one centered main unit, and fill all 26 peripheral core cells with valid computing units. Closed-loop storage is invalid in the core chamber; finite tiers require a Parallel Unit, while Multidimensional accepts only Blank Units in its periphery
 * **All visible structure blocks are present:** Clear the required-air positions omitted from the displayed structure; cables, lights, and decorations are not permitted there
 * **Auto-build does not start:** Clear the coordinates reported by the controller and ensure all materials are in the player inventory
 * **The CPU is absent from crafting confirmation:** Check the port's cable connection, ME power, and structure formation state

@@ -412,7 +412,7 @@ public final class TianshuJdbHarness {
             require(port.getGridConnectableSides(port.getOrientation()).size() == Direction.values().length,
                     direction + " formed port did not expose all six grid sides");
 
-            BlockPos seedStoragePos = peripheral(controllerPos, direction, 3);
+            BlockPos seedStoragePos = coolingPosition(controllerPos, direction, 1);
             var seedDrive = requireSeedDrive(level, seedStoragePos);
             seedDrive.getCellInventory().setItemDirect(0, AEItems.ITEM_CELL_1K.stack());
             var seed = AEItemKey.of(new ItemStack(Items.NETHERITE_UPGRADE_SMITHING_TEMPLATE));
@@ -475,9 +475,9 @@ public final class TianshuJdbHarness {
                     direction + " disk NBT reload lost seed contents");
 
             BlockPos ordinaryCore = peripheral(controllerPos, direction, 0);
-            BlockPos loopStorage = peripheral(controllerPos, direction, 2);
+            BlockPos loopStorage = coolingPosition(controllerPos, direction, 0);
             for (int cycle = 0; cycle < 3; cycle++) {
-                level.setBlock(seedStoragePos, ModBlocks.STORAGE_SUPERCOMPUTING_UNIT.get().defaultBlockState(), Block.UPDATE_ALL);
+                level.setBlock(seedStoragePos, ModBlocks.PHASE_CHANGE_COOLING_UNIT.get().defaultBlockState(), Block.UPDATE_ALL);
                 controller.scanNow();
                 require(controller.isFormed(), direction + " seed-storage removal deformed cycle " + cycle);
                 require(!port.getFunctionProfile().supportsClosedLoopSeeds(), direction + " seed ability remained cycle " + cycle);
@@ -501,7 +501,7 @@ public final class TianshuJdbHarness {
                         direction + " reserve mode lost cycle " + cycle);
                 level.setBlock(ordinaryCore, ModBlocks.STORAGE_SUPERCOMPUTING_UNIT.get().defaultBlockState(), Block.UPDATE_ALL);
 
-                level.setBlock(loopStorage, ModBlocks.STORAGE_SUPERCOMPUTING_UNIT.get().defaultBlockState(), Block.UPDATE_ALL);
+                level.setBlock(loopStorage, ModBlocks.PHASE_CHANGE_COOLING_UNIT.get().defaultBlockState(), Block.UPDATE_ALL);
                 controller.scanNow();
                 require(controller.isFormed(), direction + " loop-storage removal deformed cycle " + cycle);
                 require(port.getClosedLoopPatternRepository().capacity() == 0,
@@ -527,13 +527,16 @@ public final class TianshuJdbHarness {
                     controllerPos, TianshuMultiblockTemplate.UPPER_PORT, direction);
             level.setBlock(upperPort, ModBlocks.TIANSHU_SUPERCOMPUTER_PORT.get().defaultBlockState(), Block.UPDATE_ALL);
             assertIssue(controller, TianshuMultiblockScanIssue.MULTIPLE_PORTS, direction + " duplicate-port");
-            level.setBlock(upperPort, ModBlocks.TIANSHU_SUPERCOMPUTER_CASING.get().defaultBlockState(), Block.UPDATE_ALL);
+            level.setBlock(upperPort, ModBlocks.PHASE_CHANGE_COOLING_UNIT.get().defaultBlockState(), Block.UPDATE_ALL);
 
             BlockPos center = TianshuMultiblockScanner.worldPos(controllerPos, new BlockPos(3, 3, 3), direction);
             level.setBlock(center, ModBlocks.STORAGE_SUPERCOMPUTING_UNIT.get().defaultBlockState(), Block.UPDATE_ALL);
             assertIssue(controller, TianshuMultiblockScanIssue.MISSING_MAIN_CORE, direction + " missing-main");
             level.setBlock(center, ModBlocks.BASELINE_SUPERCOMPUTING_UNIT.get().defaultBlockState(), Block.UPDATE_ALL);
             BlockPos invalidPeripheral = peripheral(controllerPos, direction, 4);
+            level.setBlock(invalidPeripheral, ModBlocks.CLOSED_LOOP_PATTERN_STORAGE.get().defaultBlockState(), Block.UPDATE_ALL);
+            assertIssue(controller, TianshuMultiblockScanIssue.INVALID_PERIPHERAL_CORE,
+                    direction + " closed-loop-storage-in-core");
             level.setBlock(invalidPeripheral, ModBlocks.QUANTUM_SUPERCOMPUTING_UNIT.get().defaultBlockState(), Block.UPDATE_ALL);
             assertIssue(controller, TianshuMultiblockScanIssue.MAIN_CORE_OUTSIDE_CENTER, direction + " peripheral-main");
             level.setBlock(invalidPeripheral, ModBlocks.STORAGE_SUPERCOMPUTING_UNIT.get().defaultBlockState(), Block.UPDATE_ALL);
@@ -546,6 +549,7 @@ public final class TianshuJdbHarness {
     }
 
     private static void buildComplete(ServerLevel level, BlockPos controllerPos, Direction direction) {
+        int coolingIndex = 0;
         int peripheralIndex = 0;
         for (int x = 0; x < TianshuMultiblockTemplate.SIZE; x++) {
             for (int y = 0; y < TianshuMultiblockTemplate.SIZE; y++) {
@@ -554,7 +558,14 @@ public final class TianshuJdbHarness {
                     var world = TianshuMultiblockScanner.worldPos(controllerPos, local, direction);
                     BlockState state = switch (TianshuMultiblockTemplate.roleAt(local)) {
                         case CASING -> ModBlocks.TIANSHU_SUPERCOMPUTER_CASING.get().defaultBlockState();
-                        case COOLING -> ModBlocks.PHASE_CHANGE_COOLING_UNIT.get().defaultBlockState();
+                        case COOLING -> {
+                            int index = coolingIndex++;
+                            yield switch (index) {
+                                case 0 -> ModBlocks.CLOSED_LOOP_PATTERN_STORAGE.get().defaultBlockState();
+                                case 1 -> ModBlocks.CLOSED_LOOP_SEED_STORAGE.get().defaultBlockState();
+                                default -> ModBlocks.PHASE_CHANGE_COOLING_UNIT.get().defaultBlockState();
+                            };
+                        }
                         case GLASS -> ModBlocks.TIANSHU_SUPERCOMPUTER_GLASS.get().defaultBlockState();
                         case CONTROLLER -> ModBlocks.TIANSHU_SUPERCOMPUTER_CONTROLLER.get().defaultBlockState()
                                 .setValue(TianshuSupercomputerControllerBlock.FACING, direction);
@@ -567,10 +578,7 @@ public final class TianshuJdbHarness {
                             }
                             int index = peripheralIndex++;
                             yield switch (index) {
-                                case 0 -> ModBlocks.STORAGE_SUPERCOMPUTING_UNIT.get().defaultBlockState();
-                                case 1 -> ModBlocks.PARALLEL_SUPERCOMPUTING_UNIT.get().defaultBlockState();
-                                case 2 -> ModBlocks.CLOSED_LOOP_PATTERN_STORAGE.get().defaultBlockState();
-                                case 3 -> ModBlocks.CLOSED_LOOP_SEED_STORAGE.get().defaultBlockState();
+                                case 2, 3 -> ModBlocks.BLANK_SUPERCOMPUTING_UNIT.get().defaultBlockState();
                                 default -> index % 2 == 0
                                         ? ModBlocks.STORAGE_SUPERCOMPUTING_UNIT.get().defaultBlockState()
                                         : ModBlocks.PARALLEL_SUPERCOMPUTING_UNIT.get().defaultBlockState();
@@ -611,6 +619,18 @@ public final class TianshuJdbHarness {
                     return TianshuMultiblockScanner.worldPos(controllerPos, local, direction);
             }
         throw new IllegalArgumentException("no peripheral index " + index);
+    }
+
+    private static BlockPos coolingPosition(BlockPos controllerPos, Direction direction, int index) {
+        int found = 0;
+        for (int x = 0; x < TianshuMultiblockTemplate.SIZE; x++) for (int y = 0; y < TianshuMultiblockTemplate.SIZE; y++)
+            for (int z = 0; z < TianshuMultiblockTemplate.SIZE; z++) {
+                var local = new BlockPos(x, y, z);
+                if (TianshuMultiblockTemplate.roleAt(local) == TianshuMultiblockRole.COOLING
+                        && found++ == index)
+                    return TianshuMultiblockScanner.worldPos(controllerPos, local, direction);
+            }
+        throw new IllegalArgumentException("no cooling-position index " + index);
     }
 
     private static void assertIssue(TianshuSupercomputerControllerBlockEntity controller,

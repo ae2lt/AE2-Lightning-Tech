@@ -1,6 +1,6 @@
 package com.moakiee.ae2lt.logic.tianshu;
 
-/** Functional storage capacity contributed by the physical peripheral units in a formed Tianshu. */
+/** Functional storage capacity contributed by closed-loop storage blocks in cooling positions. */
 public record TianshuFunctionProfile(
         int closedLoopPatternStorageCount,
         int closedLoopSeedStorageCount) {

@@ -16,7 +16,7 @@ The supercomputer calculates plans, retains job state, and schedules crafting st
 
 ## Basic Workflow
 
-1. [Build the 7×7×7 structure](construction.md), then install one main unit and 26 peripheral units in the core chamber
+1. [Build the 7×7×7 structure](construction.md), install one main unit and 26 peripheral computing units in the core chamber, and replace shell cooling positions with closed-loop storage as needed
 2. Connect the Tianshu Supercomputer Port to a powered ME network
 3. Use the controller to verify structure status, crafting storage, successful dispatches, and copy budget, then configure [Fast Planning](operation.md#fast-planning) if required
 4. Start a crafting job from an ME terminal; allow automatic CPU selection or select the Tianshu Supercomputer in the confirmation screen
@@ -25,8 +25,9 @@ The supercomputer calculates plans, retains job state, and schedules crafting st
 
 * The structure must be formed and its core configuration must be valid
 * Exactly one Tianshu Supercomputer Port is required
-* The chamber center requires one main unit; all 26 surrounding cells require Blank, Storage, Parallel, Amplifier, or closed-loop storage units supported by that main core
+* The chamber center requires one main unit; all 26 surrounding cells require Blank, Storage, Parallel, or Amplifier Units supported by that main core
 * Baseline, Quantum, and Overload require at least one Parallel Unit; Storage Units are optional; Multidimensional rejects Storage, Parallel, and Amplifier Units
+* The shell's 16 fixed cooling positions and unused port candidate require a Phase-Change Cooling Unit, Closed-Loop Pattern Storage, or Closed-Loop Seed Storage
 * The port must be connected to an active ME network; it uses **8 AE/t** while idle, and the formed multiblock consumes **1 channel**
 
 The structure requires neither external FE nor Lightning.
