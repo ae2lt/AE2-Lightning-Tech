@@ -14,7 +14,7 @@ import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.network.chat.Component;
 import org.lwjgl.glfw.GLFW;
 
-/** Shift-middle-click inventory-maintenance rule editor, backed by the selected Tianshu. */
+/** Shift-middle-click inventory-maintenance rule editor, backed by the menu-bound Tianshu. */
 public final class TianshuMaintenanceRuleScreen<M extends TianshuPatternEncodingTermMenu> extends AESubScreen<
         M, TianshuPatternEncodingTermScreen<M>> {
     private static final int FIRST_ROW_Y = 91;

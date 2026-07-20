@@ -27,6 +27,7 @@ import com.moakiee.ae2lt.logic.tianshu.terminal.ProcessingPatternMultiplier;
 import com.moakiee.ae2lt.logic.tianshu.terminal.ProcessingPatternEncodingType;
 import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuEncodingMode;
 import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuPatternTerminalHost;
+import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuPatternTerminalStorage;
 import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuTerminalTarget;
 import com.moakiee.ae2lt.logic.tianshu.terminal.MaintenanceEditorData;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.InventoryMaintenanceRule;
@@ -109,14 +110,6 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     /** 0=none, 1=member cannot be decoded, 2=other invalid closed-loop declaration. */
     @GuiSync(125)
     public int closedLoopEncodeState;
-    @GuiSync(126)
-    public String selectedTianshuMachine = "";
-    @GuiSync(127)
-    public String selectedTianshuLocation = "";
-    @GuiSync(128)
-    public int selectedTianshuIndex = -1;
-    @GuiSync(129)
-    public int availableTianshuCount;
     @GuiSync(130)
     public int tianshuSelectionRevision;
     @GuiSync(131)
@@ -176,7 +169,6 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     private boolean pendingTriggeredUpload;
     private int pendingTriggeredUploadUntil;
     private int expectedTriggeredUploadAck;
-    private boolean tianshuSelectionPending;
 
     public TianshuPatternEncodingTermMenu(
             int id, Inventory inventory, TianshuPatternTerminalHost host) {
@@ -232,6 +224,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         }
         this.boundTianshuTarget = inventory.player.level().isClientSide
                 ? null : host.selectTianshuTarget();
+        syncPatternStorageTarget();
         if (boundTianshuTarget != null) tianshuSelectionRevision = 1;
         this.tianshuMode = host.getTianshuEncodingMode();
         registerClientAction("setTianshuMode", TianshuEncodingMode.class, this::setTianshuModeServer);
@@ -259,15 +252,14 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         registerClientAction("clearClosedLoopDraft", this::clearClosedLoopDraftServer);
         registerClientAction("uploadEncodedPattern", Integer.class, this::uploadEncodedPatternServer);
         registerClientAction("setMaintainableView", Boolean.class, this::setMaintainableViewServer);
-        registerClientAction("cycleTianshuTarget", Integer.class, this::cycleTianshuTargetServer);
     }
 
     @Override
     public void broadcastChanges() {
         if (isServerSide()) {
             tianshuMode = tianshuHost.getTianshuEncodingMode();
-            var selected = resolveBoundTianshu();
-            refreshTianshuSelectionSync(selected);
+            var selected = resolveOrBindTianshu();
+            syncPatternStorageTarget();
             maintenanceAvailable = selected != null
                     && selected.getFunctionProfile().supportsInventoryMaintenance();
             refreshDerivedConfiguration();
@@ -285,71 +277,14 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         return tianshuHost.resolveTianshuTarget(boundTianshuTarget);
     }
 
-    private void refreshTianshuSelectionSync(
-            @Nullable com.moakiee.ae2lt.blockentity.TianshuSupercomputerPortBlockEntity selected) {
-        var available = tianshuHost.getAvailableTianshu();
-        availableTianshuCount = available.size();
-        selectedTianshuIndex = -1;
-        if (boundTianshuTarget == null) {
-            selectedTianshuMachine = "";
-            selectedTianshuLocation = "";
-            return;
+    private void syncPatternStorageTarget() {
+        if (storage instanceof TianshuPatternTerminalStorage patternStorage) {
+            patternStorage.setTarget(boundTianshuTarget);
         }
-        selectedTianshuMachine = boundTianshuTarget.machineId().toString();
-        var pos = boundTianshuTarget.controllerPos();
-        selectedTianshuLocation = boundTianshuTarget.dimension().location()
-                + " @ " + pos.getX() + ", " + pos.getY() + ", " + pos.getZ();
-        if (selected == null) return;
-        for (int i = 0; i < available.size(); i++) {
-            if (boundTianshuTarget.matches(available.get(i))) {
-                selectedTianshuIndex = i;
-                break;
-            }
-        }
-    }
-
-    public void cycleTianshuTarget(int delta) {
-        if (delta == 0) return;
-        if (isClientSide()) {
-            if (tianshuSelectionPending) return;
-            tianshuSelectionPending = true;
-            sendClientAction("cycleTianshuTarget", delta);
-        } else {
-            cycleTianshuTargetServer(delta);
-        }
-    }
-
-    private void cycleTianshuTargetServer(int delta) {
-        if (!isServerSide() || delta == 0) return;
-        var available = tianshuHost.getAvailableTianshu();
-        if (!available.isEmpty()) {
-            int current = -1;
-            for (int i = 0; i < available.size(); i++) {
-                if (boundTianshuTarget != null && boundTianshuTarget.matches(available.get(i))) {
-                    current = i;
-                    break;
-                }
-            }
-            int step = Integer.signum(delta);
-            int next = current < 0
-                    ? (step < 0 ? available.size() - 1 : 0)
-                    : Math.floorMod(current + step, available.size());
-            boundTianshuTarget = TianshuTerminalTarget.from(available.get(next));
-        }
-        // Also acknowledge a selection attempt if the topology changed between the
-        // client click and server handling. This releases the client's pending gate
-        // without ever falling back to a different machine implicitly.
-        tianshuSelectionRevision++;
-        maintenanceEditorData = null;
-        lastSentMaintenanceSummary = null;
-        lastMaintenanceSummaryTick = Integer.MIN_VALUE;
-        uploadState = 0;
-        broadcastChanges();
     }
 
     public void resetClientTianshuScopedState() {
         if (!isClientSide()) return;
-        tianshuSelectionPending = false;
         if (maintenanceSummarySelectionRevision != tianshuSelectionRevision) {
             maintenanceSummary = List.of();
             maintenanceSummaryOverflow = false;
@@ -358,10 +293,6 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
             maintenanceEditorData = null;
             maintenanceEditorRevision++;
         }
-    }
-
-    public boolean isTianshuSelectionPending() {
-        return tianshuSelectionPending;
     }
 
     @Override
@@ -701,7 +632,6 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     /** Uploads the encoded pattern through the shared terminal upload action. */
     public void uploadEncodedPattern() {
         if (isClientSide()) {
-            if (tianshuSelectionPending) return;
             uploadState = 2;
             sendClientAction("uploadEncodedPattern", tianshuSelectionRevision);
         }
@@ -730,7 +660,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
             finishUpload(false);
             return;
         }
-        var target = resolveOrBindTianshuForUpload();
+        var target = resolveOrBindTianshu();
         var payload = item.readPayload(stack, getPlayer().level()).orElse(null);
         var result = ClosedLoopPatternUploadService.upload(target, payload);
         finishUpload(result == ClosedLoopPatternRepository.PutResult.ADDED
@@ -742,8 +672,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
      * captured target that disappeared is never replaced implicitly with a different machine.
      */
     @Nullable
-    private com.moakiee.ae2lt.blockentity.TianshuSupercomputerPortBlockEntity
-            resolveOrBindTianshuForUpload() {
+    private com.moakiee.ae2lt.blockentity.TianshuSupercomputerPortBlockEntity resolveOrBindTianshu() {
         var resolved = resolveBoundTianshu();
         if (resolved != null || boundTianshuTarget != null) return resolved;
         var available = tianshuHost.getAvailableTianshu();
@@ -751,6 +680,10 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         var selected = available.getFirst();
         boundTianshuTarget = TianshuTerminalTarget.from(selected);
         tianshuSelectionRevision++;
+        maintenanceEditorData = null;
+        lastSentMaintenanceSummary = null;
+        lastMaintenanceSummaryTick = Integer.MIN_VALUE;
+        uploadState = 0;
         return selected;
     }
 
@@ -1288,7 +1221,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     }
 
     public void requestMaintenanceEditor(appeng.api.stacks.AEKey key) {
-        if (!isClientSide() || tianshuSelectionPending) return;
+        if (!isClientSide()) return;
         PacketDistributor.sendToServer(new OpenMaintenanceEditorPacket(
                 containerId, tianshuSelectionRevision, key));
     }
@@ -1405,7 +1338,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
 
     public void sendGlobalReserve(appeng.api.stacks.AEKey key, long amount,
                                   com.moakiee.ae2lt.logic.tianshu.maintenance.ReservedStockMatchMode mode) {
-        if (isClientSide() && !tianshuSelectionPending && key != null && mode != null) PacketDistributor.sendToServer(
+        if (isClientSide() && key != null && mode != null) PacketDistributor.sendToServer(
                 new SaveGlobalReservePacket(
                         containerId, tianshuSelectionRevision, key, amount, mode));
     }
@@ -1515,7 +1448,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     public int getMaintenanceEditorRevision() { return maintenanceEditorRevision; }
 
     public void sendMaintenanceSave(SaveMaintenanceRulePacket packet) {
-        if (isClientSide() && !tianshuSelectionPending && packet != null) {
+        if (isClientSide() && packet != null) {
             PacketDistributor.sendToServer(packet);
         }
     }

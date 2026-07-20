@@ -22,7 +22,9 @@ The supercomputer does not force-load any chunk in its footprint. If any structu
 
 ## Tianshu Pattern Encoding Terminal
 
-The <ItemLink id="ae2lt:tianshu_pattern_encoding_terminal" /> extends the normal Pattern Encoding Terminal with closed-loop authoring, upload routing, and inventory-maintenance controls. When the menu opens, it binds to one formed Tianshu by machine UUID. Use the Tianshu selector to switch explicitly between machines on the same ME network; the terminal never switches silently, and writes fail if the selected machine becomes unavailable.
+The <ItemLink id="ae2lt:tianshu_pattern_encoding_terminal" /> extends the normal Pattern Encoding Terminal with closed-loop authoring, upload routing, and inventory-maintenance controls. The menu binds the first available formed Tianshu in stable order; if none is available when it opens, it can perform that initial binding when the first Tianshu comes online. Once a machine UUID is bound, that menu session never switches or falls back to another machine, and related writes fail if the bound machine becomes unavailable.
+
+The bound Tianshu's closed-loop pattern warehouse is added to this terminal's network-content list. It is exposed only while the Tianshu CPU is formed and its port is online, and disappears immediately if the structure becomes invalid. Patterns can be extracted for inspection or editing; returning them to the warehouse still uses the terminal's explicit upload action.
 
 Use the maintenance overview to see configured items even when their stored amount is zero. Shift-click an entry there to edit its maintenance rule. If migrated data exceeds the current hard limit, the overview marks the bounded recovery page explicitly; deleting visible entries reveals the remaining persisted entries in later revisions.
 
