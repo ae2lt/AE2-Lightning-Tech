@@ -255,6 +255,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
                 this::setClosedLoopOutputRoleServer);
         registerClientAction("setClosedLoopMultipliers", ClosedLoopMultiplierEdit.class,
                 this::setClosedLoopMultipliersServer);
+        registerClientAction("autoFillClosedLoop", this::autoFillClosedLoopServer);
         registerClientAction("uploadEncodedPattern", Integer.class, this::uploadEncodedPatternServer);
         registerClientAction("setMaintainableView", Boolean.class, this::setMaintainableViewServer);
         registerClientAction("cycleTianshuTarget", Integer.class, this::cycleTianshuTargetServer);
@@ -611,6 +612,24 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     public void selectClosedLoopCandidate(int delta) {
         if (isClientSide()) sendClientAction("selectClosedLoopCandidate", delta);
         else selectClosedLoopCandidateServer(delta);
+    }
+
+    /** Re-runs closed-loop discovery from the encoded source, or cycles candidates once discovered. */
+    public void autoFillClosedLoop() {
+        if (isClientSide()) sendClientAction("autoFillClosedLoop");
+        else autoFillClosedLoopServer();
+    }
+
+    private void autoFillClosedLoopServer() {
+        if (!isServerSide() || tianshuMode != TianshuEncodingMode.CLOSED_LOOP) return;
+        if (!closedLoopCandidates.isEmpty()) {
+            selectClosedLoopCandidateServer(1);
+            return;
+        }
+        var source = tianshuHost.getLogic().getEncodedPatternInv().getStackInSlot(0);
+        if (source.isEmpty() || source.getItem() instanceof ClosedLoopPatternItem) return;
+        resetClosedLoopDraft();
+        refreshClosedLoops(source);
     }
 
     private void selectClosedLoopCandidateServer(int delta) {

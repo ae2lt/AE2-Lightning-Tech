@@ -1,6 +1,5 @@
 package com.moakiee.ae2lt.client;
 
-import appeng.api.crafting.PatternDetailsHelper;
 import appeng.api.stacks.GenericStack;
 import appeng.client.gui.AESubScreen;
 import appeng.client.gui.Icon;
@@ -10,7 +9,6 @@ import appeng.client.gui.widgets.Scrollbar;
 import appeng.client.gui.widgets.TabButton;
 import appeng.menu.SlotSemantics;
 import appeng.menu.slot.AppEngSlot;
-import com.moakiee.ae2lt.item.ClosedLoopPatternItem;
 import com.moakiee.ae2lt.logic.tianshu.terminal.ClosedLoopDraftStatus;
 import com.moakiee.ae2lt.menu.Ae2ltSlotSemantics;
 import com.moakiee.ae2lt.menu.TianshuPatternEncodingTermMenu;
@@ -459,39 +457,7 @@ final class TianshuClosedLoopPatternConfigScreen<M extends TianshuPatternEncodin
         var lines = new ArrayList<>(super.getTooltipFromContainerItem(stack));
         int index = hoveredSlot == null ? -1 : menu.getClosedLoopMemberSlots().indexOf(hoveredSlot);
         if (index < 0 || stack.isEmpty()) return lines;
-        lines.add(Component.translatable("ae2lt.tianshu.closed_loop.tooltip.member",
-                index + 1).withStyle(ChatFormatting.GRAY));
-        lines.add(Component.translatable("ae2lt.tianshu.closed_loop.tooltip.copies",
-                menu.closedLoopDraftSync.copies(index)).withStyle(ChatFormatting.GRAY));
-        boolean macro = stack.getItem() instanceof ClosedLoopPatternItem item
-                && item.hasPayload(stack) && item.readExecutionMember(stack) < 0;
-        lines.add(Component.translatable("ae2lt.tianshu.closed_loop.tooltip.macro",
-                Component.translatable(macro ? "gui.yes" : "gui.no"))
-                .withStyle(ChatFormatting.GRAY));
-        if (minecraft.level == null) return lines;
-        var details = PatternDetailsHelper.decodePattern(stack, minecraft.level);
-        if (details == null) return lines;
-        lines.add(Component.translatable("ae2lt.tianshu.closed_loop.tooltip.inputs")
-                .withStyle(ChatFormatting.DARK_GRAY));
-        for (var input : details.getInputs()) {
-            var possible = input.getPossibleInputs();
-            if (possible.length == 0 || possible[0] == null || possible[0].what() == null) continue;
-            long amount;
-            try {
-                amount = Math.multiplyExact(possible[0].amount(), input.getMultiplier());
-            } catch (ArithmeticException ignored) {
-                amount = Long.MAX_VALUE;
-            }
-            lines.add(Component.translatable("ae2lt.tianshu.closed_loop.tooltip.stack",
-                    possible[0].what().getDisplayName(), amount).withStyle(ChatFormatting.GRAY));
-        }
-        lines.add(Component.translatable("ae2lt.tianshu.closed_loop.tooltip.outputs")
-                .withStyle(ChatFormatting.DARK_GRAY));
-        for (var output : details.getOutputs()) {
-            if (output == null || output.what() == null) continue;
-            lines.add(Component.translatable("ae2lt.tianshu.closed_loop.tooltip.stack",
-                    output.what().getDisplayName(), output.amount()).withStyle(ChatFormatting.GRAY));
-        }
+        TianshuClosedLoopEncodingPanel.appendMemberTooltip(lines, menu, index, stack, minecraft.level);
         return lines;
     }
 
