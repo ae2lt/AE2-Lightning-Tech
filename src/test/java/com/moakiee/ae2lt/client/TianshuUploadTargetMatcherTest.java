@@ -9,18 +9,20 @@ import org.junit.jupiter.api.Test;
 
 class TianshuUploadTargetMatcherTest {
     @Test
-    void machineIdIsExactUnlessTheQueryContainsWildcards() {
+    void machineIdIsLeftAnchoredAndMayOmitItsSuffix() {
         assertTrue(TianshuUploadTargetMatcher.idMatches(
                 "extendedae:ex_pattern_provider", "extendedae:ex_pattern_provider"));
         assertTrue(TianshuUploadTargetMatcher.idMatches(
                 "extendedae:ex_pattern_provider", "extendedae:*_provider"));
         assertTrue(TianshuUploadTargetMatcher.idMatches(
                 "EXTENDEDAE:EX_PATTERN_PROVIDER", "extendedae:ex_pattern_????ider"));
+        assertTrue(TianshuUploadTargetMatcher.idMatches(
+                "extendedae:ex_pattern_provider", "extendedae:ex_pattern"));
 
         assertFalse(TianshuUploadTargetMatcher.idMatches(
                 "extendedae:ex_pattern_provider", "pattern_provider"));
         assertFalse(TianshuUploadTargetMatcher.idMatches(
-                "extendedae:ex_pattern_provider", "extendedae:ex_pattern"));
+                "extendedae:ex_pattern_provider", "extendedae:pattern"));
         assertFalse(TianshuUploadTargetMatcher.idMatches(
                 "extendedae:ex_pattern_provider", "*:provider"));
     }

@@ -24,10 +24,10 @@ final class TianshuUploadTargetMatcher {
         return false;
     }
 
-    /** Machine IDs use an anchored, case-insensitive glob; without wildcards this is exact. */
+    /** Machine IDs use a left-anchored glob and may omit an arbitrary suffix. */
     static boolean idMatches(String machineId, String query) {
         if (machineId == null || query == null || query.isBlank()) return false;
-        return globMatches(normalize(machineId), normalize(query));
+        return globMatches(normalize(machineId), normalize(query) + "*");
     }
 
     /** Machine names use case-insensitive contains matching, with optional glob and pinyin. */
