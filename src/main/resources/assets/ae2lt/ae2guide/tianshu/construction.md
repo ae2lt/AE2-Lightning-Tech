@@ -60,7 +60,7 @@ These four computing-unit types fill the 26 non-center cells of the core chamber
 
 The shell has **17 cooling-compatible positions**: 16 fixed cooling positions plus whichever port candidate is not occupied by the Port. Each accepts a Phase-Change Cooling Unit, Closed-Loop Pattern Storage, or Closed-Loop Seed Storage. Auto-build treats a closed-loop storage block already installed in one of these positions as valid and leaves it in place.
 
-With all 17 cooling-compatible positions using Phase-Change Cooling Units, starting from an empty site requires **one controller, 215 non-core blocks placed by the button, and 27 core-chamber units**, for 243 structure members in total. Replacing cooling positions with closed-loop storage reduces the number of cooling units required by auto-build.
+In total, a complete structure built from an empty site uses **243 blocks**: 1 manually placed controller, 215 non-core blocks that auto-build can place (99 casings + 98 glass + 17 cooling-compatible positions + 1 port), and 27 manually installed core-chamber units. Replacing cooling-compatible positions with closed-loop storage reduces the number of Phase-Change Cooling Units required accordingly.
 
 ## Using Auto-build
 

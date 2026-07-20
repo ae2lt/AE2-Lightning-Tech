@@ -50,19 +50,17 @@ Storage determines whether a job can be accepted and how many jobs can remain ac
 
 ### Successful Dispatches
 
-A successful dispatch is one AE2 pattern dispatch call accepted by a Pattern Provider. This parameter directly represents Tianshu's AE2-compatible parallelism: a larger value permits more accepted provider calls per tick.
+A successful dispatch is one pattern dispatch per tick actually accepted by a Pattern Provider; it directly determines how many processing machines Tianshu can put to work each tick. The parallelism shown in the crafting confirmation screen's CPU selection list comes from this parameter and excludes the batch-copy budget described below.
 
-Tianshu maps this capacity to the base operation and co-processors exposed by an AE2 crafting CPU. The AE2 CPU selection list derives its parallelism from this parameter and does not include the batch-copy budget described below.
-
-Dispatches remain limited by the execution environment. Insufficient providers, machines, materials, or network transfer capacity cannot be compensated for by an unused dispatch budget, and the budget does not reduce a machine's recipe duration.
+A larger dispatch budget never makes an individual machine work faster. When providers, machines, materials, or network transfer capacity run short, rejected dispatch calls do not count as successful dispatches, and the surplus budget simply sits idle.
 
 ### Batch Copies
 
 One copy means one execution of a pattern recipe. The batch-copy budget limits the total number of pattern executions that compatible execution paths can submit per tick. For example, one provider call that submits 32 executions of the same pattern consumes one successful dispatch and 32 copies.
 
-Batch copies do not duplicate items and do not waive input, energy, processing-time, or output-space requirements. Every execution consumes and produces the amounts declared by the pattern.
+Batch copies do not duplicate items: every execution still consumes inputs, energy, processing time, and output space exactly as the pattern declares.
 
-Batching is an extension capability rather than a general feature of AE2's native pattern dispatch interface. Molecular Assembler-compatible patterns, the Matter Warping Matrix, supported closed-loop batch patterns, and targets with a dedicated batch adapter can use this budget. An ordinary AE2 processing pattern sent to a general-purpose machine through the native single-copy path accepts only one copy per call. In that case, throughput is primarily limited by successful dispatches, and unused copy capacity is not converted into additional dispatches.
+Only batch-compatible targets can use copy budget beyond the successful-dispatch count: Molecular Assembler-compatible patterns, the Matter Warping Matrix, supported closed-loop batch patterns, and targets with a dedicated batch adapter. An ordinary AE2 processing pattern sent to a general-purpose machine accepts only one copy per call; throughput is then determined by successful dispatches, and unused copy budget is not converted into additional dispatches.
 
 ## Unit Counts and Formulas
 
@@ -80,7 +78,16 @@ The resulting parameters are calculated as follows:
 * Total crafting storage equals the internal storage plus `64 MiB × S × external-storage gain`.
 * Maximum copies equal successful dispatches times the copy gain, capped by the main unit's copy ceiling.
 
-For example, a configuration may provide 512 successful dispatches and 1,024 maximum copies per tick. Native single-copy dispatch can use at most 512 of those copies. A compatible batch path can combine multiple executions of the same pattern while remaining within 512 accepted calls and can use up to 1,024 copies. The provider and target determine the actual grouping; a single machine is not guaranteed to accept the complete budget.
+For example, a Quantum core with 20 Parallel Units, 5 Amplifier Units, and 1 Storage Unit: the dispatch gain is ×12, so the formula gives `128 × 20 × 12 = 30,720` dispatches, capped at **3,072** by the Quantum ceiling; external storage is `64 MiB × 1 × 12 = 768 MiB`, giving **1 GiB** with the 256 MiB internal storage; the copy gain is ×6, so the formula gives `3,072 × 6 = 18,432` copies, capped at **10,240**. The controller screen indicates when a parameter has reached its cap.
+
+To illustrate how the two budgets relate, consider a configuration with 512 successful dispatches and 1,024 maximum copies per tick: native single-copy dispatch can use at most 512 of those copies, while a compatible batch path can combine multiple executions of the same pattern within 512 accepted calls and use up to 1,024 copies. The provider and target determine the actual grouping; a single machine is not guaranteed to accept the complete budget.
+
+## Configuration Guidance
+
+* **Jobs rejected for insufficient capacity:** Add Storage Units or switch to a higher-tier main unit
+* **Plenty of providers and machines but too few working at once:** Add Parallel Units; Quantum and Overload cores can also add Amplifier Units
+* **Amplifier Units scale dispatch, external storage, and batch copies simultaneously** and are the main lever for Quantum and Overload cores; note that any formula result beyond the main unit's cap is wasted
+* **Multidimensional** provides every parameter from the main core itself; simply fill the periphery with Blank Units — no ratios to balance
 
 ## Amplifier and Blank Core Units
 

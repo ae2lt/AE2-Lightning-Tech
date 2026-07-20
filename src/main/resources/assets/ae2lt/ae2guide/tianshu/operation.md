@@ -7,7 +7,6 @@ navigation:
 item_ids:
   - ae2lt:tianshu_supercomputer_controller
   - ae2lt:tianshu_supercomputer_port
-  - ae2lt:tianshu_pattern_encoding_terminal
 ---
 
 # Port, Jobs, and Fast Planning
@@ -22,13 +21,7 @@ The supercomputer does not force-load any chunk in its footprint. If any structu
 
 ## Tianshu Pattern Encoding Terminal
 
-The <ItemLink id="ae2lt:tianshu_pattern_encoding_terminal" /> extends the normal Pattern Encoding Terminal with closed-loop authoring, upload routing, and inventory-maintenance controls. The menu binds the first available formed Tianshu in stable order; if none is available when it opens, it can perform that initial binding when the first Tianshu comes online. Once a machine UUID is bound, that menu session never switches or falls back to another machine, and related writes fail if the bound machine becomes unavailable.
-
-The bound Tianshu's closed-loop pattern warehouse installed in a cooling-compatible position is added to this terminal's network-content list. It is exposed only while the Tianshu CPU is formed and its port is online, and disappears immediately if the structure becomes invalid. Patterns can be extracted for inspection or editing; returning them to the warehouse uses the terminal's explicit upload action.
-
-Use the maintenance overview to see configured items even when their stored amount is zero. Shift-click an entry there to edit its maintenance rule. If migrated data exceeds the current hard limit, the overview marks the bounded recovery page explicitly; deleting visible entries reveals the remaining persisted entries in later revisions.
-
-<RecipeFor id="ae2lt:tianshu_pattern_encoding_terminal" />
+The [Tianshu Pattern Encoding Terminal](pattern-encoding-terminal.md) extends the normal Pattern Encoding Terminal with enhanced processing-pattern encoding, pattern upload, closed-loop pattern authoring, and inventory-maintenance configuration. It is the entry point for authoring and managing Tianshu-specific patterns; see its dedicated page.
 
 ## Shared Capacity and Concurrent Jobs
 
@@ -63,11 +56,21 @@ Fast-planning eligibility is aggregated across the entire ME network. If another
 
 ## Troubleshooting
 
-* **The structure will not form:** Check every fixed casing and glass position; ensure all 17 non-port cooling-compatible positions contain a Phase-Change Cooling Unit or closed-loop storage, require exactly one port and one centered main unit, and fill all 26 peripheral core cells with valid computing units. Closed-loop storage is invalid in the core chamber; finite tiers require a Parallel Unit, while Multidimensional accepts only Blank Units in its periphery
+While the structure is unformed, the controller screen shows the first detected problem directly; address that hint first.
+
+**Structure and building**
+
+* **The structure will not form:** Check each point of the [manual construction rules](construction.md#manual-construction-rules) — complete casing and glass, exactly one port, all 17 non-port cooling-compatible positions filled with Phase-Change Cooling Units or closed-loop storage, the main unit centered in the core chamber, and all 26 peripheral cells filled with units supported by that main core
 * **All visible structure blocks are present:** Clear the required-air positions omitted from the displayed structure; cables, lights, and decorations are not permitted there
 * **Auto-build does not start:** Clear the coordinates reported by the controller and ensure all materials are in the player inventory
+
+**Network and jobs**
+
 * **The CPU is absent from crafting confirmation:** Check the port's cable connection, ME power, and structure formation state
 * **The Port stays offline after a cross-chunk load:** Ensure the chunk loader covers the entire Tianshu structure and allow time for the automatic rescan
-* **The CPU rejects a new job:** Check remaining crafting storage; active jobs may already reserve the total capacity
-* **A high dispatch budget does not improve throughput:** Check Pattern Provider and processing-machine counts, machine speed, material supply, and network transfer capacity
-* **A high copy budget still sends ordinary processing patterns one at a time:** General AE2 processing machines use the native single-copy path; batch copies require compatible patterns, providers, and targets
+* **The CPU rejects a new job:** The remaining crafting storage may already be reserved by other active jobs; wait for jobs to finish or add Storage Units
+
+**Performance below expectations**
+
+* **A high dispatch budget does not improve throughput:** The bottleneck is usually on the execution side — check Pattern Provider and processing-machine counts, machine speed, material supply, and network transfer capacity
+* **A high copy budget still sends ordinary processing patterns one at a time:** General AE2 processing machines accept one copy per call; batch copies require compatible patterns, providers, and targets — see [Batch Copies](computing-units.md#batch-copies)

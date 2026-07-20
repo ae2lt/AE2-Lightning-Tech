@@ -20,14 +20,11 @@ The supercomputer calculates plans, retains job state, and schedules crafting st
 2. Connect the Tianshu Supercomputer Port to a powered ME network
 3. Use the controller to verify structure status, crafting storage, successful dispatches, and copy budget, then configure [Fast Planning](operation.md#fast-planning) if required
 4. Start a crafting job from an ME terminal; allow automatic CPU selection or select the Tianshu Supercomputer in the confirmation screen
+5. Use the [Tianshu Pattern Encoding Terminal](pattern-encoding-terminal.md) for enhanced pattern encoding, pattern upload, closed-loop patterns, and inventory maintenance
 
 ## Operating Requirements
 
-* The structure must be formed and its core configuration must be valid
-* Exactly one Tianshu Supercomputer Port is required
-* The chamber center requires one main unit; all 26 surrounding cells require Blank, Storage, Parallel, or Amplifier Units supported by that main core
-* Baseline, Quantum, and Overload require at least one Parallel Unit; Storage Units are optional; Multidimensional rejects Storage, Parallel, and Amplifier Units
-* The shell's 16 fixed cooling positions and unused port candidate require a Phase-Change Cooling Unit, Closed-Loop Pattern Storage, or Closed-Loop Seed Storage
-* The port must be connected to an active ME network; it uses **8 AE/t** while idle, and the formed multiblock consumes **1 channel**
+* The structure must be fully formed: one main unit at the core-chamber center, the remaining 26 cells filled with a combination allowed by that main core, and all 17 non-port cooling-compatible positions filled with Phase-Change Cooling Units or closed-loop storage; see [Structure and Auto-build](construction.md) and [Supercomputing Units and Performance](computing-units.md) for the full rules
+* Exactly one Tianshu Supercomputer Port is required, connected to a powered ME network; the port uses **8 AE/t** while idle, and the formed multiblock consumes **1 channel**
 
 The structure requires neither external FE nor Lightning.
