@@ -83,10 +83,18 @@ If FE or required Lightning is missing, the affected effects cannot be maintaine
 | Reflect | Reflects up to 30% of attacker damage, spending FE and HV |
 | Undying | Intercepts fatal damage, spending large FE and EHV costs |
 | Purification | Removes and blocks configured status effects; by default, harmful effects only |
-| Phase Lock | Uses the chestplate as controller and moves the currently worn Celestweave set into four UUID-bound private slots. Stateless Binding-Cursed projections occupy those armor slots. Replacing one projection costs 1,000,000 FE and 16 EHV; failure releases and re-equips the entire real set. Newly worn Celestweave pieces join the lock automatically. |
+| Phase Lock | Provides three independently toggled features: Armor Lock, Block External Forces and Block External Teleports; see below |
 | Overload Core Module | Unlocks lightning compensation for the armor set. Existing EHV is consumed first, then any shortfall is paid at 16 HV per EHV |
 
 Matrix Shield and Phase Shield share the same install group, so only one of them can be installed on the chestplate.
+
+### Phase Lock
+
+The Phase Lock Module uses the chestplate as its controller and exposes three independently toggled features in the Device Hub:
+
+* **Armor Lock:** Moves the currently worn Celestweave set into four player-bound private phase slots; the armor slots only hold data-free Phase-Locked Projections. The real armor keeps running inside the private slots, and newly worn Celestweave pieces join the lock automatically. Projections carry no enchantment glint and cannot be extracted or traded; replacing or removing one projection costs 1,000,000 FE and 16 EHV to rebuild it in place, and a failed payment releases the lock and re-equips the entire real set.
+* **Block External Forces:** Blocks velocity changes from water, fans, knockback and similar external systems, while player input and armor-driven movement still work.
+* **Block External Teleports:** Blocks external coordinate rewrites, teleports and dimension changes, while normal player movement is unaffected.
 
 ## Leggings Modules
 

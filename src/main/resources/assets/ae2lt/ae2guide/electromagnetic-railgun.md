@@ -65,9 +65,9 @@ Wearing the complete Celestweave set (<ItemLink id="ae2lt:celestweave_oculus" />
 
 | Module | Limit | Effect |
 |--------|-------|--------|
-| Energy Module T1 / T2 / T3 | 1 | Sets railgun FE capacity to 100,000,000 / 500,000,000 / 2,000,000,000 FE |
+| Energy Module T1 / T2 / T3 | 1 | Sets railgun FE capacity to 1,000,000,000 / 5,000,000,000 / 20,000,000,000 FE |
 | Overload Compute Module | 2 | Enables and improves chain arcs; at max charge, strengthens the EMP pulse |
-| Overload Acceleration Module | 2 | Each module adds +1 charge unit per tick, reducing charge time |
+| Overload Acceleration Module | 2 | Each module adds +1 charge unit per tick, reducing charge time; it also shortens the continuous beam's settle interval |
 | Overload Range Module | 2 | Multiplies continuous-beam and charged-shot range: one module gives 2x range and two give 4x |
 | Overload Execution Module | 1 | Triggers only on EHV3 hits; spends an additional 20,000,000 FE per target to further reduce and lock its health; forces execution when the locked value reaches 0 |
 
@@ -88,4 +88,6 @@ Open the Overload Device Hub with the default key G while holding the railgun.
 
 ## Combat Notes
 
-Charged shots deal splash damage at the impact point. EHV3 also adds penetration and an EMP pulse around the first target. Compute modules increase chain and pulse strength, while thunderstorms increase chain reach and fork count.
+Charged shots deal splash damage at the impact point, with tier radii of 5.5 / 8 / 12 blocks; damage falls off toward the edge, and splash damage against players is halved. EHV3 also penetrates up to 5 targets and releases an EMP pulse with a 10-block radius around the first target.
+
+Compute modules increase chain jump count and fork count, and enlarge the pulse radius while raising pulse damage. Thunderstorms increase chain reach and fork count.

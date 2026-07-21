@@ -29,27 +29,33 @@ The core chamber contains 81 positions. Its geometric center must hold one Main 
 
 ## Main Core Modes
 
-| Main Core | Unified gain | Thermal strategy |
-|-----------|--------------|------------------|
-| Stable Main Core | `Gd=1`, `Gt=2`, up to 1,024 operations/t | Keep it cool; efficiency falls with heat but never below 45% |
-| Quantum Main Core | `Gd=2R`, `Gt=R`, up to 10,240 operations/t | Lower heat provides higher efficiency |
-| Overload Main Core | `Gd=2R`, `Gt=R²`, up to 4,194,304 operations/t | Peak efficiency is near 50% heat; keep it in the 42%–58% sweet spot |
-| Creative Main Core | Logical operations are unbounded, but provider calls retain the 16,384/t fuse | Heat is ignored; all other 80 slots must be Blank Units |
+| Main Core | Crafting Cap per Tick | Thermal strategy |
+|-----------|----------------------:|------------------|
+| Stable Main Core | 1,024 executions | Keep it cool; efficiency falls with heat but never below 45% |
+| Quantum Main Core | 10,240 executions | Lower heat provides higher efficiency |
+| Overload Main Core | 4,194,304 executions | Peak efficiency is near 50% heat; keep it in the 42%–58% sweet spot |
+| Creative Main Core | Unlimited | Heat is ignored; all other 80 slots must be Blank Units |
 
-Here `R=1+N`, where `N` is the number of Tianshu Amplifier Units, and `P` is the sum of thread-power points supplied by Thread Units. The matrix calculates base operations as `128×P×Gd×Gt`, then applies the tier ceiling and thermal efficiency. It does not maintain the CPU successful-dispatch budget `D` and has no separate batch width `q`.
+The number of pattern executions the matrix performs each tick is determined in three steps:
+
+1. **Base capacity** = `256 × thread points × amplification factor`. Thread points come from Thread Units (1 point per T1, 2 points per T2). The amplification factor depends on the Main Core: Stable is always 1, Quantum is `R²`, and Overload is `R³`, where `R = 1 + the number of Tianshu Amplifier Units`.
+2. Base capacity beyond the Main Core's per-tick cap is cut off at the cap.
+3. The result is multiplied by the current thermal efficiency to give the actual throughput.
+
+The Creative Main Core has no execution cap, but the matrix still issues at most 16,384 crafting calls per tick. Matrix throughput depends only on its own core configuration and heat; it is independent of the Tianshu Supercomputing Array's dispatch and copy budgets.
 
 ## Peripheral Units
 
-| Peripheral Unit | Raw contribution | Purpose |
-|-----------------|-----------------:|---------|
-| Thread Unit T1 | `P+1` | Supplies 128 raw thread points, amplified by the main core's `Gd` |
-| Thread Unit T2 | `P+2` | Supplies 256 raw thread points at a higher crafting cost to save core slots |
-| Tianshu Amplifier Unit | `N+1` | Shared by Tianshu and the matrix; raises `Gd` and `Gt` for Quantum and Overload cores |
-| Thermal Control Unit T1 | thermal `+1` | Raises heat capacity and cooling rate; effective power still depends on distance from the main core |
-| Thermal Control Unit T2 | thermal `+2` | Supplies twice the raw thermal-control power before the same distance decay |
+| Peripheral Unit | Provides | Purpose |
+|-----------------|----------|---------|
+| Thread Unit T1 | 1 thread point | Raises base crafting capacity per tick |
+| Thread Unit T2 | 2 thread points | Twice the thread points per slot at a higher crafting cost |
+| Tianshu Amplifier Unit | `R` +1 | Raises the amplification factor of Quantum and Overload cores; the same block is shared with the Tianshu Supercomputing Array |
+| Thermal Control Unit T1 | 1 cooling point | Raises heat capacity and cooling rate; the actual effect decays with distance from the main core |
+| Thermal Control Unit T2 | 2 cooling points | Twice the cooling points per slot, with the same distance decay |
 | Blank Unit | — | Fills a required core slot without adding performance attributes |
 
-Thread and Thermal Control T1/T2 blocks remain the same logical types but contribute fixed raw powers of 1 and 2. Amplification no longer has T1/T2 variants. Quantum and Overload configurations allow at most **15 Tianshu Amplifier Units**; a sixteenth invalidates the configuration. Stable and Creative Main Cores reject amplifiers.
+Quantum and Overload configurations allow at most **15 Tianshu Amplifier Units**; a sixteenth prevents the structure from forming. Stable and Creative Main Cores reject amplifiers.
 
 ## Cooling Distance
 

@@ -29,7 +29,7 @@ The core chamber occupies the central 3×3×3 volume. Its exact center requires 
 
 ## Main Cores
 
-The Main Core provides internal crafting storage and sets the ceilings for dispatch parallelism, external storage, and batch copies. These parameters independently control task capacity, AE2 pattern dispatches, and the processing width of compatible batch execution paths.
+The Main Core provides internal crafting storage and sets the ceilings for the successful-dispatch and batch-copy budgets. Each of the three parameters governs one thing — crafting storage decides how many jobs can be held at once, successful dispatches decide how many machines can be put to work each tick, and batch copies decide how many executions a batch-capable target can take in a single call — and none can substitute for another.
 
 | Main Core | Internal Storage | Successful Dispatches/t Cap | Maximum Copies/t | Amplifier Units |
 |-----------|-----------------:|----------------------------:|-----------------:|-----------------|
@@ -60,7 +60,7 @@ One copy means one execution of a pattern recipe. The batch-copy budget limits t
 
 Batch copies do not duplicate items: every execution still consumes inputs, energy, processing time, and output space exactly as the pattern declares.
 
-Only batch-compatible targets can use copy budget beyond the successful-dispatch count: Molecular Assembler-compatible patterns, the Tianshu Matter Warping Matrix, supported closed-loop batch patterns, and targets with a dedicated batch adapter. An ordinary AE2 processing pattern sent to a general-purpose machine accepts only one copy per call; throughput is then determined by successful dispatches, and unused copy budget is not converted into additional dispatches.
+**Ordinary processing machines accept only one copy per call**: for them, throughput is entirely determined by successful dispatches, and surplus copy budget is not converted into additional dispatches. The only targets that accept multiple copies at once — and therefore actually use the copy budget — are Molecular Assembler-compatible crafting patterns, the Tianshu Matter Warping Matrix, supported closed-loop patterns, and other devices that explicitly support batch execution.
 
 ## Unit Counts and Formulas
 
@@ -80,7 +80,7 @@ The resulting parameters are calculated as follows:
 
 For example, a Quantum core with 20 Parallel Units, 5 Amplifier Units, and 1 Storage Unit: the dispatch gain is ×12, so the formula gives `128 × 20 × 12 = 30,720` dispatches, capped at **3,072** by the Quantum ceiling; external storage is `64 MiB × 1 × 12 = 768 MiB`, giving **1 GiB** with the 256 MiB internal storage; the copy gain is ×6, so the formula gives `3,072 × 6 = 18,432` copies, capped at **10,240**. The controller screen indicates when a parameter has reached its cap.
 
-To illustrate how the two budgets relate, consider a configuration with 512 successful dispatches and 1,024 maximum copies per tick: native single-copy dispatch can use at most 512 of those copies, while a compatible batch path can combine multiple executions of the same pattern within 512 accepted calls and use up to 1,024 copies. The provider and target determine the actual grouping; a single machine is not guaranteed to accept the complete budget.
+To illustrate how the two budgets relate, consider a configuration with 512 successful dispatches and 1,024 maximum copies per tick: sending only single-copy patterns uses at most 512 of those copies per tick, while batch-capable targets can combine multiple executions of the same pattern within the same 512 accepted calls and use the full 1,024 copies. The provider and the target machine determine the actual grouping; a single machine is not guaranteed to accept the complete budget.
 
 ## Configuration Guidance
 

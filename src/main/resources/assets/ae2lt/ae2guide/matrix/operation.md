@@ -27,6 +27,8 @@ T1 and T2 storages may be mixed in one structure. The total capacity is the sum 
 
 Once the matrix is formed and connected to an active ME network, all of its pattern slots appear as a group represented by the Matrix Port in the **Pattern Access Terminal**. Patterns can be inserted, replaced, or removed there without opening the outer structure.
 
+Right-clicking the Matrix Port opens a **pattern management** screen that browses, searches, and manages every pattern stored in the matrix without a Pattern Access Terminal.
+
 The Matrix Port also exposes item insertion for automation. Item pipes can insert patterns into available slots. Breaking a Pattern Storage drops its stored patterns; upgrading it in place from the Controller preserves them.
 
 ## Upgrading Pattern Storage

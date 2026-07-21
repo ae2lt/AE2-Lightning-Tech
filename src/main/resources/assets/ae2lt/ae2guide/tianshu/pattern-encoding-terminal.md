@@ -21,7 +21,7 @@ Only two features require a formed Tianshu Supercomputing Array: uploading close
 
 The terminal never rebinds to a different Tianshu while it stays open. If the locked Tianshu goes offline or unforms, the related actions simply fail; close and reopen the terminal to pick a target again.
 
-The Closed-Loop Pattern Storage installed in the bound Tianshu's cooling-compatible positions appears as an extra pattern inventory in the terminal's network-content list. The entry is shown only while the structure is formed and its port is online. Closed-loop patterns can be taken out of the list for inspection or editing; returning them to the storage requires the terminal's upload function.
+The Closed-Loop Pattern Storage installed in the bound Tianshu's cooling-compatible positions appears as an extra pattern inventory in the terminal's network-content list. The entry is shown only while the structure is formed and its port is online. Each Closed-Loop Pattern Storage provides **64** closed-loop pattern slots, and installed storages add up. Closed-loop patterns can be taken out of the list for inspection or editing; returning them to the storage requires the terminal's upload function.
 
 ## Encoding Modes
 
