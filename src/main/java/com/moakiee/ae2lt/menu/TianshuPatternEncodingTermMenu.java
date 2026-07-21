@@ -5,8 +5,12 @@ import appeng.menu.implementations.MenuTypeBuilder;
 import appeng.menu.me.items.PatternEncodingTermMenu;
 import appeng.parts.encoding.EncodingMode;
 import appeng.api.crafting.PatternDetailsHelper;
+import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.GenericStack;
+import appeng.api.storage.StorageHelper;
+import appeng.core.definitions.AEItems;
+import appeng.menu.SlotSemantics;
 import appeng.menu.slot.AppEngSlot;
 import appeng.menu.slot.FakeSlot;
 import appeng.util.inv.AppEngInternalInventory;
@@ -134,6 +138,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     public SeedRefillSync seedRefillSync = SeedRefillSync.none();
 
     protected final TianshuPatternTerminalHost tianshuHost;
+    private final AppEngSlot disabledBlankPatternSlot;
     @Nullable private TianshuTerminalTarget boundTianshuTarget;
     private final PatternConversionService conversionService = new PatternConversionService();
     private ItemStack configuredSource = ItemStack.EMPTY;
@@ -185,6 +190,8 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
             MenuType<?> type, int id, Inventory inventory, TianshuPatternTerminalHost host) {
         super(type, id, inventory, host, true);
         this.tianshuHost = host;
+        this.disabledBlankPatternSlot = (AppEngSlot) getSlots(SlotSemantics.BLANK_PATTERN).getFirst();
+        if (isServerSide()) this.disabledBlankPatternSlot.setSlotEnabled(false);
         this.closedLoopMemberInventory = new AppEngInternalInventory(new InternalInventoryHost() {
             @Override
             public void saveChangedInventory(AppEngInternalInventory inv) {
@@ -264,6 +271,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     @Override
     public void broadcastChanges() {
         if (isServerSide()) {
+            returnDisabledBlankPatternsToNetwork();
             tianshuMode = tianshuHost.getTianshuEncodingMode();
             var selected = resolveOrBindTianshu();
             syncPatternStorageTarget();
@@ -1544,7 +1552,19 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
             expectedTriggeredUploadAck = triggeredUploadAck;
         }
         if (tianshuMode.isAe2Mode()) {
-            super.encode();
+            boolean stagedNetworkBlank = false;
+            if (isServerSide()) {
+                stagedNetworkBlank = stageNetworkBlankPattern();
+                disabledBlankPatternSlot.setSlotEnabled(true);
+            }
+            try {
+                super.encode();
+            } finally {
+                if (isServerSide()) {
+                    disabledBlankPatternSlot.setSlotEnabled(false);
+                    if (stagedNetworkBlank) returnStagedBlankPatternToNetwork();
+                }
+            }
             if (isServerSide()) {
                 applyOneShotProcessingConversion();
                 var encoded = tianshuHost.getLogic().getEncodedPatternInv().getStackInSlot(0);
@@ -1568,6 +1588,37 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
             }
             broadcastChanges();
         }
+    }
+
+    private boolean stageNetworkBlankPattern() {
+        var blankInventory = tianshuHost.getLogic().getBlankPatternInv();
+        if (!blankInventory.getStackInSlot(0).isEmpty() || !getLinkStatus().connected()) {
+            return false;
+        }
+        var blankPatternKey = AEItemKey.of(AEItems.BLANK_PATTERN.asItem());
+        long extracted = StorageHelper.poweredExtraction(
+                energySource, storage, blankPatternKey, 1, getActionSource());
+        if (extracted <= 0) return false;
+        blankInventory.setItemDirect(0, AEItems.BLANK_PATTERN.stack((int) extracted));
+        return true;
+    }
+
+    private void returnStagedBlankPatternToNetwork() {
+        returnDisabledBlankPatternsToNetwork();
+    }
+
+    private void returnDisabledBlankPatternsToNetwork() {
+        if (!isServerSide() || !getLinkStatus().connected()) return;
+        var blankInventory = tianshuHost.getLogic().getBlankPatternInv();
+        var stack = blankInventory.getStackInSlot(0);
+        if (!AEItems.BLANK_PATTERN.is(stack)) return;
+        var blankPatternKey = AEItemKey.of(AEItems.BLANK_PATTERN.asItem());
+        long inserted = StorageHelper.poweredInsert(
+                energySource, storage, blankPatternKey, stack.getCount(), getActionSource());
+        if (inserted <= 0) return;
+        var remainder = stack.copy();
+        remainder.shrink((int) inserted);
+        blankInventory.setItemDirect(0, remainder);
     }
 
     private ItemStack encodeDerivedPattern() {

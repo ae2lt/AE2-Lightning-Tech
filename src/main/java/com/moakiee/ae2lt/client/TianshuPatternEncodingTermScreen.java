@@ -2,6 +2,7 @@ package com.moakiee.ae2lt.client;
 
 import appeng.client.gui.Icon;
 import appeng.client.gui.me.common.MEStorageScreen;
+import appeng.client.gui.me.common.Repo;
 import appeng.client.gui.me.common.StackSizeRenderer;
 import appeng.client.gui.style.ScreenStyle;
 import appeng.client.gui.widgets.AE2Button;
@@ -18,10 +19,12 @@ import appeng.api.config.ViewItems;
 import appeng.api.stacks.GenericStack;
 import appeng.core.localization.ButtonToolTips;
 import appeng.core.localization.Tooltips;
+import appeng.core.definitions.AEItems;
 import appeng.core.network.ServerboundPacket;
 import appeng.core.network.serverbound.InventoryActionPacket;
 import appeng.helpers.InventoryAction;
 import appeng.menu.SlotSemantics;
+import appeng.menu.me.common.GridInventoryEntry;
 import appeng.parts.encoding.EncodingMode;
 import appeng.api.stacks.AEItemKey;
 import com.moakiee.ae2lt.logic.tianshu.terminal.ProcessingPatternEncodingType;
@@ -44,6 +47,7 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.inventory.ClickType;
 import appeng.client.gui.me.common.RepoSlot;
 import org.lwjgl.glfw.GLFW;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.InventoryMaintenanceBadge;
@@ -62,6 +66,7 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
     private final List<AE2Button> processingModeButtons;
     private final AE2Button advancedEncoding;
     private final AE2Button overloadEncoding;
+    private final RepoSlot networkBlankPatternSlot;
     private boolean awaitingMaintenanceEditor;
     private int requestedMaintenanceRevision;
     private int observedTianshuSelectionRevision = Integer.MIN_VALUE;
@@ -116,6 +121,7 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
         overloadEncoding = addCompactButton("overloadEncodingButton",
                 Component.translatable("ae2lt.tianshu.terminal.encoding.overload.short"),
                 () -> switchToScreen(new TianshuOverloadPatternConfigScreen<>(this)));
+        networkBlankPatternSlot = new NetworkBlankPatternSlot(repo);
         replaceViewModeButton();
     }
 
@@ -303,6 +309,11 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
 
         if (minecraft.options.keyPickItem.matchesMouse(button)) {
             var slot = getSlotUnderMouse();
+            var networkBlankPattern = getNetworkBlankPatternEntry(slot);
+            if (networkBlankPattern != null && networkBlankPattern.isCraftable()) {
+                handleGridInventoryEntryMouseClick(networkBlankPattern, button, ClickType.CLONE);
+                return true;
+            }
             if (isClosedLoopMemberSlot(slot) && slot.hasItem()) {
                 int memberIndex = slot.getContainerSlot();
                 var key = AEItemKey.of(slot.getItem());
@@ -343,10 +354,25 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
     }
 
     @Override
+    protected void slotClicked(Slot slot, int slotIndex, int mouseButton, ClickType clickType) {
+        if (isNetworkBlankPatternDisplaySlot(slot)) {
+            handleGridInventoryEntryMouseClick(
+                    getNetworkBlankPatternEntry(slot), mouseButton, clickType);
+            return;
+        }
+        super.slotClicked(slot, slotIndex, mouseButton, clickType);
+    }
+
+    @Override
     protected void renderTooltip(GuiGraphics graphics, int x, int y) {
         if (menu.getCarried().isEmpty()
                 && closedLoopPanel.isMouseOverStatus(x - leftPos, y - topPos)) {
             drawTooltip(graphics, x, y, closedLoopPanel.buildStatusTooltip());
+            return;
+        }
+        var networkBlankPattern = getNetworkBlankPatternEntry(hoveredSlot);
+        if (networkBlankPattern != null && menu.getCarried().isEmpty()) {
+            renderGridInventoryEntryTooltip(graphics, networkBlankPattern, x, y);
             return;
         }
         if (menu.getCarried().isEmpty() && menu.canModifyAmountForSlot(hoveredSlot)) {
@@ -397,6 +423,13 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
     public void renderSlot(GuiGraphics graphics, Slot slot) {
         super.renderSlot(graphics, slot);
 
+        var networkBlankPattern = getNetworkBlankPatternEntry(slot);
+        if (isNetworkBlankPatternDisplaySlot(slot)) {
+            networkBlankPatternSlot.x = slot.x;
+            networkBlankPatternSlot.y = slot.y;
+            super.renderSlot(graphics, networkBlankPatternSlot);
+        }
+
         if (shouldShowCraftableIndicatorForSlot(slot)) {
             var poseStack = graphics.pose();
             poseStack.pushPose();
@@ -405,8 +438,9 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
             poseStack.popPose();
         }
 
-        if (!(slot instanceof RepoSlot repoSlot) || repoSlot.getEntry() == null) return;
-        var summary = menu.getMaintenanceSummary().get(repoSlot.getEntry().getWhat());
+        var repoEntry = slot instanceof RepoSlot repoSlot ? repoSlot.getEntry() : networkBlankPattern;
+        if (repoEntry == null) return;
+        var summary = menu.getMaintenanceSummary().get(repoEntry.getWhat());
         if (summary == null) return;
         int color = switch (InventoryMaintenanceBadge.from(summary.status())) {
             case GREEN -> 0xFF33CC44;
@@ -439,6 +473,39 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
             return slotContent != null && repo.isCraftable(slotContent.what());
         }
         return false;
+    }
+
+    private GridInventoryEntry findNetworkBlankPatternEntry() {
+        for (var entry : repo.getAllEntries()) {
+            if (entry.getWhat() != null && AEItems.BLANK_PATTERN.is(entry.getWhat())) {
+                return entry;
+            }
+        }
+        return null;
+    }
+
+    private GridInventoryEntry getNetworkBlankPatternEntry(Slot slot) {
+        if (!isNetworkBlankPatternDisplaySlot(slot)
+                || !menu.getLinkStatus().connected()
+                || !repo.isEnabled()) {
+            return null;
+        }
+        return findNetworkBlankPatternEntry();
+    }
+
+    private boolean isNetworkBlankPatternDisplaySlot(Slot slot) {
+        return slot != null && menu.getSlotSemantic(slot) == SlotSemantics.BLANK_PATTERN;
+    }
+
+    private final class NetworkBlankPatternSlot extends RepoSlot {
+        private NetworkBlankPatternSlot(Repo repo) {
+            super(repo, 0, 0, 0);
+        }
+
+        @Override
+        public GridInventoryEntry getEntry() {
+            return repo.isEnabled() ? findNetworkBlankPatternEntry() : null;
+        }
     }
 
     @Override
