@@ -21,8 +21,10 @@ import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternAuthoringService;
 import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternPayload;
 import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternRepository;
 import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternUploadService;
+import com.moakiee.ae2lt.logic.tianshu.loop.TianshuSeedRefillService;
 import com.moakiee.ae2lt.logic.tianshu.terminal.ClosedLoopDraftStatus;
 import com.moakiee.ae2lt.logic.tianshu.terminal.ClosedLoopDraftSync;
+import com.moakiee.ae2lt.logic.tianshu.terminal.SeedRefillSync;
 import com.moakiee.ae2lt.logic.tianshu.terminal.ProcessingPatternMultiplier;
 import com.moakiee.ae2lt.logic.tianshu.terminal.ProcessingPatternEncodingType;
 import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuEncodingMode;
@@ -126,6 +128,10 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     public int closedLoopExternalInputCount;
     @GuiSync(136)
     public int closedLoopSeedInputCount;
+    @GuiSync(137)
+    public boolean seedRefillAvailable;
+    @GuiSync(138)
+    public SeedRefillSync seedRefillSync = SeedRefillSync.none();
 
     protected final TianshuPatternTerminalHost tianshuHost;
     @Nullable private TianshuTerminalTarget boundTianshuTarget;
@@ -249,6 +255,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         registerClientAction("setClosedLoopMultipliers", ClosedLoopMultiplierEdit.class,
                 this::setClosedLoopMultipliersServer);
         registerClientAction("autoFillClosedLoop", this::autoFillClosedLoopServer);
+        registerClientAction("refillClosedLoopSeeds", this::refillClosedLoopSeedsServer);
         registerClientAction("clearClosedLoopDraft", this::clearClosedLoopDraftServer);
         registerClientAction("uploadEncodedPattern", Integer.class, this::uploadEncodedPatternServer);
         registerClientAction("setMaintainableView", Boolean.class, this::setMaintainableViewServer);
@@ -262,6 +269,8 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
             syncPatternStorageTarget();
             maintenanceAvailable = selected != null
                     && selected.getFunctionProfile().supportsInventoryMaintenance();
+            seedRefillAvailable = selected != null && selected.isFormed()
+                    && selected.getFunctionProfile().supportsClosedLoopSeeds();
             refreshDerivedConfiguration();
             if (closedLoopDraftDirty) rebuildClosedLoopDraft();
             closedLoopSeedMultiplier = closedLoopExecutionSeedMultiplier;
@@ -562,6 +571,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         if (!isServerSide() || tianshuMode != TianshuEncodingMode.CLOSED_LOOP) return;
         resetClosedLoopDraft();
         uploadState = 0;
+        seedRefillSync = SeedRefillSync.none();
         broadcastChanges();
     }
 
@@ -575,6 +585,21 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         if (source.isEmpty() || source.getItem() instanceof ClosedLoopPatternItem) return;
         resetClosedLoopDraft();
         refreshClosedLoops(source);
+    }
+
+    /** Tops up stored seeds for all enabled closed-loop patterns of the bound Tianshu. */
+    public void refillClosedLoopSeeds() {
+        if (isClientSide()) sendClientAction("refillClosedLoopSeeds");
+        else refillClosedLoopSeedsServer();
+    }
+
+    private void refillClosedLoopSeedsServer() {
+        if (!isServerSide() || tianshuMode != TianshuEncodingMode.CLOSED_LOOP) return;
+        var result = TianshuSeedRefillService.refillAll(resolveOrBindTianshu());
+        seedRefillSync = SeedRefillSync.of(result);
+        // The refill outcome is the newest status; stop showing the last upload result.
+        uploadState = 0;
+        broadcastChanges();
     }
 
     private void selectClosedLoopCandidateServer(int delta) {
@@ -684,6 +709,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         lastSentMaintenanceSummary = null;
         lastMaintenanceSummaryTick = Integer.MIN_VALUE;
         uploadState = 0;
+        seedRefillSync = SeedRefillSync.none();
         return selected;
     }
 
@@ -875,7 +901,10 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         encodedClosedLoop = source.getItem() instanceof ClosedLoopPatternItem;
         // Preserve the result when a successful provider upload empties the source slot.
         // A newly inserted/encoded pattern starts a fresh upload state.
-        if (!source.isEmpty()) uploadState = 0;
+        if (!source.isEmpty()) {
+            uploadState = 0;
+            seedRefillSync = SeedRefillSync.none();
+        }
         resetClosedLoopDraft();
         if (source.isEmpty()) return;
         if (source.getItem() instanceof ClosedLoopPatternItem closedLoopItem) {

@@ -10,15 +10,19 @@ import appeng.api.crafting.PatternDetailsHelper;
 import appeng.api.config.ActionItems;
 import appeng.client.Point;
 import appeng.client.gui.ICompositeWidget;
+import appeng.client.gui.Icon;
 import appeng.client.gui.WidgetContainer;
 import appeng.client.gui.style.Blitter;
 import appeng.client.gui.widgets.AE2Button;
 import appeng.client.gui.widgets.AETextField;
 import appeng.client.gui.widgets.ActionButton;
+import appeng.client.gui.widgets.IconButton;
 import appeng.client.gui.widgets.Scrollbar;
 import com.moakiee.ae2lt.item.ClosedLoopPatternItem;
+import com.moakiee.ae2lt.logic.tianshu.terminal.SeedRefillSync;
 import com.moakiee.ae2lt.menu.Ae2ltSlotSemantics;
 import com.moakiee.ae2lt.menu.TianshuPatternEncodingTermMenu;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import net.minecraft.ChatFormatting;
@@ -59,6 +63,7 @@ final class TianshuClosedLoopEncodingPanel implements ICompositeWidget {
     private final AE2Button detailButton;
     private final AE2Button autoFillButton;
     private final ActionButton clearButton;
+    private final IconButton refillButton;
     private final AETextField executionField;
     private final AETextField storedField;
     private boolean visible;
@@ -89,6 +94,24 @@ final class TianshuClosedLoopEncodingPanel implements ICompositeWidget {
         clearButton.setHalfSize(true);
         clearButton.setDisableBackground(true);
         widgets.add("closedLoopClear", clearButton);
+
+        refillButton = new IconButton(btn -> menu.refillClosedLoopSeeds()) {
+            @Override
+            protected Icon getIcon() {
+                return Icon.S_ARROW_DOWN;
+            }
+
+            @Override
+            public List<Component> getTooltipMessage() {
+                return List.of(
+                        Component.translatable("ae2lt.tianshu.closed_loop.refill_seeds"),
+                        Component.translatable("ae2lt.tianshu.closed_loop.refill_seeds.tooltip")
+                                .withStyle(ChatFormatting.GRAY));
+            }
+        };
+        refillButton.setHalfSize(true);
+        refillButton.setDisableBackground(true);
+        widgets.add("closedLoopSeedRefill", refillButton);
 
         executionField = widgets.addTextField("closedLoopExecMultiplier");
         storedField = widgets.addTextField("closedLoopStoredMultiplier");
@@ -129,6 +152,7 @@ final class TianshuClosedLoopEncodingPanel implements ICompositeWidget {
         detailButton.visible = visible;
         autoFillButton.visible = visible;
         clearButton.setVisibility(visible);
+        refillButton.setVisibility(visible);
         executionField.setVisible(visible);
         storedField.setVisible(visible);
         screen.setSlotsHidden(Ae2ltSlotSemantics.TIANSHU_CLOSED_LOOP_MEMBER, !visible);
@@ -164,6 +188,7 @@ final class TianshuClosedLoopEncodingPanel implements ICompositeWidget {
                 "ae2lt.tianshu.closed_loop.auto_fill.tooltip",
                 menu.closedLoopCandidateCount == 0 ? 0 : menu.closedLoopCandidateIndex + 1,
                 menu.closedLoopCandidateCount)));
+        refillButton.active = menu.seedRefillAvailable;
         syncFields();
     }
 
@@ -220,11 +245,20 @@ final class TianshuClosedLoopEncodingPanel implements ICompositeWidget {
     }
 
     List<Component> buildStatusTooltip() {
-        return List.of(
-                statusText(),
-                Component.translatable("ae2lt.tianshu.terminal.closed_loop.candidate",
-                        menu.closedLoopCandidateCount == 0 ? 0 : menu.closedLoopCandidateIndex + 1,
-                        menu.closedLoopCandidateCount).withStyle(ChatFormatting.GRAY));
+        var lines = new ArrayList<Component>();
+        lines.add(statusText());
+        if (menu.uploadState == 0
+                && menu.seedRefillSync.state() == SeedRefillSync.STATE_MISSING) {
+            for (var entry : menu.seedRefillSync.missing()) {
+                lines.add(Component.translatable("ae2lt.tianshu.closed_loop.refill.missing_entry",
+                        entry.what().getDisplayName(), entry.amount())
+                        .withStyle(ChatFormatting.RED));
+            }
+        }
+        lines.add(Component.translatable("ae2lt.tianshu.terminal.closed_loop.candidate",
+                menu.closedLoopCandidateCount == 0 ? 0 : menu.closedLoopCandidateIndex + 1,
+                menu.closedLoopCandidateCount).withStyle(ChatFormatting.GRAY));
+        return lines;
     }
 
     private Component statusText() {
@@ -233,17 +267,30 @@ final class TianshuClosedLoopEncodingPanel implements ICompositeWidget {
                     ? "ae2lt.tianshu.terminal.upload.success"
                     : "ae2lt.tianshu.terminal.upload.failed");
         }
-        return Component.translatable("ae2lt.tianshu.closed_loop.status."
-                + menu.closedLoopDraftStatus.name().toLowerCase(Locale.ROOT));
+        return switch (menu.seedRefillSync.state()) {
+            case SeedRefillSync.STATE_COMPLETE ->
+                Component.translatable("ae2lt.tianshu.closed_loop.refill.status.complete");
+            case SeedRefillSync.STATE_MISSING ->
+                Component.translatable("ae2lt.tianshu.closed_loop.refill.status.missing");
+            case SeedRefillSync.STATE_UNAVAILABLE ->
+                Component.translatable("ae2lt.tianshu.closed_loop.refill.status.unavailable");
+            default -> Component.translatable("ae2lt.tianshu.closed_loop.status."
+                    + menu.closedLoopDraftStatus.name().toLowerCase(Locale.ROOT));
+        };
     }
 
     private int statusColor() {
         if (menu.uploadState != 0) return menu.uploadState == 1 ? 0x228822 : 0xAA2222;
-        return switch (menu.closedLoopDraftStatus) {
-            case VALID, ENCODED -> 0x228822;
-            case EMPTY, NO_CANDIDATE -> 0x666666;
-            case MISSING_PRIMARY_OUTPUT -> 0xAA7700;
-            default -> 0xAA2222;
+        return switch (menu.seedRefillSync.state()) {
+            case SeedRefillSync.STATE_COMPLETE -> 0x228822;
+            case SeedRefillSync.STATE_MISSING -> 0xAA7700;
+            case SeedRefillSync.STATE_UNAVAILABLE -> 0xAA2222;
+            default -> switch (menu.closedLoopDraftStatus) {
+                case VALID, ENCODED -> 0x228822;
+                case EMPTY, NO_CANDIDATE -> 0x666666;
+                case MISSING_PRIMARY_OUTPUT -> 0xAA7700;
+                default -> 0xAA2222;
+            };
         };
     }
 
