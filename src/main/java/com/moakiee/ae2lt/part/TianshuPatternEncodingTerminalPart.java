@@ -6,6 +6,7 @@ import appeng.api.storage.MEStorage;
 import appeng.items.parts.PartModels;
 import appeng.parts.PartModel;
 import appeng.parts.encoding.PatternEncodingTerminalPart;
+import appeng.util.inv.AppEngInternalInventory;
 import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuEncodingMode;
 import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuPatternTerminalHost;
@@ -36,6 +37,15 @@ public final class TianshuPatternEncodingTerminalPart extends PatternEncodingTer
 
     public TianshuPatternEncodingTerminalPart(IPartItem<?> partItem) {
         super(partItem);
+
+        // This terminal sources blank patterns exclusively from ME storage. Keep AE2's inherited
+        // physical slot at zero capacity so parent-menu integrations that auto-fill that slot see
+        // no free space and cannot pull the first 64 blanks out of the network. Encoding still
+        // stages one pattern with setItemDirect(), which deliberately bypasses slot limits.
+        var blankPatternInventory = getLogic().getBlankPatternInv();
+        if (blankPatternInventory instanceof AppEngInternalInventory inventory) {
+            inventory.setMaxStackSize(0, 0);
+        }
     }
 
     @Override

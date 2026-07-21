@@ -140,7 +140,6 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     public SeedRefillSync seedRefillSync = SeedRefillSync.none();
 
     protected final TianshuPatternTerminalHost tianshuHost;
-    private final AppEngSlot disabledBlankPatternSlot;
     @Nullable private TianshuTerminalTarget boundTianshuTarget;
     private final PatternConversionService conversionService = new PatternConversionService();
     private ItemStack configuredSource = ItemStack.EMPTY;
@@ -192,8 +191,8 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
             MenuType<?> type, int id, Inventory inventory, TianshuPatternTerminalHost host) {
         super(type, id, inventory, host, true);
         this.tianshuHost = host;
-        this.disabledBlankPatternSlot = (AppEngSlot) getSlots(SlotSemantics.BLANK_PATTERN).getFirst();
-        if (isServerSide()) this.disabledBlankPatternSlot.setSlotEnabled(false);
+        var inheritedBlankPatternSlot = (AppEngSlot) getSlots(SlotSemantics.BLANK_PATTERN).getFirst();
+        inheritedBlankPatternSlot.setSlotEnabled(false);
         this.closedLoopMemberInventory = new AppEngInternalInventory(new InternalInventoryHost() {
             @Override
             public void saveChangedInventory(AppEngInternalInventory inv) {
@@ -274,7 +273,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     @Override
     public void broadcastChanges() {
         if (isServerSide()) {
-            returnDisabledBlankPatternsToNetwork();
+            returnPhysicalBlankPatternsToNetwork();
             tianshuMode = tianshuHost.getTianshuEncodingMode();
             var selected = resolveOrBindTianshu();
             syncPatternStorageTarget();
@@ -1708,17 +1707,14 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
             expectedTriggeredUploadAck = triggeredUploadAck;
         }
         if (tianshuMode.isAe2Mode()) {
-            boolean stagedNetworkBlank = false;
             if (isServerSide()) {
-                stagedNetworkBlank = stageNetworkBlankPattern();
-                disabledBlankPatternSlot.setSlotEnabled(true);
+                stageNetworkBlankPattern();
             }
             try {
                 super.encode();
             } finally {
                 if (isServerSide()) {
-                    disabledBlankPatternSlot.setSlotEnabled(false);
-                    if (stagedNetworkBlank) returnStagedBlankPatternToNetwork();
+                    returnPhysicalBlankPatternsToNetwork();
                 }
             }
             if (isServerSide()) {
@@ -1746,24 +1742,20 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         }
     }
 
-    private boolean stageNetworkBlankPattern() {
+    private void stageNetworkBlankPattern() {
         var blankInventory = tianshuHost.getLogic().getBlankPatternInv();
         if (!blankInventory.getStackInSlot(0).isEmpty() || !getLinkStatus().connected()) {
-            return false;
+            return;
         }
         var blankPatternKey = AEItemKey.of(AEItems.BLANK_PATTERN.asItem());
         long extracted = StorageHelper.poweredExtraction(
                 energySource, storage, blankPatternKey, 1, getActionSource());
-        if (extracted <= 0) return false;
-        blankInventory.setItemDirect(0, AEItems.BLANK_PATTERN.stack((int) extracted));
-        return true;
+        if (extracted > 0) {
+            blankInventory.setItemDirect(0, AEItems.BLANK_PATTERN.stack((int) extracted));
+        }
     }
 
-    private void returnStagedBlankPatternToNetwork() {
-        returnDisabledBlankPatternsToNetwork();
-    }
-
-    private void returnDisabledBlankPatternsToNetwork() {
+    private void returnPhysicalBlankPatternsToNetwork() {
         if (!isServerSide() || !getLinkStatus().connected()) return;
         var blankInventory = tianshuHost.getLogic().getBlankPatternInv();
         var stack = blankInventory.getStackInSlot(0);

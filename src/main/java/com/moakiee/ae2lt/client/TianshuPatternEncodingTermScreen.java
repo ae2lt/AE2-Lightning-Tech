@@ -132,6 +132,18 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
         addToLeftToolbar(new MaintenanceOverviewButton());
     }
 
+    @Override
+    public void init() {
+        super.init();
+        var blankPatternSlots = menu.getSlots(SlotSemantics.BLANK_PATTERN);
+        if (!blankPatternSlots.isEmpty()) {
+            var disabledSlot = blankPatternSlots.getFirst();
+            networkBlankPatternSlot.x = disabledSlot.x;
+            networkBlankPatternSlot.y = disabledSlot.y;
+            menu.slots.add(networkBlankPatternSlot);
+        }
+    }
+
     private AE2Button addCompactButton(String widgetId, Component label, Runnable onPress) {
         var button = new CompactAE2Button(label, ignored -> onPress.run());
         widgets.add(widgetId, button);
@@ -346,11 +358,6 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
 
         if (minecraft.options.keyPickItem.matchesMouse(button)) {
             var slot = getSlotUnderMouse();
-            var networkBlankPattern = getNetworkBlankPatternEntry(slot);
-            if (networkBlankPattern != null && networkBlankPattern.isCraftable()) {
-                handleGridInventoryEntryMouseClick(networkBlankPattern, button, ClickType.CLONE);
-                return true;
-            }
             if (isClosedLoopMemberSlot(slot) && slot.hasItem()) {
                 int memberIndex = slot.getContainerSlot();
                 var key = AEItemKey.of(slot.getItem());
@@ -395,11 +402,6 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
         if (slot instanceof RepoSlot repoSlot && isSyntheticMaintenanceEntry(repoSlot.getEntry())) {
             return;
         }
-        if (isNetworkBlankPatternDisplaySlot(slot)) {
-            handleGridInventoryEntryMouseClick(
-                    getNetworkBlankPatternEntry(slot), mouseButton, clickType);
-            return;
-        }
         super.slotClicked(slot, slotIndex, mouseButton, clickType);
     }
 
@@ -408,11 +410,6 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
         if (menu.getCarried().isEmpty()
                 && closedLoopPanel.isMouseOverStatus(x - leftPos, y - topPos)) {
             drawTooltip(graphics, x, y, closedLoopPanel.buildStatusTooltip());
-            return;
-        }
-        var networkBlankPattern = getNetworkBlankPatternEntry(hoveredSlot);
-        if (networkBlankPattern != null && menu.getCarried().isEmpty()) {
-            renderGridInventoryEntryTooltip(graphics, networkBlankPattern, x, y);
             return;
         }
         if (menu.getCarried().isEmpty() && menu.canModifyAmountForSlot(hoveredSlot)) {
@@ -509,14 +506,12 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
 
     @Override
     public void renderSlot(GuiGraphics graphics, Slot slot) {
-        super.renderSlot(graphics, slot);
-
-        var networkBlankPattern = getNetworkBlankPatternEntry(slot);
-        if (isNetworkBlankPatternDisplaySlot(slot)) {
-            networkBlankPatternSlot.x = slot.x;
-            networkBlankPatternSlot.y = slot.y;
-            super.renderSlot(graphics, networkBlankPatternSlot);
+        if (slot == networkBlankPatternSlot && !slot.hasItem()) {
+            Icon.BACKGROUND_BLANK_PATTERN.getBlitter()
+                    .dest(slot.x, slot.y)
+                    .blit(graphics);
         }
+        super.renderSlot(graphics, slot);
 
         if (shouldShowCraftableIndicatorForSlot(slot)) {
             var poseStack = graphics.pose();
@@ -526,7 +521,7 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
             poseStack.popPose();
         }
 
-        var repoEntry = slot instanceof RepoSlot repoSlot ? repoSlot.getEntry() : networkBlankPattern;
+        var repoEntry = slot instanceof RepoSlot repoSlot ? repoSlot.getEntry() : null;
         if (repoEntry == null) return;
         var summary = menu.getMaintenanceSummaryEntry(repoEntry.getWhat());
         if (summary == null || !summary.ruleConfigured()) return;
@@ -648,19 +643,6 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
             }
         }
         return null;
-    }
-
-    private GridInventoryEntry getNetworkBlankPatternEntry(Slot slot) {
-        if (!isNetworkBlankPatternDisplaySlot(slot)
-                || !menu.getLinkStatus().connected()
-                || !repo.isEnabled()) {
-            return null;
-        }
-        return findNetworkBlankPatternEntry();
-    }
-
-    private boolean isNetworkBlankPatternDisplaySlot(Slot slot) {
-        return slot != null && menu.getSlotSemantic(slot) == SlotSemantics.BLANK_PATTERN;
     }
 
     private final class NetworkBlankPatternSlot extends RepoSlot {
