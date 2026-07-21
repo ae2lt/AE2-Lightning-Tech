@@ -62,7 +62,7 @@ public class DeviceHubMenu extends AbstractContainerMenu {
     private boolean soundEnabled;
     private boolean chainDamage;
     private boolean forceOverloadRemoval;
-    private boolean overloadImpactTargeting;
+    private boolean chargedSplash;
     private List<String> moduleNameKeys = List.of();
     private List<Integer> moduleCounts = List.of();
     private List<Boolean> moduleEnabled = List.of();
@@ -176,7 +176,7 @@ public class DeviceHubMenu extends AbstractContainerMenu {
                 status.soundEnabled(),
                 status.chainDamage(),
                 status.forceOverloadRemoval(),
-                status.overloadImpactTargeting(),
+                status.chargedSplash(),
                 nameKeys,
                 counts,
                 enabled,
@@ -217,7 +217,7 @@ public class DeviceHubMenu extends AbstractContainerMenu {
             boolean soundEnabled,
             boolean chainDamage,
             boolean forceOverloadRemoval,
-            boolean overloadImpactTargeting,
+            boolean chargedSplash,
             List<String> nameKeys,
             List<Integer> counts,
             List<Boolean> enabled,
@@ -234,7 +234,7 @@ public class DeviceHubMenu extends AbstractContainerMenu {
         this.soundEnabled = soundEnabled;
         this.chainDamage = chainDamage;
         this.forceOverloadRemoval = forceOverloadRemoval;
-        this.overloadImpactTargeting = overloadImpactTargeting;
+        this.chargedSplash = chargedSplash;
         this.moduleNameKeys = List.copyOf(nameKeys);
         this.moduleCounts = List.copyOf(counts);
         this.moduleEnabled = List.copyOf(enabled);
@@ -298,8 +298,8 @@ public class DeviceHubMenu extends AbstractContainerMenu {
         return forceOverloadRemoval;
     }
 
-    public boolean isOverloadImpactTargeting() {
-        return overloadImpactTargeting;
+    public boolean isChargedSplash() {
+        return chargedSplash;
     }
 
     public int getSelectedModuleIndex() {
@@ -404,14 +404,14 @@ public class DeviceHubMenu extends AbstractContainerMenu {
                 s.withForceOverloadRemoval(!s.forceOverloadRemoval()));
     }
 
-    public void toggleRailgunImpactTargeting() {
+    public void toggleRailgunChargedSplash() {
         if (!(getPlayer() instanceof ServerPlayer player)) return;
         ItemStack railgun = findDevice(player, TAB_RAILGUN);
         if (railgun.isEmpty()) return;
         RailgunSettings s = railgun.getOrDefault(ModDataComponents.RAILGUN_SETTINGS.get(), RailgunSettings.DEFAULT);
         railgun.set(
                 ModDataComponents.RAILGUN_SETTINGS.get(),
-                s.withOverloadImpactTargeting(!s.overloadImpactTargeting()));
+                s.withChargedSplash(!s.chargedSplash()));
     }
 
     public void cycleSelectedModuleConfig(int optionIndex) {

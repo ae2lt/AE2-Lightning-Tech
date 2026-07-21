@@ -37,7 +37,7 @@ final class DeviceHubModuleConfigContractTest {
     }
 
     @Test
-    void railgunGlobalSettingsOwnExecutionAndImpactSwitches() throws Exception {
+    void railgunGlobalSettingsOwnExecutionAndChargedSplashSwitches() throws Exception {
         String status = Files.readString(Path.of(
                 "src/main/java/com/moakiee/ae2lt/menu/hub/DeviceStatusModel.java"));
         String menu = Files.readString(Path.of(
@@ -46,11 +46,11 @@ final class DeviceHubModuleConfigContractTest {
                 "src/main/java/com/moakiee/ae2lt/client/hub/DeviceHubScreen.java"));
 
         assertTrue(status.contains("settings.forceOverloadRemoval()"));
-        assertTrue(status.contains("settings.overloadImpactTargeting()"));
+        assertTrue(status.contains("settings.chargedSplash()"));
         assertTrue(menu.contains("s.withForceOverloadRemoval(!s.forceOverloadRemoval())"));
-        assertTrue(menu.contains("s.withOverloadImpactTargeting(!s.overloadImpactTargeting())"));
+        assertTrue(menu.contains("s.withChargedSplash(!s.chargedSplash())"));
         assertTrue(screen.contains("RAILGUN_SETTING_EXECUTION_MODE"));
-        assertTrue(screen.contains("RAILGUN_SETTING_IMPACT_TARGETING"));
+        assertTrue(screen.contains("RAILGUN_SETTING_CHARGED_SPLASH"));
     }
 
     @Test
@@ -64,7 +64,7 @@ final class DeviceHubModuleConfigContractTest {
 
         assertTrue(screen.contains("RAILGUN_SETTING_CHAIN_DAMAGE"));
         assertTrue(fire.contains("if (settings.chainDamage())"));
-        assertTrue(fire.contains("if (settings.chainDamage() && splashAnchor != null)"));
+        assertTrue(beam.contains("resolveChainFromPoint("));
         assertTrue(beam.contains("if (settings.chainDamage() && player.tickCount - s.lastChainTick >= chainThrottle)"));
     }
 

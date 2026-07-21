@@ -31,7 +31,7 @@ public record DeviceStatusModel(
         int selectedModuleIndex,
         List<ModuleConfigInfo> moduleConfigs,
         boolean terrainDestruction, boolean pvp, boolean soundEnabled,
-        boolean chainDamage, boolean forceOverloadRemoval, boolean overloadImpactTargeting
+        boolean chainDamage, boolean forceOverloadRemoval, boolean chargedSplash
 ) {
     public static final String RAILGUN_OVERLOAD_MODULE_KEY =
             "ae2lt.device_hub.module.railgun.overload_execution";
@@ -141,7 +141,7 @@ public record DeviceStatusModel(
         return new DeviceStatusModel(
                 name, hasStructuralCore, powered, modules, -1, List.of(),
                 terrainAllowed && settings.terrainDestruction(), settings.pvp(), settings.soundEnabled(),
-                settings.chainDamage(), settings.forceOverloadRemoval(), settings.overloadImpactTargeting());
+                settings.chainDamage(), settings.forceOverloadRemoval(), settings.chargedSplash());
     }
 
     private static List<ModuleConfigInfo> moduleConfigs(ItemStack armor, ServerPlayer player, int selectedModuleIndex) {

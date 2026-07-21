@@ -22,7 +22,7 @@ public record DeviceHubSyncPacket(
         boolean soundEnabled,
         boolean chainDamage,
         boolean forceOverloadRemoval,
-        boolean overloadImpactTargeting,
+        boolean chargedSplash,
         List<String> moduleNameKeys,
         List<Integer> moduleCounts,
         List<Boolean> moduleEnabled,
@@ -54,7 +54,7 @@ public record DeviceHubSyncPacket(
         boolean soundEnabled = buf.readBoolean();
         boolean chainDamage = buf.readBoolean();
         boolean forceOverloadRemoval = buf.readBoolean();
-        boolean overloadImpactTargeting = buf.readBoolean();
+        boolean chargedSplash = buf.readBoolean();
         int count = buf.readVarInt();
         List<String> nameKeys = new ArrayList<>(count);
         List<Integer> counts = new ArrayList<>(count);
@@ -86,7 +86,7 @@ public record DeviceHubSyncPacket(
                 soundEnabled,
                 chainDamage,
                 forceOverloadRemoval,
-                overloadImpactTargeting,
+                chargedSplash,
                 nameKeys,
                 counts,
                 enabled,
@@ -107,7 +107,7 @@ public record DeviceHubSyncPacket(
         buf.writeBoolean(soundEnabled);
         buf.writeBoolean(chainDamage);
         buf.writeBoolean(forceOverloadRemoval);
-        buf.writeBoolean(overloadImpactTargeting);
+        buf.writeBoolean(chargedSplash);
         int count = Math.min(Math.min(moduleNameKeys.size(), moduleCounts.size()), moduleEnabled.size());
         buf.writeVarInt(count);
         for (int i = 0; i < count; i++) {
@@ -141,7 +141,7 @@ public record DeviceHubSyncPacket(
                         pkt.soundEnabled(),
                         pkt.chainDamage(),
                         pkt.forceOverloadRemoval(),
-                        pkt.overloadImpactTargeting(),
+                        pkt.chargedSplash(),
                         pkt.moduleNameKeys(),
                         pkt.moduleCounts(),
                         pkt.moduleEnabled(),

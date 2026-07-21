@@ -80,7 +80,8 @@ class OverloadExecutionAttributionContractTest {
 
         assertTrue(resolver.contains("boolean chainPropagation"));
         assertTrue(resolver.contains("chainStartAt, true"));
-        assertTrue(fireService.contains("overloadEligible && !hit.chainPropagation()"));
+        assertTrue(fireService.contains("&& !hit.chainPropagation()"));
+        assertTrue(fireService.contains("&& executionScope.includes(target)"));
         assertFalse(fireService.contains("target instanceof Player && !paralyzePlayers) continue"));
     }
 }

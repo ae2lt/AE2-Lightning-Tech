@@ -99,6 +99,30 @@ public final class RailgunChainResolver {
         return out;
     }
 
+    /**
+     * Starts one ordinary beam chain at a world position when the ray has no living primary
+     * target. The nearest legal entity becomes the first hit and the remaining segments
+     * continue with the same decay and target rules as {@link #resolveChain}.
+     */
+    public static List<Hit> resolveChainFromPoint(
+            ServerLevel level,
+            ServerPlayer source,
+            Vec3 start,
+            DamageContext ctx) {
+        List<Hit> out = new ArrayList<>();
+        if (ctx.chainSegments() <= 0) return out;
+
+        Set<Integer> visited = new HashSet<>();
+        List<LivingEntity> seeds = findNearestK(
+                level, source, start, ctx.chainRadius(), visited, ctx.pvp(), 1);
+        if (seeds.isEmpty()) return out;
+
+        LivingEntity seed = seeds.getFirst();
+        visited.add(seed.getId());
+        out.addAll(walkBranch(level, source, seed, ctx, visited, start));
+        return out;
+    }
+
     /** 单条分支推进：seed 作为深度 1，往下走 chainSegments-1 跳。 */
     private static List<Hit> walkBranch(
             ServerLevel level,
@@ -304,20 +328,30 @@ public final class RailgunChainResolver {
             Set<Integer> visited,
             boolean pvp,
             int k) {
+        return findNearestK(level, source, from.position(), radius, visited, pvp, k);
+    }
+
+    private static List<LivingEntity> findNearestK(
+            ServerLevel level,
+            ServerPlayer source,
+            Vec3 center,
+            double radius,
+            Set<Integer> visited,
+            boolean pvp,
+            int k) {
         if (k <= 0) return List.of();
-        Vec3 c = from.position();
-        AABB box = new AABB(c, c).inflate(radius);
+        AABB box = new AABB(center, center).inflate(radius);
         double r2 = radius * radius;
         List<LivingEntity> all = new ArrayList<>();
         for (LivingEntity ent : level.getEntitiesOfClass(LivingEntity.class, box, e -> shouldTarget(e, pvp))) {
             if (ent == source) continue;
             if (visited.contains(ent.getId())) continue;
-            if (ent.position().distanceToSqr(c) > r2) continue;
+            if (ent.position().distanceToSqr(center) > r2) continue;
             all.add(ent);
         }
         all.sort((a, b) -> Double.compare(
-                a.position().distanceToSqr(c),
-                b.position().distanceToSqr(c)));
+                a.position().distanceToSqr(center),
+                b.position().distanceToSqr(center)));
         if (all.size() > k) {
             return new ArrayList<>(all.subList(0, k));
         }
@@ -325,7 +359,6 @@ public final class RailgunChainResolver {
     }
 
     private static boolean shouldTarget(LivingEntity entity, boolean pvp) {
-        return !entity.isInvulnerable()
-                && RailgunTargetRules.canAffect(null, entity, pvp);
+        return RailgunTargetRules.canAffect(null, entity, pvp);
     }
 }

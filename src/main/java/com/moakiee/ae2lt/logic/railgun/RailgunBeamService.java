@@ -194,31 +194,47 @@ public final class RailgunBeamService {
         // Raycast & damage
         BeamTrace trace = traceBeam(level, player, allowPlayerTargets, mods);
         EntityHitResult ehr = trace.entityHit();
+        DamageContext ctx = DamageContext.buildBeam(player, mods, level, allowPlayerTargets);
+        LivingEntity chainAnchor = null;
 
-        if (ehr != null && ehr.getEntity() instanceof LivingEntity primary) {
-            DamageContext ctx = DamageContext.buildBeam(player, mods, level, allowPlayerTargets);
-            // Primary hit
+        if (ehr != null) {
+            Entity target = ehr.getEntity();
             DamageSource ds = beamDamageSource(level, player);
-            double armorReduction = DamageContext.effectiveArmorReduction(primary);
-            double finalDamage = DamageContext.finalDamage(ctx.firstDamage(), ctx.bypassRatio(), armorReduction);
-            primary.hurt(ds, (float) finalDamage);
-            if (primary.isAlive() && RailgunDefaults.PARALYSIS_DURATION_TICKS > 0) {
-                primary.addEffect(new net.minecraft.world.effect.MobEffectInstance(
-                        com.moakiee.ae2lt.registry.ModMobEffects.ELECTROMAGNETIC_PARALYSIS,
-                        RailgunDefaults.PARALYSIS_DURATION_TICKS,
-                        0, false, true, true), player);
-            }
-            // Beam never triggers Overload Execution — that's reserved for EHv3 charged shots.
-            // Throttled chain
-            if (settings.chainDamage() && player.tickCount - s.lastChainTick >= chainThrottle) {
-                s.lastChainTick = player.tickCount;
-                List<RailgunChainResolver.Hit> chain = RailgunChainResolver.resolveChain(level, player, primary, ctx);
-                // Pass HV as the "tier" sentinel — applyAll's Overload-Execution gate
-                // (RailgunChargeTier.EHV3 only) ignores it for any non-EHv3 value.
-                RailgunFireService.applyAll(level, player, chain, ctx, stack, RailgunChargeTier.HV);
-                if (!chain.isEmpty()) {
-                    broadcastBeamChainFx(level, player, primary, chain, settings.soundEnabled());
+            if (target instanceof LivingEntity primary) {
+                chainAnchor = primary;
+                double armorReduction = DamageContext.effectiveArmorReduction(primary);
+                double finalDamage = DamageContext.finalDamage(
+                        ctx.firstDamage(), ctx.bypassRatio(), armorReduction);
+                primary.hurt(ds, (float) finalDamage);
+                if (primary.isAlive() && RailgunDefaults.PARALYSIS_DURATION_TICKS > 0) {
+                    primary.addEffect(new net.minecraft.world.effect.MobEffectInstance(
+                            com.moakiee.ae2lt.registry.ModMobEffects.ELECTROMAGNETIC_PARALYSIS,
+                            RailgunDefaults.PARALYSIS_DURATION_TICKS,
+                            0, false, true, true), player);
                 }
+            } else {
+                target.hurt(ds, (float) ctx.firstDamage());
+            }
+        }
+
+        // The ordinary beam's chain cadence is independent of direct entity contact.
+        // A living primary remains the anchor when present; otherwise the block/entity/miss
+        // endpoint itself searches for the nearest legal target and starts one chain.
+        if (settings.chainDamage() && player.tickCount - s.lastChainTick >= chainThrottle) {
+            s.lastChainTick = player.tickCount;
+            Vec3 chainOrigin;
+            List<RailgunChainResolver.Hit> chain;
+            if (chainAnchor != null) {
+                chainOrigin = lockedTargetPoint(chainAnchor);
+                chain = RailgunChainResolver.resolveChain(level, player, chainAnchor, ctx);
+            } else {
+                chainOrigin = trace.endPoint();
+                chain = RailgunChainResolver.resolveChainFromPoint(level, player, chainOrigin, ctx);
+            }
+            // Pass HV as the "tier" sentinel — ordinary-beam chains never carry execution.
+            RailgunFireService.applyAll(level, player, chain, ctx, stack, RailgunChargeTier.HV);
+            if (!chain.isEmpty()) {
+                broadcastBeamChainFx(level, player, chainOrigin, chain, settings.soundEnabled());
             }
         }
 
@@ -245,8 +261,7 @@ public final class RailgunBeamService {
                 to,
                 0.5D,
                 0.0F,
-                e -> e instanceof LivingEntity
-                        && RailgunTargetRules.canAffect(player, e, pvp));
+                e -> RailgunTargetRules.canAffect(player, e, pvp));
         EntityHitResult ehr = raycast.entityHit();
         Vec3 endPoint = ehr != null ? lockedTargetPoint(ehr.getEntity()) : raycast.blockEnd();
         return new BeamTrace(from, endPoint, ehr);
@@ -264,7 +279,7 @@ public final class RailgunBeamService {
     /**
      * Broadcast a one-shot chain visual for the beam's throttled chain jump.
      * Each consecutive (a, b) pair in {@code chainPath} forms one arc segment;
-     * the first arc starts at the primary target's hit center.
+     * the first arc starts at the direct target or beam endpoint supplied by the caller.
      *
      * <p>This was missing before — the server applied chain damage but never
      * told the client to render it, so chained enemies took silent hits with
@@ -272,12 +287,11 @@ public final class RailgunBeamService {
      * so the client renderer can reuse {@link com.moakiee.ae2lt.client.railgun.RailgunArcRenderer#spawnChain}.
      */
     private static void broadcastBeamChainFx(ServerLevel level, ServerPlayer player,
-                                             LivingEntity primary,
+                                             Vec3 origin,
                                              List<RailgunChainResolver.Hit> chain,
                                              boolean soundEnabled) {
         java.util.List<Vec3> path = new java.util.ArrayList<>(chain.size() * 2);
-        Vec3 prev = primary.position().add(0.0D, primary.getBbHeight() / 2.0D, 0.0D);
-        Vec3 firstHit = prev;
+        Vec3 prev = origin;
         for (var h : chain) {
             if (h.target() == null) continue;
             Vec3 cur = h.target().position().add(0.0D, h.target().getBbHeight() / 2.0D, 0.0D);
@@ -286,7 +300,7 @@ public final class RailgunBeamService {
             prev = cur;
         }
         if (path.isEmpty()) return;
-        var pkt = new RailgunBeamChainFxPacket(player.getUUID(), firstHit, path, soundEnabled);
+        var pkt = new RailgunBeamChainFxPacket(player.getUUID(), origin, path, soundEnabled);
         NetworkHandler.sendToTrackingChunk(level, player.chunkPosition(), pkt);
     }
 

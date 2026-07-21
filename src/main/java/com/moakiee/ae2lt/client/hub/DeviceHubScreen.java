@@ -102,8 +102,8 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
     private static final int RAILGUN_SETTING_PVP = 1;
     private static final int RAILGUN_SETTING_SOUND = 2;
     private static final int RAILGUN_SETTING_CHAIN_DAMAGE = 3;
-    private static final int RAILGUN_SETTING_EXECUTION_MODE = 4;
-    private static final int RAILGUN_SETTING_IMPACT_TARGETING = 5;
+    private static final int RAILGUN_SETTING_CHARGED_SPLASH = 4;
+    private static final int RAILGUN_SETTING_EXECUTION_MODE = 5;
 
     private static final int CHECKBOX_WIDTH = 22;
     private static final int CHECKBOX_HEIGHT = 12;
@@ -356,7 +356,7 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
                 break;
             }
             Component label = railgunSettingLabel(settingIndex);
-            if (settingIndex <= RAILGUN_SETTING_CHAIN_DAMAGE) {
+            if (settingIndex <= RAILGUN_SETTING_CHARGED_SPLASH) {
                 drawSettingRow(gfx, x, rowY, label, railgunSettingEnabled(settingIndex));
             } else {
                 gfx.drawString(font, label, x, rowY + 1, TEXT_ON_DARK_BG, false);
@@ -380,10 +380,10 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
             case RAILGUN_SETTING_PVP -> Component.translatable("ae2lt.device_hub.setting.pvp");
             case RAILGUN_SETTING_SOUND -> Component.translatable("ae2lt.device_hub.setting.sound");
             case RAILGUN_SETTING_CHAIN_DAMAGE -> Component.translatable("ae2lt.device_hub.setting.chain_damage");
+            case RAILGUN_SETTING_CHARGED_SPLASH ->
+                Component.translatable("ae2lt.railgun.config.charged_splash");
             case RAILGUN_SETTING_EXECUTION_MODE ->
                 Component.translatable("ae2lt.railgun.config.overload_execution_mode");
-            case RAILGUN_SETTING_IMPACT_TARGETING ->
-                Component.translatable("ae2lt.railgun.config.overload_impact_targeting");
             default -> Component.empty();
         };
     }
@@ -394,6 +394,7 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
             case RAILGUN_SETTING_PVP -> menu.isPvp();
             case RAILGUN_SETTING_SOUND -> menu.isSoundEnabled();
             case RAILGUN_SETTING_CHAIN_DAMAGE -> menu.isChainDamage();
+            case RAILGUN_SETTING_CHARGED_SPLASH -> menu.isChargedSplash();
             default -> false;
         };
     }
@@ -403,9 +404,6 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
             case RAILGUN_SETTING_EXECUTION_MODE -> menu.isForceOverloadRemoval()
                     ? "ae2lt.railgun.config.overload_execution_mode.forced"
                     : "ae2lt.railgun.config.overload_execution_mode.normal";
-            case RAILGUN_SETTING_IMPACT_TARGETING -> menu.isOverloadImpactTargeting()
-                    ? "ae2lt.railgun.config.overload_impact_targeting.enabled"
-                    : "ae2lt.railgun.config.overload_impact_targeting.disabled";
             default -> "";
         };
         return key.isEmpty() ? "" : Component.translatable(key).getString();
@@ -576,7 +574,7 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
             if (settingIndex >= RAILGUN_SETTING_COUNT) {
                 break;
             }
-            boolean checkboxSetting = settingIndex <= RAILGUN_SETTING_CHAIN_DAMAGE;
+            boolean checkboxSetting = settingIndex <= RAILGUN_SETTING_CHARGED_SPLASH;
             int controlX = checkboxSetting ? checkboxX : buttonX;
             int controlWidth = checkboxSetting ? CHECKBOX_WIDTH : CONFIG_BUTTON_W;
             if (mouseX >= controlX
@@ -589,10 +587,10 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
                     case RAILGUN_SETTING_PVP -> DeviceHubActionPacket.ACTION_TOGGLE_PVP;
                     case RAILGUN_SETTING_SOUND -> DeviceHubActionPacket.ACTION_TOGGLE_SOUND;
                     case RAILGUN_SETTING_CHAIN_DAMAGE -> DeviceHubActionPacket.ACTION_TOGGLE_CHAIN_DAMAGE;
+                    case RAILGUN_SETTING_CHARGED_SPLASH ->
+                        DeviceHubActionPacket.ACTION_TOGGLE_CHARGED_SPLASH;
                     case RAILGUN_SETTING_EXECUTION_MODE ->
                         DeviceHubActionPacket.ACTION_TOGGLE_OVERLOAD_REMOVAL_MODE;
-                    case RAILGUN_SETTING_IMPACT_TARGETING ->
-                        DeviceHubActionPacket.ACTION_TOGGLE_IMPACT_TARGETING;
                     default -> -1;
                 };
                 if (action >= 0) {

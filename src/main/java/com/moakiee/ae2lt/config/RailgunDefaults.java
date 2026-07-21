@@ -73,9 +73,8 @@ public final class RailgunDefaults {
     public static final double IMPACT_DAMAGE_RATIO_TIER1 = 0.45D;
     public static final double IMPACT_DAMAGE_RATIO_TIER2 = 0.55D;
     public static final double IMPACT_DAMAGE_RATIO_TIER3 = 0.65D;
-    /** Half-extent of the 7x7x7 block-impact box used to recover a primary target. */
-    public static final double IMPACT_PRIMARY_SEARCH_HALF_EXTENT = 3.5D;
-
+    /** Local-area overload execution reaches half as far as charged splash damage. */
+    public static final double OVERLOAD_EXECUTION_SPLASH_RADIUS_RATIO = 0.5D;
     // ── Charge timing (ticks) ─────────────────────────────────────────────
     public static final int CHARGE_TICKS_TIER1 = 10;  // 0.5s
     public static final int CHARGE_TICKS_TIER2 = 24;  // 1.2s

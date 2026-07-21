@@ -41,6 +41,8 @@ class RailgunTargetRulesContractTest {
         assertTrue(execution.contains("RailgunTargetRules.canAffect(player, target, allowPlayerTargets)"));
         assertTrue(beam.contains("RailgunTargetRules.canAffect(player, e, pvp)"));
         assertTrue(chain.contains("RailgunTargetRules.canAffect(null, entity, pvp)"));
+        assertFalse(beam.contains("e -> e instanceof LivingEntity"));
+        assertFalse(chain.contains("!entity.isInvulnerable()"));
     }
 
     @Test
@@ -65,24 +67,31 @@ class RailgunTargetRulesContractTest {
     }
 
     @Test
-    void blockImpactPromotesTheNearestLegalEntityToPrimary() throws Exception {
+    void chargedSplashReplacesBlockImpactPrimaryRecovery() throws Exception {
         String fire = source("RailgunFireService.java");
         String defaults = Files.readString(Path.of(
                 "src/main/java/com/moakiee/ae2lt/config/RailgunDefaults.java"));
-        String recovery = fire.substring(
-                fire.indexOf("private static Entity findImpactPrimary("),
-                fire.indexOf("private static void broadcastFire("));
 
-        assertTrue(fire.contains("&& directTarget == null"));
-        assertTrue(fire.contains("&& bhr.getType() == HitResult.Type.BLOCK"));
-        assertTrue(fire.contains("directTarget = findImpactPrimary("));
-        assertTrue(fire.contains("tier == RailgunChargeTier.EHV3"));
-        assertTrue(fire.contains("mods.hasOverloadExecution()"));
-        assertTrue(fire.contains("settings.overloadImpactTargeting()"));
-        assertTrue(fire.contains("if (directTarget instanceof LivingEntity primary)"));
-        assertTrue(recovery.contains("RailgunTargetRules.canAffect(player, entity, allowPlayerTargets)"));
-        assertTrue(recovery.contains("candidate.getBoundingBox().getCenter().distanceToSqr(impact)"));
-        assertTrue(defaults.contains("IMPACT_PRIMARY_SEARCH_HALF_EXTENT = 3.5D"));
+        assertTrue(fire.contains("settings.chargedSplash() ? switch (tier)"));
+        assertTrue(fire.contains("impactRadius * RailgunDefaults.OVERLOAD_EXECUTION_SPLASH_RADIUS_RATIO"));
+        assertTrue(fire.contains("target.getId() == directTargetId"));
+        assertFalse(fire.contains("findImpactPrimary("));
+        assertFalse(defaults.contains("IMPACT_PRIMARY_SEARCH_HALF_EXTENT"));
+        assertTrue(defaults.contains("OVERLOAD_EXECUTION_SPLASH_RADIUS_RATIO = 0.5D"));
+    }
+
+    @Test
+    void ordinaryBeamCanStartChainDamageFromAnEmptyEndpoint() throws Exception {
+        String fire = source("RailgunFireService.java");
+        String beam = source("RailgunBeamService.java");
+        String chain = source("RailgunChainResolver.java");
+
+        assertTrue(beam.contains("chainOrigin = trace.endPoint()"));
+        assertTrue(beam.contains("resolveChainFromPoint(level, player, chainOrigin, ctx)"));
+        assertTrue(beam.contains("broadcastBeamChainFx(level, player, chainOrigin"));
+        assertFalse(fire.contains("resolveChainFromPoint("));
+        assertTrue(chain.contains("public static List<Hit> resolveChainFromPoint("));
+        assertTrue(chain.contains("walkBranch(level, source, seed, ctx, visited, start)"));
     }
 
     private static String source(String name) throws Exception {

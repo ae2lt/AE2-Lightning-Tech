@@ -17,10 +17,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
-import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 
 import appeng.api.config.Actionable;
@@ -149,21 +146,12 @@ public final class RailgunFireService {
                 1.0D,
                 0.3F,
                 e -> RailgunTargetRules.canAffect(player, e, allowPlayerTargets));
-        BlockHitResult bhr = raycast.blockHit();
         Vec3 endBlock = raycast.blockEnd();
         EntityHitResult ehr = raycast.entityHit();
 
         DamageContext ctx = DamageContext.buildCharged(player, tier, mods, level, allowPlayerTargets);
         Vec3 firstHitPos = ehr != null ? ehr.getLocation() : endBlock;
         Entity directTarget = ehr != null ? ehr.getEntity() : null;
-        boolean recoverImpactPrimary = tier == RailgunChargeTier.EHV3
-                && mods.hasOverloadExecution()
-                && settings.overloadImpactTargeting();
-        if (recoverImpactPrimary
-                && directTarget == null
-                && bhr.getType() == HitResult.Type.BLOCK) {
-            directTarget = findImpactPrimary(level, player, firstHitPos, allowPlayerTargets);
-        }
         List<RailgunChainResolver.Hit> hits = new ArrayList<>();
         int primaryId = -1;
         int chainTuningCount = countChainTuning(mods);
@@ -191,12 +179,12 @@ public final class RailgunFireService {
         }
         // Impact splash AOE — fires whether or not we hit a target directly. Skips primary
         // (so direct-hit targets don't get double-dipped) and uses pulse-flag semantics.
-        double impactRadius = switch (tier) {
+        double impactRadius = settings.chargedSplash() ? switch (tier) {
             case EHV1 -> RailgunDefaults.IMPACT_RADIUS_TIER1;
             case EHV2 -> RailgunDefaults.IMPACT_RADIUS_TIER2;
             case EHV3 -> RailgunDefaults.IMPACT_RADIUS_TIER3;
             default -> 0.0D;
-        };
+        } : 0.0D;
         double impactRatio = switch (tier) {
             case EHV1 -> RailgunDefaults.IMPACT_DAMAGE_RATIO_TIER1;
             case EHV2 -> RailgunDefaults.IMPACT_DAMAGE_RATIO_TIER2;
@@ -221,7 +209,17 @@ public final class RailgunFireService {
                     level, player, splashAnchor, ctx, alreadyHit, firstHitPos));
         }
         if (!hits.isEmpty()) {
-            applyAll(level, player, hits, ctx, stack, tier);
+            applyAll(
+                    level,
+                    player,
+                    hits,
+                    ctx,
+                    stack,
+                    tier,
+                    new ExecutionScope(
+                            firstHitPos,
+                            impactRadius * RailgunDefaults.OVERLOAD_EXECUTION_SPLASH_RADIUS_RATIO,
+                            primaryId));
         }
         if (directTarget != null && !(directTarget instanceof LivingEntity)) {
             applyDirectNonLivingHit(level, player, directTarget, ctx.firstDamage(), stack, tier,
@@ -246,7 +244,16 @@ public final class RailgunFireService {
         RailgunRecoilService.apply(player, tier);
 
         // 6. Broadcast client FX
-        broadcastFire(level, player, from, firstHitPos, tier, hits, effectivePulseRadius, settings.soundEnabled());
+        broadcastFire(
+                level,
+                player,
+                from,
+                firstHitPos,
+                tier,
+                hits,
+                effectivePulseRadius,
+                impactRadius,
+                settings.soundEnabled());
     }
 
     public static void applyAll(ServerLevel level, ServerPlayer player, List<RailgunChainResolver.Hit> hits, DamageContext ctx) {
@@ -255,6 +262,17 @@ public final class RailgunFireService {
 
     public static void applyAll(ServerLevel level, ServerPlayer player, List<RailgunChainResolver.Hit> hits,
                                 DamageContext ctx, ItemStack railgunStack, RailgunChargeTier tier) {
+        applyAll(level, player, hits, ctx, railgunStack, tier, ExecutionScope.NONE);
+    }
+
+    private static void applyAll(
+            ServerLevel level,
+            ServerPlayer player,
+            List<RailgunChainResolver.Hit> hits,
+            DamageContext ctx,
+            ItemStack railgunStack,
+            RailgunChargeTier tier,
+            ExecutionScope executionScope) {
         if (hits.isEmpty()) return;
         Holder<net.minecraft.world.damagesource.DamageType> damageHolder =
                 ModDamageTypes.electromagneticHolder(level);
@@ -284,7 +302,9 @@ public final class RailgunFireService {
             // Overload Execution belongs to the shot's direct/local impact set. Chain
             // propagation keeps its normal damage but must never carry execution onward.
             // The service itself re-checks the module + master switch.
-            if (overloadEligible && !hit.chainPropagation()) {
+            if (overloadEligible
+                    && !hit.chainPropagation()
+                    && executionScope.includes(target)) {
                 OverloadExecutionService.onHit(level, player, railgunStack, target, finalDamage);
             }
         }
@@ -315,41 +335,10 @@ public final class RailgunFireService {
         }
     }
 
-    /**
-     * When terrain ends the ray before it can directly select an entity, promotes the
-     * closest legal entity in a 7x7x7 box around the impact to the primary target. The
-     * caller retains the original block impact point for splash, terrain and visuals.
-     */
-    @Nullable
-    private static Entity findImpactPrimary(
-            ServerLevel level,
-            ServerPlayer player,
-            Vec3 impact,
-            boolean allowPlayerTargets) {
-        double halfExtent = RailgunDefaults.IMPACT_PRIMARY_SEARCH_HALF_EXTENT;
-        AABB bounds = new AABB(impact, impact).inflate(halfExtent);
-        Entity closest = null;
-        double closestDistance = Double.MAX_VALUE;
-
-        for (Entity candidate : level.getEntities(
-                player,
-                bounds,
-                entity -> RailgunTargetRules.canAffect(player, entity, allowPlayerTargets))) {
-            double distance = candidate.getBoundingBox().getCenter().distanceToSqr(impact);
-            if (distance < closestDistance
-                    || (distance == closestDistance
-                    && closest != null
-                    && candidate.getId() < closest.getId())) {
-                closest = candidate;
-                closestDistance = distance;
-            }
-        }
-        return closest;
-    }
-
     private static void broadcastFire(ServerLevel level, ServerPlayer player, Vec3 from, Vec3 firstHit,
                                       RailgunChargeTier tier, List<RailgunChainResolver.Hit> hits,
-                                      double effectivePulseRadius, boolean soundEnabled) {
+                                      double effectivePulseRadius, double impactRadius,
+                                      boolean soundEnabled) {
         List<Vec3> chainPath = new ArrayList<>();
         Vec3 prev = firstHit;
         for (var h : hits) {
@@ -366,18 +355,26 @@ public final class RailgunFireService {
             prev = cur;
         }
         // Total radius for shockwave: impact splash + (max-tier) EMP pulse, picking the bigger.
-        double impactR = switch (tier) {
-            case EHV1 -> RailgunDefaults.IMPACT_RADIUS_TIER1;
-            case EHV2 -> RailgunDefaults.IMPACT_RADIUS_TIER2;
-            case EHV3 -> RailgunDefaults.IMPACT_RADIUS_TIER3;
-            default -> 0.0D;
-        };
+        double impactR = impactRadius;
         if (tier.isMax()) {
             impactR = Math.max(impactR, effectivePulseRadius);
         }
         var pkt = new RailgunFirePacket(
                 player.getUUID(), from, firstHit, chainPath, tier.ordinal(), tier.isMax(), soundEnabled, (float) impactR);
         NetworkHandler.sendToTrackingChunk(level, player.chunkPosition(), pkt);
+    }
+
+    /** Direct hits always qualify; local-area execution is bounded to half the splash radius. */
+    private record ExecutionScope(Vec3 center, double radius, int directTargetId) {
+        private static final ExecutionScope NONE = new ExecutionScope(Vec3.ZERO, 0.0D, -1);
+
+        private boolean includes(LivingEntity target) {
+            if (target.getId() == directTargetId) {
+                return true;
+            }
+            return radius > 0.0D
+                    && target.position().distanceToSqr(center) <= radius * radius;
+        }
     }
 
     /**

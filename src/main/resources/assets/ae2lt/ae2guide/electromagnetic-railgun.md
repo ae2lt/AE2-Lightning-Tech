@@ -80,9 +80,10 @@ Open the Overload Device Hub with the default key G while holding the railgun.
 * **Terrain Destruction** controls whether charged shots break terrain. It is off by default and can still be disabled by server config
 * **PVP** allows the railgun to damage other players when enabled. When disabled, players are not targeted or damaged
 * **Sound** controls the railgun's local sound effects
-* **Chain Damage** enables chain jumps for both charged shots and the continuous beam without disabling splash, penetration or EMP damage
+* **Chain Damage** enables chain jumps for both charged shots and the continuous beam; the ordinary beam can start a chain at its endpoint even without a direct entity hit
 * **Execution Method** switches Overload Execution between normal death and forced removal
-* **Impact Targeting** promotes the nearest valid entity in a 7x7x7 box around a blocked EHV3 impact to the primary target; it can be disabled
+* **Charged Splash** controls landing-point area damage for every charged tier; disabling it keeps direct hits and chains from directly hit targets
+* **Overload Execution range** always includes the direct target, while local-area execution is limited to half of the active charged-splash radius; chain propagation never carries execution
 * The hub also shows module counts, FE storage and bound network status
 
 ## Combat Notes

@@ -15,7 +15,7 @@ public record RailgunSettings(
         boolean pvp,
         boolean soundEnabled,
         boolean forceOverloadRemoval,
-        boolean overloadImpactTargeting,
+        boolean chargedSplash,
         boolean chainDamage) {
 
     public static final RailgunSettings DEFAULT = new RailgunSettings(false, false, true, false, true, true);
@@ -26,8 +26,8 @@ public record RailgunSettings(
             Codec.BOOL.optionalFieldOf("sound", true).forGetter(RailgunSettings::soundEnabled),
             Codec.BOOL.optionalFieldOf("force_overload_removal", false)
                     .forGetter(RailgunSettings::forceOverloadRemoval),
-            Codec.BOOL.optionalFieldOf("overload_impact_targeting", true)
-                    .forGetter(RailgunSettings::overloadImpactTargeting),
+            Codec.BOOL.optionalFieldOf("charged_splash", true)
+                    .forGetter(RailgunSettings::chargedSplash),
             Codec.BOOL.optionalFieldOf("chain_damage", true).forGetter(RailgunSettings::chainDamage))
             .apply(b, RailgunSettings::new));
 
@@ -36,7 +36,7 @@ public record RailgunSettings(
             ByteBufCodecs.BOOL, RailgunSettings::pvp,
             ByteBufCodecs.BOOL, RailgunSettings::soundEnabled,
             ByteBufCodecs.BOOL, RailgunSettings::forceOverloadRemoval,
-            ByteBufCodecs.BOOL, RailgunSettings::overloadImpactTargeting,
+            ByteBufCodecs.BOOL, RailgunSettings::chargedSplash,
             ByteBufCodecs.BOOL, RailgunSettings::chainDamage,
             RailgunSettings::new);
 
@@ -48,29 +48,29 @@ public record RailgunSettings(
 
     public RailgunSettings withTerrain(boolean v) {
         return new RailgunSettings(
-                v, this.pvp, this.soundEnabled, this.forceOverloadRemoval, this.overloadImpactTargeting,
+                v, this.pvp, this.soundEnabled, this.forceOverloadRemoval, this.chargedSplash,
                 this.chainDamage);
     }
 
     public RailgunSettings withPvp(boolean v) {
         return new RailgunSettings(
                 this.terrainDestruction, v, this.soundEnabled, this.forceOverloadRemoval,
-                this.overloadImpactTargeting, this.chainDamage);
+                this.chargedSplash, this.chainDamage);
     }
 
     public RailgunSettings withSound(boolean v) {
         return new RailgunSettings(
-                this.terrainDestruction, this.pvp, v, this.forceOverloadRemoval, this.overloadImpactTargeting,
+                this.terrainDestruction, this.pvp, v, this.forceOverloadRemoval, this.chargedSplash,
                 this.chainDamage);
     }
 
     public RailgunSettings withForceOverloadRemoval(boolean v) {
         return new RailgunSettings(
-                this.terrainDestruction, this.pvp, this.soundEnabled, v, this.overloadImpactTargeting,
+                this.terrainDestruction, this.pvp, this.soundEnabled, v, this.chargedSplash,
                 this.chainDamage);
     }
 
-    public RailgunSettings withOverloadImpactTargeting(boolean v) {
+    public RailgunSettings withChargedSplash(boolean v) {
         return new RailgunSettings(
                 this.terrainDestruction, this.pvp, this.soundEnabled, this.forceOverloadRemoval, v,
                 this.chainDamage);
@@ -79,7 +79,7 @@ public record RailgunSettings(
     public RailgunSettings withChainDamage(boolean v) {
         return new RailgunSettings(
                 this.terrainDestruction, this.pvp, this.soundEnabled, this.forceOverloadRemoval,
-                this.overloadImpactTargeting, v);
+                this.chargedSplash, v);
     }
 
     /** Player targeting requires both this railgun's opt-in and server permission. */

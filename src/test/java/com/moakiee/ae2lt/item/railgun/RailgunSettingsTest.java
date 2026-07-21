@@ -32,7 +32,16 @@ class RailgunSettingsTest {
 
         RailgunSettings disabled = RailgunSettings.DEFAULT.withChainDamage(false);
         assertFalse(disabled.chainDamage());
-        assertTrue(disabled.overloadImpactTargeting());
+        assertTrue(disabled.chargedSplash());
+        assertFalse(disabled.forceOverloadRemoval());
+    }
+
+    @Test
+    void chargedSplashDefaultsOnAndCanBeSwitchedIndependently() {
+        RailgunSettings disabled = RailgunSettings.DEFAULT.withChargedSplash(false);
+
+        assertFalse(disabled.chargedSplash());
+        assertTrue(disabled.chainDamage());
         assertFalse(disabled.forceOverloadRemoval());
     }
 }

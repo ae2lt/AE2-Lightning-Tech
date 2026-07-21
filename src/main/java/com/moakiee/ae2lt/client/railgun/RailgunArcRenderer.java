@@ -86,6 +86,19 @@ public final class RailgunArcRenderer {
         spawnPlasma(from, to, segments, spread, lifetime);
     }
 
+    /** Ordinary-beam chain arc using the High Voltage cyan-white palette. */
+    public static void spawnHighVoltageChain(Vec3 from, Vec3 to, int lifetime) {
+        Vec3 dir = to.subtract(from);
+        double len = dir.length();
+        if (len < 1.0E-3) return;
+        int segments = Math.max(6, Math.min(28, (int) Math.round(len * 1.5D)));
+        float spread = (float) Math.min(0.55D, 0.10D + len * 0.02D);
+        spawn(from, to, segments, spread, lifetime,
+                0.95F, 1.00F, 1.00F,   // hot cyan-white HV core
+                0.35F, 0.78F, 1.00F,   // blue-cyan HV glow
+                0.05F, 0.16F);
+    }
+
     /** Short crackling arc radiating from an explosion impact (warmer color). */
     public static void spawnImpactSpark(Vec3 from, Vec3 to, int lifetime) {
         Vec3 dir = to.subtract(from);
