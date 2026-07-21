@@ -122,7 +122,10 @@ public final class UnifiedCraftingComputeCalculator {
             throw new IllegalArgumentException("A crafting matrix cannot use storage units");
         }
         if (tier.multidimensional()
-                && (units.dispatchUnits() > 0 || units.amplifierUnits() > 0 || units.storageUnits() > 0)) {
+                && (units.dispatchUnits() > 0
+                        || units.amplifierUnits() > 0
+                        || units.storageUnits() > 0
+                        || units.coolingUnits() > 0)) {
             throw new IllegalArgumentException("Multidimensional structures use only their main core budget");
         }
     }

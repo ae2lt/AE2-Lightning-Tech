@@ -23,7 +23,7 @@ import net.minecraft.world.level.block.state.BlockState;
 public final class MultiblockStructureRecipes {
     private static final BlockPos MATRIX_DEFAULT_PATTERN = new BlockPos(1, 1, 1);
     private static final BlockPos MATRIX_DEFAULT_PORT = new BlockPos(6, 5, 3);
-    private static final int TIANSHU_DEFAULT_STORAGE_CORES = 16;
+    private static final int TIANSHU_DEFAULT_STORAGE_UNITS = 16;
     private static final BlockPos TIANSHU_DEFAULT_PATTERN_STORAGE = new BlockPos(2, 6, 2);
     private static final BlockPos TIANSHU_DEFAULT_SEED_STORAGE = new BlockPos(4, 6, 2);
 
@@ -45,14 +45,13 @@ public final class MultiblockStructureRecipes {
                 ModBlocks.MATTER_WARPING_MATRIX_QUANTUM_MAIN_CORE.get(),
                 ModBlocks.MATTER_WARPING_MATRIX_OVERLOAD_MAIN_CORE.get(),
                 ModBlocks.MATTER_WARPING_MATRIX_CREATIVE_MAIN_CORE.get());
-        List<Block> subCores = List.of(
-                ModBlocks.MATTER_WARPING_MATRIX_BLANK_SUB_CORE.get(),
-                ModBlocks.MATTER_WARPING_MATRIX_THREAD_SUB_CORE_T1.get(),
-                ModBlocks.MATTER_WARPING_MATRIX_THREAD_SUB_CORE_T2.get(),
-                ModBlocks.MATTER_WARPING_MATRIX_MULTIPLIER_SUB_CORE_T1.get(),
-                ModBlocks.MATTER_WARPING_MATRIX_MULTIPLIER_SUB_CORE_T2.get(),
-                ModBlocks.MATTER_WARPING_MATRIX_COOLING_SUB_CORE_T1.get(),
-                ModBlocks.MATTER_WARPING_MATRIX_COOLING_SUB_CORE_T2.get());
+        List<Block> peripheralUnits = List.of(
+                ModBlocks.MATTER_WARPING_MATRIX_BLANK_UNIT.get(),
+                ModBlocks.MATTER_WARPING_MATRIX_THREAD_UNIT_T1.get(),
+                ModBlocks.MATTER_WARPING_MATRIX_THREAD_UNIT_T2.get(),
+                ModBlocks.AMPLIFIER_SUPERCOMPUTING_UNIT.get(),
+                ModBlocks.MATTER_WARPING_MATRIX_THERMAL_CONTROL_UNIT_T1.get(),
+                ModBlocks.MATTER_WARPING_MATRIX_THERMAL_CONTROL_UNIT_T2.get());
 
         Component casingRole = role("casing");
         Component frameRole = role("constraint_frame");
@@ -61,13 +60,13 @@ public final class MultiblockStructureRecipes {
         Component portRole = role("port_candidate");
         Component patternRole = role("pattern_bay");
         Component mainCoreRole = role("main_core");
-        Component subCoreRole = role("sub_core");
+        Component peripheralUnitRole = role("peripheral_unit_slot");
 
         Component portRule = rule("matrix_port");
         Component patternRule = rule("matrix_pattern");
         Component mainCoreRule = rule("matrix_main_core");
-        Component subCoreRule = rule("matrix_sub_core");
-        Component multiplierRule = rule("matrix_multiplier");
+        Component peripheralUnitRule = rule("matrix_peripheral_unit");
+        Component amplifierRule = rule("matrix_amplifier");
 
         var cells = new ArrayList<MultiblockStructureRecipe.Cell>();
         for (var entry : MatrixMultiblockTemplate.entries()) {
@@ -119,10 +118,10 @@ public final class MultiblockStructureRecipes {
                     } else {
                         cells.add(cell(
                                 pos,
-                                subCores.getFirst(),
-                                subCoreRole,
-                                subCores,
-                                List.of(subCoreRule, multiplierRule),
+                                peripheralUnits.getFirst(),
+                                peripheralUnitRole,
+                                peripheralUnits,
+                                List.of(peripheralUnitRule, amplifierRule),
                                 false));
                     }
                 }
@@ -137,10 +136,10 @@ public final class MultiblockStructureRecipes {
                 material(port, portRule),
                 material(patternT1, patternRule),
                 material(mainCores.getFirst(), mainCoreRule),
-                material(subCores.getFirst(), subCoreRule));
+                material(peripheralUnits.getFirst(), peripheralUnitRule));
 
         return MultiblockStructureRecipe.create(
-                id("matter_warping_matrix"),
+                id("tianshu_matter_warping_matrix"),
                 Component.translatable("jei.ae2lt.multiblock.matrix"),
                 MatrixMultiblockTemplate.SIZE_X,
                 MatrixMultiblockTemplate.SIZE_Y,
@@ -175,7 +174,7 @@ public final class MultiblockStructureRecipes {
         Component controllerRole = role("controller");
         Component portRole = role("port_candidate");
         Component mainCoreRole = role("main_core");
-        Component peripheralRole = role("peripheral_core");
+        Component peripheralRole = role("peripheral_unit");
 
         Component portRule = rule("tianshu_port");
         Component coolingRule = rule("tianshu_cooling");
@@ -234,7 +233,7 @@ public final class MultiblockStructureRecipes {
                                         List.of(mainCoreRule),
                                         false));
                             } else {
-                                Block displayed = peripheralIndex < TIANSHU_DEFAULT_STORAGE_CORES ? storage : parallel;
+                                Block displayed = peripheralIndex < TIANSHU_DEFAULT_STORAGE_UNITS ? storage : parallel;
                                 peripheralIndex++;
                                 cells.add(cell(
                                         pos,

@@ -115,10 +115,10 @@ class TianshuAutoBuildPlanTest {
                     if (pos.equals(new BlockPos(3, 3, 3))) {
                         local.put(pos, TianshuMultiblockComponent.MAIN_BASELINE);
                     } else if (!dispatchInstalled) {
-                        local.put(pos, TianshuMultiblockComponent.PARALLEL_CORE);
+                        local.put(pos, TianshuMultiblockComponent.PARALLEL_UNIT);
                         dispatchInstalled = true;
                     } else {
-                        local.put(pos, TianshuMultiblockComponent.BLANK_CORE);
+                        local.put(pos, TianshuMultiblockComponent.BLANK_UNIT);
                     }
                 }
             }

@@ -5,12 +5,10 @@ public final class ArmorPhaseFlightRules {
     }
 
     public static boolean clientPhaseStateActive(
-            boolean serverActive,
-            boolean equipped,
-            boolean hasCore,
-            boolean moduleEnabled,
-            boolean configEnabled) {
-        return serverActive && configEnabled;
+            boolean serverModuleActive,
+            boolean playerFlying,
+            boolean serverPhaseModeEnabled) {
+        return serverModuleActive && playerFlying && serverPhaseModeEnabled;
     }
 
     public static boolean shouldApplyPseudoSpectatorState(

@@ -35,4 +35,49 @@ final class DeviceHubModuleConfigContractTest {
 
         assertTrue(menu.contains("selectedModuleIndex = status.selectedModuleIndex()"));
     }
+
+    @Test
+    void railgunGlobalSettingsOwnExecutionAndImpactSwitches() throws Exception {
+        String status = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/menu/hub/DeviceStatusModel.java"));
+        String menu = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/menu/hub/DeviceHubMenu.java"));
+        String screen = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/client/hub/DeviceHubScreen.java"));
+
+        assertTrue(status.contains("settings.forceOverloadRemoval()"));
+        assertTrue(status.contains("settings.overloadImpactTargeting()"));
+        assertTrue(menu.contains("s.withForceOverloadRemoval(!s.forceOverloadRemoval())"));
+        assertTrue(menu.contains("s.withOverloadImpactTargeting(!s.overloadImpactTargeting())"));
+        assertTrue(screen.contains("RAILGUN_SETTING_EXECUTION_MODE"));
+        assertTrue(screen.contains("RAILGUN_SETTING_IMPACT_TARGETING"));
+    }
+
+    @Test
+    void railgunChainDamageIsGlobalAndGatesBothFiringPaths() throws Exception {
+        String screen = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/client/hub/DeviceHubScreen.java"));
+        String fire = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/logic/railgun/RailgunFireService.java"));
+        String beam = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/logic/railgun/RailgunBeamService.java"));
+
+        assertTrue(screen.contains("RAILGUN_SETTING_CHAIN_DAMAGE"));
+        assertTrue(fire.contains("if (settings.chainDamage())"));
+        assertTrue(fire.contains("if (settings.chainDamage() && splashAnchor != null)"));
+        assertTrue(beam.contains("if (settings.chainDamage() && player.tickCount - s.lastChainTick >= chainThrottle)"));
+    }
+
+    @Test
+    void settingsReuseTheModuleListsLeftScrollbarImplementation() throws Exception {
+        String screen = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/client/hub/DeviceHubScreen.java"));
+        String configScrollbar = screen.substring(
+                screen.indexOf("private void renderConfigScrollBar("),
+                screen.indexOf("private void resetConfigScrollWhenSelectionChanges("));
+
+        assertTrue(screen.contains("private static final int CONFIG_ROW_X = MODULE_LIST_X"));
+        assertTrue(configScrollbar.contains("SCROLL_X"));
+        assertTrue(configScrollbar.contains("private void renderScrollBar("));
+    }
 }

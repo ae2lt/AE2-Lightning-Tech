@@ -19,9 +19,9 @@ public class TianshuSupercomputerControllerMenu extends AbstractContainerMenu {
     private final TianshuSupercomputerControllerBlockEntity host;
     private final DataSlot formed = DataSlot.standalone();
     private final DataSlot tier = DataSlot.standalone();
-    private final DataSlot capacityCores = DataSlot.standalone();
-    private final DataSlot parallelCores = DataSlot.standalone();
-    private final DataSlot amplifierCores = DataSlot.standalone();
+    private final DataSlot storageUnits = DataSlot.standalone();
+    private final DataSlot parallelUnits = DataSlot.standalone();
+    private final DataSlot amplifierUnits = DataSlot.standalone();
     private final DataSlot closedLoopPatternStorages = DataSlot.standalone();
     private final DataSlot closedLoopSeedStorages = DataSlot.standalone();
     private final DataSlot parallelism = DataSlot.standalone();
@@ -52,9 +52,9 @@ public class TianshuSupercomputerControllerMenu extends AbstractContainerMenu {
         this.host = null;
         this.formed.set(formed ? 1 : 0);
         this.tier.set(tier);
-        capacityCores.set(capacity);
-        parallelCores.set(parallel);
-        amplifierCores.set(amplifier);
+        storageUnits.set(capacity);
+        parallelUnits.set(parallel);
+        amplifierUnits.set(amplifier);
         closedLoopPatternStorages.set(patternStorages);
         closedLoopSeedStorages.set(seedStorages);
         this.parallelism.set(parallelism);
@@ -78,9 +78,9 @@ public class TianshuSupercomputerControllerMenu extends AbstractContainerMenu {
         buf.writeBlockPos(host.getBlockPos());
         buf.writeBoolean(host.isFormed());
         buf.writeVarInt(profile.mainCore() == null ? -1 : profile.mainCore().ordinal());
-        buf.writeVarInt(profile.capacityCoreCount());
-        buf.writeVarInt(profile.parallelCoreCount());
-        buf.writeVarInt(profile.amplifierCoreCount());
+        buf.writeVarInt(profile.storageUnitCount());
+        buf.writeVarInt(profile.parallelUnitCount());
+        buf.writeVarInt(profile.amplifierUnitCount());
         buf.writeVarInt(host.getFunctionProfile().closedLoopPatternStorageCount());
         buf.writeVarInt(host.getFunctionProfile().closedLoopSeedStorageCount());
         buf.writeLong(profile.storageBytes());
@@ -101,9 +101,9 @@ public class TianshuSupercomputerControllerMenu extends AbstractContainerMenu {
         var profile = host.getCoreProfile();
         formed.set(host.isFormed() ? 1 : 0);
         tier.set(profile.mainCore() == null ? -1 : profile.mainCore().ordinal());
-        capacityCores.set(profile.capacityCoreCount());
-        parallelCores.set(profile.parallelCoreCount());
-        amplifierCores.set(profile.amplifierCoreCount());
+        storageUnits.set(profile.storageUnitCount());
+        parallelUnits.set(profile.parallelUnitCount());
+        amplifierUnits.set(profile.amplifierUnitCount());
         closedLoopPatternStorages.set(host.getFunctionProfile().closedLoopPatternStorageCount());
         closedLoopSeedStorages.set(host.getFunctionProfile().closedLoopSeedStorageCount());
         parallelism.set(profile.parallelism());
@@ -115,8 +115,8 @@ public class TianshuSupercomputerControllerMenu extends AbstractContainerMenu {
     }
 
     private void addSlots() {
-        addDataSlot(formed); addDataSlot(tier); addDataSlot(capacityCores); addDataSlot(parallelCores);
-        addDataSlot(amplifierCores);
+        addDataSlot(formed); addDataSlot(tier); addDataSlot(storageUnits); addDataSlot(parallelUnits);
+        addDataSlot(amplifierUnits);
         addDataSlot(closedLoopPatternStorages); addDataSlot(closedLoopSeedStorages);
         addDataSlot(parallelism); addDataSlot(capped); addDataSlot(fastPlanning); addDataSlot(issue);
         for (var slot : storage) addDataSlot(slot);
@@ -138,9 +138,9 @@ public class TianshuSupercomputerControllerMenu extends AbstractContainerMenu {
         int value = tier.get();
         return value >= 0 && value < CpuMainCoreTier.values().length ? CpuMainCoreTier.values()[value] : null;
     }
-    public int getCapacityCores() { return capacityCores.get(); }
-    public int getParallelCores() { return parallelCores.get(); }
-    public int getAmplifierCores() { return amplifierCores.get(); }
+    public int getStorageUnits() { return storageUnits.get(); }
+    public int getParallelUnits() { return parallelUnits.get(); }
+    public int getAmplifierUnits() { return amplifierUnits.get(); }
     public int getClosedLoopPatternStorages() { return closedLoopPatternStorages.get(); }
     public int getClosedLoopSeedStorages() { return closedLoopSeedStorages.get(); }
     public int getSuccessfulDispatchesPerTick() { return parallelism.get(); }

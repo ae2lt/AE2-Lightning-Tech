@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "ATA",
+    "PNP",
+    "ATA"
+  ],
+  "key": {
+    "A": { "item": "minecraft:blue_ice" },
+    "T": { "item": "ae2lt:matter_warping_matrix_thermal_control_unit_t1" },
+    "P": { "item": "ae2lt:overload_processor" },
+    "N": { "item": "minecraft:nether_star" }
+  },
+  "result": {
+    "count": 1,
+    "id": "ae2lt:matter_warping_matrix_thermal_control_unit_t2"
+  }
+}

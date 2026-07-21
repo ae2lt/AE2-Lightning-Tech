@@ -270,7 +270,8 @@ public final class PhaseLockService {
                         anchor,
                         player.registryAccess(),
                         PhaseLockSubmodule.INSTANCE.id())
-                && CelestweaveArmorState.isSubmoduleEnabled(anchor, PhaseLockSubmodule.INSTANCE);
+                && CelestweaveArmorState.isSubmoduleEnabled(anchor, PhaseLockSubmodule.INSTANCE)
+                && PhaseLockSubmodule.isArmorLockEnabled(anchor);
     }
 
     private static void recoverInvalidVaultEntries(

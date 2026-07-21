@@ -20,6 +20,9 @@ public record DeviceHubSyncPacket(
         boolean terrainDestruction,
         boolean pvp,
         boolean soundEnabled,
+        boolean chainDamage,
+        boolean forceOverloadRemoval,
+        boolean overloadImpactTargeting,
         List<String> moduleNameKeys,
         List<Integer> moduleCounts,
         List<Boolean> moduleEnabled,
@@ -49,6 +52,9 @@ public record DeviceHubSyncPacket(
         boolean terrainDestruction = buf.readBoolean();
         boolean pvp = buf.readBoolean();
         boolean soundEnabled = buf.readBoolean();
+        boolean chainDamage = buf.readBoolean();
+        boolean forceOverloadRemoval = buf.readBoolean();
+        boolean overloadImpactTargeting = buf.readBoolean();
         int count = buf.readVarInt();
         List<String> nameKeys = new ArrayList<>(count);
         List<Integer> counts = new ArrayList<>(count);
@@ -78,6 +84,9 @@ public record DeviceHubSyncPacket(
                 terrainDestruction,
                 pvp,
                 soundEnabled,
+                chainDamage,
+                forceOverloadRemoval,
+                overloadImpactTargeting,
                 nameKeys,
                 counts,
                 enabled,
@@ -96,6 +105,9 @@ public record DeviceHubSyncPacket(
         buf.writeBoolean(terrainDestruction);
         buf.writeBoolean(pvp);
         buf.writeBoolean(soundEnabled);
+        buf.writeBoolean(chainDamage);
+        buf.writeBoolean(forceOverloadRemoval);
+        buf.writeBoolean(overloadImpactTargeting);
         int count = Math.min(Math.min(moduleNameKeys.size(), moduleCounts.size()), moduleEnabled.size());
         buf.writeVarInt(count);
         for (int i = 0; i < count; i++) {
@@ -127,6 +139,9 @@ public record DeviceHubSyncPacket(
                         pkt.terrainDestruction(),
                         pkt.pvp(),
                         pkt.soundEnabled(),
+                        pkt.chainDamage(),
+                        pkt.forceOverloadRemoval(),
+                        pkt.overloadImpactTargeting(),
                         pkt.moduleNameKeys(),
                         pkt.moduleCounts(),
                         pkt.moduleEnabled(),

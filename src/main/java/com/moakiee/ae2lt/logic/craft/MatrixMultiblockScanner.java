@@ -98,9 +98,9 @@ public final class MatrixMultiblockScanner {
 
         BlockPos portPos = null;
         int portCount = 0;
-        int multiplierCount = 0;
+        int amplifierUnitCount = 0;
         int dispatchCount = 0;
-        int nonBlankSubCoreCount = 0;
+        int nonBlankUnitCount = 0;
         boolean hasMainCoreAtCenter = false;
         MatrixMultiblockComponent mainCoreAtCenter = null;
         boolean hasMainCoreOutsideCenter = false;
@@ -143,16 +143,16 @@ public final class MatrixMultiblockScanner {
                 } else if (component.isMainCore()) {
                     hasMainCoreOutsideCenter = true;
                 }
-                if (component.isMultiplierSubCore()) {
-                    multiplierCount++;
+                if (component.isAmplifierUnit()) {
+                    amplifierUnitCount++;
                 }
                 if (!localPos.equals(MatrixMultiblockTemplate.CRAFTING_CENTER_LOCAL)) {
-                    if (component == MatrixMultiblockComponent.THREAD_SUB_CORE_T1
-                            || component == MatrixMultiblockComponent.THREAD_SUB_CORE_T2) {
+                    if (component == MatrixMultiblockComponent.THREAD_UNIT_T1
+                            || component == MatrixMultiblockComponent.THREAD_UNIT_T2) {
                         dispatchCount++;
                     }
-                    if (component != MatrixMultiblockComponent.BLANK_SUB_CORE) {
-                        nonBlankSubCoreCount++;
+                    if (component != MatrixMultiblockComponent.BLANK_UNIT) {
+                        nonBlankUnitCount++;
                     }
                 }
             }
@@ -183,19 +183,19 @@ public final class MatrixMultiblockScanner {
             addIssue(issues, MatrixMultiblockScanIssue.MAIN_CORE_OUTSIDE_CENTER);
         }
         if (mainCoreAtCenter != MatrixMultiblockComponent.CREATIVE_MAIN_CORE
-                && multiplierCount > MatrixCraftingProfile.MULTIPLIER_LIMIT) {
-            addIssue(issues, MatrixMultiblockScanIssue.MULTIPLIER_LIMIT_EXCEEDED);
+                && amplifierUnitCount > MatrixCraftingProfile.AMPLIFIER_LIMIT) {
+            addIssue(issues, MatrixMultiblockScanIssue.AMPLIFIER_LIMIT_EXCEEDED);
         }
         if (mainCoreAtCenter != null
                 && mainCoreAtCenter != MatrixMultiblockComponent.CREATIVE_MAIN_CORE
                 && dispatchCount == 0) {
             addIssue(issues, MatrixMultiblockScanIssue.MISSING_DISPATCH_UNIT);
         }
-        if (mainCoreAtCenter == MatrixMultiblockComponent.STABLE_MAIN_CORE && multiplierCount > 0) {
+        if (mainCoreAtCenter == MatrixMultiblockComponent.STABLE_MAIN_CORE && amplifierUnitCount > 0) {
             addIssue(issues, MatrixMultiblockScanIssue.AMPLIFIER_NOT_SUPPORTED);
         }
         if (mainCoreAtCenter == MatrixMultiblockComponent.CREATIVE_MAIN_CORE
-                && nonBlankSubCoreCount > 0) {
+                && nonBlankUnitCount > 0) {
             addIssue(issues, MatrixMultiblockScanIssue.MULTIDIMENSIONAL_UNIT_NOT_SUPPORTED);
         }
 
@@ -284,7 +284,7 @@ public final class MatrixMultiblockScanner {
         if (localPos.equals(MatrixMultiblockTemplate.CRAFTING_CENTER_LOCAL)) {
             return component.isMainCore();
         }
-        return component.isCraftingSubCore();
+        return component.isCraftingUnit();
     }
 
     private static MatrixMultiblockComponent normalize(MatrixMultiblockComponent component) {

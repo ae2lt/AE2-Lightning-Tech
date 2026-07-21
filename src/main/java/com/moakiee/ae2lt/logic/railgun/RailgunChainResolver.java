@@ -11,7 +11,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -27,11 +26,26 @@ public final class RailgunChainResolver {
      *                     for the splash-triggered chain so the arc visually starts from the
      *                     impact center rather than continuing from the primary chain's tail.
      */
-    public record Hit(LivingEntity target, double damage, boolean penetration, boolean pulse,
-                      @Nullable Vec3 chainStartAt) {
-        /** Convenience: standard 4-arg constructor with no chain-start override. */
+    public record Hit(
+            LivingEntity target,
+            double damage,
+            boolean penetration,
+            boolean pulse,
+            @Nullable Vec3 chainStartAt,
+            boolean chainPropagation) {
+        /** Direct, penetration or local-area hit with no chain-start override. */
         public Hit(LivingEntity target, double damage, boolean penetration, boolean pulse) {
-            this(target, damage, penetration, pulse, null);
+            this(target, damage, penetration, pulse, null, false);
+        }
+
+        /** Chain-propagated hit; the optional point only controls the first visual segment. */
+        public Hit(
+                LivingEntity target,
+                double damage,
+                boolean penetration,
+                boolean pulse,
+                @Nullable Vec3 chainStartAt) {
+            this(target, damage, penetration, pulse, chainStartAt, true);
         }
     }
 
@@ -311,12 +325,7 @@ public final class RailgunChainResolver {
     }
 
     private static boolean shouldTarget(LivingEntity entity, boolean pvp) {
-        if (!entity.isAlive()) return false;
-        if (entity.isInvulnerable()) return false;
-        if (entity instanceof Player p) {
-            return pvp && !p.isCreative() && !p.isSpectator();
-        }
-        // Mobs: include hostile/neutral/passive; design says all enemies inc. neutral.
-        return entity instanceof Mob || entity instanceof LivingEntity;
+        return !entity.isInvulnerable()
+                && RailgunTargetRules.canAffect(null, entity, pvp);
     }
 }

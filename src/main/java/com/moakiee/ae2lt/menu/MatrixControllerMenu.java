@@ -116,7 +116,7 @@ public class MatrixControllerMenu extends AbstractContainerMenu {
         buf.writeVarInt(profile.mode().ordinal());
         buf.writeVarInt(be.getPrimaryIssueOrdinal());
         buf.writeVarInt(profile.dispatchUnitCount());
-        buf.writeVarInt(profile.multiplierCount());
+        buf.writeVarInt(profile.amplifierUnitCount());
         buf.writeVarInt(profile.coolingUnitCount());
         buf.writeVarInt(scaleValue(profile.coolPower()));
         buf.writeVarInt(scaleHeat(snapshot.normalizedHeat()));
@@ -240,7 +240,7 @@ public class MatrixControllerMenu extends AbstractContainerMenu {
         modeSlot.set(profile.mode().ordinal());
         issueSlot.set(host.getPrimaryIssueOrdinal());
         dispatchUnitCountSlot.set(profile.dispatchUnitCount());
-        amplifierUnitCountSlot.set(profile.multiplierCount());
+        amplifierUnitCountSlot.set(profile.amplifierUnitCount());
         coolingUnitCountSlot.set(profile.coolingUnitCount());
         coolingPowerSlot.set(scaleValue(profile.coolPower()));
         heatSlot.set(scaleHeat(snapshot.normalizedHeat()));

@@ -12,7 +12,7 @@ import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
 public class MatrixFormedBlock extends MatrixMultiblockSimpleBlock {
-    public static final BooleanProperty FORMED = BooleanProperty.create("formed");
+    public static final BooleanProperty FORMED = MultiblockStateProperties.FORMED;
 
     public MatrixFormedBlock(Properties properties, MatrixMultiblockComponent component) {
         super(properties, component);
@@ -54,13 +54,12 @@ public class MatrixFormedBlock extends MatrixMultiblockSimpleBlock {
                     QUANTUM_MAIN_CORE,
                     OVERLOAD_MAIN_CORE,
                     CREATIVE_MAIN_CORE,
-                    BLANK_SUB_CORE,
-                    THREAD_SUB_CORE_T1,
-                    THREAD_SUB_CORE_T2,
-                    MULTIPLIER_SUB_CORE_T1,
-                    MULTIPLIER_SUB_CORE_T2,
-                    COOLING_SUB_CORE_T1,
-                    COOLING_SUB_CORE_T2 -> true;
+                    BLANK_UNIT,
+                    THREAD_UNIT_T1,
+                    THREAD_UNIT_T2,
+                    AMPLIFIER_UNIT,
+                    THERMAL_CONTROL_UNIT_T1,
+                    THERMAL_CONTROL_UNIT_T2 -> true;
             default -> false;
         };
     }

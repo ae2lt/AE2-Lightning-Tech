@@ -30,8 +30,12 @@ public record DeviceStatusModel(
         List<ModuleInfo> modules,
         int selectedModuleIndex,
         List<ModuleConfigInfo> moduleConfigs,
-        boolean terrainDestruction, boolean pvp, boolean soundEnabled
+        boolean terrainDestruction, boolean pvp, boolean soundEnabled,
+        boolean chainDamage, boolean forceOverloadRemoval, boolean overloadImpactTargeting
 ) {
+    public static final String RAILGUN_OVERLOAD_MODULE_KEY =
+            "ae2lt.device_hub.module.railgun.overload_execution";
+
     public record ModuleInfo(String nameKey, int count, boolean enabled) {
     }
 
@@ -39,7 +43,8 @@ public record DeviceStatusModel(
     }
 
     public static final DeviceStatusModel EMPTY = new DeviceStatusModel(
-            "", false, false, List.of(), -1, List.of(), false, false, false);
+            "", false, false, List.of(), -1, List.of(), false, false, false,
+            false, false, false);
 
     /** Build status snapshot from an armor stack worn by the player. */
     public static DeviceStatusModel fromArmorStack(ItemStack armor, ServerPlayer player) {
@@ -79,11 +84,20 @@ public record DeviceStatusModel(
         List<ModuleConfigInfo> moduleConfigs = moduleConfigs(armor, player, clampedModuleIndex);
 
         return new DeviceStatusModel(
-                name, snapshot.hasCore(), powered, modules, clampedModuleIndex, moduleConfigs, false, false, false);
+                name, snapshot.hasCore(), powered, modules, clampedModuleIndex, moduleConfigs, false, false, false,
+                false, false, false);
     }
 
     /** Build status snapshot from a railgun stack held by the player. */
     public static DeviceStatusModel fromRailgunStack(ItemStack railgun, ServerPlayer player) {
+        return fromRailgunStack(railgun, player, -1);
+    }
+
+    /** Build status snapshot from a railgun stack held by the player. */
+    public static DeviceStatusModel fromRailgunStack(
+            ItemStack railgun,
+            ServerPlayer player,
+            int selectedModuleIndex) {
         if (railgun == null || railgun.isEmpty()) {
             return EMPTY;
         }
@@ -117,17 +131,17 @@ public record DeviceStatusModel(
         }
         if (entries.hasOverloadExecution()) {
             modules.add(new ModuleInfo(
-                    "ae2lt.device_hub.module.railgun.overload_execution",
+                    RAILGUN_OVERLOAD_MODULE_KEY,
                     1,
                     true));
         }
 
         RailgunSettings settings = railgun.getOrDefault(ModDataComponents.RAILGUN_SETTINGS.get(), RailgunSettings.DEFAULT);
         boolean terrainAllowed = AE2LTCommonConfig.railgunTerrainDestructionEnabled();
-
         return new DeviceStatusModel(
                 name, hasStructuralCore, powered, modules, -1, List.of(),
-                terrainAllowed && settings.terrainDestruction(), settings.pvp(), settings.soundEnabled());
+                terrainAllowed && settings.terrainDestruction(), settings.pvp(), settings.soundEnabled(),
+                settings.chainDamage(), settings.forceOverloadRemoval(), settings.overloadImpactTargeting());
     }
 
     private static List<ModuleConfigInfo> moduleConfigs(ItemStack armor, ServerPlayer player, int selectedModuleIndex) {

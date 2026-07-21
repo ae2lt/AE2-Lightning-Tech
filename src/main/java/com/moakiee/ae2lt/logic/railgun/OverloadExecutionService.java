@@ -2,33 +2,32 @@ package com.moakiee.ae2lt.logic.railgun;
 
 import java.util.UUID;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.stats.Stats;
 import net.minecraft.world.damagesource.DamageSource;
-import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Pose;
-import net.minecraft.world.entity.boss.wither.WitherBoss;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.gameevent.GameEvent;
-import net.neoforged.neoforge.entity.PartEntity;
 
 import com.moakiee.ae2lt.config.AE2LTCommonConfig;
-import com.moakiee.ae2lt.config.RailgunDefaults;
 import com.moakiee.ae2lt.item.railgun.RailgunEnergyRules;
 import com.moakiee.ae2lt.item.railgun.RailgunModuleEntries;
 import com.moakiee.ae2lt.item.railgun.RailgunSettings;
 import com.moakiee.ae2lt.celestweave.CelestweaveArmorUndyingHandler;
 import com.moakiee.ae2lt.registry.ModDataComponents;
 import com.moakiee.ae2lt.registry.ModDamageTypes;
-import com.moakiee.ae2lt.registry.ModMobEffects;
 
 /**
  * Overload Execution — "I remember you" HP-record model.
@@ -57,7 +56,7 @@ import com.moakiee.ae2lt.registry.ModMobEffects;
  *           target.setHealth(finalHp)         // direct write, bypass i-frames
  *       record (uuid, finalHp, now)
  *   else:
- *       executeKill(target)                   // 5-layer force-die
+ *       execute(target, configuredMode)
  *       remove entry
  * </pre>
  *
@@ -66,11 +65,17 @@ import com.moakiee.ae2lt.registry.ModMobEffects;
  * removes; direct-write path purges if the target died from the shot). Other-source
  * deaths are left for the 60-second decay to wash out.
  *
- * <p>The forced-kill sequence below is unchanged — inspired by Avaritia's Infinity
- * Sword bypass strategy.
+ * <p>Execution has two user-selectable modes. Normal death completes the already-started
+ * damage flow with a lethal health write and the target's own
+ * {@link LivingEntity#die(DamageSource)}, then leaves removal entirely to its death tick.
+ * Forced removal runs the complete death, kill, discard and remove cleanup chain before
+ * a final removal fallback. It gives normal loot settlement the first opportunity but
+ * does not treat settlement success as an alternative to guaranteed removal.
+ * Neither path names or depends on a specific boss implementation.
  */
 public final class OverloadExecutionService {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger("ae2lt/OverloadExecution");
     private static final String TAG_TARGETS = "OverloadExecutionTargets";
     private static final String TAG_UUID = "uuid";
     private static final String TAG_RECORDED_HP = "recordedHp";
@@ -88,14 +93,14 @@ public final class OverloadExecutionService {
     public static void onHit(ServerLevel level, ServerPlayer player, ItemStack stack,
                              LivingEntity target, double damage) {
         if (!AE2LTCommonConfig.overloadExecutionEnabled()) return;
-        if (!target.isAlive()) return;
-        if (target instanceof Player tp && (tp.isCreative() || tp.isSpectator())) return;
+
+        RailgunSettings settings = stack.getOrDefault(
+                ModDataComponents.RAILGUN_SETTINGS.get(), RailgunSettings.DEFAULT);
+        boolean allowPlayerTargets = settings.allowsPlayerTargets(AE2LTCommonConfig.railgunDamagePlayers());
+        if (!RailgunTargetRules.canAffect(player, target, allowPlayerTargets)) return;
 
         RailgunModuleEntries mods = stack.getOrDefault(ModDataComponents.RAILGUN_MODULE_ENTRIES.get(), RailgunModuleEntries.EMPTY);
         if (!mods.hasOverloadExecution()) return;
-
-        RailgunSettings settings = stack.getOrDefault(ModDataComponents.RAILGUN_SETTINGS.get(), RailgunSettings.DEFAULT);
-        if (!settings.pvp() && target instanceof Player) return;
         int maxTracked = AE2LTCommonConfig.overloadExecutionMaxTracked();
         int decayWindow = AE2LTCommonConfig.overloadExecutionDecayWindowTicks();
         double decayPower = AE2LTCommonConfig.overloadExecutionDecayPower();
@@ -149,7 +154,7 @@ public final class OverloadExecutionService {
             if (idx >= 0) targets.remove(idx);
             saveTargets(stack, root, targets);
             DamageSource ds = new DamageSource(ModDamageTypes.electromagneticHolder(level), player, player);
-            execute(level, target, Math.max(damage, currentHp), ds, player);
+            execute(target, Math.max(damage, currentHp), ds, settings.forceOverloadRemoval());
             return;
         }
 
@@ -195,58 +200,194 @@ public final class OverloadExecutionService {
         saveTargets(stack, root, targets);
     }
 
-    // ── Execution Sequence (5-layer forced kill) ────────────────────────────
+    /**
+     * Forced-execution entry point for a directly hit, non-living projectile target.
+     * The ordinary damage callback has already run in {@link RailgunFireService}; this
+     * method only supplies the opt-in EHv3 removal fallback and never participates in
+     * chains, penetration or local-area propagation.
+     */
+    public static void onDirectNonLivingHit(
+            ServerLevel level,
+            ServerPlayer player,
+            ItemStack stack,
+            Entity target,
+            boolean allowPlayerTargets) {
+        if (!AE2LTCommonConfig.overloadExecutionEnabled()) return;
+        if (target instanceof LivingEntity) return;
+        if (!RailgunTargetRules.canAffect(player, target, allowPlayerTargets)) return;
 
-    private static void execute(ServerLevel level, LivingEntity target, double damage,
-                                DamageSource source, ServerPlayer player) {
-        // Boss pre-processing.
-        if (target instanceof net.minecraft.world.entity.boss.enderdragon.EnderDragon dragon) {
-            dragon.hurt(dragon.head, source, (float) damage);
-            if (!target.isAlive()) return;
-        } else if (target instanceof WitherBoss wither) {
-            wither.setInvulnerableTicks(0);
+        RailgunModuleEntries mods = stack.getOrDefault(
+                ModDataComponents.RAILGUN_MODULE_ENTRIES.get(), RailgunModuleEntries.EMPTY);
+        if (!mods.hasOverloadExecution()) return;
+
+        RailgunSettings settings = stack.getOrDefault(
+                ModDataComponents.RAILGUN_SETTINGS.get(), RailgunSettings.DEFAULT);
+        if (!settings.forceOverloadRemoval()) return;
+
+        long feCost = RailgunEnergyRules.overloadExecutionCostFe();
+        RailgunEnergyBuffer.refillFromNetwork(
+                stack,
+                player,
+                Math.max(0L, feCost - RailgunEnergyBuffer.read(stack)));
+        if (!RailgunEnergyBuffer.tryConsume(stack, player, feCost)) {
+            RailgunFireService.sendFail(player, "ae2lt.railgun.fail.no_fe");
+            return;
         }
 
-        // Layer 1: simulate massive player damage through vanilla pipeline.
-        target.invulnerableTime = 0;
-        target.hurt(source, (float) damage);
-        if (CelestweaveArmorUndyingHandler.wasProtectedThisTick(target)) return;
-        if (!target.isAlive()) return;
+        forceRemoveNonLiving(target);
+    }
 
-        // Layer 2: directHurt — bypasses armor, enchantments, potions, events.
-        directHurt(target, source, (float) damage);
-        if (CelestweaveArmorUndyingHandler.wasProtectedThisTick(target)) return;
-        if (!target.isAlive()) return;
+    // ── Execution modes ─────────────────────────────────────────────────────
 
-        // Layer 3: kill().
-        target.kill();
-        if (CelestweaveArmorUndyingHandler.wasProtectedThisTick(target)) return;
-        if (!target.isAlive()) return;
+    private static void execute(
+            LivingEntity target,
+            double damage,
+            DamageSource source,
+            boolean forceRemoval) {
+        establishKillCredit(target, source);
 
-        // Layer 4: setHealth(0).
-        target.setHealth(0.0F);
-        if (CelestweaveArmorUndyingHandler.wasProtectedThisTick(target)) return;
-        if (!target.isAlive()) return;
-
-        // Layer 5: forceDie() — directly set dead = true.
-        forceDie(target, source);
-
-        if (!target.isAlive()) {
-            player.killedEntity(level, target);
+        // Removing a ServerPlayer corrupts the normal respawn lifecycle. The force
+        // switch therefore remains a mob-removal mode; player targets always use the
+        // normal death route and retain the vanilla death packet/respawn flow.
+        if (forceRemoval && !(target instanceof ServerPlayer)) {
+            forceRemove(target, source, (float) damage);
+        } else {
+            completeNormalDeath(target, source, (float) damage);
         }
     }
 
-    /** Bypasses the entire vanilla damage pipeline. Inspired by Avaritia InfinitySwordItem.hurt(). */
-    private static boolean directHurt(LivingEntity victim, DamageSource source, float amount) {
-        if (victim.level().isClientSide || victim.isDeadOrDying()) return false;
+    /**
+     * Runs a robust normal death. Damage interception is skipped, but the entity's
+     * dynamic {@code die} override is retained so dungeon cleanup, advancements and
+     * other entity-owned completion logic run exactly once.
+     */
+    private static void completeNormalDeath(LivingEntity target, DamageSource source, float damage) {
+        int playerDeathsBefore = deathCount(target);
+        prepareLethalState(target, source, damage);
 
-        if (victim.isMultipartEntity()) {
-            for (Entity part : victim.getParts()) {
-                if (part instanceof PartEntity<?> pe && pe.getParent() == victim) {
-                    part.hurt(source, amount);
-                }
-            }
+        try {
+            target.die(source);
+        } catch (RuntimeException | LinkageError error) {
+            LOGGER.warn("Target death callback failed for {}; applying normal-settlement fallback",
+                    target.getType(), error);
         }
+        if (CelestweaveArmorUndyingHandler.wasProtectedThisTick(target)) return;
+        if (normalDeathCompleted(target, playerDeathsBefore)) return;
+
+        if (target instanceof ServerPlayer player) {
+            // A canceled player death cannot safely use Entity#remove: doing so leaves
+            // the client without the combat-death packet and makes respawn impossible.
+            // Keep the connection valid and let the protection mod own the cancellation.
+            if (player.isDeadOrDying()) {
+                player.setHealth(1.0F);
+            }
+            return;
+        }
+
+        try {
+            forceDie(target, source);
+        } catch (RuntimeException | LinkageError error) {
+            // dead is committed before loot callbacks, so the normal death tick still
+            // removes the entity even when a third-party loot hook fails.
+            LOGGER.warn("Normal-settlement fallback failed for {}", target.getType(), error);
+        }
+    }
+
+    /**
+     * Invokes every generic cleanup layer even when an earlier layer already marked the
+     * entity removed. Forced mode deliberately favors complete third-party cleanup and a
+     * guaranteed final state over avoiding repeated, normally idempotent removal hooks.
+     */
+    private static void forceRemove(LivingEntity target, DamageSource source, float damage) {
+        prepareLethalState(target, source, damage);
+        try {
+            target.die(source);
+        } catch (RuntimeException | LinkageError error) {
+            LOGGER.warn("Target death callback failed for {}; continuing forced removal",
+                    target.getType(), error);
+        }
+
+        try {
+            target.kill();
+        } catch (RuntimeException | LinkageError error) {
+            LOGGER.warn("Target kill callback failed for {}; continuing forced removal",
+                    target.getType(), error);
+        }
+
+        try {
+            target.discard();
+        } catch (RuntimeException | LinkageError error) {
+            LOGGER.warn("Target discard callback failed for {}; continuing forced removal",
+                    target.getType(), error);
+        }
+
+        try {
+            target.remove(Entity.RemovalReason.KILLED);
+        } catch (RuntimeException | LinkageError error) {
+            LOGGER.warn("Target remove callback failed for {}; applying final removal",
+                    target.getType(), error);
+        }
+        if (!target.isRemoved()) {
+            target.setRemoved(Entity.RemovalReason.KILLED);
+        }
+    }
+
+    /**
+     * Generic forced cleanup for directly hit entities without a LivingEntity death
+     * state. Calling the dynamic kill override first preserves entity-owned settlement
+     * callbacks; the remaining layers guarantee removal when that override refuses it.
+     */
+    private static void forceRemoveNonLiving(Entity target) {
+        try {
+            target.kill();
+        } catch (RuntimeException | LinkageError error) {
+            LOGGER.warn("Non-living target kill callback failed for {}; continuing forced removal",
+                    target.getType(), error);
+        }
+
+        try {
+            target.discard();
+        } catch (RuntimeException | LinkageError error) {
+            LOGGER.warn("Non-living target discard callback failed for {}; continuing forced removal",
+                    target.getType(), error);
+        }
+
+        try {
+            target.remove(Entity.RemovalReason.KILLED);
+        } catch (RuntimeException | LinkageError error) {
+            LOGGER.warn("Non-living target remove callback failed for {}; applying final removal",
+                    target.getType(), error);
+        }
+        if (!target.isRemoved()) {
+            target.setRemoved(Entity.RemovalReason.KILLED);
+        }
+    }
+
+    private static void establishKillCredit(LivingEntity target, DamageSource source) {
+        if (source.getEntity() instanceof LivingEntity attacker) {
+            target.setLastHurtByMob(attacker);
+        }
+        if (source.getEntity() instanceof Player player) {
+            target.setLastHurtByPlayer(player);
+        }
+    }
+
+    private static int deathCount(LivingEntity target) {
+        if (target instanceof ServerPlayer player) {
+            return player.getStats().getValue(Stats.CUSTOM.get(Stats.DEATHS));
+        }
+        return -1;
+    }
+
+    private static boolean normalDeathCompleted(LivingEntity target, int playerDeathsBefore) {
+        if (target.dead || target.isRemoved()) return true;
+        return target instanceof ServerPlayer player
+                && player.getStats().getValue(Stats.CUSTOM.get(Stats.DEATHS)) > playerDeathsBefore;
+    }
+
+    /** Establishes a lethal combat state without entering the interceptable damage pipeline. */
+    private static void prepareLethalState(LivingEntity victim, DamageSource source, float amount) {
+        if (victim.level().isClientSide) return;
         if (victim.isSleeping()) victim.stopSleeping();
 
         victim.setNoActionTime(0);
@@ -254,29 +395,19 @@ public final class OverloadExecutionService {
         victim.lastHurt = amount;
         victim.invulnerableTime = 0;
         victim.getCombatTracker().recordDamage(source, amount);
-        victim.setHealth(victim.getHealth() - amount);
+        victim.setHealth(0.0F);
         victim.gameEvent(GameEvent.ENTITY_DAMAGE);
         victim.hurtDuration = 10;
         victim.hurtTime = victim.hurtDuration;
-
-        if (RailgunDefaults.PARALYSIS_DURATION_TICKS > 0) {
-            victim.addEffect(new MobEffectInstance(
-                            ModMobEffects.ELECTROMAGNETIC_PARALYSIS,
-                            RailgunDefaults.PARALYSIS_DURATION_TICKS, 0, false, true, true),
-                    source.getEntity() instanceof LivingEntity le ? le : null);
-        }
-
-        if (victim.isDeadOrDying()) {
-            forceDie(victim, source);
-        }
-        return true;
     }
 
-    /** Directly sets dead = true and drops loot. Inspired by Avaritia InfinitySwordItem.die(). */
+    /** Direct normal-settlement fallback used only when the dynamic death callback was canceled. */
     private static void forceDie(LivingEntity victim, DamageSource source) {
         if (victim.isRemoved() || victim.dead) return;
 
-        LivingEntity killer = victim.getKillCredit();
+        LivingEntity killer = source.getEntity() instanceof LivingEntity attacker
+                ? attacker
+                : victim.getKillCredit();
         if (victim.deathScore >= 0 && killer != null) {
             killer.awardKillScore(victim, victim.deathScore, source);
         }

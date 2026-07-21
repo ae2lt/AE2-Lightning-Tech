@@ -9,6 +9,33 @@ import org.junit.jupiter.api.Test;
 
 class PhaseLockSourceContractTest {
     @Test
+    void phaseLockOwnsThreeIndependentProtectionSettings() throws Exception {
+        String submodule = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/celestweave/module/PhaseLockSubmodule.java"));
+        String service = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/celestweave/phase/PhaseLockService.java"));
+        String state = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/celestweave/CelestweaveArmorState.java"));
+        String packet = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/network/PhaseLockProtectionSyncPacket.java"));
+
+        assertTrue(submodule.contains("ARMOR_LOCK_CONFIG_KEY"));
+        assertTrue(submodule.contains("BLOCK_EXTERNAL_FORCES_CONFIG_KEY"));
+        assertTrue(submodule.contains("BLOCK_EXTERNAL_TELEPORTS_CONFIG_KEY"));
+        assertTrue(submodule.contains("return List.of(\n                armorLockConfig(armor),"));
+        assertTrue(submodule.contains("PhaseFlightMovementGuard.updatePhaseLockProtection("));
+        assertTrue(submodule.contains("PhaseFlightMovementGuard.clearPhaseLockProtection(player)"));
+        assertTrue(service.contains("PhaseLockSubmodule.isArmorLockEnabled(anchor)"));
+        assertTrue(state.contains("syncPhaseLockProtectionToClient("));
+        assertTrue(packet.contains("setClientPhaseLockProtection("));
+
+        String phaseFlight = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/celestweave/module/PhaseFlightSubmodule.java"));
+        assertFalse(phaseFlight.contains("phase_block_external_forces"));
+        assertFalse(phaseFlight.contains("phase_block_external_teleports"));
+    }
+
+    @Test
     void projectionCarriesOnlyAReferenceAndMirroredFields() throws Exception {
         String source = Files.readString(Path.of(
                 "src/main/java/com/moakiee/ae2lt/item/PhaseLockProjectionItem.java"));

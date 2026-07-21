@@ -42,6 +42,15 @@ public sealed interface DeviceCapability {
     /** EMP pulse radius + damage multiplier. */
     record PulseTuning(double radiusMul, double dmgMul) implements DeviceCapability {}
 
+    /** Multiplies railgun beam and charged-shot travel range. */
+    record RangeMultiplier(double factor) implements DeviceCapability {
+        public RangeMultiplier {
+            if (!Double.isFinite(factor) || factor < 1.0D) {
+                factor = 1.0D;
+            }
+        }
+    }
+
     /** Overload execution: cumulative damage tracker + forced kill sequence. */
     record OverloadExecutionTuning(double decayRate, int decayDelayTicks, int maxTrackedTargets) implements DeviceCapability {}
 
@@ -64,6 +73,13 @@ public sealed interface DeviceCapability {
 
     /** Flight mode. */
     record FlightMode(FlightKind kind) implements DeviceCapability {}
+
+    /** Optional no-clip traversal layered on top of an already active flight mode. */
+    record PhaseTraversal(long activeFePerTick) implements DeviceCapability {
+        public PhaseTraversal {
+            activeFePerTick = Math.max(0L, activeFePerTick);
+        }
+    }
 
     /** Generic status effect grant (night vision / water breathing / ...). */
     record StatusEffectGrant(Holder<MobEffect> effect, int amplifier) implements DeviceCapability {}

@@ -13,13 +13,12 @@ public enum MatrixMultiblockComponent {
     QUANTUM_MAIN_CORE,
     OVERLOAD_MAIN_CORE,
     CREATIVE_MAIN_CORE,
-    BLANK_SUB_CORE,
-    THREAD_SUB_CORE_T1,
-    THREAD_SUB_CORE_T2,
-    MULTIPLIER_SUB_CORE_T1,
-    MULTIPLIER_SUB_CORE_T2,
-    COOLING_SUB_CORE_T1,
-    COOLING_SUB_CORE_T2,
+    BLANK_UNIT,
+    THREAD_UNIT_T1,
+    THREAD_UNIT_T2,
+    AMPLIFIER_UNIT,
+    THERMAL_CONTROL_UNIT_T1,
+    THERMAL_CONTROL_UNIT_T2,
     OTHER;
 
     public boolean isPatternStorage() {
@@ -33,21 +32,20 @@ public enum MatrixMultiblockComponent {
                 || this == CREATIVE_MAIN_CORE;
     }
 
-    public boolean isCraftingSubCore() {
+    public boolean isCraftingUnit() {
         return switch (this) {
-            case BLANK_SUB_CORE,
-                    THREAD_SUB_CORE_T1,
-                    THREAD_SUB_CORE_T2,
-                    MULTIPLIER_SUB_CORE_T1,
-                    MULTIPLIER_SUB_CORE_T2,
-                    COOLING_SUB_CORE_T1,
-                    COOLING_SUB_CORE_T2 -> true;
+            case BLANK_UNIT,
+                    THREAD_UNIT_T1,
+                    THREAD_UNIT_T2,
+                    AMPLIFIER_UNIT,
+                    THERMAL_CONTROL_UNIT_T1,
+                    THERMAL_CONTROL_UNIT_T2 -> true;
             default -> false;
         };
     }
 
-    public boolean isMultiplierSubCore() {
-        return this == MULTIPLIER_SUB_CORE_T1 || this == MULTIPLIER_SUB_CORE_T2;
+    public boolean isAmplifierUnit() {
+        return this == AMPLIFIER_UNIT;
     }
 
     public MatrixPatternStorageTier patternStorageTier() {
@@ -64,12 +62,11 @@ public enum MatrixMultiblockComponent {
             case QUANTUM_MAIN_CORE -> MatrixCraftingUnit.quantumCore();
             case OVERLOAD_MAIN_CORE -> MatrixCraftingUnit.overloadCore();
             case CREATIVE_MAIN_CORE -> MatrixCraftingUnit.creativeCore();
-            case THREAD_SUB_CORE_T1 -> MatrixCraftingUnit.t1Threader();
-            case THREAD_SUB_CORE_T2 -> MatrixCraftingUnit.t2Threader();
-            case MULTIPLIER_SUB_CORE_T1 -> MatrixCraftingUnit.t1Multiplier();
-            case MULTIPLIER_SUB_CORE_T2 -> MatrixCraftingUnit.t2Multiplier();
-            case COOLING_SUB_CORE_T1 -> MatrixCraftingUnit.t1Cooler(distanceToCore);
-            case COOLING_SUB_CORE_T2 -> MatrixCraftingUnit.t2Cooler(distanceToCore);
+            case THREAD_UNIT_T1 -> MatrixCraftingUnit.t1Threader();
+            case THREAD_UNIT_T2 -> MatrixCraftingUnit.t2Threader();
+            case AMPLIFIER_UNIT -> MatrixCraftingUnit.amplifier();
+            case THERMAL_CONTROL_UNIT_T1 -> MatrixCraftingUnit.t1Cooler(distanceToCore);
+            case THERMAL_CONTROL_UNIT_T2 -> MatrixCraftingUnit.t2Cooler(distanceToCore);
             default -> null;
         };
     }

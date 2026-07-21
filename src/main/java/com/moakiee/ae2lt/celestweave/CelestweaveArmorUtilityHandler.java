@@ -47,9 +47,11 @@ public final class CelestweaveArmorUtilityHandler {
         ArmorMovementAssistService.tick(player, capabilities);
         tickPurification(player, capabilities);
         tickFoodSustain(player, capabilities);
-        if (hasActivePhaseFlight(capabilities)) {
+        ActiveCapability phaseTraversal = findActivePhaseTraversal(capabilities);
+        if (phaseTraversal != null
+                && PhaseFlightSubmodule.shouldUsePhaseTraversal(player, phaseTraversal.armor())) {
             PhaseFlightSubmodule.applyTransientPhaseState(player);
-        } else if (PhaseFlightSubmodule.hasTransientPhaseState(player)) {
+        } else if (phaseTraversal == null && PhaseFlightSubmodule.hasTransientPhaseState(player)) {
             ItemStack escapeArmor = findPhaseFlightArmor(player);
             if (!PhaseFlightSubmodule.tickEscapePhase(player, escapeArmor)) {
                 PhaseFlightSubmodule.clearTransientPhaseState(player);
@@ -220,14 +222,14 @@ public final class CelestweaveArmorUtilityHandler {
         }
     }
 
-    private static boolean hasActivePhaseFlight(List<ActiveCapability> capabilities) {
+    @Nullable
+    private static ActiveCapability findActivePhaseTraversal(List<ActiveCapability> capabilities) {
         for (var active : capabilities) {
-            if (active.capability() instanceof DeviceCapability.FlightMode flight
-                    && flight.kind() == com.moakiee.ae2lt.device.capability.FlightKind.PHASE) {
-                return true;
+            if (active.capability() instanceof DeviceCapability.PhaseTraversal) {
+                return active;
             }
         }
-        return false;
+        return null;
     }
 
     private static ItemStack findPhaseFlightArmor(Player player) {
@@ -293,6 +295,7 @@ public final class CelestweaveArmorUtilityHandler {
 
     private static void clearPlayerRuntime(Player player) {
         ArmorCapabilityCollector.clearCache(player);
+        PhaseFlightMovementGuard.clear(player);
         PhaseFlightSubmodule.clearTransientPhaseState(player);
         for (EquipmentSlot slot : List.of(
                 EquipmentSlot.HEAD,

@@ -1,0 +1,37 @@
+{
+  "type": "ae2lt:lightning_assembly",
+  "priority": 0,
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "ae2lt:overload_module_base"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "ae2lt:entangled_topological_lattice"
+      },
+      "count": 2
+    },
+    {
+      "ingredient": {
+        "item": "ae2lt:overload_processor"
+      },
+      "count": 32
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:ender_eye"
+      },
+      "count": 32
+    }
+  ],
+  "result": {
+    "id": "ae2lt:railgun_module_range",
+    "count": 1
+  },
+  "totalEnergy": 12000000,
+  "lightningCost": 48,
+  "lightningTier": "high_voltage"
+}

@@ -7,22 +7,22 @@ public record MatrixCraftingProfile(
         MatrixCoreMode mode,
         int coreCount,
         double threadPower,
-        double multiPower,
+        double amplifierPower,
         double coolPower,
         int dispatchUnitCount,
-        int multiplierCount,
+        int amplifierUnitCount,
         int coolingUnitCount,
-        boolean multiplierLimitExceeded) {
-    public static final int MULTIPLIER_LIMIT = 15;
+        boolean amplifierLimitExceeded) {
+    public static final int AMPLIFIER_LIMIT = 15;
 
     public MatrixCraftingProfile {
         mode = mode == null ? MatrixCoreMode.NONE : mode;
         coreCount = Math.max(0, coreCount);
         threadPower = Math.max(0.0D, threadPower);
-        multiPower = Math.max(0.0D, multiPower);
+        amplifierPower = Math.max(0.0D, amplifierPower);
         coolPower = Math.max(0.0D, coolPower);
         dispatchUnitCount = Math.max(0, dispatchUnitCount);
-        multiplierCount = Math.max(0, multiplierCount);
+        amplifierUnitCount = Math.max(0, amplifierUnitCount);
         coolingUnitCount = Math.max(0, coolingUnitCount);
     }
 
@@ -37,10 +37,10 @@ public record MatrixCraftingProfile(
         MatrixCoreMode mode = MatrixCoreMode.NONE;
         int coreCount = 0;
         double threadPower = 0.0D;
-        double multiPower = 0.0D;
+        double amplifierPower = 0.0D;
         double coolPower = 0.0D;
         int dispatchUnitCount = 0;
-        int multiplierCount = 0;
+        int amplifierUnitCount = 0;
         int coolingUnitCount = 0;
 
         for (var unit : units) {
@@ -58,13 +58,13 @@ public record MatrixCraftingProfile(
                     dispatchUnitCount++;
                     threadPower += unit.power();
                 }
-                case MULTIPLIER -> {
-                    int previousCount = multiplierCount;
-                    multiplierCount = saturatedAdd(previousCount, unit.power());
+                case AMPLIFIER -> {
+                    int previousCount = amplifierUnitCount;
+                    amplifierUnitCount = saturatedAdd(previousCount, unit.power());
                     int acceptedPower = Math.min(
                             unit.power(),
-                            Math.max(0, MULTIPLIER_LIMIT - previousCount));
-                    multiPower += acceptedPower;
+                            Math.max(0, AMPLIFIER_LIMIT - previousCount));
+                    amplifierPower += acceptedPower;
                 }
                 case COOLER -> {
                     coolingUnitCount++;
@@ -73,7 +73,7 @@ public record MatrixCraftingProfile(
             }
         }
 
-        boolean multiplierLimitExceeded = multiplierCount > MULTIPLIER_LIMIT;
+        boolean amplifierLimitExceeded = amplifierUnitCount > AMPLIFIER_LIMIT;
         if (coreCount == 0) {
             mode = MatrixCoreMode.NONE;
         } else if (coreCount > 1) {
@@ -97,12 +97,12 @@ public record MatrixCraftingProfile(
                 mode,
                 coreCount,
                 threadPower,
-                multiPower,
+                amplifierPower,
                 coolPower,
                 dispatchUnitCount,
-                multiplierCount,
+                amplifierUnitCount,
                 coolingUnitCount,
-                multiplierLimitExceeded);
+                amplifierLimitExceeded);
     }
 
     public boolean isValid() {
@@ -126,11 +126,11 @@ public record MatrixCraftingProfile(
             // has core(s) but not a single valid mode
             issues.add(MatrixProfileIssue.CONFLICTING_CORES);
         }
-        if (multiplierLimitExceeded) {
-            issues.add(MatrixProfileIssue.MULTIPLIER_LIMIT_EXCEEDED);
+        if (amplifierLimitExceeded) {
+            issues.add(MatrixProfileIssue.AMPLIFIER_LIMIT_EXCEEDED);
         }
         if (coreCount == 1 && (mode == MatrixCoreMode.STABLE || mode == MatrixCoreMode.CREATIVE)
-                && multiplierCount > 0) {
+                && amplifierUnitCount > 0) {
             issues.add(MatrixProfileIssue.AMPLIFIER_NOT_SUPPORTED);
         }
         if (coreCount == 1 && mode != MatrixCoreMode.CREATIVE && threadPower <= 0.0D) {
@@ -144,10 +144,10 @@ public record MatrixCraftingProfile(
             return MatrixCraftingMath.idleSnapshot(heat, coolPower);
         }
         return switch (mode) {
-            case STABLE -> MatrixCraftingMath.stableSnapshot(heat, threadPower, multiPower, coolPower);
-            case OVERLOAD -> MatrixCraftingMath.overloadSnapshot(heat, threadPower, multiPower, coolPower);
+            case STABLE -> MatrixCraftingMath.stableSnapshot(heat, threadPower, amplifierPower, coolPower);
+            case OVERLOAD -> MatrixCraftingMath.overloadSnapshot(heat, threadPower, amplifierPower, coolPower);
             case CREATIVE -> MatrixCraftingMath.creativeSnapshot();
-            default -> MatrixCraftingMath.quantumSnapshot(heat, threadPower, multiPower, coolPower);
+            default -> MatrixCraftingMath.quantumSnapshot(heat, threadPower, amplifierPower, coolPower);
         };
     }
 

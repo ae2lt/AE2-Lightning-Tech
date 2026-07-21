@@ -76,9 +76,9 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
     private static final String TAG_MAX_POS = "MaxPos";
     private static final String TAG_MEMBER_COUNT = "MemberCount";
     private static final String TAG_MAIN_CORE = "MainCore";
-    private static final String TAG_CAPACITY_CORES = "CapacityCores";
-    private static final String TAG_PARALLEL_CORES = "ParallelCores";
-    private static final String TAG_AMPLIFIER_CORES = "AmplifierCores";
+    private static final String TAG_STORAGE_UNITS = "CapacityCores";
+    private static final String TAG_PARALLEL_UNITS = "ParallelCores";
+    private static final String TAG_AMPLIFIER_UNITS = "AmplifierCores";
     private static final String TAG_CLOSED_LOOP_STORAGES = "ClosedLoopStorages";
     private static final String TAG_SEED_STORAGES = "SeedStorages";
     private static final String TAG_MACHINE_ID = "MachineId";
@@ -1098,9 +1098,9 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
         tag.putBoolean(TAG_FAST_PLANNING, fastPlanningEnabled);
         if (coreProfile.mainCore() != null) {
             tag.putString(TAG_MAIN_CORE, coreProfile.mainCore().name());
-            tag.putInt(TAG_CAPACITY_CORES, coreProfile.capacityCoreCount());
-            tag.putInt(TAG_PARALLEL_CORES, coreProfile.parallelCoreCount());
-            tag.putInt(TAG_AMPLIFIER_CORES, coreProfile.amplifierCoreCount());
+            tag.putInt(TAG_STORAGE_UNITS, coreProfile.storageUnitCount());
+            tag.putInt(TAG_PARALLEL_UNITS, coreProfile.parallelUnitCount());
+            tag.putInt(TAG_AMPLIFIER_UNITS, coreProfile.amplifierUnitCount());
         }
         tag.putInt(TAG_CLOSED_LOOP_STORAGES, functionProfile.closedLoopPatternStorageCount());
         tag.putInt(TAG_SEED_STORAGES, functionProfile.closedLoopSeedStorageCount());
@@ -1126,9 +1126,9 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
                 var tier = CpuMainCoreTier.valueOf(tag.getString(TAG_MAIN_CORE));
                 coreProfile = com.moakiee.ae2lt.logic.tianshu.CpuInternalCoreCalculator.calculate(
                         tier,
-                        tag.getInt(TAG_CAPACITY_CORES),
-                        tag.getInt(TAG_PARALLEL_CORES),
-                        tag.getInt(TAG_AMPLIFIER_CORES));
+                        tag.getInt(TAG_STORAGE_UNITS),
+                        tag.getInt(TAG_PARALLEL_UNITS),
+                        tag.getInt(TAG_AMPLIFIER_UNITS));
             } catch (IllegalArgumentException ignored) {
                 coreProfile = CpuInternalCoreProfile.empty();
             }

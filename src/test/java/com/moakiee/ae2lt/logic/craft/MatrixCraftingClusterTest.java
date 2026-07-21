@@ -40,14 +40,14 @@ class MatrixCraftingClusterTest {
     void aggregatesCraftingProfileFromCraftCores() {
         var cluster = cluster(List.of(
                 new FakeCraftCore(MatrixCraftingUnit.quantumCore(), MatrixCraftingUnit.t2Threader()),
-                new FakeCraftCore(MatrixCraftingUnit.t2Multiplier(), MatrixCraftingUnit.t2Cooler(2))));
+                new FakeCraftCore(MatrixCraftingUnit.amplifier(), MatrixCraftingUnit.t2Cooler(2))));
 
         var profile = cluster.craftingProfile();
 
         assertEquals(MatrixCoreMode.QUANTUM, profile.mode());
-        assertEquals(1.0D, profile.threadPower(), 0.0001D);
-        assertEquals(1.0D, profile.multiPower(), 0.0001D);
-        assertEquals(0.75D, profile.coolPower(), 0.0001D);
+        assertEquals(2.0D, profile.threadPower(), 0.0001D);
+        assertEquals(1.0D, profile.amplifierPower(), 0.0001D);
+        assertEquals(1.5D, profile.coolPower(), 0.0001D);
     }
 
     @Test
@@ -57,7 +57,7 @@ class MatrixCraftingClusterTest {
         var cluster = cluster(host, List.of(new FakeCraftCore(
                 MatrixCraftingUnit.quantumCore(),
                 MatrixCraftingUnit.t1Threader(),
-                MatrixCraftingUnit.t1Multiplier())));
+                MatrixCraftingUnit.amplifier())));
 
         var snapshot = cluster.tickLimiter();
         var tag = new CompoundTag();
@@ -128,7 +128,7 @@ class MatrixCraftingClusterTest {
         var units = new java.util.ArrayList<MatrixCraftingUnit>();
         units.add(MatrixCraftingUnit.overloadCore());
         for (int i = 0; i < 4; i++) units.add(MatrixCraftingUnit.t1Threader());
-        for (int i = 0; i < 15; i++) units.add(MatrixCraftingUnit.t1Multiplier());
+        for (int i = 0; i < 15; i++) units.add(MatrixCraftingUnit.amplifier());
         var cluster = cluster(
                 host,
                 List.of(new FakeCraftCore(units.toArray(MatrixCraftingUnit[]::new))),

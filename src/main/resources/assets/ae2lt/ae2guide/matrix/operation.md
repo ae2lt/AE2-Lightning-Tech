@@ -31,7 +31,7 @@ The Matrix Port also exposes item insertion for automation. Item pipes can inser
 
 ## Upgrading Pattern Storage
 
-Place Matter Warping Matrix Pattern Storage Upgrades in the player inventory, then use **Upgrade** from the Controller. The matrix replaces T1 storages with T2 storages in place, limited by the number of upgrades carried:
+Place Tianshu Matter Warping Matrix Pattern Storage Upgrades in the player inventory, then use **Upgrade** from the Controller. The matrix replaces T1 storages with T2 storages in place, limited by the number of upgrades carried:
 
 * One upgrade item is consumed per upgraded storage
 * Stored patterns are preserved
@@ -55,7 +55,7 @@ The matrix does not force-load any chunk in its footprint. If any structure chun
 
 ## Troubleshooting
 
-* **Structure does not form:** Check the central main core, all 80 sub cores, at least one Pattern Storage, the unique Port, and every fixed shell position
+* **Structure does not form:** Check the central Main Core, all 80 Peripheral Units, at least one Pattern Storage, the unique Port, and every fixed shell position
 * **Auto-build does nothing:** Remove invalid blocks from target positions and verify that all materials are in the player inventory
 * **Port is absent from the network:** Check the cable connection, network power, and formation state
 * **Port stays offline after a cross-chunk load:** Ensure the chunk loader covers the entire matrix and allow time for the automatic rescan

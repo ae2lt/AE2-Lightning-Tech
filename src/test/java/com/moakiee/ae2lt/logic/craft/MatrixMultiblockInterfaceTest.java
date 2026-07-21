@@ -80,7 +80,7 @@ class MatrixMultiblockInterfaceTest {
         var cluster = cluster(new FakeHost(), List.of(new FakeCraftCore(
                 MatrixCraftingUnit.quantumCore(),
                 MatrixCraftingUnit.t1Threader(),
-                MatrixCraftingUnit.t1Multiplier())), assembler);
+                MatrixCraftingUnit.amplifier())), assembler);
         var plainPattern = new FakePlainPattern("plain");
         var repository = new MatrixPatternRepository(List.of(unit(PATTERN, plainPattern)));
 

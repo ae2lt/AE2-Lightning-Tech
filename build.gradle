@@ -236,6 +236,13 @@ dependencies {
     runtimeOnly "curse.maven:kubejs-238086:7278501"
     runtimeOnly "curse.maven:rhino-416294:7104526"
 
+    // Runtime boss/execution compatibility probes.
+    runtimeOnly "curse.maven:mmmmmmmmmmmm-225738:7943676"
+    runtimeOnly "curse.maven:selene-499980:7928091"
+    runtimeOnly "curse.maven:codechicken-lib-1-8-242818:7281427"
+    runtimeOnly "curse.maven:brandons-core-231382:7130990"
+    runtimeOnly "curse.maven:draconic-evolution-223565:7584459"
+
     runtimeOnly files("libs/observable-5.4.4.jar")
     runtimeOnly "curse.maven:kotlin-for-forge-351264:7471280"
 

@@ -3,7 +3,6 @@ package com.moakiee.ae2lt.celestweave.service;
 import java.util.List;
 
 import com.moakiee.ae2lt.device.capability.DeviceCapability;
-import com.moakiee.ae2lt.device.capability.FlightKind;
 import com.moakiee.ae2lt.celestweave.ArmorOverloadRules;
 import com.moakiee.ae2lt.celestweave.service.ArmorLightningService.LightningCost;
 
@@ -25,25 +24,24 @@ public final class ArmorModuleLightningPolicy {
     public static LightningCost passiveCost(
             List<DeviceCapability> capabilities,
             boolean movingFlight,
+            boolean phaseTraversalActive,
             long reachHvPerTick,
             long flightHvPerTick,
             long phaseFlightHvPerTick) {
         boolean creativeFlight = false;
-        boolean phaseFlight = false;
+        boolean phaseTraversal = false;
         boolean reachExtension = false;
         for (DeviceCapability capability : capabilities) {
             if (capability instanceof DeviceCapability.FlightMode mode) {
-                if (mode.kind() == FlightKind.PHASE) {
-                    phaseFlight = true;
-                } else {
-                    creativeFlight = true;
-                }
+                creativeFlight = true;
+            } else if (capability instanceof DeviceCapability.PhaseTraversal) {
+                phaseTraversal = true;
             } else if (capability instanceof DeviceCapability.InteractionRange) {
                 reachExtension = true;
             }
         }
 
-        if (phaseFlight) {
+        if (phaseTraversal && phaseTraversalActive) {
             return LightningCost.hv(phaseFlightHvPerTick);
         }
         if (creativeFlight) {

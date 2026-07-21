@@ -15,7 +15,7 @@
         {pos: [3, 3, 2], state: "ae2lt:storage_supercomputing_unit{formed:true}"},
         {pos: [4, 3, 2], state: "ae2lt:storage_supercomputing_unit{formed:true}"},
         {pos: [2, 3, 3], state: "ae2lt:storage_supercomputing_unit{formed:true}"},
-        {pos: [3, 3, 3], state: "ae2lt:baseline_supercomputing_unit{formed:true}"},
+        {pos: [3, 3, 3], state: "ae2lt:tianshu_baseline_main_core{formed:true}"},
         {pos: [4, 3, 3], state: "ae2lt:storage_supercomputing_unit{formed:true}"},
         {pos: [2, 3, 4], state: "ae2lt:storage_supercomputing_unit{formed:true}"},
         {pos: [3, 3, 4], state: "ae2lt:storage_supercomputing_unit{formed:true}"},
@@ -32,7 +32,7 @@
     ],
     entities: [],
     palette: [
-        "ae2lt:baseline_supercomputing_unit{formed:true}",
+        "ae2lt:tianshu_baseline_main_core{formed:true}",
         "ae2lt:storage_supercomputing_unit{formed:true}",
         "ae2lt:parallel_supercomputing_unit{formed:true}"
     ]

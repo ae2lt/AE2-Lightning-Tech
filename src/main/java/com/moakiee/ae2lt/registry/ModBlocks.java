@@ -236,29 +236,31 @@ public final class ModBlocks {
             registerBlock("tianshu_supercomputer_port", () -> new TianshuSupercomputerPortBlock(MATRIX_MACHINE_PROPERTIES));
 
     public static final DeferredBlock<TianshuSupercomputingUnitBlock> BASELINE_SUPERCOMPUTING_UNIT = registerBlock(
-            "baseline_supercomputing_unit", () -> new TianshuSupercomputingUnitBlock(
+            "tianshu_baseline_main_core", () -> new TianshuSupercomputingUnitBlock(
                     MATRIX_MACHINE_PROPERTIES, TianshuMultiblockComponent.MAIN_BASELINE));
     public static final DeferredBlock<TianshuSupercomputingUnitBlock> QUANTUM_SUPERCOMPUTING_UNIT = registerBlock(
-            "quantum_supercomputing_unit", () -> new TianshuSupercomputingUnitBlock(
+            "tianshu_quantum_main_core", () -> new TianshuSupercomputingUnitBlock(
                     MATRIX_MACHINE_PROPERTIES, TianshuMultiblockComponent.MAIN_QUANTUM));
     public static final DeferredBlock<TianshuSupercomputingUnitBlock> OVERLOAD_SUPERCOMPUTING_UNIT = registerBlock(
-            "overload_supercomputing_unit", () -> new TianshuSupercomputingUnitBlock(
+            "tianshu_overload_main_core", () -> new TianshuSupercomputingUnitBlock(
                     MATRIX_MACHINE_PROPERTIES, TianshuMultiblockComponent.MAIN_OVERLOAD));
     public static final DeferredBlock<TianshuSupercomputingUnitBlock> MULTIDIMENSIONAL_SUPERCOMPUTING_UNIT = registerBlock(
-            "multidimensional_supercomputing_unit", () -> new TianshuSupercomputingUnitBlock(
+            "tianshu_multidimensional_main_core", () -> new TianshuSupercomputingUnitBlock(
                     MATRIX_MACHINE_PROPERTIES, TianshuMultiblockComponent.MAIN_MULTIDIMENSIONAL));
     public static final DeferredBlock<TianshuSupercomputingUnitBlock> BLANK_SUPERCOMPUTING_UNIT = registerBlock(
             "blank_supercomputing_unit", () -> new TianshuSupercomputingUnitBlock(
-                    MATRIX_MACHINE_PROPERTIES, TianshuMultiblockComponent.BLANK_CORE));
+                    MATRIX_MACHINE_PROPERTIES, TianshuMultiblockComponent.BLANK_UNIT));
     public static final DeferredBlock<TianshuSupercomputingUnitBlock> STORAGE_SUPERCOMPUTING_UNIT = registerBlock(
             "storage_supercomputing_unit", () -> new TianshuSupercomputingUnitBlock(
-                    MATRIX_MACHINE_PROPERTIES, TianshuMultiblockComponent.STORAGE_CORE));
+                    MATRIX_MACHINE_PROPERTIES, TianshuMultiblockComponent.STORAGE_UNIT));
     public static final DeferredBlock<TianshuSupercomputingUnitBlock> PARALLEL_SUPERCOMPUTING_UNIT = registerBlock(
             "parallel_supercomputing_unit", () -> new TianshuSupercomputingUnitBlock(
-                    MATRIX_MACHINE_PROPERTIES, TianshuMultiblockComponent.PARALLEL_CORE));
+                    MATRIX_MACHINE_PROPERTIES, TianshuMultiblockComponent.PARALLEL_UNIT));
     public static final DeferredBlock<TianshuSupercomputingUnitBlock> AMPLIFIER_SUPERCOMPUTING_UNIT = registerBlock(
-            "amplifier_supercomputing_unit", () -> new TianshuSupercomputingUnitBlock(
-                    MATRIX_MACHINE_PROPERTIES, TianshuMultiblockComponent.AMPLIFIER_CORE));
+            "tianshu_amplifier_unit", () -> new TianshuSupercomputingUnitBlock(
+                    MATRIX_MACHINE_PROPERTIES,
+                    TianshuMultiblockComponent.AMPLIFIER_UNIT,
+                    MatrixMultiblockComponent.AMPLIFIER_UNIT));
     public static final DeferredBlock<TianshuPatternStorageBlock> CLOSED_LOOP_PATTERN_STORAGE = registerBlock(
             "closed_loop_pattern_storage", () -> new TianshuPatternStorageBlock(MATRIX_MACHINE_PROPERTIES));
     public static final DeferredBlock<TianshuSeedStorageBlock> CLOSED_LOOP_SEED_STORAGE = registerBlock(
@@ -299,33 +301,25 @@ public final class ModBlocks {
             registerBlock("matter_warping_matrix_creative_main_core", () -> new MatrixFormedBlock(
                     MATRIX_MACHINE_PROPERTIES, MatrixMultiblockComponent.CREATIVE_MAIN_CORE));
 
-    public static final DeferredBlock<MatrixFormedBlock> MATTER_WARPING_MATRIX_BLANK_SUB_CORE =
-            registerBlock("matter_warping_matrix_blank_sub_core", () -> new MatrixFormedBlock(
-                    MATRIX_MACHINE_PROPERTIES, MatrixMultiblockComponent.BLANK_SUB_CORE));
+    public static final DeferredBlock<MatrixFormedBlock> MATTER_WARPING_MATRIX_BLANK_UNIT =
+            registerBlock("matter_warping_matrix_blank_unit", () -> new MatrixFormedBlock(
+                    MATRIX_MACHINE_PROPERTIES, MatrixMultiblockComponent.BLANK_UNIT));
 
-    public static final DeferredBlock<MatrixFormedBlock> MATTER_WARPING_MATRIX_THREAD_SUB_CORE_T1 =
-            registerBlock("matter_warping_matrix_thread_sub_core_t1", () -> new MatrixFormedBlock(
-                    MATRIX_MACHINE_PROPERTIES, MatrixMultiblockComponent.THREAD_SUB_CORE_T1));
+    public static final DeferredBlock<MatrixFormedBlock> MATTER_WARPING_MATRIX_THREAD_UNIT_T1 =
+            registerBlock("matter_warping_matrix_thread_unit_t1", () -> new MatrixFormedBlock(
+                    MATRIX_MACHINE_PROPERTIES, MatrixMultiblockComponent.THREAD_UNIT_T1));
 
-    public static final DeferredBlock<MatrixFormedBlock> MATTER_WARPING_MATRIX_THREAD_SUB_CORE_T2 =
-            registerBlock("matter_warping_matrix_thread_sub_core_t2", () -> new MatrixFormedBlock(
-                    MATRIX_MACHINE_PROPERTIES, MatrixMultiblockComponent.THREAD_SUB_CORE_T2));
+    public static final DeferredBlock<MatrixFormedBlock> MATTER_WARPING_MATRIX_THREAD_UNIT_T2 =
+            registerBlock("matter_warping_matrix_thread_unit_t2", () -> new MatrixFormedBlock(
+                    MATRIX_MACHINE_PROPERTIES, MatrixMultiblockComponent.THREAD_UNIT_T2));
 
-    public static final DeferredBlock<MatrixFormedBlock> MATTER_WARPING_MATRIX_MULTIPLIER_SUB_CORE_T1 =
-            registerBlock("matter_warping_matrix_multiplier_sub_core_t1", () -> new MatrixFormedBlock(
-                    MATRIX_MACHINE_PROPERTIES, MatrixMultiblockComponent.MULTIPLIER_SUB_CORE_T1));
+    public static final DeferredBlock<MatrixFormedBlock> MATTER_WARPING_MATRIX_THERMAL_CONTROL_UNIT_T1 =
+            registerBlock("matter_warping_matrix_thermal_control_unit_t1", () -> new MatrixFormedBlock(
+                    MATRIX_MACHINE_PROPERTIES, MatrixMultiblockComponent.THERMAL_CONTROL_UNIT_T1));
 
-    public static final DeferredBlock<MatrixFormedBlock> MATTER_WARPING_MATRIX_MULTIPLIER_SUB_CORE_T2 =
-            registerBlock("matter_warping_matrix_multiplier_sub_core_t2", () -> new MatrixFormedBlock(
-                    MATRIX_MACHINE_PROPERTIES, MatrixMultiblockComponent.MULTIPLIER_SUB_CORE_T2));
-
-    public static final DeferredBlock<MatrixFormedBlock> MATTER_WARPING_MATRIX_COOLING_SUB_CORE_T1 =
-            registerBlock("matter_warping_matrix_cooling_sub_core_t1", () -> new MatrixFormedBlock(
-                    MATRIX_MACHINE_PROPERTIES, MatrixMultiblockComponent.COOLING_SUB_CORE_T1));
-
-    public static final DeferredBlock<MatrixFormedBlock> MATTER_WARPING_MATRIX_COOLING_SUB_CORE_T2 =
-            registerBlock("matter_warping_matrix_cooling_sub_core_t2", () -> new MatrixFormedBlock(
-                    MATRIX_MACHINE_PROPERTIES, MatrixMultiblockComponent.COOLING_SUB_CORE_T2));
+    public static final DeferredBlock<MatrixFormedBlock> MATTER_WARPING_MATRIX_THERMAL_CONTROL_UNIT_T2 =
+            registerBlock("matter_warping_matrix_thermal_control_unit_t2", () -> new MatrixFormedBlock(
+                    MATRIX_MACHINE_PROPERTIES, MatrixMultiblockComponent.THERMAL_CONTROL_UNIT_T2));
 
     public static final DeferredBlock<MatrixPatternStorageBlock> MATTER_WARPING_MATRIX_PATTERN_STORAGE_T1 =
             registerBlock("matter_warping_matrix_pattern_storage_t1", () -> new MatrixPatternStorageBlock(

@@ -17,10 +17,13 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.neoforge.network.PacketDistributor;
 
 import com.moakiee.ae2lt.celestweave.ArmorEnergyModuleItem;
+import com.moakiee.ae2lt.config.AE2LTCommonConfig;
 import com.moakiee.ae2lt.network.CelestweaveSubmoduleActivePacket;
 import com.moakiee.ae2lt.network.FlightInertiaSyncPacket;
+import com.moakiee.ae2lt.network.PhaseLockProtectionSyncPacket;
 import com.moakiee.ae2lt.celestweave.module.FlightSubmodule;
 import com.moakiee.ae2lt.celestweave.module.PhaseFlightSubmodule;
+import com.moakiee.ae2lt.celestweave.module.PhaseLockSubmodule;
 import com.moakiee.ae2lt.celestweave.module.CelestweaveArmorSubmodule;
 import com.moakiee.ae2lt.celestweave.module.CelestweaveArmorSubmoduleItem;
 import com.moakiee.ae2lt.device.module.OverloadDeviceModuleItem;
@@ -35,8 +38,9 @@ public final class CelestweaveArmorState {
     private static final int MAX_MODULE_TYPES = 32;
     private static volatile boolean CLIENT_FLIGHT_INERTIA = true;
     private static volatile UUID CLIENT_FLIGHT_INERTIA_ARMOR_ID = null;
-    private static volatile boolean CLIENT_PHASE_BLOCK_EXTERNAL_FORCES = true;
-    private static volatile boolean CLIENT_PHASE_BLOCK_EXTERNAL_TELEPORTS = true;
+    private static volatile boolean CLIENT_PHASE_MODE_ENABLED = true;
+    private static volatile UUID CLIENT_PHASE_LOCK_ARMOR_ID = null;
+    private static volatile boolean CLIENT_PHASE_LOCK_BLOCK_EXTERNAL_FORCES = false;
     // Client-side set of armor ids whose phase flight is active (authoritative, pushed from server).
     private static final Set<UUID> CLIENT_PHASE_FLIGHT_ACTIVE = ConcurrentHashMap.newKeySet();
 
@@ -388,12 +392,16 @@ public final class CelestweaveArmorState {
             boolean changed = (previous != null && previous) != active;
             if (dedicatedServer) {
                 ServerPlayer serverPlayer = (ServerPlayer) player;
-                // Phase flight is the only submodule the client cannot safely derive from the stack
-                // (server may force it off when energy runs out), so it keeps an authoritative push.
+                // Phase flight keeps an authoritative active-state push because the server may
+                // force it off when energy runs out. Phase lock uses its dedicated effective-
+                // protection packet below because its real controller stack may live in the vault.
                 if (PhaseFlightSubmodule.INSTANCE.id().equals(submodule.id()) && (changed || forceClientSync)) {
                     PacketDistributor.sendToPlayer(
                             serverPlayer,
                             new CelestweaveSubmoduleActivePacket(armorId, submodule.id(), active));
+                }
+                if (PhaseLockSubmodule.INSTANCE.id().equals(submodule.id()) && (changed || forceClientSync)) {
+                    syncPhaseLockProtectionToClient(serverPlayer, armor, armorId, active);
                 }
                 // Flight inertia drives client-side movement decay, so push it when flight engages
                 // and when the client needs an authoritative resync after player transfer.
@@ -520,7 +528,7 @@ public final class CelestweaveArmorState {
         }
     }
 
-    // Phase flight is the only submodule pushed to the client (authoritative, predictive movement).
+    // The generic active-state cache is only needed by phase flight's predictive movement.
     public static void markClientActive(UUID armorId, String submoduleId, boolean active) {
         if (armorId == null || !PhaseFlightSubmodule.INSTANCE.id().equals(submoduleId)) {
             return;
@@ -540,14 +548,19 @@ public final class CelestweaveArmorState {
         CLIENT_PHASE_FLIGHT_ACTIVE.clear();
         CLIENT_FLIGHT_INERTIA = true;
         CLIENT_FLIGHT_INERTIA_ARMOR_ID = null;
-        CLIENT_PHASE_BLOCK_EXTERNAL_FORCES = true;
-        CLIENT_PHASE_BLOCK_EXTERNAL_TELEPORTS = true;
+        CLIENT_PHASE_MODE_ENABLED = true;
+        CLIENT_PHASE_LOCK_ARMOR_ID = null;
+        CLIENT_PHASE_LOCK_BLOCK_EXTERNAL_FORCES = false;
     }
 
     public static void forgetSubmoduleActiveCache(UUID armorId) {
         ArmorRuntimeRegistry.clear(armorId);
         if (armorId != null) {
             CLIENT_PHASE_FLIGHT_ACTIVE.remove(armorId);
+            if (armorId.equals(CLIENT_PHASE_LOCK_ARMOR_ID)) {
+                CLIENT_PHASE_LOCK_ARMOR_ID = null;
+                CLIENT_PHASE_LOCK_BLOCK_EXTERNAL_FORCES = false;
+            }
         }
     }
 
@@ -643,28 +656,39 @@ public final class CelestweaveArmorState {
     public static void setClientFlightSettings(
             UUID armorId,
             boolean inertiaEnabled,
-            boolean blockExternalForces,
-            boolean blockExternalTeleports) {
+            boolean phaseModeEnabled) {
         CLIENT_FLIGHT_INERTIA = inertiaEnabled;
         CLIENT_FLIGHT_INERTIA_ARMOR_ID = armorId;
-        CLIENT_PHASE_BLOCK_EXTERNAL_FORCES = blockExternalForces;
-        CLIENT_PHASE_BLOCK_EXTERNAL_TELEPORTS = blockExternalTeleports;
+        CLIENT_PHASE_MODE_ENABLED = phaseModeEnabled;
     }
 
     public static boolean getClientFlightInertia() {
         return CLIENT_FLIGHT_INERTIA;
     }
 
-    public static boolean getClientPhaseBlockExternalForces() {
-        return CLIENT_PHASE_BLOCK_EXTERNAL_FORCES;
+    public static boolean getClientPhaseModeEnabled() {
+        return CLIENT_PHASE_MODE_ENABLED;
     }
 
-    public static boolean getClientPhaseBlockExternalTeleports() {
-        return CLIENT_PHASE_BLOCK_EXTERNAL_TELEPORTS;
+    public static void setClientPhaseLockProtection(
+            UUID armorId,
+            boolean blockExternalForces) {
+        CLIENT_PHASE_LOCK_ARMOR_ID = armorId;
+        CLIENT_PHASE_LOCK_BLOCK_EXTERNAL_FORCES = blockExternalForces;
+    }
+
+    public static boolean getClientPhaseLockBlockExternalForces() {
+        return CLIENT_PHASE_LOCK_BLOCK_EXTERNAL_FORCES;
     }
 
     private static void syncFlightInertiaToClient(ServerPlayer player, ItemStack armor, UUID armorId) {
         boolean phaseFlightActive = isSubmoduleRuntimeActive(armor, PhaseFlightSubmodule.INSTANCE.id());
+        if (phaseFlightActive) {
+            // The active-state packet and this settings packet are sent before onActivated. Make
+            // private intent authoritative first so armor state transitions cannot sample a boss-
+            // modified vanilla flying bit on the client.
+            PhaseFlightPlayerState.activate(player);
+        }
         boolean flightActive = isSubmoduleRuntimeActive(armor, FlightSubmodule.INSTANCE.id());
         boolean inertia = FlightInertiaSyncRules.targetInertia(
                 flightActive,
@@ -674,8 +698,11 @@ public final class CelestweaveArmorState {
         PacketDistributor.sendToPlayer(player, new FlightInertiaSyncPacket(
                 armorId,
                 inertia,
-                phaseFlightActive && PhaseFlightSubmodule.blocksExternalForces(armor),
-                phaseFlightActive && PhaseFlightSubmodule.blocksExternalTeleports(armor)));
+                phaseFlightActive,
+                phaseFlightActive && PhaseFlightPlayerState.isFlying(player),
+                phaseFlightActive
+                        && AE2LTCommonConfig.overloadArmorPhaseFlightEnabled()
+                        && PhaseFlightSubmodule.isPhaseModeEnabled(armor)));
     }
 
     public static void syncFlightInertiaToClientIfFlight(ServerPlayer player, ItemStack armor) {
@@ -686,6 +713,28 @@ public final class CelestweaveArmorState {
         if (flightActive) {
             syncFlightInertiaToClient(player, armor, armorId);
         }
+    }
+
+    private static void syncPhaseLockProtectionToClient(
+            ServerPlayer player,
+            ItemStack armor,
+            UUID armorId,
+            boolean active) {
+        PacketDistributor.sendToPlayer(player, new PhaseLockProtectionSyncPacket(
+                armorId,
+                active && PhaseLockSubmodule.blocksExternalForces(armor)));
+    }
+
+    public static void syncPhaseLockProtectionToClient(ServerPlayer player, ItemStack armor) {
+        UUID armorId = getArmorId(armor);
+        if (armorId == null) {
+            return;
+        }
+        syncPhaseLockProtectionToClient(
+                player,
+                armor,
+                armorId,
+                isSubmoduleRuntimeActive(armor, PhaseLockSubmodule.INSTANCE.id()));
     }
 
     public record InstalledSubmodule(ItemStack stack, CelestweaveArmorSubmodule submodule, int count) {

@@ -108,6 +108,10 @@ public final class NetworkInit {
                 FlightInertiaSyncPacket.STREAM_CODEC,
                 FlightInertiaSyncPacket::handle);
         registrar.playToClient(
+                PhaseLockProtectionSyncPacket.TYPE,
+                PhaseLockProtectionSyncPacket.STREAM_CODEC,
+                PhaseLockProtectionSyncPacket::handle);
+        registrar.playToClient(
                 ShieldHitFeedbackSuppressionPacket.TYPE,
                 ShieldHitFeedbackSuppressionPacket.STREAM_CODEC,
                 ShieldHitFeedbackSuppressionPacket::handle);

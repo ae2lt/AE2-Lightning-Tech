@@ -9,6 +9,7 @@ item_ids:
   - ae2lt:railgun_module_core
   - ae2lt:railgun_module_compute
   - ae2lt:railgun_module_acceleration
+  - ae2lt:railgun_module_range
   - ae2lt:railgun_module_overload_execution
   - ae2lt:energy_module_t1
   - ae2lt:energy_module_t2
@@ -36,13 +37,13 @@ The workbench binds the railgun to its ME network when the railgun is inserted. 
 
 ### Beam Fire
 
-Hold the attack key while the railgun is in the main hand to fire a 64-block beam.
+Hold the attack key while the railgun is in the main hand to fire a beam with a base range of 64 blocks.
 
 Beam fire uses High Voltage Lightning only. By default, each 2-tick settle deals 20 damage, ignores 40% of armor reduction, consumes 400 FE, and consumes 1 High Voltage Lightning every 8 settles.
 
 ### Charged Shot
 
-Hold use to charge, then release to fire. Releasing before the first charge tier produces no shot.
+Hold use to charge, then release to fire. Releasing before the first charge tier produces no shot. Charged shots have a base range of 64 blocks.
 
 | Tier | Base Charge Time | Default Damage | Firing Cost |
 |------|------------------|----------------|-------------|
@@ -67,6 +68,7 @@ Wearing the complete Celestweave set (<ItemLink id="ae2lt:celestweave_oculus" />
 | Energy Module T1 / T2 / T3 | 1 | Sets railgun FE capacity to 100,000,000 / 500,000,000 / 2,000,000,000 FE |
 | Overload Compute Module | 2 | Enables and improves chain arcs; at max charge, strengthens the EMP pulse |
 | Overload Acceleration Module | 2 | Each module adds +1 charge unit per tick, reducing charge time |
+| Overload Range Module | 2 | Multiplies continuous-beam and charged-shot range: one module gives 2x range and two give 4x |
 | Overload Execution Module | 1 | Triggers only on EHV3 hits; spends an additional 20,000,000 FE per target to further reduce and lock its health; forces execution when the locked value reaches 0 |
 
 Without compute modules, chain arcs are disabled. With two acceleration modules, charge progress accumulates at three times the base rate.
@@ -77,6 +79,10 @@ Open the Overload Device Hub with the default key G while holding the railgun.
 
 * **Terrain Destruction** controls whether charged shots break terrain. It is off by default and can still be disabled by server config
 * **PVP** allows the railgun to damage other players when enabled. When disabled, players are not targeted or damaged
+* **Sound** controls the railgun's local sound effects
+* **Chain Damage** enables chain jumps for both charged shots and the continuous beam without disabling splash, penetration or EMP damage
+* **Execution Method** switches Overload Execution between normal death and forced removal
+* **Impact Targeting** promotes the nearest valid entity in a 7x7x7 box around a blocked EHV3 impact to the primary target; it can be disabled
 * The hub also shows module counts, FE storage and bound network status
 
 ## Combat Notes

@@ -13,11 +13,10 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.entity.projectile.ProjectileUtil;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
@@ -99,6 +98,7 @@ public final class RailgunFireService {
         IGrid grid = bound.grid();
 
         RailgunSettings settings = stack.getOrDefault(ModDataComponents.RAILGUN_SETTINGS.get(), RailgunSettings.DEFAULT);
+        boolean allowPlayerTargets = settings.allowsPlayerTargets(AE2LTCommonConfig.railgunDamagePlayers());
         AmmoCost cost = AmmoCost.forCharged(tier, mods);
 
         IActionSource src = IActionSource.ofPlayer(player);
@@ -136,19 +136,34 @@ public final class RailgunFireService {
         }
         // 3. Raycast first hit.
         Vec3 from = player.getEyePosition();
-        double range = RailgunDefaults.CHARGED_RANGE;
+        double range = RailgunRangePolicy.effectiveRange(
+                RailgunDefaults.CHARGED_RANGE,
+                mods.capabilities());
         Vec3 dir = player.getLookAngle();
         Vec3 to = from.add(dir.scale(range));
-        BlockHitResult bhr = level.clip(new ClipContext(from, to, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, player));
-        Vec3 endBlock = bhr.getType() == HitResult.Type.MISS ? to : bhr.getLocation();
-        EntityHitResult ehr = ProjectileUtil.getEntityHitResult(level, player, from, endBlock, new AABB(from, endBlock).inflate(1.0D),
-                e -> e instanceof LivingEntity le
-                        && le != player
-                        && !le.isSpectator()
-                        && (settings.pvp() || !(le instanceof Player)));
+        var raycast = RailgunRaycastService.traceFirst(
+                level,
+                player,
+                from,
+                to,
+                1.0D,
+                0.3F,
+                e -> RailgunTargetRules.canAffect(player, e, allowPlayerTargets));
+        BlockHitResult bhr = raycast.blockHit();
+        Vec3 endBlock = raycast.blockEnd();
+        EntityHitResult ehr = raycast.entityHit();
 
-        DamageContext ctx = DamageContext.buildCharged(player, tier, mods, level, settings.pvp());
+        DamageContext ctx = DamageContext.buildCharged(player, tier, mods, level, allowPlayerTargets);
         Vec3 firstHitPos = ehr != null ? ehr.getLocation() : endBlock;
+        Entity directTarget = ehr != null ? ehr.getEntity() : null;
+        boolean recoverImpactPrimary = tier == RailgunChargeTier.EHV3
+                && mods.hasOverloadExecution()
+                && settings.overloadImpactTargeting();
+        if (recoverImpactPrimary
+                && directTarget == null
+                && bhr.getType() == HitResult.Type.BLOCK) {
+            directTarget = findImpactPrimary(level, player, firstHitPos, allowPlayerTargets);
+        }
         List<RailgunChainResolver.Hit> hits = new ArrayList<>();
         int primaryId = -1;
         int chainTuningCount = countChainTuning(mods);
@@ -160,11 +175,13 @@ public final class RailgunFireService {
             case 1 -> 0.85D;
             default -> 1.0D;
         };
-        if (ehr != null && ehr.getEntity() instanceof LivingEntity primary) {
+        if (directTarget instanceof LivingEntity primary) {
             primaryId = primary.getId();
             hits.add(new RailgunChainResolver.Hit(primary, ctx.firstDamage(), false, false));
-            hits.addAll(RailgunChainResolver.resolveChainForkedFrom(
-                    level, player, primary, ctx, Set.of(), null));
+            if (settings.chainDamage()) {
+                hits.addAll(RailgunChainResolver.resolveChainForkedFrom(
+                        level, player, primary, ctx, Set.of(), null));
+            }
             if (tier.isMax()) {
                 hits.addAll(RailgunChainResolver.resolvePenetration(level, player, primary, ctx,
                         RailgunDefaults.PENETRATION_MAX_TARGETS));
@@ -195,7 +212,7 @@ public final class RailgunFireService {
         // chain + penetration + pulse + splash) are excluded so the splash chain only
         // jumps to fresh targets. The first arc visually starts at the impact center.
         LivingEntity splashAnchor = findClosestSplashAnchor(hits, firstHitPos, primaryId);
-        if (splashAnchor != null) {
+        if (settings.chainDamage() && splashAnchor != null) {
             Set<Integer> alreadyHit = new HashSet<>();
             for (var h : hits) {
                 if (h.target() != null) alreadyHit.add(h.target().getId());
@@ -205,6 +222,10 @@ public final class RailgunFireService {
         }
         if (!hits.isEmpty()) {
             applyAll(level, player, hits, ctx, stack, tier);
+        }
+        if (directTarget != null && !(directTarget instanceof LivingEntity)) {
+            applyDirectNonLivingHit(level, player, directTarget, ctx.firstDamage(), stack, tier,
+                    allowPlayerTargets);
         }
 
         // 4. Terrain
@@ -239,24 +260,19 @@ public final class RailgunFireService {
                 ModDamageTypes.electromagneticHolder(level);
         DamageSource ds = new DamageSource(damageHolder, player, player);
         boolean damagePlayers = AE2LTCommonConfig.railgunDamagePlayers();
+        boolean allowPlayerTargets = damagePlayers && ctx.pvp();
         boolean paralyzePlayers = AE2LTCommonConfig.railgunParalysisOnPlayers();
         int paralysisDur = RailgunDefaults.PARALYSIS_DURATION_TICKS;
         boolean overloadEligible = tier == RailgunChargeTier.EHV3 && !railgunStack.isEmpty();
 
         for (var hit : hits) {
             LivingEntity target = hit.target();
-            if (target == null || !target.isAlive()) continue;
-            if (target instanceof Player tp) {
-                if (!damagePlayers) continue;
-                if (!ctx.pvp()) continue;
-                if (tp.isCreative() || tp.isSpectator()) continue;
-            }
+            if (!RailgunTargetRules.canAffect(player, target, allowPlayerTargets)) continue;
             double armorReduction = DamageContext.effectiveArmorReduction(target);
             double finalDamage = DamageContext.finalDamage(hit.damage(), ctx.bypassRatio(), armorReduction);
             target.invulnerableTime = 0; // bypass i-frames for charged shots? keep for fairness on beam, allow here.
             target.hurt(ds, (float) finalDamage);
-            if (target instanceof Player && !paralyzePlayers) continue;
-            if (paralysisDur > 0) {
+            if (paralysisDur > 0 && (!(target instanceof Player) || paralyzePlayers)) {
                 target.addEffect(new MobEffectInstance(
                         ModMobEffects.ELECTROMAGNETIC_PARALYSIS,
                         paralysisDur,
@@ -265,12 +281,70 @@ public final class RailgunFireService {
                         true,
                         true), player);
             }
-            // Overload Execution: only on EHv3 charged shots with the OVERLOAD module
-            // installed. The service itself re-checks the module + master switch.
-            if (overloadEligible) {
+            // Overload Execution belongs to the shot's direct/local impact set. Chain
+            // propagation keeps its normal damage but must never carry execution onward.
+            // The service itself re-checks the module + master switch.
+            if (overloadEligible && !hit.chainPropagation()) {
                 OverloadExecutionService.onHit(level, player, railgunStack, target, finalDamage);
             }
         }
+    }
+
+    /**
+     * Applies only to the primary ray hit. Non-living projectile targets never enter
+     * chain, penetration or pulse lists, whose damage model requires LivingEntity.
+     */
+    private static void applyDirectNonLivingHit(
+            ServerLevel level,
+            ServerPlayer player,
+            Entity target,
+            double damage,
+            ItemStack railgunStack,
+            RailgunChargeTier tier,
+            boolean allowPlayerTargets) {
+        if (!RailgunTargetRules.canAffect(player, target, allowPlayerTargets)) return;
+
+        DamageSource source = new DamageSource(ModDamageTypes.electromagneticHolder(level), player, player);
+        target.hurt(source, (float) damage);
+
+        // A normal hit gets the entity's own damage behavior first. Forced execution is
+        // a direct-hit-only EHv3 fallback for non-living projectile targets that survived.
+        if (tier == RailgunChargeTier.EHV3 && !railgunStack.isEmpty() && !target.isRemoved()) {
+            OverloadExecutionService.onDirectNonLivingHit(
+                    level, player, railgunStack, target, allowPlayerTargets);
+        }
+    }
+
+    /**
+     * When terrain ends the ray before it can directly select an entity, promotes the
+     * closest legal entity in a 7x7x7 box around the impact to the primary target. The
+     * caller retains the original block impact point for splash, terrain and visuals.
+     */
+    @Nullable
+    private static Entity findImpactPrimary(
+            ServerLevel level,
+            ServerPlayer player,
+            Vec3 impact,
+            boolean allowPlayerTargets) {
+        double halfExtent = RailgunDefaults.IMPACT_PRIMARY_SEARCH_HALF_EXTENT;
+        AABB bounds = new AABB(impact, impact).inflate(halfExtent);
+        Entity closest = null;
+        double closestDistance = Double.MAX_VALUE;
+
+        for (Entity candidate : level.getEntities(
+                player,
+                bounds,
+                entity -> RailgunTargetRules.canAffect(player, entity, allowPlayerTargets))) {
+            double distance = candidate.getBoundingBox().getCenter().distanceToSqr(impact);
+            if (distance < closestDistance
+                    || (distance == closestDistance
+                    && closest != null
+                    && candidate.getId() < closest.getId())) {
+                closest = candidate;
+                closestDistance = distance;
+            }
+        }
+        return closest;
     }
 
     private static void broadcastFire(ServerLevel level, ServerPlayer player, Vec3 from, Vec3 firstHit,

@@ -16,11 +16,11 @@ item_ids:
 
 The matrix occupies a fixed **7×11×7** volume. The Controller is centered on one 7×11 side. The structure extends 6 blocks in the Controller's facing direction, 3 blocks to either side, and 5 blocks both above and below it.
 
-The scene below shows a complete structure with the minimum pattern capacity, a Stable Main Core, and Blank Sub Cores. Drag to rotate it. The annotations identify the Controller, default Port position, and one Pattern Storage.
+The scene below shows a complete structure with the minimum pattern capacity, a Stable Main Core, and Blank Units. Drag to rotate it. The annotations identify the Controller, default Port position, and one Pattern Storage.
 
 <GameScene zoom="2.4" background="transparent" interactive={true}>
-  <ImportStructure src="../assets/assemblies/matter_warping_matrix.snbt" />
-  <DiamondAnnotation pos="0.5 5.5 3.5" color="#f2d37a">Matter Warping Matrix Controller</DiamondAnnotation>
+  <ImportStructure src="../assets/assemblies/tianshu_matter_warping_matrix.snbt" />
+  <DiamondAnnotation pos="0.5 5.5 3.5" color="#f2d37a">Tianshu Matter Warping Matrix Controller</DiamondAnnotation>
   <DiamondAnnotation pos="6.5 5.5 3.5" color="#85f29e">Default Port position</DiamondAnnotation>
   <DiamondAnnotation pos="1.5 1.5 1.5" color="#80c6ff">One T1 Pattern Storage</DiamondAnnotation>
   <IsometricCamera yaw="215" pitch="25" />
@@ -43,16 +43,16 @@ The Controller is already in the world and is not consumed by the button. A comp
 | Internal core | Count | Notes |
 |---------------|------:|-------|
 | Any main core | 1 | Must occupy the geometric center |
-| Any sub core | 80 | Every sub-core position must be filled; Blank Sub Cores are valid fillers |
+| Any peripheral unit | 80 | Every peripheral position must be filled; Blank Units are valid fillers |
 
-Starting from an empty site therefore requires at minimum **1 Controller, 352 structure blocks placed by the button, 1 main core, and 80 sub cores**. The 352 structure blocks already include one minimum-required Pattern Storage.
+Starting from an empty site therefore requires at minimum **1 Controller, 352 structure blocks placed by the button, 1 Main Core, and 80 Peripheral Units**. The 352 structure blocks already include one minimum-required Pattern Storage.
 
 ## Using Auto-build
 
 1. Place the Controller and reserve the full volume in its facing direction
 2. Put the Casings, Frames, Glass, Port, and desired Pattern Storages in the **player inventory**
 3. Use **Auto-build** from the Controller
-4. After auto-build completes, manually place one main core and 80 sub cores in the central core chamber
+4. After auto-build completes, manually place one Main Core and 80 Peripheral Units in the central core chamber
 
 Auto-build only reads the player inventory. It cannot extract blocks from the ME network or adjacent containers. If only one Pattern Storage is wanted, do not carry additional Matrix Pattern Storages while using the button.
 
@@ -62,8 +62,8 @@ If any Casing, Frame, Glass, Port candidate, or Pattern Storage bay contains an 
 
 * Exactly **one** of the three Port candidates must contain a Matrix Port; the other two must be Constraint Frames
 * The 50 Pattern Storage bays may be empty or contain T1/T2 storages, but at least one storage is required
-* None of the 81 core positions may be empty: the center must be a main core and all other positions must be sub cores
-* Quantum and Overload Main Cores allow at most 15 Amplifier Sub Cores; Stable rejects amplifiers, while Creative only accepts Blank Sub Cores
+* None of the 81 core positions may be empty: the center must be a Main Core and all other positions must be Peripheral Units
+* Quantum and Overload Main Cores allow at most 15 Tianshu Amplifier Units; Stable rejects amplifiers, while Creative only accepts Blank Units
 * Open gaps shown by the structure are not structure members and do not need to be sealed
 
 When the final required block is placed, the matrix rescans and forms automatically. The Auto-build button does not need to be pressed again.

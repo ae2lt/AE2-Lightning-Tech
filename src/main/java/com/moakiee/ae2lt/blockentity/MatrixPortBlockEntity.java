@@ -84,6 +84,7 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
     @Override
     protected IManagedGridNode createMainNode() {
         return super.createMainNode()
+                // Keep the legacy nested NBT key; the registry alias only migrates registry IDs.
                 .setTagName("matter_warping_matrix_port")
                 .setVisualRepresentation(ModBlocks.MATTER_WARPING_MATRIX_PORT.get())
                 .setIdlePowerUsage(8.0D)

@@ -76,24 +76,24 @@ public class TianshuSupercomputerControllerScreen
         }
         var computeTier = menu.getTier().computeTier();
         long rawDispatch = UnifiedCraftingComputeCalculator.DISPATCH_PER_UNIT
-                * (long) menu.getParallelCores();
+                * (long) menu.getParallelUnits();
         long dispatchGain = UnifiedCraftingComputeCalculator.dispatchGain(
-                computeTier, menu.getAmplifierCores());
+                computeTier, menu.getAmplifierUnits());
         long storageGain = UnifiedCraftingComputeCalculator.storageGain(
-                computeTier, menu.getAmplifierCores());
+                computeTier, menu.getAmplifierUnits());
         long externalStorage = UnifiedCraftingComputeCalculator.saturatedMultiply(
-                UnifiedCraftingComputeCalculator.STORAGE_PER_UNIT * (long) menu.getCapacityCores(),
+                UnifiedCraftingComputeCalculator.STORAGE_PER_UNIT * (long) menu.getStorageUnits(),
                 storageGain);
         graphics.drawString(font, Component.translatable("ae2lt.tianshu.gui.tier", tierName()),
                 14, 72, 0xE8F4FF, false);
         graphics.drawString(font, Component.translatable("ae2lt.tianshu.gui.cores",
-                menu.getParallelCores(), menu.getAmplifierCores(), menu.getCapacityCores()),
+                menu.getParallelUnits(), menu.getAmplifierUnits(), menu.getStorageUnits()),
                 14, 86, 0xB7C8D8, false);
         graphics.drawString(font, Component.translatable("ae2lt.tianshu.gui.functional_storages",
                 menu.getClosedLoopPatternStorages(), menu.getClosedLoopSeedStorages()),
                 14, 100, 0xB7C8D8, false);
         graphics.drawString(font, Component.translatable("ae2lt.tianshu.gui.gains",
-                1 + menu.getAmplifierCores(), formatBudget(dispatchGain), formatBudget(storageGain)),
+                1 + menu.getAmplifierUnits(), formatBudget(dispatchGain), formatBudget(storageGain)),
                 14, 114, 0xB7C8D8, false);
         graphics.drawString(font, Component.translatable("ae2lt.tianshu.gui.dispatch_budget",
                 formatBudget(rawDispatch), menu.getSuccessfulDispatchesPerTick(),

@@ -389,8 +389,8 @@ public final class TianshuJdbHarness {
             require(controller.isFormed(), direction + " did not form: " + controller.issueText());
             require(controller.memberCount() == 243, direction + " member count=" + controller.memberCount());
             var profile = controller.getCoreProfile();
-            require(profile.capacityCoreCount() == 12, direction + " storage cores=" + profile.capacityCoreCount());
-            require(profile.parallelCoreCount() == 12, direction + " parallel cores=" + profile.parallelCoreCount());
+            require(profile.storageUnitCount() == 12, direction + " storage units=" + profile.storageUnitCount());
+            require(profile.parallelUnitCount() == 12, direction + " parallel units=" + profile.parallelUnitCount());
             require(profile.storageBytes() == 12L * 64L * 1024L * 1024L,
                     direction + " storage bytes=" + profile.storageBytes());
             require(profile.parallelism() == 12 * 128, direction + " parallelism=" + profile.parallelism());
@@ -535,7 +535,7 @@ public final class TianshuJdbHarness {
             level.setBlock(center, ModBlocks.BASELINE_SUPERCOMPUTING_UNIT.get().defaultBlockState(), Block.UPDATE_ALL);
             BlockPos invalidPeripheral = peripheral(controllerPos, direction, 4);
             level.setBlock(invalidPeripheral, ModBlocks.CLOSED_LOOP_PATTERN_STORAGE.get().defaultBlockState(), Block.UPDATE_ALL);
-            assertIssue(controller, TianshuMultiblockScanIssue.INVALID_PERIPHERAL_CORE,
+            assertIssue(controller, TianshuMultiblockScanIssue.INVALID_PERIPHERAL_UNIT,
                     direction + " closed-loop-storage-in-core");
             level.setBlock(invalidPeripheral, ModBlocks.QUANTUM_SUPERCOMPUTING_UNIT.get().defaultBlockState(), Block.UPDATE_ALL);
             assertIssue(controller, TianshuMultiblockScanIssue.MAIN_CORE_OUTSIDE_CENTER, direction + " peripheral-main");

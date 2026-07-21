@@ -16,7 +16,10 @@ public final class PhaseFlightSubmoduleItem extends AbstractSingleArmorSubmodule
                 ArmorPart.LEGS,
                 PhaseFlightSubmodule.INSTANCE,
                 stack -> List.of(
-                        new DeviceCapability.FlightMode(FlightKind.PHASE),
-                        new DeviceCapability.PassiveDrain(ArmorOverloadRules.PHASE_FLIGHT_PASSIVE_DRAIN_FE)));
+                        // Phase flight is an upgrade of creative flight, not a second flight mode.
+                        // The traversal capability is charged only while its no-clip feature is in use.
+                        new DeviceCapability.FlightMode(FlightKind.CREATIVE),
+                        new DeviceCapability.PassiveDrain(ArmorOverloadRules.FLIGHT_HOVER_DRAIN_FE),
+                        new DeviceCapability.PhaseTraversal(ArmorOverloadRules.PHASE_FLIGHT_PASSIVE_DRAIN_FE)));
     }
 }

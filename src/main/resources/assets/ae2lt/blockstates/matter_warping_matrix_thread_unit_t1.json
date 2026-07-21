@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "formed=false": {
+      "model": "ae2lt:block/matter_warping_matrix_thread_unit_t1"
+    },
+    "formed=true": {
+      "model": "ae2lt:block/matter_warping_matrix_thread_unit_t1_formed"
+    }
+  }
+}

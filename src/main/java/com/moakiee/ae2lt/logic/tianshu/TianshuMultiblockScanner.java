@@ -51,9 +51,9 @@ public final class TianshuMultiblockScanner {
         var patternStorages = new ArrayList<BlockPos>();
         var seedStorages = new ArrayList<BlockPos>();
         CpuMainCoreTier mainCore = null;
-        int capacityCores = 0;
-        int parallelCores = 0;
-        int amplifierCores = 0;
+        int storageUnits = 0;
+        int parallelUnits = 0;
+        int amplifierUnits = 0;
         BlockPos min = null;
         BlockPos max = null;
 
@@ -120,20 +120,20 @@ public final class TianshuMultiblockScanner {
                                     mainCore = tier;
                                     members.add(world.immutable());
                                 }
-                            } else if (component == TianshuMultiblockComponent.BLANK_CORE) {
+                            } else if (component == TianshuMultiblockComponent.BLANK_UNIT) {
                                 members.add(world.immutable());
-                            } else if (component == TianshuMultiblockComponent.STORAGE_CORE) {
-                                capacityCores++;
+                            } else if (component == TianshuMultiblockComponent.STORAGE_UNIT) {
+                                storageUnits++;
                                 members.add(world.immutable());
-                            } else if (component == TianshuMultiblockComponent.PARALLEL_CORE) {
-                                parallelCores++;
+                            } else if (component == TianshuMultiblockComponent.PARALLEL_UNIT) {
+                                parallelUnits++;
                                 members.add(world.immutable());
-                            } else if (component == TianshuMultiblockComponent.AMPLIFIER_CORE) {
-                                amplifierCores++;
+                            } else if (component == TianshuMultiblockComponent.AMPLIFIER_UNIT) {
+                                amplifierUnits++;
                                 members.add(world.immutable());
                             } else {
                                 if (tier != null) addOnce(issues, TianshuMultiblockScanIssue.MAIN_CORE_OUTSIDE_CENTER);
-                                addOnce(issues, TianshuMultiblockScanIssue.INVALID_PERIPHERAL_CORE);
+                                addOnce(issues, TianshuMultiblockScanIssue.INVALID_PERIPHERAL_UNIT);
                             }
                         }
                         case IGNORED -> {
@@ -150,23 +150,23 @@ public final class TianshuMultiblockScanner {
         } else if (ports.size() > 1) {
             addOnce(issues, TianshuMultiblockScanIssue.MULTIPLE_PORTS);
         }
-        if (mainCore != CpuMainCoreTier.MULTIDIMENSIONAL && parallelCores == 0) {
-            addOnce(issues, TianshuMultiblockScanIssue.MISSING_PARALLEL_CORE);
+        if (mainCore != CpuMainCoreTier.MULTIDIMENSIONAL && parallelUnits == 0) {
+            addOnce(issues, TianshuMultiblockScanIssue.MISSING_PARALLEL_UNIT);
         }
         if (mainCore == CpuMainCoreTier.MULTIDIMENSIONAL
-                && capacityCores + parallelCores + amplifierCores > 0) {
-            addOnce(issues, TianshuMultiblockScanIssue.INVALID_PERIPHERAL_CORE);
+                && storageUnits + parallelUnits + amplifierUnits > 0) {
+            addOnce(issues, TianshuMultiblockScanIssue.INVALID_PERIPHERAL_UNIT);
         }
-        if (mainCore != null && amplifierCores > mainCore.computeTier().maxAmplifierUnits()) {
+        if (mainCore != null && amplifierUnits > mainCore.computeTier().maxAmplifierUnits()) {
             addOnce(issues, mainCore.computeTier().maxAmplifierUnits() == 0
-                    ? TianshuMultiblockScanIssue.AMPLIFIER_CORE_NOT_SUPPORTED
-                    : TianshuMultiblockScanIssue.TOO_MANY_AMPLIFIER_CORES);
+                    ? TianshuMultiblockScanIssue.AMPLIFIER_UNIT_NOT_SUPPORTED
+                    : TianshuMultiblockScanIssue.TOO_MANY_AMPLIFIER_UNITS);
         }
         if (!issues.isEmpty()) {
             return new TianshuMultiblockScanAttempt(null, List.copyOf(issues));
         }
         var profile = CpuInternalCoreCalculator.calculate(
-                mainCore, capacityCores, parallelCores, amplifierCores);
+                mainCore, storageUnits, parallelUnits, amplifierUnits);
         var functionProfile = new TianshuFunctionProfile(
                 patternStorages.size(), seedStorages.size());
         return new TianshuMultiblockScanAttempt(new TianshuMultiblockScanResult(

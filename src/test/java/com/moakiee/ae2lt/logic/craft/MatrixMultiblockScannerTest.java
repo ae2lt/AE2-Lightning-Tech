@@ -46,7 +46,7 @@ class MatrixMultiblockScannerTest {
         var stableWithAmplifier = completeStructure();
         stableWithAmplifier.put(
                 worldPos(secondNonCenterCraftingSlot()),
-                MatrixMultiblockComponent.MULTIPLIER_SUB_CORE_T1);
+                MatrixMultiblockComponent.AMPLIFIER_UNIT);
 
         var stableAttempt = MatrixMultiblockScanner.scan(
                 CONTROLLER, ORIENTATION, stableWithAmplifier::get);
@@ -64,7 +64,7 @@ class MatrixMultiblockScannerTest {
                     && !entry.localPos().equals(firstNonCenterCraftingSlot())
                     && placed < 16) {
                 quantumWithSixteen.put(
-                        worldPos(entry.localPos()), MatrixMultiblockComponent.MULTIPLIER_SUB_CORE_T1);
+                        worldPos(entry.localPos()), MatrixMultiblockComponent.AMPLIFIER_UNIT);
                 placed++;
             }
         }
@@ -73,7 +73,7 @@ class MatrixMultiblockScannerTest {
                 CONTROLLER, ORIENTATION, quantumWithSixteen::get);
         assertFalse(quantumAttempt.formed());
         assertTrue(quantumAttempt.issues().contains(
-                MatrixMultiblockScanIssue.MULTIPLIER_LIMIT_EXCEEDED));
+                MatrixMultiblockScanIssue.AMPLIFIER_LIMIT_EXCEEDED));
     }
 
     private static Map<BlockPos, MatrixMultiblockComponent> completeStructure() {
@@ -98,8 +98,8 @@ class MatrixMultiblockScannerTest {
             case CRAFTING_BAY -> entry.localPos().equals(MatrixMultiblockTemplate.CRAFTING_CENTER_LOCAL)
                     ? MatrixMultiblockComponent.STABLE_MAIN_CORE
                     : entry.localPos().equals(firstNonCenterCraftingSlot())
-                            ? MatrixMultiblockComponent.THREAD_SUB_CORE_T1
-                            : MatrixMultiblockComponent.BLANK_SUB_CORE;
+                            ? MatrixMultiblockComponent.THREAD_UNIT_T1
+                            : MatrixMultiblockComponent.BLANK_UNIT;
         };
     }
 

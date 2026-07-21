@@ -1,7 +1,0 @@
-{
-  "parent": "minecraft:block/cube_all",
-  "textures": {
-    "all": "ae2lt:block/matter_warping_matrix/matter_warping_matrix_thread_sub_core_t1",
-    "particle": "ae2lt:block/matter_warping_matrix/matter_warping_matrix_thread_sub_core_t1"
-  }
-}

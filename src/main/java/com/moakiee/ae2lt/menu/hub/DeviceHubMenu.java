@@ -60,6 +60,9 @@ public class DeviceHubMenu extends AbstractContainerMenu {
     private boolean terrainDestruction;
     private boolean pvp;
     private boolean soundEnabled;
+    private boolean chainDamage;
+    private boolean forceOverloadRemoval;
+    private boolean overloadImpactTargeting;
     private List<String> moduleNameKeys = List.of();
     private List<Integer> moduleCounts = List.of();
     private List<Boolean> moduleEnabled = List.of();
@@ -135,7 +138,7 @@ public class DeviceHubMenu extends AbstractContainerMenu {
         if (deviceStack.isEmpty()) {
             status = DeviceStatusModel.EMPTY;
         } else if (selectedTab == TAB_RAILGUN) {
-            status = DeviceStatusModel.fromRailgunStack(deviceStack, serverPlayer);
+            status = DeviceStatusModel.fromRailgunStack(deviceStack, serverPlayer, selectedModuleIndex);
         } else {
             status = DeviceStatusModel.fromArmorStack(deviceStack, serverPlayer, selectedModuleIndex);
         }
@@ -171,6 +174,9 @@ public class DeviceHubMenu extends AbstractContainerMenu {
                 status.terrainDestruction(),
                 status.pvp(),
                 status.soundEnabled(),
+                status.chainDamage(),
+                status.forceOverloadRemoval(),
+                status.overloadImpactTargeting(),
                 nameKeys,
                 counts,
                 enabled,
@@ -209,6 +215,9 @@ public class DeviceHubMenu extends AbstractContainerMenu {
             boolean terrainDestruction,
             boolean pvp,
             boolean soundEnabled,
+            boolean chainDamage,
+            boolean forceOverloadRemoval,
+            boolean overloadImpactTargeting,
             List<String> nameKeys,
             List<Integer> counts,
             List<Boolean> enabled,
@@ -223,6 +232,9 @@ public class DeviceHubMenu extends AbstractContainerMenu {
         this.terrainDestruction = terrainDestruction;
         this.pvp = pvp;
         this.soundEnabled = soundEnabled;
+        this.chainDamage = chainDamage;
+        this.forceOverloadRemoval = forceOverloadRemoval;
+        this.overloadImpactTargeting = overloadImpactTargeting;
         this.moduleNameKeys = List.copyOf(nameKeys);
         this.moduleCounts = List.copyOf(counts);
         this.moduleEnabled = List.copyOf(enabled);
@@ -278,6 +290,18 @@ public class DeviceHubMenu extends AbstractContainerMenu {
         return soundEnabled;
     }
 
+    public boolean isChainDamage() {
+        return chainDamage;
+    }
+
+    public boolean isForceOverloadRemoval() {
+        return forceOverloadRemoval;
+    }
+
+    public boolean isOverloadImpactTargeting() {
+        return overloadImpactTargeting;
+    }
+
     public int getSelectedModuleIndex() {
         return selectedModuleIndex;
     }
@@ -310,7 +334,10 @@ public class DeviceHubMenu extends AbstractContainerMenu {
 
     public void selectModule(int moduleIndex) {
         if (moduleIndex >= 0) {
-            this.selectedModuleIndex = moduleIndex;
+            this.selectedModuleIndex = selectedTab == TAB_RAILGUN
+                    && this.selectedModuleIndex == moduleIndex
+                    ? -1
+                    : moduleIndex;
         }
     }
 
@@ -359,11 +386,41 @@ public class DeviceHubMenu extends AbstractContainerMenu {
         railgun.set(ModDataComponents.RAILGUN_SETTINGS.get(), s.withSound(!s.soundEnabled()));
     }
 
+    public void toggleRailgunChainDamage() {
+        if (!(getPlayer() instanceof ServerPlayer player)) return;
+        ItemStack railgun = findDevice(player, TAB_RAILGUN);
+        if (railgun.isEmpty()) return;
+        RailgunSettings s = railgun.getOrDefault(ModDataComponents.RAILGUN_SETTINGS.get(), RailgunSettings.DEFAULT);
+        railgun.set(ModDataComponents.RAILGUN_SETTINGS.get(), s.withChainDamage(!s.chainDamage()));
+    }
+
+    public void toggleRailgunOverloadRemovalMode() {
+        if (!(getPlayer() instanceof ServerPlayer player)) return;
+        ItemStack railgun = findDevice(player, TAB_RAILGUN);
+        if (railgun.isEmpty()) return;
+        RailgunSettings s = railgun.getOrDefault(ModDataComponents.RAILGUN_SETTINGS.get(), RailgunSettings.DEFAULT);
+        railgun.set(
+                ModDataComponents.RAILGUN_SETTINGS.get(),
+                s.withForceOverloadRemoval(!s.forceOverloadRemoval()));
+    }
+
+    public void toggleRailgunImpactTargeting() {
+        if (!(getPlayer() instanceof ServerPlayer player)) return;
+        ItemStack railgun = findDevice(player, TAB_RAILGUN);
+        if (railgun.isEmpty()) return;
+        RailgunSettings s = railgun.getOrDefault(ModDataComponents.RAILGUN_SETTINGS.get(), RailgunSettings.DEFAULT);
+        railgun.set(
+                ModDataComponents.RAILGUN_SETTINGS.get(),
+                s.withOverloadImpactTargeting(!s.overloadImpactTargeting()));
+    }
+
     public void cycleSelectedModuleConfig(int optionIndex) {
         if (!(getPlayer() instanceof ServerPlayer player)) return;
-        if (selectedTab == TAB_RAILGUN) return;
         ItemStack deviceStack = findDevice(player, selectedTab);
         if (deviceStack.isEmpty()) return;
+        if (selectedTab == TAB_RAILGUN) {
+            return;
+        }
         var submodules = CelestweaveArmorState.collectSubmodules(deviceStack, player.registryAccess());
         if (selectedModuleIndex < 0 || selectedModuleIndex >= submodules.size()) return;
         var submodule = submodules.get(selectedModuleIndex);
@@ -376,9 +433,16 @@ public class DeviceHubMenu extends AbstractContainerMenu {
         // sync inertia to client when flight module config changes
         if ("flight_inertia".equals(config.key())
                 || FlightSpeedOption.CONFIG_KEY.equals(config.key())
-                || PhaseFlightSubmodule.BLOCK_EXTERNAL_FORCES_CONFIG_KEY.equals(config.key())
-                || PhaseFlightSubmodule.BLOCK_EXTERNAL_TELEPORTS_CONFIG_KEY.equals(config.key())) {
+                || PhaseFlightSubmodule.PHASE_MODE_CONFIG_KEY.equals(config.key())) {
             CelestweaveArmorState.syncFlightInertiaToClientIfFlight(player, deviceStack);
+        }
+        if (PhaseLockSubmodule.BLOCK_EXTERNAL_FORCES_CONFIG_KEY.equals(config.key())
+                || PhaseLockSubmodule.BLOCK_EXTERNAL_TELEPORTS_CONFIG_KEY.equals(config.key())) {
+            CelestweaveArmorState.syncPhaseLockProtectionToClient(player, deviceStack);
+        }
+        if (PhaseLockSubmodule.ARMOR_LOCK_CONFIG_KEY.equals(config.key())
+                && !PhaseLockSubmodule.isArmorLockEnabled(deviceStack)) {
+            PhaseLockService.release(player);
         }
     }
 

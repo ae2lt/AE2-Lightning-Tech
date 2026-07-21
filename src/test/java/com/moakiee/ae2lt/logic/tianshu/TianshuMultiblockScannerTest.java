@@ -63,7 +63,7 @@ class TianshuMultiblockScannerTest {
     void coreChamberRequiresCenteredMainAndFilledPeriphery() {
         var blocks = completeStructure(Direction.WEST);
         var center = TianshuMultiblockScanner.worldPos(CONTROLLER, new BlockPos(3, 3, 3), Direction.WEST);
-        blocks.put(center, TianshuMultiblockComponent.STORAGE_CORE);
+        blocks.put(center, TianshuMultiblockComponent.STORAGE_UNIT);
         var missingMain = TianshuMultiblockScanner.scan(CONTROLLER, Direction.WEST, blocks::get);
         assertFalse(missingMain.formed());
         assertTrue(missingMain.issues().contains(TianshuMultiblockScanIssue.MISSING_MAIN_CORE));
@@ -73,7 +73,7 @@ class TianshuMultiblockScannerTest {
         blocks.put(peripheral, TianshuMultiblockComponent.OTHER);
         var gap = TianshuMultiblockScanner.scan(CONTROLLER, Direction.WEST, blocks::get);
         assertFalse(gap.formed());
-        assertTrue(gap.issues().contains(TianshuMultiblockScanIssue.INVALID_PERIPHERAL_CORE));
+        assertTrue(gap.issues().contains(TianshuMultiblockScanIssue.INVALID_PERIPHERAL_UNIT));
     }
 
     @Test
@@ -86,7 +86,7 @@ class TianshuMultiblockScannerTest {
         var attempt = TianshuMultiblockScanner.scan(CONTROLLER, Direction.WEST, blocks::get);
 
         assertFalse(attempt.formed());
-        assertTrue(attempt.issues().contains(TianshuMultiblockScanIssue.INVALID_PERIPHERAL_CORE));
+        assertTrue(attempt.issues().contains(TianshuMultiblockScanIssue.INVALID_PERIPHERAL_UNIT));
     }
 
     @Test
@@ -98,24 +98,24 @@ class TianshuMultiblockScannerTest {
                     var local = new BlockPos(x, y, z);
                     if (!local.equals(new BlockPos(3, 3, 3))) {
                         blocks.put(TianshuMultiblockScanner.worldPos(CONTROLLER, local, Direction.WEST),
-                                TianshuMultiblockComponent.BLANK_CORE);
+                                TianshuMultiblockComponent.BLANK_UNIT);
                     }
                 }
             }
         }
         blocks.put(TianshuMultiblockScanner.worldPos(CONTROLLER, new BlockPos(2, 2, 2), Direction.WEST),
-                TianshuMultiblockComponent.STORAGE_CORE);
+                TianshuMultiblockComponent.STORAGE_UNIT);
         blocks.put(TianshuMultiblockScanner.worldPos(CONTROLLER, new BlockPos(2, 2, 3), Direction.WEST),
-                TianshuMultiblockComponent.PARALLEL_CORE);
+                TianshuMultiblockComponent.PARALLEL_UNIT);
 
         var attempt = TianshuMultiblockScanner.scan(CONTROLLER, Direction.WEST, blocks::get);
 
         assertTrue(attempt.formed(), attempt.issues().toString());
-        assertEquals(1, attempt.result().coreProfile().capacityCoreCount());
-        assertEquals(1, attempt.result().coreProfile().parallelCoreCount());
-        assertEquals((1L << 20) + CpuInternalCoreCalculator.STORAGE_PER_CORE,
+        assertEquals(1, attempt.result().coreProfile().storageUnitCount());
+        assertEquals(1, attempt.result().coreProfile().parallelUnitCount());
+        assertEquals((1L << 20) + CpuInternalCoreCalculator.STORAGE_PER_UNIT,
                 attempt.result().coreProfile().storageBytes());
-        assertEquals(CpuInternalCoreCalculator.PARALLEL_PER_CORE, attempt.result().coreProfile().parallelism());
+        assertEquals(CpuInternalCoreCalculator.PARALLEL_PER_UNIT, attempt.result().coreProfile().parallelism());
     }
 
     @Test
@@ -133,7 +133,7 @@ class TianshuMultiblockScannerTest {
                     if (local.equals(new BlockPos(3, 3, 3)) || local.equals(new BlockPos(2, 2, 2))) continue;
                     quantum.put(
                             TianshuMultiblockScanner.worldPos(CONTROLLER, local, Direction.WEST),
-                            TianshuMultiblockComponent.AMPLIFIER_CORE);
+                            TianshuMultiblockComponent.AMPLIFIER_UNIT);
                     amplifiers++;
                 }
             }
@@ -142,7 +142,7 @@ class TianshuMultiblockScannerTest {
         var quantumAttempt = TianshuMultiblockScanner.scan(
                 CONTROLLER, Direction.WEST, quantum::get);
         assertTrue(quantumAttempt.formed(), quantumAttempt.issues().toString());
-        assertEquals(15, quantumAttempt.result().coreProfile().amplifierCoreCount());
+        assertEquals(15, quantumAttempt.result().coreProfile().amplifierUnitCount());
         assertEquals(3_072, quantumAttempt.result().coreProfile().successfulDispatchesPerTick());
 
         quantum.put(
@@ -153,7 +153,7 @@ class TianshuMultiblockScannerTest {
                 CONTROLLER, Direction.WEST, quantum::get);
         assertFalse(baselineAttempt.formed());
         assertTrue(baselineAttempt.issues().contains(
-                TianshuMultiblockScanIssue.AMPLIFIER_CORE_NOT_SUPPORTED));
+                TianshuMultiblockScanIssue.AMPLIFIER_UNIT_NOT_SUPPORTED));
     }
 
     @Test
@@ -206,7 +206,7 @@ class TianshuMultiblockScannerTest {
                     blocks.put(TianshuMultiblockScanner.worldPos(CONTROLLER, local, Direction.WEST),
                             local.equals(new BlockPos(3, 3, 3))
                                     ? TianshuMultiblockComponent.MAIN_MULTIDIMENSIONAL
-                                    : TianshuMultiblockComponent.BLANK_CORE);
+                                    : TianshuMultiblockComponent.BLANK_UNIT);
                 }
             }
         }
@@ -281,8 +281,8 @@ class TianshuMultiblockScannerTest {
                 case CORE_RESERVED -> local.equals(new BlockPos(3, 3, 3))
                         ? TianshuMultiblockComponent.MAIN_BASELINE
                         : local.equals(new BlockPos(2, 2, 2))
-                                ? TianshuMultiblockComponent.PARALLEL_CORE
-                                : TianshuMultiblockComponent.STORAGE_CORE;
+                                ? TianshuMultiblockComponent.PARALLEL_UNIT
+                                : TianshuMultiblockComponent.STORAGE_UNIT;
                 case IGNORED -> TianshuMultiblockComponent.AIR;
             };
             result.put(TianshuMultiblockScanner.worldPos(CONTROLLER, local, direction), component);

@@ -20,7 +20,7 @@ public abstract class ServerPlayerPhaseMovementMixin {
             CallbackInfoReturnable<Entity> cir) {
         ServerPlayer player = (ServerPlayer) (Object) this;
         if (PhaseFlightMovementGuard.blocksExternalTeleports(player)
-                && !PhaseFlightMovementGuard.isSelfMovementAuthorized(player)) {
+                && !PhaseFlightMovementGuard.isSelfTeleportAuthorized(player)) {
             PhaseFlightMovementGuard.notifyBlockedDimensionTeleport(
                     player,
                     transition.newLevel(),

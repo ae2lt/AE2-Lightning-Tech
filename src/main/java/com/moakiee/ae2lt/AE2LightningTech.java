@@ -13,6 +13,7 @@ import com.moakiee.ae2lt.registry.ModMobEffects;
 import com.moakiee.ae2lt.registry.ModRecipeTypes;
 import com.moakiee.ae2lt.registry.ModSounds;
 import com.moakiee.ae2lt.registry.ModStructureTypes;
+import com.moakiee.ae2lt.registry.LegacyRegistryAliases;
 import com.moakiee.ae2lt.config.AE2LTCommonConfig;
 import com.moakiee.ae2lt.config.AE2LTConfigMigration;
 import com.moakiee.ae2lt.blockentity.AtmosphericIonizerBlockEntity;
@@ -156,13 +157,11 @@ public class AE2LightningTech {
                         output.accept(ModBlocks.MATTER_WARPING_MATRIX_QUANTUM_MAIN_CORE);
                         output.accept(ModBlocks.MATTER_WARPING_MATRIX_OVERLOAD_MAIN_CORE);
                         output.accept(ModBlocks.MATTER_WARPING_MATRIX_CREATIVE_MAIN_CORE);
-                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_BLANK_SUB_CORE);
-                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_THREAD_SUB_CORE_T1);
-                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_THREAD_SUB_CORE_T2);
-                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_MULTIPLIER_SUB_CORE_T1);
-                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_MULTIPLIER_SUB_CORE_T2);
-                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_COOLING_SUB_CORE_T1);
-                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_COOLING_SUB_CORE_T2);
+                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_BLANK_UNIT);
+                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_THREAD_UNIT_T1);
+                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_THREAD_UNIT_T2);
+                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_THERMAL_CONTROL_UNIT_T1);
+                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_THERMAL_CONTROL_UNIT_T2);
                         output.accept(ModBlocks.MATTER_WARPING_MATRIX_PATTERN_STORAGE_T1);
                         output.accept(ModBlocks.MATTER_WARPING_MATRIX_PATTERN_STORAGE_T2);
                         if (ModBlocks.hasOverloadedPowerSupply()) {
@@ -279,6 +278,7 @@ public class AE2LightningTech {
                         output.accept(ModItems.RAILGUN_MODULE_CORE);
                         output.accept(ModItems.RAILGUN_MODULE_COMPUTE);
                         output.accept(ModItems.RAILGUN_MODULE_ACCELERATION);
+                        output.accept(ModItems.RAILGUN_MODULE_RANGE);
                         output.accept(ModItems.RAILGUN_MODULE_OVERLOAD_EXECUTION);
                         // 水晶生长
                         output.accept(ModBlocks.FLAWLESS_BUDDING_OVERLOAD_CRYSTAL);
@@ -299,6 +299,7 @@ public class AE2LightningTech {
     public AE2LightningTech(IEventBus modEventBus, ModContainer modContainer) {
         AE2LTConfigMigration.runIfNeeded();
         ModFumos.register();
+        LegacyRegistryAliases.register();
         ModBlocks.BLOCKS.register(modEventBus);
         ModBlockEntities.BLOCK_ENTITY_TYPES.register(modEventBus);
         ModEntities.ENTITY_TYPES.register(modEventBus);

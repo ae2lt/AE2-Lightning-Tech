@@ -9,5 +9,6 @@ public enum DeviceSlotType {
     FEET_MODULE,
     COMPUTE,
     ACCELERATION,
+    RANGE,
     OVERLOAD_EXECUTION
 }

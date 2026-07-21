@@ -13,7 +13,8 @@ import com.moakiee.ae2lt.network.NetworkInit;
  * Client → Server: hub UI actions.
  * <p>
  * Action codes: 0=SELECT_TAB, 1=TOGGLE_MODULE, 2=TOGGLE_TERRAIN, 3=TOGGLE_PVP,
- * 4=SELECT_MODULE, 5=CYCLE_MODULE_CONFIG, 6=TOGGLE_SOUND.
+ * 4=SELECT_MODULE, 5=CYCLE_MODULE_CONFIG, 6=TOGGLE_SOUND, 7=TOGGLE_CHAIN_DAMAGE,
+ * 8=TOGGLE_OVERLOAD_REMOVAL_MODE, 9=TOGGLE_IMPACT_TARGETING.
  */
 public record DeviceHubActionPacket(int action, int value) implements CustomPacketPayload {
 
@@ -24,6 +25,9 @@ public record DeviceHubActionPacket(int action, int value) implements CustomPack
     public static final int ACTION_SELECT_MODULE = 4;
     public static final int ACTION_CYCLE_MODULE_CONFIG = 5;
     public static final int ACTION_TOGGLE_SOUND = 6;
+    public static final int ACTION_TOGGLE_CHAIN_DAMAGE = 7;
+    public static final int ACTION_TOGGLE_OVERLOAD_REMOVAL_MODE = 8;
+    public static final int ACTION_TOGGLE_IMPACT_TARGETING = 9;
 
     public static final Type<DeviceHubActionPacket> TYPE =
             new Type<>(NetworkInit.id("device_hub_action"));
@@ -58,6 +62,9 @@ public record DeviceHubActionPacket(int action, int value) implements CustomPack
                 case ACTION_SELECT_MODULE -> menu.selectModule(pkt.value());
                 case ACTION_CYCLE_MODULE_CONFIG -> menu.cycleSelectedModuleConfig(pkt.value());
                 case ACTION_TOGGLE_SOUND -> menu.toggleRailgunSound();
+                case ACTION_TOGGLE_CHAIN_DAMAGE -> menu.toggleRailgunChainDamage();
+                case ACTION_TOGGLE_OVERLOAD_REMOVAL_MODE -> menu.toggleRailgunOverloadRemovalMode();
+                case ACTION_TOGGLE_IMPACT_TARGETING -> menu.toggleRailgunImpactTargeting();
             }
         });
     }

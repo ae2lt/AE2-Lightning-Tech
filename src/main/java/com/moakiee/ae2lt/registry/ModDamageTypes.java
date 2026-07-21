@@ -14,8 +14,10 @@ import net.minecraft.world.damagesource.DamageType;
 /**
  * Pure resource-key holder for our custom damage types. The actual JSON for
  * {@code data/ae2lt/damage_type/electromagnetic.json} carries the message id
- * and exhaustion settings. We do per-hit armor bypass manually (see
- * {@code RailgunDamageCalculator}), so the JSON does NOT carry bypasses_armor.
+ * and exhaustion settings. Partial armor penetration is applied manually by
+ * the railgun's {@code DamageContext}; the type is also placed in Minecraft's
+ * {@code bypasses_armor} tag so vanilla does not reduce that adjusted damage a
+ * second time.
  */
 public final class ModDamageTypes {
     public static final ResourceKey<DamageType> ELECTROMAGNETIC = ResourceKey.create(

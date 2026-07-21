@@ -1,0 +1,1 @@
+{"type":"minecraft:block","pools":[{"rolls":1,"entries":[{"type":"minecraft:item","name":"ae2lt:tianshu_amplifier_unit"}],"conditions":[{"condition":"minecraft:survives_explosion"}]}]}

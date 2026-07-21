@@ -23,6 +23,8 @@ import com.moakiee.ae2lt.celestweave.ArmorNetworkRechargePolicy;
 import com.moakiee.ae2lt.celestweave.ArmorOverloadRules;
 import com.moakiee.ae2lt.celestweave.BaseCelestweaveArmorItem;
 import com.moakiee.ae2lt.celestweave.CelestweaveArmorState;
+import com.moakiee.ae2lt.celestweave.PhaseFlightPlayerState;
+import com.moakiee.ae2lt.celestweave.module.PhaseFlightSubmodule;
 import com.moakiee.ae2lt.celestweave.service.ArmorLightningService.LightningCost;
 import com.moakiee.ae2lt.celestweave.phase.CelestweaveEquipmentAccess;
 
@@ -236,26 +238,34 @@ public final class ArmorEnergyService {
             }
             List<DeviceCapability> capabilities = provider.capabilities(module);
             boolean movingFlight = hasFlightMode(capabilities) && isMovingInFlight(player);
+            boolean phaseTraversalActive = hasPhaseTraversal(capabilities)
+                    && PhaseFlightSubmodule.shouldUsePhaseTraversal(player, armor);
             int count = Math.max(1, entry.count());
             LightningCost moduleLightning = ArmorModuleLightningPolicy.passiveCost(
                             capabilities,
                             movingFlight,
+                            phaseTraversalActive,
                             AE2LTCommonConfig.overloadArmorPassiveHvPerTick(),
                             AE2LTCommonConfig.overloadArmorFlightHvPerTick(),
                             AE2LTCommonConfig.overloadArmorPhaseFlightHvPerTick())
                     .times(count);
             lightning = lightning.plus(moduleLightning);
+            long moduleDrain = 0L;
             for (DeviceCapability capability : capabilities) {
                 if (capability instanceof DeviceCapability.PassiveDrain passiveDrain) {
                     long fePerTick = Math.max(0L, passiveDrain.fePerTick());
                     if (movingFlight) {
                         fePerTick = Math.max(fePerTick, ArmorOverloadRules.FLIGHT_MOVING_DRAIN_FE);
                     }
-                    drain += fePerTick * count;
+                    moduleDrain += fePerTick;
+                } else if (capability instanceof DeviceCapability.PhaseTraversal traversal
+                        && phaseTraversalActive) {
+                    moduleDrain = Math.max(moduleDrain, traversal.activeFePerTick());
                 } else if (capability instanceof DeviceCapability.EnergyEfficiency efficiency) {
                     multiplier *= Math.max(0.0D, efficiency.drainMul());
                 }
             }
+            drain += moduleDrain * count;
         }
         return new PassiveCost((long) Math.ceil(drain * multiplier), lightning);
     }
@@ -269,8 +279,17 @@ public final class ArmorEnergyService {
         return false;
     }
 
+    private static boolean hasPhaseTraversal(List<DeviceCapability> capabilities) {
+        for (DeviceCapability capability : capabilities) {
+            if (capability instanceof DeviceCapability.PhaseTraversal) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static boolean isMovingInFlight(ServerPlayer player) {
-        if (!player.getAbilities().flying) {
+        if (!player.getAbilities().flying && !PhaseFlightPlayerState.isFlying(player)) {
             return false;
         }
         Vec3 motion = player.getDeltaMovement();

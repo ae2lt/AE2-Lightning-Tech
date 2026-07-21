@@ -87,6 +87,7 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
     private static final int SCROLL_HOVER_SRC_H = 14;
 
     private static final int CONFIG_X = 12;
+    private static final int CONFIG_ROW_X = MODULE_LIST_X;
     private static final int CONFIG_HEADER_Y = 144;
     private static final int CONFIG_Y = 160;
     private static final int CONFIG_BUTTON_X = 124;
@@ -94,9 +95,15 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
     private static final int CONFIG_BUTTON_H = 12;
     private static final int CONFIG_ROW_H = 16;
     private static final int CONFIG_VISIBLE_ROWS = 3;
-    private static final int CONFIG_SCROLL_X = 168;
     private static final int CONFIG_SCROLL_Y = CONFIG_Y;
     private static final int CONFIG_SCROLL_H = 46;
+    private static final int RAILGUN_SETTING_COUNT = 6;
+    private static final int RAILGUN_SETTING_TERRAIN = 0;
+    private static final int RAILGUN_SETTING_PVP = 1;
+    private static final int RAILGUN_SETTING_SOUND = 2;
+    private static final int RAILGUN_SETTING_CHAIN_DAMAGE = 3;
+    private static final int RAILGUN_SETTING_EXECUTION_MODE = 4;
+    private static final int RAILGUN_SETTING_IMPACT_TARGETING = 5;
 
     private static final int CHECKBOX_WIDTH = 22;
     private static final int CHECKBOX_HEIGHT = 12;
@@ -151,7 +158,9 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
         int selectedTab = menu.getSelectedTab();
         int tabMask = menu.getTabAvailability();
         boolean railgunTab = selectedTab == DeviceHubMenu.TAB_RAILGUN;
-        resetConfigScrollWhenSelectionChanges(selectedTab, menu.getSelectedModuleIndex());
+        resetConfigScrollWhenSelectionChanges(
+                selectedTab,
+                railgunTab ? -1 : menu.getSelectedModuleIndex());
 
         renderTabIcons(gfx);
 
@@ -168,7 +177,7 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
         renderModuleList(gfx, mouseX, mouseY, railgunTab);
 
         if (railgunTab) {
-            renderRailgunSettings(gfx);
+            renderRailgunSettings(gfx, mouseX, mouseY);
         } else {
             renderModuleConfig(gfx, mouseX, mouseY);
         }
@@ -257,7 +266,7 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
                     && mouseX < leftPos + MODULE_LIST_RIGHT
                     && mouseY >= rowY
                     && mouseY < rowY + MODULE_ROW_H;
-            if (hovered || (!railgunTab && idx == selectedModuleIndex)) {
+            if (hovered || idx == selectedModuleIndex) {
                 gfx.fill(leftPos + MODULE_LIST_X - 1, rowY - 1,
                         leftPos + MODULE_LIST_RIGHT, rowY + MODULE_ROW_H - 1,
                         idx == selectedModuleIndex ? ROW_SELECTED : ROW_HOVER);
@@ -290,28 +299,23 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
     }
 
     private void renderScrollBar(GuiGraphics gfx, int moduleCount, int mouseX, int mouseY) {
-        int thumbRange = SCROLL_H - SCROLL_SRC_H;
-        int thumbY = topPos + SCROLL_Y + thumbRange * scrollOffset / Math.max(1, moduleCount - MODULE_VISIBLE_ROWS);
-        boolean hovered = mouseX >= leftPos + SCROLL_X
-                && mouseX < leftPos + SCROLL_X + SCROLL_SRC_W
-                && mouseY >= thumbY
-                && mouseY < thumbY + SCROLL_SRC_H;
-        gfx.blit(TEXTURE,
-                leftPos + SCROLL_X,
-                thumbY,
-                SCROLL_SRC_X,
-                hovered ? SCROLL_HOVER_SRC_Y : SCROLL_SRC_Y,
-                SCROLL_SRC_W,
-                hovered ? SCROLL_HOVER_SRC_H : SCROLL_SRC_H,
-                TEXTURE_SIZE,
-                TEXTURE_SIZE);
+        renderScrollBar(
+                gfx,
+                moduleCount,
+                MODULE_VISIBLE_ROWS,
+                scrollOffset,
+                SCROLL_X,
+                SCROLL_Y,
+                SCROLL_H,
+                mouseX,
+                mouseY);
     }
 
     private void renderModuleConfig(GuiGraphics gfx, int mouseX, int mouseY) {
-        int x = leftPos + CONFIG_X;
+        int x = leftPos + CONFIG_ROW_X;
         int y = topPos + CONFIG_Y;
         gfx.drawString(font, Component.translatable("ae2lt.celestweave.screen.module_options"),
-                x, topPos + CONFIG_HEADER_Y, TEXT_ON_LIGHT_BG, false);
+                leftPos + CONFIG_X, topPos + CONFIG_HEADER_Y, TEXT_ON_LIGHT_BG, false);
         int count = moduleConfigCount();
         if (count <= 0) {
             return;
@@ -337,24 +341,74 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
         }
     }
 
-    private void renderRailgunSettings(GuiGraphics gfx) {
-        int x = leftPos + CONFIG_X;
+    private void renderRailgunSettings(GuiGraphics gfx, int mouseX, int mouseY) {
+        int x = leftPos + CONFIG_ROW_X;
         int y = topPos + CONFIG_Y;
         gfx.drawString(font, Component.translatable("ae2lt.device_hub.settings"),
-                x, topPos + CONFIG_HEADER_Y, TEXT_ON_LIGHT_BG, false);
+                leftPos + CONFIG_X, topPos + CONFIG_HEADER_Y, TEXT_ON_LIGHT_BG, false);
 
+        configScrollOffset = DeviceHubDisplayRules.clampScrollOffset(
+                configScrollOffset, RAILGUN_SETTING_COUNT, CONFIG_VISIBLE_ROWS);
         int rowY = y;
-        drawSettingRow(gfx, x, rowY,
-                Component.translatable("ae2lt.device_hub.setting.terrain"),
-                menu.isTerrainDestruction());
-        rowY += MODULE_ROW_H + 2;
-        drawSettingRow(gfx, x, rowY,
-                Component.translatable("ae2lt.device_hub.setting.pvp"),
-                menu.isPvp());
-        rowY += MODULE_ROW_H + 2;
-        drawSettingRow(gfx, x, rowY,
-                Component.translatable("ae2lt.device_hub.setting.sound"),
-                menu.isSoundEnabled());
+        for (int i = 0; i < CONFIG_VISIBLE_ROWS; i++) {
+            int settingIndex = i + configScrollOffset;
+            if (settingIndex >= RAILGUN_SETTING_COUNT) {
+                break;
+            }
+            Component label = railgunSettingLabel(settingIndex);
+            if (settingIndex <= RAILGUN_SETTING_CHAIN_DAMAGE) {
+                drawSettingRow(gfx, x, rowY, label, railgunSettingEnabled(settingIndex));
+            } else {
+                gfx.drawString(font, label, x, rowY + 1, TEXT_ON_DARK_BG, false);
+                drawConfigValueButton(
+                        gfx,
+                        leftPos + CONFIG_BUTTON_X,
+                        rowY - 1,
+                        railgunSettingValue(settingIndex),
+                        true,
+                        mouseX,
+                        mouseY);
+            }
+            rowY += CONFIG_ROW_H;
+        }
+        renderConfigScrollBar(gfx, RAILGUN_SETTING_COUNT, mouseX, mouseY);
+    }
+
+    private Component railgunSettingLabel(int settingIndex) {
+        return switch (settingIndex) {
+            case RAILGUN_SETTING_TERRAIN -> Component.translatable("ae2lt.device_hub.setting.terrain");
+            case RAILGUN_SETTING_PVP -> Component.translatable("ae2lt.device_hub.setting.pvp");
+            case RAILGUN_SETTING_SOUND -> Component.translatable("ae2lt.device_hub.setting.sound");
+            case RAILGUN_SETTING_CHAIN_DAMAGE -> Component.translatable("ae2lt.device_hub.setting.chain_damage");
+            case RAILGUN_SETTING_EXECUTION_MODE ->
+                Component.translatable("ae2lt.railgun.config.overload_execution_mode");
+            case RAILGUN_SETTING_IMPACT_TARGETING ->
+                Component.translatable("ae2lt.railgun.config.overload_impact_targeting");
+            default -> Component.empty();
+        };
+    }
+
+    private boolean railgunSettingEnabled(int settingIndex) {
+        return switch (settingIndex) {
+            case RAILGUN_SETTING_TERRAIN -> menu.isTerrainDestruction();
+            case RAILGUN_SETTING_PVP -> menu.isPvp();
+            case RAILGUN_SETTING_SOUND -> menu.isSoundEnabled();
+            case RAILGUN_SETTING_CHAIN_DAMAGE -> menu.isChainDamage();
+            default -> false;
+        };
+    }
+
+    private String railgunSettingValue(int settingIndex) {
+        String key = switch (settingIndex) {
+            case RAILGUN_SETTING_EXECUTION_MODE -> menu.isForceOverloadRemoval()
+                    ? "ae2lt.railgun.config.overload_execution_mode.forced"
+                    : "ae2lt.railgun.config.overload_execution_mode.normal";
+            case RAILGUN_SETTING_IMPACT_TARGETING -> menu.isOverloadImpactTargeting()
+                    ? "ae2lt.railgun.config.overload_impact_targeting.enabled"
+                    : "ae2lt.railgun.config.overload_impact_targeting.disabled";
+            default -> "";
+        };
+        return key.isEmpty() ? "" : Component.translatable(key).getString();
     }
 
     private void drawSettingRow(GuiGraphics gfx, int x, int y, Component label, boolean on) {
@@ -463,24 +517,27 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
             }
         }
 
-        if (selectedTab != DeviceHubMenu.TAB_RAILGUN) {
+        boolean railgunTab = selectedTab == DeviceHubMenu.TAB_RAILGUN;
+        if (!railgunTab) {
             if (mouseClickedModuleConfig(mouseX, mouseY)) {
                 playClick();
                 return true;
             }
-            if (mouseClickedArmorModule(mouseX, mouseY)) {
+            if (mouseClickedModule(mouseX, mouseY, false)) {
                 playClick();
                 return true;
             }
-        } else if (mouseClickedRailgunSettings(mouseX, mouseY)) {
-            playClick();
-            return true;
+        } else {
+            if (mouseClickedRailgunSettings(mouseX, mouseY)) {
+                playClick();
+                return true;
+            }
         }
 
         return super.mouseClicked(mouseX, mouseY, button);
     }
 
-    private boolean mouseClickedArmorModule(double mouseX, double mouseY) {
+    private boolean mouseClickedModule(double mouseX, double mouseY, boolean railgunTab) {
         List<String> moduleNames = menu.getModuleNameKeys();
         scrollOffset = DeviceHubDisplayRules.clampScrollOffset(
                 scrollOffset, moduleNames.size(), MODULE_VISIBLE_ROWS);
@@ -489,7 +546,8 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
             int idx = i + scrollOffset;
             int rowY = topPos + MODULE_LIST_Y + i * MODULE_ROW_H;
             int checkboxX = leftPos + MODULE_CHECKBOX_X;
-            if (mouseX >= checkboxX
+            if (!railgunTab
+                    && mouseX >= checkboxX
                     && mouseX <= checkboxX + CHECKBOX_WIDTH
                     && mouseY >= rowY + 1
                     && mouseY <= rowY + 1 + CHECKBOX_HEIGHT) {
@@ -511,25 +569,38 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
 
     private boolean mouseClickedRailgunSettings(double mouseX, double mouseY) {
         int checkboxX = leftPos + MODULE_CHECKBOX_X;
-        int checkboxY = topPos + CONFIG_Y;
-        if (mouseX >= checkboxX && mouseX <= checkboxX + CHECKBOX_WIDTH) {
-            if (mouseY >= checkboxY && mouseY <= checkboxY + CHECKBOX_HEIGHT) {
-                PacketDistributor.sendToServer(new DeviceHubActionPacket(
-                        DeviceHubActionPacket.ACTION_TOGGLE_TERRAIN, 0));
-                return true;
+        int buttonX = leftPos + CONFIG_BUTTON_X;
+        int rowY = topPos + CONFIG_Y;
+        for (int i = 0; i < CONFIG_VISIBLE_ROWS; i++) {
+            int settingIndex = i + configScrollOffset;
+            if (settingIndex >= RAILGUN_SETTING_COUNT) {
+                break;
             }
-            checkboxY += MODULE_ROW_H + 2;
-            if (mouseY >= checkboxY && mouseY <= checkboxY + CHECKBOX_HEIGHT) {
-                PacketDistributor.sendToServer(new DeviceHubActionPacket(
-                        DeviceHubActionPacket.ACTION_TOGGLE_PVP, 0));
-                return true;
+            boolean checkboxSetting = settingIndex <= RAILGUN_SETTING_CHAIN_DAMAGE;
+            int controlX = checkboxSetting ? checkboxX : buttonX;
+            int controlWidth = checkboxSetting ? CHECKBOX_WIDTH : CONFIG_BUTTON_W;
+            if (mouseX >= controlX
+                    && mouseX <= controlX + controlWidth
+                    && mouseY >= rowY - (checkboxSetting ? 0 : 1)
+                    && mouseY <= rowY - (checkboxSetting ? 0 : 1)
+                            + (checkboxSetting ? CHECKBOX_HEIGHT : CONFIG_BUTTON_H)) {
+                int action = switch (settingIndex) {
+                    case RAILGUN_SETTING_TERRAIN -> DeviceHubActionPacket.ACTION_TOGGLE_TERRAIN;
+                    case RAILGUN_SETTING_PVP -> DeviceHubActionPacket.ACTION_TOGGLE_PVP;
+                    case RAILGUN_SETTING_SOUND -> DeviceHubActionPacket.ACTION_TOGGLE_SOUND;
+                    case RAILGUN_SETTING_CHAIN_DAMAGE -> DeviceHubActionPacket.ACTION_TOGGLE_CHAIN_DAMAGE;
+                    case RAILGUN_SETTING_EXECUTION_MODE ->
+                        DeviceHubActionPacket.ACTION_TOGGLE_OVERLOAD_REMOVAL_MODE;
+                    case RAILGUN_SETTING_IMPACT_TARGETING ->
+                        DeviceHubActionPacket.ACTION_TOGGLE_IMPACT_TARGETING;
+                    default -> -1;
+                };
+                if (action >= 0) {
+                    PacketDistributor.sendToServer(new DeviceHubActionPacket(action, 0));
+                    return true;
+                }
             }
-            checkboxY += MODULE_ROW_H + 2;
-            if (mouseY >= checkboxY && mouseY <= checkboxY + CHECKBOX_HEIGHT) {
-                PacketDistributor.sendToServer(new DeviceHubActionPacket(
-                        DeviceHubActionPacket.ACTION_TOGGLE_SOUND, 0));
-                return true;
-            }
+            rowY += CONFIG_ROW_H;
         }
         return false;
     }
@@ -564,24 +635,49 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
             return true;
         }
 
-        if (menu.getSelectedTab() != DeviceHubMenu.TAB_RAILGUN
+        int configCount = menu.getSelectedTab() == DeviceHubMenu.TAB_RAILGUN
+                ? RAILGUN_SETTING_COUNT
+                : moduleConfigCount();
+        if (configCount > 0
                 && mouseX >= leftPos + 8
                 && mouseX <= leftPos + 175
                 && mouseY >= topPos + CONFIG_HEADER_Y
                 && mouseY <= topPos + GUI_HEIGHT) {
             configScrollOffset = scroll(configScrollOffset, scrollY);
             configScrollOffset = DeviceHubDisplayRules.clampScrollOffset(
-                    configScrollOffset, moduleConfigCount(), CONFIG_VISIBLE_ROWS);
+                    configScrollOffset, configCount, CONFIG_VISIBLE_ROWS);
             return true;
         }
         return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
 
     private void renderConfigScrollBar(GuiGraphics gfx, int configCount, int mouseX, int mouseY) {
-        int thumbRange = CONFIG_SCROLL_H - SCROLL_SRC_H;
-        int thumbY = topPos + CONFIG_SCROLL_Y
-                + thumbRange * configScrollOffset / Math.max(1, configCount - CONFIG_VISIBLE_ROWS);
-        int thumbX = leftPos + CONFIG_SCROLL_X;
+        renderScrollBar(
+                gfx,
+                configCount,
+                CONFIG_VISIBLE_ROWS,
+                configScrollOffset,
+                SCROLL_X,
+                CONFIG_SCROLL_Y,
+                CONFIG_SCROLL_H,
+                mouseX,
+                mouseY);
+    }
+
+    private void renderScrollBar(
+            GuiGraphics gfx,
+            int itemCount,
+            int visibleRows,
+            int offset,
+            int relativeX,
+            int relativeY,
+            int height,
+            int mouseX,
+            int mouseY) {
+        int thumbRange = height - SCROLL_SRC_H;
+        int thumbY = topPos + relativeY
+                + thumbRange * offset / Math.max(1, itemCount - visibleRows);
+        int thumbX = leftPos + relativeX;
         boolean hovered = mouseX >= thumbX
                 && mouseX < thumbX + SCROLL_SRC_W
                 && mouseY >= thumbY

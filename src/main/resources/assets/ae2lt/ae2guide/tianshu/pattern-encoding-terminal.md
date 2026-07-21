@@ -11,13 +11,13 @@ item_ids:
 
 # Tianshu Pattern Encoding Terminal
 
-The <ItemLink id="ae2lt:tianshu_pattern_encoding_terminal" /> provides everything the normal Pattern Encoding Terminal does, plus enhanced processing-pattern encoding, pattern upload, closed-loop pattern authoring, and inventory-maintenance configuration. Attach it to ME cable like any terminal. **It does not require a Tianshu Supercomputer on the network**: pattern encoding, processing-mode enhancements, uploading to providers, and even closed-loop pattern authoring all work normally without one.
+The <ItemLink id="ae2lt:tianshu_pattern_encoding_terminal" /> provides everything the normal Pattern Encoding Terminal does, plus enhanced processing-pattern encoding, pattern upload, closed-loop pattern authoring, and inventory-maintenance configuration. Attach it to ME cable like any terminal. **It does not require a Tianshu Supercomputing Array on the network**: pattern encoding, processing-mode enhancements, uploading to providers, and even closed-loop pattern authoring all work normally without one.
 
 <RecipeFor id="ae2lt:tianshu_pattern_encoding_terminal" />
 
 ## Binding to a Tianshu
 
-Only two features require a formed Tianshu Supercomputer: uploading closed-loop patterns into Closed-Loop Pattern Storage, and inventory maintenance. When a Tianshu exists on the network, the opened terminal locks onto the first available formed one; if none is available yet, it locks onto the first Tianshu that comes online.
+Only two features require a formed Tianshu Supercomputing Array: uploading closed-loop patterns into Closed-Loop Pattern Storage, and inventory maintenance. When a Tianshu exists on the network, the opened terminal locks onto the first available formed one; if none is available yet, it locks onto the first Tianshu that comes online.
 
 The terminal never rebinds to a different Tianshu while it stays open. If the locked Tianshu goes offline or unforms, the related actions simply fail; close and reopen the terminal to pick a target again.
 

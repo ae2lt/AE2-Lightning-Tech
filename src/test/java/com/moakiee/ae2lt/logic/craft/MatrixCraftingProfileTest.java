@@ -16,8 +16,8 @@ class MatrixCraftingProfileTest {
                 MatrixCraftingUnit.quantumCore(),
                 MatrixCraftingUnit.t1Threader(),
                 MatrixCraftingUnit.t2Threader(),
-                MatrixCraftingUnit.t1Multiplier(),
-                MatrixCraftingUnit.t2Multiplier(),
+                MatrixCraftingUnit.amplifier(),
+                MatrixCraftingUnit.amplifier(),
                 MatrixCraftingUnit.t1Cooler(1),
                 MatrixCraftingUnit.t2Cooler(2),
                 MatrixCraftingUnit.t1Cooler(4),
@@ -27,11 +27,11 @@ class MatrixCraftingProfileTest {
 
         assertEquals(MatrixCoreMode.QUANTUM, profile.mode());
         assertEquals(1, profile.coreCount());
-        assertEquals(2.0D, profile.threadPower(), 0.0001D);
-        assertEquals(2.0D, profile.multiPower(), 0.0001D);
-        assertEquals(2.0D, profile.coolPower(), 0.0001D);
+        assertEquals(3.0D, profile.threadPower(), 0.0001D);
+        assertEquals(2.0D, profile.amplifierPower(), 0.0001D);
+        assertEquals(2.75D, profile.coolPower(), 0.0001D);
         assertEquals(2, profile.dispatchUnitCount());
-        assertEquals(2, profile.multiplierCount());
+        assertEquals(2, profile.amplifierUnitCount());
         assertEquals(4, profile.coolingUnitCount());
         assertTrue(profile.isValid());
     }
@@ -41,14 +41,14 @@ class MatrixCraftingProfileTest {
         var units = new ArrayList<MatrixCraftingUnit>();
         units.add(MatrixCraftingUnit.overloadCore());
         units.add(MatrixCraftingUnit.t1Threader());
-        for (int i = 0; i < 16; i++) units.add(MatrixCraftingUnit.t1Multiplier());
+        for (int i = 0; i < 16; i++) units.add(MatrixCraftingUnit.amplifier());
 
         var profile = MatrixCraftingProfile.fromUnits(units);
 
-        assertEquals(16, profile.multiplierCount());
-        assertEquals(15.0D, profile.multiPower(), 0.0001D);
-        assertTrue(profile.multiplierLimitExceeded());
-        assertTrue(profile.hasIssue(MatrixProfileIssue.MULTIPLIER_LIMIT_EXCEEDED));
+        assertEquals(16, profile.amplifierUnitCount());
+        assertEquals(15.0D, profile.amplifierPower(), 0.0001D);
+        assertTrue(profile.amplifierLimitExceeded());
+        assertTrue(profile.hasIssue(MatrixProfileIssue.AMPLIFIER_LIMIT_EXCEEDED));
         assertFalse(profile.isValid());
     }
 
@@ -57,12 +57,12 @@ class MatrixCraftingProfileTest {
         var profile = MatrixCraftingProfile.fromUnits(List.of(
                 MatrixCraftingUnit.overloadCore(),
                 MatrixCraftingUnit.threadPower(4),
-                MatrixCraftingUnit.multiplierPower(20)));
+                MatrixCraftingUnit.amplifierPower(20)));
 
         assertEquals(4.0D, profile.threadPower(), 0.0001D);
-        assertEquals(20, profile.multiplierCount());
-        assertEquals(15.0D, profile.multiPower(), 0.0001D);
-        assertTrue(profile.hasIssue(MatrixProfileIssue.MULTIPLIER_LIMIT_EXCEEDED));
+        assertEquals(20, profile.amplifierUnitCount());
+        assertEquals(15.0D, profile.amplifierPower(), 0.0001D);
+        assertTrue(profile.hasIssue(MatrixProfileIssue.AMPLIFIER_LIMIT_EXCEEDED));
     }
 
     @Test
@@ -81,7 +81,7 @@ class MatrixCraftingProfileTest {
         var baselineAmplifier = MatrixCraftingProfile.fromUnits(List.of(
                 MatrixCraftingUnit.stableCore(),
                 MatrixCraftingUnit.t1Threader(),
-                MatrixCraftingUnit.t1Multiplier()));
+                MatrixCraftingUnit.amplifier()));
         assertTrue(baselineAmplifier.hasIssue(MatrixProfileIssue.AMPLIFIER_NOT_SUPPORTED));
     }
 
@@ -90,7 +90,7 @@ class MatrixCraftingProfileTest {
         var units = new ArrayList<MatrixCraftingUnit>();
         units.add(MatrixCraftingUnit.overloadCore());
         for (int i = 0; i < 4; i++) units.add(MatrixCraftingUnit.t1Threader());
-        for (int i = 0; i < 15; i++) units.add(MatrixCraftingUnit.t1Multiplier());
+        for (int i = 0; i < 15; i++) units.add(MatrixCraftingUnit.amplifier());
         var profile = MatrixCraftingProfile.fromUnits(units);
 
         var snapshot = profile.snapshot(1024);

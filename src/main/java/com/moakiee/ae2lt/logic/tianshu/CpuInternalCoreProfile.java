@@ -2,9 +2,9 @@ package com.moakiee.ae2lt.logic.tianshu;
 
 public record CpuInternalCoreProfile(
         CpuMainCoreTier mainCore,
-        int capacityCoreCount,
-        int parallelCoreCount,
-        int amplifierCoreCount,
+        int storageUnitCount,
+        int parallelUnitCount,
+        int amplifierUnitCount,
         long storageBytes,
         int successfulDispatchesPerTick,
         long maxCopiesPerTick,

@@ -11,9 +11,9 @@ item_ids:
 
 # Port, Jobs, and Fast Planning
 
-## Tianshu Supercomputer Port
+## Tianshu Supercomputing Array Port
 
-After formation, the <ItemLink id="ae2lt:tianshu_supercomputer_port" /> publishes the multiblock to the ME network as a crafting CPU named “Tianshu Supercomputer.” ME cables can connect on all six sides only while the structure is formed; they cannot connect while it is unformed. The port uses **8 AE/t** while idle, and the formed multiblock consumes **1 channel**.
+After formation, the <ItemLink id="ae2lt:tianshu_supercomputer_port" /> publishes the multiblock to the ME network as a crafting CPU named “Tianshu Supercomputing Array.” ME cables can connect on all six sides only while the structure is formed; they cannot connect while it is unformed. The port uses **8 AE/t** while idle, and the formed multiblock consumes **1 channel**.
 
 The supercomputer does not accept new jobs while its port is offline, its ME network is unpowered, or the structure is unformed. Saved job state persists across chunk unloads and can continue after the structure and network return.
 
@@ -25,22 +25,22 @@ The [Tianshu Pattern Encoding Terminal](pattern-encoding-terminal.md) extends th
 
 ## Shared Capacity and Concurrent Jobs
 
-Unlike a conventional crafting CPU, the Tianshu Supercomputer can retain and execute multiple crafting jobs at once.
+Unlike a conventional crafting CPU, the Tianshu Supercomputing Array can retain and execute multiple crafting jobs at once.
 
 * Each new job reserves its plan's byte requirement from the total crafting storage
 * Additional jobs can use the same supercomputer while sufficient unreserved storage remains
 * Completing or cancelling a job releases its reservation
 * All active jobs share the core configuration's successful-dispatch budget; each job receives its own full per-tick copy budget, but only batch-compatible patterns and targets can use more than one copy per dispatch
 
-If the crafting confirmation screen reports insufficient CPU storage, wait for active jobs to release capacity, add Storage Units, or install a higher-tier main unit.
+If the crafting confirmation screen reports insufficient CPU storage, wait for active jobs to release capacity, add Tianshu Storage Units, or install a higher-tier Main Core.
 
 ## Controller Screen
 
 Use the <ItemLink id="ae2lt:tianshu_supercomputer_controller" /> to view:
 
 * Formation state and the first detected problem when unformed
-* Current main-unit tier
-* Counts of Dispatch, Amplifier, and Capacity Supercomputing Units, plus Closed-Loop Pattern and Seed Storage counts
+* Current Tianshu Main Core tier
+* Counts of Parallel, Amplifier, and Storage Units, plus Closed-Loop Pattern and Seed Storage counts
 * `R`, dispatch gain `Gd`, storage gain `Gs`, raw dispatch, and the effective successful-dispatch budget `D`
 * Internal capacity, amplified external capacity, total crafting storage, each virtual CPU's per-tick copy budget `T`, and dispatch-cap status; the AE2 CPU selection list reports parallelism from successful dispatches only
 * Controls for shell auto-build and Fast Planning
@@ -61,7 +61,7 @@ While the structure is unformed, the controller screen shows the first detected 
 
 **Structure and building**
 
-* **The structure will not form:** Check each point of the [manual construction rules](construction.md#manual-construction-rules) — complete casing and glass, exactly one port, all 17 non-port cooling-compatible positions filled with Phase-Change Cooling Units or closed-loop storage, the main unit centered in the core chamber, and all 26 peripheral cells filled with units supported by that main core
+* **The structure will not form:** Check each point of the [manual construction rules](construction.md#manual-construction-rules) — complete casing and glass, exactly one port, all 17 non-port cooling-compatible positions filled with Phase-Change Cooling Units or closed-loop storage, the Tianshu Main Core centered in the core chamber, and all 26 peripheral cells filled with units supported by that Main Core
 * **All visible structure blocks are present:** Clear the required-air positions omitted from the displayed structure; cables, lights, and decorations are not permitted there
 * **Auto-build does not start:** Clear the coordinates reported by the controller and ensure all materials are in the player inventory
 

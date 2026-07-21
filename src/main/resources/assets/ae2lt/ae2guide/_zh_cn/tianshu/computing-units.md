@@ -1,44 +1,44 @@
 ---
 navigation:
-  title: 超算单元与性能
-  icon: ae2lt:baseline_supercomputing_unit
+  title: 主核心、计算单元与性能
+  icon: ae2lt:tianshu_baseline_main_core
   parent: tianshu/tianshu-index.md
   position: 20
 item_ids:
-  - ae2lt:baseline_supercomputing_unit
-  - ae2lt:quantum_supercomputing_unit
-  - ae2lt:overload_supercomputing_unit
-  - ae2lt:multidimensional_supercomputing_unit
+  - ae2lt:tianshu_baseline_main_core
+  - ae2lt:tianshu_quantum_main_core
+  - ae2lt:tianshu_overload_main_core
+  - ae2lt:tianshu_multidimensional_main_core
   - ae2lt:blank_supercomputing_unit
   - ae2lt:storage_supercomputing_unit
   - ae2lt:parallel_supercomputing_unit
-  - ae2lt:amplifier_supercomputing_unit
+  - ae2lt:tianshu_amplifier_unit
   - ae2lt:closed_loop_pattern_storage
   - ae2lt:closed_loop_seed_storage
 ---
 
-# 超算单元与性能
+# 主核心、计算单元与性能
 
-核心舱占用结构中央的 3×3×3 空间。正中心必须安装一个主超算单元，其余 26 格只能安装空白、存储、并行或增幅超算单元。闭环样板仓与闭环种子存储器安装在外壳的冷却兼容位，与相变冷却单元共用位置规则。具体允许的核心组合由主超算单元等级决定。下图移除了外部结构，以展示主超算单元的中心位置。
+核心舱占用结构中央的 3×3×3 空间。正中心必须安装一个主核心，其余 26 格只能安装天枢空白、存储、并行或增幅单元。闭环样板仓与闭环种子存储器安装在外壳的冷却兼容位，与相变冷却单元共用位置规则。具体允许的组合由主核心等级决定。下图移除了外部结构，以展示主核心的中心位置。
 
 <GameScene zoom="4" background="transparent" interactive={true}>
   <ImportStructure src="../assets/assemblies/tianshu_supercomputer_core.snbt" />
-  <BoxAnnotation min="3 3 3" max="4 4 4" color="#f2d37a" alwaysOnTop={true}>唯一的主超算单元位置</BoxAnnotation>
+  <BoxAnnotation min="3 3 3" max="4 4 4" color="#f2d37a" alwaysOnTop={true}>唯一的主核心位置</BoxAnnotation>
   <IsometricCamera yaw="215" pitch="25" />
 </GameScene>
 
-## 主超算单元
+## 主核心
 
-主超算单元提供内置合成存储，并决定派发并行、外部存储和批量复制预算的上限。这三项参数分别控制任务容量、AE2 样板派发次数和兼容批量执行路径的单次处理规模，不能互相替代。
+主核心提供内置合成存储，并决定派发并行、外部存储和批量复制预算的上限。这三项参数分别控制任务容量、AE2 样板派发次数和兼容批量执行路径的单次处理规模，不能互相替代。
 
-| 主超算单元 | 内置存储 | 成功派发/t 上限 | 最大复制/t | 增幅单元 |
+| 主核心 | 内置存储 | 成功派发/t 上限 | 最大复制/t | 增幅单元 |
 |------------|---------:|----------------:|-----------:|----------|
-| <ItemLink id="ae2lt:baseline_supercomputing_unit" /> | 1 MiB | 512 | 1,024 | 不支持 |
-| <ItemLink id="ae2lt:quantum_supercomputing_unit" /> | 256 MiB | 3,072 | 10,240 | 0–15 |
-| <ItemLink id="ae2lt:overload_supercomputing_unit" /> | 64 GiB | 16,384 | 4,194,304 | 0–15 |
-| <ItemLink id="ae2lt:multidimensional_supercomputing_unit" /> | 无限 | 16,384 | 无限 | 不支持 |
+| <ItemLink id="ae2lt:tianshu_baseline_main_core" /> | 1 MiB | 512 | 1,024 | 不支持 |
+| <ItemLink id="ae2lt:tianshu_quantum_main_core" /> | 256 MiB | 3,072 | 10,240 | 0–15 |
+| <ItemLink id="ae2lt:tianshu_overload_main_core" /> | 64 GiB | 16,384 | 4,194,304 | 0–15 |
+| <ItemLink id="ae2lt:tianshu_multidimensional_main_core" /> | 无限 | 16,384 | 无限 | 不支持 |
 
-基础、量子和过载核心都至少需要一个并行超算单元；存储超算单元是可选的。多维核心完全使用主核心自身的预算，其 26 个外围格不能安装存储、并行或增幅单元，必须全部使用空白超算单元。
+基准、量子和过载主核心都至少需要一个天枢并行单元；天枢存储单元是可选的。多维主核心完全使用自身预算，其 26 个外围格不能安装存储、并行或增幅单元，必须全部使用天枢空白单元。
 
 ## 三项性能参数
 
@@ -60,13 +60,13 @@ item_ids:
 
 批量复制不是物品复制：每份执行仍按样板正常消耗输入、能量、设备处理时间与输出空间。
 
-只有兼容批量执行的设备才能用到超出成功派发数的复制预算：分子装配室兼容样板、物质扭曲矩阵、受支持的闭环批量样板，以及提供专用批量适配器的执行端。普通 AE2 处理样板发往一般加工设备时，每次调用只接受一份，此时实际吞吐由成功派发数决定，未使用的复制预算不会转换为额外派发。
+只有兼容批量执行的设备才能用到超出成功派发数的复制预算：分子装配室兼容样板、天枢物质扭曲矩阵、受支持的闭环批量样板，以及提供专用批量适配器的执行端。普通 AE2 处理样板发往一般加工设备时，每次调用只接受一份，此时实际吞吐由成功派发数决定，未使用的复制预算不会转换为额外派发。
 
 ## 单元数量与计算公式
 
-设存储、并行和增幅超算单元数量分别为 **S**、**P**、**A**。每个存储单元提供 64 MiB 外部存储，每个并行单元提供 128 点基础派发能力。有限等级必须满足 `P ≥ 1`；量子和过载还必须满足 `0 ≤ A ≤ 15`。
+设天枢存储、并行和增幅单元数量分别为 **S**、**P**、**A**。每个存储单元提供 64 MiB 外部存储，每个并行单元提供 128 点基础派发能力。有限等级必须满足 `P ≥ 1`；量子和过载还必须满足 `0 ≤ A ≤ 15`。
 
-| 主超算单元 | 派发增益 | 外部存储增益 | 每次成功派发的复制增益 |
+| 主核心 | 派发增益 | 外部存储增益 | 每次成功派发的复制增益 |
 |------------|---------:|---------------:|-------------------------:|
 | 基准 | ×1 | ×1 | ×2 |
 | 量子 | `×2(1+A)` | `×2(1+A)` | `×(1+A)` |
@@ -84,15 +84,15 @@ item_ids:
 
 ## 配置建议
 
-* **任务经常因容量不足被拒绝：** 增加存储超算单元，或更换更高等级的主超算单元
-* **供应器和加工设备充足但开工数量不够：** 增加并行超算单元；量子与过载核心可再加增幅单元
+* **任务经常因容量不足被拒绝：** 增加天枢存储单元，或更换更高等级的主核心
+* **供应器和加工设备充足但开工数量不够：** 增加天枢并行单元；量子与过载主核心可再加天枢增幅单元
 * **增幅单元同时放大派发、外部存储与批量复制**，是量子与过载核心提升上限利用率的主要手段；注意公式结果超过主核心上限的部分会被浪费
 * **多维核心**各项参数均为主核心自带，外围只需填满空白单元，无需权衡配比
 
 ## 增幅、空白与闭环存储
 
-<ItemLink id="ae2lt:amplifier_supercomputing_unit" /> 用于提高量子或过载核心的派发、外部存储和批量复制能力。基础和多维核心不接受增幅单元，量子与过载最多安装 15 个。
+<ItemLink id="ae2lt:tianshu_amplifier_unit" /> 用于提高量子或过载核心的派发、外部存储和批量复制能力。基础和多维核心不接受增幅单元，量子与过载最多安装 15 个。
 
-<ItemLink id="ae2lt:blank_supercomputing_unit" /> 是类似物质扭曲矩阵空白子核心的中性占位单元。它能使外围槽位满足结构要求，但不提供合成容量、派发能力、增幅、样板槽或种子容量。
+<ItemLink id="ae2lt:blank_supercomputing_unit" /> 是类似天枢物质扭曲矩阵空白单元的中性占位单元。它能使外围槽位满足结构要求，但不提供合成容量、派发能力、增幅、样板槽或种子容量。
 
-闭环分析与执行逻辑由主超算单元内置，不需要另装闭环计算核心。闭环样板仓与闭环种子存储器仍是外部物理存储，安装在外壳的冷却兼容位并替代对应位置的相变冷却单元，分别提供闭环样板容量与种子存储；它们不占用核心舱的 26 个外围槽，也不会计入 **S**、**P** 或 **A**。核心舱中不需要计算属性的槽位使用空白超算单元填充。
+闭环分析与执行逻辑由主核心内置，不需要另装闭环计算核心。闭环样板仓与闭环种子存储器仍是外部物理存储，安装在外壳的冷却兼容位并替代对应位置的相变冷却单元，分别提供闭环样板容量与种子存储；它们不占用核心舱的 26 个外围槽，也不会计入 **S**、**P** 或 **A**。核心舱中不需要计算属性的槽位使用天枢空白单元填充。

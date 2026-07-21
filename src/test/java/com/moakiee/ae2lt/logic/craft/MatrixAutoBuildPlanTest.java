@@ -137,10 +137,10 @@ class MatrixAutoBuildPlanTest {
             if (entry.localPos().equals(MatrixMultiblockTemplate.CRAFTING_CENTER_LOCAL)) {
                 local.put(entry.localPos(), MatrixMultiblockComponent.STABLE_MAIN_CORE);
             } else if (!dispatchInstalled) {
-                local.put(entry.localPos(), MatrixMultiblockComponent.THREAD_SUB_CORE_T1);
+                local.put(entry.localPos(), MatrixMultiblockComponent.THREAD_UNIT_T1);
                 dispatchInstalled = true;
             } else {
-                local.put(entry.localPos(), MatrixMultiblockComponent.BLANK_SUB_CORE);
+                local.put(entry.localPos(), MatrixMultiblockComponent.BLANK_UNIT);
             }
         }
     }

@@ -510,7 +510,7 @@ public final class AE2LTCommonConfig {
             builder.push("overloadArmor");
             builder.push("movement");
             overloadArmorPhaseFlightEnabled = builder
-                    .comment("Master switch for phase flight.")
+                    .comment("Server master switch for the phase module's no-clip mode. Creative flight and movement guards remain available.")
                     .define("phaseFlightEnabled", true);
             overloadArmorPhaseFlightSpeedMultiplier = builder
                     .comment("Movement multiplier applied while phase flight is active.")

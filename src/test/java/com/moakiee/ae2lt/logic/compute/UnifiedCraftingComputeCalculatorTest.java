@@ -83,6 +83,8 @@ class UnifiedCraftingComputeCalculatorTest {
                 ComputeTier.OVERLOAD, new ComputingUnitTotals(1, 16, 0, 0)));
         assertThrows(IllegalArgumentException.class, () -> UnifiedCraftingComputeCalculator.matrixEnvelope(
                 ComputeTier.BASELINE, new ComputingUnitTotals(1, 1, 0, 0), 1.0D));
+        assertThrows(IllegalArgumentException.class, () -> UnifiedCraftingComputeCalculator.matrixEnvelope(
+                ComputeTier.MULTIDIMENSIONAL, new ComputingUnitTotals(0, 0, 0, 1), 1.0D));
     }
 
     @Test

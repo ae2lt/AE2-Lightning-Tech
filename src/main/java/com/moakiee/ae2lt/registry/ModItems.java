@@ -444,6 +444,12 @@ public final class ModItems {
                     new Item.Properties().stacksTo(16).rarity(Rarity.RARE),
                     RailgunModuleType.ACCELERATION));
 
+    public static final DeferredItem<RailgunModuleItem> RAILGUN_MODULE_RANGE = ITEMS.register(
+            "railgun_module_range",
+            () -> new RailgunModuleItem(
+                    new Item.Properties().stacksTo(16).rarity(Rarity.RARE),
+                    RailgunModuleType.RANGE));
+
     public static final DeferredItem<RailgunModuleItem> RAILGUN_MODULE_OVERLOAD_EXECUTION = ITEMS.register(
             "railgun_module_overload_execution",
             () -> new RailgunModuleItem(

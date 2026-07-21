@@ -13,13 +13,8 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.projectile.ProjectileUtil;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.ClipContext;
-import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
-import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -150,6 +145,7 @@ public final class RailgunBeamService {
         }
         IGrid grid = bound.grid();
         RailgunSettings settings = stack.getOrDefault(ModDataComponents.RAILGUN_SETTINGS.get(), RailgunSettings.DEFAULT);
+        boolean allowPlayerTargets = settings.allowsPlayerTargets(AE2LTCommonConfig.railgunDamagePlayers());
 
         long feCost = AmmoCost.beamFeCost(mods);
         IActionSource src = IActionSource.ofPlayer(player);
@@ -196,11 +192,11 @@ public final class RailgunBeamService {
         }
 
         // Raycast & damage
-        BeamTrace trace = traceBeam(level, player, settings.pvp());
+        BeamTrace trace = traceBeam(level, player, allowPlayerTargets, mods);
         EntityHitResult ehr = trace.entityHit();
 
         if (ehr != null && ehr.getEntity() instanceof LivingEntity primary) {
-            DamageContext ctx = DamageContext.buildBeam(player, mods, level, settings.pvp());
+            DamageContext ctx = DamageContext.buildBeam(player, mods, level, allowPlayerTargets);
             // Primary hit
             DamageSource ds = beamDamageSource(level, player);
             double armorReduction = DamageContext.effectiveArmorReduction(primary);
@@ -214,7 +210,7 @@ public final class RailgunBeamService {
             }
             // Beam never triggers Overload Execution — that's reserved for EHv3 charged shots.
             // Throttled chain
-            if (player.tickCount - s.lastChainTick >= chainThrottle) {
+            if (settings.chainDamage() && player.tickCount - s.lastChainTick >= chainThrottle) {
                 s.lastChainTick = player.tickCount;
                 List<RailgunChainResolver.Hit> chain = RailgunChainResolver.resolveChain(level, player, primary, ctx);
                 // Pass HV as the "tier" sentinel — applyAll's Overload-Execution gate
@@ -231,21 +227,28 @@ public final class RailgunBeamService {
         return true;
     }
 
-    private static BeamTrace traceBeam(ServerLevel level, ServerPlayer player, boolean pvp) {
+    private static BeamTrace traceBeam(
+            ServerLevel level,
+            ServerPlayer player,
+            boolean pvp,
+            RailgunModuleEntries mods) {
         Vec3 from = player.getEyePosition();
-        double range = RailgunDefaults.BEAM_RANGE;
+        double range = RailgunRangePolicy.effectiveRange(
+                RailgunDefaults.BEAM_RANGE,
+                mods.capabilities());
         Vec3 dir = player.getLookAngle();
         Vec3 to = from.add(dir.scale(range));
-        BlockHitResult bhr = level.clip(new ClipContext(from, to, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, player));
-        Vec3 endBlock = bhr.getType() == HitResult.Type.MISS ? to : bhr.getLocation();
-        EntityHitResult ehr = ProjectileUtil.getEntityHitResult(player, from, endBlock,
-                new AABB(from, endBlock).inflate(0.5D),
-                e -> e instanceof LivingEntity le
-                        && le != player
-                        && !le.isSpectator()
-                        && (pvp || !(le instanceof net.minecraft.world.entity.player.Player)),
-                Double.MAX_VALUE);
-        Vec3 endPoint = ehr != null ? lockedTargetPoint(ehr.getEntity()) : endBlock;
+        var raycast = RailgunRaycastService.traceFirst(
+                level,
+                player,
+                from,
+                to,
+                0.5D,
+                0.0F,
+                e -> e instanceof LivingEntity
+                        && RailgunTargetRules.canAffect(player, e, pvp));
+        EntityHitResult ehr = raycast.entityHit();
+        Vec3 endPoint = ehr != null ? lockedTargetPoint(ehr.getEntity()) : raycast.blockEnd();
         return new BeamTrace(from, endPoint, ehr);
     }
 
