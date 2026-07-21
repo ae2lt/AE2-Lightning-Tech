@@ -197,7 +197,7 @@
   "jei.ae2lt.multiblock.rule.matrix_port": "三个候选位中必须恰好一个是端口，其余使用约束框架。",
   "jei.ae2lt.multiblock.rule.matrix_pattern": "50 个仓位可留空或安装 T1/T2 样板仓，但整个结构至少需要一个。",
   "jei.ae2lt.multiblock.rule.matrix_main_core": "四种主核心任选一个，并且只能放在几何中心。",
-  "jei.ae2lt.multiblock.rule.matrix_peripheral_unit": "其余 80 个核心槽必须由任意合法外围单元填满。",
+  "jei.ae2lt.multiblock.rule.matrix_peripheral_unit": "其余 80 个核心槽必须填满。稳态、量子与过载主核心至少需要 1 个线程单元；创造主核心仅允许空白单元。",
   "jei.ae2lt.multiblock.rule.matrix_amplifier": "量子与过载主核心最多允许 15 个天枢增幅单元；稳态与创造主核心不接受增幅。",
   "jei.ae2lt.multiblock.rule.tianshu_port": "两个候选位中必须恰好一个是端口，另一个使用相变冷却单元或一种闭环存储。",
   "jei.ae2lt.multiblock.rule.tianshu_cooling": "冷却兼容位可放置相变冷却单元、闭环样板仓或闭环种子存储器；三类方块合计填满全部 17 个非端口位置。",

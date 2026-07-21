@@ -199,7 +199,7 @@
   "jei.ae2lt.multiblock.rule.matrix_port": "Exactly one of the three candidates must be a Port; the other two are Constraint Frames.",
   "jei.ae2lt.multiblock.rule.matrix_pattern": "The 50 bays may be empty or hold T1/T2 Pattern Storage, but at least one storage is required.",
   "jei.ae2lt.multiblock.rule.matrix_main_core": "Choose one of the four Main Cores; it must be placed at the geometric center.",
-  "jei.ae2lt.multiblock.rule.matrix_peripheral_unit": "All other 80 core slots must be filled by valid peripheral units.",
+  "jei.ae2lt.multiblock.rule.matrix_peripheral_unit": "All other 80 core slots must be filled. Stable, Quantum, and Overload Main Cores require at least one Thread Unit; the Creative Main Core accepts only Blank Units.",
   "jei.ae2lt.multiblock.rule.matrix_amplifier": "Quantum and Overload Main Cores allow at most 15 Tianshu Amplifier Units; Stable and Creative Main Cores reject amplifiers.",
   "jei.ae2lt.multiblock.rule.tianshu_port": "Exactly one of the two candidates must be a Port; the other accepts a Phase-Change Cooling Unit or either closed-loop storage block.",
   "jei.ae2lt.multiblock.rule.tianshu_cooling": "Cooling-compatible positions accept Phase-Change Cooling Units, Closed-Loop Pattern Storage, or Closed-Loop Seed Storage; together they fill all 17 non-port positions.",

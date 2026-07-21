@@ -23,6 +23,12 @@ import net.minecraft.world.level.block.state.BlockState;
 public final class MultiblockStructureRecipes {
     private static final BlockPos MATRIX_DEFAULT_PATTERN = new BlockPos(1, 1, 1);
     private static final BlockPos MATRIX_DEFAULT_PORT = new BlockPos(6, 5, 3);
+    private static final BlockPos MATRIX_DEFAULT_THREAD = MatrixMultiblockTemplate.entries().stream()
+            .filter(entry -> entry.role() == MatrixMultiblockRole.CRAFTING_BAY)
+            .map(MatrixMultiblockTemplate.Entry::localPos)
+            .filter(pos -> !pos.equals(MatrixMultiblockTemplate.CRAFTING_CENTER_LOCAL))
+            .findFirst()
+            .orElseThrow(() -> new IllegalStateException("Matrix template has no peripheral crafting slot"));
     private static final int TIANSHU_DEFAULT_STORAGE_UNITS = 16;
     private static final BlockPos TIANSHU_DEFAULT_PATTERN_STORAGE = new BlockPos(2, 6, 2);
     private static final BlockPos TIANSHU_DEFAULT_SEED_STORAGE = new BlockPos(4, 6, 2);
@@ -39,6 +45,8 @@ public final class MultiblockStructureRecipes {
         Block port = ModBlocks.MATTER_WARPING_MATRIX_PORT.get();
         Block patternT1 = ModBlocks.MATTER_WARPING_MATRIX_PATTERN_STORAGE_T1.get();
         Block patternT2 = ModBlocks.MATTER_WARPING_MATRIX_PATTERN_STORAGE_T2.get();
+        Block blank = ModBlocks.MATTER_WARPING_MATRIX_BLANK_UNIT.get();
+        Block threadT1 = ModBlocks.MATTER_WARPING_MATRIX_THREAD_UNIT_T1.get();
 
         List<Block> mainCores = List.of(
                 ModBlocks.MATTER_WARPING_MATRIX_STABLE_MAIN_CORE.get(),
@@ -46,8 +54,8 @@ public final class MultiblockStructureRecipes {
                 ModBlocks.MATTER_WARPING_MATRIX_OVERLOAD_MAIN_CORE.get(),
                 ModBlocks.MATTER_WARPING_MATRIX_CREATIVE_MAIN_CORE.get());
         List<Block> peripheralUnits = List.of(
-                ModBlocks.MATTER_WARPING_MATRIX_BLANK_UNIT.get(),
-                ModBlocks.MATTER_WARPING_MATRIX_THREAD_UNIT_T1.get(),
+                blank,
+                threadT1,
                 ModBlocks.MATTER_WARPING_MATRIX_THREAD_UNIT_T2.get(),
                 ModBlocks.AMPLIFIER_SUPERCOMPUTING_UNIT.get(),
                 ModBlocks.MATTER_WARPING_MATRIX_THERMAL_CONTROL_UNIT_T1.get(),
@@ -116,9 +124,10 @@ public final class MultiblockStructureRecipes {
                                 List.of(mainCoreRule),
                                 false));
                     } else {
+                        Block displayed = isDefaultMatrixThreadPosition(pos) ? threadT1 : blank;
                         cells.add(cell(
                                 pos,
-                                peripheralUnits.getFirst(),
+                                displayed,
                                 peripheralUnitRole,
                                 peripheralUnits,
                                 List.of(peripheralUnitRule, amplifierRule),
@@ -136,7 +145,8 @@ public final class MultiblockStructureRecipes {
                 material(port, portRule),
                 material(patternT1, patternRule),
                 material(mainCores.getFirst(), mainCoreRule),
-                material(peripheralUnits.getFirst(), peripheralUnitRule));
+                material(blank, peripheralUnitRule),
+                material(threadT1, peripheralUnitRule));
 
         return MultiblockStructureRecipe.create(
                 id("tianshu_matter_warping_matrix"),
@@ -311,6 +321,10 @@ public final class MultiblockStructureRecipes {
 
     private static Component role(String path) {
         return Component.translatable("jei.ae2lt.multiblock.role." + path);
+    }
+
+    static boolean isDefaultMatrixThreadPosition(BlockPos pos) {
+        return MATRIX_DEFAULT_THREAD.equals(pos);
     }
 
     private static Component rule(String path) {
