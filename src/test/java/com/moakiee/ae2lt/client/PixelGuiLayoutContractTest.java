@@ -233,12 +233,10 @@ final class PixelGuiLayoutContractTest {
                 "src/main/java/com/moakiee/ae2lt/client/TianshuGlobalReserveScreen.java"));
         String rule = Files.readString(Path.of(
                 "src/main/java/com/moakiee/ae2lt/client/TianshuMaintenanceRuleScreen.java"));
-        String intro = Files.readString(Path.of(
-                "src/main/java/com/moakiee/ae2lt/client/TianshuMaintenanceIntroScreen.java"));
 
         assertTrue(terminal.contains("new MaintenanceOverviewButton()"));
         assertTrue(terminal.contains("syncSyntheticMaintenanceEntries()"));
-        assertTrue(terminal.contains("new TianshuMaintenanceIntroScreen<>"));
+        assertFalse(terminal.contains("TianshuMaintenanceIntroScreen"));
         assertTrue(menu.contains("lastMaintenanceSummaryTick != Integer.MIN_VALUE"));
 
         assertTrue(overview.contains("widgets.addTextField(\"search\")"));
@@ -249,10 +247,8 @@ final class PixelGuiLayoutContractTest {
         assertTrue(rule.contains("widgets.addCheckbox("));
         assertTrue(rule.contains("widgets.addScrollBar(\"scrollbar\", Scrollbar.SMALL)"));
         assertTrue(rule.contains("widgets.addButton("));
-        assertTrue(intro.contains("widgets.addCheckbox("));
-        assertTrue(intro.contains("widgets.addButton("));
 
-        for (String screen : List.of(overview, rule, intro)) {
+        for (String screen : List.of(overview, rule)) {
             assertFalse(screen.contains("Button.builder("));
             assertFalse(screen.contains("new EditBox("));
         }
@@ -260,8 +256,7 @@ final class PixelGuiLayoutContractTest {
         for (String styleName : List.of(
                 "tianshu_inventory_overview.json",
                 "tianshu_maintenance_rule.json",
-                "tianshu_reserve_edit.json",
-                "tianshu_maintenance_intro.json")) {
+                "tianshu_reserve_edit.json")) {
             String style = Files.readString(Path.of(
                     "src/main/resources/assets/ae2/screens/" + styleName));
             assertTrue(style.contains("ae2lt:textures/guis/tianshu_inventory.png"));

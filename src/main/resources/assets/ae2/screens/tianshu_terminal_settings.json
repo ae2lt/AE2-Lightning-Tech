@@ -1,7 +1,7 @@
 {
   "$schema": "schema.json",
   "includes": ["common/common.json"],
-  "generatedBackground": { "width": 200, "height": 148 },
+  "generatedBackground": { "width": 200, "height": 118 },
   "text": {
     "dialog_title": {
       "text": { "translate": "ae2lt.tianshu.settings.title" },
@@ -10,7 +10,6 @@
   },
   "widgets": {
     "back": { "left": 176, "top": -5, "width": 20, "height": 20 },
-    "uploadTrigger": { "left": 10, "top": 43, "width": 180, "height": 20 },
-    "maintenanceHelp": { "left": 10, "top": 72, "width": 180, "height": 14 }
+    "uploadTrigger": { "left": 10, "top": 43, "width": 180, "height": 20 }
   }
 }

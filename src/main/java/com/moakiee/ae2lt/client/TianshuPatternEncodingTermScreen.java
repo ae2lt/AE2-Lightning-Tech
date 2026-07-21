@@ -58,7 +58,6 @@ import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.PacketDistributor;
 import com.moakiee.ae2lt.logic.AdvancedAECompat;
-import com.moakiee.ae2lt.config.AE2LTClientConfig;
 
 public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTermMenu>
         extends MEStorageScreen<M> {
@@ -342,11 +341,7 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
                             Component.translatable("ae2lt.tianshu.maintenance.unsupported"), true);
                     return true;
                 }
-                if (AE2LTClientConfig.showMaintenanceHelp()) {
-                    switchToScreen(new TianshuMaintenanceIntroScreen<>(this, entry.getWhat()));
-                } else {
-                    requestMaintenanceEditorFor(entry.getWhat());
-                }
+                requestMaintenanceEditorFor(entry.getWhat());
                 return true;
             }
         }
