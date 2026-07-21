@@ -11,7 +11,8 @@ class PhaseLockSourceContractTest {
     @Test
     void phaseLockOwnsThreeIndependentProtectionSettings() throws Exception {
         String submodule = Files.readString(Path.of(
-                "src/main/java/com/moakiee/ae2lt/celestweave/module/PhaseLockSubmodule.java"));
+                "src/main/java/com/moakiee/ae2lt/celestweave/module/PhaseLockSubmodule.java"))
+                .replace("\r\n", "\n");
         String service = Files.readString(Path.of(
                 "src/main/java/com/moakiee/ae2lt/celestweave/phase/PhaseLockService.java"));
         String state = Files.readString(Path.of(
