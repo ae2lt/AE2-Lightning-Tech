@@ -19,7 +19,7 @@ item_ids:
 下图为最低样板容量、使用稳态主核心与空白单元的完整结构。场景可以拖动旋转；标记分别指向控制器、默认端口位置与一个样板仓。
 
 <GameScene zoom="2.4" background="transparent" interactive={true}>
-  <ImportStructure src="../assets/assemblies/tianshu_matter_warping_matrix.snbt" />
+  <ImportStructure src="../assets/assemblies/matter_warping_matrix.snbt" />
   <DiamondAnnotation pos="0.5 5.5 3.5" color="#f2d37a">天枢物质扭曲矩阵控制器</DiamondAnnotation>
   <DiamondAnnotation pos="6.5 5.5 3.5" color="#85f29e">默认端口位置</DiamondAnnotation>
   <DiamondAnnotation pos="1.5 1.5 1.5" color="#80c6ff">一个 T1 样板仓</DiamondAnnotation>

@@ -19,7 +19,7 @@ The matrix occupies a fixed **7×11×7** volume. The Controller is centered on o
 The scene below shows a complete structure with the minimum pattern capacity, a Stable Main Core, and Blank Units. Drag to rotate it. The annotations identify the Controller, default Port position, and one Pattern Storage.
 
 <GameScene zoom="2.4" background="transparent" interactive={true}>
-  <ImportStructure src="../assets/assemblies/tianshu_matter_warping_matrix.snbt" />
+  <ImportStructure src="../assets/assemblies/matter_warping_matrix.snbt" />
   <DiamondAnnotation pos="0.5 5.5 3.5" color="#f2d37a">Tianshu Matter Warping Matrix Controller</DiamondAnnotation>
   <DiamondAnnotation pos="6.5 5.5 3.5" color="#85f29e">Default Port position</DiamondAnnotation>
   <DiamondAnnotation pos="1.5 1.5 1.5" color="#80c6ff">One T1 Pattern Storage</DiamondAnnotation>
