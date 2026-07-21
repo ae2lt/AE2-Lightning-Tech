@@ -201,6 +201,7 @@ dependencies {
     runtimeOnly("de.mari_023:ae2wtlib:${ae2wtlib_version}") {
         transitive = false
     }
+    compileOnly "org.appliedenergistics:guideme:${guideme_version}"
     runtimeOnly "org.appliedenergistics:guideme:${guideme_version}"
     compileOnly "curse.maven:jei-238222:7391682"
     runtimeOnly "curse.maven:jei-238222:7391682"

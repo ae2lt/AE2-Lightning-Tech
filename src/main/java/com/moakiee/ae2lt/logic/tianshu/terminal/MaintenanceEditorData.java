@@ -16,6 +16,8 @@ public record MaintenanceEditorData(
         long amountPerJob,
         boolean enabled,
         InventoryMaintenanceStatus status,
+        long currentStock,
+        boolean craftable,
         boolean recoveryPage,
         List<TopologyEntry> topology,
         List<VariantEntry> variants) {
@@ -25,7 +27,7 @@ public record MaintenanceEditorData(
     }
 
     public record TopologyEntry(
-            AEKey key, int depth, boolean craftable,
+            AEKey key, int depth, boolean craftable, long storedAmount,
             long globalReserve, ReservedStockMatchMode globalMode,
             long ruleReserve, ReservedStockMatchMode ruleMode) { }
 

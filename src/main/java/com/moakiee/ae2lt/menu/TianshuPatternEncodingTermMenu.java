@@ -39,6 +39,8 @@ import com.moakiee.ae2lt.logic.tianshu.terminal.MaintenanceEditorData;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.InventoryMaintenanceRule;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.InventoryMaintenanceStatus;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.MaintenanceTopologyService;
+import com.moakiee.ae2lt.logic.tianshu.maintenance.ReservedStockMatchMode;
+import com.moakiee.ae2lt.logic.tianshu.maintenance.TianshuInventoryMaintenanceService;
 import com.moakiee.ae2lt.network.tianshu.MaintenanceEditorSyncPacket;
 import com.moakiee.ae2lt.network.tianshu.OpenMaintenanceEditorPacket;
 import com.moakiee.ae2lt.network.tianshu.SaveMaintenanceRulePacket;
@@ -266,6 +268,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         registerClientAction("clearClosedLoopDraft", this::clearClosedLoopDraftServer);
         registerClientAction("uploadEncodedPattern", Integer.class, this::uploadEncodedPatternServer);
         registerClientAction("setMaintainableView", Boolean.class, this::setMaintainableViewServer);
+        registerClientAction("maintenanceAction", MaintenanceAction.class, this::maintenanceActionServer);
     }
 
     @Override
@@ -1278,6 +1281,15 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         var target = resolveBoundTianshu();
         if (key == null || target == null
                 || !target.getFunctionProfile().supportsInventoryMaintenance()) return;
+        var maintenance = target.getInventoryMaintenance();
+        var grid = target.getGrid();
+        if (maintenance == null) return;
+        if (maintenance.repository().get(key) == null
+                && (grid == null || !grid.getCraftingService().isCraftable(key))) {
+            serverPlayer.displayClientMessage(net.minecraft.network.chat.Component.translatable(
+                    "ae2lt.tianshu.maintenance.unsupported"), true);
+            return;
+        }
         sendMaintenanceEditorData(serverPlayer, key);
     }
 
@@ -1309,8 +1321,9 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     }
 
     private void sendMaintenanceSummaryIfNeeded() {
-        if (!(getPlayer() instanceof ServerPlayer player)
-                || getPlayer().tickCount - lastMaintenanceSummaryTick < 20) return;
+        if (!(getPlayer() instanceof ServerPlayer player)) return;
+        if (lastMaintenanceSummaryTick != Integer.MIN_VALUE
+                && player.tickCount - lastMaintenanceSummaryTick < 20) return;
         lastMaintenanceSummaryTick = getPlayer().tickCount;
         var target = resolveBoundTianshu();
         var summaries = new LinkedHashMap<appeng.api.stacks.AEKey, MaintenanceSummarySyncPacket.Entry>();
@@ -1318,10 +1331,18 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         if (target != null && target.getFunctionProfile().supportsInventoryMaintenance()) {
             var service = target.getInventoryMaintenance();
             if (service != null) {
+                var grid = target.getGrid();
+                var available = grid != null
+                        ? grid.getStorageService().getInventory().getAvailableStacks() : null;
+                var crafting = grid != null ? grid.getCraftingService() : null;
                 if (service.repository().size() > TianshuPacketLimits.MAX_LIST_ENTRIES
                         || service.reservedStock().size() > TianshuPacketLimits.MAX_LIST_ENTRIES) {
                     overflow = true;
                 }
+                var globalReservations = service.reservedStock()
+                        .reservations(TianshuPacketLimits.MAX_LIST_ENTRIES);
+                var directlyReservedKeys = new LinkedHashSet<appeng.api.stacks.AEKey>();
+                for (var reserve : globalReservations) directlyReservedKeys.add(reserve.key());
                 for (var rule : service.repository().rules(TianshuPacketLimits.MAX_LIST_ENTRIES)) {
                     if (summaries.size() >= TianshuPacketLimits.MAX_LIST_ENTRIES
                             && !summaries.containsKey(rule.key())) {
@@ -1330,21 +1351,36 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
                     }
                     boolean ruleReserveOverflow = service.reservedStock(rule.id()).size()
                             > TianshuPacketLimits.MAX_LIST_ENTRIES;
+                    long storedAmount = available != null ? Math.max(0L, available.get(rule.key())) : 0L;
+                    boolean craftable = crafting != null && crafting.isCraftable(rule.key());
                     summaries.put(rule.key(), new MaintenanceSummarySyncPacket.Entry(
-                            rule.key(), service.status(rule.id()),
+                            rule.key(), true,
+                            maintenanceSummaryStatus(rule, service.status(rule.id()), grid != null, craftable),
+                            storedAmount, rule.lowerThreshold(), rule.upperThreshold(), rule.amountPerJob(),
                             service.reservedStock().reserve(rule.key()),
                             service.reservedStock().matchMode(rule.key()),
-                            ruleReserveOverflow));
+                            directlyReservedKeys.contains(rule.key()), craftable, ruleReserveOverflow));
                 }
-                for (var reserve : service.reservedStock().reservations(TianshuPacketLimits.MAX_LIST_ENTRIES)) {
+                for (var reserve : globalReservations) {
                     if (summaries.size() >= TianshuPacketLimits.MAX_LIST_ENTRIES
                             && !summaries.containsKey(reserve.key())) {
                         overflow = true;
                         break;
                     }
-                    summaries.putIfAbsent(reserve.key(), new MaintenanceSummarySyncPacket.Entry(
-                            reserve.key(), InventoryMaintenanceStatus.IDLE,
-                            reserve.amount(), reserve.mode(), false));
+                    long storedAmount = available != null ? Math.max(0L, available.get(reserve.key())) : 0L;
+                    boolean craftable = crafting != null && crafting.isCraftable(reserve.key());
+                    var existing = summaries.get(reserve.key());
+                    summaries.put(reserve.key(), existing == null
+                            ? new MaintenanceSummarySyncPacket.Entry(
+                                    reserve.key(), false, InventoryMaintenanceStatus.IDLE,
+                                    storedAmount, 0L, 0L, 0L,
+                                    reserve.amount(), reserve.mode(), true, craftable, false)
+                            : new MaintenanceSummarySyncPacket.Entry(
+                                    existing.key(), existing.ruleConfigured(), existing.status(),
+                                    existing.storedAmount(), existing.lowerThreshold(),
+                                    existing.upperThreshold(), existing.amountPerJob(),
+                                    reserve.amount(), reserve.mode(), true,
+                                    existing.craftable(), existing.ruleReserveOverflow()));
                 }
             }
         }
@@ -1376,10 +1412,40 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
 
     public boolean isMaintenanceSummaryOverflow() { return maintenanceSummaryOverflow; }
 
+    public long getMaintenanceSummaryRevision() { return receivedMaintenanceSummaryRevision; }
+
     public Map<appeng.api.stacks.AEKey, MaintenanceSummarySyncPacket.Entry> getMaintenanceSummary() {
         var result = new LinkedHashMap<appeng.api.stacks.AEKey, MaintenanceSummarySyncPacket.Entry>();
         for (var entry : maintenanceSummary) result.put(entry.key(), entry);
         return Map.copyOf(result);
+    }
+
+    @Nullable
+    public MaintenanceSummarySyncPacket.Entry getMaintenanceSummaryEntry(appeng.api.stacks.AEKey key) {
+        if (key == null) return null;
+        for (var entry : maintenanceSummary) {
+            if (key.equals(entry.key())) return entry;
+        }
+        return null;
+    }
+
+    public void runMaintenanceAction(UUID ruleId, boolean cancel) {
+        if (isClientSide() && ruleId != null) {
+            sendClientAction("maintenanceAction",
+                    new MaintenanceAction(tianshuSelectionRevision, ruleId, cancel));
+        }
+    }
+
+    private void maintenanceActionServer(MaintenanceAction action) {
+        if (!isServerSide() || action == null
+                || action.selectionRevision() != tianshuSelectionRevision) return;
+        var target = resolveBoundTianshu();
+        var service = target != null ? target.getInventoryMaintenance() : null;
+        if (service == null || service.repository().getById(action.ruleId()) == null) return;
+        if (action.cancel()) service.cancelRuleTask(action.ruleId());
+        else service.retryNow(action.ruleId());
+        lastMaintenanceSummaryTick = Integer.MIN_VALUE;
+        broadcastChanges();
     }
 
     public void sendGlobalReserve(appeng.api.stacks.AEKey key, long amount,
@@ -1407,10 +1473,47 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
                 && maintenance.reservedStock().size() >= TianshuPacketLimits.MAX_LIST_ENTRIES) {
             return;
         }
-        maintenance.setMaintenanceWideReservedStock(
-                packet.key(), packet.mode(), packet.amount());
+        setGlobalReserveFromEditor(maintenance, packet.key(), packet.mode(), packet.amount());
         lastMaintenanceSummaryTick = Integer.MIN_VALUE;
         broadcastChanges();
+    }
+
+    private static void setGlobalReserveFromEditor(
+            TianshuInventoryMaintenanceService maintenance,
+            appeng.api.stacks.AEKey key,
+            ReservedStockMatchMode mode,
+            long amount) {
+        var direct = maintenance.reservedStock().reservations().stream()
+                .filter(entry -> entry.key().equals(key))
+                .findFirst().orElse(null);
+        // Switching an exact entry to grouped matching must remove that exact override first;
+        // otherwise ReservedStockRepository correctly finds the existing group and would leave
+        // the old exact entry shadowing the edit. Deletion likewise follows the persisted mode,
+        // not a mode the player may have toggled immediately before pressing 0.
+        if (direct != null && (amount == 0L || direct.mode() != mode)) {
+            maintenance.setMaintenanceWideReservedStock(key, direct.mode(), 0L);
+        }
+        if (amount != 0L || direct == null) {
+            maintenance.setMaintenanceWideReservedStock(key, mode, amount);
+        }
+    }
+
+    private static void setRuleReserveFromEditor(
+            TianshuInventoryMaintenanceService maintenance,
+            UUID ruleId,
+            appeng.api.stacks.AEKey key,
+            ReservedStockMatchMode mode,
+            long amount) {
+        var repository = maintenance.reservedStock(ruleId);
+        var direct = repository.reservations().stream()
+                .filter(entry -> entry.key().equals(key))
+                .findFirst().orElse(null);
+        if (direct != null && (amount == 0L || direct.mode() != mode)) {
+            maintenance.setReservedStock(ruleId, key, direct.mode(), 0L);
+        }
+        if (amount != 0L || direct == null) {
+            maintenance.setReservedStock(ruleId, key, mode, amount);
+        }
     }
 
     private void sendMaintenanceEditorData(ServerPlayer player, appeng.api.stacks.AEKey key) {
@@ -1421,6 +1524,8 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         var rule = maintenance.repository().get(key);
         var grid = tianshuHost.getActionableNode() != null
                 ? tianshuHost.getActionableNode().getGrid() : null;
+        var available = grid != null
+                ? grid.getStorageService().getInventory().getAvailableStacks() : null;
         var topology = grid != null
                 ? MaintenanceTopologyService.build(grid.getCraftingService(), key) : List.<MaintenanceTopologyService.Entry>of();
         boolean recoveryPage = topology.size() > TianshuPacketLimits.MAX_LIST_ENTRIES;
@@ -1438,7 +1543,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
             for (var saved : local.reservations(TianshuPacketLimits.MAX_LIST_ENTRIES)) {
                 var topologyEntry = topologyByKey.get(saved.key());
                 topologyData.put(saved.key(), maintenanceEditorEntry(
-                        saved.key(), topologyEntry, global, local));
+                        saved.key(), topologyEntry, available, global, local));
             }
         }
         for (var entry : topology) {
@@ -1448,7 +1553,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
                 break;
             }
             topologyData.put(entry.key(), maintenanceEditorEntry(
-                    entry.key(), entry, global, local));
+                    entry.key(), entry, available, global, local));
         }
 
         var allVariants = maintenance.variants(key);
@@ -1458,12 +1563,17 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
                 .map(variant -> new MaintenanceEditorData.VariantEntry(
                         variant.key(), variant.storedAmount(), variant.craftable()))
                 .toList();
+        long currentStock = available != null ? Math.max(0L, available.get(key)) : 0L;
+        boolean craftable = grid != null && grid.getCraftingService().isCraftable(key);
+        var editorStatus = rule != null
+                ? maintenanceSummaryStatus(rule, maintenance.status(rule.id()), grid != null, craftable)
+                : InventoryMaintenanceStatus.IDLE;
         var data = new MaintenanceEditorData(key, rule != null ? rule.id() : null,
                 rule != null ? rule.lowerThreshold() : 0L,
                 rule != null ? rule.upperThreshold() : 64L,
                 rule != null ? rule.amountPerJob() : 64L,
                 rule == null || rule.enabled(),
-                rule != null ? maintenance.status(rule.id()) : InventoryMaintenanceStatus.IDLE,
+                editorStatus, currentStock, craftable,
                 recoveryPage, List.copyOf(topologyData.values()), variants);
         PacketDistributor.sendToPlayer(player, new MaintenanceEditorSyncPacket(
                 containerId, tianshuSelectionRevision, data));
@@ -1472,15 +1582,32 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     private static MaintenanceEditorData.TopologyEntry maintenanceEditorEntry(
             appeng.api.stacks.AEKey key,
             @Nullable MaintenanceTopologyService.Entry topology,
+            @Nullable appeng.api.stacks.KeyCounter available,
             com.moakiee.ae2lt.logic.tianshu.maintenance.ReservedStockRepository global,
             @Nullable com.moakiee.ae2lt.logic.tianshu.maintenance.ReservedStockRepository local) {
         return new MaintenanceEditorData.TopologyEntry(
                 key, topology != null ? topology.depth() : 0,
                 topology != null && topology.craftable(),
+                available != null ? Math.max(0L, available.get(key)) : 0L,
                 global.reserve(key), global.matchMode(key),
                 local != null ? local.reserve(key) : 0L,
                 local != null ? local.matchMode(key)
                         : com.moakiee.ae2lt.logic.tianshu.maintenance.ReservedStockMatchMode.EXACT);
+    }
+
+    private static InventoryMaintenanceStatus maintenanceSummaryStatus(
+            InventoryMaintenanceRule rule,
+            InventoryMaintenanceStatus runtimeStatus,
+            boolean online,
+            boolean craftable) {
+        if (!rule.enabled()) return InventoryMaintenanceStatus.DISABLED;
+        if (!online) return InventoryMaintenanceStatus.OFFLINE;
+        var status = runtimeStatus != null ? runtimeStatus : InventoryMaintenanceStatus.IDLE;
+        if (!craftable && status != InventoryMaintenanceStatus.CRAFTING
+                && status != InventoryMaintenanceStatus.CANCELLING) {
+            return InventoryMaintenanceStatus.MISSING_PATTERN;
+        }
+        return status;
     }
 
     public void receiveMaintenanceEditorData(int selectionRevision, MaintenanceEditorData data) {
@@ -1518,6 +1645,24 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
             sendMaintenanceEditorData(player, packet.target());
             return;
         }
+        var editedReserveKeys = new LinkedHashSet<appeng.api.stacks.AEKey>();
+        for (var edit : packet.reserves()) {
+            if (edit == null || edit.key() == null
+                    || edit.globalMode() == null || edit.ruleMode() == null
+                    || edit.globalAmount() < -1L || edit.ruleAmount() < -1L
+                    || !editedReserveKeys.add(edit.key())) {
+                sendMaintenanceEditorData(player, packet.target());
+                return;
+            }
+        }
+        if (existing == null) {
+            var grid = target.getGrid();
+            if (grid == null || !grid.getCraftingService().isCraftable(packet.target())) {
+                player.displayClientMessage(net.minecraft.network.chat.Component.translatable(
+                        "ae2lt.tianshu.maintenance.unsupported"), true);
+                return;
+            }
+        }
         if (service.repository().size() > TianshuPacketLimits.MAX_LIST_ENTRIES) {
             player.displayClientMessage(net.minecraft.network.chat.Component.translatable(
                     "ae2lt.tianshu.maintenance.too_large",
@@ -1546,8 +1691,10 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         if (result == com.moakiee.ae2lt.logic.tianshu.maintenance.InventoryMaintenanceRepository.PutResult.ADDED
                 || result == com.moakiee.ae2lt.logic.tianshu.maintenance.InventoryMaintenanceRepository.PutResult.UPDATED) {
             for (var edit : packet.reserves()) {
-                service.setMaintenanceWideReservedStock(edit.key(), edit.globalMode(), edit.globalAmount());
-                service.setReservedStock(ruleId, edit.key(), edit.ruleMode(), edit.ruleAmount());
+                setGlobalReserveFromEditor(
+                        service, edit.key(), edit.globalMode(), edit.globalAmount());
+                setRuleReserveFromEditor(
+                        service, ruleId, edit.key(), edit.ruleMode(), edit.ruleAmount());
             }
         }
         sendMaintenanceEditorData(player, packet.target());
@@ -1717,6 +1864,9 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     }
 
     public record ClosedLoopMultiplierEdit(int execution, int stored) {
+    }
+
+    public record MaintenanceAction(int selectionRevision, UUID ruleId, boolean cancel) {
     }
 
     private final class ClosedLoopMemberSlot extends FakeSlot {

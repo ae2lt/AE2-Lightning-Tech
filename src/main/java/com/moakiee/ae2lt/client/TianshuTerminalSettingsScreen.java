@@ -4,6 +4,7 @@ import appeng.client.gui.AESubScreen;
 import appeng.client.gui.Icon;
 import appeng.client.gui.me.common.TerminalSettingsScreen;
 import appeng.client.gui.widgets.AE2Button;
+import appeng.client.gui.widgets.AECheckbox;
 import appeng.client.gui.widgets.TabButton;
 import appeng.menu.SlotSemantics;
 import com.moakiee.ae2lt.config.AE2LTClientConfig;
@@ -18,6 +19,7 @@ import org.lwjgl.glfw.GLFW;
 public final class TianshuTerminalSettingsScreen<M extends TianshuPatternEncodingTermMenu>
         extends AESubScreen<M, TerminalSettingsScreen<M>> {
     private AE2Button triggerButton;
+    private AECheckbox maintenanceHelp;
 
     public TianshuTerminalSettingsScreen(TerminalSettingsScreen<M> parent) {
         super(parent, "/screens/tianshu_terminal_settings.json");
@@ -25,6 +27,10 @@ public final class TianshuTerminalSettingsScreen<M extends TianshuPatternEncodin
         widgets.add("back", new TabButton(Icon.BACK,
                 Component.translatable("gui.back"), ignored -> returnToParent()));
         triggerButton = widgets.addButton("uploadTrigger", triggerLabel(), this::cycleTrigger);
+        maintenanceHelp = widgets.addCheckbox("maintenanceHelp",
+                Component.translatable("ae2lt.tianshu.settings.maintenance_help"),
+                () -> AE2LTClientConfig.setShowMaintenanceHelp(maintenanceHelp.isSelected()));
+        maintenanceHelp.setSelected(AE2LTClientConfig.showMaintenanceHelp());
     }
 
     private void hideTerminalSlots() {
@@ -57,7 +63,7 @@ public final class TianshuTerminalSettingsScreen<M extends TianshuPatternEncodin
                 10, 30, 0x404040, false);
         graphics.drawWordWrap(font,
                 Component.translatable("ae2lt.tianshu.settings.upload_trigger.hint"),
-                10, 72, 180, 0x666666);
+                10, 96, 180, 0x666666);
     }
 
     @Override

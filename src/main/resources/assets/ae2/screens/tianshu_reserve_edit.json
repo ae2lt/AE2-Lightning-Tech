@@ -2,13 +2,21 @@
   "$schema": "schema.json",
   "includes": ["common/common.json"],
   "background": {
-    "texture": "guis/craft_amt.png",
-    "srcRect": [0, 0, 176, 107]
+    "texture": "ae2lt:textures/guis/tianshu_inventory.png",
+    "textureWidth": 256,
+    "textureHeight": 256,
+    "srcRect": [0, 0, 228, 196]
   },
-  "text": {
-    "dialog_title": {
-      "text": { "translate": "ae2lt.tianshu.reserve.title" },
-      "position": { "left": 8, "top": 6 }
-    }
+  "widgets": {
+    "back": { "left": 204, "top": -5, "width": 20, "height": 20 },
+    "scope": { "left": 10, "top": 52, "width": 100, "height": 20 },
+    "mode": { "left": 115, "top": 52, "width": 103, "height": 20 },
+    "amount": { "left": 82, "top": 92, "width": 74, "height": 14 },
+    "zero": { "left": 160, "top": 89, "width": 18, "height": 20 },
+    "stack": { "left": 181, "top": 89, "width": 20, "height": 20 },
+    "infinite": { "left": 204, "top": 89, "width": 14, "height": 20 },
+    "scrollbar": { "left": 211, "top": 120, "width": 8, "height": 33 },
+    "cancel": { "left": 113, "top": 168, "width": 50, "height": 20 },
+    "save": { "left": 168, "top": 168, "width": 50, "height": 20 }
   }
 }

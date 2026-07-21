@@ -2,13 +2,22 @@
   "$schema": "schema.json",
   "includes": ["common/common.json"],
   "background": {
-    "texture": "guis/interface.png",
-    "srcRect": [0, 0, 176, 207]
+    "texture": "ae2lt:textures/guis/tianshu_inventory.png",
+    "textureWidth": 256,
+    "textureHeight": 256,
+    "srcRect": [0, 0, 228, 246]
   },
-  "text": {
-    "dialog_title": {
-      "text": { "translate": "ae2lt.tianshu.maintenance.title" },
-      "position": { "left": 8, "top": 6 }
-    }
+  "widgets": {
+    "back": { "left": 204, "top": -5, "width": 20, "height": 20 },
+    "lower": { "left": 10, "top": 69, "width": 62, "height": 14 },
+    "upper": { "left": 82, "top": 69, "width": 62, "height": 14 },
+    "perJob": { "left": 154, "top": 69, "width": 64, "height": 14 },
+    "enabled": { "left": 10, "top": 88, "width": 92, "height": 14 },
+    "check": { "left": 105, "top": 86, "width": 51, "height": 20 },
+    "cancelJob": { "left": 160, "top": 86, "width": 58, "height": 20 },
+    "scrollbar": { "left": 211, "top": 136, "width": 8, "height": 70 },
+    "delete": { "left": 10, "top": 218, "width": 52, "height": 20 },
+    "cancel": { "left": 113, "top": 218, "width": 50, "height": 20 },
+    "save": { "left": 168, "top": 218, "width": 50, "height": 20 }
   }
 }

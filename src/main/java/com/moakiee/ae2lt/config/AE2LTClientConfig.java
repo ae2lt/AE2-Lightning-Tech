@@ -9,6 +9,7 @@ public final class AE2LTClientConfig {
     public static final ModConfigSpec SPEC;
     private static final ModConfigSpec.EnumValue<TianshuUploadTrigger> TIANSHU_UPLOAD_TRIGGER;
     private static final ModConfigSpec.ConfigValue<List<? extends String>> TIANSHU_UPLOAD_ALIASES;
+    private static final ModConfigSpec.BooleanValue TIANSHU_SHOW_MAINTENANCE_HELP;
 
     static {
         var builder = new ModConfigSpec.Builder();
@@ -22,6 +23,9 @@ public final class AE2LTClientConfig {
                         value -> value instanceof String text
                                 && text.length() <= 512
                                 && text.indexOf('=') > 0);
+        TIANSHU_SHOW_MAINTENANCE_HELP = builder
+                .comment("Show the inventory-maintenance explanation before the Shift + middle-click editor")
+                .define("showMaintenanceHelp", true);
         builder.pop();
         SPEC = builder.build();
     }
@@ -36,6 +40,15 @@ public final class AE2LTClientConfig {
     public static void setUploadTrigger(TianshuUploadTrigger trigger) {
         if (trigger == null) return;
         TIANSHU_UPLOAD_TRIGGER.set(trigger);
+        if (SPEC.isLoaded()) SPEC.save();
+    }
+
+    public static boolean showMaintenanceHelp() {
+        return TIANSHU_SHOW_MAINTENANCE_HELP.get();
+    }
+
+    public static void setShowMaintenanceHelp(boolean show) {
+        TIANSHU_SHOW_MAINTENANCE_HELP.set(show);
         if (SPEC.isLoaded()) SPEC.save();
     }
 

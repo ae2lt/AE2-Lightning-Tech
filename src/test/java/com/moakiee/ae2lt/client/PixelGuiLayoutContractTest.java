@@ -211,6 +211,66 @@ final class PixelGuiLayoutContractTest {
         }
     }
 
+    @Test
+    void tianshuInventoryScreensUseAe2WidgetsAndReplaceableSolidAtlas() throws Exception {
+        Path texture = Path.of("src/main/resources/assets/ae2lt/textures/guis/tianshu_inventory.png");
+        assertSprite(texture, 256, 256);
+
+        BufferedImage image = ImageIO.read(texture.toFile());
+        int backgroundColor = image.getRGB(0, 0);
+        for (int y = 0; y < image.getHeight(); y++) {
+            for (int x = 0; x < image.getWidth(); x++) {
+                assertEquals(backgroundColor, image.getRGB(x, y),
+                        "temporary inventory GUI background must remain a replaceable solid color");
+            }
+        }
+
+        String terminal = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/client/TianshuPatternEncodingTermScreen.java"));
+        String menu = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/menu/TianshuPatternEncodingTermMenu.java"));
+        String overview = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/client/TianshuGlobalReserveScreen.java"));
+        String rule = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/client/TianshuMaintenanceRuleScreen.java"));
+        String intro = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/client/TianshuMaintenanceIntroScreen.java"));
+
+        assertTrue(terminal.contains("new MaintenanceOverviewButton()"));
+        assertTrue(terminal.contains("syncSyntheticMaintenanceEntries()"));
+        assertTrue(terminal.contains("new TianshuMaintenanceIntroScreen<>"));
+        assertTrue(menu.contains("lastMaintenanceSummaryTick != Integer.MIN_VALUE"));
+
+        assertTrue(overview.contains("widgets.addTextField(\"search\")"));
+        assertTrue(overview.contains("widgets.addScrollBar(\"scrollbar\", Scrollbar.SMALL)"));
+        assertTrue(overview.contains("widgets.addButton("));
+        assertTrue(overview.contains("new TabButton("));
+        assertTrue(rule.contains("widgets.addTextField("));
+        assertTrue(rule.contains("widgets.addCheckbox("));
+        assertTrue(rule.contains("widgets.addScrollBar(\"scrollbar\", Scrollbar.SMALL)"));
+        assertTrue(rule.contains("widgets.addButton("));
+        assertTrue(intro.contains("widgets.addCheckbox("));
+        assertTrue(intro.contains("widgets.addButton("));
+
+        for (String screen : List.of(overview, rule, intro)) {
+            assertFalse(screen.contains("Button.builder("));
+            assertFalse(screen.contains("new EditBox("));
+        }
+
+        for (String styleName : List.of(
+                "tianshu_inventory_overview.json",
+                "tianshu_maintenance_rule.json",
+                "tianshu_reserve_edit.json",
+                "tianshu_maintenance_intro.json")) {
+            String style = Files.readString(Path.of(
+                    "src/main/resources/assets/ae2/screens/" + styleName));
+            assertTrue(style.contains("ae2lt:textures/guis/tianshu_inventory.png"));
+            assertTrue(style.contains("\"textureWidth\": 256"));
+            assertTrue(style.contains("\"textureHeight\": 256"));
+            assertTrue(style.contains("\"srcRect\": [0, 0, 228,"));
+        }
+    }
+
     private static void assertSprite(Path texture, int expectedWidth, int expectedHeight) throws Exception {
         assertTrue(Files.exists(texture), "GUI sprite should be copied into the runtime asset tree");
         BufferedImage image = ImageIO.read(texture.toFile());

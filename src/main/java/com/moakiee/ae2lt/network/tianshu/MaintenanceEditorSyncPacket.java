@@ -37,12 +37,15 @@ public record MaintenanceEditorSyncPacket(
         buf.writeVarLong(data.amountPerJob());
         buf.writeBoolean(data.enabled());
         buf.writeEnum(data.status());
+        buf.writeVarLong(data.currentStock());
+        buf.writeBoolean(data.craftable());
         buf.writeBoolean(data.recoveryPage());
         buf.writeVarInt(data.topology().size());
         for (var entry : data.topology()) {
             AEKey.STREAM_CODEC.encode(buf, entry.key());
             buf.writeVarInt(entry.depth());
             buf.writeBoolean(entry.craftable());
+            buf.writeVarLong(entry.storedAmount());
             buf.writeLong(entry.globalReserve());
             buf.writeEnum(entry.globalMode());
             buf.writeLong(entry.ruleReserve());
@@ -66,6 +69,8 @@ public record MaintenanceEditorSyncPacket(
         long batch = buf.readVarLong();
         boolean enabled = buf.readBoolean();
         var status = buf.readEnum(InventoryMaintenanceStatus.class);
+        long currentStock = buf.readVarLong();
+        boolean craftable = buf.readBoolean();
         boolean recoveryPage = buf.readBoolean();
         int topologySize = TianshuPacketLimits.requireDecodedListSize(
                 "maintenance topology", buf.readVarInt());
@@ -73,6 +78,7 @@ public record MaintenanceEditorSyncPacket(
         for (int i = 0; i < topologySize; i++) {
             topology.add(new MaintenanceEditorData.TopologyEntry(
                     AEKey.STREAM_CODEC.decode(buf), buf.readVarInt(), buf.readBoolean(),
+                    buf.readVarLong(),
                     buf.readLong(), buf.readEnum(ReservedStockMatchMode.class),
                     buf.readLong(), buf.readEnum(ReservedStockMatchMode.class)));
         }
@@ -85,7 +91,7 @@ public record MaintenanceEditorSyncPacket(
         }
         return new MaintenanceEditorSyncPacket(container, selectionRevision, new MaintenanceEditorData(
                 target, ruleId, lower, upper, batch, enabled, status,
-                recoveryPage, topology, variants));
+                currentStock, craftable, recoveryPage, topology, variants));
     }
 
     @Override public Type<MaintenanceEditorSyncPacket> type() { return TYPE; }

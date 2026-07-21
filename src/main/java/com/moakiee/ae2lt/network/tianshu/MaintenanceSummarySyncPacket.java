@@ -34,9 +34,16 @@ public record MaintenanceSummarySyncPacket(
         buf.writeVarInt(entries.size());
         for (var entry : entries) {
             AEKey.STREAM_CODEC.encode(buf, entry.key());
+            buf.writeBoolean(entry.ruleConfigured());
             buf.writeEnum(entry.status());
+            buf.writeVarLong(entry.storedAmount());
+            buf.writeVarLong(entry.lowerThreshold());
+            buf.writeVarLong(entry.upperThreshold());
+            buf.writeVarLong(entry.amountPerJob());
             buf.writeLong(entry.globalReserve());
             buf.writeEnum(entry.globalMode());
+            buf.writeBoolean(entry.globalReserveConfigured());
+            buf.writeBoolean(entry.craftable());
             buf.writeBoolean(entry.ruleReserveOverflow());
         }
     }
@@ -50,8 +57,11 @@ public record MaintenanceSummarySyncPacket(
                 "maintenance summary", buf.readVarInt());
         var entries = new ArrayList<Entry>(size);
         for (int i = 0; i < size; i++) entries.add(new Entry(
-                AEKey.STREAM_CODEC.decode(buf), buf.readEnum(InventoryMaintenanceStatus.class),
-                buf.readLong(), buf.readEnum(ReservedStockMatchMode.class), buf.readBoolean()));
+                AEKey.STREAM_CODEC.decode(buf), buf.readBoolean(),
+                buf.readEnum(InventoryMaintenanceStatus.class),
+                buf.readVarLong(), buf.readVarLong(), buf.readVarLong(), buf.readVarLong(),
+                buf.readLong(), buf.readEnum(ReservedStockMatchMode.class),
+                buf.readBoolean(), buf.readBoolean(), buf.readBoolean()));
         return new MaintenanceSummarySyncPacket(
                 container, selectionRevision, revision, overflow, entries);
     }
@@ -69,7 +79,22 @@ public record MaintenanceSummarySyncPacket(
         });
     }
 
-    public record Entry(AEKey key, InventoryMaintenanceStatus status,
-                        long globalReserve, ReservedStockMatchMode globalMode,
-                        boolean ruleReserveOverflow) { }
+    /**
+     * Compact, periodically refreshed projection used by both the terminal badges and the
+     * inventory-maintenance overview. Reserve-only entries deliberately remain distinguishable
+     * from configured rules so they are never injected into the maintainable terminal view.
+     */
+    public record Entry(
+            AEKey key,
+            boolean ruleConfigured,
+            InventoryMaintenanceStatus status,
+            long storedAmount,
+            long lowerThreshold,
+            long upperThreshold,
+            long amountPerJob,
+            long globalReserve,
+            ReservedStockMatchMode globalMode,
+            boolean globalReserveConfigured,
+            boolean craftable,
+            boolean ruleReserveOverflow) { }
 }

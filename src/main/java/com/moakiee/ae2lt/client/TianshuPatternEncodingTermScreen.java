@@ -16,6 +16,7 @@ import appeng.api.behaviors.EmptyingAction;
 import appeng.api.config.ActionItems;
 import appeng.api.config.Settings;
 import appeng.api.config.ViewItems;
+import appeng.api.client.AEKeyRendering;
 import appeng.api.stacks.GenericStack;
 import appeng.core.localization.ButtonToolTips;
 import appeng.core.localization.Tooltips;
@@ -38,6 +39,8 @@ import com.moakiee.ae2lt.mixin.client.VerticalButtonBarAccessor;
 import com.moakiee.ae2lt.registry.ModItems;
 import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import net.minecraft.ChatFormatting;
@@ -55,6 +58,7 @@ import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.PacketDistributor;
 import com.moakiee.ae2lt.logic.AdvancedAECompat;
+import com.moakiee.ae2lt.config.AE2LTClientConfig;
 
 public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTermMenu>
         extends MEStorageScreen<M> {
@@ -70,6 +74,8 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
     private boolean awaitingMaintenanceEditor;
     private int requestedMaintenanceRevision;
     private int observedTianshuSelectionRevision = Integer.MIN_VALUE;
+    private final Map<appeng.api.stacks.AEKey, Long> syntheticMaintenanceEntries = new HashMap<>();
+    private long nextSyntheticMaintenanceSerial = -10_000_000L;
 
     public TianshuPatternEncodingTermScreen(
             M menu,
@@ -123,6 +129,7 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
                 () -> switchToScreen(new TianshuOverloadPatternConfigScreen<>(this)));
         networkBlankPatternSlot = new NetworkBlankPatternSlot(repo);
         replaceViewModeButton();
+        addToLeftToolbar(new MaintenanceOverviewButton());
     }
 
     private AE2Button addCompactButton(String widgetId, Component label, Runnable onPress) {
@@ -152,8 +159,10 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
         if (observedTianshuSelectionRevision != menu.tianshuSelectionRevision) {
             observedTianshuSelectionRevision = menu.tianshuSelectionRevision;
             awaitingMaintenanceEditor = false;
+            removeSyntheticMaintenanceEntries();
             menu.resetClientTianshuScopedState();
         }
+        syncSyntheticMaintenanceEntries();
         if (menu.consumeTriggeredUpload()) {
             openUploadScreen();
             return;
@@ -291,6 +300,19 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
         }
     }
 
+    private final class MaintenanceOverviewButton extends IconButton {
+        private MaintenanceOverviewButton() {
+            super(ignored -> switchToScreen(new TianshuGlobalReserveScreen<>(
+                    TianshuPatternEncodingTermScreen.this)));
+            setMessage(Component.translatable("ae2lt.tianshu.maintenance.overview_button"));
+        }
+
+        @Override
+        protected Icon getIcon() {
+            return Icon.S_STORAGE;
+        }
+    }
+
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (button == GLFW.GLFW_MOUSE_BUTTON_MIDDLE && hasShiftDown()
@@ -302,9 +324,24 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
             }
             var entry = repoSlot.getEntry();
             if (entry != null && entry.getWhat() != null) {
-                requestMaintenanceEditorFor(entry.getWhat());
+                var summary = menu.getMaintenanceSummaryEntry(entry.getWhat());
+                if ((summary == null || !summary.ruleConfigured()) && !entry.isCraftable()) {
+                    if (minecraft.player != null) minecraft.player.displayClientMessage(
+                            Component.translatable("ae2lt.tianshu.maintenance.unsupported"), true);
+                    return true;
+                }
+                if (AE2LTClientConfig.showMaintenanceHelp()) {
+                    switchToScreen(new TianshuMaintenanceIntroScreen<>(this, entry.getWhat()));
+                } else {
+                    requestMaintenanceEditorFor(entry.getWhat());
+                }
                 return true;
             }
+        }
+
+        if (getSlotUnderMouse() instanceof RepoSlot repoSlot
+                && isSyntheticMaintenanceEntry(repoSlot.getEntry())) {
+            return true;
         }
 
         if (minecraft.options.keyPickItem.matchesMouse(button)) {
@@ -355,6 +392,9 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
 
     @Override
     protected void slotClicked(Slot slot, int slotIndex, int mouseButton, ClickType clickType) {
+        if (slot instanceof RepoSlot repoSlot && isSyntheticMaintenanceEntry(repoSlot.getEntry())) {
+            return;
+        }
         if (isNetworkBlankPatternDisplaySlot(slot)) {
             handleGridInventoryEntryMouseClick(
                     getNetworkBlankPatternEntry(slot), mouseButton, clickType);
@@ -395,6 +435,48 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
         }
     }
 
+    @Override
+    protected void renderGridInventoryEntryTooltip(
+            GuiGraphics graphics, GridInventoryEntry entry, int x, int y) {
+        var summary = entry != null ? menu.getMaintenanceSummaryEntry(entry.getWhat()) : null;
+        if (summary == null || !summary.ruleConfigured()) {
+            super.renderGridInventoryEntryTooltip(graphics, entry, x, y);
+            return;
+        }
+
+        var lines = AEKeyRendering.getTooltip(entry.getWhat());
+        if (Tooltips.shouldShowAmountTooltip(entry.getWhat(), summary.storedAmount())) {
+            lines.add(Tooltips.getAmountTooltip(
+                    ButtonToolTips.StoredAmount, entry.getWhat(), summary.storedAmount()));
+        }
+        lines.add(Component.translatable("ae2lt.tianshu.maintenance.tooltip.thresholds",
+                summary.lowerThreshold(), summary.upperThreshold())
+                .withStyle(ChatFormatting.DARK_GRAY));
+        lines.add(Component.translatable("ae2lt.tianshu.maintenance.tooltip.batch",
+                summary.amountPerJob()).withStyle(ChatFormatting.DARK_GRAY));
+        lines.add(Component.translatable("ae2lt.tianshu.maintenance.status."
+                + summary.status().name().toLowerCase(java.util.Locale.ROOT))
+                .withStyle(statusFormatting(summary.status())));
+        if (summary.globalReserve() != 0L) {
+            lines.add(Component.translatable("ae2lt.tianshu.maintenance.tooltip.reserve",
+                    formatReserve(summary.globalReserve()),
+                    Component.translatable(summary.globalMode()
+                            == com.moakiee.ae2lt.logic.tianshu.maintenance.ReservedStockMatchMode.EXACT
+                                    ? "ae2lt.tianshu.reserve.exact"
+                                    : "ae2lt.tianshu.reserve.ignore_nbt"))
+                    .withStyle(ChatFormatting.DARK_AQUA));
+        }
+        lines.add(Component.translatable("ae2lt.tianshu.maintenance.tooltip.edit")
+                .withStyle(ChatFormatting.GRAY));
+
+        if (entry.getWhat() instanceof AEItemKey itemKey) {
+            var stack = itemKey.getReadOnlyStack();
+            graphics.renderTooltip(font, lines, stack.getTooltipImage(), stack, x, y);
+        } else {
+            graphics.renderComponentTooltip(font, lines, x, y);
+        }
+    }
+
     private boolean isClosedLoopMemberSlot(Slot slot) {
         return slot != null
                 && menu.getSlotSemantic(slot) == Ae2ltSlotSemantics.TIANSHU_CLOSED_LOOP_MEMBER;
@@ -419,6 +501,12 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
         menu.requestMaintenanceEditor(key);
     }
 
+    List<GridInventoryEntry> getNetworkEntriesForMaintenance() {
+        return repo.getAllEntries().stream()
+                .filter(entry -> entry.getWhat() != null && !isSyntheticMaintenanceEntry(entry))
+                .toList();
+    }
+
     @Override
     public void renderSlot(GuiGraphics graphics, Slot slot) {
         super.renderSlot(graphics, slot);
@@ -440,8 +528,8 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
 
         var repoEntry = slot instanceof RepoSlot repoSlot ? repoSlot.getEntry() : networkBlankPattern;
         if (repoEntry == null) return;
-        var summary = menu.getMaintenanceSummary().get(repoEntry.getWhat());
-        if (summary == null) return;
+        var summary = menu.getMaintenanceSummaryEntry(repoEntry.getWhat());
+        if (summary == null || !summary.ruleConfigured()) return;
         int color = switch (InventoryMaintenanceBadge.from(summary.status())) {
             case GREEN -> 0xFF33CC44;
             case YELLOW -> 0xFFFFCC33;
@@ -449,6 +537,84 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
             case GRAY -> 0xFF888888;
         };
         graphics.fill(slot.x + 12, slot.y, slot.x + 16, slot.y + 4, color);
+    }
+
+    /**
+     * AE2 only keeps meaningful network entries in its client repository. A configured rule can
+     * intentionally have zero stock and no longer have a pattern, so the maintainable view adds a
+     * bounded synthetic entry for that otherwise-invisible key. The entry remains client-only and
+     * every interaction except opening the maintenance editor is swallowed above.
+     */
+    private void syncSyntheticMaintenanceEntries() {
+        if (!menu.maintainableView) {
+            removeSyntheticMaintenanceEntries();
+            return;
+        }
+
+        var repoEntries = List.copyOf(repo.getAllEntries());
+        var presentSerials = new HashSet<Long>();
+        var realKeys = new HashSet<appeng.api.stacks.AEKey>();
+        var knownSyntheticSerials = new HashSet<>(syntheticMaintenanceEntries.values());
+        for (var entry : repoEntries) {
+            presentSerials.add(entry.getSerial());
+            if (!knownSyntheticSerials.contains(entry.getSerial()) && entry.getWhat() != null) {
+                realKeys.add(entry.getWhat());
+            }
+        }
+
+        var summaries = menu.getMaintenanceSummary();
+        for (var iterator = syntheticMaintenanceEntries.entrySet().iterator(); iterator.hasNext();) {
+            var synthetic = iterator.next();
+            var summary = summaries.get(synthetic.getKey());
+            if (summary == null || !summary.ruleConfigured() || realKeys.contains(synthetic.getKey())) {
+                if (presentSerials.contains(synthetic.getValue())) {
+                    repo.handleUpdate(false, List.of(new GridInventoryEntry(
+                            synthetic.getValue(), null, 0L, 0L, false)));
+                }
+                iterator.remove();
+            }
+        }
+
+        presentSerials.clear();
+        for (var entry : repo.getAllEntries()) presentSerials.add(entry.getSerial());
+        for (var summary : summaries.values()) {
+            if (!summary.ruleConfigured() || realKeys.contains(summary.key())) continue;
+            long serial = syntheticMaintenanceEntries.computeIfAbsent(
+                    summary.key(), ignored -> nextSyntheticMaintenanceSerial--);
+            if (!presentSerials.contains(serial)) {
+                // requestable=1 keeps an unavailable zero-stock entry meaningful to AE2's Repo.
+                repo.handleUpdate(false, List.of(new GridInventoryEntry(
+                        serial, summary.key(), summary.storedAmount(),
+                        summary.craftable() ? 0L : 1L, summary.craftable())));
+            }
+        }
+    }
+
+    private void removeSyntheticMaintenanceEntries() {
+        if (syntheticMaintenanceEntries.isEmpty()) return;
+        var removals = syntheticMaintenanceEntries.values().stream()
+                .map(serial -> new GridInventoryEntry(serial, null, 0L, 0L, false))
+                .toList();
+        syntheticMaintenanceEntries.clear();
+        repo.handleUpdate(false, removals);
+    }
+
+    private boolean isSyntheticMaintenanceEntry(GridInventoryEntry entry) {
+        return entry != null && syntheticMaintenanceEntries.containsValue(entry.getSerial());
+    }
+
+    private static String formatReserve(long amount) {
+        return amount < 0L ? "∞" : Long.toString(amount);
+    }
+
+    private static ChatFormatting statusFormatting(
+            com.moakiee.ae2lt.logic.tianshu.maintenance.InventoryMaintenanceStatus status) {
+        return switch (InventoryMaintenanceBadge.from(status)) {
+            case GREEN -> ChatFormatting.GREEN;
+            case YELLOW -> ChatFormatting.GOLD;
+            case RED -> ChatFormatting.RED;
+            case GRAY -> ChatFormatting.GRAY;
+        };
     }
 
     @Override
