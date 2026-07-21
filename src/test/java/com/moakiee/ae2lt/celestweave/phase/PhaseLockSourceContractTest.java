@@ -41,6 +41,10 @@ class PhaseLockSourceContractTest {
                 "src/main/java/com/moakiee/ae2lt/item/PhaseLockProjectionItem.java"));
 
         assertFalse(source.contains("CompoundTag"));
+        assertTrue(source.contains("extends ArmorItem"));
+        assertTrue(source.contains("CelestweaveArmorMaterials.CELESTWEAVE"));
+        assertTrue(source.contains("public boolean isFoil(ItemStack stack)"));
+        assertTrue(source.contains("return false;"));
         assertTrue(source.contains("PhaseLockProjectionRules.isExpectedSlot(equipmentSlot, slotId)"));
         assertTrue(source.contains("PhaseLockService.hasPrivateArmor(player, equipmentSlot)"));
         assertTrue(source.contains("entity.discard()"));

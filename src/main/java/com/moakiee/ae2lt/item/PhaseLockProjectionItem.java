@@ -9,11 +9,13 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.item.ArmorItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.Level;
 
+import com.moakiee.ae2lt.celestweave.CelestweaveArmorMaterials;
 import com.moakiee.ae2lt.celestweave.phase.PhaseLockProjectionRules;
 import com.moakiee.ae2lt.celestweave.phase.PhaseLockService;
 
@@ -22,14 +24,14 @@ import com.moakiee.ae2lt.celestweave.phase.PhaseLockService;
  * expected equipment slot; a versioned data-component mirror exposes non-private armor state to
  * vanilla and third-party equipment systems.
  */
-public final class PhaseLockProjectionItem extends Item {
+public final class PhaseLockProjectionItem extends ArmorItem {
     private final EquipmentSlot equipmentSlot;
 
     public PhaseLockProjectionItem(Properties properties, EquipmentSlot equipmentSlot) {
-        super(properties.stacksTo(1).fireResistant());
-        if (equipmentSlot.getType() != EquipmentSlot.Type.HUMANOID_ARMOR) {
-            throw new IllegalArgumentException("Phase-lock projections require an armor slot");
-        }
+        super(
+                CelestweaveArmorMaterials.CELESTWEAVE,
+                armorType(equipmentSlot),
+                properties.stacksTo(1).fireResistant());
         this.equipmentSlot = equipmentSlot;
     }
 
@@ -79,7 +81,9 @@ public final class PhaseLockProjectionItem extends Item {
 
     @Override
     public boolean isFoil(ItemStack stack) {
-        return true;
+        // The projection always carries binding and vanishing curses. Suppress their glint so the
+        // empty armor material cannot leave a visible armor-shaped overlay on the player.
+        return false;
     }
 
     @Override
@@ -89,5 +93,15 @@ public final class PhaseLockProjectionItem extends Item {
             List<Component> tooltip,
             TooltipFlag flag) {
         tooltip.add(Component.translatable("item.ae2lt.phase_lock_projection.desc"));
+    }
+
+    private static ArmorItem.Type armorType(EquipmentSlot slot) {
+        return switch (slot) {
+            case HEAD -> ArmorItem.Type.HELMET;
+            case CHEST -> ArmorItem.Type.CHESTPLATE;
+            case LEGS -> ArmorItem.Type.LEGGINGS;
+            case FEET -> ArmorItem.Type.BOOTS;
+            default -> throw new IllegalArgumentException("Phase-lock projections require an armor slot");
+        };
     }
 }
