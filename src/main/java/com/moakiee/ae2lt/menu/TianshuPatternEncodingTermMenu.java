@@ -693,11 +693,20 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
             finishUpload(false);
             return;
         }
+        var sourceInventory = tianshuHost.getLogic().getEncodedPatternInv();
+        var removed = sourceInventory.extractItem(0, 1, false);
+        if (removed.isEmpty() || !ItemStack.isSameItemSameComponents(stack, removed)) {
+            if (!removed.isEmpty()) sourceInventory.addItems(removed);
+            finishUpload(false);
+            return;
+        }
         var target = resolveOrBindTianshu();
-        var payload = item.readPayload(stack, getPlayer().level()).orElse(null);
+        var payload = item.readPayload(removed, getPlayer().level()).orElse(null);
         var result = ClosedLoopPatternUploadService.upload(target, payload);
-        finishUpload(result == ClosedLoopPatternRepository.PutResult.ADDED
-                || result == ClosedLoopPatternRepository.PutResult.UPDATED);
+        var success = result == ClosedLoopPatternRepository.PutResult.ADDED
+                || result == ClosedLoopPatternRepository.PutResult.UPDATED;
+        if (!success) sourceInventory.addItems(removed);
+        finishUpload(success);
     }
 
     /**
