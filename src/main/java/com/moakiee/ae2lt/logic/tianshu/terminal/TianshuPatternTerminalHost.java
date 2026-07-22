@@ -2,6 +2,7 @@ package com.moakiee.ae2lt.logic.tianshu.terminal;
 
 import appeng.helpers.IPatternTerminalMenuHost;
 import appeng.api.networking.security.IActionHost;
+import appeng.api.storage.MEStorage;
 import com.moakiee.ae2lt.blockentity.TianshuSupercomputerPortBlockEntity;
 import java.util.Comparator;
 import java.util.List;
@@ -10,6 +11,15 @@ import org.jetbrains.annotations.Nullable;
 public interface TianshuPatternTerminalHost extends IPatternTerminalMenuHost, IActionHost {
     TianshuEncodingMode getTianshuEncodingMode();
     void setTianshuEncodingMode(TianshuEncodingMode mode);
+
+    /**
+     * Runs an AE2 menu synchronization while {@link #getInventory()} resolves to that menu's
+     * captured storage view. AE2 invalidates a menu when the host returns a different inventory
+     * instance, so hosts that create per-menu wrappers must keep the identity stable here.
+     */
+    default void runWithMenuInventory(MEStorage menuInventory, Runnable action) {
+        action.run();
+    }
 
     default List<TianshuSupercomputerPortBlockEntity> getAvailableTianshu() {
         var node = getActionableNode();

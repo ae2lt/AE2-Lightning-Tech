@@ -273,7 +273,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     @Override
     public void broadcastChanges() {
         if (isServerSide()) {
-            returnPhysicalBlankPatternsToNetwork();
+            returnLegacyBlankPatternsToNetwork();
             tianshuMode = tianshuHost.getTianshuEncodingMode();
             var selected = resolveOrBindTianshu();
             syncPatternStorageTarget();
@@ -286,8 +286,16 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
             closedLoopSeedMultiplier = closedLoopExecutionSeedMultiplier;
             refreshClosedLoopDraftSync();
         }
-        super.broadcastChanges();
+        if (isServerSide() && storage != null) {
+            tianshuHost.runWithMenuInventory(storage, this::broadcastParentChanges);
+        } else {
+            broadcastParentChanges();
+        }
         if (isServerSide()) sendMaintenanceSummaryIfNeeded();
+    }
+
+    private void broadcastParentChanges() {
+        super.broadcastChanges();
     }
 
     /** Resolves only the machine captured when this server menu opened. */
@@ -1714,15 +1722,11 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
             expectedTriggeredUploadAck = triggeredUploadAck;
         }
         if (tianshuMode.isAe2Mode()) {
-            if (isServerSide()) {
-                stageNetworkBlankPattern();
-            }
+            boolean stagedNetworkBlank = isServerSide() && stageNetworkBlankPattern();
             try {
                 super.encode();
             } finally {
-                if (isServerSide()) {
-                    returnPhysicalBlankPatternsToNetwork();
-                }
+                if (isServerSide() && stagedNetworkBlank) returnStagedBlankPatternToNetwork();
             }
             if (isServerSide()) {
                 applyOneShotProcessingConversion();
@@ -1749,20 +1753,33 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         }
     }
 
-    private void stageNetworkBlankPattern() {
-        var blankInventory = tianshuHost.getLogic().getBlankPatternInv();
-        if (!blankInventory.getStackInSlot(0).isEmpty() || !getLinkStatus().connected()) {
-            return;
-        }
+    private boolean stageNetworkBlankPattern() {
+        var encodedInventory = tianshuHost.getLogic().getEncodedPatternInv();
+        if (!encodedInventory.getStackInSlot(0).isEmpty() || !getLinkStatus().connected()) return false;
         var blankPatternKey = AEItemKey.of(AEItems.BLANK_PATTERN.asItem());
         long extracted = StorageHelper.poweredExtraction(
                 energySource, storage, blankPatternKey, 1, getActionSource());
-        if (extracted > 0) {
-            blankInventory.setItemDirect(0, AEItems.BLANK_PATTERN.stack((int) extracted));
-        }
+        if (extracted <= 0) return false;
+        encodedInventory.setItemDirect(0, AEItems.BLANK_PATTERN.stack((int) extracted));
+        return true;
     }
 
-    private void returnPhysicalBlankPatternsToNetwork() {
+    private void returnStagedBlankPatternToNetwork() {
+        if (!isServerSide() || !getLinkStatus().connected()) return;
+        var encodedInventory = tianshuHost.getLogic().getEncodedPatternInv();
+        var stack = encodedInventory.getStackInSlot(0);
+        if (!AEItems.BLANK_PATTERN.is(stack)) return;
+        var blankPatternKey = AEItemKey.of(AEItems.BLANK_PATTERN.asItem());
+        long inserted = StorageHelper.poweredInsert(
+                energySource, storage, blankPatternKey, stack.getCount(), getActionSource());
+        if (inserted <= 0) return;
+        var remainder = stack.copy();
+        remainder.shrink((int) inserted);
+        encodedInventory.setItemDirect(0, remainder);
+    }
+
+    /** Clears a blank left by an older menu version that staged it in the hidden input inventory. */
+    private void returnLegacyBlankPatternsToNetwork() {
         if (!isServerSide() || !getLinkStatus().connected()) return;
         var blankInventory = tianshuHost.getLogic().getBlankPatternInv();
         var stack = blankInventory.getStackInSlot(0);

@@ -34,14 +34,15 @@ public final class TianshuPatternEncodingTerminalPart extends PatternEncodingTer
 
     private static final String TAG_MODE = "TianshuEncodingMode";
     private TianshuEncodingMode tianshuMode = TianshuEncodingMode.CRAFTING;
+    private MEStorage synchronizingMenuInventory;
 
     public TianshuPatternEncodingTerminalPart(IPartItem<?> partItem) {
         super(partItem);
 
         // This terminal sources blank patterns exclusively from ME storage. Keep AE2's inherited
-        // physical slot at zero capacity so parent-menu integrations that auto-fill that slot see
-        // no free space and cannot pull the first 64 blanks out of the network. Encoding still
-        // stages one pattern with setItemDirect(), which deliberately bypasses slot limits.
+        // physical slot at zero capacity so parent-menu integrations cannot pull the first 64
+        // blanks out of the network. The menu stages one extracted blank directly in the encoded
+        // result inventory for the duration of an encoding request.
         var blankPatternInventory = getLogic().getBlankPatternInv();
         if (blankPatternInventory instanceof AppEngInternalInventory inventory) {
             inventory.setMaxStackSize(0, 0);
@@ -55,8 +56,20 @@ public final class TianshuPatternEncodingTerminalPart extends PatternEncodingTer
 
     @Override
     public MEStorage getInventory() {
+        if (synchronizingMenuInventory != null) return synchronizingMenuInventory;
         // A fresh wrapper keeps each open menu's bound Tianshu independent from other players.
         return new TianshuPatternTerminalStorage(this);
+    }
+
+    @Override
+    public void runWithMenuInventory(MEStorage menuInventory, Runnable action) {
+        var previous = synchronizingMenuInventory;
+        synchronizingMenuInventory = menuInventory;
+        try {
+            action.run();
+        } finally {
+            synchronizingMenuInventory = previous;
+        }
     }
 
     @Override

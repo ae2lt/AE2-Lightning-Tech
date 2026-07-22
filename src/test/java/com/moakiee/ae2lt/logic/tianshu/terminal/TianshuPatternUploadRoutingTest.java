@@ -80,6 +80,23 @@ class TianshuPatternUploadRoutingTest {
         assertFalse(screen.contains("craftingUploadTargetRequest"));
     }
 
+    @Test
+    void processingUploadsKeepThePickerAndMatrixRejectsProcessingPatterns() throws Exception {
+        String menu = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/menu/TianshuPatternEncodingTermMenu.java"));
+        String screen = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/client/TianshuPatternEncodingTermScreen.java"));
+        String matrixStorage = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/blockentity/MatrixPatternStorageBlockEntity.java"));
+
+        assertTrue(screen.contains(
+                "case PROCESSING_PROVIDER -> switchToScreen(new TianshuUploadTargetScreen<>(this))"));
+        assertTrue(menu.contains(
+                "!= TianshuPatternUploadRouting.Route.PROCESSING_PROVIDER"));
+        assertTrue(matrixStorage.contains(
+                "return details instanceof IMolecularAssemblerSupportedPattern"));
+    }
+
     private static void assertCraftingGroup(String namespace, String path) {
         assertTrue(TianshuPatternUploadRouting.isCraftingUploadGroupId(
                 ResourceLocation.fromNamespaceAndPath(namespace, path)));
