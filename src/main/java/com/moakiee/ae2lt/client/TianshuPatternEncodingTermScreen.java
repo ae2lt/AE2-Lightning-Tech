@@ -28,6 +28,7 @@ import appeng.menu.SlotSemantics;
 import appeng.menu.me.common.GridInventoryEntry;
 import appeng.parts.encoding.EncodingMode;
 import appeng.api.stacks.AEItemKey;
+import appeng.util.prioritylist.IPartitionList;
 import com.moakiee.ae2lt.logic.tianshu.terminal.ProcessingPatternEncodingType;
 import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuEncodingMode;
 import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuPatternUploadRouting;
@@ -43,6 +44,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -58,6 +60,7 @@ import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.PacketDistributor;
 import com.moakiee.ae2lt.logic.AdvancedAECompat;
+import org.jetbrains.annotations.Nullable;
 
 public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTermMenu>
         extends MEStorageScreen<M> {
@@ -73,6 +76,8 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
     private boolean awaitingMaintenanceEditor;
     private int requestedMaintenanceRevision;
     private int observedTianshuSelectionRevision = Integer.MIN_VALUE;
+    private boolean observedMaintainableView;
+    private long observedMaintenanceFilterRevision = Long.MIN_VALUE;
     private final Map<appeng.api.stacks.AEKey, Long> syntheticMaintenanceEntries = new HashMap<>();
     private long nextSyntheticMaintenanceSerial = -10_000_000L;
 
@@ -174,6 +179,7 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
             menu.resetClientTianshuScopedState();
         }
         syncSyntheticMaintenanceEntries();
+        refreshMaintenancePartitionIfNeeded();
         if (menu.consumeTriggeredUpload()) {
             openUploadScreen();
             return;
@@ -276,6 +282,9 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
             };
         }
         if (next == null) {
+            // Maintainable is an ALL-based filtered view. Keeping the client setting in ALL makes
+            // AE2 render the current stored amount instead of the craftable-only "+" marker.
+            menu.getConfigManager().putSetting(Settings.VIEW_MODE, ViewItems.ALL);
             menu.setMaintainableView(true);
         } else {
             menu.getConfigManager().putSetting(Settings.VIEW_MODE, next);
@@ -548,16 +557,7 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
         for (var entry : repoEntries) {
             presentSerials.add(entry.getSerial());
             if (!knownSyntheticSerials.contains(entry.getSerial()) && entry.getWhat() != null) {
-                var summary = menu.getMaintenanceSummaryEntry(entry.getWhat());
-                if (summary != null && summary.ruleConfigured()) {
-                    realKeys.add(entry.getWhat());
-                } else {
-                    // The AE2 repository can still contain entries from the preceding view until
-                    // the server's rebuilt full update arrives. Apply the maintenance predicate
-                    // client-side as well so craftable-only entries never leak into this view.
-                    repo.handleUpdate(false, List.of(new GridInventoryEntry(
-                            entry.getSerial(), null, 0L, 0L, false)));
-                }
+                realKeys.add(entry.getWhat());
             }
         }
 
@@ -587,6 +587,48 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
                         summary.craftable() ? 0L : 1L, summary.craftable())));
             }
         }
+    }
+
+    /** Filters the visible view without deleting entries from AE2's client repository. */
+    private void refreshMaintenancePartitionIfNeeded() {
+        long summaryRevision = menu.getMaintenanceSummaryRevision();
+        if (observedMaintainableView == menu.maintainableView
+                && (!menu.maintainableView
+                        || observedMaintenanceFilterRevision == summaryRevision)) {
+            return;
+        }
+        observedMaintainableView = menu.maintainableView;
+        observedMaintenanceFilterRevision = summaryRevision;
+        repo.setPartitionList(createPartitionList(menu.getViewCells()));
+    }
+
+    @Nullable
+    @Override
+    protected IPartitionList createPartitionList(List<ItemStack> viewCells) {
+        var viewCellFilter = super.createPartitionList(viewCells);
+        if (!menu.maintainableView) return viewCellFilter;
+
+        Set<appeng.api.stacks.AEKey> maintainedKeys = menu.getMaintenanceSummary().values().stream()
+                .filter(entry -> entry.ruleConfigured())
+                .map(entry -> entry.key())
+                .collect(java.util.stream.Collectors.toUnmodifiableSet());
+        return new IPartitionList() {
+            @Override
+            public boolean isListed(appeng.api.stacks.AEKey key) {
+                return maintainedKeys.contains(key)
+                        && (viewCellFilter == null || viewCellFilter.isListed(key));
+            }
+
+            @Override
+            public boolean isEmpty() {
+                return maintainedKeys.isEmpty();
+            }
+
+            @Override
+            public Iterable<appeng.api.stacks.AEKey> getItems() {
+                return maintainedKeys;
+            }
+        };
     }
 
     private void removeSyntheticMaintenanceEntries() {
