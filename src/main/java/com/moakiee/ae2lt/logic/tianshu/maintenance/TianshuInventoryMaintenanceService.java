@@ -250,12 +250,27 @@ public final class TianshuInventoryMaintenanceService
             InventoryMaintenanceCalculationClaims.release(grid, rule.key(), rule.id());
             return;
         }
+        // AE2 evaluates the crafting tree on its worker thread and calls getGridNode() there to
+        // discover child patterns. Resolving the controller -> port -> managed node chain lazily
+        // from that worker can yield null because it touches level/chunk state off the server
+        // thread. AE2 then silently skips every pattern and reports the requested output itself as
+        // missing. Capture the already-active node and source here, while still on the server tick.
+        var calculationNode = host.getActionableNode();
+        if (calculationNode == null || calculationNode.getGrid() != grid) {
+            statuses.put(rule.id(), InventoryMaintenanceStatus.WAITING_RETRY);
+            scheduleRetry(rule.id());
+            InventoryMaintenanceCalculationClaims.release(grid, rule.key(), rule.id());
+            return;
+        }
+        var calculationSource = host.getActionSource();
         Future<ICraftingPlan> future;
         try {
             future = crafting.beginCraftingCalculation(
-                    host.getLevel(), new RuleCalculationRequester(rule.id()), rule.key(), amount,
+                    level,
+                    new RuleCalculationRequester(rule.id(), calculationNode, calculationSource),
+                    rule.key(), amount,
                     CalculationStrategy.REPORT_MISSING_ITEMS);
-        } catch (RuntimeException failure) {
+        } catch (RuntimeException ignored) {
             InventoryMaintenanceCalculationClaims.release(grid, rule.key(), rule.id());
             statuses.put(rule.id(), InventoryMaintenanceStatus.WAITING_RETRY);
             scheduleRetry(rule.id());
@@ -486,10 +501,17 @@ public final class TianshuInventoryMaintenanceService
     private final class RuleCalculationRequester
             implements ICraftingSimulationRequester, ReservedStockCraftingRequester {
         private final UUID ruleId;
+        private final IGridNode gridNode;
+        private final IActionSource actionSource;
 
-        private RuleCalculationRequester(UUID ruleId) { this.ruleId = ruleId; }
-        @Override public IActionSource getActionSource() { return host.getActionSource(); }
-        @Override public IGridNode getGridNode() { return host.getActionableNode(); }
+        private RuleCalculationRequester(
+                UUID ruleId, IGridNode gridNode, IActionSource actionSource) {
+            this.ruleId = ruleId;
+            this.gridNode = gridNode;
+            this.actionSource = actionSource;
+        }
+        @Override public IActionSource getActionSource() { return actionSource; }
+        @Override public IGridNode getGridNode() { return gridNode; }
         @Override public long usablePreexistingStock(AEKey key, long snapshotAmount) {
             return reservedStockPolicy(ruleId).usablePreexistingStock(key, snapshotAmount);
         }
