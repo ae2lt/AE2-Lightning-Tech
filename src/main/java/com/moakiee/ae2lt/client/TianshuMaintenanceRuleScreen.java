@@ -24,6 +24,7 @@ import java.util.Locale;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.inventory.Slot;
 import org.lwjgl.glfw.GLFW;
 
 /** Shift-middle-click inventory-maintenance rule editor, backed by the menu-bound Tianshu. */
@@ -101,6 +102,18 @@ public final class TianshuMaintenanceRuleScreen<M extends TianshuPatternEncoding
                 SlotSemantics.PLAYER_HOTBAR)) {
             setSlotsHidden(semantic, true);
         }
+    }
+
+    @Override
+    public void renderSlot(GuiGraphics graphics, Slot slot) {
+        // This screen renders its target and topology itself. The shared menu's
+        // processing-pattern draft slots must never bleed through this sub-screen,
+        // even if another screen or compatibility mod repositions them.
+    }
+
+    @Override
+    protected boolean isHovering(Slot slot, double mouseX, double mouseY) {
+        return false;
     }
 
     @Override
@@ -440,6 +453,16 @@ public final class TianshuMaintenanceRuleScreen<M extends TianshuPatternEncoding
             saveButton = widgets.addButton("save", Component.translatable("gui.done"), this::save);
             widgets.add("back", new TabButton(
                     Icon.BACK, Component.translatable("gui.back"), ignored -> returnToParent()));
+        }
+
+        @Override
+        public void renderSlot(GuiGraphics graphics, Slot slot) {
+            // The reserve editor also uses only manually rendered item previews.
+        }
+
+        @Override
+        protected boolean isHovering(Slot slot, double mouseX, double mouseY) {
+            return false;
         }
 
         private static boolean validDraft(String value) {
