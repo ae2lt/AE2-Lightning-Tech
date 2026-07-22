@@ -57,6 +57,7 @@ import appeng.client.gui.me.common.RepoSlot;
 import org.lwjgl.glfw.GLFW;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.InventoryMaintenanceBadge;
 import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.PacketDistributor;
 import com.moakiee.ae2lt.logic.AdvancedAECompat;
@@ -73,6 +74,9 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
     private final AE2Button advancedEncoding;
     private final AE2Button overloadEncoding;
     private final RepoSlot networkBlankPatternSlot;
+    private final Item blankPatternItem;
+    @Nullable
+    private GridInventoryEntry cachedNetworkBlankPatternEntry;
     private boolean awaitingMaintenanceEditor;
     private int requestedMaintenanceRevision;
     private int observedTianshuSelectionRevision = Integer.MIN_VALUE;
@@ -131,6 +135,7 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
         overloadEncoding = addCompactButton("overloadEncodingButton",
                 Component.translatable("ae2lt.tianshu.terminal.encoding.overload.short"),
                 () -> switchToScreen(new TianshuOverloadPatternConfigScreen<>(this)));
+        blankPatternItem = AEItems.BLANK_PATTERN.asItem();
         networkBlankPatternSlot = new NetworkBlankPatternSlot(repo);
         replaceViewModeButton();
         addToLeftToolbar(new MaintenanceOverviewButton());
@@ -683,12 +688,24 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
     }
 
     private GridInventoryEntry findNetworkBlankPatternEntry() {
+        if (cachedNetworkBlankPatternEntry != null
+                && repo.getAllEntries().contains(cachedNetworkBlankPatternEntry)
+                && isBlankPatternEntry(cachedNetworkBlankPatternEntry)) {
+            return cachedNetworkBlankPatternEntry;
+        }
+
+        cachedNetworkBlankPatternEntry = null;
         for (var entry : repo.getAllEntries()) {
-            if (entry.getWhat() != null && AEItems.BLANK_PATTERN.is(entry.getWhat())) {
+            if (isBlankPatternEntry(entry)) {
+                cachedNetworkBlankPatternEntry = entry;
                 return entry;
             }
         }
         return null;
+    }
+
+    private boolean isBlankPatternEntry(GridInventoryEntry entry) {
+        return entry.getWhat() instanceof AEItemKey key && key.getItem() == blankPatternItem;
     }
 
     private final class NetworkBlankPatternSlot extends RepoSlot {
