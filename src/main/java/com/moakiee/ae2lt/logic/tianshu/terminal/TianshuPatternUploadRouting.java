@@ -1,9 +1,10 @@
 package com.moakiee.ae2lt.logic.tianshu.terminal;
 
 import appeng.api.crafting.PatternDetailsHelper;
-import appeng.helpers.patternprovider.PatternContainer;
+import appeng.api.implementations.blockentities.PatternContainerGroup;
 import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.item.ClosedLoopPatternItem;
+import java.util.Set;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
@@ -13,6 +14,16 @@ public final class TianshuPatternUploadRouting {
     private static final ResourceLocation MATTER_WARPING_MATRIX_PORT_ID =
             ResourceLocation.fromNamespaceAndPath(
                     AE2LightningTech.MODID, "matter_warping_matrix_port");
+    private static final Set<ResourceLocation> CRAFTING_UPLOAD_GROUP_IDS = Set.of(
+            ResourceLocation.fromNamespaceAndPath("ae2", "molecular_assembler"),
+            ResourceLocation.fromNamespaceAndPath("extendedae", "ex_molecular_assembler"),
+            ResourceLocation.fromNamespaceAndPath("extendedae", "assembler_matrix_pattern"),
+            ResourceLocation.fromNamespaceAndPath(
+                    "extendedae_plus", "assembler_matrix_pattern_plus"),
+            ResourceLocation.fromNamespaceAndPath("neoecoae", "crafting_system_l4"),
+            ResourceLocation.fromNamespaceAndPath("neoecoae", "crafting_system_l6"),
+            ResourceLocation.fromNamespaceAndPath("neoecoae", "crafting_system_l9"),
+            MATTER_WARPING_MATRIX_PORT_ID);
 
     public enum Route {
         CLOSED_LOOP_STORAGE,
@@ -48,10 +59,18 @@ public final class TianshuPatternUploadRouting {
         return Route.PROCESSING_PROVIDER;
     }
 
-    /** The built-in matrix is the preferred destination for crafting-family patterns. */
-    public static boolean isMatterWarpingMatrixTarget(PatternContainer target) {
-        if (target == null) return false;
-        var group = target.getTerminalGroup();
+    /** Exact group whitelist for automatic crafting-family uploads. */
+    public static boolean isCraftingUploadGroup(PatternContainerGroup group) {
+        return group != null && group.icon() != null
+                && isCraftingUploadGroupId(group.icon().getId());
+    }
+
+    static boolean isCraftingUploadGroupId(ResourceLocation id) {
+        return id != null && CRAFTING_UPLOAD_GROUP_IDS.contains(id);
+    }
+
+    /** The built-in matrix is tried before every other whitelisted crafting group. */
+    public static boolean isMatterWarpingMatrixGroup(PatternContainerGroup group) {
         return group != null && group.icon() != null
                 && isMatterWarpingMatrixId(group.icon().getId());
     }

@@ -138,8 +138,6 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     public boolean seedRefillAvailable;
     @GuiSync(138)
     public SeedRefillSync seedRefillSync = SeedRefillSync.none();
-    @GuiSync(139)
-    public int craftingUploadTargetRequest;
 
     protected final TianshuPatternTerminalHost tianshuHost;
     @Nullable private TianshuTerminalTarget boundTianshuTarget;
@@ -776,17 +774,12 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         if (!isServerSide() || player == null || group == null) return;
         uploadState = 2;
         var stack = tianshuHost.getLogic().getEncodedPatternInv().getStackInSlot(0);
-        var route = TianshuPatternUploadRouting.classify(stack, getPlayer().level());
-        if (route != TianshuPatternUploadRouting.Route.PROCESSING_PROVIDER
-                && route != TianshuPatternUploadRouting.Route.CRAFTING_ASSEMBLER) {
+        if (TianshuPatternUploadRouting.classify(stack, getPlayer().level())
+                != TianshuPatternUploadRouting.Route.PROCESSING_PROVIDER) {
             finishProviderUpload(player, false);
             return;
         }
         refreshUploadTargetsNow();
-        if (route == TianshuPatternUploadRouting.Route.CRAFTING_ASSEMBLER
-                && uploadCraftingPatternToMatrix(player, stack)) {
-            return;
-        }
         PatternContainer selected = null;
         int selectedSlot = -1;
         for (var target : uploadTargets) {
@@ -808,15 +801,17 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
 
     private void uploadCraftingPatternServer(ServerPlayer player, ItemStack stack) {
         refreshUploadTargetsNow();
-        if (uploadCraftingPatternToMatrix(player, stack)) return;
-        uploadState = 0;
-        craftingUploadTargetRequest++;
-        broadcastChanges();
+        if (uploadCraftingPatternToFirstTarget(player, stack, true)) return;
+        if (uploadCraftingPatternToFirstTarget(player, stack, false)) return;
+        finishProviderUpload(player, false);
     }
 
-    private boolean uploadCraftingPatternToMatrix(ServerPlayer player, ItemStack stack) {
+    private boolean uploadCraftingPatternToFirstTarget(
+            ServerPlayer player, ItemStack stack, boolean matrixTarget) {
         for (var target : uploadTargets) {
-            if (!TianshuPatternUploadRouting.isMatterWarpingMatrixTarget(target)) {
+            var group = target.getTerminalGroup();
+            if (!TianshuPatternUploadRouting.isCraftingUploadGroup(group)
+                    || TianshuPatternUploadRouting.isMatterWarpingMatrixGroup(group) != matrixTarget) {
                 continue;
             }
             int free = firstFreePatternSlot(target.getTerminalPatternInventory(), stack);
