@@ -52,7 +52,6 @@ public final class TianshuMaintenanceRuleScreen<M extends TianshuPatternEncoding
             TianshuPatternEncodingTermScreen<M> parent, MaintenanceEditorData data) {
         super(parent, "/screens/tianshu_maintenance_rule.json");
         draft = new Draft(data);
-        hideTerminalSlots();
 
         lower = numberField("lower", data.lowerThreshold());
         upper = numberField("upper", data.upperThreshold());
@@ -73,6 +72,13 @@ public final class TianshuMaintenanceRuleScreen<M extends TianshuPatternEncoding
         saveButton = widgets.addButton("save", Component.translatable("gui.done"), this::save);
         widgets.add("back", new TabButton(
                 Icon.BACK, Component.translatable("gui.back"), ignored -> returnToParent()));
+    }
+
+    @Override
+    public void init() {
+        // Preserve the parent terminal's slot positions before this sub-screen hides them.
+        hideTerminalSlots();
+        super.init();
     }
 
     private AETextField numberField(String id, long initialValue) {
@@ -430,7 +436,6 @@ public final class TianshuMaintenanceRuleScreen<M extends TianshuPatternEncoding
                 ReserveDraft reserve,
                 List<MaintenanceEditorData.VariantEntry> variants) {
             super(parent, "/screens/tianshu_reserve_edit.json");
-            parent.hideTerminalSlots();
             this.reserve = reserve;
             this.variants = List.copyOf(variants);
             globalAmount = reserve.globalAmount;

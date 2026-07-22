@@ -44,7 +44,6 @@ public final class TianshuGlobalReserveScreen<M extends TianshuPatternEncodingTe
 
     public TianshuGlobalReserveScreen(TianshuPatternEncodingTermScreen<M> parent) {
         super(parent, "/screens/tianshu_inventory_overview.json");
-        hideSlots();
         restoreMaintainableView = menu.maintainableView;
         if (restoreMaintainableView) menu.setMaintainableView(false);
 
@@ -58,6 +57,14 @@ public final class TianshuGlobalReserveScreen<M extends TianshuPatternEncodingTe
                 "reserves", tabLabel(View.RESERVES), () -> selectView(View.RESERVES));
         widgets.add("back", new TabButton(
                 Icon.BACK, Component.translatable("gui.back"), ignored -> returnToParent()));
+    }
+
+    @Override
+    public void init() {
+        // Slot positions belong to the shared menu. Defer hiding until switchToScreen has saved
+        // the terminal's positions so returning can restore them.
+        hideSlots();
+        super.init();
     }
 
     @Override
@@ -397,7 +404,6 @@ public final class TianshuGlobalReserveScreen<M extends TianshuPatternEncodingTe
                 MaintenanceSummarySyncPacket.Entry entry,
                 List<ReserveVariant> variants) {
             super(parent, "/screens/tianshu_reserve_edit.json");
-            parent.hideSlots();
             this.entry = entry;
             this.variants = List.copyOf(variants);
             this.mode = entry.globalMode();
