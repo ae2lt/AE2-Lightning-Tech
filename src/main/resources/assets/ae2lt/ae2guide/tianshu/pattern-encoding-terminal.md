@@ -41,7 +41,7 @@ Advanced and overload encoding are one-shot configurations: they apply to the ve
 
 With a pattern in the encoded-pattern slot, the **Upload** button sends it to its destination without manual carrying:
 
-* **Crafting patterns** go automatically into the first Pattern Provider on the network that has a free slot and accepts them.
+* **Crafting patterns** prefer a Tianshu Matter Warping Matrix on the network that has a free slot and accepts them. If no matrix is available, the provider-selection screen opens so the player can choose a target provider group.
 * **Processing patterns** open the provider-selection screen: all visible Pattern Providers on the network are listed grouped by name, showing provider counts and free slots per group, with search by name, item, or tooltip.
 * **Closed-loop patterns** upload to the bound Tianshu's Closed-Loop Pattern Storage.
 

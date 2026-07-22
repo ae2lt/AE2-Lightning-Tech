@@ -138,6 +138,8 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     public boolean seedRefillAvailable;
     @GuiSync(138)
     public SeedRefillSync seedRefillSync = SeedRefillSync.none();
+    @GuiSync(139)
+    public int craftingUploadTargetRequest;
 
     protected final TianshuPatternTerminalHost tianshuHost;
     @Nullable private TianshuTerminalTarget boundTianshuTarget;
@@ -774,12 +776,17 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         if (!isServerSide() || player == null || group == null) return;
         uploadState = 2;
         var stack = tianshuHost.getLogic().getEncodedPatternInv().getStackInSlot(0);
-        if (TianshuPatternUploadRouting.classify(stack, getPlayer().level())
-                != TianshuPatternUploadRouting.Route.PROCESSING_PROVIDER) {
+        var route = TianshuPatternUploadRouting.classify(stack, getPlayer().level());
+        if (route != TianshuPatternUploadRouting.Route.PROCESSING_PROVIDER
+                && route != TianshuPatternUploadRouting.Route.CRAFTING_ASSEMBLER) {
             finishProviderUpload(player, false);
             return;
         }
         refreshUploadTargetsNow();
+        if (route == TianshuPatternUploadRouting.Route.CRAFTING_ASSEMBLER
+                && uploadCraftingPatternToMatrix(player, stack)) {
+            return;
+        }
         PatternContainer selected = null;
         int selectedSlot = -1;
         for (var target : uploadTargets) {
@@ -801,14 +808,24 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
 
     private void uploadCraftingPatternServer(ServerPlayer player, ItemStack stack) {
         refreshUploadTargetsNow();
+        if (uploadCraftingPatternToMatrix(player, stack)) return;
+        uploadState = 0;
+        craftingUploadTargetRequest++;
+        broadcastChanges();
+    }
+
+    private boolean uploadCraftingPatternToMatrix(ServerPlayer player, ItemStack stack) {
         for (var target : uploadTargets) {
+            if (!TianshuPatternUploadRouting.isMatterWarpingMatrixTarget(target)) {
+                continue;
+            }
             int free = firstFreePatternSlot(target.getTerminalPatternInventory(), stack);
             if (free >= 0) {
                 uploadToProvider(player, target, free, stack);
-                return;
+                return true;
             }
         }
-        finishProviderUpload(player, false);
+        return false;
     }
 
     private void uploadToProvider(ServerPlayer player, PatternContainer selected,

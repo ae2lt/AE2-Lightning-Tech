@@ -73,6 +73,7 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
     private boolean awaitingMaintenanceEditor;
     private int requestedMaintenanceRevision;
     private int observedTianshuSelectionRevision = Integer.MIN_VALUE;
+    private int observedCraftingUploadTargetRequest;
     private final Map<appeng.api.stacks.AEKey, Long> syntheticMaintenanceEntries = new HashMap<>();
     private long nextSyntheticMaintenanceSerial = -10_000_000L;
 
@@ -82,6 +83,7 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
             Component title,
             ScreenStyle style) {
         super(menu, inventory, title, style);
+        observedCraftingUploadTargetRequest = menu.craftingUploadTargetRequest;
 
         for (var mode : EncodingMode.values()) {
             var panel = switch (mode) {
@@ -176,6 +178,11 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
         syncSyntheticMaintenanceEntries();
         if (menu.consumeTriggeredUpload()) {
             openUploadScreen();
+            return;
+        }
+        if (observedCraftingUploadTargetRequest != menu.craftingUploadTargetRequest) {
+            observedCraftingUploadTargetRequest = menu.craftingUploadTargetRequest;
+            switchToScreen(new TianshuUploadTargetScreen<>(this));
             return;
         }
         if (awaitingMaintenanceEditor
