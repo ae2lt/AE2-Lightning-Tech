@@ -548,7 +548,16 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
         for (var entry : repoEntries) {
             presentSerials.add(entry.getSerial());
             if (!knownSyntheticSerials.contains(entry.getSerial()) && entry.getWhat() != null) {
-                realKeys.add(entry.getWhat());
+                var summary = menu.getMaintenanceSummaryEntry(entry.getWhat());
+                if (summary != null && summary.ruleConfigured()) {
+                    realKeys.add(entry.getWhat());
+                } else {
+                    // The AE2 repository can still contain entries from the preceding view until
+                    // the server's rebuilt full update arrives. Apply the maintenance predicate
+                    // client-side as well so craftable-only entries never leak into this view.
+                    repo.handleUpdate(false, List.of(new GridInventoryEntry(
+                            entry.getSerial(), null, 0L, 0L, false)));
+                }
             }
         }
 

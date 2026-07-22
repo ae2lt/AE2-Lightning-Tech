@@ -78,6 +78,7 @@ import java.util.Map;
 import java.util.Set;
 import com.moakiee.ae2lt.network.tianshu.SaveGlobalReservePacket;
 import com.moakiee.ae2lt.network.tianshu.TianshuPacketLimits;
+import com.moakiee.ae2lt.mixin.MEStorageMenuAccessor;
 import com.moakiee.thunderbolt.ae2.overload.pattern.SourcePatternSnapshot;
 import net.minecraft.world.entity.player.Player;
 
@@ -1315,7 +1316,36 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         if (!isServerSide()) return;
         maintainableView = enabled;
         getConfigManager().putSetting(Settings.VIEW_MODE, ViewItems.ALL);
+        invalidateVisibleNetworkContents();
         broadcastChanges();
+    }
+
+    /**
+     * AE2's terminal repository is updated incrementally. Changing this menu's key predicate does
+     * not itself count as an inventory change, so stale entries from the preceding view would
+     * otherwise remain on the client. A full update reapplies {@link #isKeyVisible(AEKey)} to every
+     * stored and craftable key.
+     */
+    private void invalidateVisibleNetworkContents() {
+        if (isServerSide()) {
+            var updateHelper = ((MEStorageMenuAccessor) this).ae2lt$getUpdateHelper();
+            updateHelper.clear();
+            storage.getAvailableStacks().keySet().forEach(updateHelper::addChange);
+
+            var gridNode = getGridNode();
+            if (gridNode != null && gridNode.isActive()) {
+                gridNode.getGrid().getCraftingService().getCraftables(key -> true)
+                        .forEach(updateHelper::addChange);
+            }
+
+            var target = resolveBoundTianshu();
+            var maintenance = target != null ? target.getInventoryMaintenance() : null;
+            if (maintenance != null) {
+                maintenance.repository().rules().stream()
+                        .map(InventoryMaintenanceRule::key)
+                        .forEach(updateHelper::addChange);
+            }
+        }
     }
 
     @Override
@@ -1652,7 +1682,10 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
             return;
         }
         if (packet.delete()) {
-            if (existing != null) service.removeRule(existing.id());
+            if (existing != null && service.removeRule(existing.id())) {
+                invalidateVisibleNetworkContents();
+                lastMaintenanceSummaryTick = Integer.MIN_VALUE;
+            }
             sendMaintenanceEditorData(player, packet.target());
             return;
         }
@@ -1701,6 +1734,8 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         var result = service.putRule(rule);
         if (result == com.moakiee.ae2lt.logic.tianshu.maintenance.InventoryMaintenanceRepository.PutResult.ADDED
                 || result == com.moakiee.ae2lt.logic.tianshu.maintenance.InventoryMaintenanceRepository.PutResult.UPDATED) {
+            invalidateVisibleNetworkContents();
+            lastMaintenanceSummaryTick = Integer.MIN_VALUE;
             for (var edit : packet.reserves()) {
                 setGlobalReserveFromEditor(
                         service, edit.key(), edit.globalMode(), edit.globalAmount());
