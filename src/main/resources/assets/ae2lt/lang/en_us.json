@@ -1066,6 +1066,7 @@
   "ae2lt.tianshu.issue.unexpected_block": "A required-air position contains an unexpected block",
   "ae2lt.tianshu.issue.unknown": "Structure is incomplete",
   "item.ae2lt.tianshu_pattern_encoding_terminal": "Tianshu Pattern Encoding Terminal",
+  "ae2lt.tianshu.terminal.tooltip": "%s / %s closed-loop patterns",
   "ae2lt.tianshu.terminal.mode.closed_loop": "Closed-loop Pattern",
   "ae2lt.tianshu.terminal.encoding.advanced": "Advanced encoding: assign input sides; the next encode produces an advanced pattern",
   "ae2lt.tianshu.terminal.encoding.advanced.armed": "Advanced encoding armed: the next encode produces an advanced pattern",
