@@ -24,11 +24,13 @@ import com.moakiee.ae2lt.logic.persistence.CompletePhysicalStorageSet;
 import com.moakiee.ae2lt.registry.ModBlockEntities;
 import com.moakiee.ae2lt.registry.ModItems;
 import com.moakiee.ae2lt.registry.ModBlocks;
+import com.moakiee.thunderbolt.ae2.api.crafting.CraftingProviderChangeTracker;
 import com.moakiee.thunderbolt.ae2.timewheel.ReusableSeedPattern;
 import com.moakiee.thunderbolt.ae2.timewheel.TimeWheelCraftingCpuPool;
 import com.moakiee.thunderbolt.ae2.timewheel.TimeWheelCraftingCpuPoolHost;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -121,6 +123,9 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
     private int pendingParallel = -1;
     private long pendingMaxCopiesPerTick = -1L;
     private boolean pendingUnboundedBatch;
+    private Set<UUID> publishedClosedLoopPatternIds = Set.of();
+    private final CraftingProviderChangeTracker closedLoopDependencyChanges =
+            new CraftingProviderChangeTracker();
 
     public TianshuSupercomputerControllerBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.TIANSHU_SUPERCOMPUTER_CONTROLLER.get(), pos, state);
@@ -144,10 +149,12 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
             controller.scanNow();
         }
         if (controller.isFormed() && controller.portPos != null
-                && level.getBlockEntity(controller.portPos) instanceof TianshuSupercomputerPortBlockEntity) {
+                && level.getBlockEntity(controller.portPos)
+                        instanceof TianshuSupercomputerPortBlockEntity port) {
             controller.applyPendingProfile();
             controller.maintenance.tick();
             controller.persistRuntimeStateIfChanged();
+            controller.refreshClosedLoopProviderForDependencyChanges(port);
         }
     }
 
@@ -553,6 +560,7 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
 
     private void bindFunctionalMembers(TianshuMultiblockScanResult result) {
         if (level.getBlockEntity(result.portPos()) instanceof TianshuSupercomputerPortBlockEntity port) {
+            closedLoopDependencyChanges.reset();
             prepareRuntime(port);
             for (var patternStoragePos : result.patternStoragePositions()) {
                 if (level.getBlockEntity(patternStoragePos) instanceof TianshuPatternStorageBlockEntity storage) {
@@ -840,15 +848,22 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
     }
 
     public List<IPatternDetails> getAvailablePatterns() {
+        var available = collectAvailablePatterns();
+        publishedClosedLoopPatternIds = available.patternIds();
+        return available.patterns();
+    }
+
+    private AvailableClosedLoopPatterns collectAvailablePatterns() {
         if (!isFormed() || level == null || !functionProfile.supportsClosedLoopPatterns()
                 || functionProfile.closedLoopPatternCapacity() <= 0) {
-            return List.of();
+            return AvailableClosedLoopPatterns.EMPTY;
         }
         if (patternStorages() == null
                 || (functionProfile.supportsClosedLoopSeeds() && seedDrives() == null)) {
-            return List.of();
+            return AvailableClosedLoopPatterns.EMPTY;
         }
         var result = new java.util.ArrayList<IPatternDetails>();
+        var patternIds = new java.util.LinkedHashSet<UUID>();
         for (var payload : closedLoopPatterns.activePatterns()) {
             if (!payload.enabled()
                     || !com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternValidator
@@ -864,9 +879,27 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
             } catch (RuntimeException ignored) {
                 details = null;
             }
-            if (details != null) result.add(details);
+            if (details != null) {
+                result.add(details);
+                patternIds.add(payload.patternId());
+            }
         }
-        return List.copyOf(result);
+        return new AvailableClosedLoopPatterns(
+                List.copyOf(result), Set.copyOf(patternIds));
+    }
+
+    private void refreshClosedLoopProviderForDependencyChanges(
+            TianshuSupercomputerPortBlockEntity port) {
+        var grid = getGrid();
+        if (grid == null
+                || !closedLoopDependencyChanges.shouldRecheck(grid.getCraftingService())) {
+            return;
+        }
+
+        var available = collectAvailablePatterns();
+        if (!available.patternIds().equals(publishedClosedLoopPatternIds)) {
+            port.refreshCraftingProvider();
+        }
     }
 
     private Map<AEKey, Long> availableSeedsFor(ReusableSeedPattern ignoredPattern) {
@@ -894,6 +927,12 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
             if (!crafting.getProviders(providerPattern).iterator().hasNext()) return false;
         }
         return true;
+    }
+
+    private record AvailableClosedLoopPatterns(
+            List<IPatternDetails> patterns, Set<UUID> patternIds) {
+        private static final AvailableClosedLoopPatterns EMPTY =
+                new AvailableClosedLoopPatterns(List.of(), Set.of());
     }
 
     public void persistRuntimeStateIfChanged() {

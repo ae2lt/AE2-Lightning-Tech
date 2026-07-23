@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
 
 import org.junit.jupiter.api.Test;
@@ -63,5 +65,19 @@ class ControllerOwnedRuntimeArchitectureTest {
         assertTrue(pool.isFastPlanningEnabled());
         pool.setFastPlanningEnabled(false);
         assertFalse(pool.isFastPlanningEnabled());
+    }
+
+    @Test
+    void closedLoopProviderRechecksMembersAfterNetworkProvidersReload() throws Exception {
+        String controller = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/blockentity/"
+                        + "TianshuSupercomputerControllerBlockEntity.java"));
+
+        assertTrue(controller.contains(
+                "refreshClosedLoopProviderForDependencyChanges(port)"));
+        assertTrue(controller.contains(
+                "closedLoopDependencyChanges.shouldRecheck(grid.getCraftingService())"));
+        assertTrue(controller.contains(
+                "available.patternIds().equals(publishedClosedLoopPatternIds)"));
     }
 }
