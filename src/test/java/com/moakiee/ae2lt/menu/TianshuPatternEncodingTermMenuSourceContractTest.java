@@ -1,5 +1,6 @@
 package com.moakiee.ae2lt.menu;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Files;
@@ -25,7 +26,7 @@ class TianshuPatternEncodingTermMenuSourceContractTest {
     }
 
     @Test
-    void perMenuStorageKeepsTheIdentityExpectedByAe2Synchronization() throws Exception {
+    void terminalUsesTheInheritedNetworkInventoryDuringAe2Synchronization() throws Exception {
         String menu = Files.readString(Path.of(
                 "src/main/java/com/moakiee/ae2lt/menu/TianshuPatternEncodingTermMenu.java"));
         String host = Files.readString(Path.of(
@@ -33,13 +34,10 @@ class TianshuPatternEncodingTermMenuSourceContractTest {
         String part = Files.readString(Path.of(
                 "src/main/java/com/moakiee/ae2lt/part/TianshuPatternEncodingTerminalPart.java"));
 
-        assertTrue(menu.contains(
-                "tianshuHost.runWithMenuInventory(storage, this::broadcastParentChanges)"));
-        assertTrue(host.contains(
-                "default void runWithMenuInventory(MEStorage menuInventory, Runnable action)"));
-        assertTrue(part.contains(
-                "if (synchronizingMenuInventory != null) return synchronizingMenuInventory"));
-        assertTrue(part.contains("synchronizingMenuInventory = menuInventory"));
-        assertTrue(part.contains("synchronizingMenuInventory = previous"));
+        assertTrue(menu.contains("broadcastParentChanges();"));
+        assertFalse(menu.contains("runWithMenuInventory"));
+        assertFalse(host.contains("runWithMenuInventory"));
+        assertFalse(part.contains("MEStorage getInventory()"));
+        assertFalse(part.contains("synchronizingMenuInventory"));
     }
 }

@@ -2,7 +2,6 @@ package com.moakiee.ae2lt.part;
 
 import appeng.api.parts.IPartItem;
 import appeng.api.parts.IPartModel;
-import appeng.api.storage.MEStorage;
 import appeng.items.parts.PartModels;
 import appeng.parts.PartModel;
 import appeng.parts.encoding.PatternEncodingTerminalPart;
@@ -10,7 +9,6 @@ import appeng.util.inv.AppEngInternalInventory;
 import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuEncodingMode;
 import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuPatternTerminalHost;
-import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuPatternTerminalStorage;
 import com.moakiee.ae2lt.menu.TianshuPatternEncodingTermMenu;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
@@ -34,7 +32,6 @@ public final class TianshuPatternEncodingTerminalPart extends PatternEncodingTer
 
     private static final String TAG_MODE = "TianshuEncodingMode";
     private TianshuEncodingMode tianshuMode = TianshuEncodingMode.CRAFTING;
-    private MEStorage synchronizingMenuInventory;
 
     public TianshuPatternEncodingTerminalPart(IPartItem<?> partItem) {
         super(partItem);
@@ -52,24 +49,6 @@ public final class TianshuPatternEncodingTerminalPart extends PatternEncodingTer
     @Override
     public MenuType<?> getMenuType(Player player) {
         return TianshuPatternEncodingTermMenu.TYPE;
-    }
-
-    @Override
-    public MEStorage getInventory() {
-        if (synchronizingMenuInventory != null) return synchronizingMenuInventory;
-        // A fresh wrapper keeps each open menu's bound Tianshu independent from other players.
-        return new TianshuPatternTerminalStorage(this);
-    }
-
-    @Override
-    public void runWithMenuInventory(MEStorage menuInventory, Runnable action) {
-        var previous = synchronizingMenuInventory;
-        synchronizingMenuInventory = menuInventory;
-        try {
-            action.run();
-        } finally {
-            synchronizingMenuInventory = previous;
-        }
     }
 
     @Override

@@ -33,7 +33,6 @@ import com.moakiee.ae2lt.logic.tianshu.terminal.ProcessingPatternMultiplier;
 import com.moakiee.ae2lt.logic.tianshu.terminal.ProcessingPatternEncodingType;
 import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuEncodingMode;
 import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuPatternTerminalHost;
-import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuPatternTerminalStorage;
 import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuTerminalTarget;
 import com.moakiee.ae2lt.logic.tianshu.terminal.MaintenanceEditorData;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.InventoryMaintenanceRule;
@@ -238,7 +237,6 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         }
         this.boundTianshuTarget = inventory.player.level().isClientSide
                 ? null : host.selectTianshuTarget();
-        syncPatternStorageTarget();
         if (boundTianshuTarget != null) tianshuSelectionRevision = 1;
         this.tianshuMode = host.getTianshuEncodingMode();
         registerClientAction("setTianshuMode", TianshuEncodingMode.class, this::setTianshuModeServer);
@@ -276,7 +274,6 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
             returnLegacyBlankPatternsToNetwork();
             tianshuMode = tianshuHost.getTianshuEncodingMode();
             var selected = resolveOrBindTianshu();
-            syncPatternStorageTarget();
             maintenanceAvailable = selected != null
                     && selected.getFunctionProfile().supportsInventoryMaintenance();
             seedRefillAvailable = selected != null && selected.isFormed()
@@ -286,11 +283,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
             closedLoopSeedMultiplier = closedLoopExecutionSeedMultiplier;
             refreshClosedLoopDraftSync();
         }
-        if (isServerSide() && storage != null) {
-            tianshuHost.runWithMenuInventory(storage, this::broadcastParentChanges);
-        } else {
-            broadcastParentChanges();
-        }
+        broadcastParentChanges();
         if (isServerSide()) sendMaintenanceSummaryIfNeeded();
     }
 
@@ -302,12 +295,6 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     @Nullable
     private com.moakiee.ae2lt.blockentity.TianshuSupercomputerPortBlockEntity resolveBoundTianshu() {
         return tianshuHost.resolveTianshuTarget(boundTianshuTarget);
-    }
-
-    private void syncPatternStorageTarget() {
-        if (storage instanceof TianshuPatternTerminalStorage patternStorage) {
-            patternStorage.setTarget(boundTianshuTarget);
-        }
     }
 
     public void resetClientTianshuScopedState() {
