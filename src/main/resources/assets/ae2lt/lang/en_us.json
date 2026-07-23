@@ -1,5 +1,6 @@
 {
   "itemGroup.ae2lt": "AE2 Lightning Tech",
+  "itemGroup.ae2lt.pigmee": "Lightning Tech? Pigmee Tech!",
   "structure.ae2lt.alien_starship": "Alien Starship",
   "message.ae2lt.config_migrated_v2": "[AE2 Lightning Tech] Your ae2lt-common.toml has been reset to defaults to apply rebalanced values from this update. If you had customized any settings, please re-apply them in the new file.",
   "message.ae2lt.config_migrated_v2.matrix": "[AE2 Lightning Tech] The Overload Processing Factory's matrix slot is now capped at 32. Existing stacks above 32 are preserved but only 32 matrices contribute to parallelism — please open the GUI and take out the excess matrices.",

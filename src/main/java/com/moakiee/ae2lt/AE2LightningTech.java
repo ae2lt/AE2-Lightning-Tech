@@ -131,7 +131,6 @@ public class AE2LightningTech {
                         output.accept(ModBlocks.OVERLOADED_PATTERN_PROVIDER);
                         output.accept(ModBlocks.EXTENDED_OVERLOADED_PATTERN_PROVIDER);
                         output.accept(ModBlocks.OVERLOADED_INTERFACE);
-                        output.accept(ModBlocks.PIGMEE_MENTALMATH_UNIT);
                         output.accept(ModBlocks.TIANSHU_SUPERCOMPUTER_CASING);
                         output.accept(ModBlocks.PHASE_CHANGE_COOLING_UNIT);
                         output.accept(ModBlocks.TIANSHU_SUPERCOMPUTER_GLASS);
@@ -292,7 +291,17 @@ public class AE2LightningTech {
                         // Fumo
                         output.accept(ModFumos.MOAKIEE_FUMO_ITEM.get());
                         output.accept(ModFumos.CYSTRYSU_FUMO_ITEM.get());
+                    })
+                    .build());
+
+    public static final DeferredHolder<CreativeModeTab, CreativeModeTab> PIGMEE_TAB =
+            CREATIVE_MODE_TABS.register("pigmee", () -> CreativeModeTab.builder()
+                    .title(Component.translatable("itemGroup.ae2lt.pigmee"))
+                    .withTabsAfter(MAIN_TAB.getKey())
+                    .icon(() -> ModFumos.PIGMEE_FUMO_ITEM.get().getDefaultInstance())
+                    .displayItems((parameters, output) -> {
                         output.accept(ModFumos.PIGMEE_FUMO_ITEM.get());
+                        output.accept(ModBlocks.PIGMEE_MENTALMATH_UNIT);
                     })
                     .build());
 
