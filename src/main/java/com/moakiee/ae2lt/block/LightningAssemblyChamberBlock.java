@@ -2,12 +2,14 @@ package com.moakiee.ae2lt.block;
 
 import com.moakiee.ae2lt.blockentity.LightningAssemblyChamberBlockEntity;
 
+import net.minecraft.core.Direction;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.phys.BlockHitResult;
 
@@ -24,7 +26,8 @@ public class LightningAssemblyChamberBlock extends AEBaseEntityBlock<LightningAs
         super(metalProps().noOcclusion().forceSolidOn());
         registerDefaultState(defaultBlockState()
                 .setValue(WORKING, false)
-                .setValue(POWERED, false));
+                .setValue(POWERED, false)
+                .setValue(BlockStateProperties.HORIZONTAL_FACING, Direction.NORTH));
     }
 
     @Override
@@ -36,7 +39,7 @@ public class LightningAssemblyChamberBlock extends AEBaseEntityBlock<LightningAs
 
     @Override
     public IOrientationStrategy getOrientationStrategy() {
-        return OrientationStrategies.none();
+        return OrientationStrategies.horizontalFacing();
     }
 
     @Override
