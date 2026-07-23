@@ -1,0 +1,12 @@
+{
+  "parent": "minecraft:block/cube",
+  "textures": {
+    "particle": "ae2lt:block/pigmee_pattern_provider",
+    "down": "ae2lt:block/pigmee_pattern_provider_back",
+    "up": "ae2lt:block/pigmee_pattern_provider_front",
+    "north": "ae2lt:block/pigmee_pattern_provider_side",
+    "south": "ae2lt:block/pigmee_pattern_provider_side",
+    "east": "ae2lt:block/pigmee_pattern_provider_side",
+    "west": "ae2lt:block/pigmee_pattern_provider_side"
+  }
+}

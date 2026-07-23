@@ -1,20 +1,11 @@
 {
-  "multipart": [
-    {
-      "when": { "facing": "north" },
-      "apply": { "model": "ae2lt:block/pigmee_pattern_provider" }
-    },
-    {
-      "when": { "facing": "east" },
-      "apply": { "model": "ae2lt:block/pigmee_pattern_provider", "y": 90 }
-    },
-    {
-      "when": { "facing": "south" },
-      "apply": { "model": "ae2lt:block/pigmee_pattern_provider", "y": 180 }
-    },
-    {
-      "when": { "facing": "west" },
-      "apply": { "model": "ae2lt:block/pigmee_pattern_provider", "y": 270 }
-    }
-  ]
+  "variants": {
+    "push_direction=all":   { "model": "ae2lt:block/pigmee_pattern_provider" },
+    "push_direction=down":  { "model": "ae2lt:block/pigmee_pattern_provider_oriented", "x": 180 },
+    "push_direction=up":    { "model": "ae2lt:block/pigmee_pattern_provider_oriented" },
+    "push_direction=north": { "model": "ae2lt:block/pigmee_pattern_provider_oriented", "x": 90 },
+    "push_direction=south": { "model": "ae2lt:block/pigmee_pattern_provider_oriented", "x": 90, "y": 180 },
+    "push_direction=west":  { "model": "ae2lt:block/pigmee_pattern_provider_oriented", "x": 90, "y": 270 },
+    "push_direction=east":  { "model": "ae2lt:block/pigmee_pattern_provider_oriented", "x": 90, "y": 90 }
+  }
 }

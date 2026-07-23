@@ -1,7 +1,5 @@
 package com.moakiee.ae2lt.block;
 
-import appeng.api.orientation.IOrientationStrategy;
-import appeng.api.orientation.OrientationStrategies;
 import appeng.block.AEBaseEntityBlock;
 import appeng.block.crafting.PushDirection;
 import appeng.menu.locator.MenuLocators;
@@ -19,26 +17,16 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
-import net.minecraft.world.level.block.state.properties.BlockStateProperties;
-import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.phys.BlockHitResult;
 
 public final class PigmeePatternProviderBlock extends AEBaseEntityBlock<PigmeePatternProviderBlockEntity> {
-    public static final DirectionProperty FACING = BlockStateProperties.HORIZONTAL_FACING;
     public static final EnumProperty<PushDirection> PUSH_DIRECTION =
             EnumProperty.create("push_direction", PushDirection.class);
 
     public PigmeePatternProviderBlock() {
         super(metalProps().forceSolidOn());
-        registerDefaultState(defaultBlockState()
-                .setValue(FACING, Direction.NORTH)
-                .setValue(PUSH_DIRECTION, PushDirection.ALL));
-    }
-
-    @Override
-    public IOrientationStrategy getOrientationStrategy() {
-        return OrientationStrategies.horizontalFacing();
+        registerDefaultState(defaultBlockState().setValue(PUSH_DIRECTION, PushDirection.ALL));
     }
 
     @Override

@@ -322,7 +322,7 @@ public final class PigmeePatternProviderBlockEntity extends AENetworkedBlockEnti
         } else if (tag.contains(TAG_PENDING_DIRECTION, Tag.TAG_BYTE)) {
             pendingDirection = Direction.from3DDataValue(tag.getByte(TAG_PENDING_DIRECTION));
         } else {
-            pendingDirection = getBlockState().getValue(PigmeePatternProviderBlock.FACING);
+            pendingDirection = null;
         }
     }
 
