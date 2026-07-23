@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -78,7 +79,6 @@ public record CelestweaveModuleContainer(
         return new CelestweaveModuleContainer(Optional.ofNullable(id), modules, toggles, submoduleData, energyModuleCapacityFe);
     }
 
-    /** Replace the module list and the (re-derived) capacity cache together; they always change as a unit. */
     public CelestweaveModuleContainer withModules(List<ItemStack> newModules, Optional<Long> capacityFe) {
         return new CelestweaveModuleContainer(armorId, newModules, toggles, submoduleData, capacityFe);
     }
@@ -95,13 +95,103 @@ public record CelestweaveModuleContainer(
         return new CelestweaveModuleContainer(armorId, modules, toggles, submoduleData, capacityFe);
     }
 
+    // Custom equals/hashCode — see javadoc below on why the record default is insufficient.
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof CelestweaveModuleContainer other)) {
+            return false;
+        }
+        return Objects.equals(armorId, other.armorId)
+                && modulesEquals(modules, other.modules)
+                && Objects.equals(toggles, other.toggles)
+                && submoduleDataEquals(submoduleData, other.submoduleData)
+                && Objects.equals(energyModuleCapacityFe, other.energyModuleCapacityFe);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(armorId, modulesHash(modules), toggles, submoduleDataHash(submoduleData), energyModuleCapacityFe);
+    }
+
+    /**
+     * Compare two module lists by content. The record's auto-generated equals
+     * delegates to {@code List.equals} which calls {@code ItemStack.equals}.
+     * {@code ItemStack} does NOT override {@code equals} — two identical-looking
+     * copies returned by the network {@code STREAM_CODEC} are different objects
+     * and therefore never equal. This caused {@code isSameItemSameComponents} to
+     * always return {@code false} inside creative-mode inventory slot handling,
+     * which triggered repeated {@code ARMOR_EQUIP_GENERIC} (issue #20).
+     */
+    private static boolean modulesEquals(List<ItemStack> a, List<ItemStack> b) {
+        if (a == b) {
+            return true;
+        }
+        if (a.size() != b.size()) {
+            return false;
+        }
+        for (int i = 0; i < a.size(); i++) {
+            if (!ItemStack.matches(a.get(i), b.get(i))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static int modulesHash(List<ItemStack> modules) {
+        int hash = 0;
+        for (ItemStack stack : modules) {
+            hash = 31 * hash + ItemStack.hashItemAndComponents(stack);
+        }
+        return hash;
+    }
+
+    /**
+     * Compare two submodule-data maps by content. {@code CompoundTag.equals}
+     * delegates to {@code Map.equals} which calls {@code Tag.equals} on each
+     * nested value. {@code Tag} does NOT override {@code equals}, so two
+     * CompoundTags with identical content but created via {@code copy()} are
+     * never equal. Use NBT string comparison to work around this (issue #20,
+     * "with core" variant — submodules are active only when the core is
+     * installed).
+     */
+    private static boolean submoduleDataEquals(Map<String, CompoundTag> a, Map<String, CompoundTag> b) {
+        if (a == b) {
+            return true;
+        }
+        if (a.size() != b.size()) {
+            return false;
+        }
+        for (var entry : a.entrySet()) {
+            CompoundTag bValue = b.get(entry.getKey());
+            if (bValue == null) {
+                return false;
+            }
+            if (!entry.getValue().toString().equals(bValue.toString())) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static int submoduleDataHash(Map<String, CompoundTag> data) {
+        int hash = 0;
+        for (var entry : data.entrySet()) {
+            hash = 31 * hash + entry.getKey().hashCode();
+            hash = 31 * hash + entry.getValue().toString().hashCode();
+        }
+        return hash;
+    }
+
     private static List<ItemStack> copyModules(List<ItemStack> modules) {
         if (modules == null || modules.isEmpty()) {
             return List.of();
         }
         return modules.stream()
                 .filter(stack -> stack != null && !stack.isEmpty())
-                .map(ItemStack::copy)
                 .toList();
     }
 
@@ -114,7 +204,7 @@ public record CelestweaveModuleContainer(
             if (entry.getKey() == null || entry.getKey().isBlank() || entry.getValue() == null) {
                 continue;
             }
-            copy.put(entry.getKey(), entry.getValue().copy());
+            copy.put(entry.getKey(), entry.getValue());
         }
         return Map.copyOf(copy);
     }

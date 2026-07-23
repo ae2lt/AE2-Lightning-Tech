@@ -4,6 +4,7 @@ import com.mojang.serialization.Codec;
 
 import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.celestweave.state.CelestweaveModuleContainer;
+import com.moakiee.ae2lt.celestweave.state.StructuralCoreWrapper;
 import com.moakiee.ae2lt.item.railgun.RailgunModuleEntries;
 import com.moakiee.ae2lt.item.railgun.RailgunSettings;
 
@@ -44,7 +45,8 @@ public final class ModDataComponents {
                             .persistent(CustomData.CODEC)
                             .networkSynchronized(CustomData.STREAM_CODEC));
 
-    /** Per-stack railgun module entries. */
+    /** Per-stack railgun module entries. The record has a custom equals that
+     * uses {@code ItemStack.matches} instead of reference comparison (issue #20). */
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<RailgunModuleEntries>>
             RAILGUN_MODULE_ENTRIES = DATA_COMPONENTS.registerComponentType(
                     "railgun_module_entries",
@@ -84,15 +86,21 @@ public final class ModDataComponents {
                             .persistent(Codec.LONG)
                             .networkSynchronized(ByteBufCodecs.VAR_LONG));
 
-    /** Structural core installed in one Celestweave armor piece. */
-    public static final DeferredHolder<DataComponentType<?>, DataComponentType<ItemStack>>
+    /** Structural core installed in one Celestweave armor piece. Wrapped in
+     * {@link StructuralCoreWrapper} so that data-component equality uses
+     * {@code ItemStack.matches} rather than reference identity (issue #20). */
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<StructuralCoreWrapper>>
             CELESTWEAVE_STRUCTURAL_CORE = DATA_COMPONENTS.registerComponentType(
                     "celestweave_structural_core",
                     builder -> builder
-                            .persistent(ItemStack.OPTIONAL_CODEC)
-                            .networkSynchronized(ItemStack.OPTIONAL_STREAM_CODEC));
+                            .persistent(StructuralCoreWrapper.CODEC)
+                            .networkSynchronized(StructuralCoreWrapper.STREAM_CODEC));
 
-    /** Per-stack FE energy buffer for v4 Celestweave armor pieces. */
+    /** Per-stack FE energy buffer for v4 Celestweave armor pieces.
+     * Runtime authoritative value lives in {@link com.moakiee.ae2lt.celestweave.ArmorEnergyBuffer#RUNTIME_ENERGY}
+     * so that every tick's energy fluctuation no longer dirties the ItemStack
+     * and triggers spurious equipment-change detection (issue #20 — the
+     * "after charging" variant). */
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<Long>>
             CELESTWEAVE_ENERGY_BUFFER = DATA_COMPONENTS.registerComponentType(
                     "celestweave_energy_buffer",
@@ -100,14 +108,20 @@ public final class ModDataComponents {
                             .persistent(Codec.LONG)
                             .networkSynchronized(ByteBufCodecs.VAR_LONG));
 
-    /** Installed modules, toggles and per-submodule data for one Celestweave armor piece. */
+    /** Installed modules, toggles and per-submodule data for one Celestweave
+     * armor piece. The record has a custom equals that compares
+     * {@code List<ItemStack>} with {@code ItemStack.matches} and
+     * {@code Map<String, CompoundTag>} with NBT string equality, because the
+     * default record equals uses {@code ItemStack.equals} →
+     * {@code Object.equals} (reference) and {@code CompoundTag.equals} →
+     * {@code Tag.equals} (reference), which both fail for network-deserialised
+     * copies (issue #20). */
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<CelestweaveModuleContainer>>
             CELESTWEAVE_MODULES = DATA_COMPONENTS.registerComponentType(
                     "celestweave_modules",
                     builder -> builder
                             .persistent(CelestweaveModuleContainer.CODEC)
-                            .networkSynchronized(CelestweaveModuleContainer.STREAM_CODEC)
-                            .cacheEncoding());
+                            .networkSynchronized(CelestweaveModuleContainer.STREAM_CODEC));
 
     /**
      * Server-authoritative "modules are powered this tick" flag. Absent means powered (the common

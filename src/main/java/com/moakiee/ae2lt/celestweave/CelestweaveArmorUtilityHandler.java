@@ -296,6 +296,9 @@ public final class CelestweaveArmorUtilityHandler {
                 EquipmentSlot.FEET)) {
             ItemStack armor = player.getItemBySlot(slot);
             if (!armor.isEmpty() && armor.getItem() instanceof BaseCelestweaveArmorItem) {
+                // Flush the runtime energy back to the data component so the
+                // armor's energy value survives logout / clone (issue #20).
+                ArmorEnergyBuffer.flushToStack(armor);
                 CelestweaveArmorState.clearTransientRuntimeAndCaches(armor);
             }
         }

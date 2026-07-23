@@ -1,5 +1,9 @@
 package com.moakiee.ae2lt.celestweave;
 
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.world.item.ItemStack;
@@ -14,6 +18,21 @@ import com.moakiee.ae2lt.logic.energy.AppFluxBridge;
 import com.moakiee.ae2lt.registry.ModDataComponents;
 
 public final class ArmorEnergyBuffer {
+
+    /**
+     * Authoritative runtime energy, keyed by armor UUID. The
+     * {@code CELESTWEAVE_ENERGY_BUFFER} data component is NOT mutated on
+     * every inventory tick — every such mutation dirties the ItemStack
+     * and causes Minecraft to resync the armor slot to the client, which
+     * unconditionally calls {@code LivingEntity.onEquipItem} → plays
+     * {@code ARMOR_EQUIP_GENERIC} even though only the energy value
+     * changed (issue #20, "after charging" variant).
+     *
+     * <p>Call {@link #flushToStack} to persist the runtime value back to
+     * the data component before logout / clone / save.
+     */
+    private static final ConcurrentMap<UUID, Long> RUNTIME_ENERGY = new ConcurrentHashMap<>();
+
     private ArmorEnergyBuffer() {
     }
 
@@ -21,7 +40,23 @@ public final class ArmorEnergyBuffer {
         return read(stack, null);
     }
 
+    /**
+     * Read the current energy. Prefer the runtime map; fall back to the
+     * data component for newly-loaded armor that hasn't entered a
+     * player's inventory yet (e.g. freshly crafted or picked up from
+     * the ground).
+     */
     public static long read(ItemStack stack, HolderLookup.Provider registries) {
+        if (stack == null || stack.isEmpty()) {
+            return 0L;
+        }
+        UUID id = CelestweaveArmorState.getArmorId(stack);
+        if (id != null) {
+            Long runtime = RUNTIME_ENERGY.get(id);
+            if (runtime != null) {
+                return Math.max(0L, Math.min(capacity(stack, registries), runtime));
+            }
+        }
         Long value = stack.get(ModDataComponents.CELESTWEAVE_ENERGY_BUFFER.get());
         return Math.max(0L, Math.min(capacity(stack, registries), value == null ? 0L : value));
     }
@@ -38,11 +73,18 @@ public final class ArmorEnergyBuffer {
         write(stack, null, value);
     }
 
+    /**
+     * Store energy in the runtime map only — never in the
+     * {@code CELESTWEAVE_ENERGY_BUFFER} data component.
+     * See the class-level javadoc for the rationale.
+     */
     public static void write(ItemStack stack, HolderLookup.Provider registries, long value) {
         if (stack == null || stack.isEmpty()) {
             return;
         }
-        stack.set(ModDataComponents.CELESTWEAVE_ENERGY_BUFFER.get(), Math.max(0L, Math.min(capacity(stack, registries), value)));
+        UUID id = CelestweaveArmorState.ensureArmorId(stack);
+        long clamped = Math.max(0L, Math.min(capacity(stack, registries), value));
+        RUNTIME_ENERGY.put(id, clamped);
     }
 
     public static void clamp(ItemStack stack) {
@@ -51,6 +93,41 @@ public final class ArmorEnergyBuffer {
 
     public static void clamp(ItemStack stack, HolderLookup.Provider registries) {
         write(stack, registries, read(stack, registries));
+    }
+
+    /**
+     * Persist the runtime energy to the ItemStack data component.
+     * Call only on save / logout / clone — never during
+     * {@code inventoryTick}, because that is exactly what triggers the
+     * spurious equip sound (see class-level javadoc).
+     */
+    public static void flushToStack(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) {
+            return;
+        }
+        UUID id = CelestweaveArmorState.getArmorId(stack);
+        if (id == null) {
+            return;
+        }
+        Long runtime = RUNTIME_ENERGY.get(id);
+        if (runtime == null) {
+            return;
+        }
+        Long current = stack.get(ModDataComponents.CELESTWEAVE_ENERGY_BUFFER.get());
+        if (current != null && current == runtime) {
+            return;
+        }
+        stack.set(ModDataComponents.CELESTWEAVE_ENERGY_BUFFER.get(), runtime);
+    }
+
+    /**
+     * Drop the runtime cache entry for an armor UUID (e.g. after
+     * logout / clone or when the armor is discarded).
+     */
+    public static void clearRuntime(UUID armorId) {
+        if (armorId != null) {
+            RUNTIME_ENERGY.remove(armorId);
+        }
     }
 
     public static boolean tryConsume(ItemStack stack, ServerPlayer player, long amount) {

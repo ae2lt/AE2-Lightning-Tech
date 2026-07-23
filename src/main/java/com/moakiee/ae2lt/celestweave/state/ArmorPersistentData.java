@@ -63,10 +63,21 @@ public final class ArmorPersistentData {
         setContainer(armor, container(armor).withCapacity(Optional.of(Math.max(0L, capacityFe))));
     }
 
+    /**
+     * Returns the installed structural core as a plain ItemStack.
+     * The data component stores a {@link StructuralCoreWrapper} so that
+     * {@code equals} uses {@code ItemStack.matches} rather than reference
+     * identity (issue #20 — see the wrapper's javadoc).
+     */
     public static ItemStack structuralCore(ItemStack armor) {
-        return armor.getOrDefault(ModDataComponents.CELESTWEAVE_STRUCTURAL_CORE.get(), ItemStack.EMPTY).copyWithCount(1);
+        return armor.getOrDefault(ModDataComponents.CELESTWEAVE_STRUCTURAL_CORE.get(), StructuralCoreWrapper.EMPTY).stack().copyWithCount(1);
     }
 
+    /**
+     * Sets the structural core. The core is wrapped in a {@link StructuralCoreWrapper}
+     * before storage so that data-component equality checks use content-based
+     * comparison ({@code ItemStack.matches}) rather than reference identity.
+     */
     public static void setStructuralCore(ItemStack armor, ItemStack stack) {
         if (armor == null || armor.isEmpty()) {
             return;
@@ -74,7 +85,7 @@ public final class ArmorPersistentData {
         if (stack == null || stack.isEmpty()) {
             armor.remove(ModDataComponents.CELESTWEAVE_STRUCTURAL_CORE.get());
         } else {
-            armor.set(ModDataComponents.CELESTWEAVE_STRUCTURAL_CORE.get(), stack.copyWithCount(1));
+            armor.set(ModDataComponents.CELESTWEAVE_STRUCTURAL_CORE.get(), new StructuralCoreWrapper(stack));
         }
     }
 
