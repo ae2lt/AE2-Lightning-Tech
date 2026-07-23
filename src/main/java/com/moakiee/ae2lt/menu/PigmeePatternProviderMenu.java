@@ -1,10 +1,10 @@
 package com.moakiee.ae2lt.menu;
 
+import appeng.api.crafting.PatternDetailsHelper;
 import appeng.menu.AEBaseMenu;
 import appeng.menu.SlotSemantics;
 import appeng.menu.implementations.MenuTypeBuilder;
 import appeng.menu.slot.AppEngSlot;
-import appeng.menu.slot.RestrictedInputSlot;
 import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.blockentity.PigmeePatternProviderBlockEntity;
 import com.moakiee.ae2lt.logic.PigmeePatternProviderReturnInventory;
@@ -13,6 +13,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.ItemStack;
 
 public final class PigmeePatternProviderMenu extends AEBaseMenu {
     public static final MenuType<PigmeePatternProviderMenu> TYPE = MenuTypeBuilder
@@ -22,12 +23,12 @@ public final class PigmeePatternProviderMenu extends AEBaseMenu {
                     AE2LightningTech.MODID, "pigmee_pattern_provider"));
 
     private static final int PATTERN_X = 62;
-    private static final int PATTERN_Y = 50;
+    private static final int PATTERN_Y = 49;
     private static final int RETURN_X = 8;
-    private static final int RETURN_Y = 114;
+    private static final int RETURN_Y = 113;
     private static final int PLAYER_X = 8;
-    private static final int PLAYER_Y = 149;
-    private static final int HOTBAR_Y = 207;
+    private static final int PLAYER_Y = 148;
+    private static final int HOTBAR_Y = 206;
     private static final int SLOT_SPACING = 18;
 
     public PigmeePatternProviderMenu(
@@ -38,10 +39,7 @@ public final class PigmeePatternProviderMenu extends AEBaseMenu {
 
         var patternInventory = host.getPatternInventory();
         for (int slot = 0; slot < PigmeePatternProviderBlockEntity.PATTERN_SLOT_COUNT; slot++) {
-            var patternSlot = new RestrictedInputSlot(
-                    RestrictedInputSlot.PlacableItemType.PROVIDER_PATTERN,
-                    patternInventory,
-                    slot);
+            var patternSlot = new PatternSlot(patternInventory, slot);
             patternSlot.x = PATTERN_X + slot * SLOT_SPACING;
             patternSlot.y = PATTERN_Y;
             addSlot(patternSlot, SlotSemantics.ENCODED_PATTERN);
@@ -75,6 +73,17 @@ public final class PigmeePatternProviderMenu extends AEBaseMenu {
                             PLAYER_X + column * SLOT_SPACING,
                             HOTBAR_Y),
                     SlotSemantics.PLAYER_HOTBAR);
+        }
+    }
+
+    private static final class PatternSlot extends AppEngSlot {
+        private PatternSlot(appeng.api.inventories.InternalInventory inventory, int slot) {
+            super(inventory, slot);
+        }
+
+        @Override
+        public boolean mayPlace(ItemStack stack) {
+            return PatternDetailsHelper.isEncodedPattern(stack) && super.mayPlace(stack);
         }
     }
 }

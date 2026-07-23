@@ -8,22 +8,22 @@
   "slots": {
     "ENCODED_PATTERN": {
       "left": 62,
-      "top": 50,
+      "top": 49,
       "grid": "HORIZONTAL"
     },
     "STORAGE": {
       "left": 8,
-      "top": 114,
+      "top": 113,
       "grid": "HORIZONTAL"
     },
     "PLAYER_INVENTORY": {
       "left": 8,
-      "top": 149,
+      "top": 148,
       "grid": "BREAK_AFTER_9COLS"
     },
     "PLAYER_HOTBAR": {
       "left": 8,
-      "top": 207,
+      "top": 206,
       "grid": "HORIZONTAL"
     }
   },
