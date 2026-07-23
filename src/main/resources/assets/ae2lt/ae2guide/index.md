@@ -6,7 +6,7 @@ navigation:
 
 # AE2 Lightning Tech
 
-AE2 Lightning Tech is an extension for Applied Energistics 2. It introduces a brand-new storage type to the ME network — **Lightning** — along with a full material chain, dedicated processing machines, and an "Overloaded" family of network devices that break past the vanilla channel limits.
+AE2 Lightning Tech ~~Thunder Tech~~ is an extension for Applied Energistics 2. It introduces a brand-new storage type to the ME network — **Lightning** — along with a full material chain, dedicated processing machines, and an "Overloaded" family of network devices that break past the vanilla channel limits.
 
 Main features:
 

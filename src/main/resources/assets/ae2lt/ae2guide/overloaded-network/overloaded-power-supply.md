@@ -43,7 +43,7 @@ Overload Mode requires a Flux Cell in the cell slot. The cell becomes the active
 * **Ticket rotation** (~20 tick tickets) keeps active targets primed without re-scanning every tick
 * **2× cost multiplier** on cell-buffered FE — the energy per delivered FE is doubled
 * Refuses to run if no Flux Cell is installed (status: *Missing cell*)
-* If the cell is removed mid-tick, any in-flight buffered FE is flushed back to the ME network — no FE is lost
+* If the cell is removed mid-tick, any buffered FE not yet delivered is returned to the ME network — no FE is lost
 
 ## Setting Up
 
@@ -63,4 +63,4 @@ The same wireless connect tool used for the Overloaded ME Interface and the Over
 * For most bases, Normal Mode is enough — it runs continuously and has no extra cost multiplier
 * Use Overload Mode for clusters of high-draw machines, such as mass-crafting setups, when the 2× cost is acceptable
 * A higher-tier Flux Cell gives a larger burst buffer, which smooths short ME-network FE shortages
-* You can mix the supply with the Overloaded ME Interface and Overloaded Pattern Provider; all three share the same per-target scheduler
+* The supply can be used together with the Overloaded ME Interface and Overloaded Pattern Provider

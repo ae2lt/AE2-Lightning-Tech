@@ -19,7 +19,7 @@ item_ids:
   <ItemIcon id="ae2lt:overload_inscriber_press" />
 </ItemGrid>
 
-The **Overload Processor** is an advanced processor used to craft most Overload machines and high-tier devices. Its production follows a multi-step chain through the AE2 Inscriber.
+The **Overload Processor** is an advanced processor used to craft most Overload machines and high-tier devices. It requires multiple crafting steps.
 
 ## Crafting Chain
 

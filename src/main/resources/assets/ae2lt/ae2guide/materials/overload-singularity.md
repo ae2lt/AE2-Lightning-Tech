@@ -27,4 +27,4 @@ The **Overload Singularity** is a high-tier crafting material produced in the Li
 
 <ItemImage id="ae2lt:ultimate_overload_core" scale="2" float="left" />
 
-The **Ultimate Overload Core** is the most advanced component in the mod. It is crafted from Overload Alloy Plates, Overload Singularities, and Echo Shards in the Lightning Simulation Room. It is a key ingredient for the **Lightning Collapse Matrix**.
+The **Ultimate Overload Core** is the most advanced component in the mod. It is crafted from Overload Alloy Plates, Overload Singularities, and Echo Shards in the Lightning Simulation Room. It is a key ingredient for the **Lightning Collapse Matrix**, Celestweave equipment and the Electromagnetic Railgun.

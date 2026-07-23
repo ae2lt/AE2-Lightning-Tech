@@ -21,9 +21,9 @@ Conditions:
 
 * The Annihilation Plane must be connected to a powered, active ME network
 * The Annihilation Plane must have Silk Touch
-* A Shulker projectile must collide with the plane
-* The network must be able to accept the inserted Floating Matter
+* A Shulker projectile must collide with the plane; if **no explosion particles** appear, collection succeeded
+* The network must have enough storage space to accept the Floating Matter
 
 The projectile does not need to be shot down. Simply letting it reach the Silk Touch Annihilation Plane is enough.
 
-> Server configuration can disable this collection mechanic.
+> The configuration file can disable this collection mechanic.

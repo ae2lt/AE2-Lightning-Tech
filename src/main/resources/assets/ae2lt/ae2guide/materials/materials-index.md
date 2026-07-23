@@ -32,7 +32,7 @@ Floating Matter is a Shulker-projectile capture material. A Silk Touch <ItemLink
 
 ## Weather Condensate
 
-Weather Condensate items are consumed by the [Atmospheric Ionizer](../machines/atmospheric-ionizer.md) to control the world's weather. They are produced in the Lightning Simulation Room, Lightning Assembly Chamber, or Overload Processing Factory.
+Weather Condensate items are consumed by the [Atmospheric Ionizer](../machines/atmospheric-ionizer.md) to control the world's weather. They are crafted from Overload Alloy produced in the Lightning Simulation Room, Lightning Assembly Chamber, or Overload Processing Factory.
 
 <ItemGrid>
   <ItemIcon id="ae2lt:clear_condensate" />

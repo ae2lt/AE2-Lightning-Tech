@@ -14,7 +14,7 @@ item_ids:
   <BlockImage id="ae2lt:extended_overloaded_pattern_provider" scale="4" />
 </Row>
 
-**扩展过载样板供应器**是 <ItemLink id="ae2lt:overloaded_pattern_provider" /> 的容量强化版本。它继承过载样板供应器的**全部功能**——无线模式、自动回收、分配策略、过载样板支持等，唯一的区别是拥有**多页样板槽位**，专为需要海量样板的大型自动化网络设计。
+**扩展过载样板供应器**是 <ItemLink id="ae2lt:overloaded_pattern_provider" /> 的容量强化版本。它继承过载样板供应器的**全部功能**，包括无线模式、自动回收、分配策略、过载样板支持等，唯一的区别是拥有**更多样板槽位**，专为需要海量样板的大型自动化网络设计。
 
 无线模式、回收模式、分配策略、过载样板等的用法与过载样板供应器完全相同，详见 <ItemLink id="ae2lt:overloaded_pattern_provider" /> 页面。
 

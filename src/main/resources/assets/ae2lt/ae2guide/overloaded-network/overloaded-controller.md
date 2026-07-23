@@ -17,9 +17,9 @@ The **Overloaded ME Controller** is the upgraded version of the vanilla <ItemLin
 
 ## Core Features
 
-* **Extra channel supply**: each Overloaded controller adds **128 channels** to the network (default, configurable)
+* **Extra channel supply**: each Overloaded controller provides **128 channels** to the network (default, configurable)
 * **Internal energy capacity**: 16,000,000 AE
-* **Passive energy injection**: automatically injects 100 AE per tick into the network (default, configurable) — keeps some of the network running even without an external energy source
+* **Passive energy injection**: generates 100 AE per tick (default, configurable) and stores it in the controller itself, keeping some of the network running even without an external energy source
 * **Cable connections**: uses the Dense Smart cable connection type
 
 ## Channel Supply Mechanics
@@ -56,9 +56,9 @@ For full effect, pair it with [Overloaded Cable](overloaded-cable.md).
 
 | Feature | Vanilla Controller | Overloaded ME Controller |
 |---------|--------------------|--------------------------|
-| Channel supply | 32 channels per controller (routed along dense cable) | 128 channels per controller (max-flow global allocation) |
+| Channel supply | 32 channels per controller face (routed along dense cable) | 128 channels per controller (max-flow global allocation) |
 | Internal energy capacity | Lower | 16,000,000 AE |
 | Passive energy injection | None | 100 AE per tick |
 | Channel allocation algorithm | BFS, segment-by-segment | Max-flow, global |
 
-> The Overloaded ME Controller keeps all of the basic behavior of the vanilla controller (multiblock, network management, etc.), and augments the channel and energy layers on top.
+> The Overloaded ME Controller keeps all of the basic behavior of the vanilla controller (multiblock, network management, etc.), and only enhances the channel and energy layers.

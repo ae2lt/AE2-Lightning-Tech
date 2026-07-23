@@ -65,11 +65,11 @@ Wearing the complete Celestweave set (<ItemLink id="ae2lt:celestweave_oculus" />
 
 | Module | Limit | Effect |
 |--------|-------|--------|
-| Energy Module T1 / T2 / T3 | 1 | Sets railgun FE capacity to 1,000,000,000 / 5,000,000,000 / 20,000,000,000 FE |
+| Energy Module T1 / T2 / T3 | 1 | Sets railgun FE capacity to 100,000,000 / 500,000,000 / 2,000,000,000 FE |
 | Overload Compute Module | 2 | Enables and improves chain arcs; at max charge, strengthens the EMP pulse |
 | Overload Acceleration Module | 2 | Each module adds +1 charge unit per tick, reducing charge time; it also shortens the continuous beam's settle interval |
 | Overload Range Module | 2 | Multiplies continuous-beam and charged-shot range: one module gives 2x range and two give 4x |
-| Overload Execution Module | 1 | Triggers only on EHV3 hits; spends an additional 20,000,000 FE per target to further reduce and lock its health; forces execution when the locked value reaches 0 |
+| Overload Execution Module | 1 | Triggers only on EHV3 charged hits; spends an additional 20,000,000 FE to record the target's health, and repeated hits can complete the execution |
 
 Without compute modules, chain arcs are disabled. With two acceleration modules, charge progress accumulates at three times the base rate.
 
@@ -77,7 +77,7 @@ Without compute modules, chain arcs are disabled. With two acceleration modules,
 
 Open the Overload Device Hub with the default key G while holding the railgun.
 
-* **Terrain Destruction** controls whether charged shots break terrain. It is off by default and can still be disabled by server config
+* **Terrain Destruction** controls whether charged shots break terrain, ignoring claim protection. It is off by default and can still be disabled by server config
 * **PVP** allows the railgun to damage other players when enabled. When disabled, players are not targeted or damaged
 * **Sound** controls the railgun's local sound effects
 * **Chain Damage** enables chain jumps for both charged shots and the continuous beam; the ordinary beam can start a chain at its endpoint even without a direct entity hit

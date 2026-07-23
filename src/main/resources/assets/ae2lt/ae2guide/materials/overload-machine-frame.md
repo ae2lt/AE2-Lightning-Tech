@@ -17,7 +17,7 @@ item_ids:
 
 ## Overload Machine Frame
 
-The **Overload Machine Frame** is the shared structural base used to craft most processing machines in AE2 Lightning Tech, including the Lightning Simulation Room, Lightning Assembly Chamber, Overload Processing Factory, Atmospheric Ionizer, and Crystal Catalyzer.
+The **Overload Machine Frame** is an intermediate crafting product and the shared structural base used to craft most processing machines in AE2 Lightning Tech, including the Lightning Simulation Room, Lightning Assembly Chamber, Overload Processing Factory, Atmospheric Ionizer, and Crystal Catalyzer.
 
 <RecipeFor id="ae2lt:overload_machine_frame" />
 

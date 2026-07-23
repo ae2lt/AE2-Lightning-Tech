@@ -17,6 +17,9 @@ item_ids:
 
 The **Lightning Collector** is the starting point of the Lightning system. When lightning strikes the **Lightning Rod directly above the collector**, the collector injects Lightning energy directly into the ME network.
 
+*`"Borrowing from others, seeking oneself."`*
+`— Mysterious Block`
+
 ## Basic Usage
 
 Place the Lightning Collector **out in the open**, put a vanilla **Lightning Rod directly on top of it**, and connect the collector to an ME network. A strike is only collected when it hits that top Lightning Rod, so keep the rod exposed to the sky for natural thunderstorms.
@@ -57,7 +60,7 @@ The Electro-Chime Crystal progresses through four stages based on cultivation va
 | Resonant | 55% ~ 85% |
 | Overcharged | ≥ 85% |
 
-* The crystal only gains cultivation value when the collector is struck by **natural lightning** (the strikes that produce Extreme High Voltage Lightning). Artificial lightning does not contribute to cultivation
+* The crystal only gains cultivation value when the collector is struck by **natural lightning** (the strikes that produce Extreme High Voltage Lightning) and the network has enough capacity to store the Lightning produced. Artificial lightning does not contribute to cultivation
 * Once the cultivation value reaches its maximum, the Electro-Chime Crystal automatically transforms into a **Perfect Electro-Chime Crystal**
 * The Perfect Electro-Chime Crystal no longer cultivates further, but provides a stable maximum yield
 

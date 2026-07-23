@@ -21,6 +21,8 @@ item_ids:
 
 Lightning Storage Cells are the storage medium dedicated to holding Lightning in an ME network. Just like regular item / fluid storage cells, simply drop one into an <ItemLink id="ae2:drive" /> to start using it.
 
+`Using the spatial power of the End and the natural Lightning affinity of Overload Crystal, high-energy Lightning is constrained inside a tiny cell.`
+
 ## Tiers
 
 Lightning Storage Cells come in five tiers with progressively larger capacity. A single cell stores **both** High Voltage and Extreme High Voltage Lightning at the same time.
@@ -49,4 +51,4 @@ The **Infinite Storage Cell** has no capacity limit and can hold any amount of a
 
 ## Appendix
 
-> Tucked into the tail of a scan log: "One cell isn't in the registry — read it once and it goes blank, otherwise everything reads normal." Source and interpretation are unrecorded.
+> Tucked into the tail of a scan log: "One cell isn't in the registry — it can only be read once and cannot be written to; otherwise everything reads normal." Source and interpretation are unrecorded.

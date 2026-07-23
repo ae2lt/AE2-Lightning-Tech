@@ -14,6 +14,9 @@ item_ids:
 
 The **Lightning Collapse Matrix** is one of the key end-tier components in AE2 Lightning Tech. It is not a consumable — instead, it acts as a **substitution / parallelism catalyst**. Keeping a matrix in a machine's matrix slot unlocks the machine's higher-tier operating mode.
 
+`A powerful alloy compresses an immense amount of Lightning into a stable form; its energy wave is the opposite of volatile Overload TNT.`
+`~~Perhaps these energies can neutralize each other?~~`
+
 ## How to Obtain
 
 ### Crafting in the Lightning Simulation Room
@@ -44,6 +47,6 @@ An <ItemLink id="ae2:memory_card" /> also saves the installed matrix count as pa
 
 ## Field Notes
 
-> A field team filed a thin follow-up report: when the matrix is **not constrained inside any container**, an unintended reaction can occur; the case where that reaction was deliberately ignited is logged on the [Overload TNT](../lightning/overload-tnt.md) page.
+> A field team once filed an additional experiment report: when the matrix is **dropped in the world**, an unintended reaction can occur; the case where that reaction was ignited is logged on the [Overload TNT](../lightning/overload-tnt.md) page.
 
-The product is an unregistered cell that resolves the moment it enters an <ItemLink id="ae2:drive" />. Internal residue can be **read only once**; it is empty afterwards. As for what gets read out — the report only attaches one line: "Sample distribution is extremely uneven; the rarest one is not a cell, it is a notebook with nothing written in it yet."
+The product is an unregistered cell that can be placed into an <ItemLink id="ae2:drive" /> for decoding. It can only be read once and cannot be written to. The report says the decoded patterns are distributed extremely unevenly. After many experiments, the team summarized a special report: "Sample distribution is extremely uneven; the rarest one is not a cell, it is a notebook with nothing written in it yet."

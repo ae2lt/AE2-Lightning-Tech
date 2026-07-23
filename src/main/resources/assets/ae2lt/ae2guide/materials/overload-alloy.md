@@ -19,6 +19,8 @@ item_ids:
 
 **Overload Alloy** is an advanced metallic material used in many high-tier recipes, including machine frames, Overloaded Controllers, and several end-tier components.
 
+`First mastery of Lightning power.`
+
 ## Processing Chain
 
 1. **Overload Alloy Blank** — crafted at a crafting table

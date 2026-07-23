@@ -55,6 +55,8 @@ Wireless links must be in the same dimension and within **128 blocks** by defaul
 | Import: AUTO | Continuously imports items from remote machines into the ME network |
 | Import: EJECT | Remote machines push items into the virtual input slot; the interface accepts them passively |
 
+When Wireless Mode is disabled, these switches make the interface attempt to automatically push to or retrieve from adjacent containers.
+
 ## I/O Speed
 
 | Speed Tier | Adaptive Cooldown Range | Description |
@@ -91,3 +93,10 @@ With an AppFlux Induction Card installed (requires AppFlux), the Overloaded ME I
 * Combined with unlimited-mode slots, it can keep a remote machine continuously supplied with a specific material
 * With energy transfer, dedicated power lines are no longer required
 * Enable the Fast probe tier to reduce processing response latency
+
+## Possible Problems
+
+* If the Overloaded ME Interface neither dispatches nor retrieves items, the ME network may not have enough energy buffer. Try adding more ME energy storage.
+* In unusual cases, especially after an update, the interface may store items in its internal buffer without returning them to the network. Overlay mods such as Jade cannot see these items, and the interface may lose network interaction and throughput. If this happens, break and place it again; be aware that breaking it may release many item entities and cause severe lag.
+* This is most likely when the interface is adjacent to a container holding items that cannot be stored in the ME network, such as ME storage cells, with Wireless Mode disabled and auto return enabled.
+* When both automatic export and automatic return are enabled, one interface cannot move the same item type from container A to container B. For example, during beekeeping, moving honeycombs from a hive into the interface and then using that same interface to send them to a centrifuge can prevent the honeycombs from being returned from the hive.

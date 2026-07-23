@@ -31,6 +31,7 @@ The **Overloaded Pattern Provider** is the upgraded version of the vanilla <Item
 ### Normal Mode
 
 In Normal Mode, the Overloaded Pattern Provider pushes materials into **physically adjacent** machines, identical to the vanilla Pattern Provider. The main difference is the larger number of pattern slots.
+~~Then why not use an Extended Interface?~~
 
 ### Wireless Mode
 
@@ -45,6 +46,8 @@ In Wireless Mode, the Overloaded Pattern Provider can dispatch materials to remo
 Wireless links must be in the same dimension and within **128 blocks** by default. The distance limit is configurable; setting it to 0 disables the limit. One provider can store up to **1,024** wireless connections. Hold **Ctrl** while right-clicking a target to batch-toggle contiguous machines of the same type.
 
 Once connections are in place, the provider dispatches materials to the remote machines according to the selected distribution strategy.
+
+The provider treats all linked machines as the same kind of processing machine. It cannot dispatch to the multiple input buses or input hatches of multiblock machines such as those in MI, and it cannot automatically split one pattern's contents across different containers; doing so can stall the craft.
 
 ### Distribution Strategies
 

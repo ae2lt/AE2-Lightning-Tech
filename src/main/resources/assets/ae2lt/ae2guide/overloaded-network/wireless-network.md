@@ -44,7 +44,7 @@ The **Wireless Overloaded Controller** is an [Overloaded ME Controller](overload
 The **Advanced Wireless Overloaded Controller** is the upgraded variant with two key improvements:
 
 * **Cross-dimension support**: Wireless Receivers in other dimensions can connect to it
-* **Unlimited channel capacity**: removes the per-receiver channel limit entirely
+* **Unlimited channel capacity**: removes the per-receiver channel limit entirely (this does not mean truly infinite channels; read carefully!)
 
 ### Wireless Receiver
 

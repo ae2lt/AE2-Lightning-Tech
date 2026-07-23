@@ -14,7 +14,7 @@ item_ids:
   <BlockImage id="ae2lt:extended_overloaded_pattern_provider" scale="4" />
 </Row>
 
-The **Extended Overloaded Pattern Provider** is a higher-capacity version of the <ItemLink id="ae2lt:overloaded_pattern_provider" />. It inherits **all** of the Overloaded Pattern Provider's features — wireless mode, auto return, distribution strategies, Overload Pattern support, and more — the only difference being its **multi-page pattern slots**, designed for large automation networks that need a huge number of patterns.
+The **Extended Overloaded Pattern Provider** is a higher-capacity version of the <ItemLink id="ae2lt:overloaded_pattern_provider" />. It inherits **all** of the Overloaded Pattern Provider's features, including wireless mode, auto return, distribution strategies and Overload Pattern support; the only difference is that it has **more pattern slots**, designed for large automation networks that need a huge number of patterns.
 
 Wireless mode, return modes, distribution strategies, and Overload Patterns all work exactly as they do on the Overloaded Pattern Provider — see the <ItemLink id="ae2lt:overloaded_pattern_provider" /> page for details.
 
