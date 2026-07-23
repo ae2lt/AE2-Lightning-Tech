@@ -32,6 +32,7 @@ import com.moakiee.ae2lt.blockentity.OverloadProcessingFactoryBlockEntity;
 import com.moakiee.ae2lt.blockentity.OverloadedPatternProviderBlockEntity;
 import com.moakiee.ae2lt.blockentity.OverloadedPowerSupplyBlockEntity;
 import com.moakiee.ae2lt.blockentity.PigmeeMentalmathUnitBlockEntity;
+import com.moakiee.ae2lt.blockentity.PigmeePatternProviderBlockEntity;
 import com.moakiee.ae2lt.blockentity.TeslaCoilBlockEntity;
 import com.moakiee.ae2lt.block.TeslaCoilBlock;
 import com.moakiee.ae2lt.blockentity.AdvancedWirelessOverloadedControllerBlockEntity;
@@ -302,6 +303,7 @@ public class AE2LightningTech {
                     .displayItems((parameters, output) -> {
                         output.accept(ModFumos.PIGMEE_FUMO_ITEM.get());
                         output.accept(ModBlocks.PIGMEE_MENTALMATH_UNIT);
+                        output.accept(ModBlocks.PIGMEE_PATTERN_PROVIDER);
                     })
                     .build());
 
@@ -540,6 +542,11 @@ public class AE2LightningTech {
 
         event.registerBlockEntity(
                 AECapabilities.IN_WORLD_GRID_NODE_HOST,
+                ModBlockEntities.PIGMEE_PATTERN_PROVIDER.get(),
+                (blockEntity, context) -> (IInWorldGridNodeHost) blockEntity);
+
+        event.registerBlockEntity(
+                AECapabilities.IN_WORLD_GRID_NODE_HOST,
                 ModBlockEntities.MATRIX_PORT.get(),
                 (blockEntity, context) -> (IInWorldGridNodeHost) blockEntity);
 
@@ -639,6 +646,11 @@ public class AE2LightningTech {
                 },
                 ModBlocks.OVERLOADED_PATTERN_PROVIDER.get(),
                 ModBlocks.EXTENDED_OVERLOADED_PATTERN_PROVIDER.get());
+
+        event.registerBlockEntity(
+                AECapabilities.GENERIC_INTERNAL_INV,
+                ModBlockEntities.PIGMEE_PATTERN_PROVIDER.get(),
+                (blockEntity, context) -> blockEntity.getReturnInventory());
 
         event.registerBlock(
                 AECapabilities.GENERIC_INTERNAL_INV,
@@ -766,6 +778,14 @@ public class AE2LightningTech {
                     null,
                     null);
 
+            var pigmeePatternProviderBlock = ModBlocks.PIGMEE_PATTERN_PROVIDER.get();
+            var pigmeePatternProviderBeType = ModBlockEntities.PIGMEE_PATTERN_PROVIDER.get();
+            pigmeePatternProviderBlock.setBlockEntity(
+                    PigmeePatternProviderBlockEntity.class,
+                    pigmeePatternProviderBeType,
+                    null,
+                    PigmeePatternProviderBlockEntity::serverTick);
+
             var matrixPortBlock = ModBlocks.MATTER_WARPING_MATRIX_PORT.get();
             var matrixPortBeType = ModBlockEntities.MATRIX_PORT.get();
             matrixPortBlock.setBlockEntity(
@@ -819,6 +839,9 @@ public class AE2LightningTech {
             appeng.blockentity.AEBaseBlockEntity.registerBlockEntityItem(
                     pigmeeMentalmathUnitBeType,
                     pigmeeMentalmathUnitBlock.asItem());
+            appeng.blockentity.AEBaseBlockEntity.registerBlockEntityItem(
+                    pigmeePatternProviderBeType,
+                    pigmeePatternProviderBlock.asItem());
             appeng.blockentity.AEBaseBlockEntity.registerBlockEntityItem(
                     matrixPortBeType,
                     matrixPortBlock.asItem());

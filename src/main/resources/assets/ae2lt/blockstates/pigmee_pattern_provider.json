@@ -1,0 +1,20 @@
+{
+  "multipart": [
+    {
+      "when": { "facing": "north" },
+      "apply": { "model": "ae2lt:block/pigmee_pattern_provider" }
+    },
+    {
+      "when": { "facing": "east" },
+      "apply": { "model": "ae2lt:block/pigmee_pattern_provider", "y": 90 }
+    },
+    {
+      "when": { "facing": "south" },
+      "apply": { "model": "ae2lt:block/pigmee_pattern_provider", "y": 180 }
+    },
+    {
+      "when": { "facing": "west" },
+      "apply": { "model": "ae2lt:block/pigmee_pattern_provider", "y": 270 }
+    }
+  ]
+}

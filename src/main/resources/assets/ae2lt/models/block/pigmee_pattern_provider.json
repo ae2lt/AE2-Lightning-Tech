@@ -1,0 +1,26 @@
+{
+  "parent": "minecraft:block/block",
+  "textures": {
+    "down": "ae2lt:block/pigmee_pattern_provider",
+    "up": "ae2lt:block/pigmee_pattern_provider",
+    "north": "ae2lt:block/pigmee_pattern_provider_front",
+    "south": "ae2lt:block/pigmee_pattern_provider_back",
+    "west": "ae2lt:block/pigmee_pattern_provider_side",
+    "east": "ae2lt:block/pigmee_pattern_provider_side",
+    "particle": "ae2lt:block/pigmee_pattern_provider_side"
+  },
+  "elements": [
+    {
+      "from": [0, 0, 0],
+      "to": [16, 16, 16],
+      "faces": {
+        "down": { "texture": "#down", "cullface": "down" },
+        "up": { "texture": "#up", "cullface": "up" },
+        "north": { "texture": "#north", "cullface": "north" },
+        "south": { "texture": "#south", "cullface": "south" },
+        "west": { "texture": "#west", "cullface": "west" },
+        "east": { "uv": [16, 0, 0, 16], "texture": "#east", "cullface": "east" }
+      }
+    }
+  ]
+}
