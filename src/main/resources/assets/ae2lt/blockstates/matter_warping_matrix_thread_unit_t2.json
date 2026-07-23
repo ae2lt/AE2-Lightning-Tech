@@ -4,7 +4,7 @@
       "model": "ae2lt:block/matter_warping_matrix_thread_unit_t2"
     },
     "formed=true": {
-      "model": "ae2lt:block/matter_warping_matrix_thread_unit_t2_formed"
+      "model": "ae2lt:block/multiblock_core_hidden"
     }
   }
 }

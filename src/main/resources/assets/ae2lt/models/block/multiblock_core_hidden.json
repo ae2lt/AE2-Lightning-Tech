@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/block",
+  "textures": {
+    "particle": "ae2lt:block/matter_warping_matrix/matter_warping_matrix_sub_core_formed"
+  }
+}

@@ -5,11 +5,14 @@ import com.moakiee.ae2lt.logic.tianshu.TianshuMultiblockUpdateScheduler;
 import com.moakiee.ae2lt.logic.craft.MatrixMultiblockComponent;
 import com.moakiee.ae2lt.logic.craft.MatrixMultiblockUpdateScheduler;
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
+import net.minecraft.world.phys.shapes.Shapes;
+import net.minecraft.world.phys.shapes.VoxelShape;
 
 public class TianshuSupercomputingUnitBlock extends Block implements MatrixMultiblockComponentBlock {
     public static final BooleanProperty FORMED = TianshuSupercomputerStructureBlock.FORMED;
@@ -42,6 +45,26 @@ public class TianshuSupercomputingUnitBlock extends Block implements MatrixMulti
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
         builder.add(FORMED);
+    }
+
+    @Override
+    protected VoxelShape getOcclusionShape(BlockState state, BlockGetter level, BlockPos pos) {
+        return usesHiddenFormedModel(state) ? Shapes.empty() : super.getOcclusionShape(state, level, pos);
+    }
+
+    @Override
+    protected boolean propagatesSkylightDown(BlockState state, BlockGetter level, BlockPos pos) {
+        return usesHiddenFormedModel(state) || super.propagatesSkylightDown(state, level, pos);
+    }
+
+    @Override
+    protected int getLightBlock(BlockState state, BlockGetter level, BlockPos pos) {
+        return usesHiddenFormedModel(state) ? 0 : super.getLightBlock(state, level, pos);
+    }
+
+    @Override
+    protected float getShadeBrightness(BlockState state, BlockGetter level, BlockPos pos) {
+        return usesHiddenFormedModel(state) ? 1.0F : super.getShadeBrightness(state, level, pos);
     }
 
     @Override
@@ -80,5 +103,22 @@ public class TianshuSupercomputingUnitBlock extends Block implements MatrixMulti
         if (matrixComponent != MatrixMultiblockComponent.OTHER) {
             MatrixMultiblockUpdateScheduler.scheduleNear(level, pos);
         }
+    }
+
+    private boolean usesHiddenFormedModel(BlockState state) {
+        if (!state.getValue(FORMED)) {
+            return false;
+        }
+        return switch (component) {
+            case MAIN_BASELINE,
+                    MAIN_QUANTUM,
+                    MAIN_OVERLOAD,
+                    MAIN_MULTIDIMENSIONAL,
+                    BLANK_UNIT,
+                    STORAGE_UNIT,
+                    PARALLEL_UNIT,
+                    AMPLIFIER_UNIT -> true;
+            default -> false;
+        };
     }
 }

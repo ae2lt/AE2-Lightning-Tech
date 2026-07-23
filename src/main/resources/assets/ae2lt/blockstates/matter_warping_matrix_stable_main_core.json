@@ -4,7 +4,7 @@
       "model": "ae2lt:block/matter_warping_matrix_stable_main_core"
     },
     "formed=true": {
-      "model": "ae2lt:block/matter_warping_matrix_stable_main_core_formed"
+      "model": "ae2lt:block/multiblock_core_hidden"
     }
   }
 }
