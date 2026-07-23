@@ -18,12 +18,12 @@
     },
     "PLAYER_INVENTORY": {
       "left": 8,
-      "top": 148,
+      "top": 147,
       "grid": "BREAK_AFTER_9COLS"
     },
     "PLAYER_HOTBAR": {
       "left": 8,
-      "top": 206,
+      "top": 205,
       "grid": "HORIZONTAL"
     }
   },

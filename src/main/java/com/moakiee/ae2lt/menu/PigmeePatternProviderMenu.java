@@ -27,8 +27,8 @@ public final class PigmeePatternProviderMenu extends AEBaseMenu {
     private static final int RETURN_X = 8;
     private static final int RETURN_Y = 113;
     private static final int PLAYER_X = 8;
-    private static final int PLAYER_Y = 148;
-    private static final int HOTBAR_Y = 206;
+    private static final int PLAYER_Y = 147;
+    private static final int HOTBAR_Y = 205;
     private static final int SLOT_SPACING = 18;
 
     public PigmeePatternProviderMenu(
