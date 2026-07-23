@@ -244,12 +244,16 @@ T = min(effectiveDispatch × Gt, tierCopyCap)
 
 ## 9. 天枢物质扭曲矩阵温度层
 
-矩阵扫描同样的 `P`、`N` 和主核心等级，但运行时只维护逻辑 copies 预算，不维护或展示 CPU 的 `D`。统一计算器可以在纯计算阶段复用 `Gd` 和 `Gt`，直接折叠为矩阵基础吞吐：
+矩阵扫描同样的 `P`、`N` 和主核心等级，但运行时只维护逻辑 copies 预算，不维护 CPU 的 `D`。量子和过载矩阵在纯计算阶段复用 `Gd` 和 `Gt`；稳态矩阵使用独立的线程单元算力表，以体现 T2 单元的等级收益：
 
 ```text
-baseMatrixOperations = min(128 × P × Gd × Gt, tierCopyCap)
-M = floor(baseMatrixOperations × thermalEfficiency)
+stableBaseOperations = min(1024 × T1数量 + 3584 × T2数量, 4096)
+quantumBaseOperations = min(128 × P × Gd × Gt, 122880)
+overloadBaseOperations = min(128 × P × Gd × Gt, 4194304)
+M = floor(modeBaseOperations × thermalEfficiency)
 ```
+
+其中 `tierCopyCap` 仍是 CPU 执行器的上限。矩阵专属上限不得写回 `ComputeTier`，否则会同时改变天枢 CPU 的复制预算。
 
 热控单元始终只提供固定能力点：T1 为 1，T2 为 2；距离衰减和热量公式属于矩阵主机，不属于热控单元自身。
 
@@ -262,7 +266,7 @@ M = floor(baseMatrixOperations × thermalEfficiency)
 - 更多发配和增幅单元会占用冷却或空白槽，形成吞吐与热稳定之间的取舍。
 - 多维矩阵忽略温度，但实际 provider 调用仍受固定熔断保护。
 
-温度曲线的具体常量可以独立平衡，但不能重新改变 `Gt`、`tierCopyCap` 和逻辑 operation 的语义。
+温度曲线的具体常量可以独立平衡，但不能重新改变 CPU 的 `Gt`、`tierCopyCap` 和逻辑 operation 语义。矩阵专属上限属于矩阵运行预算，不替代 CPU 等级上限。
 
 ### 9.1 Provider 调用熔断
 

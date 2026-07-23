@@ -2,6 +2,7 @@ package com.moakiee.ae2lt.menu;
 
 import com.moakiee.ae2lt.blockentity.MatrixControllerBlockEntity;
 import com.moakiee.ae2lt.logic.craft.MatrixCoreMode;
+import com.moakiee.ae2lt.logic.craft.MatrixCraftingMath;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
@@ -28,6 +29,8 @@ public class MatrixControllerMenu extends AbstractContainerMenu {
     private final DataSlot modeSlot = DataSlot.standalone();
     private final DataSlot issueSlot = DataSlot.standalone();
     private final DataSlot dispatchUnitCountSlot = DataSlot.standalone();
+    private final DataSlot threadPowerSlot = DataSlot.standalone();
+    private final DataSlot stableBaseOperationsSlot = DataSlot.standalone();
     private final DataSlot amplifierUnitCountSlot = DataSlot.standalone();
     private final DataSlot coolingUnitCountSlot = DataSlot.standalone();
     private final DataSlot coolingPowerSlot = DataSlot.standalone();
@@ -55,6 +58,8 @@ public class MatrixControllerMenu extends AbstractContainerMenu {
                                  int mode,
                                  int issue,
                                  int dispatchUnitCount,
+                                 int threadPower,
+                                 int stableBaseOperations,
                                  int amplifierUnitCount,
                                  int coolingUnitCount,
                                  int coolingPower,
@@ -73,6 +78,8 @@ public class MatrixControllerMenu extends AbstractContainerMenu {
         modeSlot.set(mode);
         issueSlot.set(issue);
         dispatchUnitCountSlot.set(dispatchUnitCount);
+        threadPowerSlot.set(threadPower);
+        stableBaseOperationsSlot.set(stableBaseOperations);
         amplifierUnitCountSlot.set(amplifierUnitCount);
         coolingUnitCountSlot.set(coolingUnitCount);
         coolingPowerSlot.set(coolingPower);
@@ -101,6 +108,8 @@ public class MatrixControllerMenu extends AbstractContainerMenu {
                 buf.readVarInt(),
                 buf.readVarInt(),
                 buf.readVarInt(),
+                buf.readVarInt(),
+                buf.readVarInt(),
                 buf.readVarInt());
     }
 
@@ -116,6 +125,9 @@ public class MatrixControllerMenu extends AbstractContainerMenu {
         buf.writeVarInt(profile.mode().ordinal());
         buf.writeVarInt(be.getPrimaryIssueOrdinal());
         buf.writeVarInt(profile.dispatchUnitCount());
+        buf.writeVarInt(saturate((long) Math.floor(profile.threadPower())));
+        buf.writeVarInt(saturate(Math.min(
+                MatrixCraftingMath.STABLE_OPERATION_CAP, profile.stableBaseOperations())));
         buf.writeVarInt(profile.amplifierUnitCount());
         buf.writeVarInt(profile.coolingUnitCount());
         buf.writeVarInt(scaleValue(profile.coolPower()));
@@ -200,6 +212,14 @@ public class MatrixControllerMenu extends AbstractContainerMenu {
         return dispatchUnitCountSlot.get();
     }
 
+    public int getThreadPower() {
+        return threadPowerSlot.get();
+    }
+
+    public int getStableBaseOperations() {
+        return stableBaseOperationsSlot.get();
+    }
+
     public int getAmplifierUnitCount() {
         return amplifierUnitCountSlot.get();
     }
@@ -240,6 +260,9 @@ public class MatrixControllerMenu extends AbstractContainerMenu {
         modeSlot.set(profile.mode().ordinal());
         issueSlot.set(host.getPrimaryIssueOrdinal());
         dispatchUnitCountSlot.set(profile.dispatchUnitCount());
+        threadPowerSlot.set(saturate((long) Math.floor(profile.threadPower())));
+        stableBaseOperationsSlot.set(saturate(Math.min(
+                MatrixCraftingMath.STABLE_OPERATION_CAP, profile.stableBaseOperations())));
         amplifierUnitCountSlot.set(profile.amplifierUnitCount());
         coolingUnitCountSlot.set(profile.coolingUnitCount());
         coolingPowerSlot.set(scaleValue(profile.coolPower()));
@@ -258,6 +281,8 @@ public class MatrixControllerMenu extends AbstractContainerMenu {
         addDataSlot(modeSlot);
         addDataSlot(issueSlot);
         addDataSlot(dispatchUnitCountSlot);
+        addDataSlot(threadPowerSlot);
+        addDataSlot(stableBaseOperationsSlot);
         addDataSlot(amplifierUnitCountSlot);
         addDataSlot(coolingUnitCountSlot);
         addDataSlot(coolingPowerSlot);

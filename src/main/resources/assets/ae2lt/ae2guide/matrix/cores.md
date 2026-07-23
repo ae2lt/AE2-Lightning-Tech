@@ -31,14 +31,14 @@ The core chamber contains 81 positions. Its geometric center must hold one Main 
 
 | Main Core | Crafting Cap per Tick | Thermal strategy |
 |-----------|----------------------:|------------------|
-| Stable Main Core | 1,024 executions | Keep it cool; efficiency falls with heat but never below 45% |
-| Quantum Main Core | 10,240 executions | Lower heat provides higher efficiency |
+| Stable Main Core | 4,096 executions | Keep it cool; efficiency falls with heat but never below 45% |
+| Quantum Main Core | 122,880 executions | Lower heat provides higher efficiency |
 | Overload Main Core | 4,194,304 executions | Peak efficiency is near 50% heat; keep it in the 42%–58% sweet spot |
 | Creative Main Core | Unlimited | Heat is ignored; all other 80 slots must be Blank Units |
 
 The number of pattern executions the matrix performs each tick is determined in three steps:
 
-1. **Base capacity** = `256 × thread points × amplification factor`. Thread points come from Thread Units (1 point per T1, 2 points per T2). The amplification factor depends on the Main Core: Stable is always 1, Quantum is `R²`, and Overload is `R³`, where `R = 1 + the number of Tianshu Amplifier Units`.
+1. **Base capacity**: Stable uses a dedicated table: each T1 Thread Unit provides `1,024`, each T2 provides `3,584`, and the total is capped at `4,096`. Quantum and Overload use `256 × thread points × amplification factor`; T1 provides 1 thread point and T2 provides 2. The amplification factor is `R²` for Quantum and `R³` for Overload, where `R = 1 + the number of Tianshu Amplifier Units`.
 2. Base capacity beyond the Main Core's per-tick cap is cut off at the cap.
 3. The result is multiplied by the current thermal efficiency to give the actual throughput.
 
@@ -48,8 +48,8 @@ The Creative Main Core has no execution cap, but the matrix still issues at most
 
 | Peripheral Unit | Provides | Purpose |
 |-----------------|----------|---------|
-| Thread Unit T1 | 1 thread point | Raises base crafting capacity per tick |
-| Thread Unit T2 | 2 thread points | Twice the thread points per slot at a higher crafting cost |
+| Thread Unit T1 | Stable: 1,024; Quantum/Overload: 1 thread point | Raises base crafting capacity per tick |
+| Thread Unit T2 | Stable: 3,584; Quantum/Overload: 2 thread points | Provides dedicated Stable capacity; in Quantum and Overload, two thread points per slot save core positions |
 | Tianshu Amplifier Unit | `R` +1 | Raises the amplification factor of Quantum and Overload cores; the same block is shared with the Tianshu Supercomputing Array |
 | Thermal Control Unit T1 | 1 cooling point | Raises heat capacity and cooling rate; the actual effect decays with distance from the main core |
 | Thermal Control Unit T2 | 2 cooling points | Twice the cooling points per slot, with the same distance decay |

@@ -49,6 +49,14 @@ public final class UnifiedCraftingComputeCalculator {
             ComputeTier tier,
             ComputingUnitTotals units,
             double thermalEfficiency) {
+        return matrixEnvelope(tier, units, thermalEfficiency, tier == null ? 0L : tier.copyCap());
+    }
+
+    public static MatrixComputeEnvelope matrixEnvelope(
+            ComputeTier tier,
+            ComputingUnitTotals units,
+            double thermalEfficiency,
+            long operationCap) {
         validate(tier, units, false);
         if (tier.multidimensional()) {
             return new MatrixComputeEnvelope(
@@ -63,7 +71,7 @@ public final class UnifiedCraftingComputeCalculator {
                         rawDispatch(units),
                         dispatchGain(tier, units.amplifierUnits())),
                 copyGain(tier, units.amplifierUnits()));
-        baseOperations = Math.min(baseOperations, tier.copyCap());
+        baseOperations = Math.min(baseOperations, Math.max(0L, operationCap));
         long operations = floorSaturated(baseOperations * sanitizeEfficiency(thermalEfficiency));
         return new MatrixComputeEnvelope(
                 operations,

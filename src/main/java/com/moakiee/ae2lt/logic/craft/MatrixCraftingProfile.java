@@ -12,7 +12,8 @@ public record MatrixCraftingProfile(
         int dispatchUnitCount,
         int amplifierUnitCount,
         int coolingUnitCount,
-        boolean amplifierLimitExceeded) {
+        boolean amplifierLimitExceeded,
+        long stableBaseOperations) {
     public static final int AMPLIFIER_LIMIT = 15;
 
     public MatrixCraftingProfile {
@@ -24,11 +25,12 @@ public record MatrixCraftingProfile(
         dispatchUnitCount = Math.max(0, dispatchUnitCount);
         amplifierUnitCount = Math.max(0, amplifierUnitCount);
         coolingUnitCount = Math.max(0, coolingUnitCount);
+        stableBaseOperations = Math.max(0L, stableBaseOperations);
     }
 
     public static MatrixCraftingProfile empty() {
         return new MatrixCraftingProfile(
-                MatrixCoreMode.NONE, 0, 0.0D, 0.0D, 0.0D, 0, 0, 0, false);
+                MatrixCoreMode.NONE, 0, 0.0D, 0.0D, 0.0D, 0, 0, 0, false, 0L);
     }
 
     public static MatrixCraftingProfile fromUnits(List<MatrixCraftingUnit> units) {
@@ -42,6 +44,7 @@ public record MatrixCraftingProfile(
         int dispatchUnitCount = 0;
         int amplifierUnitCount = 0;
         int coolingUnitCount = 0;
+        long stableBaseOperations = 0L;
 
         for (var unit : units) {
             if (unit == null) continue;
@@ -57,6 +60,8 @@ public record MatrixCraftingProfile(
                 case THREAD -> {
                     dispatchUnitCount++;
                     threadPower += unit.power();
+                    stableBaseOperations = saturatedAdd(stableBaseOperations,
+                            unit.stableOperationContribution());
                 }
                 case AMPLIFIER -> {
                     int previousCount = amplifierUnitCount;
@@ -90,7 +95,8 @@ public record MatrixCraftingProfile(
                     0,
                     0,
                     0,
-                    false);
+                    false,
+                    0L);
         }
 
         return new MatrixCraftingProfile(
@@ -102,7 +108,8 @@ public record MatrixCraftingProfile(
                 dispatchUnitCount,
                 amplifierUnitCount,
                 coolingUnitCount,
-                amplifierLimitExceeded);
+                amplifierLimitExceeded,
+                stableBaseOperations);
     }
 
     public boolean isValid() {
@@ -144,7 +151,7 @@ public record MatrixCraftingProfile(
             return MatrixCraftingMath.idleSnapshot(heat, coolPower);
         }
         return switch (mode) {
-            case STABLE -> MatrixCraftingMath.stableSnapshot(heat, threadPower, amplifierPower, coolPower);
+            case STABLE -> MatrixCraftingMath.stableSnapshot(heat, stableBaseOperations, coolPower);
             case OVERLOAD -> MatrixCraftingMath.overloadSnapshot(heat, threadPower, amplifierPower, coolPower);
             case CREATIVE -> MatrixCraftingMath.creativeSnapshot();
             default -> MatrixCraftingMath.quantumSnapshot(heat, threadPower, amplifierPower, coolPower);
@@ -154,5 +161,10 @@ public record MatrixCraftingProfile(
     private static int saturatedAdd(int left, int right) {
         long result = (long) left + right;
         return result >= Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) result;
+    }
+
+    private static long saturatedAdd(long left, long right) {
+        if (right <= 0L) return left;
+        return left > Long.MAX_VALUE - right ? Long.MAX_VALUE : left + right;
     }
 }

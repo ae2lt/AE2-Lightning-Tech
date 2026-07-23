@@ -6,6 +6,11 @@ import com.moakiee.ae2lt.logic.compute.UnifiedCraftingComputeCalculator;
 
 /** Pure thermal and logical-operation math for the matrix crafting multiblock. */
 public final class MatrixCraftingMath {
+    public static final long STABLE_T1_OPERATIONS = 1_024L;
+    public static final long STABLE_T2_OPERATIONS = 3_584L;
+    public static final long STABLE_OPERATION_CAP = 4_096L;
+    public static final long QUANTUM_OPERATION_CAP = 122_880L;
+
     private static final double HEAT_CAPACITY_BASE = 2048.0D;
     private static final double HEAT_CAPACITY_PER_COOL_UNIT = 150.0D;
     private static final double COOLING_BASE = 0.00008D;
@@ -57,9 +62,24 @@ public final class MatrixCraftingMath {
         return coldSnapshot(ComputeTier.BASELINE, heat, dispatchUnits, amplifierUnits, coolPower);
     }
 
+    public static Snapshot stableSnapshot(
+            double heat, long stableBaseOperations, double coolPower) {
+        double currentHeat = nonNegative(heat);
+        double normalizedHeat = normalizedHeat(currentHeat, coolPower);
+        double efficiency = clamp(1.0D - normalizedHeat, COLD_EFFICIENCY_FLOOR, 1.0D);
+        long baseOperations = Math.min(STABLE_OPERATION_CAP, Math.max(0L, stableBaseOperations));
+        return fixedBaseSnapshot(currentHeat, normalizedHeat, baseOperations, efficiency);
+    }
+
     public static Snapshot quantumSnapshot(
             double heat, double dispatchUnits, double amplifierUnits, double coolPower) {
-        return coldSnapshot(ComputeTier.QUANTUM, heat, dispatchUnits, amplifierUnits, coolPower);
+        return coldSnapshot(
+                ComputeTier.QUANTUM,
+                heat,
+                dispatchUnits,
+                amplifierUnits,
+                coolPower,
+                QUANTUM_OPERATION_CAP);
     }
 
     public static Snapshot overloadSnapshot(
@@ -84,6 +104,16 @@ public final class MatrixCraftingMath {
             double dispatchUnits,
             double amplifierUnits,
             double coolPower) {
+        return coldSnapshot(tier, heat, dispatchUnits, amplifierUnits, coolPower, tier.copyCap());
+    }
+
+    private static Snapshot coldSnapshot(
+            ComputeTier tier,
+            double heat,
+            double dispatchUnits,
+            double amplifierUnits,
+            double coolPower,
+            long operationCap) {
         double currentHeat = nonNegative(heat);
         double normalizedHeat = normalizedHeat(currentHeat, coolPower);
         double efficiency = clamp(1.0D - normalizedHeat, COLD_EFFICIENCY_FLOOR, 1.0D);
@@ -94,7 +124,8 @@ public final class MatrixCraftingMath {
                 dispatchUnits,
                 amplifierUnits,
                 coolPower,
-                efficiency);
+                efficiency,
+                operationCap);
     }
 
     private static Snapshot snapshot(
@@ -105,16 +136,50 @@ public final class MatrixCraftingMath {
             double amplifierUnits,
             double coolPower,
             double efficiency) {
+        return snapshot(
+                tier,
+                heat,
+                normalizedHeat,
+                dispatchUnits,
+                amplifierUnits,
+                coolPower,
+                efficiency,
+                tier.copyCap());
+    }
+
+    private static Snapshot snapshot(
+            ComputeTier tier,
+            double heat,
+            double normalizedHeat,
+            double dispatchUnits,
+            double amplifierUnits,
+            double coolPower,
+            double efficiency,
+            long operationCap) {
         int dispatchCount = floorToInt(dispatchUnits);
         int amplifierCount = floorToInt(amplifierUnits);
         int coolingCount = floorToInt(coolPower);
         var units = new ComputingUnitTotals(dispatchCount, amplifierCount, 0, coolingCount);
-        var envelope = UnifiedCraftingComputeCalculator.matrixEnvelope(tier, units, efficiency);
+        var envelope = UnifiedCraftingComputeCalculator.matrixEnvelope(
+                tier, units, efficiency, operationCap);
         return new Snapshot(
                 heat,
                 normalizedHeat,
                 envelope.operationsPerTick(),
                 envelope.thermalEfficiency());
+    }
+
+    private static Snapshot fixedBaseSnapshot(
+            double heat,
+            double normalizedHeat,
+            long baseOperations,
+            double efficiency) {
+        double sanitizedEfficiency = Math.max(0.0D, Math.min(1.0D, efficiency));
+        double scaledOperations = baseOperations * sanitizedEfficiency;
+        long operations = !Double.isFinite(scaledOperations) || scaledOperations >= Long.MAX_VALUE
+                ? Long.MAX_VALUE
+                : Math.max(0L, (long) Math.floor(scaledOperations));
+        return new Snapshot(heat, normalizedHeat, operations, sanitizedEfficiency);
     }
 
     public static double advanceHeatForCompletedTick(

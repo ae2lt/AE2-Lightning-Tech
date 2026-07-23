@@ -27,11 +27,11 @@ public record MatrixCraftingUnit(Kind kind, MatrixCoreMode coreMode, int power, 
     }
 
     public static MatrixCraftingUnit t1Threader() {
-        return threadPower(1);
+        return new MatrixCraftingUnit(Kind.THREAD, MatrixCoreMode.NONE, 1, 0);
     }
 
     public static MatrixCraftingUnit t2Threader() {
-        return threadPower(2);
+        return new MatrixCraftingUnit(Kind.THREAD, MatrixCoreMode.NONE, 2, 0);
     }
 
     public static MatrixCraftingUnit threadPower(int power) {
@@ -60,6 +60,18 @@ public record MatrixCraftingUnit(Kind kind, MatrixCoreMode coreMode, int power, 
 
     public double adjustedCoolPower() {
         return kind == Kind.COOLER ? power * coolingDecay(distance) : 0.0D;
+    }
+
+    /** Stable-core contribution is intentionally separate from thermal thread power. */
+    public long stableOperationContribution() {
+        if (kind != Kind.THREAD || power <= 0) {
+            return 0L;
+        }
+        return switch (power) {
+            case 1 -> MatrixCraftingMath.STABLE_T1_OPERATIONS;
+            case 2 -> MatrixCraftingMath.STABLE_T2_OPERATIONS;
+            default -> Math.multiplyExact(MatrixCraftingMath.STABLE_T1_OPERATIONS, power);
+        };
     }
 
     public static double coolingDecay(int distance) {

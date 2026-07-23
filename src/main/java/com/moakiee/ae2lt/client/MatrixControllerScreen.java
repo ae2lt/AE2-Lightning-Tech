@@ -3,6 +3,7 @@ package com.moakiee.ae2lt.client;
 import com.moakiee.ae2lt.menu.MatrixControllerMenu;
 import com.moakiee.ae2lt.network.MatrixControllerActionPacket;
 import com.moakiee.ae2lt.logic.craft.MatrixCoreMode;
+import com.moakiee.ae2lt.logic.craft.MatrixCraftingMath;
 import com.moakiee.ae2lt.logic.craft.MatrixMultiblockScanIssue;
 import com.moakiee.ae2lt.logic.compute.ComputeTier;
 import com.moakiee.ae2lt.logic.compute.UnifiedCraftingComputeCalculator;
@@ -61,7 +62,7 @@ public class MatrixControllerScreen extends AbstractContainerScreen<MatrixContro
         boolean creative = menu.getMode() == MatrixCoreMode.CREATIVE;
         ComputeTier tier = computeTier();
         long rawDispatch = UnifiedCraftingComputeCalculator.DISPATCH_PER_UNIT
-                * (long) menu.getDispatchUnitCount();
+                * (long) menu.getThreadPower();
         long dispatchGain = tier == null ? 0L : UnifiedCraftingComputeCalculator.dispatchGain(
                 tier, menu.getAmplifierUnitCount());
         long copyGain = tier == null ? 0L : UnifiedCraftingComputeCalculator.copyGain(
@@ -71,12 +72,24 @@ public class MatrixControllerScreen extends AbstractContainerScreen<MatrixContro
                 menu.getDispatchUnitCount(), menu.getAmplifierUnitCount(), menu.getCoolingUnitCount(),
                 fixed(menu.getCoolingPower())), 12, y, 0xE6EEF5);
         y += 14;
-        drawLine(guiGraphics, Component.translatable("ae2lt.matrix.gui.gains",
-                1 + menu.getAmplifierUnitCount(), formatBudget(dispatchGain),
-                creative ? "∞" : formatBudget(copyGain)), 12, y, 0xB7C5D3);
+        drawLine(guiGraphics, menu.getMode() == MatrixCoreMode.STABLE
+                ? Component.translatable("ae2lt.matrix.gui.stable_gains",
+                        formatBudget(Math.min(MatrixCraftingMath.STABLE_OPERATION_CAP,
+                                (long) menu.getStableBaseOperations())),
+                        formatBudget(MatrixCraftingMath.STABLE_OPERATION_CAP))
+                : Component.translatable("ae2lt.matrix.gui.gains",
+                        1 + menu.getAmplifierUnitCount(), formatBudget(dispatchGain),
+                        creative ? "∞" : formatBudget(copyGain)),
+                12, y, 0xB7C5D3);
         y += 14;
-        drawLine(guiGraphics, Component.translatable("ae2lt.matrix.gui.raw_dispatch",
-                formatBudget(rawDispatch)), 12, y, 0xB7C5D3);
+        drawLine(guiGraphics, Component.translatable(
+                menu.getMode() == MatrixCoreMode.STABLE
+                        ? "ae2lt.matrix.gui.stable_base"
+                        : "ae2lt.matrix.gui.raw_dispatch",
+                formatBudget(menu.getMode() == MatrixCoreMode.STABLE
+                        ? Math.min(MatrixCraftingMath.STABLE_OPERATION_CAP,
+                                (long) menu.getStableBaseOperations())
+                        : rawDispatch)), 12, y, 0xB7C5D3);
         y += 14;
         drawLine(guiGraphics, creative
                 ? Component.translatable("ae2lt.matrix.gui.throughput_unbounded")
