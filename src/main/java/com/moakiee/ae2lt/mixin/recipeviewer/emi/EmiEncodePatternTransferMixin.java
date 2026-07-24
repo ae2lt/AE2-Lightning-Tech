@@ -21,7 +21,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-/** Captures provider metadata normally and marks the right-hand output in closed-loop mode. */
+/** Captures provider metadata normally and starts closed-loop discovery from recipe outputs. */
 @Mixin(value = EmiEncodePatternHandler.class, remap = false)
 public abstract class EmiEncodePatternTransferMixin {
     @Unique
@@ -45,6 +45,7 @@ public abstract class EmiEncodePatternTransferMixin {
             var output = EmiStackHelper.ofOutputs(emiRecipe).stream().findFirst().orElse(null);
             if (output != null && tianshuMenu.markClosedLoopPrimaryOutput(
                     appeng.api.stacks.GenericStack.wrapInItemStack(output))) {
+                tianshuMenu.autoFillClosedLoop();
                 TianshuRecipeTransferContext.clear(tianshuMenu);
                 // AE2's EMI result type is package-private, so let the normal transfer complete
                 // and restore the Tianshu tab after its mode-change packet has been queued.

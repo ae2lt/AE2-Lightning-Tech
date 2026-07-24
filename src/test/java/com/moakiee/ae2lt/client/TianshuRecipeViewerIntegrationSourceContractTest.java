@@ -65,7 +65,7 @@ class TianshuRecipeViewerIntegrationSourceContractTest {
     }
 
     @Test
-    void closedLoopTransfersMarkTheRightHandPrimaryOutputAndKeepTheClosedLoopTab() throws Exception {
+    void closedLoopTransfersMarkThePrimaryOutputAndImmediatelyStartDiscovery() throws Exception {
         String menu = Files.readString(Path.of(
                 "src/main/java/com/moakiee/ae2lt/menu/TianshuPatternEncodingTermMenu.java"));
         String jei = Files.readString(Path.of(
@@ -77,10 +77,12 @@ class TianshuRecipeViewerIntegrationSourceContractTest {
         assertTrue(menu.contains("closedLoopOutputSlots.getFirst()).setFilterTo(stack)"));
         assertTrue(jei.contains("RecipeIngredientRole.OUTPUT"));
         assertTrue(jei.contains("markClosedLoopPrimaryOutput(output)"));
+        assertTrue(jei.contains("tianshuMenu.autoFillClosedLoop()"));
         assertTrue(jei.contains("cancellable = true"));
         assertTrue(jei.contains("cir.setReturnValue(null)"));
         assertTrue(emi.contains("EmiStackHelper.ofOutputs(emiRecipe)"));
         assertTrue(emi.contains("markClosedLoopPrimaryOutput("));
+        assertTrue(emi.contains("tianshuMenu.autoFillClosedLoop()"));
         assertTrue(emi.contains("at = @At(\"RETURN\")"));
         assertTrue(emi.contains("setTianshuMode(TianshuEncodingMode.CLOSED_LOOP)"));
     }

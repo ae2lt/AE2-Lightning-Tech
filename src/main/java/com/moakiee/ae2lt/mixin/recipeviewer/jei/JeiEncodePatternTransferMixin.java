@@ -22,7 +22,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import tamaized.ae2jeiintegration.integration.modules.jei.transfer.EncodePatternTransferHandler;
 
-/** Captures provider metadata normally and marks the right-hand output in closed-loop mode. */
+/** Captures provider metadata normally and starts closed-loop discovery from recipe outputs. */
 @Mixin(value = EncodePatternTransferHandler.class, remap = false)
 public abstract class JeiEncodePatternTransferMixin {
     @Inject(
@@ -47,6 +47,7 @@ public abstract class JeiEncodePatternTransferMixin {
         if (tianshuMenu.tianshuMode == TianshuEncodingMode.CLOSED_LOOP) {
             var output = firstDisplayedItemOutput(slotsView);
             if (tianshuMenu.markClosedLoopPrimaryOutput(output)) {
+                tianshuMenu.autoFillClosedLoop();
                 TianshuRecipeTransferContext.clear(tianshuMenu);
                 cir.setReturnValue(null);
             }
