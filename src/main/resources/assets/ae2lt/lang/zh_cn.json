@@ -1105,7 +1105,7 @@
   "ae2lt.tianshu.closed_loop.detail": "详情",
   "ae2lt.tianshu.closed_loop.detail.tooltip": "打开闭环样板详情：产物角色、成员排序、外部输入、种子与设置",
   "ae2lt.tianshu.closed_loop.auto_fill": "填充",
-  "ae2lt.tianshu.closed_loop.auto_fill.tooltip": "按主产物自动查找并填充样板",
+  "ae2lt.tianshu.closed_loop.auto_fill.tooltip": "自动填充：按右侧标记的主产物从 ME 网络发现闭环成员样板\n再次点击切换候选方案（%s / %s）",
   "ae2lt.tianshu.closed_loop.primary_output_mark.tooltip": "主产物",
   "ae2lt.tianshu.closed_loop.byproduct_output.tooltip": "副产物",
   "ae2lt.tianshu.closed_loop.refill_seeds": "补种",

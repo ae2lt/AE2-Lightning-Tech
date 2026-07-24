@@ -195,7 +195,9 @@ final class TianshuClosedLoopEncodingPanel implements ICompositeWidget {
                 || menu.hasClosedLoopPrimaryOutputMark();
         cycleOutputButton.setVisibility(menu.canCycleClosedLoopOutputs());
         autoFillButton.setTooltip(Tooltip.create(Component.translatable(
-                "ae2lt.tianshu.closed_loop.auto_fill.tooltip")));
+                "ae2lt.tianshu.closed_loop.auto_fill.tooltip",
+                menu.closedLoopCandidateCount == 0 ? 0 : menu.closedLoopCandidateIndex + 1,
+                menu.closedLoopCandidateCount)));
         refillButton.active = menu.seedRefillAvailable;
         syncFields();
         updateMultiplierTooltips();

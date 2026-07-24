@@ -1105,7 +1105,7 @@
   "ae2lt.tianshu.closed_loop.detail": "Detail",
   "ae2lt.tianshu.closed_loop.detail.tooltip": "Open closed-loop details: output roles, member order, external inputs, seeds and settings",
   "ae2lt.tianshu.closed_loop.auto_fill": "Fill",
-  "ae2lt.tianshu.closed_loop.auto_fill.tooltip": "Find and fill patterns for the primary output",
+  "ae2lt.tianshu.closed_loop.auto_fill.tooltip": "Auto fill: discover member patterns in the ME network for the primary output marked on the right\nClick again to cycle candidates (%s / %s)",
   "ae2lt.tianshu.closed_loop.primary_output_mark.tooltip": "Primary output",
   "ae2lt.tianshu.closed_loop.byproduct_output.tooltip": "Byproduct",
   "ae2lt.tianshu.closed_loop.refill_seeds": "Refill Seeds",
