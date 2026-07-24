@@ -89,7 +89,8 @@ class TianshuPatternEncodingTermMenuSourceContractTest {
         assertTrue(panel.contains("ActionItems.S_CYCLE_PROCESSING_OUTPUT"));
         assertTrue(panel.contains("menu.cycleClosedLoopOutput()"));
         assertTrue(panel.contains("menu.canCycleClosedLoopOutputs()"));
-        assertTrue(layout.contains("\"closedLoopCycleOutput\""));
+        assertTrue(layout.contains(
+                "\"closedLoopCycleOutput\": { \"left\": 133, \"bottom\": 176"));
         assertFalse(menu.contains("refreshClosedLoops(source)"));
         assertFalse(menu.contains("PatternDetailsHelper.decodePattern(source"));
     }
