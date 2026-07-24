@@ -109,4 +109,22 @@ class TianshuPatternEncodingTermMenuSourceContractTest {
         assertTrue(menu.contains(
                 "if (tianshuMode != TianshuEncodingMode.CLOSED_LOOP) return ItemStack.EMPTY"));
     }
+
+    @Test
+    void globalReserveAdditionUsesAnAe2FakeSlotDiscoverableByJeiAndEmi() throws Exception {
+        String menu = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/menu/TianshuPatternEncodingTermMenu.java"));
+        String screen = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/client/TianshuGlobalReserveScreen.java"));
+        String layout = Files.readString(Path.of(
+                "src/main/resources/assets/ae2/screens/tianshu_inventory_overview.json"));
+
+        assertTrue(menu.contains("new FakeSlot(globalReserveMarkInventory, 0)"));
+        assertTrue(menu.contains(
+                "addSlot(globalReserveMarkSlot, Ae2ltSlotSemantics.TIANSHU_GLOBAL_RESERVE_MARK)"));
+        assertTrue(layout.contains("\"AE2LT_TIANSHU_GLOBAL_RESERVE_MARK\""));
+        assertTrue(screen.contains("GenericStack.fromItemStack(menu.getGlobalReserveMarkSlot().getItem())"));
+        assertTrue(screen.contains("menu.sendGlobalReserve(key, value, ReservedStockMatchMode.EXACT)"));
+        assertTrue(screen.contains("menu.getGlobalReserveMarkSlot().setFilterTo("));
+    }
 }

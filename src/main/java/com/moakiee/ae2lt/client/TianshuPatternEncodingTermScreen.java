@@ -207,6 +207,7 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
         closedLoopPanel.setVisible(closedLoop);
         setSlotsHidden(Ae2ltSlotSemantics.TIANSHU_CLOSED_LOOP_EXTERNAL_INPUT, true);
         setSlotsHidden(Ae2ltSlotSemantics.TIANSHU_CLOSED_LOOP_SEED_INPUT, true);
+        setSlotsHidden(Ae2ltSlotSemantics.TIANSHU_GLOBAL_RESERVE_MARK, true);
     }
 
     private void updateEncodingButton(AE2Button button, ProcessingPatternEncodingType type,

@@ -75,6 +75,10 @@ public final class Ae2ltSlotSemantics {
             SlotSemantics.register("AE2LT_TIANSHU_CLOSED_LOOP_EXTERNAL_INPUT", false);
     public static final SlotSemantic TIANSHU_CLOSED_LOOP_SEED_INPUT =
             SlotSemantics.register("AE2LT_TIANSHU_CLOSED_LOOP_SEED_INPUT", false);
+    // Ephemeral AE2 fake slot used by the global-reserve screen. Keeping this as a
+    // real menu slot lets AE2's JEI/EMI ghost-ingredient handlers discover it.
+    public static final SlotSemantic TIANSHU_GLOBAL_RESERVE_MARK =
+            SlotSemantics.register("AE2LT_TIANSHU_GLOBAL_RESERVE_MARK", false);
 
     // Overload Device Workbench
     public static final SlotSemantic OVERLOAD_DEVICE_WORKBENCH_DEVICE =

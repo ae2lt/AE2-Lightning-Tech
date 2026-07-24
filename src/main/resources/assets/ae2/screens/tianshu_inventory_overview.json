@@ -7,11 +7,19 @@
     "textureHeight": 256,
     "srcRect": [0, 0, 228, 246]
   },
+  "slots": {
+    "AE2LT_TIANSHU_GLOBAL_RESERVE_MARK": {
+      "left": 11,
+      "top": 208
+    }
+  },
   "widgets": {
     "back": { "left": 204, "top": -5, "width": 20, "height": 20 },
     "rules": { "left": 10, "top": 27, "width": 62, "height": 20 },
     "reserves": { "left": 76, "top": 27, "width": 62, "height": 20 },
     "search": { "left": 143, "top": 30, "width": 75, "height": 14 },
-    "scrollbar": { "left": 211, "top": 64, "width": 8, "height": 137 }
+    "scrollbar": { "left": 211, "top": 64, "width": 8, "height": 117 },
+    "reserveAmount": { "left": 35, "top": 209, "width": 82, "height": 14 },
+    "addReserve": { "left": 122, "top": 206, "width": 96, "height": 20 }
   }
 }

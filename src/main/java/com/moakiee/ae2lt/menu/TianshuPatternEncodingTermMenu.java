@@ -154,6 +154,8 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     private final AppEngInternalInventory closedLoopOutputInventory;
     private final AppEngInternalInventory closedLoopExternalInputInventory;
     private final AppEngInternalInventory closedLoopSeedInventory;
+    private final AppEngInternalInventory globalReserveMarkInventory;
+    private final FakeSlot globalReserveMarkSlot;
     private final List<AppEngSlot> closedLoopMemberSlots = new ArrayList<>();
     private final List<AppEngSlot> closedLoopOutputSlots = new ArrayList<>();
     private final List<AppEngSlot> closedLoopExternalInputSlots = new ArrayList<>();
@@ -212,6 +214,12 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         this.closedLoopOutputInventory = new AppEngInternalInventory(null, CLOSED_LOOP_OUTPUT_SLOTS, 1);
         this.closedLoopExternalInputInventory = new AppEngInternalInventory(null, CLOSED_LOOP_RESULT_SLOTS, 1);
         this.closedLoopSeedInventory = new AppEngInternalInventory(null, CLOSED_LOOP_RESULT_SLOTS, 1);
+        this.globalReserveMarkInventory = new AppEngInternalInventory(null, 1, 1);
+        this.globalReserveMarkSlot = new FakeSlot(globalReserveMarkInventory, 0);
+        globalReserveMarkSlot.x = CLOSED_LOOP_OFFSCREEN;
+        globalReserveMarkSlot.y = CLOSED_LOOP_OFFSCREEN;
+        globalReserveMarkSlot.setIcon(Icon.BACKGROUND_PRIMARY_OUTPUT);
+        addSlot(globalReserveMarkSlot, Ae2ltSlotSemantics.TIANSHU_GLOBAL_RESERVE_MARK);
         for (int i = 0; i < CLOSED_LOOP_MEMBER_SLOTS; i++) {
             var slot = new ClosedLoopMemberSlot(closedLoopMemberInventory, i);
             slot.x = CLOSED_LOOP_OFFSCREEN;
@@ -589,6 +597,10 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
 
     public List<AppEngSlot> getClosedLoopSeedSlots() {
         return closedLoopSeedSlots;
+    }
+
+    public FakeSlot getGlobalReserveMarkSlot() {
+        return globalReserveMarkSlot;
     }
 
     public long getClosedLoopMemberCopies(int slot) {

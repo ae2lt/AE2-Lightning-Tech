@@ -2,6 +2,7 @@ package com.moakiee.ae2lt.client;
 
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.AmountFormat;
+import appeng.api.stacks.GenericStack;
 import appeng.api.client.AEKeyRendering;
 import appeng.client.gui.AESubScreen;
 import appeng.client.gui.Icon;
@@ -14,6 +15,7 @@ import appeng.menu.SlotSemantics;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.InventoryMaintenanceBadge;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.InventoryMaintenanceStatus;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.ReservedStockMatchMode;
+import com.moakiee.ae2lt.menu.Ae2ltSlotSemantics;
 import com.moakiee.ae2lt.menu.TianshuPatternEncodingTermMenu;
 import com.moakiee.ae2lt.network.tianshu.MaintenanceSummarySyncPacket;
 import java.util.ArrayList;
@@ -33,12 +35,14 @@ public final class TianshuGlobalReserveScreen<M extends TianshuPatternEncodingTe
     private static final int LIST_RIGHT = 207;
     private static final int FIRST_ROW = 64;
     private static final int ROW_HEIGHT = 20;
-    private static final int VISIBLE_ROWS = 7;
+    private static final int VISIBLE_ROWS = 6;
 
     private final AETextField search;
     private final Scrollbar scrollbar;
     private final AE2Button rulesButton;
     private final AE2Button reservesButton;
+    private final AETextField reserveAmount;
+    private final AE2Button addReserveButton;
     private final boolean restoreMaintainableView;
     private View view = View.RULES;
 
@@ -55,6 +59,14 @@ public final class TianshuGlobalReserveScreen<M extends TianshuPatternEncodingTe
         rulesButton = widgets.addButton("rules", tabLabel(View.RULES), () -> selectView(View.RULES));
         reservesButton = widgets.addButton(
                 "reserves", tabLabel(View.RESERVES), () -> selectView(View.RESERVES));
+        reserveAmount = widgets.addTextField("reserveAmount");
+        reserveAmount.setMaxLength(19);
+        reserveAmount.setFilter(TianshuGlobalReserveScreen::validAddAmountDraft);
+        reserveAmount.setPlaceholder(Component.translatable(
+                "ae2lt.tianshu.reserve.add_amount"));
+        reserveAmount.setValue("1");
+        addReserveButton = widgets.addButton("addReserve",
+                Component.translatable("ae2lt.tianshu.reserve.add"), this::addMarkedReserve);
         widgets.add("back", new TabButton(
                 Icon.BACK, Component.translatable("gui.back"), ignored -> returnToParent()));
     }
@@ -65,6 +77,7 @@ public final class TianshuGlobalReserveScreen<M extends TianshuPatternEncodingTe
         // the terminal's positions so returning can restore them.
         hideSlots();
         super.init();
+        updateAddControls();
     }
 
     @Override
@@ -89,6 +102,7 @@ public final class TianshuGlobalReserveScreen<M extends TianshuPatternEncodingTe
         view = selected;
         scrollbar.setCurrentScroll(0);
         updateTabLabels();
+        updateAddControls();
     }
 
     private Component tabLabel(View tab) {
@@ -107,6 +121,53 @@ public final class TianshuGlobalReserveScreen<M extends TianshuPatternEncodingTe
         int max = Math.max(0, entries().size() - VISIBLE_ROWS);
         scrollbar.setRange(0, max, Math.max(1, VISIBLE_ROWS - 1));
         updateTabLabels();
+        updateAddControls();
+    }
+
+    private void updateAddControls() {
+        boolean visible = view == View.RESERVES;
+        reserveAmount.setVisible(visible);
+        addReserveButton.visible = visible;
+        var markSlot = menu.getGlobalReserveMarkSlot();
+        markSlot.setActive(visible);
+        setSlotsHidden(Ae2ltSlotSemantics.TIANSHU_GLOBAL_RESERVE_MARK, !visible);
+        addReserveButton.active = visible
+                && menu.maintenanceAvailable
+                && markedReserveKey() != null
+                && parsedAddAmount() != Long.MIN_VALUE;
+    }
+
+    private static boolean validAddAmountDraft(String value) {
+        if (value.isEmpty() || value.equals("-1")) return true;
+        try {
+            return Long.parseLong(value) > 0L;
+        } catch (NumberFormatException ignored) {
+            return false;
+        }
+    }
+
+    private long parsedAddAmount() {
+        try {
+            long value = Long.parseLong(reserveAmount.getValue());
+            return value == -1L || value > 0L ? value : Long.MIN_VALUE;
+        } catch (NumberFormatException ignored) {
+            return Long.MIN_VALUE;
+        }
+    }
+
+    private AEKey markedReserveKey() {
+        var marked = GenericStack.fromItemStack(menu.getGlobalReserveMarkSlot().getItem());
+        return marked != null ? marked.what() : null;
+    }
+
+    private void addMarkedReserve() {
+        var key = markedReserveKey();
+        long value = parsedAddAmount();
+        if (key == null || value == Long.MIN_VALUE || !menu.maintenanceAvailable) return;
+        menu.sendGlobalReserve(key, value, ReservedStockMatchMode.EXACT);
+        menu.getGlobalReserveMarkSlot().setFilterTo(
+                net.minecraft.world.item.ItemStack.EMPTY);
+        reserveAmount.setValue("1");
     }
 
     private List<OverviewEntry> entries() {
@@ -209,15 +270,16 @@ public final class TianshuGlobalReserveScreen<M extends TianshuPatternEncodingTe
                     114, 137, 0x6D7279);
         }
 
-        if (view == View.RESERVES && search.getValue().isBlank() && menu.maintenanceAvailable) {
+        if (view == View.RESERVES && menu.maintenanceAvailable) {
             graphics.drawString(font,
-                    Component.translatable("ae2lt.tianshu.reserve.search_to_add"),
-                    10, 211, 0x666D75, false);
+                    font.plainSubstrByWidth(Component.translatable(
+                            "ae2lt.tianshu.reserve.add_hint").getString(), 208),
+                    10, 190, 0x666D75, false);
         }
         if (menu.isMaintenanceSummaryOverflow()) {
             graphics.drawString(font,
                     Component.translatable("ae2lt.tianshu.maintenance.summary_too_large"),
-                    10, 224, 0xA73535, false);
+                    10, 232, 0xA73535, false);
         }
     }
 
