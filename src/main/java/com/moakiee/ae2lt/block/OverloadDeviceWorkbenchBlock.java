@@ -14,7 +14,10 @@ import com.moakiee.ae2lt.blockentity.OverloadDeviceWorkbenchBlockEntity;
 
 public class OverloadDeviceWorkbenchBlock extends AEBaseEntityBlock<OverloadDeviceWorkbenchBlockEntity> {
     public OverloadDeviceWorkbenchBlock() {
-        super(metalProps());
+        // The model has open sections between its base, work surface and top.
+        // Treating it as a full occluding cube makes adjacent blocks cull their
+        // entire shared face, which leaves visible holes through those sections.
+        super(metalProps().noOcclusion().forceSolidOn());
     }
 
     @Override
