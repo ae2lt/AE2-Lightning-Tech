@@ -45,6 +45,8 @@ public final class TianshuGlobalReserveScreen<M extends TianshuPatternEncodingTe
     private final AE2Button addReserveButton;
     private final boolean restoreMaintainableView;
     private View view = View.RULES;
+    private boolean awaitingRuleEditor;
+    private int requestedRuleEditorRevision;
 
     public TianshuGlobalReserveScreen(TianshuPatternEncodingTermScreen<M> parent) {
         super(parent, "/screens/tianshu_inventory_overview.json");
@@ -82,6 +84,10 @@ public final class TianshuGlobalReserveScreen<M extends TianshuPatternEncodingTe
 
     @Override
     protected void onReturnToParent() {
+        restoreParentViewMode();
+    }
+
+    private void restoreParentViewMode() {
         if (restoreMaintainableView) menu.setMaintainableView(true);
     }
 
@@ -118,6 +124,15 @@ public final class TianshuGlobalReserveScreen<M extends TianshuPatternEncodingTe
     @Override
     protected void updateBeforeRender() {
         super.updateBeforeRender();
+        if (awaitingRuleEditor
+                && menu.getMaintenanceEditorRevision() != requestedRuleEditorRevision
+                && menu.getMaintenanceEditorData() != null) {
+            awaitingRuleEditor = false;
+            restoreParentViewMode();
+            switchToScreen(new TianshuMaintenanceRuleScreen<>(
+                    getParent(), menu.getMaintenanceEditorData()));
+            return;
+        }
         int max = Math.max(0, entries().size() - VISIBLE_ROWS);
         scrollbar.setRange(0, max, Math.max(1, VISIBLE_ROWS - 1));
         updateTabLabels();
@@ -299,8 +314,7 @@ public final class TianshuGlobalReserveScreen<M extends TianshuPatternEncodingTe
                     && mouseX >= leftPos + LIST_LEFT && mouseX < leftPos + LIST_RIGHT) {
                 var summary = entries.get(index).summary();
                 if (view == View.RULES) {
-                    getParent().requestMaintenanceEditorFor(summary.key());
-                    returnToParent();
+                    requestRuleEditor(summary.key());
                 } else {
                     switchToScreen(new GlobalReserveEditScreen<>(this, summary,
                             variantsFor(summary.key())));
@@ -309,6 +323,13 @@ public final class TianshuGlobalReserveScreen<M extends TianshuPatternEncodingTe
             }
         }
         return super.mouseClicked(mouseX, mouseY, button);
+    }
+
+    private void requestRuleEditor(AEKey key) {
+        if (key == null || awaitingRuleEditor) return;
+        requestedRuleEditorRevision = menu.getMaintenanceEditorRevision();
+        awaitingRuleEditor = true;
+        menu.requestMaintenanceEditor(key);
     }
 
     @Override

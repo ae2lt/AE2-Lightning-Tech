@@ -24,4 +24,23 @@ class TianshuMaintainableViewSourceContractTest {
         assertFalse(menu.contains("MEStorageMenuAccessor"));
         assertFalse(screen.contains("craftable-only entries never leak into this view"));
     }
+
+    @Test
+    void maintenanceOverviewWaitsForRuleDataWithoutFlashingTheTerminal() throws Exception {
+        var overview = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/client/TianshuGlobalReserveScreen.java"));
+
+        assertTrue(overview.contains("private boolean awaitingRuleEditor"));
+        assertTrue(overview.contains("requestRuleEditor(summary.key())"));
+        assertTrue(overview.contains(
+                "menu.getMaintenanceEditorRevision() != requestedRuleEditorRevision"));
+        assertTrue(overview.contains("switchToScreen(new TianshuMaintenanceRuleScreen<>("));
+        assertFalse(overview.contains("getParent().requestMaintenanceEditorFor(summary.key())"));
+
+        int clickHandler = overview.indexOf("public boolean mouseClicked");
+        int rulesBranch = overview.indexOf("if (view == View.RULES)", clickHandler);
+        int reservesBranch = overview.indexOf("} else {", rulesBranch);
+        assertTrue(clickHandler >= 0 && rulesBranch > clickHandler && reservesBranch > rulesBranch);
+        assertFalse(overview.substring(rulesBranch, reservesBranch).contains("returnToParent()"));
+    }
 }
