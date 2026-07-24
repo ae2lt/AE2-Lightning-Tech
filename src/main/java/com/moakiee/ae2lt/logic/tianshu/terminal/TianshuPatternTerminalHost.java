@@ -11,6 +11,14 @@ public interface TianshuPatternTerminalHost extends IPatternTerminalMenuHost, IA
     TianshuEncodingMode getTianshuEncodingMode();
     void setTianshuEncodingMode(TianshuEncodingMode mode);
 
+    @Nullable
+    default ClosedLoopTerminalDraft getClosedLoopTerminalDraft() {
+        return null;
+    }
+
+    default void setClosedLoopTerminalDraft(@Nullable ClosedLoopTerminalDraft draft) {
+    }
+
     default List<TianshuSupercomputerPortBlockEntity> getAvailableTianshu() {
         var node = getActionableNode();
         var grid = node != null ? node.getGrid() : null;

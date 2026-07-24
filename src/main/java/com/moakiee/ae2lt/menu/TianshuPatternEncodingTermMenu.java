@@ -28,6 +28,7 @@ import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternUploadService;
 import com.moakiee.ae2lt.logic.tianshu.loop.TianshuSeedRefillService;
 import com.moakiee.ae2lt.logic.tianshu.terminal.ClosedLoopDraftStatus;
 import com.moakiee.ae2lt.logic.tianshu.terminal.ClosedLoopDraftSync;
+import com.moakiee.ae2lt.logic.tianshu.terminal.ClosedLoopTerminalDraft;
 import com.moakiee.ae2lt.logic.tianshu.terminal.SeedRefillSync;
 import com.moakiee.ae2lt.logic.tianshu.terminal.ProcessingPatternMultiplier;
 import com.moakiee.ae2lt.logic.tianshu.terminal.ProcessingPatternEncodingType;
@@ -239,6 +240,9 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
                 ? null : host.selectTianshuTarget();
         if (boundTianshuTarget != null) tianshuSelectionRevision = 1;
         this.tianshuMode = host.getTianshuEncodingMode();
+        if (!inventory.player.level().isClientSide) {
+            restoreClosedLoopDraft(host.getClosedLoopTerminalDraft());
+        }
         registerClientAction("setTianshuMode", TianshuEncodingMode.class, this::setTianshuModeServer);
         registerClientAction("multiplyProcessing", Integer.class, this::multiplyProcessingServer);
         registerClientAction("armAdvancedEncoding",
@@ -282,6 +286,13 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
             if (closedLoopDraftDirty) rebuildClosedLoopDraft();
             closedLoopSeedMultiplier = closedLoopExecutionSeedMultiplier;
             refreshClosedLoopDraftSync();
+            persistClosedLoopDraft();
+            // CLOSED_LOOP has no AE2 EncodingMode of its own. Keep the inherited menu field
+            // aligned with the logic without routing the old native mode through our override.
+            if (tianshuMode == TianshuEncodingMode.CLOSED_LOOP
+                    && getMode() != tianshuHost.getLogic().getMode()) {
+                super.setMode(tianshuHost.getLogic().getMode());
+            }
         }
         broadcastParentChanges();
         if (isServerSide()) sendMaintenanceSummaryIfNeeded();
@@ -289,6 +300,17 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
 
     private void broadcastParentChanges() {
         super.broadcastChanges();
+    }
+
+    @Override
+    public void removed(Player player) {
+        if (isServerSide()) {
+            if (closedLoopDraftDirty && tianshuMode == TianshuEncodingMode.CLOSED_LOOP) {
+                rebuildClosedLoopDraft();
+            }
+            persistClosedLoopDraft();
+        }
+        super.removed(player);
     }
 
     /** Resolves only the machine captured when this server menu opened. */
@@ -1268,6 +1290,64 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         for (int value : closedLoopOutputRoles) roles.add(value);
         closedLoopDraftSync = new com.moakiee.ae2lt.logic.tianshu.terminal.ClosedLoopDraftSync(
                 copies, roles);
+    }
+
+    private void restoreClosedLoopDraft(@Nullable ClosedLoopTerminalDraft draft) {
+        var source = tianshuHost.getLogic().getEncodedPatternInv().getStackInSlot(0);
+        if (draft == null || source.isEmpty() || !ItemStack.matches(source, draft.source())) return;
+        configuredSource = source.copy();
+        encodedClosedLoop = source.getItem() instanceof ClosedLoopPatternItem;
+        closedLoopBulkUpdating = true;
+        try {
+            for (int i = 0; i < CLOSED_LOOP_MEMBER_SLOTS; i++) {
+                closedLoopMemberInventory.setItemDirect(i, draft.members().get(i).copy());
+                closedLoopMemberCopies[i] = draft.memberCopies().get(i);
+            }
+            for (int i = 0; i < CLOSED_LOOP_OUTPUT_SLOTS; i++) {
+                closedLoopOutputInventory.setItemDirect(i, draft.outputs().get(i).copy());
+                closedLoopOutputRoles[i] = draft.outputRoles().get(i);
+            }
+        } finally {
+            closedLoopBulkUpdating = false;
+        }
+        closedLoopExecutionSeedMultiplier = draft.executionSeedMultiplier();
+        closedLoopSeedMultiplier = closedLoopExecutionSeedMultiplier;
+        closedLoopStoredTaskMultiplier = draft.storedTaskMultiplier();
+        closedLoopOriginalPatternId = draft.originalPatternId();
+        closedLoopOriginalPatternVersion = draft.originalPatternVersion();
+        closedLoopDraftRepresentsEncoded = draft.representsEncodedPattern();
+        for (int i = 0; i < CLOSED_LOOP_OUTPUT_SLOTS; i++) {
+            if (closedLoopOutputRoles[i] != 1) continue;
+            var output = GenericStack.fromItemStack(closedLoopOutputInventory.getStackInSlot(i));
+            if (output != null) closedLoopMainOutput = output.what();
+            break;
+        }
+        closedLoopDraftDirty = draft.members().stream().anyMatch(stack -> !stack.isEmpty());
+    }
+
+    private void persistClosedLoopDraft() {
+        var source = tianshuHost.getLogic().getEncodedPatternInv().getStackInSlot(0);
+        if (source.isEmpty()) {
+            tianshuHost.setClosedLoopTerminalDraft(null);
+            return;
+        }
+        var members = new ArrayList<ItemStack>(CLOSED_LOOP_MEMBER_SLOTS);
+        for (int i = 0; i < CLOSED_LOOP_MEMBER_SLOTS; i++) {
+            members.add(closedLoopMemberInventory.getStackInSlot(i).copy());
+        }
+        var copies = new ArrayList<Long>(CLOSED_LOOP_MEMBER_SLOTS);
+        for (long copiesPerCycle : closedLoopMemberCopies) copies.add(copiesPerCycle);
+        var outputs = new ArrayList<ItemStack>(CLOSED_LOOP_OUTPUT_SLOTS);
+        for (int i = 0; i < CLOSED_LOOP_OUTPUT_SLOTS; i++) {
+            outputs.add(closedLoopOutputInventory.getStackInSlot(i).copy());
+        }
+        var roles = new ArrayList<Integer>(CLOSED_LOOP_OUTPUT_SLOTS);
+        for (int role : closedLoopOutputRoles) roles.add(role);
+        tianshuHost.setClosedLoopTerminalDraft(new ClosedLoopTerminalDraft(
+                source, members, copies, outputs, roles,
+                closedLoopExecutionSeedMultiplier, closedLoopStoredTaskMultiplier,
+                closedLoopOriginalPatternId, closedLoopOriginalPatternVersion,
+                closedLoopDraftRepresentsEncoded));
     }
 
     private boolean isExecutionMemberReference(ItemStack stack) {

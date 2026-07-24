@@ -7,6 +7,7 @@ import appeng.parts.PartModel;
 import appeng.parts.encoding.PatternEncodingTerminalPart;
 import appeng.util.inv.AppEngInternalInventory;
 import com.moakiee.ae2lt.AE2LightningTech;
+import com.moakiee.ae2lt.logic.tianshu.terminal.ClosedLoopTerminalDraft;
 import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuEncodingMode;
 import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuPatternTerminalHost;
 import com.moakiee.ae2lt.menu.TianshuPatternEncodingTermMenu;
@@ -15,6 +16,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.MenuType;
+import org.jetbrains.annotations.Nullable;
 
 public final class TianshuPatternEncodingTerminalPart extends PatternEncodingTerminalPart
         implements TianshuPatternTerminalHost {
@@ -31,7 +33,9 @@ public final class TianshuPatternEncodingTerminalPart extends PatternEncodingTer
             MODEL_BASE, MODEL_ON, MODEL_STATUS_HAS_CHANNEL);
 
     private static final String TAG_MODE = "TianshuEncodingMode";
+    private static final String TAG_CLOSED_LOOP_DRAFT = "ClosedLoopDraft";
     private TianshuEncodingMode tianshuMode = TianshuEncodingMode.CRAFTING;
+    @Nullable private ClosedLoopTerminalDraft closedLoopDraft;
 
     public TianshuPatternEncodingTerminalPart(IPartItem<?> partItem) {
         super(partItem);
@@ -69,6 +73,19 @@ public final class TianshuPatternEncodingTerminalPart extends PatternEncodingTer
         }
     }
 
+    @Nullable
+    @Override
+    public ClosedLoopTerminalDraft getClosedLoopTerminalDraft() {
+        return closedLoopDraft;
+    }
+
+    @Override
+    public void setClosedLoopTerminalDraft(@Nullable ClosedLoopTerminalDraft draft) {
+        if (ClosedLoopTerminalDraft.sameState(closedLoopDraft, draft)) return;
+        closedLoopDraft = draft;
+        markForSave();
+    }
+
     @Override
     public void readFromNBT(CompoundTag data, HolderLookup.Provider registries) {
         super.readFromNBT(data, registries);
@@ -77,11 +94,19 @@ public final class TianshuPatternEncodingTerminalPart extends PatternEncodingTer
         } catch (IllegalArgumentException ignored) {
             tianshuMode = TianshuEncodingMode.CRAFTING;
         }
+        closedLoopDraft = data.contains(TAG_CLOSED_LOOP_DRAFT, net.minecraft.nbt.Tag.TAG_COMPOUND)
+                ? ClosedLoopTerminalDraft.read(data.getCompound(TAG_CLOSED_LOOP_DRAFT), registries)
+                : null;
     }
 
     @Override
     public void writeToNBT(CompoundTag data, HolderLookup.Provider registries) {
         super.writeToNBT(data, registries);
         data.putString(TAG_MODE, tianshuMode.name());
+        if (closedLoopDraft != null) {
+            data.put(TAG_CLOSED_LOOP_DRAFT, closedLoopDraft.write(registries));
+        } else {
+            data.remove(TAG_CLOSED_LOOP_DRAFT);
+        }
     }
 }
