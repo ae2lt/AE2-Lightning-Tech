@@ -41,6 +41,11 @@ final class TianshuClosedLoopPatternConfigScreen<M extends TianshuPatternEncodin
     private static final int ROLE_X = 111;
     private static final int ROLE_WIDTH = 54;
     private static final int FOOTER_TEXT_WIDTH = 168;
+    private static final int SETTINGS_FIELD_X = 96;
+    private static final int SETTINGS_FIELD_WIDTH = 69;
+    private static final int SETTINGS_EXECUTION_ROW_Y = TianshuPatternConfigLayout.HEADER_HEIGHT + 32;
+    private static final int SETTINGS_STORED_ROW_Y =
+            SETTINGS_EXECUTION_ROW_Y + TianshuPatternConfigLayout.ROW_HEIGHT;
 
     private final Scrollbar scrollbar;
     private final List<AE2Button> pageButtons;
@@ -109,9 +114,9 @@ final class TianshuClosedLoopPatternConfigScreen<M extends TianshuPatternEncodin
             outputRoles[row] = addRenderableWidget(role);
         }
 
-        executionMultiplier = numberBox(106, TianshuPatternConfigLayout.HEADER_HEIGHT + 32,
+        executionMultiplier = numberBox(SETTINGS_FIELD_X, SETTINGS_EXECUTION_ROW_Y,
                 menu.closedLoopExecutionSeedMultiplier);
-        storedMultiplier = numberBox(106, TianshuPatternConfigLayout.HEADER_HEIGHT + 64,
+        storedMultiplier = numberBox(SETTINGS_FIELD_X, SETTINGS_STORED_ROW_Y,
                 menu.closedLoopStoredTaskMultiplier);
         executionMultiplier.setResponder(ignored -> submitMultipliers());
         storedMultiplier.setResponder(ignored -> submitMultipliers());
@@ -136,7 +141,7 @@ final class TianshuClosedLoopPatternConfigScreen<M extends TianshuPatternEncodin
     }
 
     private AETextField numberBox(int x, int y, int value) {
-        var field = numberField(x, y, 59);
+        var field = numberField(x, y, SETTINGS_FIELD_WIDTH);
         field.setMaxLength(9);
         field.setFilter(TianshuClosedLoopPatternConfigScreen::isPositiveIntDraft);
         syncingFields = true;
@@ -391,10 +396,10 @@ final class TianshuClosedLoopPatternConfigScreen<M extends TianshuPatternEncodin
                 12, top + 8, 0x404040, false);
         graphics.drawString(font,
                 Component.translatable("ae2lt.tianshu.closed_loop.execution_multiplier"),
-                12, top + 34, 0x404040, false);
+                12, SETTINGS_EXECUTION_ROW_Y + 2, 0x404040, false);
         graphics.drawString(font,
                 Component.translatable("ae2lt.tianshu.closed_loop.stored_multiplier"),
-                12, top + 66, 0x404040, false);
+                12, SETTINGS_STORED_ROW_Y + 2, 0x404040, false);
     }
 
     @Override
