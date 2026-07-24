@@ -2087,7 +2087,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     private void notifyDuplicateEncodingIntercepted() {
         if (getPlayer() instanceof ServerPlayer player) {
             player.displayClientMessage(net.minecraft.network.chat.Component.translatable(
-                    "ae2lt.tianshu.encode.duplicate_blocked"), true);
+                    "ae2lt.tianshu.encode.duplicate_blocked"), false);
         }
     }
 
