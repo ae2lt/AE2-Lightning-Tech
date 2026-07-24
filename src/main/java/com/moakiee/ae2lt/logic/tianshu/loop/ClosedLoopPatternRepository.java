@@ -1,9 +1,7 @@
 package com.moakiee.ae2lt.logic.tianshu.loop;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.UUID;
 import java.util.function.IntSupplier;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
@@ -14,7 +12,7 @@ import net.minecraft.nbt.Tag;
 public final class ClosedLoopPatternRepository {
     private static final String TAG_PATTERNS = "Patterns";
     private final IntSupplier capacity;
-    private final LinkedHashMap<UUID, ClosedLoopPatternPayload> patterns = new LinkedHashMap<>();
+    private final ArrayList<ClosedLoopPatternPayload> patterns = new ArrayList<>();
 
     public ClosedLoopPatternRepository(IntSupplier capacity) {
         this.capacity = capacity;
@@ -29,43 +27,56 @@ public final class ClosedLoopPatternRepository {
     }
 
     public List<ClosedLoopPatternPayload> patterns() {
-        return List.copyOf(patterns.values());
+        return List.copyOf(patterns);
     }
 
     /** Patterns currently backed by installed warehouse capacity. Overflow stays persisted. */
     public List<ClosedLoopPatternPayload> activePatterns() {
-        return patterns.values().stream().limit(capacity()).toList();
+        return patterns.stream().limit(capacity()).toList();
     }
 
-    public ClosedLoopPatternPayload get(UUID id) {
-        return id == null ? null : patterns.get(id);
+    public ClosedLoopPatternPayload get(int index) {
+        return index >= 0 && index < patterns.size() ? patterns.get(index) : null;
     }
 
-    public PutResult put(ClosedLoopPatternPayload payload) {
-        if (payload == null) return PutResult.INVALID;
-        var previous = patterns.get(payload.patternId());
-        if (previous != null) {
-            if (payload.version() < previous.version()) return PutResult.STALE_VERSION;
-            patterns.put(payload.patternId(), payload);
-            return PutResult.UPDATED;
+    public int indexOf(ClosedLoopPatternPayload payload) {
+        if (payload == null) return -1;
+        for (int i = 0; i < patterns.size(); i++) {
+            if (patterns.get(i) == payload) return i;
         }
+        return -1;
+    }
+
+    public PutResult add(ClosedLoopPatternPayload payload) {
+        if (payload == null) return PutResult.INVALID;
         if (capacity() <= 0) return PutResult.UNAVAILABLE;
         if (patterns.size() >= capacity()) return PutResult.FULL;
-        patterns.put(payload.patternId(), payload);
+        patterns.add(payload);
         return PutResult.ADDED;
     }
 
-    public boolean remove(UUID id) {
-        return id != null && patterns.remove(id) != null;
+    public PutResult replace(
+            ClosedLoopPatternPayload current, ClosedLoopPatternPayload replacement) {
+        int index = indexOf(current);
+        if (index < 0 || replacement == null) return PutResult.INVALID;
+        patterns.set(index, replacement);
+        return PutResult.UPDATED;
     }
 
-    /** Replaces physical storage contents without applying upload/version admission rules. */
+    public boolean remove(ClosedLoopPatternPayload payload) {
+        int index = indexOf(payload);
+        if (index < 0) return false;
+        patterns.remove(index);
+        return true;
+    }
+
+    /** Replaces physical storage contents without applying normal insertion admission rules. */
     public void replaceAll(List<ClosedLoopPatternPayload> payloads) {
         patterns.clear();
         if (payloads == null) return;
         for (var payload : payloads) {
             if (payload != null && patterns.size() < capacity()) {
-                patterns.put(payload.patternId(), payload);
+                patterns.add(payload);
             }
         }
     }
@@ -76,7 +87,7 @@ public final class ClosedLoopPatternRepository {
 
     public void writeTo(CompoundTag parent, HolderLookup.Provider registries) {
         var list = new ListTag();
-        for (var pattern : patterns.values()) {
+        for (var pattern : patterns) {
             list.add(ClosedLoopPatternPayloadTagCodec.write(pattern, registries));
         }
         parent.put(TAG_PATTERNS, list);
@@ -88,7 +99,7 @@ public final class ClosedLoopPatternRepository {
         for (int i = 0; i < list.size(); i++) {
             try {
                 var payload = ClosedLoopPatternPayloadTagCodec.read(list.getCompound(i), registries);
-                patterns.put(payload.patternId(), payload);
+                patterns.add(payload);
             } catch (RuntimeException ignored) {
                 // Keep other stored patterns usable when one entry was damaged or came from an old format.
             }
@@ -100,7 +111,7 @@ public final class ClosedLoopPatternRepository {
         if (patterns.size() <= keep) return List.of();
         var overflow = new ArrayList<ClosedLoopPatternPayload>(patterns.size() - keep);
         int index = 0;
-        for (var pattern : patterns.values()) {
+        for (var pattern : patterns) {
             if (index++ >= keep) overflow.add(pattern);
         }
         return List.copyOf(overflow);
@@ -111,7 +122,6 @@ public final class ClosedLoopPatternRepository {
         UPDATED,
         FULL,
         UNAVAILABLE,
-        STALE_VERSION,
         INVALID
     }
 }

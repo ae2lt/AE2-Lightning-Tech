@@ -7,6 +7,7 @@ import com.moakiee.ae2lt.block.TianshuSupercomputerControllerBlock;
 import com.moakiee.ae2lt.blockentity.TianshuSeedStorageBlockEntity;
 import com.moakiee.ae2lt.blockentity.TianshuSupercomputerControllerBlockEntity;
 import com.moakiee.ae2lt.blockentity.TianshuSupercomputerPortBlockEntity;
+import com.moakiee.ae2lt.logic.tianshu.TianshuFunctionProfile;
 import com.moakiee.ae2lt.logic.tianshu.TianshuMultiblockScanIssue;
 import com.moakiee.ae2lt.logic.tianshu.TianshuMultiblockScanner;
 import com.moakiee.ae2lt.logic.tianshu.TianshuMultiblockTemplate;
@@ -397,7 +398,9 @@ public final class TianshuJdbHarness {
             var functions = controller.getFunctionProfile();
             require(functions.supportsInventoryMaintenance(), direction + " maintenance was not built into main core");
             require(functions.supportsClosedLoopPatterns(), direction + " closed loops were not built into main core");
-            require(functions.closedLoopPatternCapacity() == 64, direction + " pattern capacity mismatch");
+            require(functions.closedLoopPatternCapacity()
+                            == TianshuFunctionProfile.PATTERNS_PER_CLOSED_LOOP_STORAGE,
+                    direction + " pattern capacity mismatch");
             require(functions.closedLoopSeedStorageCount() == 1,
                     direction + " seed drive count mismatch");
 
@@ -446,13 +449,12 @@ public final class TianshuJdbHarness {
                                     com.moakiee.ae2lt.logic.tianshu.maintenance.ReservedStockMatchMode.IGNORE_SECONDARY, 2)
                             == com.moakiee.ae2lt.logic.tianshu.maintenance.ReservedStockRepository.PutResult.ADDED,
                     direction + " reserve insert failed");
-            var patternId = java.util.UUID.randomUUID();
-            var storedPattern = new ClosedLoopPatternPayload(patternId, 1L,
+            var storedPattern = new ClosedLoopPatternPayload(
                     List.of(new ClosedLoopMemberPattern(new SourcePatternSnapshot(
                             ResourceLocation.fromNamespaceAndPath("ae2", "encoded_processing_pattern"), null, null), 1)),
                     List.of(new appeng.api.stacks.GenericStack(seed, 1)), List.of(),
                     List.of(new appeng.api.stacks.GenericStack(seed, 1)), 1, 1, true);
-            require(port.getClosedLoopPatternRepository().put(storedPattern)
+            require(port.getClosedLoopPatternRepository().add(storedPattern)
                             == com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternRepository.PutResult.ADDED,
                     direction + " loop pattern insert failed");
 
@@ -506,7 +508,7 @@ public final class TianshuJdbHarness {
                 require(controller.isFormed(), direction + " loop-storage removal deformed cycle " + cycle);
                 require(port.getClosedLoopPatternRepository().capacity() == 0,
                         direction + " loop capacity remained cycle " + cycle);
-                require(port.getClosedLoopPatternRepository().get(patternId) != null,
+                require(port.getClosedLoopPatternRepository().patterns().contains(storedPattern),
                         direction + " stored loop lost cycle " + cycle);
                 level.setBlock(loopStorage, ModBlocks.CLOSED_LOOP_PATTERN_STORAGE.get().defaultBlockState(), Block.UPDATE_ALL);
                 controller.scanNow();
@@ -514,7 +516,8 @@ public final class TianshuJdbHarness {
                 require(port.getFunctionProfile().supportsClosedLoopSeeds()
                                 && port.getFunctionProfile().supportsInventoryMaintenance()
                                 && port.getFunctionProfile().supportsClosedLoopPatterns()
-                                && port.getClosedLoopPatternRepository().capacity() == 64,
+                                && port.getClosedLoopPatternRepository().capacity()
+                                        == TianshuFunctionProfile.PATTERNS_PER_CLOSED_LOOP_STORAGE,
                         direction + " functional restore incomplete cycle " + cycle);
             }
 

@@ -78,6 +78,6 @@ class ControllerOwnedRuntimeArchitectureTest {
         assertTrue(controller.contains(
                 "closedLoopDependencyChanges.shouldRecheck(grid.getCraftingService())"));
         assertTrue(controller.contains(
-                "available.patternIds().equals(publishedClosedLoopPatternIds)"));
+                "available.patternDefinitions().equals(publishedClosedLoopPatternDefinitions)"));
     }
 }

@@ -2,15 +2,12 @@ package com.moakiee.ae2lt.logic.tianshu.loop;
 
 import appeng.api.stacks.GenericStack;
 import java.util.ArrayList;
-import java.util.UUID;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 
 public final class ClosedLoopPatternPayloadTagCodec {
-    private static final String TAG_ID = "Id";
-    private static final String TAG_VERSION = "Version";
     private static final String TAG_MEMBERS = "Members";
     private static final String TAG_MEMBER_PATTERN = "Pattern";
     private static final String TAG_MEMBER_COPIES = "Copies";
@@ -26,8 +23,6 @@ public final class ClosedLoopPatternPayloadTagCodec {
 
     public static CompoundTag write(ClosedLoopPatternPayload payload, HolderLookup.Provider registries) {
         var tag = new CompoundTag();
-        tag.putUUID(TAG_ID, payload.patternId());
-        tag.putLong(TAG_VERSION, payload.version());
         var members = new ListTag();
         for (var member : payload.memberPatterns()) {
             members.add(writeMember(member));
@@ -51,7 +46,6 @@ public final class ClosedLoopPatternPayloadTagCodec {
     }
 
     public static ClosedLoopPatternPayload read(CompoundTag tag, HolderLookup.Provider registries) {
-        if (!tag.hasUUID(TAG_ID)) throw new IllegalArgumentException("closed-loop payload is missing id");
         var members = new ArrayList<ClosedLoopMemberPattern>();
         var memberTags = tag.getList(TAG_MEMBERS, Tag.TAG_COMPOUND);
         if (memberTags.size() > ClosedLoopPatternAnalyzer.MAX_MEMBERS) {
@@ -62,8 +56,6 @@ public final class ClosedLoopPatternPayloadTagCodec {
         }
         var seedMultipliers = readSeedMultipliers(tag);
         return new ClosedLoopPatternPayload(
-                tag.getUUID(TAG_ID),
-                Math.max(1L, tag.getLong(TAG_VERSION)),
                 members,
                 readStacks(tag.getList(TAG_SEEDS, Tag.TAG_COMPOUND), registries),
                 readStacks(tag.getList(TAG_INPUTS, Tag.TAG_COMPOUND), registries),

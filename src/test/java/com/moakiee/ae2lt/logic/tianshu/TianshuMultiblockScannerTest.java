@@ -187,7 +187,7 @@ class TianshuMultiblockScannerTest {
         assertTrue(profile.supportsClosedLoopSeeds());
         assertEquals(com.moakiee.ae2lt.logic.tianshu.maintenance.InventoryMaintenanceLimits.MAX_ENTRIES,
                 profile.maintenanceRuleCapacity());
-        assertEquals(64, profile.closedLoopPatternCapacity());
+        assertEquals(36, profile.closedLoopPatternCapacity());
         assertEquals(List.of(TianshuMultiblockScanner.worldPos(
                         CONTROLLER, patternStorageLocal, Direction.WEST)),
                 attempt.result().patternStoragePositions());

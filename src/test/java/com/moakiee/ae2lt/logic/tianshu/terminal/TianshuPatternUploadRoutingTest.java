@@ -44,7 +44,7 @@ class TianshuPatternUploadRoutingTest {
         assertCraftingGroup("neoecoae", "crafting_system_l4");
         assertCraftingGroup("neoecoae", "crafting_system_l6");
         assertCraftingGroup("neoecoae", "crafting_system_l9");
-        assertCraftingGroup("ae2lt", "matter_warping_matrix_port");
+        assertCraftingGroup("ae2lt", "matter_warping_matrix_controller");
 
         assertFalse(TianshuPatternUploadRouting.isCraftingUploadGroupId(
                 ResourceLocation.fromNamespaceAndPath("ae2", "pattern_provider")));
@@ -95,6 +95,63 @@ class TianshuPatternUploadRoutingTest {
                 "!= TianshuPatternUploadRouting.Route.PROCESSING_PROVIDER"));
         assertTrue(matrixStorage.contains(
                 "return details instanceof IMolecularAssemblerSupportedPattern"));
+    }
+
+    @Test
+    void duplicateFilteringInterceptsEncodingAndCanBeDisabledByTheClient() throws Exception {
+        String menu = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/menu/TianshuPatternEncodingTermMenu.java"));
+        String duplicateFilter = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/logic/tianshu/terminal/"
+                        + "PatternEncodingDuplicateFilter.java"));
+        String clientConfig = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/config/AE2LTClientConfig.java"));
+        String settingsScreen = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/client/TianshuTerminalSettingsScreen.java"));
+
+        assertTrue(menu.contains(
+                "registerClientAction(\"encodeTianshu\", Boolean.class, "
+                        + "this::encodeServerWithOptions)"));
+        assertTrue(menu.contains("sendClientAction(\"encodeTianshu\","));
+        assertTrue(menu.contains("previewAe2EncodingCandidate()"));
+        assertTrue(menu.contains("shouldInterceptDuplicateEncoding(candidate, true)"));
+        assertTrue(menu.contains(
+                "route == TianshuPatternUploadRouting.Route.INVALID"));
+        assertTrue(clientConfig.contains(
+                ".define(\"interceptDuplicatePatternEncoding\", true)"));
+        assertTrue(settingsScreen.contains("toggleDuplicateEncoding"));
+        assertTrue(duplicateFilter.contains("ItemStack.isSameItemSameComponents(stored, candidate)"));
+        assertTrue(duplicateFilter.contains("readClosedLoopPayload(candidate, level)"));
+        assertTrue(duplicateFilter.contains("sameClosedLoopPayload("));
+        assertTrue(duplicateFilter.contains("left.pattern().fingerprint()"));
+        assertTrue(duplicateFilter.contains(
+                "Objects.equals(stored.getDefinition(), candidate.getDefinition())"));
+
+        int processingUpload = menu.indexOf(
+                "public void uploadTianshuPatternToTarget(ServerPlayer player");
+        int uploadWriter = menu.indexOf("private void uploadToProvider", processingUpload);
+        assertFalse(menu.substring(processingUpload, uploadWriter)
+                .contains("containsUploadedPattern"));
+    }
+
+    @Test
+    void closedLoopIdentityIsNotPersistedInThePayloadOrRepository() throws Exception {
+        String payload = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/logic/tianshu/loop/"
+                        + "ClosedLoopPatternPayload.java"));
+        String codec = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/logic/tianshu/loop/"
+                        + "ClosedLoopPatternPayloadTagCodec.java"));
+        String identity = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/logic/tianshu/loop/"
+                        + "ClosedLoopPatternIdentity.java"));
+
+        assertFalse(payload.contains("UUID patternId"));
+        assertFalse(payload.contains("long version"));
+        assertFalse(codec.contains("putUUID("));
+        assertFalse(codec.contains("TAG_VERSION"));
+        assertTrue(identity.contains("SourcePatternSnapshot"));
+        assertTrue(identity.contains("UUID.nameUUIDFromBytes"));
     }
 
     private static void assertCraftingGroup(String namespace, String path) {

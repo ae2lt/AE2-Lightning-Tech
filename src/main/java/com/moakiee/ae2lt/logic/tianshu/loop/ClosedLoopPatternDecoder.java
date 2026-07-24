@@ -62,6 +62,9 @@ public final class ClosedLoopPatternDecoder implements IPatternDetailsDecoder {
                 Ae2ClosedLoopPatternDetails.collectAcceptedSeedVariants(
                         decodedMembers, memberFlows, seedAmounts.keySet(),
                         acceptedVariants, fuzzySeeds);
+                var rootDefinition = AEItemKey.of(
+                        item.createStack(payload, level.registryAccess()));
+                if (rootDefinition == null) return null;
                 boolean singleSeedInputPerMember =
                         Ae2ClosedLoopPatternDetails.isSharedSeedPoolSafe(
                                 ClosedLoopPatternAnalyzer.hasSingleSeedInputPerMember(memberFlows),
@@ -71,7 +74,8 @@ public final class ClosedLoopPatternDecoder implements IPatternDetailsDecoder {
                         delegate,
                         Ae2ClosedLoopPatternDetails.memberSeedAmounts(
                                 seedAmounts, memberFlow.inputSeed().keySet()),
-                        cycleKeys, payload.patternId(),
+                        cycleKeys, ClosedLoopPatternIdentity.runtimeGroupId(
+                                rootDefinition, level.registryAccess()),
                         singleSeedInputPerMember,
                         memberFlow.inputSeedBySlot(),
                         payload.memberPatterns().size() == 1, what, executionMember);

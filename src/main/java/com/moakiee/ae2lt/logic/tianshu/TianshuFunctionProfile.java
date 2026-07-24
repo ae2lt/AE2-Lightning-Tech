@@ -4,7 +4,7 @@ package com.moakiee.ae2lt.logic.tianshu;
 public record TianshuFunctionProfile(
         int closedLoopPatternStorageCount,
         int closedLoopSeedStorageCount) {
-    public static final int PATTERNS_PER_CLOSED_LOOP_STORAGE = 64;
+    public static final int PATTERNS_PER_CLOSED_LOOP_STORAGE = 36;
 
     public TianshuFunctionProfile {
         if (closedLoopPatternStorageCount < 0

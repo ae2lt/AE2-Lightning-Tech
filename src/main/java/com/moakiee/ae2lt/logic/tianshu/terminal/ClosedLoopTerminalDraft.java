@@ -2,8 +2,6 @@ package com.moakiee.ae2lt.logic.tianshu.terminal;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
-import java.util.UUID;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -25,8 +23,6 @@ public record ClosedLoopTerminalDraft(
         List<Integer> outputRoles,
         int executionSeedMultiplier,
         int storedTaskMultiplier,
-        @Nullable UUID originalPatternId,
-        long originalPatternVersion,
         boolean representsEncodedPattern) {
     private static final String TAG_SOURCE = "Source";
     private static final String TAG_MEMBERS = "Members";
@@ -35,8 +31,6 @@ public record ClosedLoopTerminalDraft(
     private static final String TAG_OUTPUT_ROLES = "OutputRoles";
     private static final String TAG_EXECUTION_MULTIPLIER = "ExecutionSeedMultiplier";
     private static final String TAG_STORED_MULTIPLIER = "StoredTaskMultiplier";
-    private static final String TAG_ORIGINAL_ID = "OriginalPatternId";
-    private static final String TAG_ORIGINAL_VERSION = "OriginalPatternVersion";
     private static final String TAG_REPRESENTS_ENCODED = "RepresentsEncodedPattern";
     private static final String TAG_SLOT = "Slot";
 
@@ -65,7 +59,6 @@ public record ClosedLoopTerminalDraft(
         if (executionSeedMultiplier < 1 || storedTaskMultiplier < 1) {
             throw new IllegalArgumentException("invalid closed-loop multiplier");
         }
-        originalPatternVersion = Math.max(0L, originalPatternVersion);
     }
 
     public CompoundTag write(HolderLookup.Provider registries) {
@@ -77,8 +70,6 @@ public record ClosedLoopTerminalDraft(
         tag.putIntArray(TAG_OUTPUT_ROLES, outputRoles.stream().mapToInt(Integer::intValue).toArray());
         tag.putInt(TAG_EXECUTION_MULTIPLIER, executionSeedMultiplier);
         tag.putInt(TAG_STORED_MULTIPLIER, storedTaskMultiplier);
-        if (originalPatternId != null) tag.putUUID(TAG_ORIGINAL_ID, originalPatternId);
-        tag.putLong(TAG_ORIGINAL_VERSION, originalPatternVersion);
         tag.putBoolean(TAG_REPRESENTS_ENCODED, representsEncodedPattern);
         return tag;
     }
@@ -108,8 +99,6 @@ public record ClosedLoopTerminalDraft(
                     roles,
                     Math.max(1, tag.getInt(TAG_EXECUTION_MULTIPLIER)),
                     Math.max(1, tag.getInt(TAG_STORED_MULTIPLIER)),
-                    tag.hasUUID(TAG_ORIGINAL_ID) ? tag.getUUID(TAG_ORIGINAL_ID) : null,
-                    tag.getLong(TAG_ORIGINAL_VERSION),
                     tag.getBoolean(TAG_REPRESENTS_ENCODED));
         } catch (RuntimeException ignored) {
             return null;
@@ -130,8 +119,6 @@ public record ClosedLoopTerminalDraft(
                 && left.outputRoles.equals(right.outputRoles)
                 && left.executionSeedMultiplier == right.executionSeedMultiplier
                 && left.storedTaskMultiplier == right.storedTaskMultiplier
-                && Objects.equals(left.originalPatternId, right.originalPatternId)
-                && left.originalPatternVersion == right.originalPatternVersion
                 && left.representsEncodedPattern == right.representsEncodedPattern;
     }
 

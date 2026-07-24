@@ -5,7 +5,8 @@ import appeng.api.crafting.PatternDetailsHelper;
 import com.moakiee.ae2lt.item.ClosedLoopPatternItem;
 import com.moakiee.thunderbolt.ae2.overload.pattern.SourcePatternSnapshot;
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -160,7 +161,8 @@ public final class ClosedLoopPatternFlattener {
     private static final class ExpansionState {
         private final MemberResolver resolver;
         private final List<RawLeaf> leaves = new ArrayList<>();
-        private final Set<java.util.UUID> activePatternIds = new HashSet<>();
+        private final Set<ClosedLoopPatternPayload> activePayloads =
+                Collections.newSetFromMap(new IdentityHashMap<>());
         private int expandedNodes;
         private Status failure;
 
@@ -213,7 +215,7 @@ public final class ClosedLoopPatternFlattener {
                 return;
             }
             var payload = resolved.nestedPayload();
-            if (!activePatternIds.add(payload.patternId())) {
+            if (!activePayloads.add(payload)) {
                 failure = Status.CYCLIC_REFERENCE;
                 return;
             }
@@ -223,7 +225,7 @@ public final class ClosedLoopPatternFlattener {
                     if (failure != null) return;
                 }
             } finally {
-                activePatternIds.remove(payload.patternId());
+                activePayloads.remove(payload);
             }
         }
     }

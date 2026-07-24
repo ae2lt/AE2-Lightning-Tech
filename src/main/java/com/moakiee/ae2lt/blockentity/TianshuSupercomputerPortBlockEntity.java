@@ -70,7 +70,8 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
     private final IActionSource actionSource = new MachineSource(getMainNode()::getNode);
     private final TianshuTerminalPatternInventory terminalPatternInventory =
             new TianshuTerminalPatternInventory();
-    private final List<UUID> terminalPatternSlots = new java.util.ArrayList<>();
+    private final List<ClosedLoopPatternPayload> terminalPatternSlots =
+            new java.util.ArrayList<>();
     private static final int BINDING_CHECK_INTERVAL_TICKS = 20;
     private BlockPos controllerPos;
     private UUID boundMachineId;
@@ -340,8 +341,8 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
         var capacity = getFunctionProfile().closedLoopPatternCapacity();
         var stored = getClosedLoopPatternRepository();
         return new PatternContainerGroup(
-                AEItemKey.of(ModBlocks.TIANSHU_SUPERCOMPUTER_PORT.get()),
-                ModBlocks.TIANSHU_SUPERCOMPUTER_PORT.get().getName(),
+                AEItemKey.of(ModBlocks.CLOSED_LOOP_PATTERN_STORAGE.get()),
+                ModBlocks.CLOSED_LOOP_PATTERN_STORAGE.get().getName(),
                 List.of(Component.translatable(
                         "ae2lt.tianshu.terminal.tooltip",
                         stored != null ? stored.activePatterns().size() : 0,
@@ -358,7 +359,7 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
 
     /**
      * AE2 keeps terminal slot indexes stable while swapping an item. The repository itself is a
-     * compact ordered map, so this view keeps only transient UUID references for empty slots;
+     * compact ordered list, so this view keeps only transient payload references for empty slots;
      * payload data and persistence remain owned by the controller repository.
      */
     private final class TianshuTerminalPatternInventory extends BaseInternalInventory {
@@ -387,20 +388,19 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
             var current = payloadAt(slotIndex);
             if (stack == null || stack.isEmpty()) {
                 if (current == null) return;
-                repository.remove(current.patternId());
+                repository.remove(current);
                 terminalPatternSlots.set(slotIndex, null);
                 notifyPatternsChanged();
                 return;
             }
             var payload = readValidPayload(stack);
-            if (payload == null || containsDifferentId(repository, payload, slotIndex)) return;
-            if (current != null && !current.patternId().equals(payload.patternId())) {
-                repository.remove(current.patternId());
-            }
-            var result = repository.put(payload);
+            if (payload == null) return;
+            var result = current == null
+                    ? repository.add(payload)
+                    : repository.replace(current, payload);
             if (result == ClosedLoopPatternRepository.PutResult.ADDED
                     || result == ClosedLoopPatternRepository.PutResult.UPDATED) {
-                terminalPatternSlots.set(slotIndex, payload.patternId());
+                terminalPatternSlots.set(slotIndex, payload);
                 notifyPatternsChanged();
             }
         }
@@ -414,13 +414,11 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
             var payload = readValidPayload(stack);
             if (payload == null) return stack;
             syncSlots(repository);
-            if (repository.size() >= repository.capacity()
-                    || containsId(repository, payload.patternId())) return stack;
+            if (repository.size() >= repository.capacity()) return stack;
             if (!simulate) {
-                var result = repository.put(payload);
-                if (result != ClosedLoopPatternRepository.PutResult.ADDED
-                        && result != ClosedLoopPatternRepository.PutResult.UPDATED) return stack;
-                terminalPatternSlots.set(slot, payload.patternId());
+                var result = repository.add(payload);
+                if (result != ClosedLoopPatternRepository.PutResult.ADDED) return stack;
+                terminalPatternSlots.set(slot, payload);
                 notifyPatternsChanged();
             }
             return stack.getCount() <= 1 ? ItemStack.EMPTY : stack.copyWithCount(stack.getCount() - 1);
@@ -438,7 +436,7 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
             if (payload == null) return ItemStack.EMPTY;
             var extracted = getStackInSlot(slot);
             if (!simulate) {
-                repository.remove(payload.patternId());
+                repository.remove(payload);
                 terminalPatternSlots.set(slot, null);
                 notifyPatternsChanged();
             }
@@ -460,8 +458,8 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
             var repository = getClosedLoopPatternRepository();
             if (repository == null || slot < 0 || slot >= repository.capacity()) return null;
             syncSlots(repository);
-            var id = terminalPatternSlots.get(slot);
-            return id != null ? repository.get(id) : null;
+            var payload = terminalPatternSlots.get(slot);
+            return repository.indexOf(payload) >= 0 ? payload : null;
         }
 
         private ClosedLoopPatternPayload readValidPayload(ItemStack stack) {
@@ -478,18 +476,6 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
             if (controller != null) controller.closedLoopPatternsChanged();
         }
 
-        private boolean containsId(ClosedLoopPatternRepository repository, UUID id) {
-            return repository.get(id) != null;
-        }
-
-        private boolean containsDifferentId(
-                ClosedLoopPatternRepository repository, ClosedLoopPatternPayload payload, int slot) {
-            var existing = repository.get(payload.patternId());
-            var current = payloadAt(slot);
-            return existing != null
-                    && (current == null || !current.patternId().equals(payload.patternId()));
-        }
-
         private void syncSlots(ClosedLoopPatternRepository repository) {
             int capacity = repository.capacity();
             while (terminalPatternSlots.size() < capacity) terminalPatternSlots.add(null);
@@ -497,18 +483,27 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
                 terminalPatternSlots.remove(terminalPatternSlots.size() - 1);
             }
             var active = repository.activePatterns();
-            var activeIds = new java.util.HashSet<UUID>();
-            for (var pattern : active) activeIds.add(pattern.patternId());
             for (int i = 0; i < terminalPatternSlots.size(); i++) {
-                var id = terminalPatternSlots.get(i);
-                if (id != null && !activeIds.contains(id)) terminalPatternSlots.set(i, null);
+                var pattern = terminalPatternSlots.get(i);
+                if (pattern != null && !containsReference(active, pattern)) {
+                    terminalPatternSlots.set(i, null);
+                }
             }
             for (var pattern : active) {
-                if (terminalPatternSlots.contains(pattern.patternId())) continue;
+                if (containsReference(terminalPatternSlots, pattern)) continue;
                 int free = terminalPatternSlots.indexOf(null);
                 if (free < 0) break;
-                terminalPatternSlots.set(free, pattern.patternId());
+                terminalPatternSlots.set(free, pattern);
             }
+        }
+
+        private boolean containsReference(
+                List<ClosedLoopPatternPayload> patterns,
+                ClosedLoopPatternPayload candidate) {
+            for (var pattern : patterns) {
+                if (pattern == candidate) return true;
+            }
+            return false;
         }
     }
 

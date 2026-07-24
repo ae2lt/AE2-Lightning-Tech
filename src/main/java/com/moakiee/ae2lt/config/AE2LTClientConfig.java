@@ -8,6 +8,7 @@ import net.neoforged.neoforge.common.ModConfigSpec;
 public final class AE2LTClientConfig {
     public static final ModConfigSpec SPEC;
     private static final ModConfigSpec.EnumValue<TianshuUploadTrigger> TIANSHU_UPLOAD_TRIGGER;
+    private static final ModConfigSpec.BooleanValue TIANSHU_INTERCEPT_DUPLICATE_ENCODING;
     private static final ModConfigSpec.ConfigValue<List<? extends String>> TIANSHU_UPLOAD_ALIASES;
 
     static {
@@ -16,6 +17,9 @@ public final class AE2LTClientConfig {
         TIANSHU_UPLOAD_TRIGGER = builder
                 .comment("Modifier condition that starts pattern upload after encoding")
                 .defineEnum("uploadTrigger", TianshuUploadTrigger.NO_SHIFT);
+        TIANSHU_INTERCEPT_DUPLICATE_ENCODING = builder
+                .comment("Cancel encoding when the same pattern already exists on the ME network")
+                .define("interceptDuplicatePatternEncoding", true);
         TIANSHU_UPLOAD_ALIASES = builder
                 .comment("Pattern output id to pattern-provider alias mappings (output=alias)")
                 .defineListAllowEmpty("uploadAliases", List.of(),
@@ -36,6 +40,15 @@ public final class AE2LTClientConfig {
     public static void setUploadTrigger(TianshuUploadTrigger trigger) {
         if (trigger == null) return;
         TIANSHU_UPLOAD_TRIGGER.set(trigger);
+        if (SPEC.isLoaded()) SPEC.save();
+    }
+
+    public static boolean interceptDuplicatePatternEncoding() {
+        return TIANSHU_INTERCEPT_DUPLICATE_ENCODING.get();
+    }
+
+    public static void setInterceptDuplicatePatternEncoding(boolean enabled) {
+        TIANSHU_INTERCEPT_DUPLICATE_ENCODING.set(enabled);
         if (SPEC.isLoaded()) SPEC.save();
     }
 

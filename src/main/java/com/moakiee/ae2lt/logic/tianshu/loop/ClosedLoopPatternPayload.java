@@ -4,12 +4,9 @@ import appeng.api.stacks.GenericStack;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
-import java.util.UUID;
 
 /** Immutable encoded definition of one contracted closed-loop production node. */
 public record ClosedLoopPatternPayload(
-        UUID patternId,
-        long version,
         List<ClosedLoopMemberPattern> memberPatterns,
         List<GenericStack> seeds,
         List<GenericStack> externalInputs,
@@ -19,24 +16,7 @@ public record ClosedLoopPatternPayload(
         boolean enabled) {
     public static final int MAX_NET_OUTPUTS = 9;
 
-    /** Binary/source compatibility for integrations compiled against the single multiplier API. */
-    @Deprecated
-    public ClosedLoopPatternPayload(
-            UUID patternId,
-            long version,
-            List<ClosedLoopMemberPattern> memberPatterns,
-            List<GenericStack> seeds,
-            List<GenericStack> externalInputs,
-            List<GenericStack> netOutputs,
-            int seedMultiplier,
-            boolean enabled) {
-        this(patternId, version, memberPatterns, seeds, externalInputs, netOutputs,
-                seedMultiplier, 1, enabled);
-    }
-
     public ClosedLoopPatternPayload {
-        patternId = Objects.requireNonNull(patternId, "patternId");
-        if (version < 1) throw new IllegalArgumentException("closed-loop pattern version must be positive");
         memberPatterns = copyMembers(memberPatterns);
         seeds = copyStacks(seeds, "seeds");
         externalInputs = copyStacks(externalInputs, "externalInputs");
@@ -95,13 +75,13 @@ public record ClosedLoopPatternPayload(
                 && storedTaskMultiplier == newStoredTaskMultiplier) {
             return this;
         }
-        return new ClosedLoopPatternPayload(patternId, version + 1, memberPatterns, seeds,
+        return new ClosedLoopPatternPayload(memberPatterns, seeds,
                 externalInputs, netOutputs, newExecutionSeedMultiplier, newStoredTaskMultiplier, enabled);
     }
 
     public ClosedLoopPatternPayload withEnabled(boolean newEnabled) {
         if (enabled == newEnabled) return this;
-        return new ClosedLoopPatternPayload(patternId, version + 1, memberPatterns, seeds,
+        return new ClosedLoopPatternPayload(memberPatterns, seeds,
                 externalInputs, netOutputs, executionSeedMultiplier, storedTaskMultiplier, newEnabled);
     }
 
