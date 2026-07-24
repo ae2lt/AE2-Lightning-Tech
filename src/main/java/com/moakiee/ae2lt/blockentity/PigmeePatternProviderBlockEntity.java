@@ -9,17 +9,21 @@ import appeng.api.config.Actionable;
 import appeng.api.crafting.IPatternDetails;
 import appeng.api.crafting.PatternDetailsHelper;
 import appeng.api.implementations.blockentities.ICraftingMachine;
+import appeng.api.implementations.blockentities.PatternContainerGroup;
 import appeng.api.inventories.InternalInventory;
 import appeng.api.networking.GridFlags;
+import appeng.api.networking.IGrid;
 import appeng.api.networking.IManagedGridNode;
 import appeng.api.networking.crafting.ICraftingProvider;
 import appeng.api.networking.security.IActionSource;
 import appeng.api.orientation.BlockOrientation;
+import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.GenericStack;
 import appeng.api.stacks.KeyCounter;
 import appeng.api.util.AECableType;
 import appeng.blockentity.grid.AENetworkedBlockEntity;
 import appeng.helpers.InterfaceLogicHost;
+import appeng.helpers.patternprovider.PatternContainer;
 import appeng.helpers.patternprovider.PatternProviderLogicHost;
 import appeng.helpers.patternprovider.PatternProviderTarget;
 import appeng.me.helpers.MachineSource;
@@ -48,7 +52,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
 
 public final class PigmeePatternProviderBlockEntity extends AENetworkedBlockEntity
-        implements InternalInventoryHost, ICraftingProvider {
+        implements InternalInventoryHost, ICraftingProvider, PatternContainer {
     public static final int PATTERN_SLOT_COUNT = 3;
 
     private static final String TAG_PATTERNS = "Patterns";
@@ -96,6 +100,31 @@ public final class PigmeePatternProviderBlockEntity extends AENetworkedBlockEnti
 
     public InternalInventory getPatternInventory() {
         return patternInventory;
+    }
+
+    @Override
+    public IGrid getGrid() {
+        return getMainNode().getGrid();
+    }
+
+    @Override
+    public InternalInventory getTerminalPatternInventory() {
+        return patternInventory;
+    }
+
+    @Override
+    public long getTerminalSortOrder() {
+        return (long) worldPosition.getZ() << 24
+                ^ (long) worldPosition.getX() << 8
+                ^ worldPosition.getY();
+    }
+
+    @Override
+    public PatternContainerGroup getTerminalGroup() {
+        return new PatternContainerGroup(
+                AEItemKey.of(ModBlocks.PIGMEE_PATTERN_PROVIDER.get()),
+                getDisplayName(),
+                List.of());
     }
 
     public PigmeePatternProviderReturnInventory getReturnInventory() {
