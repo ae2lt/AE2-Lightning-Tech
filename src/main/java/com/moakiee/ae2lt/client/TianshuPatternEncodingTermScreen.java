@@ -416,6 +416,12 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
 
     @Override
     protected void renderTooltip(GuiGraphics graphics, int x, int y) {
+        var multiplierTooltip = closedLoopPanel.getMultiplierTooltipAt(
+                x - leftPos, y - topPos);
+        if (menu.getCarried().isEmpty() && multiplierTooltip != null) {
+            drawTooltip(graphics, x, y, multiplierTooltip);
+            return;
+        }
         if (menu.getCarried().isEmpty()
                 && closedLoopPanel.isMouseOverStatus(x - leftPos, y - topPos)) {
             drawTooltip(graphics, x, y, closedLoopPanel.buildStatusTooltip());

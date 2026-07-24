@@ -33,6 +33,7 @@ import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import org.jetbrains.annotations.Nullable;
 
 /** Inline closed-loop editor shown in the terminal's encoding area, mirroring the processing panel. */
 final class TianshuClosedLoopEncodingPanel implements ICompositeWidget {
@@ -54,6 +55,7 @@ final class TianshuClosedLoopEncodingPanel implements ICompositeWidget {
     private static final int STORED_LABEL_Y = 34;
     private static final int STATUS_Y = 58;
     private static final int STATUS_HEIGHT = 7;
+    private static final int LABEL_HEIGHT = 7;
     private static final float LABEL_SCALE = 0.6F;
     private static final int VISIBLE_ROWS = 3;
 
@@ -251,6 +253,20 @@ final class TianshuClosedLoopEncodingPanel implements ICompositeWidget {
                 && mouseY >= y + STATUS_Y && mouseY < y + STATUS_Y + STATUS_HEIGHT;
     }
 
+    @Nullable
+    List<Component> getMultiplierTooltipAt(int mouseX, int mouseY) {
+        if (!visible || mouseX < x + CONTROL_X || mouseX >= x + CONTROL_X + CONTROL_WIDTH) {
+            return null;
+        }
+        if (mouseY >= y + EXEC_LABEL_Y && mouseY < y + EXEC_LABEL_Y + LABEL_HEIGHT) {
+            return executionField.getTooltipMessage();
+        }
+        if (mouseY >= y + STORED_LABEL_Y && mouseY < y + STORED_LABEL_Y + LABEL_HEIGHT) {
+            return storedField.getTooltipMessage();
+        }
+        return null;
+    }
+
     List<Component> buildStatusTooltip() {
         var lines = new ArrayList<Component>();
         lines.add(statusText());
@@ -330,14 +346,18 @@ final class TianshuClosedLoopEncodingPanel implements ICompositeWidget {
     private void updateMultiplierTooltips() {
         executionField.setTooltipMessage(multiplierTooltip(
                 executionField,
+                "ae2lt.tianshu.closed_loop.execution_multiplier",
                 "ae2lt.tianshu.terminal.closed_loop.execution_seed_multiplier.tooltip"));
         storedField.setTooltipMessage(multiplierTooltip(
                 storedField,
+                "ae2lt.tianshu.closed_loop.stored_multiplier",
                 "ae2lt.tianshu.terminal.closed_loop.stored_task_multiplier.tooltip"));
     }
 
-    private static List<Component> multiplierTooltip(AETextField field, String descriptionKey) {
+    private static List<Component> multiplierTooltip(
+            AETextField field, String titleKey, String descriptionKey) {
         return List.of(
+                Component.translatable(titleKey),
                 Component.translatable(
                         "ae2lt.tianshu.terminal.closed_loop.multiplier.current_value",
                         field.getValue()).withStyle(ChatFormatting.AQUA),
