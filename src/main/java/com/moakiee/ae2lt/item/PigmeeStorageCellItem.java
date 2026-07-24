@@ -7,13 +7,13 @@ import net.minecraft.world.item.ItemStack;
 /**
  * A tiny Pigmee-themed item storage cell.
  *
- * <p>It follows AE2's 1k item cell rules, but exposes only 256 total bytes and one
- * item type.</p>
+ * <p>It follows AE2's 1k item cell rules, but exposes only 256 total bytes and
+ * sixteen item types.</p>
  */
 public final class PigmeeStorageCellItem extends BasicStorageCell {
     public static final int TOTAL_BYTES = 256;
     public static final int BYTES_PER_TYPE = 8;
-    public static final int TOTAL_TYPES = 1;
+    public static final int TOTAL_TYPES = 16;
     public static final double IDLE_DRAIN = 0.5;
 
     public PigmeeStorageCellItem(Properties properties) {
