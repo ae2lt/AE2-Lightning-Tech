@@ -37,7 +37,7 @@
     "id": "ae2lt:railgun_module_overload_execution",
     "count": 1
   },
-  "totalEnergy": 200000000,
+  "totalEnergy": 100000000,
   "lightningCost": 1024,
   "lightningTier": "extreme_high_voltage"
 }

@@ -55,7 +55,7 @@
     "id": "ae2lt:matter_warping_matrix_overload_main_core",
     "count": 1
   },
-  "totalEnergy": 256000000,
+  "totalEnergy": 120000000,
   "lightningCost": 16384,
   "lightningTier": "extreme_high_voltage"
 }

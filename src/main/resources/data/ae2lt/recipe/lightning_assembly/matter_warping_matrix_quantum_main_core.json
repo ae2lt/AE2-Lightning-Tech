@@ -49,7 +49,7 @@
     "id": "ae2lt:matter_warping_matrix_quantum_main_core",
     "count": 1
   },
-  "totalEnergy": 128000000,
+  "totalEnergy": 96000000,
   "lightningCost": 1024,
   "lightningTier": "extreme_high_voltage"
 }
