@@ -54,8 +54,24 @@ public final class CtmFaceGeometry {
 
     /** Full-face quad using the whole {@code base} sprite (UV 0..1). */
     public static BakedQuad fullFace(Direction side, TextureAtlasSprite sprite) {
+        return fullFace(side, sprite, 0.0F);
+    }
+
+    /** Full-face quad moved outward along the face normal. */
+    public static BakedQuad fullFace(Direction side, TextureAtlasSprite sprite, float offset) {
         Vector3f[] c = CORNERS.get(side);
-        return quad(side, c[0], c[1], c[2], c[3], sprite, 0f, 0f, 1f, 1f);
+        Vec3i n = side.getNormal();
+        return quad(
+                side,
+                offset(c[0], n, offset),
+                offset(c[1], n, offset),
+                offset(c[2], n, offset),
+                offset(c[3], n, offset),
+                sprite,
+                0f,
+                0f,
+                1f,
+                1f);
     }
 
     /** One quadrant sub-quad. {@code sq,tq} select the face quarter. */
@@ -81,6 +97,13 @@ public final class CtmFaceGeometry {
                 tl.x + s * (tr.x - tl.x) + t * (bl.x - tl.x),
                 tl.y + s * (tr.y - tl.y) + t * (bl.y - tl.y),
                 tl.z + s * (tr.z - tl.z) + t * (bl.z - tl.z));
+    }
+
+    private static Vector3f offset(Vector3f point, Vec3i normal, float amount) {
+        return new Vector3f(
+                point.x + normal.getX() * amount,
+                point.y + normal.getY() * amount,
+                point.z + normal.getZ() * amount);
     }
 
     private static BakedQuad quad(Direction side, Vector3f tl, Vector3f bl, Vector3f br, Vector3f tr,

@@ -2,6 +2,8 @@ package com.moakiee.ae2lt.client.ctm;
 
 import java.util.function.Function;
 
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.client.renderer.block.model.ItemOverrides;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.resources.model.BakedModel;
@@ -40,8 +42,11 @@ public class ConnectedTextureGeometry implements IUnbakedGeometry<ConnectedTextu
             Function<Material, TextureAtlasSprite> spriteGetter, ModelState modelState, ItemOverrides overrides) {
         TextureAtlasSprite base = spriteGetter.apply(context.getMaterial("base"));
         TextureAtlasSprite ctm = spriteGetter.apply(context.getMaterial("ctm"));
+        @Nullable TextureAtlasSprite overlay = context.hasMaterial("overlay")
+                ? spriteGetter.apply(context.getMaterial("overlay"))
+                : null;
         ConnectionPredicate predicate = ConnectionPredicates.get(connectionId);
-        return new ConnectedTextureBakedModel(base, ctm, predicate, renderTypes,
+        return new ConnectedTextureBakedModel(base, ctm, overlay, predicate, renderTypes,
                 ambientOcclusion, gui3d, usesBlockLight);
     }
 }

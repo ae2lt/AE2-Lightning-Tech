@@ -6,8 +6,10 @@ import java.util.Map;
 import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.block.MatrixFormedBlock;
 import com.moakiee.ae2lt.block.MatrixMultiblockComponentBlock;
+import com.moakiee.ae2lt.block.TianshuSupercomputingUnitBlock;
 import com.moakiee.ae2lt.block.TianshuSupercomputerStructureBlock;
 import com.moakiee.ae2lt.logic.craft.MatrixMultiblockComponent;
+import com.moakiee.ae2lt.registry.ModBlocks;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -82,10 +84,29 @@ public final class ConnectionPredicates {
         }
     };
 
+    /** Formed Tianshu cooling positions connect across cooling and closed-loop storage block types. */
+    public static final ConnectionPredicate TIANSHU_FORMED_COOLING_COMPATIBLE = new ConnectionPredicate() {
+        @Override
+        public boolean isActive(BlockAndTintGetter level, BlockPos pos, BlockState self) {
+            return isFormedTianshuCoolingComponent(self);
+        }
+
+        @Override
+        public boolean connects(BlockAndTintGetter level, BlockPos pos, BlockState self, Direction dir) {
+            return isFormedTianshuCoolingComponent(level.getBlockState(pos.relative(dir)));
+        }
+
+        @Override
+        public boolean connects(BlockAndTintGetter level, BlockPos pos, BlockState self, BlockPos neighbourPos) {
+            return isFormedTianshuCoolingComponent(level.getBlockState(neighbourPos));
+        }
+    };
+
     static {
         register(rl("same_block"), SAME_BLOCK);
         register(rl("matrix_formed_same_block"), MATRIX_FORMED_SAME_BLOCK);
         register(rl("tianshu_formed_same_block"), TIANSHU_FORMED_SAME_BLOCK);
+        register(rl("tianshu_formed_cooling_compatible"), TIANSHU_FORMED_COOLING_COMPATIBLE);
     }
 
     private ConnectionPredicates() {
@@ -116,5 +137,17 @@ public final class ConnectionPredicates {
         return state.getBlock() instanceof TianshuSupercomputerStructureBlock
                 && state.hasProperty(TianshuSupercomputerStructureBlock.FORMED)
                 && state.getValue(TianshuSupercomputerStructureBlock.FORMED);
+    }
+
+    private static boolean isFormedTianshuCoolingComponent(BlockState state) {
+        if (!state.hasProperty(TianshuSupercomputerStructureBlock.FORMED)
+                || !state.getValue(TianshuSupercomputerStructureBlock.FORMED)) {
+            return false;
+        }
+        if (state.is(ModBlocks.PHASE_CHANGE_COOLING_UNIT.get())) {
+            return true;
+        }
+        return state.getBlock() instanceof TianshuSupercomputingUnitBlock unit
+                && unit.component().isClosedLoopStorage();
     }
 }

@@ -16,7 +16,7 @@ import net.neoforged.neoforge.client.model.geometry.IGeometryLoader;
  * {@code ae2lt:same_block}), {@code render_type} (default translucent),
  * {@code ambientocclusion}, {@code gui3d}, and {@code uses_block_light}.
  * Textures come from the standard {@code textures} block (keys {@code base},
- * {@code ctm}).
+ * {@code ctm}, and optional transparent {@code overlay}).
  */
 public class ConnectedTextureLoader implements IGeometryLoader<ConnectedTextureGeometry> {
 

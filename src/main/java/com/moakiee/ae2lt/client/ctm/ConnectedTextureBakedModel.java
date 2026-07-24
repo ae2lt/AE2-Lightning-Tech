@@ -32,10 +32,13 @@ public class ConnectedTextureBakedModel implements IDynamicBakedModel {
 
     public static final ModelProperty<CtmConnectionState> CONNECTION = new ModelProperty<>();
     private static final Direction[] DIRECTIONS = Direction.values();
+    private static final float OVERLAY_OFFSET = 1.0F / 1024.0F;
     private static int DEBUG_COUNT = 0;
 
     private final TextureAtlasSprite baseSprite;
     private final TextureAtlasSprite ctmSprite;
+    @Nullable
+    private final TextureAtlasSprite overlaySprite;
     private final ConnectionPredicate predicate;
     private final ChunkRenderTypeSet renderTypes;
     private final boolean ambientOcclusion;
@@ -43,10 +46,12 @@ public class ConnectedTextureBakedModel implements IDynamicBakedModel {
     private final boolean usesBlockLight;
 
     public ConnectedTextureBakedModel(TextureAtlasSprite baseSprite, TextureAtlasSprite ctmSprite,
-            ConnectionPredicate predicate, ChunkRenderTypeSet renderTypes,
+            @Nullable TextureAtlasSprite overlaySprite, ConnectionPredicate predicate,
+            ChunkRenderTypeSet renderTypes,
             boolean ambientOcclusion, boolean gui3d, boolean usesBlockLight) {
         this.baseSprite = baseSprite;
         this.ctmSprite = ctmSprite;
+        this.overlaySprite = overlaySprite;
         this.predicate = predicate;
         this.renderTypes = renderTypes;
         this.ambientOcclusion = ambientOcclusion;
@@ -107,7 +112,12 @@ public class ConnectedTextureBakedModel implements IDynamicBakedModel {
         CtmConnectionState conn = extraData.get(CONNECTION);
         if (conn == null) {
             // Inactive (unformed) or no level (item) -> plain base face.
-            return List.of(CtmFaceGeometry.fullFace(side, baseSprite));
+            if (overlaySprite == null) {
+                return List.of(CtmFaceGeometry.fullFace(side, baseSprite));
+            }
+            return List.of(
+                    CtmFaceGeometry.fullFace(side, baseSprite),
+                    CtmFaceGeometry.fullFace(side, overlaySprite, OVERLAY_OFFSET));
         }
         if (conn.culled(side)) {
             return List.of();
@@ -121,6 +131,9 @@ public class ConnectedTextureBakedModel implements IDynamicBakedModel {
                 TextureAtlasSprite sprite = tile.source() == CtmTileSelector.Source.BASE ? baseSprite : ctmSprite;
                 quads.add(CtmFaceGeometry.quadrant(side, sq, tq, tile, sprite));
             }
+        }
+        if (overlaySprite != null) {
+            quads.add(CtmFaceGeometry.fullFace(side, overlaySprite, OVERLAY_OFFSET));
         }
         return quads;
     }
