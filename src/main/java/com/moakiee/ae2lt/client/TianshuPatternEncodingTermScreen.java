@@ -520,20 +520,24 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
                     .dest(slot.x, slot.y)
                     .blit(graphics);
         }
-        super.renderSlot(graphics, slot);
 
         if (isClosedLoopMemberSlot(slot) && slot.hasItem()) {
+            // Render only the pattern icon here. The standard slot decoration would add the
+            // display stack's amount (1) in the same corner as the per-cycle copy count below.
+            graphics.renderItem(slot.getItem().copyWithCount(1), slot.x, slot.y);
             long copies = Math.max(1L,
                     menu.closedLoopDraftSync.copies(slot.getContainerSlot()));
             if (copies > 1L) {
                 var poseStack = graphics.pose();
                 poseStack.pushPose();
-                // Slots render their item at z=100; keep the custom amount above it.
+                // Items render at z=100; keep the authoritative per-cycle count above the icon.
                 poseStack.translate(0, 0, 100);
                 StackSizeRenderer.renderSizeLabel(
                         graphics, font, slot.x, slot.y, Long.toString(copies), false);
                 poseStack.popPose();
             }
+        } else {
+            super.renderSlot(graphics, slot);
         }
 
         if (shouldShowCraftableIndicatorForSlot(slot)) {
