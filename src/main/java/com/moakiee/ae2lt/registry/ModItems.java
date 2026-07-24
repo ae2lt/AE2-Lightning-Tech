@@ -22,6 +22,7 @@ import com.moakiee.ae2lt.item.OverloadedFilterComponentItem;
 import com.moakiee.ae2lt.item.OverloadedFrequencyCardItem;
 import com.moakiee.ae2lt.item.OverloadedPatternProviderUpgradeItem;
 import com.moakiee.ae2lt.item.OverloadedWirelessConnectorItem;
+import com.moakiee.ae2lt.item.TianshuWirelessPatternEncodingTerminalItem;
 import com.moakiee.ae2lt.item.NightVisionSubmoduleItem;
 import com.moakiee.ae2lt.item.WaterBreathingSubmoduleItem;
 import com.moakiee.ae2lt.item.ResistanceSubmoduleItem;
@@ -49,6 +50,7 @@ import com.moakiee.ae2lt.celestweave.ArmorEnergyRules;
 import com.moakiee.ae2lt.celestweave.module.ResistanceSubmodule;
 import com.moakiee.ae2lt.part.OverloadedCablePart;
 import com.moakiee.ae2lt.part.TianshuPatternEncodingTerminalPart;
+import com.moakiee.ae2lt.integration.ae2wtlib.Ae2wtlibIntegration;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Rarity;
@@ -281,6 +283,11 @@ public final class ModItems {
                     () -> new PartItem<>(new Item.Properties(),
                             TianshuPatternEncodingTerminalPart.class,
                             TianshuPatternEncodingTerminalPart::new));
+
+    public static final DeferredItem<TianshuWirelessPatternEncodingTerminalItem>
+            TIANSHU_WIRELESS_PATTERN_ENCODING_TERMINAL = ITEMS.register(
+                    "wireless_tianshu_pattern_encoding_terminal",
+                    Ae2wtlibIntegration::terminal);
 
     public static final DeferredItem<Item> OVERLOADED_FILTER_COMPONENT = ITEMS.registerItem(
             "overloaded_filter_component",

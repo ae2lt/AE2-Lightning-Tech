@@ -31,6 +31,7 @@ import com.moakiee.ae2lt.menu.PigmeeMolecularAssemblerMenu;
 import com.moakiee.ae2lt.menu.TeslaCoilMenu;
 import com.moakiee.ae2lt.menu.TianshuSupercomputerControllerMenu;
 import com.moakiee.ae2lt.menu.TianshuPatternEncodingTermMenu;
+import com.moakiee.ae2lt.menu.TianshuWirelessPatternEncodingTermMenu;
 import com.moakiee.ae2lt.menu.TianshuSeedStorageMenu;
 import com.moakiee.ae2lt.menu.hub.DeviceHubMenu;
 import com.moakiee.ae2lt.registry.ModBlocks;
@@ -65,6 +66,8 @@ public class ModScreens {
         event.register(MatrixPortMenu.TYPE, MatrixPortScreen::new);
         event.register(TianshuSupercomputerControllerMenu.TYPE, TianshuSupercomputerControllerScreen::new);
         event.register(TianshuPatternEncodingTermMenu.TYPE, ModScreens::createTianshuPatternEncodingTermScreen);
+        event.register(TianshuWirelessPatternEncodingTermMenu.TYPE,
+                ModScreens::createTianshuWirelessPatternEncodingTermScreen);
         event.register(TianshuSeedStorageMenu.TYPE, ModScreens::createTianshuSeedStorageScreen);
     }
 
@@ -72,6 +75,13 @@ public class ModScreens {
             TianshuPatternEncodingTermMenu menu, Inventory inv, Component title) {
         var style = StyleManager.loadStyleDoc("/screens/terminals/tianshu_pattern_encoding_terminal.json");
         return new TianshuPatternEncodingTermScreen(menu, inv, title, style);
+    }
+
+    private static TianshuWirelessPatternEncodingTermScreen createTianshuWirelessPatternEncodingTermScreen(
+            TianshuWirelessPatternEncodingTermMenu menu, Inventory inv, Component title) {
+        var style = StyleManager.loadStyleDoc(
+                "/screens/wireless_tianshu_pattern_encoding_terminal.json");
+        return new TianshuWirelessPatternEncodingTermScreen(menu, inv, title, style);
     }
 
     private static TianshuSeedStorageScreen createTianshuSeedStorageScreen(

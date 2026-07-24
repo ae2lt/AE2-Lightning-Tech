@@ -89,6 +89,16 @@ versionRange = "[19.2.17,19.3)"
 ordering = "AFTER"
 side = "BOTH"
 
+# The embedded AE2WTLib API owns the AddTerminalEvent item-registry callback.
+# Load AE2LT before it so our terminal-registration handler is installed before
+# the API consumes that one-shot callback list.
+[[dependencies."${mod_id}"]]
+modId = "ae2wtlib_api"
+type = "required"
+versionRange = "*"
+ordering = "BEFORE"
+side = "BOTH"
+
 # Thunderbolt Core hosts the extracted AE2 infrastructure (fast crafting planner, channel/batch/cell/
 # matrix algorithms). Required: ae2lt's mixins and logic depend on its classes at runtime.
 [[dependencies."${mod_id}"]]

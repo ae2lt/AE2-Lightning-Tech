@@ -184,7 +184,9 @@ public class TextureToggleButton extends Button implements ITooltip {
         // 水晶催化器 Mode { CRYSTAL=off, DUST=on }。
         CRYSTAL_CATALYZER_MODE(texture("catalyzer_crystal_mode"), texture("catalyzer_dust_mode")),
         // 频率配置入口。机器与无线终端共用同一图标和工具栏样式。
-        FREQUENCY_BIND(texture("frequency_select"));
+        FREQUENCY_BIND(texture("frequency_select")),
+        // 天枢有线与无线样板编码终端共用的库存维持入口。
+        INVENTORY_MAINTENANCE(texture("inventory_maintenance"));
 
         private final List<ResourceLocation> textures;
 

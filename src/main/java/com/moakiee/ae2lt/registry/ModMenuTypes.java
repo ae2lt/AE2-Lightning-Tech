@@ -19,6 +19,7 @@ import com.moakiee.ae2lt.menu.PigmeeMolecularAssemblerMenu;
 import com.moakiee.ae2lt.menu.TeslaCoilMenu;
 import com.moakiee.ae2lt.menu.TianshuSupercomputerControllerMenu;
 import com.moakiee.ae2lt.menu.TianshuPatternEncodingTermMenu;
+import com.moakiee.ae2lt.menu.TianshuWirelessPatternEncodingTermMenu;
 import com.moakiee.ae2lt.menu.TianshuSeedStorageMenu;
 import com.moakiee.ae2lt.menu.FrequencyMenu;
 import com.moakiee.ae2lt.menu.hub.DeviceHubMenu;
@@ -136,6 +137,11 @@ public final class ModMenuTypes {
             TIANSHU_PATTERN_ENCODING_TERMINAL = MENU_TYPES.register(
                     "tianshu_pattern_encoding_terminal",
                     () -> TianshuPatternEncodingTermMenu.TYPE);
+
+    public static final DeferredHolder<MenuType<?>, MenuType<TianshuWirelessPatternEncodingTermMenu>>
+            TIANSHU_WIRELESS_PATTERN_ENCODING_TERMINAL = MENU_TYPES.register(
+                    "wireless_tianshu_pattern_encoding_terminal",
+                    () -> TianshuWirelessPatternEncodingTermMenu.TYPE);
 
     private ModMenuTypes() {
     }

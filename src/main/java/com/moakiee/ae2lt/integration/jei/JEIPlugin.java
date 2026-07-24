@@ -21,6 +21,7 @@ import com.moakiee.ae2lt.integration.jei.category.OverloadProcessingCategory;
 import com.moakiee.ae2lt.integration.jei.category.TeslaCoilCategory;
 import com.moakiee.ae2lt.integration.jei.compat.ae2jeiintegration.AE2JeiIntegrationCompat;
 import com.moakiee.ae2lt.menu.TianshuPatternEncodingTermMenu;
+import com.moakiee.ae2lt.menu.TianshuWirelessPatternEncodingTermMenu;
 import com.moakiee.ae2lt.integration.jei.multiblock.MultiblockStructureRecipes;
 import com.moakiee.ae2lt.registry.ModBlocks;
 import mezz.jei.api.IModPlugin;
@@ -173,6 +174,11 @@ public class JEIPlugin implements IModPlugin {
         registration.addUniversalRecipeTransferHandler(new EncodePatternTransferHandler<>(
                 TianshuPatternEncodingTermMenu.TYPE,
                 TianshuPatternEncodingTermMenu.class,
+                helper,
+                visibility));
+        registration.addUniversalRecipeTransferHandler(new EncodePatternTransferHandler<>(
+                TianshuWirelessPatternEncodingTermMenu.TYPE,
+                TianshuWirelessPatternEncodingTermMenu.class,
                 helper,
                 visibility));
 

@@ -14,6 +14,7 @@ import com.moakiee.ae2lt.registry.ModRecipeTypes;
 import com.moakiee.ae2lt.registry.ModSounds;
 import com.moakiee.ae2lt.registry.ModStructureTypes;
 import com.moakiee.ae2lt.registry.LegacyRegistryAliases;
+import com.moakiee.ae2lt.integration.ae2wtlib.Ae2wtlibIntegration;
 import com.moakiee.ae2lt.config.AE2LTCommonConfig;
 import com.moakiee.ae2lt.config.AE2LTConfigMigration;
 import com.moakiee.ae2lt.blockentity.AtmosphericIonizerBlockEntity;
@@ -63,12 +64,15 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 import appeng.api.AECapabilities;
 import appeng.api.crafting.PatternDetailsHelper;
 import appeng.api.networking.IInWorldGridNodeHost;
+import appeng.api.features.GridLinkables;
 import appeng.api.storage.StorageCells;
 import appeng.api.upgrades.Upgrades;
 import appeng.block.AEBaseEntityBlock;
 import appeng.blockentity.AEBaseBlockEntity;
 import appeng.blockentity.crafting.IMolecularAssemblerSupportedPattern;
 import appeng.core.definitions.AEItems;
+import appeng.items.tools.powered.WirelessTerminalItem;
+import appeng.items.tools.powered.powersink.PoweredItemCapabilities;
 
 import com.moakiee.ae2lt.api.AE2LTCapabilities;
 import com.moakiee.ae2lt.api.frequency.FrequencyApi;
@@ -139,6 +143,7 @@ public class AE2LightningTech {
                         output.accept(ModBlocks.TIANSHU_SUPERCOMPUTER_CONTROLLER);
                         output.accept(ModBlocks.TIANSHU_SUPERCOMPUTER_PORT);
                         output.accept(ModItems.TIANSHU_PATTERN_ENCODING_TERMINAL);
+                        output.accept(ModItems.TIANSHU_WIRELESS_PATTERN_ENCODING_TERMINAL);
                         output.accept(ModBlocks.BASELINE_SUPERCOMPUTING_UNIT);
                         output.accept(ModBlocks.QUANTUM_SUPERCOMPUTING_UNIT);
                         output.accept(ModBlocks.OVERLOAD_SUPERCOMPUTING_UNIT);
@@ -314,6 +319,9 @@ public class AE2LightningTech {
 
     public AE2LightningTech(IEventBus modEventBus, ModContainer modContainer) {
         AE2LTConfigMigration.runIfNeeded();
+        // AddTerminalEvent is consumed during item registration. Install the callback now,
+        // while its ItemWT instance remains deferred until that registry is writable.
+        Ae2wtlibIntegration.registerTerminal();
         ModFumos.register();
         LegacyRegistryAliases.register();
         ModBlocks.BLOCKS.register(modEventBus);
@@ -433,6 +441,12 @@ public class AE2LightningTech {
                 ModItems.CELESTWEAVE_CORE.get(),
                 ModItems.CELESTWEAVE_CONDUIT.get(),
                 ModItems.CELESTWEAVE_STRIDE.get());
+
+        event.registerItem(
+                Capabilities.EnergyStorage.ITEM,
+                (stack, context) -> new PoweredItemCapabilities(
+                        stack, ModItems.TIANSHU_WIRELESS_PATTERN_ENCODING_TERMINAL.get()),
+                ModItems.TIANSHU_WIRELESS_PATTERN_ENCODING_TERMINAL.get());
 
         event.registerBlockEntity(
                 Capabilities.ItemHandler.BLOCK,
@@ -956,11 +970,15 @@ public class AE2LightningTech {
             registerAppliedFluxInductionCardCompat();
             registerOverloadTntDispenseBehavior();
 
-            // ae2wtlib: make the overloaded frequency card installable into
-            // wireless terminal upgrade slots. Guarded so the integration class
-            // (which references ae2wtlib API types) is only loaded when present.
+            Ae2wtlibIntegration.verifyTerminalRegistration();
+            GridLinkables.register(
+                    ModItems.TIANSHU_WIRELESS_PATTERN_ENCODING_TERMINAL.get(),
+                    WirelessTerminalItem.LINKABLE_HANDLER);
+
+            // Full AE2WTLib integration: make the overloaded frequency card installable
+            // in wireless terminal upgrade slots when the implementation mod is present.
             if (net.neoforged.fml.ModList.get().isLoaded("ae2wtlib")) {
-                com.moakiee.ae2lt.integration.ae2wtlib.Ae2wtlibIntegration.register();
+                Ae2wtlibIntegration.register();
             }
 
         });

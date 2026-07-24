@@ -1074,6 +1074,8 @@
   "ae2lt.tianshu.issue.unexpected_block": "模板空气区域中存在无关方块",
   "ae2lt.tianshu.issue.unknown": "结构不完整",
   "item.ae2lt.tianshu_pattern_encoding_terminal": "天枢样板编码终端",
+  "item.ae2lt.wireless_tianshu_pattern_encoding_terminal": "无线天枢样板编码终端",
+  "key.ae2.wireless_tianshu_pattern_encoding_terminal": "打开无线天枢样板编码终端",
   "ae2lt.tianshu.terminal.tooltip": "闭环样板：%s / %s",
   "ae2lt.tianshu.terminal.mode.closed_loop": "闭环样板",
   "ae2lt.tianshu.terminal.encoding.advanced": "高级编码：配置各输入的插入面，完成后下一次编码产出高级样板",

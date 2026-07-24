@@ -326,16 +326,14 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
         }
     }
 
-    private final class MaintenanceOverviewButton extends IconButton {
+    private final class MaintenanceOverviewButton extends TextureToggleButton {
         private MaintenanceOverviewButton() {
-            super(ignored -> switchToScreen(new TianshuGlobalReserveScreen<>(
-                    TianshuPatternEncodingTermScreen.this)));
-            setMessage(Component.translatable("ae2lt.tianshu.maintenance.overview_button"));
-        }
-
-        @Override
-        protected Icon getIcon() {
-            return Icon.S_STORAGE;
+            super(ButtonType.INVENTORY_MAINTENANCE,
+                    ignored -> switchToScreen(new TianshuGlobalReserveScreen<>(
+                            TianshuPatternEncodingTermScreen.this)));
+            var label = Component.translatable("ae2lt.tianshu.maintenance.overview_button");
+            setMessage(label);
+            setTooltipAt(0, List.of(label));
         }
     }
 

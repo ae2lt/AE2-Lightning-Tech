@@ -195,7 +195,12 @@ dependencies {
     jdbProbeModPaths.each { runtimeOnly files(it) }
 
     implementation "curse.maven:applied-energistics-2-223794:7027323"
-    implementation "de.mari_023:ae2wtlib_api:${ae2wtlib_version}"
+    // The API is embedded so the wireless terminal item remains loadable when the optional
+    // AE2WTLib implementation is not installed. This is the integration pattern used by
+    // AE2WTLib's other external terminal mods.
+    jarJar implementation("de.mari_023:ae2wtlib_api:${ae2wtlib_version}") {
+        transitive = false
+    }
     compileOnly "top.theillusivec4.curios:curios-neoforge:${curios_version}:api"
     runtimeOnly "top.theillusivec4.curios:curios-neoforge:${curios_version}"
     runtimeOnly("de.mari_023:ae2wtlib:${ae2wtlib_version}") {

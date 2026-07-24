@@ -1,6 +1,5 @@
 package com.moakiee.ae2lt.client.ae2wtlib;
 
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.fml.ModList;
 
@@ -12,6 +11,8 @@ import com.moakiee.ae2lt.client.TextureToggleButton;
 import com.moakiee.ae2lt.item.OverloadedFrequencyCardItem;
 import com.moakiee.ae2lt.mixin.client.AEBaseScreenAccessor;
 
+import de.mari_023.ae2wtlib.api.terminal.IUniversalTerminalCapable;
+
 /**
  * Adds a "configure frequency card" button to ae2wtlib wireless terminal
  * screens. Called from an {@link AEBaseScreen} init mixin before AE2 populates
@@ -21,8 +22,8 @@ import com.moakiee.ae2lt.mixin.client.AEBaseScreenAccessor;
  * <p>The button is appended to the bottom of AE2's native left vertical toolbar
  * (the terminal already stacks its own buttons from the top), styled like the
  * toolbar frequency button on the mod's machines instead of floating over the
- * GUI. Only the menu type's namespace is inspected, so this class does not need
- * to reference ae2wtlib types and is safe to keep registered unconditionally.</p>
+ * GUI. AE2WTLib's screen capability marks both native and externally registered
+ * wireless terminals, including universal-terminal variants.</p>
  */
 public final class FrequencyTerminalButton {
 
@@ -34,9 +35,7 @@ public final class FrequencyTerminalButton {
             return false;
         }
 
-        var type = screen.getMenu().getType();
-        var key = BuiltInRegistries.MENU.getKey(type);
-        return key != null && key.getNamespace().equals("ae2wtlib");
+        return screen instanceof IUniversalTerminalCapable;
     }
 
     public static ToolbarButtons addToToolbar(AEBaseScreen<?> screen) {
