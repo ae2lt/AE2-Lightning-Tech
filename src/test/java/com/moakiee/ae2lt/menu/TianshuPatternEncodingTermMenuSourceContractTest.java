@@ -40,4 +40,21 @@ class TianshuPatternEncodingTermMenuSourceContractTest {
         assertFalse(part.contains("MEStorage getInventory()"));
         assertFalse(part.contains("synchronizingMenuInventory"));
     }
+
+    @Test
+    void processingPatternConfigurationPersistsAndTracksTheCurrentDraft() throws Exception {
+        String menu = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/menu/TianshuPatternEncodingTermMenu.java"));
+        String host = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/logic/tianshu/terminal/TianshuPatternTerminalHost.java"));
+        String part = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/part/TianshuPatternEncodingTerminalPart.java"));
+
+        assertTrue(menu.contains("restoreProcessingDraft("));
+        assertTrue(menu.contains("persistProcessingDraft()"));
+        assertTrue(menu.contains("refreshProcessingDraftBinding()"));
+        assertTrue(host.contains("getProcessingPatternTerminalDraft()"));
+        assertTrue(part.contains("TAG_PROCESSING_DRAFT"));
+        assertTrue(part.contains("ProcessingPatternTerminalDraft.read("));
+    }
 }

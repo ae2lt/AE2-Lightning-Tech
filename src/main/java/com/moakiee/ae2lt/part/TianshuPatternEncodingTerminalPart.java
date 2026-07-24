@@ -8,6 +8,7 @@ import appeng.parts.encoding.PatternEncodingTerminalPart;
 import appeng.util.inv.AppEngInternalInventory;
 import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.logic.tianshu.terminal.ClosedLoopTerminalDraft;
+import com.moakiee.ae2lt.logic.tianshu.terminal.ProcessingPatternTerminalDraft;
 import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuEncodingMode;
 import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuPatternTerminalHost;
 import com.moakiee.ae2lt.menu.TianshuPatternEncodingTermMenu;
@@ -34,8 +35,10 @@ public final class TianshuPatternEncodingTerminalPart extends PatternEncodingTer
 
     private static final String TAG_MODE = "TianshuEncodingMode";
     private static final String TAG_CLOSED_LOOP_DRAFT = "ClosedLoopDraft";
+    private static final String TAG_PROCESSING_DRAFT = "ProcessingDraft";
     private TianshuEncodingMode tianshuMode = TianshuEncodingMode.CRAFTING;
     @Nullable private ClosedLoopTerminalDraft closedLoopDraft;
+    @Nullable private ProcessingPatternTerminalDraft processingDraft;
 
     public TianshuPatternEncodingTerminalPart(IPartItem<?> partItem) {
         super(partItem);
@@ -86,6 +89,20 @@ public final class TianshuPatternEncodingTerminalPart extends PatternEncodingTer
         markForSave();
     }
 
+    @Nullable
+    @Override
+    public ProcessingPatternTerminalDraft getProcessingPatternTerminalDraft() {
+        return processingDraft;
+    }
+
+    @Override
+    public void setProcessingPatternTerminalDraft(
+            @Nullable ProcessingPatternTerminalDraft draft) {
+        if (ProcessingPatternTerminalDraft.sameState(processingDraft, draft)) return;
+        processingDraft = draft;
+        markForSave();
+    }
+
     @Override
     public void readFromNBT(CompoundTag data, HolderLookup.Provider registries) {
         super.readFromNBT(data, registries);
@@ -97,6 +114,10 @@ public final class TianshuPatternEncodingTerminalPart extends PatternEncodingTer
         closedLoopDraft = data.contains(TAG_CLOSED_LOOP_DRAFT, net.minecraft.nbt.Tag.TAG_COMPOUND)
                 ? ClosedLoopTerminalDraft.read(data.getCompound(TAG_CLOSED_LOOP_DRAFT), registries)
                 : null;
+        processingDraft = data.contains(TAG_PROCESSING_DRAFT, net.minecraft.nbt.Tag.TAG_COMPOUND)
+                ? ProcessingPatternTerminalDraft.read(
+                        data.getCompound(TAG_PROCESSING_DRAFT), registries)
+                : null;
     }
 
     @Override
@@ -107,6 +128,11 @@ public final class TianshuPatternEncodingTerminalPart extends PatternEncodingTer
             data.put(TAG_CLOSED_LOOP_DRAFT, closedLoopDraft.write(registries));
         } else {
             data.remove(TAG_CLOSED_LOOP_DRAFT);
+        }
+        if (processingDraft != null) {
+            data.put(TAG_PROCESSING_DRAFT, processingDraft.write(registries));
+        } else {
+            data.remove(TAG_PROCESSING_DRAFT);
         }
     }
 }

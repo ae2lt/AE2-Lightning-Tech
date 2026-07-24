@@ -19,6 +19,15 @@ public interface TianshuPatternTerminalHost extends IPatternTerminalMenuHost, IA
     default void setClosedLoopTerminalDraft(@Nullable ClosedLoopTerminalDraft draft) {
     }
 
+    @Nullable
+    default ProcessingPatternTerminalDraft getProcessingPatternTerminalDraft() {
+        return null;
+    }
+
+    default void setProcessingPatternTerminalDraft(
+            @Nullable ProcessingPatternTerminalDraft draft) {
+    }
+
     default List<TianshuSupercomputerPortBlockEntity> getAvailableTianshu() {
         var node = getActionableNode();
         var grid = node != null ? node.getGrid() : null;

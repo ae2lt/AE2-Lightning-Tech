@@ -35,6 +35,8 @@ public abstract class EmiEncodePatternTransferMixin {
             boolean doTransfer,
             CallbackInfoReturnable<?> cir) {
         if (!doTransfer || !(menu instanceof TianshuPatternEncodingTermMenu tianshuMenu)) return;
+        tianshuMenu.resetProcessingEncoding();
+        TianshuRecipeTransferContext.clear(tianshuMenu);
         if (holder != null && TianshuRecipeTransferContext.isSupportedCraftingRecipe(holder)) return;
 
         String sourceKey = "";

@@ -36,8 +36,12 @@ class TianshuRecipeViewerIntegrationSourceContractTest {
                 "src/main/java/com/moakiee/ae2lt/client/TianshuRecipeTransferContext.java"));
 
         assertTrue(jei.contains("!doTransfer"));
+        assertTrue(jei.contains("resetProcessingEncoding()"));
+        assertTrue(jei.contains("TianshuRecipeTransferContext.clear"));
         assertTrue(jei.contains("captureVanillaRecipe"));
         assertTrue(emi.contains("!doTransfer"));
+        assertTrue(emi.contains("resetProcessingEncoding()"));
+        assertTrue(emi.contains("TianshuRecipeTransferContext.clear"));
         assertTrue(emi.contains("category.getId().toString()"));
         assertTrue(emi.contains("emiRecipe.getId().toString()"));
         assertTrue(emi.contains("getWorkstations"));

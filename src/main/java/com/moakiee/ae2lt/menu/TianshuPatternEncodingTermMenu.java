@@ -32,6 +32,7 @@ import com.moakiee.ae2lt.logic.tianshu.terminal.ClosedLoopTerminalDraft;
 import com.moakiee.ae2lt.logic.tianshu.terminal.SeedRefillSync;
 import com.moakiee.ae2lt.logic.tianshu.terminal.ProcessingPatternMultiplier;
 import com.moakiee.ae2lt.logic.tianshu.terminal.ProcessingPatternEncodingType;
+import com.moakiee.ae2lt.logic.tianshu.terminal.ProcessingPatternTerminalDraft;
 import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuEncodingMode;
 import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuPatternTerminalHost;
 import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuTerminalTarget;
@@ -138,13 +139,14 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     public boolean seedRefillAvailable;
     @GuiSync(138)
     public SeedRefillSync seedRefillSync = SeedRefillSync.none();
+    @GuiSync(139)
+    public ProcessingPatternTerminalDraft processingDraftSync =
+            ProcessingPatternTerminalDraft.empty();
 
     protected final TianshuPatternTerminalHost tianshuHost;
     @Nullable private TianshuTerminalTarget boundTianshuTarget;
     private final PatternConversionService conversionService = new PatternConversionService();
     private ItemStack configuredSource = ItemStack.EMPTY;
-    @Nullable private ProcessingPatternEncodingType.AdvancedConfig advancedEncodingConfig;
-    @Nullable private ProcessingPatternEncodingType.OverloadConfig overloadEncodingConfig;
     private List<ClosedLoopDiscoveryCandidate> closedLoopCandidates = List.of();
     private List<ClosedLoopMemberPattern> closedLoopDraftMembers = List.of();
     @Nullable private AEKey closedLoopMainOutput;
@@ -241,6 +243,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         if (boundTianshuTarget != null) tianshuSelectionRevision = 1;
         this.tianshuMode = host.getTianshuEncodingMode();
         if (!inventory.player.level().isClientSide) {
+            restoreProcessingDraft(host.getProcessingPatternTerminalDraft());
             restoreClosedLoopDraft(host.getClosedLoopTerminalDraft());
         }
         registerClientAction("setTianshuMode", TianshuEncodingMode.class, this::setTianshuModeServer);
@@ -249,6 +252,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
                 ProcessingPatternEncodingType.AdvancedConfig.class, this::armAdvancedEncodingServer);
         registerClientAction("armOverloadEncoding",
                 ProcessingPatternEncodingType.OverloadConfig.class, this::armOverloadEncodingServer);
+        registerClientAction("resetProcessingEncoding", this::resetProcessingEncodingServer);
         registerClientAction("selectClosedLoopCandidate", Integer.class, this::selectClosedLoopCandidateServer);
         registerClientAction("changeClosedLoopExecutionSeedMultiplier", Integer.class,
                 this::changeClosedLoopExecutionSeedMultiplierServer);
@@ -277,6 +281,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         if (isServerSide()) {
             returnLegacyBlankPatternsToNetwork();
             tianshuMode = tianshuHost.getTianshuEncodingMode();
+            refreshProcessingDraftBinding();
             var selected = resolveOrBindTianshu();
             maintenanceAvailable = selected != null
                     && selected.getFunctionProfile().supportsInventoryMaintenance();
@@ -393,7 +398,9 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     public void armAdvancedEncoding(ProcessingPatternEncodingType.AdvancedConfig config) {
         if (config == null) return;
         if (isClientSide()) {
-            advancedEncodingConfig = config;
+            processingDraftSync = ProcessingPatternTerminalDraft.advanced(
+                    snapshotProcessingInputs(), snapshotProcessingOutputs(), config);
+            processingEncodingType = ProcessingPatternEncodingType.ADVANCED;
             sendClientAction("armAdvancedEncoding", config);
         } else {
             armAdvancedEncodingServer(config);
@@ -403,18 +410,22 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     private void armAdvancedEncodingServer(ProcessingPatternEncodingType.AdvancedConfig config) {
         if (!isServerSide() || config == null || config.directions() == null
                 || config.directions().length > getProcessingInputSlots().length
+                || !validDirections(config.directions())
                 || !AdvancedAECompat.isLoaded()
                 || tianshuMode != TianshuEncodingMode.PROCESSING) return;
-        advancedEncodingConfig = config;
-        overloadEncodingConfig = null;
+        processingDraftSync = ProcessingPatternTerminalDraft.advanced(
+                snapshotProcessingInputs(), snapshotProcessingOutputs(), config);
         processingEncodingType = ProcessingPatternEncodingType.ADVANCED;
+        persistProcessingDraft();
         broadcastChanges();
     }
 
     public void armOverloadEncoding(ProcessingPatternEncodingType.OverloadConfig config) {
         if (config == null) return;
         if (isClientSide()) {
-            overloadEncodingConfig = config;
+            processingDraftSync = ProcessingPatternTerminalDraft.overload(
+                    snapshotProcessingInputs(), snapshotProcessingOutputs(), config);
+            processingEncodingType = ProcessingPatternEncodingType.OVERLOAD;
             sendClientAction("armOverloadEncoding", config);
         } else {
             armOverloadEncodingServer(config);
@@ -426,27 +437,109 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
                 || config.inputIdOnly() == null || config.outputIdOnly() == null
                 || config.inputIdOnly().length > getProcessingInputSlots().length
                 || config.outputIdOnly().length > getProcessingOutputSlots().length
+                || !validSlots(config.inputIdOnly(), getProcessingInputSlots().length)
+                || !validSlots(config.outputIdOnly(), getProcessingOutputSlots().length)
                 || tianshuMode != TianshuEncodingMode.PROCESSING) return;
-        overloadEncodingConfig = config;
-        advancedEncodingConfig = null;
+        processingDraftSync = ProcessingPatternTerminalDraft.overload(
+                snapshotProcessingInputs(), snapshotProcessingOutputs(), config);
         processingEncodingType = ProcessingPatternEncodingType.OVERLOAD;
+        persistProcessingDraft();
         broadcastChanges();
     }
 
     @Nullable
     public ProcessingPatternEncodingType.AdvancedConfig getAdvancedEncodingConfig() {
-        return advancedEncodingConfig;
+        return processingDraftSync.type() == ProcessingPatternEncodingType.ADVANCED
+                ? processingDraftSync.advancedConfig() : null;
     }
 
     @Nullable
     public ProcessingPatternEncodingType.OverloadConfig getOverloadEncodingConfig() {
-        return overloadEncodingConfig;
+        return processingDraftSync.type() == ProcessingPatternEncodingType.OVERLOAD
+                ? processingDraftSync.overloadConfig() : null;
     }
 
     private void resetProcessingEncodingType() {
         processingEncodingType = ProcessingPatternEncodingType.NORMAL;
-        advancedEncodingConfig = null;
-        overloadEncodingConfig = null;
+        processingDraftSync = ProcessingPatternTerminalDraft.empty();
+        if (isServerSide()) tianshuHost.setProcessingPatternTerminalDraft(null);
+    }
+
+    public void resetProcessingEncoding() {
+        if (isClientSide()) {
+            resetProcessingEncodingType();
+            sendClientAction("resetProcessingEncoding");
+        } else {
+            resetProcessingEncodingServer();
+        }
+    }
+
+    private void resetProcessingEncodingServer() {
+        if (!isServerSide()) return;
+        resetProcessingEncodingType();
+        broadcastChanges();
+    }
+
+    private void refreshProcessingDraftBinding() {
+        if (processingEncodingType == ProcessingPatternEncodingType.NORMAL) return;
+        if (tianshuMode != TianshuEncodingMode.PROCESSING
+                || processingDraftSync.type() != processingEncodingType
+                || !processingDraftSync.matches(
+                        snapshotProcessingInputs(), snapshotProcessingOutputs())) {
+            resetProcessingEncodingType();
+        }
+    }
+
+    private void restoreProcessingDraft(@Nullable ProcessingPatternTerminalDraft draft) {
+        if (draft == null) return;
+        boolean supported = draft.type() != ProcessingPatternEncodingType.NORMAL
+                && (draft.type() != ProcessingPatternEncodingType.ADVANCED
+                        || AdvancedAECompat.isLoaded());
+        if (tianshuMode == TianshuEncodingMode.PROCESSING
+                && supported
+                && draft.matches(snapshotProcessingInputs(), snapshotProcessingOutputs())) {
+            processingDraftSync = draft;
+            processingEncodingType = draft.type();
+        } else {
+            tianshuHost.setProcessingPatternTerminalDraft(null);
+        }
+    }
+
+    private void persistProcessingDraft() {
+        tianshuHost.setProcessingPatternTerminalDraft(
+                processingEncodingType == ProcessingPatternEncodingType.NORMAL
+                        ? null : processingDraftSync);
+    }
+
+    private List<GenericStack> snapshotProcessingInputs() {
+        return snapshotProcessingInventory(tianshuHost.getLogic().getEncodedInputInv());
+    }
+
+    private List<GenericStack> snapshotProcessingOutputs() {
+        return snapshotProcessingInventory(tianshuHost.getLogic().getEncodedOutputInv());
+    }
+
+    private static List<GenericStack> snapshotProcessingInventory(
+            appeng.util.ConfigInventory inventory) {
+        var result = new ArrayList<GenericStack>(inventory.size());
+        for (int i = 0; i < inventory.size(); i++) result.add(inventory.getStack(i));
+        return result;
+    }
+
+    private static boolean validDirections(int[] directions) {
+        for (int direction : directions) {
+            if (direction < 0 || direction > 6) return false;
+        }
+        return true;
+    }
+
+    private static boolean validSlots(int[] slots, int slotCount) {
+        var seen = new boolean[slotCount];
+        for (int slot : slots) {
+            if (slot < 0 || slot >= slotCount || seen[slot]) return false;
+            seen[slot] = true;
+        }
+        return true;
     }
 
     @Override
@@ -1871,8 +1964,8 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         if (tianshuMode != TianshuEncodingMode.PROCESSING
                 || processingEncodingType == ProcessingPatternEncodingType.NORMAL) return;
         var type = processingEncodingType;
-        var advancedConfig = advancedEncodingConfig;
-        var overloadConfig = overloadEncodingConfig;
+        var advancedConfig = getAdvancedEncodingConfig();
+        var overloadConfig = getOverloadEncodingConfig();
         resetProcessingEncodingType();
         var inventory = tianshuHost.getLogic().getEncodedPatternInv();
         var source = inventory.getStackInSlot(0);

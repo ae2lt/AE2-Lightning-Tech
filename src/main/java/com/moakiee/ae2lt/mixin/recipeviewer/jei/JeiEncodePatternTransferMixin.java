@@ -39,6 +39,8 @@ public abstract class JeiEncodePatternTransferMixin {
         if (!doTransfer || !(menu instanceof TianshuPatternEncodingTermMenu tianshuMenu)) return;
         // Match ClientPlus' JEMI ownership rule so one transfer cannot be recorded twice.
         if (ModList.get().isLoaded("emi")) return;
+        tianshuMenu.resetProcessingEncoding();
+        TianshuRecipeTransferContext.clear(tianshuMenu);
         if (!TianshuRecipeTransferContext.isSupportedCraftingRecipe(recipeBase)) {
             TianshuRecipeTransferContext.captureVanillaRecipe(tianshuMenu, recipeBase);
         }

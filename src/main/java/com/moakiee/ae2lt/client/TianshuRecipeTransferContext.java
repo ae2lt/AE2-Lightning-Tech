@@ -80,6 +80,12 @@ public final class TianshuRecipeTransferContext {
         return owner.get() == menu ? snapshot : Snapshot.EMPTY;
     }
 
+    public static synchronized void clear(TianshuPatternEncodingTermMenu menu) {
+        if (menu == null) return;
+        owner = new WeakReference<>(menu);
+        snapshot = Snapshot.EMPTY;
+    }
+
     public static void addDefaultAlias(List<String> aliases, String value) {
         if (aliases != null && value != null && !value.isBlank() && !aliases.contains(value)) {
             aliases.add(value);
