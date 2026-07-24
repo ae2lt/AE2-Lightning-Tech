@@ -6,21 +6,27 @@ package com.moakiee.ae2lt.mixin.recipeviewer.emi;
  */
 
 import appeng.integration.modules.emi.EmiEncodePatternHandler;
+import appeng.integration.modules.emi.EmiStackHelper;
 import appeng.menu.AEBaseMenu;
 import com.moakiee.ae2lt.client.TianshuRecipeTransferContext;
+import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuEncodingMode;
 import com.moakiee.ae2lt.menu.TianshuPatternEncodingTermMenu;
 import dev.emi.emi.api.EmiApi;
 import dev.emi.emi.api.recipe.EmiRecipe;
 import java.util.ArrayList;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-/** Captures EMI recipe/category identity without changing AE2's normal encoding lifecycle. */
+/** Captures provider metadata normally and marks the right-hand output in closed-loop mode. */
 @Mixin(value = EmiEncodePatternHandler.class, remap = false)
 public abstract class EmiEncodePatternTransferMixin {
+    @Unique
+    private static boolean ae2lt$restoreClosedLoopMode;
+
     @Inject(
             method = "transferRecipe(Lappeng/menu/AEBaseMenu;"
                     + "Lnet/minecraft/world/item/crafting/RecipeHolder;"
@@ -33,8 +39,19 @@ public abstract class EmiEncodePatternTransferMixin {
             RecipeHolder<?> holder,
             EmiRecipe emiRecipe,
             boolean doTransfer,
-            CallbackInfoReturnable<?> cir) {
+            CallbackInfoReturnable<Object> cir) {
         if (!doTransfer || !(menu instanceof TianshuPatternEncodingTermMenu tianshuMenu)) return;
+        if (tianshuMenu.tianshuMode == TianshuEncodingMode.CLOSED_LOOP && emiRecipe != null) {
+            var output = EmiStackHelper.ofOutputs(emiRecipe).stream().findFirst().orElse(null);
+            if (output != null && tianshuMenu.markClosedLoopPrimaryOutput(
+                    appeng.api.stacks.GenericStack.wrapInItemStack(output))) {
+                TianshuRecipeTransferContext.clear(tianshuMenu);
+                // AE2's EMI result type is package-private, so let the normal transfer complete
+                // and restore the Tianshu tab after its mode-change packet has been queued.
+                ae2lt$restoreClosedLoopMode = true;
+            }
+            return;
+        }
         tianshuMenu.resetProcessingEncoding();
         TianshuRecipeTransferContext.clear(tianshuMenu);
         if (holder != null && TianshuRecipeTransferContext.isSupportedCraftingRecipe(holder)) return;
@@ -75,6 +92,26 @@ public abstract class EmiEncodePatternTransferMixin {
         } else {
             TianshuRecipeTransferContext.publish(
                     tianshuMenu, sourceKey, recipeId, defaultAliases);
+        }
+    }
+
+    @Inject(
+            method = "transferRecipe(Lappeng/menu/AEBaseMenu;"
+                    + "Lnet/minecraft/world/item/crafting/RecipeHolder;"
+                    + "Ldev/emi/emi/api/recipe/EmiRecipe;Z)"
+                    + "Lappeng/integration/modules/emi/AbstractRecipeHandler$Result;",
+            at = @At("RETURN"),
+            require = 0)
+    private static void ae2lt$restoreClosedLoopMode(
+            AEBaseMenu menu,
+            RecipeHolder<?> holder,
+            EmiRecipe emiRecipe,
+            boolean doTransfer,
+            CallbackInfoReturnable<Object> cir) {
+        if (ae2lt$restoreClosedLoopMode
+                && menu instanceof TianshuPatternEncodingTermMenu tianshuMenu) {
+            ae2lt$restoreClosedLoopMode = false;
+            tianshuMenu.setTianshuMode(TianshuEncodingMode.CLOSED_LOOP);
         }
     }
 }

@@ -57,4 +57,32 @@ class TianshuPatternEncodingTermMenuSourceContractTest {
         assertTrue(part.contains("TAG_PROCESSING_DRAFT"));
         assertTrue(part.contains("ProcessingPatternTerminalDraft.read("));
     }
+
+    @Test
+    void closedLoopAuthoringUsesLeftMemberMarksAndTheRightPrimaryOutputMark() throws Exception {
+        String menu = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/menu/TianshuPatternEncodingTermMenu.java"));
+
+        assertTrue(menu.contains("new ClosedLoopMemberSlot(closedLoopMemberInventory"));
+        assertTrue(menu.contains("new ClosedLoopOutputSlot(closedLoopOutputInventory"));
+        assertTrue(menu.contains("var markedOutput = getMarkedClosedLoopPrimaryOutput()"));
+        assertTrue(menu.contains("refreshClosedLoops(markedOutput.what())"));
+        assertFalse(menu.contains("refreshClosedLoops(source)"));
+        assertFalse(menu.contains("PatternDetailsHelper.decodePattern(source"));
+    }
+
+    @Test
+    void closedLoopEncodingCanConsumeANetworkBlankWithoutAnOldSourcePattern() throws Exception {
+        String menu = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/menu/TianshuPatternEncodingTermMenu.java"));
+        int derived = menu.indexOf("var result = encodeDerivedPattern()");
+        int stage = menu.indexOf("stageNetworkBlankPattern()", derived);
+        int write = menu.indexOf("encodedInventory.setItemDirect(0, result)", stage);
+
+        assertTrue(derived >= 0);
+        assertTrue(stage > derived);
+        assertTrue(write > stage);
+        assertTrue(menu.contains(
+                "if (tianshuMode != TianshuEncodingMode.CLOSED_LOOP) return ItemStack.EMPTY"));
+    }
 }

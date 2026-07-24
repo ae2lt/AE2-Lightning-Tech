@@ -6,11 +6,15 @@ package com.moakiee.ae2lt.mixin.recipeviewer.jei;
  */
 
 import com.moakiee.ae2lt.client.TianshuRecipeTransferContext;
+import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuEncodingMode;
 import com.moakiee.ae2lt.menu.TianshuPatternEncodingTermMenu;
+import mezz.jei.api.constants.VanillaTypes;
 import mezz.jei.api.gui.ingredient.IRecipeSlotsView;
+import mezz.jei.api.recipe.RecipeIngredientRole;
 import mezz.jei.api.recipe.transfer.IRecipeTransferError;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.item.ItemStack;
 import net.neoforged.fml.ModList;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -18,7 +22,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import tamaized.ae2jeiintegration.integration.modules.jei.transfer.EncodePatternTransferHandler;
 
-/** Captures JEI recipe metadata without changing AE2's normal encoding lifecycle. */
+/** Captures provider metadata normally and marks the right-hand output in closed-loop mode. */
 @Mixin(value = EncodePatternTransferHandler.class, remap = false)
 public abstract class JeiEncodePatternTransferMixin {
     @Inject(
@@ -27,6 +31,7 @@ public abstract class JeiEncodePatternTransferMixin {
                     + "Lnet/minecraft/world/entity/player/Player;ZZ)"
                     + "Lmezz/jei/api/recipe/transfer/IRecipeTransferError;",
             at = @At("HEAD"),
+            cancellable = true,
             require = 0)
     private void ae2lt$onTransfer(
             AbstractContainerMenu menu,
@@ -39,10 +44,29 @@ public abstract class JeiEncodePatternTransferMixin {
         if (!doTransfer || !(menu instanceof TianshuPatternEncodingTermMenu tianshuMenu)) return;
         // Match ClientPlus' JEMI ownership rule so one transfer cannot be recorded twice.
         if (ModList.get().isLoaded("emi")) return;
+        if (tianshuMenu.tianshuMode == TianshuEncodingMode.CLOSED_LOOP) {
+            var output = firstDisplayedItemOutput(slotsView);
+            if (tianshuMenu.markClosedLoopPrimaryOutput(output)) {
+                TianshuRecipeTransferContext.clear(tianshuMenu);
+                cir.setReturnValue(null);
+            }
+            return;
+        }
         tianshuMenu.resetProcessingEncoding();
         TianshuRecipeTransferContext.clear(tianshuMenu);
         if (!TianshuRecipeTransferContext.isSupportedCraftingRecipe(recipeBase)) {
             TianshuRecipeTransferContext.captureVanillaRecipe(tianshuMenu, recipeBase);
         }
+    }
+
+    private static ItemStack firstDisplayedItemOutput(IRecipeSlotsView slotsView) {
+        if (slotsView == null) return ItemStack.EMPTY;
+        return slotsView.getSlotViews(RecipeIngredientRole.OUTPUT).stream()
+                .map(slot -> slot.getDisplayedIngredient(VanillaTypes.ITEM_STACK)
+                        .orElse(ItemStack.EMPTY))
+                .filter(stack -> !stack.isEmpty())
+                .findFirst()
+                .map(ItemStack::copy)
+                .orElse(ItemStack.EMPTY);
     }
 }

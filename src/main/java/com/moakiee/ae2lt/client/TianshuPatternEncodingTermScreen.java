@@ -522,6 +522,20 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
         }
         super.renderSlot(graphics, slot);
 
+        if (isClosedLoopMemberSlot(slot) && slot.hasItem()) {
+            long copies = Math.max(1L,
+                    menu.closedLoopDraftSync.copies(slot.getContainerSlot()));
+            if (copies > 1L) {
+                var poseStack = graphics.pose();
+                poseStack.pushPose();
+                // Slots render their item at z=100; keep the custom amount above it.
+                poseStack.translate(0, 0, 100);
+                StackSizeRenderer.renderSizeLabel(
+                        graphics, font, slot.x, slot.y, Long.toString(copies), false);
+                poseStack.popPose();
+            }
+        }
+
         if (shouldShowCraftableIndicatorForSlot(slot)) {
             var poseStack = graphics.pose();
             poseStack.pushPose();

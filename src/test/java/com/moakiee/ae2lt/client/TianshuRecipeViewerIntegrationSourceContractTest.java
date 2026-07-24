@@ -53,7 +53,7 @@ class TianshuRecipeViewerIntegrationSourceContractTest {
     }
 
     @Test
-    void transferredRecipesOnlyFeedTheProviderPicker() throws Exception {
+    void nonClosedLoopTransferredRecipesFeedTheProviderPicker() throws Exception {
         String picker = Files.readString(Path.of(
                 "src/main/java/com/moakiee/ae2lt/client/TianshuUploadTargetScreen.java"));
         String context = Files.readString(Path.of(
@@ -62,6 +62,38 @@ class TianshuRecipeViewerIntegrationSourceContractTest {
         assertTrue(picker.contains("TianshuRecipeTransferContext.snapshotFor(menu)"));
         assertTrue(picker.contains("recipeContext.sourceKey()"));
         assertTrue(context.contains("does not start encoding"));
+    }
+
+    @Test
+    void closedLoopTransfersMarkTheRightHandPrimaryOutputAndKeepTheClosedLoopTab() throws Exception {
+        String menu = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/menu/TianshuPatternEncodingTermMenu.java"));
+        String jei = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/mixin/recipeviewer/jei/JeiEncodePatternTransferMixin.java"));
+        String emi = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/mixin/recipeviewer/emi/EmiEncodePatternTransferMixin.java"));
+
+        assertTrue(menu.contains("markClosedLoopPrimaryOutput(ItemStack stack)"));
+        assertTrue(menu.contains("closedLoopOutputSlots.getFirst()).setFilterTo(stack)"));
+        assertTrue(jei.contains("RecipeIngredientRole.OUTPUT"));
+        assertTrue(jei.contains("markClosedLoopPrimaryOutput(output)"));
+        assertTrue(jei.contains("cancellable = true"));
+        assertTrue(jei.contains("cir.setReturnValue(null)"));
+        assertTrue(emi.contains("EmiStackHelper.ofOutputs(emiRecipe)"));
+        assertTrue(emi.contains("markClosedLoopPrimaryOutput("));
+        assertTrue(emi.contains("at = @At(\"RETURN\")"));
+        assertTrue(emi.contains("setTianshuMode(TianshuEncodingMode.CLOSED_LOOP)"));
+    }
+
+    @Test
+    void closedLoopMemberCopiesRenderAsTheirOwnSlotAmount() throws Exception {
+        String screen = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/client/TianshuPatternEncodingTermScreen.java"));
+
+        assertTrue(screen.contains("isClosedLoopMemberSlot(slot) && slot.hasItem()"));
+        assertTrue(screen.contains("menu.closedLoopDraftSync.copies(slot.getContainerSlot())"));
+        assertTrue(screen.contains("Long.toString(copies)"));
+        assertTrue(screen.contains("StackSizeRenderer.renderSizeLabel("));
     }
 
     @Test

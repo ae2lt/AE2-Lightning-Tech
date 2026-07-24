@@ -183,7 +183,8 @@ final class TianshuClosedLoopEncodingPanel implements ICompositeWidget {
             slot.y = y + SLOT_Y + effectiveRow * 18;
         }
 
-        autoFillButton.active = menu.closedLoopCandidateCount > 0 || hasDiscoverableSource();
+        autoFillButton.active = menu.closedLoopCandidateCount > 0
+                || menu.hasClosedLoopPrimaryOutputMark();
         autoFillButton.setTooltip(Tooltip.create(Component.translatable(
                 "ae2lt.tianshu.closed_loop.auto_fill.tooltip",
                 menu.closedLoopCandidateCount == 0 ? 0 : menu.closedLoopCandidateIndex + 1,
@@ -292,11 +293,6 @@ final class TianshuClosedLoopEncodingPanel implements ICompositeWidget {
                 default -> 0xAA2222;
             };
         };
-    }
-
-    private boolean hasDiscoverableSource() {
-        var stack = screen.firstEncodedPattern();
-        return !stack.isEmpty() && !(stack.getItem() instanceof ClosedLoopPatternItem);
     }
 
     private void syncFields() {

@@ -88,7 +88,6 @@ public record ClosedLoopTerminalDraft(
             CompoundTag tag, HolderLookup.Provider registries) {
         try {
             var source = ItemStack.parseOptional(registries, tag.getCompound(TAG_SOURCE));
-            if (source.isEmpty()) return null;
             var copiesArray = tag.getLongArray(TAG_MEMBER_COPIES);
             var rolesArray = tag.getIntArray(TAG_OUTPUT_ROLES);
             if (copiesArray.length != ClosedLoopDraftSync.MEMBER_SLOTS
