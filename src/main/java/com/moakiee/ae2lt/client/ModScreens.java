@@ -27,6 +27,7 @@ import com.moakiee.ae2lt.menu.OverloadedInterfaceMenu;
 import com.moakiee.ae2lt.menu.OverloadedPatternProviderMenu;
 import com.moakiee.ae2lt.menu.OverloadedPowerSupplyMenu;
 import com.moakiee.ae2lt.menu.PigmeePatternProviderMenu;
+import com.moakiee.ae2lt.menu.PigmeeMolecularAssemblerMenu;
 import com.moakiee.ae2lt.menu.TeslaCoilMenu;
 import com.moakiee.ae2lt.menu.TianshuSupercomputerControllerMenu;
 import com.moakiee.ae2lt.menu.TianshuPatternEncodingTermMenu;
@@ -44,6 +45,7 @@ public class ModScreens {
     public static void registerScreens(RegisterMenuScreensEvent event) {
         event.register(OverloadedPatternProviderMenu.TYPE, ModScreens::createOverloadedPatternProviderScreen);
         event.register(PigmeePatternProviderMenu.TYPE, ModScreens::createPigmeePatternProviderScreen);
+        event.register(PigmeeMolecularAssemblerMenu.TYPE, ModScreens::createPigmeeMolecularAssemblerScreen);
         event.register(OverloadPatternEncoderMenu.TYPE, OverloadPatternEncoderScreen::new);
         event.register(OverloadDeviceWorkbenchMenu.TYPE, OverloadDeviceWorkbenchScreen::new);
         event.register(OverloadedInterfaceMenu.TYPE, ModScreens::createOverloadedInterfaceScreen);
@@ -88,6 +90,12 @@ public class ModScreens {
             PigmeePatternProviderMenu menu, Inventory inv, Component title) {
         var style = StyleManager.loadStyleDoc("/screens/pigmee_pattern_provider.json");
         return new PigmeePatternProviderScreen(menu, inv, title, style);
+    }
+
+    private static PigmeeMolecularAssemblerScreen createPigmeeMolecularAssemblerScreen(
+            PigmeeMolecularAssemblerMenu menu, Inventory inv, Component title) {
+        var style = StyleManager.loadStyleDoc("/screens/pigmee_molecular_assembler.json");
+        return new PigmeeMolecularAssemblerScreen(menu, inv, title, style);
     }
 
     private static OverloadedInterfaceScreen createOverloadedInterfaceScreen(

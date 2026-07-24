@@ -34,6 +34,14 @@ public final class ModEntityRenderers {
         event.registerBlockEntityRenderer(
                 ModBlockEntities.FUMO.get(),
                 FumoBlockRenderer::new);
+        event.registerBlockEntityRenderer(
+                ModBlockEntities.PIGMEE_MOLECULAR_ASSEMBLER.get(),
+                PigmeeMolecularAssemblerRenderer::new);
+    }
+
+    @SubscribeEvent
+    public static void registerAdditionalModels(ModelEvent.RegisterAdditional event) {
+        event.register(PigmeeMolecularAssemblerRenderer.LIGHTS_MODEL);
     }
 
     @SubscribeEvent

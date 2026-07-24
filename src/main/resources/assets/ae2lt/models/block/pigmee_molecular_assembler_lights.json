@@ -1,0 +1,6 @@
+{
+  "parent": "ae2:block/molecular_assembler_lights",
+  "textures": {
+    "all": "ae2lt:block/pigmee_molecular_assembler_lights"
+  }
+}

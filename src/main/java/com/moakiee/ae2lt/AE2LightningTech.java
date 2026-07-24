@@ -32,6 +32,7 @@ import com.moakiee.ae2lt.blockentity.OverloadProcessingFactoryBlockEntity;
 import com.moakiee.ae2lt.blockentity.OverloadedPatternProviderBlockEntity;
 import com.moakiee.ae2lt.blockentity.OverloadedPowerSupplyBlockEntity;
 import com.moakiee.ae2lt.blockentity.PigmeeMentalmathUnitBlockEntity;
+import com.moakiee.ae2lt.blockentity.PigmeeMolecularAssemblerBlockEntity;
 import com.moakiee.ae2lt.blockentity.PigmeePatternProviderBlockEntity;
 import com.moakiee.ae2lt.blockentity.TeslaCoilBlockEntity;
 import com.moakiee.ae2lt.block.TeslaCoilBlock;
@@ -304,6 +305,7 @@ public class AE2LightningTech {
                         output.accept(ModFumos.PIGMEE_FUMO_ITEM.get());
                         output.accept(ModBlocks.PIGMEE_MENTALMATH_UNIT);
                         output.accept(ModBlocks.PIGMEE_PATTERN_PROVIDER);
+                        output.accept(ModBlocks.PIGMEE_MOLECULAR_ASSEMBLER);
                     })
                     .build());
 
@@ -405,6 +407,11 @@ public class AE2LightningTech {
                 Capabilities.ItemHandler.BLOCK,
                 ModBlockEntities.CRYSTAL_CATALYZER.get(),
                 (blockEntity, side) -> blockEntity.getAutomationInventory());
+
+        event.registerBlockEntity(
+                Capabilities.ItemHandler.BLOCK,
+                ModBlockEntities.PIGMEE_MOLECULAR_ASSEMBLER.get(),
+                (blockEntity, side) -> blockEntity.getExposedItemHandler(side));
 
         event.registerBlockEntity(
                 Capabilities.ItemHandler.BLOCK,
@@ -544,6 +551,16 @@ public class AE2LightningTech {
                 AECapabilities.IN_WORLD_GRID_NODE_HOST,
                 ModBlockEntities.PIGMEE_PATTERN_PROVIDER.get(),
                 (blockEntity, context) -> (IInWorldGridNodeHost) blockEntity);
+
+        event.registerBlockEntity(
+                AECapabilities.IN_WORLD_GRID_NODE_HOST,
+                ModBlockEntities.PIGMEE_MOLECULAR_ASSEMBLER.get(),
+                (blockEntity, context) -> (IInWorldGridNodeHost) blockEntity);
+
+        event.registerBlockEntity(
+                AECapabilities.CRAFTING_MACHINE,
+                ModBlockEntities.PIGMEE_MOLECULAR_ASSEMBLER.get(),
+                (blockEntity, context) -> blockEntity);
 
         event.registerBlockEntity(
                 AECapabilities.IN_WORLD_GRID_NODE_HOST,
@@ -786,6 +803,14 @@ public class AE2LightningTech {
                     null,
                     PigmeePatternProviderBlockEntity::serverTick);
 
+            var pigmeeAssemblerBlock = ModBlocks.PIGMEE_MOLECULAR_ASSEMBLER.get();
+            var pigmeeAssemblerBeType = ModBlockEntities.PIGMEE_MOLECULAR_ASSEMBLER.get();
+            pigmeeAssemblerBlock.setBlockEntity(
+                    PigmeeMolecularAssemblerBlockEntity.class,
+                    pigmeeAssemblerBeType,
+                    null,
+                    null);
+
             var matrixPortBlock = ModBlocks.MATTER_WARPING_MATRIX_PORT.get();
             var matrixPortBeType = ModBlockEntities.MATRIX_PORT.get();
             matrixPortBlock.setBlockEntity(
@@ -842,6 +867,9 @@ public class AE2LightningTech {
             appeng.blockentity.AEBaseBlockEntity.registerBlockEntityItem(
                     pigmeePatternProviderBeType,
                     pigmeePatternProviderBlock.asItem());
+            appeng.blockentity.AEBaseBlockEntity.registerBlockEntityItem(
+                    pigmeeAssemblerBeType,
+                    pigmeeAssemblerBlock.asItem());
             appeng.blockentity.AEBaseBlockEntity.registerBlockEntityItem(
                     matrixPortBeType,
                     matrixPortBlock.asItem());

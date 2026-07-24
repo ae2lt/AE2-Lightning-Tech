@@ -15,6 +15,7 @@ import com.moakiee.ae2lt.menu.OverloadedInterfaceMenu;
 import com.moakiee.ae2lt.menu.OverloadedPatternProviderMenu;
 import com.moakiee.ae2lt.menu.OverloadedPowerSupplyMenu;
 import com.moakiee.ae2lt.menu.PigmeePatternProviderMenu;
+import com.moakiee.ae2lt.menu.PigmeeMolecularAssemblerMenu;
 import com.moakiee.ae2lt.menu.TeslaCoilMenu;
 import com.moakiee.ae2lt.menu.TianshuSupercomputerControllerMenu;
 import com.moakiee.ae2lt.menu.TianshuPatternEncodingTermMenu;
@@ -39,6 +40,11 @@ public final class ModMenuTypes {
             PIGMEE_PATTERN_PROVIDER = MENU_TYPES.register(
                     "pigmee_pattern_provider",
                     () -> PigmeePatternProviderMenu.TYPE);
+
+    public static final DeferredHolder<MenuType<?>, MenuType<PigmeeMolecularAssemblerMenu>>
+            PIGMEE_MOLECULAR_ASSEMBLER = MENU_TYPES.register(
+                    "pigmee_molecular_assembler",
+                    () -> PigmeeMolecularAssemblerMenu.TYPE);
 
     public static final DeferredHolder<MenuType<?>, MenuType<TianshuSeedStorageMenu>>
             TIANSHU_SEED_STORAGE = MENU_TYPES.register(

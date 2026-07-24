@@ -1,0 +1,49 @@
+{
+  "$schema": "schema.json",
+  "includes": [
+    "common/common.json",
+    "common/player_inventory.json"
+  ],
+  "background": {
+    "texture": "ae2lt:textures/gui/pigmee_molecular_assembler.png",
+    "srcRect": [0, 0, 176, 199]
+  },
+  "slots": {
+    "MACHINE_CRAFTING_GRID": {
+      "left": 29,
+      "top": 43,
+      "grid": "BREAK_AFTER_3COLS"
+    },
+    "ENCODED_PATTERN": {
+      "left": 126,
+      "top": 28
+    },
+    "MACHINE_OUTPUT": {
+      "left": 126,
+      "top": 61
+    }
+  },
+  "text": {
+    "dialog_title": {
+      "text": {
+        "translate": "block.ae2lt.pigmee_molecular_assembler"
+      },
+      "position": {
+        "left": 8,
+        "top": 6
+      }
+    }
+  },
+  "images": {
+    "progressBar": {
+      "texture": "ae2lt:textures/gui/pigmee_molecular_assembler.png",
+      "srcRect": [198, 59, 6, 18]
+    }
+  },
+  "widgets": {
+    "progressBar": {
+      "left": 148,
+      "top": 59
+    }
+  }
+}

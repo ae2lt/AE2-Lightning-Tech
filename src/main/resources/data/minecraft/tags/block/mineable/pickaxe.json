@@ -19,6 +19,7 @@
     "ae2lt:closed_loop_seed_storage",
     "ae2lt:pigmee_mentalmath_unit",
     "ae2lt:pigmee_pattern_provider",
+    "ae2lt:pigmee_molecular_assembler",
     {
       "id": "ae2lt:overloaded_power_supply",
       "required": false

@@ -23,6 +23,7 @@ import com.moakiee.ae2lt.block.OverloadedInterfaceBlock;
 import com.moakiee.ae2lt.block.OverloadedPatternProviderBlock;
 import com.moakiee.ae2lt.block.OverloadedPowerSupplyBlock;
 import com.moakiee.ae2lt.block.PigmeeMentalmathUnitBlock;
+import com.moakiee.ae2lt.block.PigmeeMolecularAssemblerBlock;
 import com.moakiee.ae2lt.block.PigmeePatternProviderBlock;
 import com.moakiee.ae2lt.block.TeslaCoilBlock;
 import com.moakiee.ae2lt.block.TianshuSeedStorageBlock;
@@ -222,6 +223,9 @@ public final class ModBlocks {
 
     public static final DeferredBlock<PigmeePatternProviderBlock> PIGMEE_PATTERN_PROVIDER =
             registerBlock("pigmee_pattern_provider", PigmeePatternProviderBlock::new);
+
+    public static final DeferredBlock<PigmeeMolecularAssemblerBlock> PIGMEE_MOLECULAR_ASSEMBLER =
+            registerBlock("pigmee_molecular_assembler", PigmeeMolecularAssemblerBlock::new);
 
     public static final DeferredBlock<TianshuSupercomputerStructureBlock> TIANSHU_SUPERCOMPUTER_CASING =
             registerBlock("tianshu_supercomputer_casing", () -> new TianshuSupercomputerStructureBlock(MATRIX_MACHINE_PROPERTIES));

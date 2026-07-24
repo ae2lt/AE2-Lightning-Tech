@@ -84,6 +84,10 @@ public final class NetworkInit {
                 EasterEggPacket.STREAM_CODEC,
                 EasterEggPacket::handle);
         registrar.playToClient(
+                PigmeeAssemblerAnimationPacket.TYPE,
+                PigmeeAssemblerAnimationPacket.STREAM_CODEC,
+                PigmeeAssemblerAnimationPacket::handle);
+        registrar.playToClient(
                 SyncFrequencyListPacket.TYPE,
                 SyncFrequencyListPacket.STREAM_CODEC,
                 SyncFrequencyListPacket::handle);
