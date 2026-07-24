@@ -128,10 +128,7 @@ final class TianshuClosedLoopEncodingPanel implements ICompositeWidget {
             field.setFilter(TianshuClosedLoopEncodingPanel::isPositiveIntDraft);
             field.setResponder(ignored -> submitMultipliers());
         }
-        executionField.setTooltipMessage(List.of(Component.translatable(
-                "ae2lt.tianshu.terminal.closed_loop.execution_seed_multiplier.tooltip")));
-        storedField.setTooltipMessage(List.of(Component.translatable(
-                "ae2lt.tianshu.terminal.closed_loop.stored_task_multiplier.tooltip")));
+        updateMultiplierTooltips();
     }
 
     @Override
@@ -199,6 +196,7 @@ final class TianshuClosedLoopEncodingPanel implements ICompositeWidget {
                 "ae2lt.tianshu.closed_loop.auto_fill.tooltip")));
         refillButton.active = menu.seedRefillAvailable;
         syncFields();
+        updateMultiplierTooltips();
     }
 
     @Override
@@ -327,6 +325,23 @@ final class TianshuClosedLoopEncodingPanel implements ICompositeWidget {
             if (execution >= 1 && stored >= 1) menu.setClosedLoopMultipliers(execution, stored);
         } catch (NumberFormatException ignored) {
         }
+    }
+
+    private void updateMultiplierTooltips() {
+        executionField.setTooltipMessage(multiplierTooltip(
+                executionField,
+                "ae2lt.tianshu.terminal.closed_loop.execution_seed_multiplier.tooltip"));
+        storedField.setTooltipMessage(multiplierTooltip(
+                storedField,
+                "ae2lt.tianshu.terminal.closed_loop.stored_task_multiplier.tooltip"));
+    }
+
+    private static List<Component> multiplierTooltip(AETextField field, String descriptionKey) {
+        return List.of(
+                Component.translatable(
+                        "ae2lt.tianshu.terminal.closed_loop.multiplier.current_value",
+                        field.getValue()).withStyle(ChatFormatting.AQUA),
+                Component.translatable(descriptionKey).withStyle(ChatFormatting.GRAY));
     }
 
     private static boolean isPositiveIntDraft(String value) {
