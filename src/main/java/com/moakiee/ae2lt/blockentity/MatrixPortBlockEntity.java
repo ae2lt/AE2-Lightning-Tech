@@ -249,8 +249,8 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
     @Override
     public PatternContainerGroup getTerminalGroup() {
         return new PatternContainerGroup(
-                AEItemKey.of(ModBlocks.MATTER_WARPING_MATRIX_PORT.get()),
-                ModBlocks.MATTER_WARPING_MATRIX_PORT.get().getName(),
+                AEItemKey.of(ModBlocks.MATTER_WARPING_MATRIX_CONTROLLER.get()),
+                ModBlocks.MATTER_WARPING_MATRIX_CONTROLLER.get().getName(),
                 List.of(Component.translatable(
                         "ae2lt.matrix.terminal.tooltip",
                         getPatternStorages().size(),

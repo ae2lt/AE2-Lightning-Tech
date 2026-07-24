@@ -16,7 +16,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 
-/** One 64-entry physical closed-loop-pattern warehouse. */
+/** One 36-entry physical closed-loop-pattern warehouse. */
 public final class TianshuPatternStorageBlockEntity extends BlockEntity {
     private static final String TAG_PATTERNS = "ClosedLoopPatterns";
     private static final String TAG_PORT_POS = "PortPos";

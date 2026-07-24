@@ -11,9 +11,9 @@ import net.minecraft.world.level.Level;
 
 /** Shared client/server routing policy for terminal pattern uploads. */
 public final class TianshuPatternUploadRouting {
-    private static final ResourceLocation MATTER_WARPING_MATRIX_PORT_ID =
+    private static final ResourceLocation MATTER_WARPING_MATRIX_CONTROLLER_ID =
             ResourceLocation.fromNamespaceAndPath(
-                    AE2LightningTech.MODID, "matter_warping_matrix_port");
+                    AE2LightningTech.MODID, "matter_warping_matrix_controller");
     private static final Set<ResourceLocation> CRAFTING_UPLOAD_GROUP_IDS = Set.of(
             ResourceLocation.fromNamespaceAndPath("ae2", "molecular_assembler"),
             ResourceLocation.fromNamespaceAndPath("extendedae", "ex_molecular_assembler"),
@@ -23,7 +23,7 @@ public final class TianshuPatternUploadRouting {
             ResourceLocation.fromNamespaceAndPath("neoecoae", "crafting_system_l4"),
             ResourceLocation.fromNamespaceAndPath("neoecoae", "crafting_system_l6"),
             ResourceLocation.fromNamespaceAndPath("neoecoae", "crafting_system_l9"),
-            MATTER_WARPING_MATRIX_PORT_ID);
+            MATTER_WARPING_MATRIX_CONTROLLER_ID);
 
     public enum Route {
         CLOSED_LOOP_STORAGE,
@@ -76,7 +76,7 @@ public final class TianshuPatternUploadRouting {
     }
 
     static boolean isMatterWarpingMatrixId(ResourceLocation id) {
-        return MATTER_WARPING_MATRIX_PORT_ID.equals(id);
+        return MATTER_WARPING_MATRIX_CONTROLLER_ID.equals(id);
     }
 
     /** Encoding is acknowledged only when the produced stack can be routed and decoded. */

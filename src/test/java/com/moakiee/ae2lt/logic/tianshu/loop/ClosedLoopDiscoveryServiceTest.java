@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
@@ -110,7 +109,6 @@ class ClosedLoopDiscoveryServiceTest {
         var intermediate = key("nested_discovery_intermediate");
         var target = key("nested_discovery_target");
         var innerPayload = new ClosedLoopPatternPayload(
-                UUID.randomUUID(), 1L,
                 List.of(new ClosedLoopMemberPattern(
                         new SourcePatternSnapshot(
                                 ResourceLocation.fromNamespaceAndPath(

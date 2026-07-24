@@ -10,7 +10,6 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
-import java.util.UUID;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.Level;
 
@@ -107,7 +106,7 @@ public final class ClosedLoopPatternAuthoringService {
             if (!output.what().equals(mainOutput)) declaredOutputs.add(output);
         }
         var payload = new ClosedLoopPatternPayload(
-                UUID.randomUUID(), 1L, stored, analysis.seeds(), analysis.externalInputs(),
+                stored, analysis.seeds(), analysis.externalInputs(),
                 declaredOutputs, executionSeedMultiplier, storedTaskMultiplier, true);
         return new Result(Status.VALID, payload);
     }
@@ -193,8 +192,8 @@ public final class ClosedLoopPatternAuthoringService {
         }
         var payload = authored.payload();
         return new Result(Status.VALID, new ClosedLoopPatternPayload(
-                payload.patternId(), payload.version(), payload.memberPatterns(), payload.seeds(),
-                payload.externalInputs(), selected, payload.executionSeedMultiplier(),
+                payload.memberPatterns(), payload.seeds(), payload.externalInputs(),
+                selected, payload.executionSeedMultiplier(),
                 payload.storedTaskMultiplier(), payload.enabled()));
     }
 

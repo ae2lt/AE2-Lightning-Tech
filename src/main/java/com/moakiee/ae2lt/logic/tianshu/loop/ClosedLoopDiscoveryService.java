@@ -15,7 +15,6 @@ import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 import java.util.function.Function;
 import net.minecraft.world.level.Level;
 
@@ -90,7 +89,7 @@ public final class ClosedLoopDiscoveryService {
                 if (!output.what().equals(requestedOutput)) declaredOutputs.add(output);
             }
             result.add(new ClosedLoopDiscoveryCandidate(new ClosedLoopPatternPayload(
-                    UUID.randomUUID(), 1L, storedMembers, analysis.seeds(), analysis.externalInputs(),
+                    storedMembers, analysis.seeds(), analysis.externalInputs(),
                     declaredOutputs, 1, 1, true)));
         }
         return new DiscoveryResult(result, rejectedUndecodablePattern);

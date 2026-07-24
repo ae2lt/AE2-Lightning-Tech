@@ -6,20 +6,9 @@ import com.moakiee.ae2lt.blockentity.TianshuSupercomputerPortBlockEntity;
 import com.moakiee.thunderbolt.core.planner.Sat;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.UUID;
 
 /** Server-authoritative implementation of the manual "refill seeds" actions. */
 public final class TianshuSeedRefillService {
-    public static RefillResult refillPattern(
-            TianshuSupercomputerPortBlockEntity target, UUID patternId) {
-        if (target == null || patternId == null) return RefillResult.UNAVAILABLE;
-        var repository = target.getClosedLoopPatternRepository();
-        if (repository == null) return RefillResult.UNAVAILABLE;
-        var payload = repository.get(patternId);
-        if (payload == null) return RefillResult.UNAVAILABLE;
-        return refill(target, requirements(payload));
-    }
-
     public static RefillResult refillAll(TianshuSupercomputerPortBlockEntity target) {
         if (target == null) return RefillResult.UNAVAILABLE;
         var repository = target.getClosedLoopPatternRepository();

@@ -21,7 +21,7 @@ Only two features require a formed Tianshu Supercomputing Array: uploading close
 
 The terminal never rebinds to a different Tianshu while it stays open. If the locked Tianshu goes offline or unforms, the related actions simply fail; close and reopen the terminal to pick a target again.
 
-The Closed-Loop Pattern Storage installed in the bound Tianshu's cooling-compatible positions appears as an extra pattern inventory in the terminal's network-content list. The entry is shown only while the structure is formed and its port is online. Each Closed-Loop Pattern Storage provides **64** closed-loop pattern slots, and installed storages add up. Closed-loop patterns can be taken out of the list for inspection or editing; returning them to the storage requires the terminal's upload function.
+The Closed-Loop Pattern Storage installed in the bound Tianshu's cooling-compatible positions appears as an extra pattern inventory in the terminal's network-content list. The entry is shown only while the structure is formed and its port is online. Each Closed-Loop Pattern Storage provides **36** closed-loop pattern slots, and installed storages add up. Closed-loop patterns can be taken out of the list for inspection or editing; returning them to the storage requires the terminal's upload function.
 
 ## Encoding Modes
 
@@ -48,6 +48,8 @@ With a pattern in the encoded-pattern slot, the **Upload** button sends it to it
 The provider-selection screen also supports **alias mappings**: map a recipe-source keyword to a provider alias so similar recipes locate their target provider faster. Shift + right-click a list entry to bind that machine's name as an alias directly.
 
 The terminal settings configure an **upload trigger**: holding a chosen key (or no key) while encoding automatically enters the matching upload flow; it can also be set to manual upload only. The manual upload button always remains available.
+
+The terminal enables **duplicate-pattern encoding interception** by default. Before a crafting, processing, or closed-loop pattern is committed, it checks every pattern inventory visible in the Pattern Access Terminal on the current ME network. If an identical definition already exists, encoding is cancelled without consuming a blank pattern. Closed-loop patterns compare their members, ratios, seeds, external inputs, outputs, and multipliers and do not persist a separate UUID. This client preference can be disabled in the terminal settings to allow duplicate patterns to be encoded and uploaded normally.
 
 ## Closed-Loop Patterns
 

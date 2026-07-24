@@ -14,7 +14,6 @@ import com.moakiee.thunderbolt.ae2.overload.pattern.SourcePatternSnapshot;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -32,7 +31,7 @@ class ClosedLoopPatternFlattenerTest {
         var inner = snapshot("inner");
         var firstDetails = new FakePattern("first");
         var secondDetails = new FakePattern("second");
-        var nested = payload(UUID.randomUUID(), List.of(
+        var nested = payload(List.of(
                 new ClosedLoopMemberPattern(first, 1L),
                 new ClosedLoopMemberPattern(second, 2L)), 37, 41);
         var resolver = resolver(Map.of(
@@ -58,10 +57,10 @@ class ClosedLoopPatternFlattenerTest {
         var anchor = snapshot("recursive_anchor");
         var inner = snapshot("recursive_inner");
         var middle = snapshot("recursive_middle");
-        var innerPayload = payload(UUID.randomUUID(), List.of(
+        var innerPayload = payload(List.of(
                 new ClosedLoopMemberPattern(first, 1L),
                 new ClosedLoopMemberPattern(second, 2L)), 5, 7);
-        var middlePayload = payload(UUID.randomUUID(), List.of(
+        var middlePayload = payload(List.of(
                 new ClosedLoopMemberPattern(inner, 3L),
                 new ClosedLoopMemberPattern(anchor, 1L)), 11, 13);
         var resolver = resolver(Map.of(
@@ -95,10 +94,10 @@ class ClosedLoopPatternFlattenerTest {
                 second.itemId(), ClosedLoopPatternFlattener.ResolvedMember.leaf(
                         new FakePattern("gcd_second")),
                 firstMacro.itemId(), ClosedLoopPatternFlattener.ResolvedMember.macro(
-                        payload(UUID.randomUUID(), List.of(
+                        payload(List.of(
                                 new ClosedLoopMemberPattern(first, 1L)), 1, 1)),
                 secondMacro.itemId(), ClosedLoopPatternFlattener.ResolvedMember.macro(
-                        payload(UUID.randomUUID(), List.of(
+                        payload(List.of(
                                 new ClosedLoopMemberPattern(second, 1L)), 1, 1))));
 
         var result = ClosedLoopPatternFlattener.flatten(List.of(
@@ -117,7 +116,7 @@ class ClosedLoopPatternFlattenerTest {
                 leaf.itemId(), ClosedLoopPatternFlattener.ResolvedMember.leaf(
                         new FakePattern("mixed_leaf")),
                 macro.itemId(), ClosedLoopPatternFlattener.ResolvedMember.macro(
-                        payload(UUID.randomUUID(), List.of(
+                        payload(List.of(
                                 new ClosedLoopMemberPattern(leaf, 1L)), 1, 1)),
                 ordinary.itemId(), ClosedLoopPatternFlattener.ResolvedMember.leaf(
                         new FakePattern("mixed_ordinary"))));
@@ -148,7 +147,7 @@ class ClosedLoopPatternFlattenerTest {
     void repeatedSiblingReferenceIsNotMistakenForAnAncestorCycle() {
         var leaf = snapshot("sibling_leaf");
         var macro = snapshot("sibling_macro");
-        var sharedPayload = payload(UUID.randomUUID(), List.of(
+        var sharedPayload = payload(List.of(
                 new ClosedLoopMemberPattern(leaf, 1L)), 1, 1);
         var resolver = resolver(Map.of(
                 leaf.itemId(), ClosedLoopPatternFlattener.ResolvedMember.leaf(
@@ -167,9 +166,9 @@ class ClosedLoopPatternFlattenerTest {
     void rejectsAnAncestorReferenceCycle() {
         var first = snapshot("cycle_first");
         var second = snapshot("cycle_second");
-        var firstPayload = payload(UUID.randomUUID(), List.of(
+        var firstPayload = payload(List.of(
                 new ClosedLoopMemberPattern(second, 1L)), 1, 1);
-        var secondPayload = payload(UUID.randomUUID(), List.of(
+        var secondPayload = payload(List.of(
                 new ClosedLoopMemberPattern(first, 1L)), 1, 1);
         var resolver = resolver(Map.of(
                 first.itemId(), ClosedLoopPatternFlattener.ResolvedMember.macro(firstPayload),
@@ -192,7 +191,7 @@ class ClosedLoopPatternFlattenerTest {
         for (int depth = ClosedLoopPatternFlattener.MAX_NESTING_DEPTH; depth >= 0; depth--) {
             var macro = snapshot("depth_macro_" + depth);
             resolved.put(macro.itemId(), ClosedLoopPatternFlattener.ResolvedMember.macro(
-                    payload(UUID.randomUUID(), List.of(
+                    payload(List.of(
                             new ClosedLoopMemberPattern(next, 1L)), 1, 1)));
             next = macro;
         }
@@ -230,7 +229,7 @@ class ClosedLoopPatternFlattenerTest {
                 second.itemId(), ClosedLoopPatternFlattener.ResolvedMember.leaf(
                         new FakePattern("overflow_second")),
                 macro.itemId(), ClosedLoopPatternFlattener.ResolvedMember.macro(
-                        payload(UUID.randomUUID(), List.of(
+                        payload(List.of(
                                 new ClosedLoopMemberPattern(first, 1L),
                                 new ClosedLoopMemberPattern(second, 2L)), 1, 1))));
 
@@ -258,10 +257,10 @@ class ClosedLoopPatternFlattenerTest {
     }
 
     private static ClosedLoopPatternPayload payload(
-            UUID id, List<ClosedLoopMemberPattern> members,
+            List<ClosedLoopMemberPattern> members,
             int executionMultiplier, int storedTaskMultiplier) {
         return new ClosedLoopPatternPayload(
-                id, 1L, members,
+                members,
                 List.of(new GenericStack(new TestKey("seed"), 1L)),
                 List.of(),
                 List.of(new GenericStack(new TestKey("output"), 1L)),

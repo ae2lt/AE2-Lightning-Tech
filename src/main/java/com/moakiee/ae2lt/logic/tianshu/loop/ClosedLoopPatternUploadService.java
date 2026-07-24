@@ -21,9 +21,8 @@ public final class ClosedLoopPatternUploadService {
         }
         var repository = target.getClosedLoopPatternRepository();
         if (repository == null) return ClosedLoopPatternRepository.PutResult.UNAVAILABLE;
-        var result = repository.put(payload);
-        if (result == ClosedLoopPatternRepository.PutResult.ADDED
-                || result == ClosedLoopPatternRepository.PutResult.UPDATED) {
+        var result = repository.add(payload);
+        if (result == ClosedLoopPatternRepository.PutResult.ADDED) {
             target.closedLoopPatternsChanged();
         }
         return result;

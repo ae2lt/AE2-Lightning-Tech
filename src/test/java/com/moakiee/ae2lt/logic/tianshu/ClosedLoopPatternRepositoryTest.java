@@ -1,6 +1,7 @@
 package com.moakiee.ae2lt.logic.tianshu;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -45,7 +46,7 @@ import org.junit.jupiter.api.Test;
 class ClosedLoopPatternRepositoryTest {
     @Test
     void executionAndStoredTaskMultipliersScaleDifferentSeedCapacityAxes() {
-        var base = payload(UUID.randomUUID(), 1);
+        var base = payload();
         var executionScaled = base.withExecutionSeedMultiplier(1_000);
         var storageScaled = base.withStoredTaskMultiplier(8);
         var combined = base.withSeedMultipliers(1_000, 8);
@@ -62,39 +63,44 @@ class ClosedLoopPatternRepositoryTest {
                 TianshuSeedRefillService.requirements(storageScaled).get(seed.what()));
         assertEquals(8_000,
                 TianshuSeedRefillService.requirements(combined).get(seed.what()));
-        assertEquals(base.version() + 1, combined.version());
+        assertFalse(base == combined);
     }
 
     @Test
     void warehouseCapacityGatesNewPatternsButNeverDeletesExistingData() {
         var capacity = new int[] { 1 };
         var repository = new ClosedLoopPatternRepository(() -> capacity[0]);
-        var first = payload(UUID.randomUUID(), 1);
-        var second = payload(UUID.randomUUID(), 1);
+        var first = payload();
+        var second = payload();
 
-        assertEquals(ClosedLoopPatternRepository.PutResult.ADDED, repository.put(first));
-        assertEquals(ClosedLoopPatternRepository.PutResult.FULL, repository.put(second));
+        assertEquals(ClosedLoopPatternRepository.PutResult.ADDED, repository.add(first));
+        assertEquals(ClosedLoopPatternRepository.PutResult.FULL, repository.add(second));
 
         capacity[0] = 0;
-        assertNotNull(repository.get(first.patternId()));
+        assertNotNull(repository.get(0));
         assertEquals(List.of(first), repository.overflowedPatterns());
         assertEquals(List.of(), repository.activePatterns());
+        var updated = first.withStoredTaskMultiplier(8);
         assertEquals(ClosedLoopPatternRepository.PutResult.UPDATED,
-                repository.put(first.withStoredTaskMultiplier(8)));
+                repository.replace(first, updated));
+        assertEquals(updated, repository.get(0));
         capacity[0] = 1;
         assertEquals(1, repository.activePatterns().size());
     }
 
     @Test
-    void olderPatternVersionCannotOverwriteNewerStoredDefinition() {
+    void replacementRequiresTheExactStoredPayloadReference() {
         var repository = new ClosedLoopPatternRepository(() -> 64);
-        var id = UUID.randomUUID();
-        var newer = payload(id, 4);
-        var older = payload(id, 3);
+        var stored = payload();
+        var unrelated = payload();
+        var replacement = stored.withStoredTaskMultiplier(4);
 
-        assertEquals(ClosedLoopPatternRepository.PutResult.ADDED, repository.put(newer));
-        assertEquals(ClosedLoopPatternRepository.PutResult.STALE_VERSION, repository.put(older));
-        assertEquals(4, repository.get(id).version());
+        assertEquals(ClosedLoopPatternRepository.PutResult.ADDED, repository.add(stored));
+        assertEquals(ClosedLoopPatternRepository.PutResult.INVALID,
+                repository.replace(unrelated, replacement));
+        assertEquals(ClosedLoopPatternRepository.PutResult.UPDATED,
+                repository.replace(stored, replacement));
+        assertEquals(replacement, repository.get(0));
     }
 
     @Test
@@ -488,11 +494,11 @@ class ClosedLoopPatternRepositoryTest {
         };
     }
 
-    private static ClosedLoopPatternPayload payload(UUID id, long version) {
+    private static ClosedLoopPatternPayload payload() {
         var member = new SourcePatternSnapshot(
                 ResourceLocation.fromNamespaceAndPath("ae2", "encoded_processing_pattern"), null, null);
         return new ClosedLoopPatternPayload(
-                id, version, List.of(new ClosedLoopMemberPattern(member, 1)),
+                List.of(new ClosedLoopMemberPattern(member, 1)),
                 List.of(new GenericStack(new TestKey("template"), 1)),
                 List.of(new GenericStack(new TestKey("diamond"), 7)),
                 List.of(new GenericStack(new TestKey("template"), 1)),

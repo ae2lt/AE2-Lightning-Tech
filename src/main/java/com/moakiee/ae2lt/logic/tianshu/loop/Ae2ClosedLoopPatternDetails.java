@@ -35,6 +35,7 @@ public final class Ae2ClosedLoopPatternDetails
     private final IInput[] inputs;
     private final List<ExpandedMember> members;
     private final UUID owningTianshuId;
+    private final UUID seedGroupId;
     private final Map<AEKey, Long> availableSeedSnapshot;
     private final Set<AEKey> cycleKeys;
     private final Map<AEKey, Set<AEKey>> acceptedSeedVariants;
@@ -74,6 +75,8 @@ public final class Ae2ClosedLoopPatternDetails
         this.definition = Objects.requireNonNull(definition, "definition");
         this.payload = Objects.requireNonNull(payload, "payload");
         this.owningTianshuId = owningTianshuId;
+        this.seedGroupId = ClosedLoopPatternIdentity.runtimeGroupId(
+                definition, level.registryAccess());
         Objects.requireNonNull(availableSeedSnapshotFactory, "availableSeedSnapshotFactory");
         var allInputs = new ArrayList<GenericStack>(payload.seeds().size() + payload.externalInputs().size());
         for (var seed : payload.seeds()) {
@@ -130,8 +133,7 @@ public final class Ae2ClosedLoopPatternDetails
         this.singleSeedInputPerMember = isSharedSeedPoolSafe(
                 ClosedLoopPatternAnalyzer.hasSingleSeedInputPerMember(memberFlows),
                 seedAmounts.keySet(), acceptedVariants, anyFuzzySeeds);
-        this.consumerRouting = ClosedLoopConsumerRouting.compile(
-                payload.patternId(), memberFlows);
+        this.consumerRouting = ClosedLoopConsumerRouting.compile(seedGroupId, memberFlows);
         if (!this.consumerRouting.bootstrapSeed().equals(Map.copyOf(seedAmounts))) {
             throw new IllegalArgumentException(
                     "closed-loop consumer bootstrap does not match the encoded seed state");
@@ -151,7 +153,7 @@ public final class Ae2ClosedLoopPatternDetails
             decodedMembers.add(new ExpandedMember(
                     ClosedLoopExpandedPatternDetails.wrap(
                             details, memberSeedAmounts(seedAmounts, memberFlow.inputSeed().keySet()),
-                            cycleKeys, payload.patternId(),
+                            cycleKeys, seedGroupId,
                             singleSeedInputPerMember,
                             memberFlow.inputSeedBySlot(),
                             payload.memberPatterns().size() == 1,
@@ -240,7 +242,7 @@ public final class Ae2ClosedLoopPatternDetails
 
     @Override
     public Object reusableSeedStorageScope() {
-        return owningTianshuId != null ? owningTianshuId : payload.patternId();
+        return owningTianshuId != null ? owningTianshuId : seedGroupId;
     }
 
     @Override
@@ -309,7 +311,7 @@ public final class Ae2ClosedLoopPatternDetails
 
     @Override
     public UUID reusableSeedGroupId() {
-        return payload.patternId();
+        return seedGroupId;
     }
 
     @Override

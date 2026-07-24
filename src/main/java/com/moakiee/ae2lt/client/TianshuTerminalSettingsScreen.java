@@ -18,6 +18,7 @@ import org.lwjgl.glfw.GLFW;
 public final class TianshuTerminalSettingsScreen<M extends TianshuPatternEncodingTermMenu>
         extends AESubScreen<M, TerminalSettingsScreen<M>> {
     private AE2Button triggerButton;
+    private AE2Button duplicateEncodingButton;
 
     public TianshuTerminalSettingsScreen(TerminalSettingsScreen<M> parent) {
         super(parent, "/screens/tianshu_terminal_settings.json");
@@ -25,6 +26,8 @@ public final class TianshuTerminalSettingsScreen<M extends TianshuPatternEncodin
         widgets.add("back", new TabButton(Icon.BACK,
                 Component.translatable("gui.back"), ignored -> returnToParent()));
         triggerButton = widgets.addButton("uploadTrigger", triggerLabel(), this::cycleTrigger);
+        duplicateEncodingButton = widgets.addButton(
+                "duplicateEncoding", duplicateEncodingLabel(), this::toggleDuplicateEncoding);
     }
 
     private void hideTerminalSlots() {
@@ -50,6 +53,18 @@ public final class TianshuTerminalSettingsScreen<M extends TianshuPatternEncodin
                 + AE2LTClientConfig.uploadTrigger().name().toLowerCase(java.util.Locale.ROOT));
     }
 
+    private void toggleDuplicateEncoding() {
+        AE2LTClientConfig.setInterceptDuplicatePatternEncoding(
+                !AE2LTClientConfig.interceptDuplicatePatternEncoding());
+        duplicateEncodingButton.setMessage(duplicateEncodingLabel());
+    }
+
+    private Component duplicateEncodingLabel() {
+        return Component.translatable(AE2LTClientConfig.interceptDuplicatePatternEncoding()
+                ? "ae2lt.tianshu.settings.duplicate_encoding.on"
+                : "ae2lt.tianshu.settings.duplicate_encoding.off");
+    }
+
     @Override
     public void drawFG(GuiGraphics graphics, int offsetX, int offsetY, int mouseX, int mouseY) {
         super.drawFG(graphics, offsetX, offsetY, mouseX, mouseY);
@@ -58,6 +73,12 @@ public final class TianshuTerminalSettingsScreen<M extends TianshuPatternEncodin
         graphics.drawWordWrap(font,
                 Component.translatable("ae2lt.tianshu.settings.upload_trigger.hint"),
                 10, 72, 180, 0x666666);
+        graphics.drawString(font,
+                Component.translatable("ae2lt.tianshu.settings.duplicate_encoding"),
+                10, 118, 0x404040, false);
+        graphics.drawWordWrap(font,
+                Component.translatable("ae2lt.tianshu.settings.duplicate_encoding.hint"),
+                10, 160, 180, 0x666666);
     }
 
     @Override
