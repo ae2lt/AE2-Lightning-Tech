@@ -21,7 +21,7 @@ public final class PigmeeMolecularAssemblerScreen
     private static final int CRAFTING_GRID_V = 2;
     private static final int CRAFTING_GRID_SIZE = 52;
     private static final int PATTERN_SLOT_X = 126;
-    private static final int PATTERN_SLOT_Y = 28;
+    private static final int PATTERN_SLOT_Y = 29;
     private static final int PATTERN_SLOT_U = 179;
     private static final int PATTERN_SLOT_V = 57;
     private static final int PATTERN_SLOT_SIZE = 16;
