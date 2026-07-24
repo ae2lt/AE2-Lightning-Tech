@@ -59,14 +59,37 @@ class TianshuPatternEncodingTermMenuSourceContractTest {
     }
 
     @Test
-    void closedLoopAuthoringUsesLeftMemberMarksAndTheRightPrimaryOutputMark() throws Exception {
+    void closedLoopAuthoringFixesTheFirstRightSlotAsPrimaryAndDisplaysByproducts() throws Exception {
         String menu = Files.readString(Path.of(
                 "src/main/java/com/moakiee/ae2lt/menu/TianshuPatternEncodingTermMenu.java"));
+        String config = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/client/TianshuClosedLoopPatternConfigScreen.java"));
+        String panel = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/client/TianshuClosedLoopEncodingPanel.java"));
+        String layout = Files.readString(Path.of(
+                "src/main/resources/assets/ae2/screens/terminals/"
+                        + "tianshu_pattern_encoding_terminal.json"));
 
         assertTrue(menu.contains("new ClosedLoopMemberSlot(closedLoopMemberInventory"));
         assertTrue(menu.contains("new ClosedLoopOutputSlot(closedLoopOutputInventory"));
+        assertTrue(menu.contains("slot.setIcon(Icon.BACKGROUND_PRIMARY_OUTPUT)"));
+        assertTrue(menu.contains("new ClosedLoopReadonlySlot(closedLoopOutputInventory, i)"));
         assertTrue(menu.contains("var markedOutput = getMarkedClosedLoopPrimaryOutput()"));
         assertTrue(menu.contains("refreshClosedLoops(markedOutput.what())"));
+        assertTrue(menu.contains("closedLoopOutputRoles[i] = i == 0 ? 1 : 2"));
+        assertTrue(menu.contains("writeOutputCandidates(payload.netOutputs())"));
+        assertFalse(menu.contains("setClosedLoopOutputRole"));
+        assertFalse(config.contains("cycleOutputRole"));
+        assertTrue(config.contains("outputRoles[visible].active = false"));
+        assertTrue(menu.contains("registerClientAction(\"cycleClosedLoopOutput\""));
+        assertTrue(menu.contains("rotated[i] = next.copy()"));
+        assertTrue(menu.contains("snapshotClosedLoopOutputKeys()"));
+        assertTrue(menu.contains("orderClosedLoopOutputs("));
+        assertTrue(menu.contains("closedLoopOutputRoles[i] = i == 0 ? 1 : 2"));
+        assertTrue(panel.contains("ActionItems.S_CYCLE_PROCESSING_OUTPUT"));
+        assertTrue(panel.contains("menu.cycleClosedLoopOutput()"));
+        assertTrue(panel.contains("menu.canCycleClosedLoopOutputs()"));
+        assertTrue(layout.contains("\"closedLoopCycleOutput\""));
         assertFalse(menu.contains("refreshClosedLoops(source)"));
         assertFalse(menu.contains("PatternDetailsHelper.decodePattern(source"));
     }

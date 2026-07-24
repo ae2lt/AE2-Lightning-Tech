@@ -19,7 +19,6 @@ import java.util.Locale;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import org.lwjgl.glfw.GLFW;
@@ -50,7 +49,6 @@ final class TianshuClosedLoopPatternConfigScreen<M extends TianshuPatternEncodin
     private final ArrowButton[] memberUp = new ArrowButton[TianshuPatternConfigLayout.VISIBLE_ROWS];
     private final ArrowButton[] memberDown = new ArrowButton[TianshuPatternConfigLayout.VISIBLE_ROWS];
     private final Button[] outputRoles = new Button[TianshuPatternConfigLayout.VISIBLE_ROWS];
-    private final int[] outputRows = new int[TianshuPatternConfigLayout.VISIBLE_ROWS];
     private Page page = Page.MEMBERS;
     private AETextField executionMultiplier;
     private AETextField storedMultiplier;
@@ -106,9 +104,8 @@ final class TianshuClosedLoopPatternConfigScreen<M extends TianshuPatternEncodin
             memberDown[row].setPosition(leftPos + MEMBER_DOWN_X, topPos + rowY + 4);
 
             var role = new AE2Button(leftPos + ROLE_X, topPos + rowY + 4, ROLE_WIDTH, 16,
-                    Component.empty(), ignored -> cycleOutputRole(visibleRow));
-            role.setTooltip(Tooltip.create(Component.translatable(
-                    "ae2lt.tianshu.closed_loop.role.tooltip")));
+                    Component.empty(), ignored -> {
+                    });
             outputRoles[row] = addRenderableWidget(role);
         }
 
@@ -251,13 +248,12 @@ final class TianshuClosedLoopPatternConfigScreen<M extends TianshuPatternEncodin
                     && memberIndex + 1 < TianshuPatternEncodingTermMenu.CLOSED_LOOP_MEMBER_SLOTS;
 
             int outputIndex = scroll + visible;
-            outputRows[visible] = outputIndex;
             boolean outputPage = page == Page.OUTPUTS
                     && outputIndex < TianshuPatternEncodingTermMenu.CLOSED_LOOP_OUTPUT_SLOTS;
             boolean outputPresent = outputPage
                     && !menu.getClosedLoopOutputSlots().get(outputIndex).getItem().isEmpty();
-            outputRoles[visible].visible = outputPage;
-            outputRoles[visible].active = outputPresent;
+            outputRoles[visible].visible = outputPresent;
+            outputRoles[visible].active = false;
             if (outputPage) outputRoles[visible].setMessage(roleLabel(
                     menu.closedLoopDraftSync.outputRole(outputIndex)));
         }
@@ -310,28 +306,6 @@ final class TianshuClosedLoopPatternConfigScreen<M extends TianshuPatternEncodin
 
     private void moveMember(int visibleRow, int direction) {
         if (page == Page.MEMBERS) menu.moveClosedLoopMember(memberRows[visibleRow], direction);
-    }
-
-    private void cycleOutputRole(int visibleRow) {
-        if (page != Page.OUTPUTS) return;
-        int slot = outputRows[visibleRow];
-        int role = menu.closedLoopDraftSync.outputRole(slot);
-        if (hasShiftDown()) {
-            menu.setClosedLoopOutputRole(slot, 1);
-            return;
-        }
-        if (role != 0) {
-            menu.setClosedLoopOutputRole(slot, 0);
-            return;
-        }
-        boolean hasPrimary = false;
-        for (int i = 0; i < TianshuPatternEncodingTermMenu.CLOSED_LOOP_OUTPUT_SLOTS; i++) {
-            if (menu.closedLoopDraftSync.outputRole(i) == 1) {
-                hasPrimary = true;
-                break;
-            }
-        }
-        menu.setClosedLoopOutputRole(slot, hasPrimary ? 2 : 1);
     }
 
     private void submitMultipliers() {

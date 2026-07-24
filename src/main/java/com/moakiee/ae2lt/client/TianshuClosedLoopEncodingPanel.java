@@ -63,6 +63,7 @@ final class TianshuClosedLoopEncodingPanel implements ICompositeWidget {
     private final AE2Button detailButton;
     private final AE2Button autoFillButton;
     private final ActionButton clearButton;
+    private final ActionButton cycleOutputButton;
     private final IconButton refillButton;
     private final AETextField executionField;
     private final AETextField storedField;
@@ -94,6 +95,13 @@ final class TianshuClosedLoopEncodingPanel implements ICompositeWidget {
         clearButton.setHalfSize(true);
         clearButton.setDisableBackground(true);
         widgets.add("closedLoopClear", clearButton);
+
+        cycleOutputButton = new ActionButton(
+                ActionItems.S_CYCLE_PROCESSING_OUTPUT,
+                ignored -> menu.cycleClosedLoopOutput());
+        cycleOutputButton.setHalfSize(true);
+        cycleOutputButton.setDisableBackground(true);
+        widgets.add("closedLoopCycleOutput", cycleOutputButton);
 
         refillButton = new IconButton(btn -> menu.refillClosedLoopSeeds()) {
             @Override
@@ -152,6 +160,7 @@ final class TianshuClosedLoopEncodingPanel implements ICompositeWidget {
         detailButton.visible = visible;
         autoFillButton.visible = visible;
         clearButton.setVisibility(visible);
+        cycleOutputButton.setVisibility(visible && menu.canCycleClosedLoopOutputs());
         refillButton.setVisibility(visible);
         executionField.setVisible(visible);
         storedField.setVisible(visible);
@@ -185,10 +194,9 @@ final class TianshuClosedLoopEncodingPanel implements ICompositeWidget {
 
         autoFillButton.active = menu.closedLoopCandidateCount > 0
                 || menu.hasClosedLoopPrimaryOutputMark();
+        cycleOutputButton.setVisibility(menu.canCycleClosedLoopOutputs());
         autoFillButton.setTooltip(Tooltip.create(Component.translatable(
-                "ae2lt.tianshu.closed_loop.auto_fill.tooltip",
-                menu.closedLoopCandidateCount == 0 ? 0 : menu.closedLoopCandidateIndex + 1,
-                menu.closedLoopCandidateCount)));
+                "ae2lt.tianshu.closed_loop.auto_fill.tooltip")));
         refillButton.active = menu.seedRefillAvailable;
         syncFields();
     }
