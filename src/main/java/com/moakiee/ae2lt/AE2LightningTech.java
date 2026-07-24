@@ -306,6 +306,9 @@ public class AE2LightningTech {
                         output.accept(ModBlocks.PIGMEE_MENTALMATH_UNIT);
                         output.accept(ModBlocks.PIGMEE_PATTERN_PROVIDER);
                         output.accept(ModBlocks.PIGMEE_MOLECULAR_ASSEMBLER);
+                        output.accept(ModItems.PIGMEE_ITEM_CELL_HOUSING);
+                        output.accept(ModItems.PIGMEE_STORAGE_COMPONENT);
+                        output.accept(ModItems.PIGMEE_STORAGE_CELL);
                     })
                     .build());
 

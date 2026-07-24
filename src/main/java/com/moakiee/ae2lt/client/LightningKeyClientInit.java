@@ -86,7 +86,8 @@ public final class LightningKeyClientInit {
                 ModItems.LIGHTNING_STORAGE_COMPONENT_II.get(),
                 ModItems.LIGHTNING_STORAGE_COMPONENT_III.get(),
                 ModItems.LIGHTNING_STORAGE_COMPONENT_IV.get(),
-                ModItems.LIGHTNING_STORAGE_COMPONENT_V.get());
+                ModItems.LIGHTNING_STORAGE_COMPONENT_V.get(),
+                ModItems.PIGMEE_STORAGE_CELL.get());
     }
 
     @SubscribeEvent
