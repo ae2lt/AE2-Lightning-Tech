@@ -45,19 +45,19 @@ public final class MultiblockStructureRecipes {
         Block port = ModBlocks.MATTER_WARPING_MATRIX_PORT.get();
         Block patternT1 = ModBlocks.MATTER_WARPING_MATRIX_PATTERN_STORAGE_T1.get();
         Block patternT2 = ModBlocks.MATTER_WARPING_MATRIX_PATTERN_STORAGE_T2.get();
-        Block blank = ModBlocks.MATTER_WARPING_MATRIX_BLANK_UNIT.get();
+        Block blank = ModBlocks.TIANSHU_BLANK_UNIT.get();
         Block threadT1 = ModBlocks.MATTER_WARPING_MATRIX_THREAD_UNIT_T1.get();
 
         List<Block> mainCores = List.of(
                 ModBlocks.MATTER_WARPING_MATRIX_STABLE_MAIN_CORE.get(),
                 ModBlocks.MATTER_WARPING_MATRIX_QUANTUM_MAIN_CORE.get(),
                 ModBlocks.MATTER_WARPING_MATRIX_OVERLOAD_MAIN_CORE.get(),
-                ModBlocks.MATTER_WARPING_MATRIX_CREATIVE_MAIN_CORE.get());
+                ModBlocks.MATTER_WARPING_MATRIX_MULTIDIMENSIONAL_MAIN_CORE.get());
         List<Block> peripheralUnits = List.of(
                 blank,
                 threadT1,
                 ModBlocks.MATTER_WARPING_MATRIX_THREAD_UNIT_T2.get(),
-                ModBlocks.AMPLIFIER_SUPERCOMPUTING_UNIT.get(),
+                ModBlocks.TIANSHU_AMPLIFIER_UNIT.get(),
                 ModBlocks.MATTER_WARPING_MATRIX_THERMAL_CONTROL_UNIT_T1.get(),
                 ModBlocks.MATTER_WARPING_MATRIX_THERMAL_CONTROL_UNIT_T2.get());
 
@@ -164,10 +164,10 @@ public final class MultiblockStructureRecipes {
         Block glass = ModBlocks.TIANSHU_SUPERCOMPUTER_GLASS.get();
         Block controller = ModBlocks.TIANSHU_SUPERCOMPUTER_CONTROLLER.get();
         Block port = ModBlocks.TIANSHU_SUPERCOMPUTER_PORT.get();
-        Block blank = ModBlocks.BLANK_SUPERCOMPUTING_UNIT.get();
+        Block blank = ModBlocks.TIANSHU_BLANK_UNIT.get();
         Block storage = ModBlocks.STORAGE_SUPERCOMPUTING_UNIT.get();
         Block parallel = ModBlocks.PARALLEL_SUPERCOMPUTING_UNIT.get();
-        Block amplifier = ModBlocks.AMPLIFIER_SUPERCOMPUTING_UNIT.get();
+        Block amplifier = ModBlocks.TIANSHU_AMPLIFIER_UNIT.get();
         Block patternStorage = ModBlocks.CLOSED_LOOP_PATTERN_STORAGE.get();
         Block seedStorage = ModBlocks.CLOSED_LOOP_SEED_STORAGE.get();
         List<Block> coolingPositionBlocks = List.of(cooling, patternStorage, seedStorage);

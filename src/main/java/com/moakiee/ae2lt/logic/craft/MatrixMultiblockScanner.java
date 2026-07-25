@@ -182,19 +182,19 @@ public final class MatrixMultiblockScanner {
         if (hasMainCoreOutsideCenter) {
             addIssue(issues, MatrixMultiblockScanIssue.MAIN_CORE_OUTSIDE_CENTER);
         }
-        if (mainCoreAtCenter != MatrixMultiblockComponent.CREATIVE_MAIN_CORE
+        if (mainCoreAtCenter != MatrixMultiblockComponent.MULTIDIMENSIONAL_MAIN_CORE
                 && amplifierUnitCount > MatrixCraftingProfile.AMPLIFIER_LIMIT) {
             addIssue(issues, MatrixMultiblockScanIssue.AMPLIFIER_LIMIT_EXCEEDED);
         }
         if (mainCoreAtCenter != null
-                && mainCoreAtCenter != MatrixMultiblockComponent.CREATIVE_MAIN_CORE
+                && mainCoreAtCenter != MatrixMultiblockComponent.MULTIDIMENSIONAL_MAIN_CORE
                 && dispatchCount == 0) {
             addIssue(issues, MatrixMultiblockScanIssue.MISSING_DISPATCH_UNIT);
         }
         if (mainCoreAtCenter == MatrixMultiblockComponent.STABLE_MAIN_CORE && amplifierUnitCount > 0) {
             addIssue(issues, MatrixMultiblockScanIssue.AMPLIFIER_NOT_SUPPORTED);
         }
-        if (mainCoreAtCenter == MatrixMultiblockComponent.CREATIVE_MAIN_CORE
+        if (mainCoreAtCenter == MatrixMultiblockComponent.MULTIDIMENSIONAL_MAIN_CORE
                 && nonBlankUnitCount > 0) {
             addIssue(issues, MatrixMultiblockScanIssue.MULTIDIMENSIONAL_UNIT_NOT_SUPPORTED);
         }

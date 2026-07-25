@@ -10,7 +10,7 @@ item_ids:
   - ae2lt:tianshu_supercomputer_glass
   - ae2lt:tianshu_supercomputer_controller
   - ae2lt:tianshu_supercomputer_port
-  - ae2lt:blank_supercomputing_unit
+  - ae2lt:tianshu_blank_unit
   - ae2lt:storage_supercomputing_unit
   - ae2lt:parallel_supercomputing_unit
   - ae2lt:tianshu_amplifier_unit
@@ -51,7 +51,7 @@ item_ids:
 | 核心舱单元 | 数量 | 说明 |
 |------------|-----:|------|
 | 任意一种天枢主核心 | 1 | 只能放在核心舱正中心 |
-| <ItemLink id="ae2lt:blank_supercomputing_unit" /> | 0–26 | 填充外围槽位，但不提供任何属性 |
+| <ItemLink id="ae2lt:tianshu_blank_unit" /> | 0–26 | 填充外围槽位，但不提供任何属性 |
 | <ItemLink id="ae2lt:storage_supercomputing_unit" /> | 0–25 | 可选；增加有限等级的合成容量 |
 | <ItemLink id="ae2lt:parallel_supercomputing_unit" /> | 0–26 | 基础、量子和过载核心至少需要 1 个；多维核心不允许使用 |
 | <ItemLink id="ae2lt:tianshu_amplifier_unit" /> | 0–15 | 仅量子和过载核心允许使用 |

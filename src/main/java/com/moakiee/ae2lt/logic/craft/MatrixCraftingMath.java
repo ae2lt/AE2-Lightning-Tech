@@ -49,7 +49,7 @@ public final class MatrixCraftingMath {
                 0.0D);
     }
 
-    public static Snapshot creativeSnapshot() {
+    public static Snapshot multidimensionalSnapshot() {
         return new Snapshot(
                 0.0D,
                 0.0D,

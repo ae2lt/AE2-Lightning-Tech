@@ -42,9 +42,9 @@
 3. 过载主核心。
 4. 多维主核心。
 
-天枢与矩阵共用等级定义和计算配置。天枢将特殊无限等级注册为“多维主核心”，矩阵当前将同一 `MULTIDIMENSIONAL` envelope 暴露为“创造主核心”；两者在计算层都是第四档特殊无限模式。主核心方块是否物理共用由注册和美术方案决定，但不能再维护两套互不相干的数值公式。
+天枢与矩阵共用等级定义和计算配置。两种多方块都将特殊无限等级注册为“多维主核心”，并在计算层复用同一个 `MULTIDIMENSIONAL` envelope。两者保留各自结构对应的主核心方块，但不能维护两套互不相干的数值公式。
 
-矩阵创造主核心只用于开发、测试或创造模式，不计入正常科技树；如果以后增加可合成的矩阵多维主核心，应直接复用同一等级配置，而不是新增第五套公式。
+矩阵多维主核心当前没有生存配方，只能用于开发、测试或创造模式，不计入正常科技树；以后增加其合成路线时仍直接复用同一等级配置，不新增第五套公式。
 
 ### 3.2 外围单元
 
@@ -545,7 +545,7 @@ CPU 界面中的“发配预算”必须指 `D`，不能显示 `T` 后仍称为�
 
 ## 17. 注册 ID 与迁移
 
-注册 ID 只在旧名称已经违背最终结构语义时调整。仍准确描述对象的 ID 保持不变，避免无意义地破坏存档、KubeJS 脚本和整合包配方。例如矩阵的外壳、控制器、端口、主核心、样板仓及其方块实体/菜单继续使用 `matter_warping_matrix_*`；天枢的空白、存储和并行单元继续使用 `*_supercomputing_unit`。
+注册 ID 只在旧名称已经违背最终结构语义时调整。仍准确描述对象的 ID 保持不变，避免无意义地破坏存档、KubeJS 脚本和整合包配方。例如矩阵的外壳、控制器、端口、主核心、样板仓及其方块实体/菜单继续使用 `matter_warping_matrix_*`；仅由超算阵列使用的存储和并行单元继续使用 `*_supercomputing_unit`，两种多方块共用的空白与增幅单元则统一使用 `tianshu_*_unit`。
 
 需要迁移的方块和对应物品通过 NeoForge registry alias 定向到以下正式 ID，不重复注册兼容方块：
 
@@ -556,7 +556,9 @@ CPU 界面中的“发配预算”必须指 `D`，不能显示 `T` 后仍称为�
 | `overload_supercomputing_unit` | `tianshu_overload_main_core` |
 | `multidimensional_supercomputing_unit` | `tianshu_multidimensional_main_core` |
 | `amplifier_supercomputing_unit` | `tianshu_amplifier_unit` |
-| `matter_warping_matrix_blank_sub_core` | `matter_warping_matrix_blank_unit` |
+| `blank_supercomputing_unit` | `tianshu_blank_unit` |
+| `matter_warping_matrix_blank_sub_core` | `tianshu_blank_unit` |
+| `matter_warping_matrix_blank_unit` | `tianshu_blank_unit` |
 | `matter_warping_matrix_thread_sub_core_t1/t2` | `matter_warping_matrix_thread_unit_t1/t2` |
 | `matter_warping_matrix_cooling_sub_core_t1/t2` | `matter_warping_matrix_thermal_control_unit_t1/t2` |
 | `matter_warping_matrix_multiplier_sub_core_t1/t2` | `tianshu_amplifier_unit` |

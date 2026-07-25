@@ -142,7 +142,7 @@ public final class MatrixCraftingCluster {
 
     public BatchDispatchMode batchDispatchMode() {
         var profile = craftingProfile();
-        return profile.isValid() && profile.mode() == MatrixCoreMode.CREATIVE
+        return profile.isValid() && profile.mode() == MatrixCoreMode.MULTIDIMENSIONAL
                 ? BatchDispatchMode.UNBOUNDED
                 : BatchDispatchMode.NORMAL;
     }

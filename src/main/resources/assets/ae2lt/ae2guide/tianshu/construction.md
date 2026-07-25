@@ -10,7 +10,7 @@ item_ids:
   - ae2lt:tianshu_supercomputer_glass
   - ae2lt:tianshu_supercomputer_controller
   - ae2lt:tianshu_supercomputer_port
-  - ae2lt:blank_supercomputing_unit
+  - ae2lt:tianshu_blank_unit
   - ae2lt:storage_supercomputing_unit
   - ae2lt:parallel_supercomputing_unit
   - ae2lt:tianshu_amplifier_unit
@@ -51,7 +51,7 @@ The controller is already present and is not consumed by the button. Auto-build 
 | Core-chamber Unit | Count | Requirement |
 |-------------------|------:|-------------|
 | Any Tianshu Main Core | 1 | Must occupy the exact chamber center |
-| <ItemLink id="ae2lt:blank_supercomputing_unit" /> | 0–26 | Fills a peripheral cell without providing an attribute |
+| <ItemLink id="ae2lt:tianshu_blank_unit" /> | 0–26 | Fills a peripheral cell without providing an attribute |
 | <ItemLink id="ae2lt:storage_supercomputing_unit" /> | 0–25 | Optional; increases crafting storage for finite tiers |
 | <ItemLink id="ae2lt:parallel_supercomputing_unit" /> | 0–26 | Baseline, Quantum, and Overload require at least one; Multidimensional rejects them |
 | <ItemLink id="ae2lt:tianshu_amplifier_unit" /> | 0–15 | Accepted only by Quantum and Overload |

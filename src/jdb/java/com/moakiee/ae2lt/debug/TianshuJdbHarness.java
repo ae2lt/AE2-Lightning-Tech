@@ -581,7 +581,7 @@ public final class TianshuJdbHarness {
                             }
                             int index = peripheralIndex++;
                             yield switch (index) {
-                                case 2, 3 -> ModBlocks.BLANK_SUPERCOMPUTING_UNIT.get().defaultBlockState();
+                                case 2, 3 -> ModBlocks.TIANSHU_BLANK_UNIT.get().defaultBlockState();
                                 default -> index % 2 == 0
                                         ? ModBlocks.STORAGE_SUPERCOMPUTING_UNIT.get().defaultBlockState()
                                         : ModBlocks.PARALLEL_SUPERCOMPUTING_UNIT.get().defaultBlockState();

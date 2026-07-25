@@ -9,7 +9,7 @@ item_ids:
   - ae2lt:tianshu_quantum_main_core
   - ae2lt:tianshu_overload_main_core
   - ae2lt:tianshu_multidimensional_main_core
-  - ae2lt:blank_supercomputing_unit
+  - ae2lt:tianshu_blank_unit
   - ae2lt:storage_supercomputing_unit
   - ae2lt:parallel_supercomputing_unit
   - ae2lt:tianshu_amplifier_unit
@@ -93,6 +93,6 @@ To illustrate how the two budgets relate, consider a configuration with 512 succ
 
 The <ItemLink id="ae2lt:tianshu_amplifier_unit" /> increases dispatch, external-storage, and batch-copy capacity for Quantum and Overload cores. Baseline and Multidimensional reject Amplifier Units; Quantum and Overload accept at most 15.
 
-The <ItemLink id="ae2lt:blank_supercomputing_unit" /> is a neutral placeholder comparable to the Tianshu Matter Warping Matrix's Blank Unit. It keeps a peripheral cell structurally valid but contributes no crafting storage, dispatch capacity, amplification, pattern slots, or seed capacity.
+The <ItemLink id="ae2lt:tianshu_blank_unit" /> is the neutral placeholder shared by the Tianshu Supercomputing Array and Tianshu Matter Warping Matrix. It keeps a peripheral cell structurally valid but contributes no crafting storage, dispatch capacity, amplification, pattern slots, or seed capacity.
 
 Closed-loop analysis and execution are built into the Main Core and require no separate closed-loop compute core. Closed-Loop Pattern Storage and Closed-Loop Seed Storage remain external physical storage installed in the shell's cooling-compatible positions, where each replaces a Phase-Change Cooling Unit. They provide pattern capacity or seed storage but do not occupy the 26 core-chamber peripheral cells and do not count toward **S**, **P**, or **A**. Use Blank Units for core-chamber cells that need no compute attribute.

@@ -12,7 +12,7 @@ public enum MatrixMultiblockComponent {
     STABLE_MAIN_CORE,
     QUANTUM_MAIN_CORE,
     OVERLOAD_MAIN_CORE,
-    CREATIVE_MAIN_CORE,
+    MULTIDIMENSIONAL_MAIN_CORE,
     BLANK_UNIT,
     THREAD_UNIT_T1,
     THREAD_UNIT_T2,
@@ -29,7 +29,7 @@ public enum MatrixMultiblockComponent {
         return this == STABLE_MAIN_CORE
                 || this == QUANTUM_MAIN_CORE
                 || this == OVERLOAD_MAIN_CORE
-                || this == CREATIVE_MAIN_CORE;
+                || this == MULTIDIMENSIONAL_MAIN_CORE;
     }
 
     public boolean isCraftingUnit() {
@@ -61,7 +61,7 @@ public enum MatrixMultiblockComponent {
             case STABLE_MAIN_CORE -> MatrixCraftingUnit.stableCore();
             case QUANTUM_MAIN_CORE -> MatrixCraftingUnit.quantumCore();
             case OVERLOAD_MAIN_CORE -> MatrixCraftingUnit.overloadCore();
-            case CREATIVE_MAIN_CORE -> MatrixCraftingUnit.creativeCore();
+            case MULTIDIMENSIONAL_MAIN_CORE -> MatrixCraftingUnit.multidimensionalCore();
             case THREAD_UNIT_T1 -> MatrixCraftingUnit.t1Threader();
             case THREAD_UNIT_T2 -> MatrixCraftingUnit.t2Threader();
             case AMPLIFIER_UNIT -> MatrixCraftingUnit.amplifier();

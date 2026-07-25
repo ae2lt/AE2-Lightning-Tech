@@ -86,6 +86,19 @@ class MatrixCraftingProfileTest {
     }
 
     @Test
+    void multidimensionalCoreKeepsTheUnboundedHeatIndependentMode() {
+        var profile = MatrixCraftingProfile.fromUnits(List.of(
+                MatrixCraftingUnit.multidimensionalCore()));
+
+        assertTrue(profile.isValid());
+        assertEquals(MatrixCoreMode.MULTIDIMENSIONAL, profile.mode());
+        var snapshot = profile.snapshot(1234.0D);
+        assertEquals(Long.MAX_VALUE, snapshot.operationsPerTick());
+        assertEquals(0.0D, snapshot.heat(), 0.0001D);
+        assertEquals(1.0D, snapshot.efficiencyFactor(), 0.0001D);
+    }
+
+    @Test
     void overloadSnapshotReachesDocumentedFourMiOperationCeiling() {
         var units = new ArrayList<MatrixCraftingUnit>();
         units.add(MatrixCraftingUnit.overloadCore());
