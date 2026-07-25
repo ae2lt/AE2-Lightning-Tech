@@ -265,7 +265,7 @@ public final class OverloadExecutionService {
         int playerDeathsBefore = deathCount(target);
         prepareLethalState(target, source, damage);
 
-        try {
+        try (var ignored = OverloadExecutionContext.enter(target)) {
             target.die(source);
         } catch (RuntimeException | LinkageError error) {
             LOGGER.warn("Target death callback failed for {}; applying normal-settlement fallback",
@@ -300,7 +300,7 @@ public final class OverloadExecutionService {
      */
     private static void forceRemove(LivingEntity target, DamageSource source, float damage) {
         prepareLethalState(target, source, damage);
-        try {
+        try (var ignored = OverloadExecutionContext.enter(target)) {
             target.die(source);
         } catch (RuntimeException | LinkageError error) {
             LOGGER.warn("Target death callback failed for {}; continuing forced removal",

@@ -124,7 +124,28 @@ public final class CelestweaveArmorUndyingHandler {
         if (!(entity instanceof ServerPlayer player)) {
             return false;
         }
-        return player.getPersistentData().getLong(TAG_PROTECTED_TICK) == player.level().getGameTime();
+        var data = player.getPersistentData();
+        return data.contains(TAG_PROTECTED_TICK)
+                && data.getLong(TAG_PROTECTED_TICK) == player.level().getGameTime();
+    }
+
+    /**
+     * Protects a player before an externally inlined death routine commits loot or visual
+     * side effects. Vanilla death normally never reaches these hooks because the earlier
+     * damage/death guards cancel it; this closes routines that copy LivingEntity#die instead.
+     */
+    public static boolean protectBeforeDeathSideEffect(ServerPlayer player) {
+        if (player == null || player.level().isClientSide()) {
+            return false;
+        }
+        if (wasProtectedThisTick(player)) {
+            restoreSurvivalState(player);
+            return true;
+        }
+        if (!player.dead && !player.isDeadOrDying() && player.getHealth() > 0.0F) {
+            return false;
+        }
+        return tryProtectForcedDeath(player);
     }
 
     private static boolean tryProtectWithinWindow(ServerPlayer player, long now) {
@@ -137,9 +158,6 @@ public final class CelestweaveArmorUndyingHandler {
     }
 
     private static boolean tryTrigger(ServerPlayer player, long now) {
-        if (player.isSpectator()) {
-            return false;
-        }
         for (var active : collectActiveLastStand(player)) {
             int comboIndex = ArmorOverloadCombo.nextComboIndex(active.armor(), UndyingSubmodule.INSTANCE, now);
             long cost = ArmorOverloadCombo.scaledCost(active.tuning().feCost(), comboIndex);
