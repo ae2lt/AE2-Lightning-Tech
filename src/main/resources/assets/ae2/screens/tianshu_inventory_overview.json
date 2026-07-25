@@ -3,9 +3,9 @@
   "includes": ["common/common.json"],
   "background": {
     "texture": "ae2lt:textures/guis/tianshu_inventory.png",
-    "textureWidth": 256,
-    "textureHeight": 256,
-    "srcRect": [0, 0, 228, 246]
+    "textureWidth": 320,
+    "textureHeight": 320,
+    "srcRect": [0, 0, 207, 248]
   },
   "slots": {
     "AE2LT_TIANSHU_GLOBAL_RESERVE_MARK": {
@@ -14,12 +14,12 @@
     }
   },
   "widgets": {
-    "back": { "left": 204, "top": -5, "width": 20, "height": 20 },
-    "rules": { "left": 10, "top": 27, "width": 62, "height": 20 },
-    "reserves": { "left": 76, "top": 27, "width": 62, "height": 20 },
-    "search": { "left": 143, "top": 30, "width": 75, "height": 14 },
-    "scrollbar": { "left": 211, "top": 64, "width": 8, "height": 117 },
-    "reserveAmount": { "left": 35, "top": 209, "width": 82, "height": 14 },
-    "addReserve": { "left": 122, "top": 206, "width": 96, "height": 20 }
+    "back": { "left": 183, "top": -5, "width": 20, "height": 20 },
+    "rules": { "left": 10, "top": 27, "width": 52, "height": 20 },
+    "reserves": { "left": 66, "top": 27, "width": 52, "height": 20 },
+    "search": { "left": 122, "top": 30, "width": 76, "height": 14 },
+    "scrollbar": { "left": 192, "top": 50, "width": 8, "height": 138 },
+    "reserveAmount": { "left": 35, "top": 209, "width": 67, "height": 14 },
+    "addReserve": { "left": 107, "top": 206, "width": 91, "height": 20 }
   }
 }

@@ -2,7 +2,7 @@
   "$schema": "schema.json",
   "includes": ["common/common.json"],
   "background": {
-    "texture": "ae2lt:textures/guis/tianshu_inventory.png",
+    "texture": "ae2lt:textures/guis/tianshu_inventory_editor.png",
     "textureWidth": 256,
     "textureHeight": 256,
     "srcRect": [0, 0, 228, 196]

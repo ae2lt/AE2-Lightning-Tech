@@ -212,18 +212,17 @@ final class PixelGuiLayoutContractTest {
     }
 
     @Test
-    void tianshuInventoryScreensUseAe2WidgetsAndReplaceableSolidAtlas() throws Exception {
+    void tianshuInventoryScreensUseAe2WidgetsAndProvidedOverviewAtlas() throws Exception {
         Path texture = Path.of("src/main/resources/assets/ae2lt/textures/guis/tianshu_inventory.png");
-        assertSprite(texture, 256, 256);
+        Path editorTexture = Path.of(
+                "src/main/resources/assets/ae2lt/textures/guis/tianshu_inventory_editor.png");
+        assertSprite(texture, 320, 320);
+        assertSprite(editorTexture, 256, 256);
 
         BufferedImage image = ImageIO.read(texture.toFile());
-        int backgroundColor = image.getRGB(0, 0);
-        for (int y = 0; y < image.getHeight(); y++) {
-            for (int x = 0; x < image.getWidth(); x++) {
-                assertEquals(backgroundColor, image.getRGB(x, y),
-                        "temporary inventory GUI background must remain a replaceable solid color");
-            }
-        }
+        assertEquals(0xFF413F54, image.getRGB(0, 0));
+        assertEquals(0xFF9A9FB4, image.getRGB(9, 52));
+        assertEquals(0x00000000, image.getRGB(319, 319));
 
         String terminal = Files.readString(Path.of(
                 "src/main/java/com/moakiee/ae2lt/client/TianshuPatternEncodingTermScreen.java"));
@@ -253,13 +252,30 @@ final class PixelGuiLayoutContractTest {
             assertFalse(screen.contains("new EditBox("));
         }
 
+        String overviewStyle = Files.readString(Path.of(
+                "src/main/resources/assets/ae2/screens/tianshu_inventory_overview.json"));
+        assertTrue(overviewStyle.contains("ae2lt:textures/guis/tianshu_inventory.png"));
+        assertTrue(overviewStyle.contains("\"textureWidth\": 320"));
+        assertTrue(overviewStyle.contains("\"textureHeight\": 320"));
+        assertTrue(overviewStyle.contains("\"srcRect\": [0, 0, 207, 248]"));
+        assertTrue(overviewStyle.contains("\"scrollbar\": { \"left\": 192, \"top\": 50"));
+        assertTrue(overview.contains("LIST_RIGHT = 187"));
+        assertTrue(overview.contains("LIST_CENTER_X = (LIST_LEFT + LIST_RIGHT) / 2"));
+        assertTrue(overview.contains("CONTENT_COLUMN_CENTER_X = 59"));
+        assertTrue(overview.contains("STOCK_COLUMN_CENTER_X = 128"));
+        assertTrue(overview.contains("VALUE_COLUMN_CENTER_X = 168"));
+        assertTrue(overview.contains("FIRST_ROW = 64"));
+        assertTrue(overview.contains("ROW_HEIGHT = 20"));
+        assertTrue(overview.contains("VISIBLE_ROWS = 6"));
+        assertTrue(overview.contains("EMPTY_TEXT_Y = 121"));
+        assertTrue(overview.contains("search.setPlaceholder(GuiText.SearchPlaceholder.text())"));
+
         for (String styleName : List.of(
-                "tianshu_inventory_overview.json",
                 "tianshu_maintenance_rule.json",
                 "tianshu_reserve_edit.json")) {
             String style = Files.readString(Path.of(
                     "src/main/resources/assets/ae2/screens/" + styleName));
-            assertTrue(style.contains("ae2lt:textures/guis/tianshu_inventory.png"));
+            assertTrue(style.contains("ae2lt:textures/guis/tianshu_inventory_editor.png"));
             assertTrue(style.contains("\"textureWidth\": 256"));
             assertTrue(style.contains("\"textureHeight\": 256"));
             assertTrue(style.contains("\"srcRect\": [0, 0, 228,"));

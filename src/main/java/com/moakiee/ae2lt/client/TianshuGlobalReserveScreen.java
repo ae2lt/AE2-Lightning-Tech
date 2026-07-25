@@ -11,6 +11,7 @@ import appeng.client.gui.widgets.AETextField;
 import appeng.client.gui.widgets.Scrollbar;
 import appeng.client.gui.widgets.TabButton;
 import appeng.core.localization.ButtonToolTips;
+import appeng.core.localization.GuiText;
 import appeng.menu.SlotSemantics;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.InventoryMaintenanceBadge;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.InventoryMaintenanceStatus;
@@ -32,10 +33,15 @@ import org.lwjgl.glfw.GLFW;
 public final class TianshuGlobalReserveScreen<M extends TianshuPatternEncodingTermMenu>
         extends AESubScreen<M, TianshuPatternEncodingTermScreen<M>> {
     private static final int LIST_LEFT = 9;
-    private static final int LIST_RIGHT = 207;
+    private static final int LIST_RIGHT = 187;
+    private static final int LIST_CENTER_X = (LIST_LEFT + LIST_RIGHT) / 2;
+    private static final int CONTENT_COLUMN_CENTER_X = 59;
+    private static final int STOCK_COLUMN_CENTER_X = 128;
+    private static final int VALUE_COLUMN_CENTER_X = 168;
     private static final int FIRST_ROW = 64;
     private static final int ROW_HEIGHT = 20;
     private static final int VISIBLE_ROWS = 6;
+    private static final int EMPTY_TEXT_Y = 121;
 
     private final AETextField search;
     private final Scrollbar scrollbar;
@@ -56,7 +62,7 @@ public final class TianshuGlobalReserveScreen<M extends TianshuPatternEncodingTe
         scrollbar = widgets.addScrollBar("scrollbar", Scrollbar.SMALL);
         scrollbar.setCaptureMouseWheel(false);
         search = widgets.addTextField("search");
-        search.setPlaceholder(Component.translatable("gui.search"));
+        search.setPlaceholder(GuiText.SearchPlaceholder.text());
         search.setResponder(ignored -> scrollbar.setCurrentScroll(0));
         rulesButton = widgets.addButton("rules", tabLabel(View.RULES), () -> selectView(View.RULES));
         reservesButton = widgets.addButton(
@@ -234,14 +240,18 @@ public final class TianshuGlobalReserveScreen<M extends TianshuPatternEncodingTe
         super.drawFG(graphics, offsetX, offsetY, mouseX, mouseY);
         graphics.drawString(font, Component.translatable("ae2lt.tianshu.maintenance.overview_title"),
                 10, 9, 0x30343B, false);
-        graphics.drawString(font, Component.translatable("ae2lt.tianshu.maintenance.column.item"),
-                33, 53, 0x535A64, false);
-        graphics.drawString(font, Component.translatable("ae2lt.tianshu.maintenance.column.stock"),
-                130, 53, 0x535A64, false);
-        graphics.drawString(font, Component.translatable(view == View.RULES
+        graphics.drawCenteredString(font,
+                Component.translatable("ae2lt.tianshu.maintenance.column.item"),
+                CONTENT_COLUMN_CENTER_X, 53, 0x535A64);
+        graphics.drawCenteredString(font,
+                Component.translatable("ae2lt.tianshu.maintenance.column.stock"),
+                STOCK_COLUMN_CENTER_X, 53, 0x535A64);
+        graphics.drawCenteredString(font, Component.translatable(view == View.RULES
                         ? "ae2lt.tianshu.maintenance.column.target"
                         : "ae2lt.tianshu.maintenance.column.reserve"),
-                170, 53, 0x535A64, false);
+                VALUE_COLUMN_CENTER_X, 53, 0x535A64);
+        graphics.fill(LIST_LEFT + 1, FIRST_ROW - 1, LIST_RIGHT - 1, FIRST_ROW,
+                0x554D4D67);
 
         int localMouseX = mouseX - leftPos;
         int localMouseY = mouseY - topPos;
@@ -259,22 +269,22 @@ public final class TianshuGlobalReserveScreen<M extends TianshuPatternEncodingTe
             graphics.fill(12, y + 6, 16, y + 10, badgeColor(summary));
             graphics.renderItem(summary.key().wrapForDisplayOrFilter(), 18, y + 2);
             graphics.drawString(font,
-                    font.plainSubstrByWidth(entries.get(index).displayName(), 91),
+                    font.plainSubstrByWidth(entries.get(index).displayName(), 70),
                     37, y + 6, summary.ruleConfigured() && !summary.craftable()
                             ? 0xA73535 : 0x30343B, false);
             drawRightAligned(graphics, compactAmount(summary.key(), summary.storedAmount()),
-                    162, y + 6, 0x3D4650);
+                    143, y + 6, 0x3D4650);
             String finalValue = view == View.RULES
                     ? compactAmount(summary.key(), summary.upperThreshold())
                     : formatReserve(summary.globalReserve());
-            drawRightAligned(graphics, finalValue, 204, y + 6,
+            drawRightAligned(graphics, finalValue, 184, y + 6,
                     view == View.RESERVES && summary.globalReserve() != 0L ? 0x245E91 : 0x3D4650);
         }
 
         if (!menu.maintenanceAvailable) {
             graphics.drawCenteredString(font,
                     Component.translatable("ae2lt.tianshu.maintenance.unavailable"),
-                    114, 137, 0xA73535);
+                    LIST_CENTER_X, EMPTY_TEXT_Y, 0xA73535);
         } else if (entries.isEmpty()) {
             graphics.drawCenteredString(font,
                     Component.translatable(view == View.RULES
@@ -282,13 +292,13 @@ public final class TianshuGlobalReserveScreen<M extends TianshuPatternEncodingTe
                             : search.getValue().isBlank()
                                     ? "ae2lt.tianshu.reserve.empty"
                                     : "ae2lt.tianshu.reserve.no_match"),
-                    114, 137, 0x6D7279);
+                    LIST_CENTER_X, EMPTY_TEXT_Y, 0x555B64);
         }
 
         if (view == View.RESERVES && menu.maintenanceAvailable) {
             graphics.drawString(font,
                     font.plainSubstrByWidth(Component.translatable(
-                            "ae2lt.tianshu.reserve.add_hint").getString(), 208),
+                            "ae2lt.tianshu.reserve.add_hint").getString(), 188),
                     10, 190, 0x666D75, false);
         }
         if (menu.isMaintenanceSummaryOverflow()) {
