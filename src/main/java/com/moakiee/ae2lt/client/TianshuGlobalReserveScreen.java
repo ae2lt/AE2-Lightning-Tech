@@ -134,9 +134,8 @@ public final class TianshuGlobalReserveScreen<M extends TianshuPatternEncodingTe
                 && menu.getMaintenanceEditorRevision() != requestedRuleEditorRevision
                 && menu.getMaintenanceEditorData() != null) {
             awaitingRuleEditor = false;
-            restoreParentViewMode();
             switchToScreen(new TianshuMaintenanceRuleScreen<>(
-                    getParent(), menu.getMaintenanceEditorData()));
+                    this, menu.getMaintenanceEditorData()));
             return;
         }
         int max = Math.max(0, entries().size() - VISIBLE_ROWS);

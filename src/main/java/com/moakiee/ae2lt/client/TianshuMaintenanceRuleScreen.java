@@ -3,6 +3,7 @@ package com.moakiee.ae2lt.client;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.AmountFormat;
 import appeng.api.client.AEKeyRendering;
+import appeng.client.gui.AEBaseScreen;
 import appeng.client.gui.AESubScreen;
 import appeng.client.gui.Icon;
 import appeng.client.gui.widgets.AE2Button;
@@ -29,7 +30,7 @@ import org.lwjgl.glfw.GLFW;
 
 /** Shift-middle-click inventory-maintenance rule editor, backed by the menu-bound Tianshu. */
 public final class TianshuMaintenanceRuleScreen<M extends TianshuPatternEncodingTermMenu>
-        extends AESubScreen<M, TianshuPatternEncodingTermScreen<M>> {
+        extends AESubScreen<M, AEBaseScreen<M>> {
     private static final int LIST_LEFT = 9;
     private static final int LIST_RIGHT = 208;
     private static final int FIRST_ROW_Y = 136;
@@ -49,7 +50,7 @@ public final class TianshuMaintenanceRuleScreen<M extends TianshuPatternEncoding
     private boolean deleteArmed;
 
     public TianshuMaintenanceRuleScreen(
-            TianshuPatternEncodingTermScreen<M> parent, MaintenanceEditorData data) {
+            AEBaseScreen<M> parent, MaintenanceEditorData data) {
         super(parent, "/screens/tianshu_maintenance_rule.json");
         draft = new Draft(data);
 

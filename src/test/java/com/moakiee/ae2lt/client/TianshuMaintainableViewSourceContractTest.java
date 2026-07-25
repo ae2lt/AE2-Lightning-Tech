@@ -35,6 +35,8 @@ class TianshuMaintainableViewSourceContractTest {
         assertTrue(overview.contains(
                 "menu.getMaintenanceEditorRevision() != requestedRuleEditorRevision"));
         assertTrue(overview.contains("switchToScreen(new TianshuMaintenanceRuleScreen<>("));
+        assertTrue(overview.contains("this, menu.getMaintenanceEditorData()"));
+        assertFalse(overview.contains("getParent(), menu.getMaintenanceEditorData()"));
         assertFalse(overview.contains("getParent().requestMaintenanceEditorFor(summary.key())"));
 
         int clickHandler = overview.indexOf("public boolean mouseClicked");
