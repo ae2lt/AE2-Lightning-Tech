@@ -3,7 +3,6 @@ package com.moakiee.ae2lt.blockentity;
 import com.moakiee.ae2lt.block.TianshuSupercomputerPortBlock;
 import com.moakiee.ae2lt.registry.ModBlockEntities;
 import com.moakiee.ae2lt.registry.ModBlocks;
-import com.moakiee.ae2lt.registry.ModItems;
 import com.moakiee.thunderbolt.ae2.timewheel.TimeWheelCraftingCpuPool;
 import java.util.Collections;
 import java.util.EnumSet;
@@ -15,18 +14,13 @@ import org.jetbrains.annotations.Nullable;
 
 import com.google.common.collect.ImmutableSet;
 import com.moakiee.ae2lt.logic.tianshu.TianshuFunctionProfile;
-import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternPayload;
 import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternRepository;
-import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternValidator;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.TianshuInventoryMaintenanceService;
 import com.moakiee.thunderbolt.ae2.crafting.ExtendedCraftingCpuClusterProvider;
 import com.moakiee.thunderbolt.ae2.timewheel.TimeWheelCraftingCpuPoolProvider;
 
 import appeng.api.config.Actionable;
 import appeng.api.crafting.IPatternDetails;
-import appeng.api.implementations.blockentities.PatternContainerGroup;
-import appeng.api.inventories.BaseInternalInventory;
-import appeng.api.inventories.InternalInventory;
 import appeng.api.networking.GridFlags;
 import appeng.api.networking.IGrid;
 import appeng.api.networking.IManagedGridNode;
@@ -36,11 +30,9 @@ import appeng.api.networking.crafting.ICraftingRequester;
 import appeng.api.networking.security.IActionSource;
 import appeng.api.orientation.BlockOrientation;
 import appeng.api.stacks.AEKey;
-import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.KeyCounter;
 import appeng.api.util.AECableType;
 import appeng.blockentity.grid.AENetworkedBlockEntity;
-import appeng.helpers.patternprovider.PatternContainer;
 import appeng.me.helpers.MachineSource;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -48,8 +40,6 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
@@ -59,8 +49,7 @@ import net.minecraft.world.level.block.state.BlockState;
  * controller; this block entity only exposes them to the grid and keeps link/migration metadata.
  */
 public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
-        implements TimeWheelCraftingCpuPoolProvider, ICraftingProvider, ICraftingRequester,
-        PatternContainer {
+        implements TimeWheelCraftingCpuPoolProvider, ICraftingProvider, ICraftingRequester {
     private static final String TAG_CONTROLLER_POS = "ControllerPos";
     private static final String TAG_FORMED = "Formed";
     private static final String TAG_CPU_POOL = "CpuPool";
@@ -68,10 +57,6 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
     private static final String TAG_TIANSHU_ID = "TianshuId";
     private static final String TAG_MAINTENANCE = "InventoryMaintenance";
     private final IActionSource actionSource = new MachineSource(getMainNode()::getNode);
-    private final TianshuTerminalPatternInventory terminalPatternInventory =
-            new TianshuTerminalPatternInventory();
-    private final List<ClosedLoopPatternPayload> terminalPatternSlots =
-            new java.util.ArrayList<>();
     private static final int BINDING_CHECK_INTERVAL_TICKS = 20;
     private BlockPos controllerPos;
     private UUID boundMachineId;
@@ -319,192 +304,12 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
         return formed ? getMainNode().getGrid() : null;
     }
 
-    @Override
-    public boolean isVisibleInTerminal() {
-        return isFormed() && getController() != null
-                && getClosedLoopPatternRepository() != null;
-    }
-
-    @Override
-    public InternalInventory getTerminalPatternInventory() {
-        return terminalPatternInventory;
-    }
-
-    @Override
-    public long getTerminalSortOrder() {
-        var pos = getBlockPos();
-        return (long) pos.getZ() << 24 ^ (long) pos.getX() << 8 ^ pos.getY();
-    }
-
-    @Override
-    public PatternContainerGroup getTerminalGroup() {
-        var capacity = getFunctionProfile().closedLoopPatternCapacity();
-        var stored = getClosedLoopPatternRepository();
-        return new PatternContainerGroup(
-                AEItemKey.of(ModBlocks.CLOSED_LOOP_PATTERN_STORAGE.get()),
-                ModBlocks.CLOSED_LOOP_PATTERN_STORAGE.get().getName(),
-                List.of(Component.translatable(
-                        "ae2lt.tianshu.terminal.tooltip",
-                        stored != null ? stored.activePatterns().size() : 0,
-                        capacity)));
-    }
-
     public IActionSource getActionSource() {
         return actionSource;
     }
 
     public boolean isNetworkActive() {
         return formed && getMainNode().isActive() && getMainNode().getGrid() != null;
-    }
-
-    /**
-     * AE2 keeps terminal slot indexes stable while swapping an item. The repository itself is a
-     * compact ordered list, so this view keeps only transient payload references for empty slots;
-     * payload data and persistence remain owned by the controller repository.
-     */
-    private final class TianshuTerminalPatternInventory extends BaseInternalInventory {
-        @Override
-        public int size() {
-            var repository = getClosedLoopPatternRepository();
-            if (repository == null) return 0;
-            syncSlots(repository);
-            return repository.capacity();
-        }
-
-        @Override
-        public ItemStack getStackInSlot(int slotIndex) {
-            var payload = payloadAt(slotIndex);
-            if (payload == null || level == null) return ItemStack.EMPTY;
-            var item = (com.moakiee.ae2lt.item.ClosedLoopPatternItem)
-                    ModItems.CLOSED_LOOP_PATTERN.get();
-            return item.createStack(payload, level.registryAccess());
-        }
-
-        @Override
-        public void setItemDirect(int slotIndex, ItemStack stack) {
-            var repository = getClosedLoopPatternRepository();
-            if (repository == null || slotIndex < 0 || slotIndex >= repository.capacity()) return;
-            syncSlots(repository);
-            var current = payloadAt(slotIndex);
-            if (stack == null || stack.isEmpty()) {
-                if (current == null) return;
-                repository.remove(current);
-                terminalPatternSlots.set(slotIndex, null);
-                notifyPatternsChanged();
-                return;
-            }
-            var payload = readValidPayload(stack);
-            if (payload == null) return;
-            var result = current == null
-                    ? repository.add(payload)
-                    : repository.replace(current, payload);
-            if (result == ClosedLoopPatternRepository.PutResult.ADDED
-                    || result == ClosedLoopPatternRepository.PutResult.UPDATED) {
-                terminalPatternSlots.set(slotIndex, payload);
-                notifyPatternsChanged();
-            }
-        }
-
-        @Override
-        public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
-            if (stack == null || stack.isEmpty()) return stack;
-            var repository = getClosedLoopPatternRepository();
-            if (repository == null || slot < 0 || slot >= repository.capacity()
-                    || payloadAt(slot) != null) return stack;
-            var payload = readValidPayload(stack);
-            if (payload == null) return stack;
-            syncSlots(repository);
-            if (repository.size() >= repository.capacity()) return stack;
-            if (!simulate) {
-                var result = repository.add(payload);
-                if (result != ClosedLoopPatternRepository.PutResult.ADDED) return stack;
-                terminalPatternSlots.set(slot, payload);
-                notifyPatternsChanged();
-            }
-            return stack.getCount() <= 1 ? ItemStack.EMPTY : stack.copyWithCount(stack.getCount() - 1);
-        }
-
-        @Override
-        public ItemStack extractItem(int slot, int amount, boolean simulate) {
-            if (amount <= 0) return ItemStack.EMPTY;
-            var repository = getClosedLoopPatternRepository();
-            if (repository == null || slot < 0 || slot >= repository.capacity()) {
-                return ItemStack.EMPTY;
-            }
-            syncSlots(repository);
-            var payload = payloadAt(slot);
-            if (payload == null) return ItemStack.EMPTY;
-            var extracted = getStackInSlot(slot);
-            if (!simulate) {
-                repository.remove(payload);
-                terminalPatternSlots.set(slot, null);
-                notifyPatternsChanged();
-            }
-            return extracted;
-        }
-
-        @Override
-        public int getSlotLimit(int slot) {
-            return slot >= 0 && slot < size() ? 1 : 0;
-        }
-
-        @Override
-        public boolean isItemValid(int slot, ItemStack stack) {
-            return slot >= 0 && slot < size() && payloadAt(slot) == null
-                    && readValidPayload(stack) != null;
-        }
-
-        private ClosedLoopPatternPayload payloadAt(int slot) {
-            var repository = getClosedLoopPatternRepository();
-            if (repository == null || slot < 0 || slot >= repository.capacity()) return null;
-            syncSlots(repository);
-            var payload = terminalPatternSlots.get(slot);
-            return repository.indexOf(payload) >= 0 ? payload : null;
-        }
-
-        private ClosedLoopPatternPayload readValidPayload(ItemStack stack) {
-            if (level == null || !(stack.getItem() instanceof com.moakiee.ae2lt.item.ClosedLoopPatternItem item)) {
-                return null;
-            }
-            var payload = item.readPayload(stack, level).orElse(null);
-            return payload != null && ClosedLoopPatternValidator.validate(payload, level).valid()
-                    ? payload : null;
-        }
-
-        private void notifyPatternsChanged() {
-            var controller = getController();
-            if (controller != null) controller.closedLoopPatternsChanged();
-        }
-
-        private void syncSlots(ClosedLoopPatternRepository repository) {
-            int capacity = repository.capacity();
-            while (terminalPatternSlots.size() < capacity) terminalPatternSlots.add(null);
-            while (terminalPatternSlots.size() > capacity) {
-                terminalPatternSlots.remove(terminalPatternSlots.size() - 1);
-            }
-            var active = repository.activePatterns();
-            for (int i = 0; i < terminalPatternSlots.size(); i++) {
-                var pattern = terminalPatternSlots.get(i);
-                if (pattern != null && !containsReference(active, pattern)) {
-                    terminalPatternSlots.set(i, null);
-                }
-            }
-            for (var pattern : active) {
-                if (containsReference(terminalPatternSlots, pattern)) continue;
-                int free = terminalPatternSlots.indexOf(null);
-                if (free < 0) break;
-                terminalPatternSlots.set(free, pattern);
-            }
-        }
-
-        private boolean containsReference(
-                List<ClosedLoopPatternPayload> patterns,
-                ClosedLoopPatternPayload candidate) {
-            for (var pattern : patterns) {
-                if (pattern == candidate) return true;
-            }
-            return false;
-        }
     }
 
     @Nullable

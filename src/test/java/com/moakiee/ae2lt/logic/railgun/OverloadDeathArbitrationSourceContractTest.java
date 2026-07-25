@@ -44,6 +44,8 @@ class OverloadDeathArbitrationSourceContractTest {
     void copiedDeathLootAndAnimationAreSuppressedWithoutExternalModReferences() throws Exception {
         String armorHandler = source(
                 "src/main/java/com/moakiee/ae2lt/celestweave/CelestweaveArmorUndyingHandler.java");
+        String entityMixin = source(
+                "src/main/java/com/moakiee/ae2lt/mixin/EntityUndyingMixin.java");
         String livingMixin = source(
                 "src/main/java/com/moakiee/ae2lt/mixin/LivingEntityUndyingMixin.java");
         String levelMixin = source(
@@ -54,6 +56,12 @@ class OverloadDeathArbitrationSourceContractTest {
 
         assertTrue(armorHandler.contains("data.contains(TAG_PROTECTED_TICK)"));
         assertTrue(armorHandler.contains("protectBeforeDeathSideEffect(ServerPlayer player)"));
+
+        assertTrue(entityMixin.contains(
+                "gameEvent(Lnet/minecraft/core/Holder;Lnet/minecraft/world/entity/Entity;)V"));
+        assertTrue(entityMixin.contains("gameEvent == GameEvent.ENTITY_DIE"));
+        assertTrue(entityMixin.contains(
+                "CelestweaveArmorUndyingHandler.protectBeforeDeathSideEffect(player)"));
 
         assertTrue(livingMixin.contains("@Inject(method = \"dropAllDeathLoot\""));
         assertTrue(livingMixin.contains(
@@ -71,8 +79,9 @@ class OverloadDeathArbitrationSourceContractTest {
         assertTrue(packetMixin.contains(
                 "Lnet/minecraft/network/PacketSendListener;)V"));
         assertTrue(mixinConfig.contains("\"ServerCommonPacketListenerUndyingMixin\""));
+        assertTrue(mixinConfig.contains("\"EntityUndyingMixin\""));
 
-        assertFalse((armorHandler + livingMixin + levelMixin + packetMixin)
+        assertFalse((armorHandler + entityMixin + livingMixin + levelMixin + packetMixin)
                 .toLowerCase()
                 .contains("avaritia"));
     }

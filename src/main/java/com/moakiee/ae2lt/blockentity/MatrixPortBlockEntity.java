@@ -20,7 +20,6 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
-import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
@@ -30,7 +29,6 @@ import net.neoforged.neoforge.items.IItemHandlerModifiable;
 
 import appeng.api.config.Actionable;
 import appeng.api.crafting.IPatternDetails;
-import appeng.api.implementations.blockentities.PatternContainerGroup;
 import appeng.api.inventories.BaseInternalInventory;
 import appeng.api.inventories.InternalInventory;
 import appeng.api.networking.GridFlags;
@@ -40,15 +38,13 @@ import appeng.api.networking.crafting.ICraftingProvider;
 import appeng.api.networking.security.IActionSource;
 import appeng.api.orientation.BlockOrientation;
 import appeng.api.stacks.AEKey;
-import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.KeyCounter;
 import appeng.api.util.AECableType;
 import appeng.blockentity.grid.AENetworkedBlockEntity;
-import appeng.helpers.patternprovider.PatternContainer;
 import appeng.me.helpers.MachineSource;
 
 public class MatrixPortBlockEntity extends AENetworkedBlockEntity
-        implements IBatchCraftingProvider, PatternContainer {
+        implements IBatchCraftingProvider {
     private static final String TAG_CONTROLLER_POS = "ControllerPos";
     private static final String TAG_FORMED = "Formed";
     private static final String TAG_CLUSTER = "Cluster";
@@ -223,38 +219,12 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
         }
     }
 
-    @Override
     public IGrid getGrid() {
         return isFormed() ? getMainNode().getGrid() : null;
     }
 
-    @Override
-    public boolean isVisibleInTerminal() {
-        return formed && getController() != null;
-    }
-
-    @Override
     public InternalInventory getTerminalPatternInventory() {
         return terminalPatternInventory;
-    }
-
-    @Override
-    public long getTerminalSortOrder() {
-        var pos = getBlockPos();
-        return (long) pos.getZ() << 24
-                ^ (long) pos.getX() << 8
-                ^ pos.getY();
-    }
-
-    @Override
-    public PatternContainerGroup getTerminalGroup() {
-        return new PatternContainerGroup(
-                AEItemKey.of(ModBlocks.MATTER_WARPING_MATRIX_CONTROLLER.get()),
-                ModBlocks.MATTER_WARPING_MATRIX_CONTROLLER.get().getName(),
-                List.of(Component.translatable(
-                        "ae2lt.matrix.terminal.tooltip",
-                        getPatternStorages().size(),
-                        terminalPatternInventory.size())));
     }
 
     @Override

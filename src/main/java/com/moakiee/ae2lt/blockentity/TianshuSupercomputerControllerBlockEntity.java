@@ -578,6 +578,14 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
             // Publishing the port mounts its crafting provider synchronously. Finish restoring
             // every controller-owned service before AE2 calls getAvailablePatterns during mount.
             port.bindToController(worldPosition, machineId, cpuPool);
+            // The port is now authoritative and its AE node is ready to act as the sole
+            // channel-consuming link. Rebind each physical warehouse as an independent,
+            // channel-free PatternContainer leaf.
+            for (var patternStoragePos : result.patternStoragePositions()) {
+                if (level.getBlockEntity(patternStoragePos) instanceof TianshuPatternStorageBlockEntity storage) {
+                    storage.bindToPort(portPos);
+                }
+            }
         }
     }
 
@@ -847,6 +855,13 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
         if (port != null) port.refreshCraftingProvider();
     }
 
+    /** Rebuilds the controller mirror after one physical warehouse was edited through AE2. */
+    public void patternWarehouseChanged() {
+        if (!reloadPatternsFromWarehouses()) return;
+        var port = getLinkedPort();
+        if (port != null) port.refreshCraftingProvider();
+    }
+
     public List<IPatternDetails> getAvailablePatterns() {
         var available = collectAvailablePatterns();
         publishedClosedLoopPatternDefinitions = available.patternDefinitions();
@@ -994,12 +1009,7 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
     }
 
     private void loadPatternsFromWarehouses(TianshuSupercomputerPortBlockEntity port) {
-        var storages = patternStorages();
-        if (storages == null) return;
-        var merged = new java.util.ArrayList<
-                com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternPayload>();
-        for (var storage : storages) merged.addAll(storage.patterns());
-        closedLoopPatterns.replaceAll(merged);
+        if (!reloadPatternsFromWarehouses()) return;
         var legacyState = port.copyLegacyPatternState();
         if (legacyState != null && level != null) {
             var legacy = new ClosedLoopPatternRepository(() -> Integer.MAX_VALUE);
@@ -1016,6 +1026,16 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
             }
             if (persistPatternsToWarehouses()) port.consumeLegacyPatternState();
         }
+    }
+
+    private boolean reloadPatternsFromWarehouses() {
+        var storages = patternStorages();
+        if (storages == null) return false;
+        var merged = new java.util.ArrayList<
+                com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternPayload>();
+        for (var storage : storages) merged.addAll(storage.patterns());
+        closedLoopPatterns.replaceAll(merged);
+        return true;
     }
 
     private boolean persistPatternsToWarehouses() {
