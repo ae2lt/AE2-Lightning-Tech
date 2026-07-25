@@ -27,6 +27,36 @@ The core chamber occupies the central 3×3×3 volume. Its exact center requires 
   <IsometricCamera yaw="215" pitch="25" />
 </GameScene>
 
+## At a Glance
+
+### Core Chamber and Units
+
+The central 3×3×3 volume contains Storage, Parallel, Amplifier, and Tianshu Blank Units, with a Main Core fixed at the exact center.
+
+Storage Units determine the CPU's crafting-storage capacity, like AE2 Crafting Storage.
+Parallel Units provide dispatch parallelism, like AE2 Co-Processing Units.
+Amplifier Units scale dispatch, external storage, and batch-copy capacity for supported cores; at most 15 may be installed.
+Tianshu Blank Units are structural placeholders and provide no performance benefit.
+
+> A Multidimensional Main Core accepts no functional peripheral units: all 26 surrounding cells must contain Tianshu Blank Units. A Baseline Main Core does not accept Amplifier Units.
+
+All 27 cells in the central 3×3×3 volume must be filled for the structure to form. Higher-tier Main Cores provide higher limits; the table below is only a quick summary, with detailed formulas later on this page.
+
+| Main Core | Internal Storage | Successful Dispatches/t Cap | Amplifier Units |
+|-----------|-----------------:|----------------------------:|-----------------|
+| <ItemLink id="ae2lt:tianshu_baseline_main_core" /> | 1 MiB | 512 | Unsupported |
+| <ItemLink id="ae2lt:tianshu_quantum_main_core" /> | 256 MiB | 3,072 | 0–15 |
+| <ItemLink id="ae2lt:tianshu_overload_main_core" /> | 64 GiB | 16,384 | 0–15 |
+| <ItemLink id="ae2lt:tianshu_multidimensional_main_core" /> | Infinite | 16,384 | Unsupported |
+
+### Shell Positions and Replacements
+
+Each of the shell's 17 cooling-compatible positions accepts a Phase-Change Cooling Unit, Closed-Loop Pattern Storage, or Closed-Loop Seed Storage. Exactly one of the two port candidates must contain the Tianshu Port that connects the structure to the ME network; the other remains a cooling-compatible position.
+
+> See the detailed sections below for the complete parameters.
+
+~~But I know you are not going to read them.~~
+
 ## Main Cores
 
 The Main Core provides internal crafting storage and sets the ceilings for the successful-dispatch and batch-copy budgets. Each of the three parameters governs one thing — crafting storage decides how many jobs can be held at once, successful dispatches decide how many machines can be put to work each tick, and batch copies decide how many executions a batch-capable target can take in a single call — and none can substitute for another.

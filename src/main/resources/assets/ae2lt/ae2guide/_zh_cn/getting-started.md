@@ -14,7 +14,7 @@ navigation:
 
 开始前请确保已经具备一个可运行的 AE2 ME 网络，至少包含：
 
-* 一个 <ItemLink id="ae2:controller" /> 或一张无控制器的小型网络
+* 一个 <ItemLink id="ae2:controller" /> 或一个无控制器的小型网络
 * 少量 <ItemLink id="ae2:certus_quartz_crystal" />、<ItemLink id="ae2:fluix_crystal" /> 与 <ItemLink id="ae2:fluix_block" />
 * 一个 <ItemLink id="minecraft:lightning_rod" /> 与若干等级的 AE2 赛特斯石英母岩
 

@@ -71,7 +71,7 @@ If FE or required Lightning is missing, the affected effects cannot be maintaine
 |--------|--------|
 | Night Vision | Maintains Night Vision while active |
 | Water Breathing | Maintains Water Breathing while active |
-| Saturation | Restores food and saturation toward full, spending HV when it restores |
+| Saturation | Restores food and saturation toward full, spending High Voltage Lightning when it restores |
 
 ## Chestplate Modules
 
@@ -79,12 +79,12 @@ If FE or required Lightning is missing, the affected effects cannot be maintaine
 |--------|--------|
 | Reach Extension | Adds block / entity interaction range; configurable as 1x, 2x or 4x |
 | Matrix Shield | Cancels environmental damage and extinguishes fire, reduces ordinary damage by about 80%, and reduces hard damage by about 50% |
-| Phase Shield | Blocks incoming damage completely and extinguishes fire, spending EHV based on prevented damage |
-| Reflect | Reflects up to 30% of attacker damage, spending FE and HV |
-| Undying | Intercepts fatal damage, spending large FE and EHV costs |
+| Phase Shield | Blocks incoming damage completely and extinguishes fire, spending Extreme High Voltage Lightning based on prevented damage |
+| Reflect | Reflects up to 30% of attacker damage, spending FE and High Voltage Lightning |
+| Undying | Intercepts fatal damage, spending large amounts of FE and Extreme High Voltage Lightning |
 | Purification | Removes and blocks configured status effects; by default, harmful effects only |
 | Phase Lock | Provides three independently toggled features: Armor Lock, Block External Forces and Block External Teleports; see below |
-| Overload Core Module | Unlocks lightning compensation for the armor set. Existing EHV is consumed first, then any shortfall is paid at 16 HV per EHV |
+| Overload Core Module | Unlocks Lightning compensation for the armor set. Existing Extreme High Voltage Lightning is consumed first, then any shortfall is paid at 16 High Voltage Lightning per Extreme High Voltage Lightning |
 
 Matrix Shield and Phase Shield share the same install group, so only one of them can be installed on the chestplate.
 
@@ -92,9 +92,12 @@ Matrix Shield and Phase Shield share the same install group, so only one of them
 
 The Phase Lock Module uses the chestplate as its controller and exposes three independently toggled features in the Device Hub:
 
-* **Armor Lock:** Moves the currently worn Celestweave set into four player-bound private phase slots; the armor slots only hold data-free Phase-Locked Projections. The real armor keeps running inside the private slots, and newly worn Celestweave pieces join the lock automatically. Projections carry no enchantment glint and cannot be extracted or traded; replacing or removing one projection costs 1,000,000 FE and 16 EHV to rebuild it in place, and a failed payment releases the lock and re-equips the entire real set.
+* **Armor Lock:** Moves the currently worn Celestweave set into four player-bound private phase slots; the armor slots only hold data-free Phase-Locked Projections. The real armor keeps running inside the private slots, and newly worn Celestweave pieces join the lock automatically. Projections carry no enchantment glint and cannot be extracted or traded; replacing or removing one projection costs 1,000,000 FE and 16 Extreme High Voltage Lightning to rebuild it in place, and a failed payment releases the lock and re-equips the entire real set.
+`Think of this as soulbinding.`
 * **Block External Forces:** Blocks velocity changes from water, fans, knockback and similar external systems, while player input and armor-driven movement still work.
+`For example: ignores pushing and pulling from Create's Encased Fan.`
 * **Block External Teleports:** Blocks external coordinate rewrites, teleports and dimension changes, while normal player movement is unaffected.
+`For example: ignores forced teleportation by Draconic Evolution's Chaos Guardian.`
 
 ## Leggings Modules
 
@@ -115,4 +118,4 @@ Creative Flight and Phase Flight share the same install group, so only one can b
 
 ## Cost Notes
 
-Most active modules consume 1 HV per tick in addition to their FE drain. Creative Flight uses more HV while flying, and Phase Flight consumes EHV every tick. Shield, Purification and Undying costs increase when they trigger repeatedly in a short time. Installing an Overload Core Module in the chestplate allows the whole set to compensate missing EHV at 16 HV per EHV.
+Most active modules consume 1 High Voltage Lightning per tick in addition to their FE drain. Creative Flight uses more High Voltage Lightning while flying, and Phase Flight consumes Extreme High Voltage Lightning every tick. Shield, Purification and Undying costs increase when they trigger repeatedly in a short time. Installing an Overload Core Module in the chestplate allows the whole set to compensate missing Extreme High Voltage Lightning at 16 High Voltage Lightning per Extreme High Voltage Lightning.
