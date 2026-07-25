@@ -102,13 +102,13 @@ When a formed Tianshu Supercomputing Array is available on the network, the term
 * The **Inventory Maintenance** button also opens the overview listing every configured entry—including items whose current stock is zero. Shift-click an entry to edit its rule.
 * The **Maintainable** view filters the terminal list to items with maintenance rules for focused review.
 
-**Start below:** Starts automatic crafting when stock falls below this value.
-**Stop at:** Stops automatic crafting when stock reaches this value.
-**Per job:** Sets the amount requested by each automatic crafting job.
-**Enabled:** Enables or disables this item's maintenance rule.
-**Check now:** Immediately checks this item's stock.
-**Cancel job:** Cancels the currently running automatic crafting job.
-**Crafting topology:** Lists related items in the recipe chain and allows their reserved stock to be configured.
+* **Start below:** Starts automatic crafting when stock falls below this value.
+* **Stop at:** Stops automatic crafting when stock reaches this value.
+* **Per job:** Sets the amount requested by each automatic crafting job.
+* **Enabled:** Enables or disables this item's maintenance rule.
+* **Check now:** Immediately checks this item's stock.
+* **Cancel job:** Cancels the currently running automatic crafting job.
+* **Crafting topology:** Lists related items in the recipe chain and allows their reserved stock to be configured.
 
 Click any entry under **Crafting topology** to set how much of that material maintenance jobs may not consume. Switch **Tianshu global** to **Rule additional** to configure an extra reserve for this rule. A rule-specific reserve only changes the effective protection when it is greater than the matching global reserve; see “Global Reserves” below.
 
