@@ -3,6 +3,7 @@
   "includes": [
     "pattern_encoding_terminal.json"
   ],
+  "helpTopic": "ae2lt:tianshu/pattern-encoding-terminal.md",
   "widgets": {
     "modeTabButton3": { "left": 173, "bottom": 132, "width": 22, "height": 22 },
     "modeTabButton2": { "left": 173, "bottom": 111, "width": 22, "height": 22 },
