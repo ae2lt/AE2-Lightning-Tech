@@ -70,7 +70,7 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
     private final Map<TianshuEncodingMode, TabButton> modeTabs =
             new EnumMap<>(TianshuEncodingMode.class);
     private final TianshuClosedLoopEncodingPanel closedLoopPanel;
-    private final List<AE2Button> processingModeButtons;
+    private final List<ProcessingMultiplierButton> processingModeButtons;
     private final AE2Button advancedEncoding;
     private final AE2Button overloadEncoding;
     private final RepoSlot networkBlankPatternSlot;
@@ -121,14 +121,10 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
         widgets.add("closedLoopPanel", closedLoopPanel);
 
         processingModeButtons = List.of(
-                addCompactButton("processingMultiply2", Component.literal("×2"),
-                        () -> menu.multiplyProcessing(hasShiftDown() ? 4 : 2)),
-                addCompactButton("processingMultiply5", Component.literal("×5"),
-                        () -> menu.multiplyProcessing(hasShiftDown() ? 10 : 5)),
-                addCompactButton("processingDivide2", Component.literal("÷2"),
-                        () -> menu.multiplyProcessing(hasShiftDown() ? -4 : -2)),
-                addCompactButton("processingDivide5", Component.literal("÷5"),
-                        () -> menu.multiplyProcessing(hasShiftDown() ? -10 : -5)));
+                addProcessingMultiplierButton("processingMultiply2", 2, 4),
+                addProcessingMultiplierButton("processingMultiply5", 5, 10),
+                addProcessingMultiplierButton("processingDivide2", -2, -4),
+                addProcessingMultiplierButton("processingDivide5", -5, -10));
         advancedEncoding = addCompactButton("advancedEncodingButton",
                 Component.translatable("ae2lt.tianshu.terminal.encoding.advanced.short"),
                 () -> switchToScreen(new TianshuAdvancedPatternConfigScreen<>(this)));
@@ -157,6 +153,17 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
         var button = new CompactAE2Button(label, ignored -> onPress.run());
         widgets.add(widgetId, button);
         return button;
+    }
+
+    private ProcessingMultiplierButton addProcessingMultiplierButton(
+            String widgetId, int factor, int shiftedFactor) {
+        var button = addCompactButton(widgetId, processingMultiplierLabel(factor),
+                () -> menu.multiplyProcessing(hasShiftDown() ? shiftedFactor : factor));
+        return new ProcessingMultiplierButton(button, factor, shiftedFactor);
+    }
+
+    private static Component processingMultiplierLabel(int factor) {
+        return Component.literal((factor < 0 ? "÷" : "×") + Math.abs(factor));
     }
 
     private void addExtraTab(
@@ -197,7 +204,12 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
             return;
         }
         boolean processing = selected == TianshuEncodingMode.PROCESSING;
-        processingModeButtons.forEach(button -> button.visible = processing);
+        boolean shifted = hasShiftDown();
+        processingModeButtons.forEach(control -> {
+            control.button().visible = processing;
+            control.button().setMessage(processingMultiplierLabel(
+                    shifted ? control.shiftedFactor() : control.factor()));
+        });
         boolean hasDraftInput = hasProcessingDraftInput();
         updateEncodingButton(advancedEncoding, ProcessingPatternEncodingType.ADVANCED,
                 processing && AdvancedAECompat.isLoaded(), hasDraftInput, "advanced");
@@ -751,6 +763,9 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
     }
 
     /** AE2 button visuals with a compact text layer for the processing-mode controls. */
+    private record ProcessingMultiplierButton(AE2Button button, int factor, int shiftedFactor) {
+    }
+
     private static final class CompactAE2Button extends AE2Button {
         private static final float TEXT_SCALE = 0.65F;
 
