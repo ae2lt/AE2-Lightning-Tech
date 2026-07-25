@@ -1,5 +1,6 @@
 package com.moakiee.ae2lt.logic.craft;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -74,6 +75,30 @@ class MatrixMultiblockScannerTest {
         assertFalse(quantumAttempt.formed());
         assertTrue(quantumAttempt.issues().contains(
                 MatrixMultiblockScanIssue.AMPLIFIER_LIMIT_EXCEEDED));
+    }
+
+    @Test
+    void multidimensionalCoreOnlyAcceptsBlankUnits() {
+        var allBlank = completeStructure();
+        allBlank.put(
+                worldPos(MatrixMultiblockTemplate.CRAFTING_CENTER_LOCAL),
+                MatrixMultiblockComponent.MULTIDIMENSIONAL_MAIN_CORE);
+        allBlank.put(
+                worldPos(firstNonCenterCraftingSlot()),
+                MatrixMultiblockComponent.BLANK_UNIT);
+
+        var formed = MatrixMultiblockScanner.scan(CONTROLLER, ORIENTATION, allBlank::get);
+        assertTrue(formed.formed(), formed.issues().toString());
+        assertTrue(formed.result().craftingProfile().isValid());
+        assertEquals(MatrixCoreMode.MULTIDIMENSIONAL, formed.result().craftingProfile().mode());
+
+        allBlank.put(
+                worldPos(firstNonCenterCraftingSlot()),
+                MatrixMultiblockComponent.THREAD_UNIT_T1);
+        var withThread = MatrixMultiblockScanner.scan(CONTROLLER, ORIENTATION, allBlank::get);
+        assertFalse(withThread.formed());
+        assertTrue(withThread.issues().contains(
+                MatrixMultiblockScanIssue.MULTIDIMENSIONAL_UNIT_NOT_SUPPORTED));
     }
 
     private static Map<BlockPos, MatrixMultiblockComponent> completeStructure() {

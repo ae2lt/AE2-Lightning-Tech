@@ -148,10 +148,10 @@ public class AE2LightningTech {
                         output.accept(ModBlocks.QUANTUM_SUPERCOMPUTING_UNIT);
                         output.accept(ModBlocks.OVERLOAD_SUPERCOMPUTING_UNIT);
                         output.accept(ModBlocks.MULTIDIMENSIONAL_SUPERCOMPUTING_UNIT);
-                        output.accept(ModBlocks.BLANK_SUPERCOMPUTING_UNIT);
+                        output.accept(ModBlocks.TIANSHU_BLANK_UNIT);
                         output.accept(ModBlocks.STORAGE_SUPERCOMPUTING_UNIT);
                         output.accept(ModBlocks.PARALLEL_SUPERCOMPUTING_UNIT);
-                        output.accept(ModBlocks.AMPLIFIER_SUPERCOMPUTING_UNIT);
+                        output.accept(ModBlocks.TIANSHU_AMPLIFIER_UNIT);
                         output.accept(ModBlocks.CLOSED_LOOP_PATTERN_STORAGE);
                         output.accept(ModBlocks.CLOSED_LOOP_SEED_STORAGE);
                         output.accept(ModBlocks.MATTER_WARPING_MATRIX_CASING);
@@ -162,8 +162,7 @@ public class AE2LightningTech {
                         output.accept(ModBlocks.MATTER_WARPING_MATRIX_STABLE_MAIN_CORE);
                         output.accept(ModBlocks.MATTER_WARPING_MATRIX_QUANTUM_MAIN_CORE);
                         output.accept(ModBlocks.MATTER_WARPING_MATRIX_OVERLOAD_MAIN_CORE);
-                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_CREATIVE_MAIN_CORE);
-                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_BLANK_UNIT);
+                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_MULTIDIMENSIONAL_MAIN_CORE);
                         output.accept(ModBlocks.MATTER_WARPING_MATRIX_THREAD_UNIT_T1);
                         output.accept(ModBlocks.MATTER_WARPING_MATRIX_THREAD_UNIT_T2);
                         output.accept(ModBlocks.MATTER_WARPING_MATRIX_THERMAL_CONTROL_UNIT_T1);

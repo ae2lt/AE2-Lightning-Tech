@@ -24,11 +24,13 @@ public final class LegacyRegistryAliases {
 
         aliasTianshuComputeUnits();
 
-        aliasMatrixBlock("blank_sub_core", "blank_unit");
+        aliasBlockAndItem(MATRIX_PREFIX + "blank_sub_core", "tianshu_blank_unit");
+        aliasBlockAndItem(MATRIX_PREFIX + "blank_unit", "tianshu_blank_unit");
         aliasMatrixBlock("thread_sub_core_t1", "thread_unit_t1");
         aliasMatrixBlock("thread_sub_core_t2", "thread_unit_t2");
         aliasMatrixBlock("cooling_sub_core_t1", "thermal_control_unit_t1");
         aliasMatrixBlock("cooling_sub_core_t2", "thermal_control_unit_t2");
+        aliasMatrixBlock("creative_main_core", "multidimensional_main_core");
         aliasBlockAndItem(MATRIX_PREFIX + "multiplier_sub_core_t1", "tianshu_amplifier_unit");
         aliasBlockAndItem(MATRIX_PREFIX + "multiplier_sub_core_t2", "tianshu_amplifier_unit");
     }
@@ -38,6 +40,7 @@ public final class LegacyRegistryAliases {
         aliasBlockAndItem("quantum_supercomputing_unit", "tianshu_quantum_main_core");
         aliasBlockAndItem("overload_supercomputing_unit", "tianshu_overload_main_core");
         aliasBlockAndItem("multidimensional_supercomputing_unit", "tianshu_multidimensional_main_core");
+        aliasBlockAndItem("blank_supercomputing_unit", "tianshu_blank_unit");
         aliasBlockAndItem("amplifier_supercomputing_unit", "tianshu_amplifier_unit");
     }
 

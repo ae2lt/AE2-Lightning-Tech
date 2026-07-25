@@ -16,7 +16,7 @@ item_ids:
 
 The matrix occupies a fixed **7×11×7** volume. The Controller is centered on one 7×11 side. The structure extends 6 blocks in the Controller's facing direction, 3 blocks to either side, and 5 blocks both above and below it.
 
-The scene below shows a complete structure with the minimum pattern capacity, a Stable Main Core, and Blank Units. Drag to rotate it. The annotations identify the Controller, default Port position, and one Pattern Storage.
+The scene below shows a complete formable structure with the minimum pattern capacity, a Stable Main Core, one T1 Thread Unit, and 79 Tianshu Blank Units. Drag to rotate it. The annotations identify the Controller, default Port position, and one Pattern Storage.
 
 <GameScene zoom="2.4" background="transparent" interactive={true}>
   <ImportStructure src="../assets/assemblies/matter_warping_matrix.snbt" />
@@ -43,7 +43,7 @@ The Controller is already in the world and is not consumed by the button. A comp
 | Internal core | Count | Notes |
 |---------------|------:|-------|
 | Any main core | 1 | Must occupy the geometric center |
-| Any peripheral unit | 80 | Every peripheral position must be filled; Blank Units are valid fillers |
+| Peripheral units | 80 | Every peripheral position must be filled; finite Main Cores require at least one Thread Unit, so the minimum is one T1 Thread Unit and 79 Tianshu Blank Units |
 
 Starting from an empty site therefore requires at minimum **1 Controller, 352 structure blocks placed by the button, 1 Main Core, and 80 Peripheral Units**. The 352 structure blocks already include one minimum-required Pattern Storage.
 
@@ -63,7 +63,7 @@ If any Casing, Frame, Glass, Port candidate, or Pattern Storage bay contains an 
 * Exactly **one** of the three Port candidates must contain a Matrix Port; the other two must be Constraint Frames
 * The 50 Pattern Storage bays may be empty or contain T1/T2 storages, but at least one storage is required
 * None of the 81 core positions may be empty: the center must be a Main Core and all other positions must be Peripheral Units
-* Quantum and Overload Main Cores allow at most 15 Tianshu Amplifier Units; Stable rejects amplifiers, while Creative only accepts Blank Units
+* Stable, Quantum, and Overload Main Cores require at least one Thread Unit; Quantum and Overload allow at most 15 Tianshu Amplifier Units; Stable rejects amplifiers, while Multidimensional only accepts Tianshu Blank Units
 * Open gaps shown by the structure are not structure members and do not need to be sealed
 
 When the final required block is placed, the matrix rescans and forms automatically. The Auto-build button does not need to be pressed again.

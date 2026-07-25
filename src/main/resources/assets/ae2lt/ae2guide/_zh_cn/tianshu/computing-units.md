@@ -9,7 +9,7 @@ item_ids:
   - ae2lt:tianshu_quantum_main_core
   - ae2lt:tianshu_overload_main_core
   - ae2lt:tianshu_multidimensional_main_core
-  - ae2lt:blank_supercomputing_unit
+  - ae2lt:tianshu_blank_unit
   - ae2lt:storage_supercomputing_unit
   - ae2lt:parallel_supercomputing_unit
   - ae2lt:tianshu_amplifier_unit
@@ -93,6 +93,6 @@ item_ids:
 
 <ItemLink id="ae2lt:tianshu_amplifier_unit" /> 用于提高量子或过载核心的派发、外部存储和批量复制能力。基础和多维核心不接受增幅单元，量子与过载最多安装 15 个。
 
-<ItemLink id="ae2lt:blank_supercomputing_unit" /> 是类似天枢物质扭曲矩阵空白单元的中性占位单元。它能使外围槽位满足结构要求，但不提供合成容量、派发能力、增幅、样板槽或种子容量。
+<ItemLink id="ae2lt:tianshu_blank_unit" /> 是天枢超算阵列与天枢物质扭曲矩阵共用的中性占位单元。它能使外围槽位满足结构要求，但不提供合成容量、派发能力、增幅、样板槽或种子容量。
 
 闭环分析与执行逻辑由主核心内置，不需要另装闭环计算核心。闭环样板仓与闭环种子存储器仍是外部物理存储，安装在外壳的冷却兼容位并替代对应位置的相变冷却单元，分别提供闭环样板容量与种子存储；它们不占用核心舱的 26 个外围槽，也不会计入 **S**、**P** 或 **A**。核心舱中不需要计算属性的槽位使用天枢空白单元填充。

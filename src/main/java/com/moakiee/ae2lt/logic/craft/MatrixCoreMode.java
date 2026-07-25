@@ -5,6 +5,6 @@ public enum MatrixCoreMode {
     STABLE,
     QUANTUM,
     OVERLOAD,
-    CREATIVE,
+    MULTIDIMENSIONAL,
     CONFLICT
 }

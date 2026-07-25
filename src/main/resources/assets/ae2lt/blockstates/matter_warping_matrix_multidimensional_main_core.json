@@ -1,7 +1,7 @@
 {
   "variants": {
     "formed=false": {
-      "model": "ae2lt:block/matter_warping_matrix_creative_main_core"
+      "model": "ae2lt:block/matter_warping_matrix_multidimensional_main_core"
     },
     "formed=true": {
       "model": "ae2lt:block/multiblock_core_hidden"

@@ -8,8 +8,8 @@ item_ids:
   - ae2lt:matter_warping_matrix_stable_main_core
   - ae2lt:matter_warping_matrix_quantum_main_core
   - ae2lt:matter_warping_matrix_overload_main_core
-  - ae2lt:matter_warping_matrix_creative_main_core
-  - ae2lt:matter_warping_matrix_blank_unit
+  - ae2lt:matter_warping_matrix_multidimensional_main_core
+  - ae2lt:tianshu_blank_unit
   - ae2lt:matter_warping_matrix_thread_unit_t1
   - ae2lt:matter_warping_matrix_thread_unit_t2
   - ae2lt:tianshu_amplifier_unit
@@ -34,7 +34,7 @@ item_ids:
 | 稳态主核心 | 4,096 份 | 保持低温；热度升高时效率下降，最低保持 45% |
 | 量子主核心 | 122,880 份 | 维持低温可获得更高效率 |
 | 过载主核心 | 4,194,304 份 | 约 50% 热度达到峰值，维持在 42%–58% 甜点区 |
-| 创造主核心 | 无上限 | 忽略热度；其余 80 格只能使用空白单元 |
+| 多维主核心 | 无上限 | 忽略热度；其余 80 格只能使用天枢空白单元 |
 
 矩阵每 tick 实际执行的合成份数按三步得出：
 
@@ -42,7 +42,7 @@ item_ids:
 2. 基础能力超过主核心的每 tick 上限时，按上限截断。
 3. 再乘以当前温度效率，得到实际吞吐。
 
-创造主核心的合成份数没有上限，但每 tick 实际发出的合成调用仍不超过 16,384 次。矩阵的吞吐只由自身核心配置与热度决定，与天枢超算阵列的派发、复制预算互不影响。
+多维主核心的合成份数没有上限，但每 tick 实际发出的合成调用仍不超过 16,384 次。矩阵的吞吐只由自身核心配置与热度决定，与天枢超算阵列的派发、复制预算互不影响。
 
 ## 外围单元
 
@@ -53,9 +53,9 @@ item_ids:
 | 天枢增幅单元 | `R` +1 | 提高量子和过载主核心的增幅系数；与天枢超算阵列共用同一种方块 |
 | 热控单元 T1 | 1 冷却点 | 提高热容量与冷却速度；实际效果随其到主核心的距离衰减 |
 | 热控单元 T2 | 2 冷却点 | 单格提供两倍冷却点，同样受距离衰减 |
-| 空白单元 | — | 仅用于填满核心槽，不提供性能属性 |
+| 天枢空白单元 | — | 两种天枢多方块共用；仅用于填满核心槽，不提供性能属性 |
 
-量子和过载配置最多放置 **15 个天枢增幅单元**，第 16 个会使结构无法成形；稳态与创造主核心不接受增幅单元。
+量子和过载配置最多放置 **15 个天枢增幅单元**，第 16 个会使结构无法成形；稳态与多维主核心不接受增幅单元。
 
 ## 热控距离
 

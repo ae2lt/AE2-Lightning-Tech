@@ -59,7 +59,7 @@ public class MatrixControllerScreen extends AbstractContainerScreen<MatrixContro
             return;
         }
 
-        boolean creative = menu.getMode() == MatrixCoreMode.CREATIVE;
+        boolean multidimensional = menu.getMode() == MatrixCoreMode.MULTIDIMENSIONAL;
         ComputeTier tier = computeTier();
         long rawDispatch = UnifiedCraftingComputeCalculator.DISPATCH_PER_UNIT
                 * (long) menu.getThreadPower();
@@ -79,7 +79,7 @@ public class MatrixControllerScreen extends AbstractContainerScreen<MatrixContro
                         formatBudget(MatrixCraftingMath.STABLE_OPERATION_CAP))
                 : Component.translatable("ae2lt.matrix.gui.gains",
                         1 + menu.getAmplifierUnitCount(), formatBudget(dispatchGain),
-                        creative ? "∞" : formatBudget(copyGain)),
+                        multidimensional ? "∞" : formatBudget(copyGain)),
                 12, y, 0xB7C5D3);
         y += 14;
         drawLine(guiGraphics, Component.translatable(
@@ -91,21 +91,21 @@ public class MatrixControllerScreen extends AbstractContainerScreen<MatrixContro
                                 (long) menu.getStableBaseOperations())
                         : rawDispatch)), 12, y, 0xB7C5D3);
         y += 14;
-        drawLine(guiGraphics, creative
+        drawLine(guiGraphics, multidimensional
                 ? Component.translatable("ae2lt.matrix.gui.throughput_unbounded")
                 : Component.translatable("ae2lt.matrix.gui.throughput", compact(menu.getOperationsPerTick())),
                 12, y, 0xE6EEF5);
         y += 14;
-        drawLine(guiGraphics, creative
+        drawLine(guiGraphics, multidimensional
                 ? Component.translatable("ae2lt.matrix.gui.heat_ignored")
                 : Component.translatable("ae2lt.matrix.gui.thermal",
                         percent(menu.getNormalizedHeat()), percent(menu.getEfficiencyFactor()),
                         Component.translatable(heatStateKey())),
-                12, y, creative ? 0xFF80C6FF : heatColor());
+                12, y, multidimensional ? 0xFF80C6FF : heatColor());
         y += 14;
         drawLine(guiGraphics, Component.translatable("ae2lt.matrix.gui.provider_calls",
                 menu.getProviderCallsRemaining()), 12, y, 0xB7C5D3);
-        if (!creative) {
+        if (!multidimensional) {
             drawHeatBar(guiGraphics, 12, 151, imageWidth - 24, 3);
         }
     }
@@ -180,7 +180,7 @@ public class MatrixControllerScreen extends AbstractContainerScreen<MatrixContro
             case STABLE -> ComputeTier.BASELINE;
             case QUANTUM -> ComputeTier.QUANTUM;
             case OVERLOAD -> ComputeTier.OVERLOAD;
-            case CREATIVE -> ComputeTier.MULTIDIMENSIONAL;
+            case MULTIDIMENSIONAL -> ComputeTier.MULTIDIMENSIONAL;
             default -> null;
         };
     }

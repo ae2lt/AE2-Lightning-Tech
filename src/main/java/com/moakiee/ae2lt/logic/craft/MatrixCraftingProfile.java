@@ -85,9 +85,9 @@ public record MatrixCraftingProfile(
             mode = MatrixCoreMode.CONFLICT;
         }
 
-        if (coreCount == 1 && mode == MatrixCoreMode.CREATIVE) {
+        if (coreCount == 1 && mode == MatrixCoreMode.MULTIDIMENSIONAL) {
             return new MatrixCraftingProfile(
-                    MatrixCoreMode.CREATIVE,
+                    MatrixCoreMode.MULTIDIMENSIONAL,
                     1,
                     0.0D,
                     0.0D,
@@ -129,18 +129,21 @@ public record MatrixCraftingProfile(
                 || (mode != MatrixCoreMode.STABLE
                         && mode != MatrixCoreMode.QUANTUM
                         && mode != MatrixCoreMode.OVERLOAD
-                        && mode != MatrixCoreMode.CREATIVE)) {
+                        && mode != MatrixCoreMode.MULTIDIMENSIONAL)) {
             // has core(s) but not a single valid mode
             issues.add(MatrixProfileIssue.CONFLICTING_CORES);
         }
         if (amplifierLimitExceeded) {
             issues.add(MatrixProfileIssue.AMPLIFIER_LIMIT_EXCEEDED);
         }
-        if (coreCount == 1 && (mode == MatrixCoreMode.STABLE || mode == MatrixCoreMode.CREATIVE)
+        if (coreCount == 1 && (mode == MatrixCoreMode.STABLE
+                || mode == MatrixCoreMode.MULTIDIMENSIONAL)
                 && amplifierUnitCount > 0) {
             issues.add(MatrixProfileIssue.AMPLIFIER_NOT_SUPPORTED);
         }
-        if (coreCount == 1 && mode != MatrixCoreMode.CREATIVE && threadPower <= 0.0D) {
+        if (coreCount == 1
+                && mode != MatrixCoreMode.MULTIDIMENSIONAL
+                && threadPower <= 0.0D) {
             issues.add(MatrixProfileIssue.MISSING_DISPATCH_UNIT);
         }
         return issues.isEmpty() ? Set.of() : Set.copyOf(issues);
@@ -153,7 +156,7 @@ public record MatrixCraftingProfile(
         return switch (mode) {
             case STABLE -> MatrixCraftingMath.stableSnapshot(heat, stableBaseOperations, coolPower);
             case OVERLOAD -> MatrixCraftingMath.overloadSnapshot(heat, threadPower, amplifierPower, coolPower);
-            case CREATIVE -> MatrixCraftingMath.creativeSnapshot();
+            case MULTIDIMENSIONAL -> MatrixCraftingMath.multidimensionalSnapshot();
             default -> MatrixCraftingMath.quantumSnapshot(heat, threadPower, amplifierPower, coolPower);
         };
     }
