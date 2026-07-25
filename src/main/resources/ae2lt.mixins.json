@@ -9,6 +9,7 @@
     "PatternEncodingTermMenuAccessor",
     "PatternProviderLogicAccessor",
     "PatternProviderLogicMixin",
+    "EntityUndyingMixin",
     "LivingEntityUndyingMixin",
     "LivingEntityShieldHitFeedbackMixin",
     "LivingEntityPhaseJumpMixin",
