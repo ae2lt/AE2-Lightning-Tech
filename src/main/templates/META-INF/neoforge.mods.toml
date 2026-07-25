@@ -104,7 +104,7 @@ side = "BOTH"
 [[dependencies."${mod_id}"]]
 modId = "thunderbolt"
 type = "required"
-versionRange = "[2.0,3.0)"
+versionRange = "[1.0.0,2.0.0)"
 ordering = "AFTER"
 side = "BOTH"
 
