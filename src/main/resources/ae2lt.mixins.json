@@ -12,6 +12,7 @@
     "LivingEntityUndyingMixin",
     "LivingEntityShieldHitFeedbackMixin",
     "LivingEntityPhaseJumpMixin",
+    "ServerCommonPacketListenerUndyingMixin",
     "ServerPlayerUndyingMixin",
     "ServerPlayerPhaseMovementMixin",
     "EntityPhaseMovementMixin",
