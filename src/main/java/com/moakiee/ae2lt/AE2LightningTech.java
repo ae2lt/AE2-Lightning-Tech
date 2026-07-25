@@ -117,65 +117,43 @@ public class AE2LightningTech {
                     .withTabsBefore(CreativeModeTabs.SPAWN_EGGS)
                     .icon(() -> ModItems.OVERLOAD_CRYSTAL.get().getDefaultInstance())
                     .displayItems((parameters, output) -> {
-                        // 方块
+                        // 基础方块与水晶生长
                         output.accept(ModBlocks.SILICON_BLOCK);
                         output.accept(ModBlocks.OVERLOAD_CRYSTAL_BLOCK);
                         output.accept(ModBlocks.OVERLOAD_MACHINE_FRAME);
                         output.accept(ModBlocks.FIRMAMENT_CONVERSION_CORE);
                         output.accept(ModBlocks.OVERLOAD_TNT);
-                        // 机器
+                        output.accept(ModBlocks.FLAWLESS_BUDDING_OVERLOAD_CRYSTAL);
+                        output.accept(ModBlocks.FLAWED_BUDDING_OVERLOAD_CRYSTAL);
+                        output.accept(ModBlocks.CRACKED_BUDDING_OVERLOAD_CRYSTAL);
+                        output.accept(ModBlocks.DAMAGED_BUDDING_OVERLOAD_CRYSTAL);
+                        output.accept(ModBlocks.SMALL_OVERLOAD_CRYSTAL_BUD);
+                        output.accept(ModBlocks.MEDIUM_OVERLOAD_CRYSTAL_BUD);
+                        output.accept(ModBlocks.LARGE_OVERLOAD_CRYSTAL_BUD);
+                        output.accept(ModBlocks.OVERLOAD_CRYSTAL_CLUSTER);
+
+                        // 闪电收集与加工机器
                         output.accept(ModBlocks.LIGHTNING_COLLECTOR);
                         output.accept(ModBlocks.TESLA_COIL);
                         output.accept(ModBlocks.ATMOSPHERIC_IONIZER);
+                        output.accept(ModBlocks.CRYSTAL_CATALYZER);
                         output.accept(ModBlocks.LIGHTNING_SIMULATION_CHAMBER);
                         output.accept(ModBlocks.LIGHTNING_ASSEMBLY_CHAMBER);
                         output.accept(ModBlocks.OVERLOAD_PROCESSING_FACTORY);
-                        output.accept(ModBlocks.OVERLOAD_DEVICE_WORKBENCH);
-                        output.accept(ModBlocks.CRYSTAL_CATALYZER);
-                        // 网络设备
+
+                        // 过载 ME 网络设备
                         output.accept(ModBlocks.OVERLOADED_CONTROLLER);
                         output.accept(ModBlocks.OVERLOADED_PATTERN_PROVIDER);
                         output.accept(ModBlocks.EXTENDED_OVERLOADED_PATTERN_PROVIDER);
                         output.accept(ModBlocks.OVERLOADED_INTERFACE);
-                        output.accept(ModBlocks.TIANSHU_SUPERCOMPUTER_CASING);
-                        output.accept(ModBlocks.PHASE_CHANGE_COOLING_UNIT);
-                        output.accept(ModBlocks.TIANSHU_SUPERCOMPUTER_GLASS);
-                        output.accept(ModBlocks.TIANSHU_SUPERCOMPUTER_CONTROLLER);
-                        output.accept(ModBlocks.TIANSHU_SUPERCOMPUTER_PORT);
-                        output.accept(ModItems.TIANSHU_PATTERN_ENCODING_TERMINAL);
-                        output.accept(ModItems.TIANSHU_WIRELESS_PATTERN_ENCODING_TERMINAL);
-                        output.accept(ModBlocks.BASELINE_SUPERCOMPUTING_UNIT);
-                        output.accept(ModBlocks.QUANTUM_SUPERCOMPUTING_UNIT);
-                        output.accept(ModBlocks.OVERLOAD_SUPERCOMPUTING_UNIT);
-                        output.accept(ModBlocks.MULTIDIMENSIONAL_SUPERCOMPUTING_UNIT);
-                        output.accept(ModBlocks.TIANSHU_BLANK_UNIT);
-                        output.accept(ModBlocks.STORAGE_SUPERCOMPUTING_UNIT);
-                        output.accept(ModBlocks.PARALLEL_SUPERCOMPUTING_UNIT);
-                        output.accept(ModBlocks.TIANSHU_AMPLIFIER_UNIT);
-                        output.accept(ModBlocks.CLOSED_LOOP_PATTERN_STORAGE);
-                        output.accept(ModBlocks.CLOSED_LOOP_SEED_STORAGE);
-                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_CASING);
-                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_CONSTRAINT_FRAME);
-                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_GLASS);
-                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_CONTROLLER);
-                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_PORT);
-                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_STABLE_MAIN_CORE);
-                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_QUANTUM_MAIN_CORE);
-                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_OVERLOAD_MAIN_CORE);
-                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_MULTIDIMENSIONAL_MAIN_CORE);
-                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_THREAD_UNIT_T1);
-                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_THREAD_UNIT_T2);
-                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_THERMAL_CONTROL_UNIT_T1);
-                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_THERMAL_CONTROL_UNIT_T2);
-                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_PATTERN_STORAGE_T1);
-                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_PATTERN_STORAGE_T2);
                         if (ModBlocks.hasOverloadedPowerSupply()) {
                             output.accept(ModBlocks.OVERLOADED_POWER_SUPPLY);
                         }
                         output.accept(ModBlocks.WIRELESS_RECEIVER);
                         output.accept(ModBlocks.WIRELESS_OVERLOADED_CONTROLLER);
                         output.accept(ModBlocks.ADVANCED_WIRELESS_OVERLOADED_CONTROLLER);
-                        // 线缆
+
+                        // 过载 ME 线缆（默认色、原版染料色顺序）
                         output.accept(ModItems.OVERLOADED_CABLE);
                         output.accept(ModItems.OVERLOADED_CABLE_WHITE);
                         output.accept(ModItems.OVERLOADED_CABLE_ORANGE);
@@ -193,9 +171,70 @@ public class AE2LightningTech {
                         output.accept(ModItems.OVERLOADED_CABLE_GREEN);
                         output.accept(ModItems.OVERLOADED_CABLE_RED);
                         output.accept(ModItems.OVERLOADED_CABLE_BLACK);
-                        // 材料
+
+                        // 闪电存储（外壳、容量元件、存储组件、成品元件）
+                        output.accept(ModItems.LIGHTNING_ITEM_CELL_HOUSING);
+                        output.accept(ModItems.LIGHTNING_STORAGE_COMPONENT_I);
+                        output.accept(ModItems.LIGHTNING_STORAGE_COMPONENT_II);
+                        output.accept(ModItems.LIGHTNING_STORAGE_COMPONENT_III);
+                        output.accept(ModItems.LIGHTNING_STORAGE_COMPONENT_IV);
+                        output.accept(ModItems.LIGHTNING_STORAGE_COMPONENT_V);
+                        output.accept(ModItems.BULK_LIGHTNING_STORAGE_COMPONENT);
+                        output.accept(ModItems.LIGHTNING_CELL_COMPONENT_I);
+                        output.accept(ModItems.LIGHTNING_CELL_COMPONENT_II);
+                        output.accept(ModItems.LIGHTNING_CELL_COMPONENT_III);
+                        output.accept(ModItems.LIGHTNING_CELL_COMPONENT_IV);
+                        output.accept(ModItems.LIGHTNING_CELL_COMPONENT_V);
+                        output.accept(ModItems.BULK_LIGHTNING_CELL_COMPONENT);
+                        output.accept(ModItems.INFINITE_STORAGE_CELL);
+                        output.accept(FixedInfiniteCellItem.createDisplayedResultStack(CellOutcome.HIGH_VOLTAGE));
+                        output.accept(FixedInfiniteCellItem.createDisplayedResultStack(CellOutcome.EXTREME_HIGH_VOLTAGE));
+
+                        // 天枢超算阵列
+                        output.accept(ModBlocks.TIANSHU_SUPERCOMPUTER_CASING);
+                        output.accept(ModBlocks.PHASE_CHANGE_COOLING_UNIT);
+                        output.accept(ModBlocks.TIANSHU_SUPERCOMPUTER_GLASS);
+                        output.accept(ModBlocks.TIANSHU_SUPERCOMPUTER_CONTROLLER);
+                        output.accept(ModBlocks.TIANSHU_SUPERCOMPUTER_PORT);
+                        output.accept(ModBlocks.BASELINE_SUPERCOMPUTING_UNIT);
+                        output.accept(ModBlocks.QUANTUM_SUPERCOMPUTING_UNIT);
+                        output.accept(ModBlocks.OVERLOAD_SUPERCOMPUTING_UNIT);
+                        output.accept(ModBlocks.MULTIDIMENSIONAL_SUPERCOMPUTING_UNIT);
+                        output.accept(ModBlocks.TIANSHU_BLANK_UNIT);
+                        output.accept(ModBlocks.STORAGE_SUPERCOMPUTING_UNIT);
+                        output.accept(ModBlocks.PARALLEL_SUPERCOMPUTING_UNIT);
+                        output.accept(ModBlocks.TIANSHU_AMPLIFIER_UNIT);
+                        output.accept(ModBlocks.CLOSED_LOOP_PATTERN_STORAGE);
+                        output.accept(ModBlocks.CLOSED_LOOP_SEED_STORAGE);
+                        output.accept(ModItems.TIANSHU_PATTERN_ENCODING_TERMINAL);
+                        output.accept(ModItems.TIANSHU_WIRELESS_PATTERN_ENCODING_TERMINAL);
+
+                        // 天枢物质扭曲矩阵
+                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_CASING);
+                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_CONSTRAINT_FRAME);
+                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_GLASS);
+                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_CONTROLLER);
+                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_PORT);
+                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_STABLE_MAIN_CORE);
+                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_QUANTUM_MAIN_CORE);
+                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_OVERLOAD_MAIN_CORE);
+                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_MULTIDIMENSIONAL_MAIN_CORE);
+                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_THREAD_UNIT_T1);
+                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_THREAD_UNIT_T2);
+                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_THERMAL_CONTROL_UNIT_T1);
+                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_THERMAL_CONTROL_UNIT_T2);
+                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_PATTERN_STORAGE_T1);
+                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_PATTERN_STORAGE_T2);
+                        output.accept(ModItems.MATTER_WARPING_MATRIX_PATTERN_STORAGE_UPGRADE);
+
+                        // 基础材料与中间产物
                         output.accept(ModItems.OVERLOAD_CRYSTAL);
                         output.accept(ModItems.OVERLOAD_CRYSTAL_DUST);
+                        output.accept(ModItems.ELECTRO_CHIME_CRYSTAL);
+                        output.accept(ModItems.PERFECT_ELECTRO_CHIME_CRYSTAL);
+                        output.accept(ModItems.CLEAR_CONDENSATE);
+                        output.accept(ModItems.RAIN_CONDENSATE);
+                        output.accept(ModItems.THUNDERSTORM_CONDENSATE);
                         output.accept(ModItems.FIRMAMENT_DUST);
                         output.accept(ModItems.FIRMAMENT_MIXTURE);
                         output.accept(ModItems.FIRMAMENT_ALLOY_INGOT);
@@ -206,9 +245,13 @@ public class AE2LightningTech {
                         output.accept(ModItems.FIRMAMENT_SPIRIT_CORE_CONDUIT);
                         output.accept(ModItems.FIRMAMENT_SPIRIT_CORE_STRIDE);
                         output.accept(ModItems.FIRMAMENT_SUPERCONDUCTING_WIRE);
-                        output.accept(ModItems.OVERLOAD_ALLOY);
                         output.accept(ModItems.OVERLOAD_ALLOY_BLANK);
+                        output.accept(ModItems.OVERLOAD_ALLOY);
                         output.accept(ModItems.OVERLOAD_ALLOY_PLATE);
+                        output.accept(ModItems.OVERLOAD_INSCRIBER_PRESS);
+                        output.accept(ModItems.UNOVERLOADED_CIRCUIT_BOARD);
+                        output.accept(ModItems.OVERLOAD_CIRCUIT_BOARD);
+                        output.accept(ModItems.OVERLOAD_PROCESSOR);
                         output.accept(ModItems.OVERLOAD_SINGULARITY);
                         output.accept(ModItems.ULTIMATE_OVERLOAD_CORE);
                         output.accept(ModItems.BASIC_TOPOLOGICAL_LATTICE);
@@ -217,35 +260,8 @@ public class AE2LightningTech {
                         output.accept(ModItems.HYPERDIMENSIONAL_TOPOLOGICAL_LATTICE);
                         output.accept(ModItems.LIGHTNING_COLLAPSE_MATRIX);
                         output.accept(ModItems.FLOATING_MATTER);
-                        output.accept(ModItems.UNOVERLOADED_CIRCUIT_BOARD);
-                        output.accept(ModItems.OVERLOAD_CIRCUIT_BOARD);
-                        output.accept(ModItems.OVERLOAD_PROCESSOR);
-                        output.accept(ModItems.OVERLOAD_INSCRIBER_PRESS);
-                        output.accept(ModItems.ELECTRO_CHIME_CRYSTAL);
-                        output.accept(ModItems.PERFECT_ELECTRO_CHIME_CRYSTAL);
-                        output.accept(ModItems.CLEAR_CONDENSATE);
-                        output.accept(ModItems.RAIN_CONDENSATE);
-                        output.accept(ModItems.THUNDERSTORM_CONDENSATE);
-                        // 存储组件
-                        output.accept(ModItems.LIGHTNING_ITEM_CELL_HOUSING);
-                        // 元件
-                        output.accept(ModItems.LIGHTNING_STORAGE_COMPONENT_I);
-                        output.accept(ModItems.LIGHTNING_STORAGE_COMPONENT_II);
-                        output.accept(ModItems.LIGHTNING_STORAGE_COMPONENT_III);
-                        output.accept(ModItems.LIGHTNING_STORAGE_COMPONENT_IV);
-                        output.accept(ModItems.LIGHTNING_STORAGE_COMPONENT_V);
-                        output.accept(ModItems.BULK_LIGHTNING_STORAGE_COMPONENT);
-                        output.accept(ModItems.BULK_LIGHTNING_CELL_COMPONENT);
-                        output.accept(ModItems.LIGHTNING_CELL_COMPONENT_I);
-                        output.accept(ModItems.LIGHTNING_CELL_COMPONENT_II);
-                        output.accept(ModItems.LIGHTNING_CELL_COMPONENT_III);
-                        output.accept(ModItems.LIGHTNING_CELL_COMPONENT_IV);
-                        output.accept(ModItems.LIGHTNING_CELL_COMPONENT_V);
-                        // 无限存储单元
-                        output.accept(ModItems.INFINITE_STORAGE_CELL);
-                        output.accept(FixedInfiniteCellItem.createDisplayedResultStack(CellOutcome.HIGH_VOLTAGE));
-                        output.accept(FixedInfiniteCellItem.createDisplayedResultStack(CellOutcome.EXTREME_HIGH_VOLTAGE));
-                        // 工具
+
+                        // 样板、网络工具与升级件
                         output.accept(ModItems.OVERLOAD_PATTERN);
                         output.accept(ModItems.CLOSED_LOOP_PATTERN);
                         output.accept(ModItems.OVERLOAD_PATTERN_ENCODER);
@@ -253,8 +269,9 @@ public class AE2LightningTech {
                         output.accept(ModItems.OVERLOADED_FREQUENCY_CARD);
                         output.accept(ModItems.OVERLOADED_PATTERN_PROVIDER_UPGRADE);
                         output.accept(ModItems.OVERLOADED_FILTER_COMPONENT);
-                        output.accept(ModItems.MATTER_WARPING_MATRIX_PATTERN_STORAGE_UPGRADE);
-                        // 苍穹织雷装备 + 模块
+
+                        // 苍穹织雷装备、能量模块
+                        output.accept(ModBlocks.OVERLOAD_DEVICE_WORKBENCH);
                         output.accept(ModItems.OVERLOAD_MODULE_BASE);
                         output.accept(ModItems.CELESTWEAVE_OCULUS);
                         output.accept(ModItems.CELESTWEAVE_CORE);
@@ -263,38 +280,39 @@ public class AE2LightningTech {
                         output.accept(ModItems.ENERGY_MODULE_T1);
                         output.accept(ModItems.ENERGY_MODULE_T2);
                         output.accept(ModItems.ENERGY_MODULE_T3);
+
+                        // 苍穹织雷头部模块
                         output.accept(ModItems.CELESTWEAVE_SUBMODULE_NIGHT_VISION);
                         output.accept(ModItems.CELESTWEAVE_SUBMODULE_WATER_BREATHING);
+                        output.accept(ModItems.CELESTWEAVE_SUBMODULE_SATURATION);
+
+                        // 苍穹织雷胸部模块
                         output.accept(ModItems.CELESTWEAVE_SUBMODULE_REACH_EXTENSION);
                         output.accept(ModItems.CELESTWEAVE_SUBMODULE_MATRIX_SHIELD);
                         output.accept(ModItems.CELESTWEAVE_SUBMODULE_PHASE_SHIELD);
                         output.accept(ModItems.CELESTWEAVE_SUBMODULE_REFLECT);
                         output.accept(ModItems.CELESTWEAVE_SUBMODULE_UNDYING);
-                        output.accept(ModItems.CELESTWEAVE_SUBMODULE_DASH);
-                        output.accept(ModItems.CELESTWEAVE_SUBMODULE_FLIGHT);
                         output.accept(ModItems.CELESTWEAVE_SUBMODULE_PURIFICATION);
-                        output.accept(ModItems.CELESTWEAVE_SUBMODULE_SATURATION);
+                        output.accept(ModItems.CELESTWEAVE_SUBMODULE_PHASE_LOCK);
+
+                        // 苍穹织雷腿部模块
+                        output.accept(ModItems.CELESTWEAVE_SUBMODULE_FLIGHT);
+                        output.accept(ModItems.CELESTWEAVE_SUBMODULE_PHASE_FLIGHT);
+
+                        // 苍穹织雷足部模块
+                        output.accept(ModItems.CELESTWEAVE_SUBMODULE_DASH);
                         output.accept(ModItems.CELESTWEAVE_SUBMODULE_DIG_AFFINITY);
                         output.accept(ModItems.CELESTWEAVE_SUBMODULE_MOVEMENT_ASSIST);
-                        output.accept(ModItems.CELESTWEAVE_SUBMODULE_PHASE_FLIGHT);
-                        output.accept(ModItems.CELESTWEAVE_SUBMODULE_PHASE_LOCK);
-                        // 电磁炮 + 模块
+
+                        // 电磁炮与模块
                         output.accept(ModItems.ELECTROMAGNETIC_RAILGUN);
                         output.accept(ModItems.RAILGUN_MODULE_CORE);
                         output.accept(ModItems.RAILGUN_MODULE_COMPUTE);
                         output.accept(ModItems.RAILGUN_MODULE_ACCELERATION);
                         output.accept(ModItems.RAILGUN_MODULE_RANGE);
                         output.accept(ModItems.RAILGUN_MODULE_OVERLOAD_EXECUTION);
-                        // 水晶生长
-                        output.accept(ModBlocks.FLAWLESS_BUDDING_OVERLOAD_CRYSTAL);
-                        output.accept(ModBlocks.FLAWED_BUDDING_OVERLOAD_CRYSTAL);
-                        output.accept(ModBlocks.CRACKED_BUDDING_OVERLOAD_CRYSTAL);
-                        output.accept(ModBlocks.DAMAGED_BUDDING_OVERLOAD_CRYSTAL);
-                        output.accept(ModBlocks.SMALL_OVERLOAD_CRYSTAL_BUD);
-                        output.accept(ModBlocks.MEDIUM_OVERLOAD_CRYSTAL_BUD);
-                        output.accept(ModBlocks.LARGE_OVERLOAD_CRYSTAL_BUD);
-                        output.accept(ModBlocks.OVERLOAD_CRYSTAL_CLUSTER);
-                        // Fumo
+
+                        // Fumo 收藏品（猪咪系列留在独立物品栏）
                         output.accept(ModFumos.MOAKIEE_FUMO_ITEM.get());
                         output.accept(ModFumos.CYSTRYSU_FUMO_ITEM.get());
                     })
