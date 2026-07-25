@@ -525,7 +525,7 @@ public final class ModItems {
         registerStorageCellModel(BULK_LIGHTNING_STORAGE_COMPONENT);
         registerStorageCellModel(INFINITE_STORAGE_CELL);
         registerStorageCellModel(MYSTERIOUS_CELL, "256k_item_cell");
-        registerStorageCellModel(PIGMEE_STORAGE_CELL, "1k_item_cell");
+        registerStorageCellModel(PIGMEE_STORAGE_CELL);
     }
 
     public static ColoredPartItem<OverloadedCablePart> getOverloadedCable(AEColor color) {
