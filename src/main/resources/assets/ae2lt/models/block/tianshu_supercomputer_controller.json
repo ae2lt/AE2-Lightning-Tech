@@ -1,5 +1,6 @@
 {
   "credit": "Made with Blockbench",
+  "parent": "minecraft:block/block",
   "texture_size": [64, 64],
   "textures": {
     "4": "ae2lt:block/tianshu/tianshu_supercomputer_controller",

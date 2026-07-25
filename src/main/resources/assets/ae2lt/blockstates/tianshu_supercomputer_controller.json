@@ -1,34 +1,34 @@
 {
   "variants": {
     "facing=north,formed=false": {
-      "model": "ae2lt:block/tianshu_supercomputer_controller"
+      "model": "ae2lt:block/tianshu_supercomputer_controller",
+      "y": 180
     },
     "facing=east,formed=false": {
       "model": "ae2lt:block/tianshu_supercomputer_controller",
-      "y": 90
+      "y": 270
     },
     "facing=south,formed=false": {
-      "model": "ae2lt:block/tianshu_supercomputer_controller",
-      "y": 180
+      "model": "ae2lt:block/tianshu_supercomputer_controller"
     },
     "facing=west,formed=false": {
       "model": "ae2lt:block/tianshu_supercomputer_controller",
-      "y": 270
-    },
-    "facing=north,formed=true": {
-      "model": "ae2lt:block/tianshu_supercomputer_controller_formed"
-    },
-    "facing=east,formed=true": {
-      "model": "ae2lt:block/tianshu_supercomputer_controller_formed",
       "y": 90
     },
-    "facing=south,formed=true": {
+    "facing=north,formed=true": {
       "model": "ae2lt:block/tianshu_supercomputer_controller_formed",
       "y": 180
     },
-    "facing=west,formed=true": {
+    "facing=east,formed=true": {
       "model": "ae2lt:block/tianshu_supercomputer_controller_formed",
       "y": 270
+    },
+    "facing=south,formed=true": {
+      "model": "ae2lt:block/tianshu_supercomputer_controller_formed"
+    },
+    "facing=west,formed=true": {
+      "model": "ae2lt:block/tianshu_supercomputer_controller_formed",
+      "y": 90
     }
   }
 }
