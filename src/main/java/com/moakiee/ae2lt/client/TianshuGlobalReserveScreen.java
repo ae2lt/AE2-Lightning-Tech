@@ -35,9 +35,9 @@ public final class TianshuGlobalReserveScreen<M extends TianshuPatternEncodingTe
     private static final int LIST_LEFT = 9;
     private static final int LIST_RIGHT = 187;
     private static final int LIST_CENTER_X = (LIST_LEFT + LIST_RIGHT) / 2;
-    private static final int CONTENT_COLUMN_CENTER_X = 59;
-    private static final int STOCK_COLUMN_CENTER_X = 128;
-    private static final int VALUE_COLUMN_CENTER_X = 168;
+    private static final int CONTENT_TEXT_LEFT = 37;
+    private static final int STOCK_COLUMN_RIGHT = 143;
+    private static final int VALUE_COLUMN_RIGHT = 184;
     private static final int FIRST_ROW = 64;
     private static final int ROW_HEIGHT = 20;
     private static final int VISIBLE_ROWS = 6;
@@ -239,18 +239,18 @@ public final class TianshuGlobalReserveScreen<M extends TianshuPatternEncodingTe
         super.drawFG(graphics, offsetX, offsetY, mouseX, mouseY);
         graphics.drawString(font, Component.translatable("ae2lt.tianshu.maintenance.overview_title"),
                 10, 9, 0x30343B, false);
-        graphics.drawCenteredString(font,
+        graphics.drawString(font,
                 Component.translatable("ae2lt.tianshu.maintenance.column.item"),
-                CONTENT_COLUMN_CENTER_X, 53, 0x535A64);
-        graphics.drawCenteredString(font,
+                CONTENT_TEXT_LEFT, 53, 0x5D646D, false);
+        drawRightAligned(graphics,
                 Component.translatable("ae2lt.tianshu.maintenance.column.stock"),
-                STOCK_COLUMN_CENTER_X, 53, 0x535A64);
-        graphics.drawCenteredString(font, Component.translatable(view == View.RULES
+                STOCK_COLUMN_RIGHT, 53, 0x5D646D);
+        drawRightAligned(graphics, Component.translatable(view == View.RULES
                         ? "ae2lt.tianshu.maintenance.column.target"
                         : "ae2lt.tianshu.maintenance.column.reserve"),
-                VALUE_COLUMN_CENTER_X, 53, 0x535A64);
+                VALUE_COLUMN_RIGHT, 53, 0x5D646D);
         graphics.fill(LIST_LEFT + 1, FIRST_ROW - 1, LIST_RIGHT - 1, FIRST_ROW,
-                0x554D4D67);
+                0x335D646D);
 
         int localMouseX = mouseX - leftPos;
         int localMouseY = mouseY - topPos;
@@ -265,18 +265,18 @@ public final class TianshuGlobalReserveScreen<M extends TianshuPatternEncodingTe
                     && localMouseY >= y && localMouseY < y + ROW_HEIGHT - 1;
             graphics.fill(LIST_LEFT, y, LIST_RIGHT, y + ROW_HEIGHT - 1,
                     hovered ? 0x553B719F : (row & 1) == 0 ? 0x1EFFFFFF : 0x12000000);
-            graphics.fill(12, y + 6, 16, y + 10, badgeColor(summary));
+            graphics.fill(12, y + 8, 16, y + 12, badgeColor(summary));
             graphics.renderItem(summary.key().wrapForDisplayOrFilter(), 18, y + 2);
             graphics.drawString(font,
                     font.plainSubstrByWidth(entries.get(index).displayName(), 70),
-                    37, y + 6, summary.ruleConfigured() && !summary.craftable()
+                    CONTENT_TEXT_LEFT, y + 6, summary.ruleConfigured() && !summary.craftable()
                             ? 0xA73535 : 0x30343B, false);
             drawRightAligned(graphics, compactAmount(summary.key(), summary.storedAmount()),
-                    143, y + 6, 0x3D4650);
+                    STOCK_COLUMN_RIGHT, y + 6, 0x3D4650);
             String finalValue = view == View.RULES
                     ? compactAmount(summary.key(), summary.upperThreshold())
                     : formatReserve(summary.globalReserve());
-            drawRightAligned(graphics, finalValue, 184, y + 6,
+            drawRightAligned(graphics, finalValue, VALUE_COLUMN_RIGHT, y + 6,
                     view == View.RESERVES && summary.globalReserve() != 0L ? 0x245E91 : 0x3D4650);
         }
 
@@ -308,6 +308,11 @@ public final class TianshuGlobalReserveScreen<M extends TianshuPatternEncodingTe
     }
 
     private void drawRightAligned(GuiGraphics graphics, String text, int right, int y, int color) {
+        graphics.drawString(font, text, right - font.width(text), y, color, false);
+    }
+
+    private void drawRightAligned(
+            GuiGraphics graphics, Component text, int right, int y, int color) {
         graphics.drawString(font, text, right - font.width(text), y, color, false);
     }
 
@@ -479,9 +484,9 @@ public final class TianshuGlobalReserveScreen<M extends TianshuPatternEncodingTe
 
     private static final class GlobalReserveEditScreen<M extends TianshuPatternEncodingTermMenu>
             extends AESubScreen<M, TianshuGlobalReserveScreen<M>> {
-        private static final int VARIANT_FIRST_ROW = 120;
+        private static final int VARIANT_FIRST_ROW = 134;
         private static final int VARIANT_ROW_HEIGHT = 17;
-        private static final int VISIBLE_VARIANTS = 2;
+        private static final int VISIBLE_VARIANTS = 3;
 
         private final MaintenanceSummarySyncPacket.Entry entry;
         private final List<ReserveVariant> variants;
@@ -495,17 +500,28 @@ public final class TianshuGlobalReserveScreen<M extends TianshuPatternEncodingTe
                 TianshuGlobalReserveScreen<M> parent,
                 MaintenanceSummarySyncPacket.Entry entry,
                 List<ReserveVariant> variants) {
-            super(parent, "/screens/tianshu_reserve_edit.json");
+            this(parent, entry, variants,
+                    new EditorState(entry.globalReserve(), entry.globalMode()));
+        }
+
+        private GlobalReserveEditScreen(
+                TianshuGlobalReserveScreen<M> parent,
+                MaintenanceSummarySyncPacket.Entry entry,
+                List<ReserveVariant> variants,
+                EditorState state) {
+            super(parent, state.mode == ReservedStockMatchMode.IGNORE_SECONDARY
+                    ? "/screens/tianshu_reserve_edit_expanded.json"
+                    : "/screens/tianshu_reserve_edit.json");
             this.entry = entry;
             this.variants = List.copyOf(variants);
-            this.mode = entry.globalMode();
+            this.mode = state.mode;
 
             scrollbar = widgets.addScrollBar("scrollbar", Scrollbar.SMALL);
             scrollbar.setCaptureMouseWheel(false);
             amount = widgets.addTextField("amount");
             amount.setMaxLength(19);
             amount.setFilter(GlobalReserveEditScreen::validDraft);
-            amount.setValue(Long.toString(entry.globalReserve()));
+            amount.setValue(Long.toString(state.amount));
             var scopeButton = widgets.addButton("scope",
                     Component.translatable("ae2lt.tianshu.reserve.global"), () -> { });
             scopeButton.active = false;
@@ -538,9 +554,12 @@ public final class TianshuGlobalReserveScreen<M extends TianshuPatternEncodingTe
         }
 
         private void toggleMode() {
+            long parsed = parsedAmount();
+            if (parsed == Long.MIN_VALUE) return;
             mode = mode == ReservedStockMatchMode.EXACT
                     ? ReservedStockMatchMode.IGNORE_SECONDARY : ReservedStockMatchMode.EXACT;
-            modeButton.setMessage(modeLabel());
+            switchToScreen(new GlobalReserveEditScreen<>(
+                    getParent(), entry, variants, new EditorState(parsed, mode)));
         }
 
         private Component modeLabel() {
@@ -571,34 +590,45 @@ public final class TianshuGlobalReserveScreen<M extends TianshuPatternEncodingTe
             super.drawFG(graphics, offsetX, offsetY, mouseX, mouseY);
             graphics.drawString(font, Component.translatable("ae2lt.tianshu.reserve.title"),
                     10, 9, 0x30343B, false);
-            graphics.renderItem(entry.key().wrapForDisplayOrFilter(), 11, 29);
+            graphics.renderItem(entry.key().wrapForDisplayOrFilter(), 16, 32);
             graphics.drawString(font,
-                    font.plainSubstrByWidth(entry.key().getDisplayName().getString(), 176),
-                    32, 34, 0x30343B, false);
-            graphics.drawString(font, Component.translatable("ae2lt.tianshu.reserve.current_protected",
+                    font.plainSubstrByWidth(entry.key().getDisplayName().getString(), 147),
+                    39, 35, 0x30343B, false);
+            var currentProtected = Component.translatable(
+                    "ae2lt.tianshu.reserve.current_protected",
                     compactAmount(entry.key(), visibleStock()),
-                    compactAmount(entry.key(), protectedStock())), 11, 78, 0x59616B, false);
-            graphics.drawString(font, Component.translatable("ae2lt.tianshu.reserve.amount"),
-                    11, 97, 0x40464E, false);
-            if (mode == ReservedStockMatchMode.IGNORE_SECONDARY && !variants.isEmpty()) {
-                graphics.drawString(font, Component.translatable("ae2lt.tianshu.reserve.variant_title"),
-                        11, 111, 0x555D66, false);
-                int start = scrollbar.getCurrentScroll();
-                int end = Math.min(variants.size(), start + VISIBLE_VARIANTS);
-                for (int index = start; index < end; index++) {
-                    int y = VARIANT_FIRST_ROW + (index - start) * VARIANT_ROW_HEIGHT;
-                    var variant = variants.get(index);
-                    graphics.renderItem(variant.key().wrapForDisplayOrFilter(), 12, y);
+                    compactAmount(entry.key(), protectedStock()));
+            graphics.drawString(font,
+                    font.plainSubstrByWidth(currentProtected.getString(), 187),
+                    10, 83, 0x59616B, false);
+            var amountLabel = Component.translatable("ae2lt.tianshu.reserve.amount");
+            graphics.drawString(font, font.plainSubstrByWidth(amountLabel.getString(), 64),
+                    10, 99, 0x40464E, false);
+            if (mode == ReservedStockMatchMode.IGNORE_SECONDARY) {
+                if (!variants.isEmpty()) {
                     graphics.drawString(font,
-                            font.plainSubstrByWidth(variant.key().getDisplayName().getString(), 120),
-                            33, y + 4, 0x3C434B, false);
-                    String stock = compactAmount(variant.key(), variant.storedAmount());
-                    graphics.drawString(font, stock, 202 - font.width(stock), y + 4,
-                            variant.craftable() ? 0x2F6D3C : 0x5C636B, false);
+                            Component.translatable("ae2lt.tianshu.reserve.variant_title"),
+                            10, 116, 0x555D66, false);
+                    int start = scrollbar.getCurrentScroll();
+                    int end = Math.min(variants.size(), start + VISIBLE_VARIANTS);
+                    for (int index = start; index < end; index++) {
+                        int y = VARIANT_FIRST_ROW + (index - start) * VARIANT_ROW_HEIGHT;
+                        var variant = variants.get(index);
+                        graphics.renderItem(variant.key().wrapForDisplayOrFilter(), 12, y);
+                        graphics.drawString(font,
+                                font.plainSubstrByWidth(
+                                        variant.key().getDisplayName().getString(), 112),
+                                33, y + 4, 0x3C434B, false);
+                        String stock = compactAmount(variant.key(), variant.storedAmount());
+                        graphics.drawString(font, stock, 185 - font.width(stock), y + 4,
+                                variant.craftable() ? 0x2F6D3C : 0x5C636B, false);
+                    }
+                } else {
+                    var emptyText = Component.translatable(
+                            "ae2lt.tianshu.reserve.variant_empty");
+                    graphics.drawString(font, emptyText,
+                            98 - font.width(emptyText) / 2, 156, 0x5D646D, false);
                 }
-            } else {
-                graphics.drawString(font, Component.translatable("ae2lt.tianshu.reserve.exact_hint"),
-                        11, 126, 0x6A7077, false);
             }
         }
 
@@ -622,7 +652,9 @@ public final class TianshuGlobalReserveScreen<M extends TianshuPatternEncodingTe
 
         @Override
         public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
-            if (mouseY >= topPos + VARIANT_FIRST_ROW
+            if (mode == ReservedStockMatchMode.IGNORE_SECONDARY
+                    && !variants.isEmpty()
+                    && mouseY >= topPos + VARIANT_FIRST_ROW
                     && mouseY < topPos + VARIANT_FIRST_ROW + VISIBLE_VARIANTS * VARIANT_ROW_HEIGHT) {
                 scrollbar.setCurrentScroll(scrollbar.getCurrentScroll() - (int) Math.signum(scrollY));
                 return true;
@@ -639,7 +671,7 @@ public final class TianshuGlobalReserveScreen<M extends TianshuPatternEncodingTe
                     && y < topPos + VARIANT_FIRST_ROW + VISIBLE_VARIANTS * VARIANT_ROW_HEIGHT
                     && row >= 0 && row < VISIBLE_VARIANTS
                     && index >= 0 && index < variants.size()
-                    && x >= leftPos + 11 && x < leftPos + 207) {
+                    && x >= leftPos + 9 && x < leftPos + 187) {
                 var variant = variants.get(index);
                 var lines = new ArrayList<>(AEKeyRendering.getTooltip(variant.key()));
                 lines.add(Component.translatable("ae2lt.tianshu.maintenance.tooltip.stock",
@@ -665,6 +697,9 @@ public final class TianshuGlobalReserveScreen<M extends TianshuPatternEncodingTe
                 return true;
             }
             return super.keyPressed(keyCode, scanCode, modifiers);
+        }
+
+        private record EditorState(long amount, ReservedStockMatchMode mode) {
         }
     }
 }

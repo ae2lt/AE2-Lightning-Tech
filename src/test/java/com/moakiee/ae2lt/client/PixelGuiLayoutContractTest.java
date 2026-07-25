@@ -214,10 +214,16 @@ final class PixelGuiLayoutContractTest {
     @Test
     void tianshuInventoryScreensUseAe2WidgetsAndProvidedOverviewAtlas() throws Exception {
         Path texture = Path.of("src/main/resources/assets/ae2lt/textures/guis/tianshu_inventory.png");
-        Path editorTexture = Path.of(
-                "src/main/resources/assets/ae2lt/textures/guis/tianshu_inventory_editor.png");
+        Path editorParts = Path.of(
+                "src/main/resources/assets/ae2lt/textures/guis/tianshu_maintenance_rule_parts.png");
+        Path ruleTexture = Path.of(
+                "src/main/resources/assets/ae2lt/textures/guis/tianshu_maintenance_rule.png");
+        Path compactReserveTexture = Path.of(
+                "src/main/resources/assets/ae2lt/textures/guis/tianshu_reserve_edit.png");
         assertSprite(texture, 320, 320);
-        assertSprite(editorTexture, 256, 256);
+        assertSprite(editorParts, 320, 320);
+        assertSprite(ruleTexture, 207, 228);
+        assertSprite(compactReserveTexture, 207, 148);
 
         BufferedImage image = ImageIO.read(texture.toFile());
         assertEquals(0xFF413F54, image.getRGB(0, 0));
@@ -261,25 +267,39 @@ final class PixelGuiLayoutContractTest {
         assertTrue(overviewStyle.contains("\"scrollbar\": { \"left\": 192, \"top\": 50"));
         assertTrue(overview.contains("LIST_RIGHT = 187"));
         assertTrue(overview.contains("LIST_CENTER_X = (LIST_LEFT + LIST_RIGHT) / 2"));
-        assertTrue(overview.contains("CONTENT_COLUMN_CENTER_X = 59"));
-        assertTrue(overview.contains("STOCK_COLUMN_CENTER_X = 128"));
-        assertTrue(overview.contains("VALUE_COLUMN_CENTER_X = 168"));
+        assertTrue(overview.contains("CONTENT_TEXT_LEFT = 37"));
+        assertTrue(overview.contains("STOCK_COLUMN_RIGHT = 143"));
+        assertTrue(overview.contains("VALUE_COLUMN_RIGHT = 184"));
         assertTrue(overview.contains("FIRST_ROW = 64"));
         assertTrue(overview.contains("ROW_HEIGHT = 20"));
         assertTrue(overview.contains("VISIBLE_ROWS = 6"));
         assertTrue(overview.contains("EMPTY_TEXT_Y = 121"));
         assertTrue(overview.contains("search.setPlaceholder(GuiText.SearchPlaceholder.text())"));
 
-        for (String styleName : List.of(
-                "tianshu_maintenance_rule.json",
-                "tianshu_reserve_edit.json")) {
-            String style = Files.readString(Path.of(
-                    "src/main/resources/assets/ae2/screens/" + styleName));
-            assertTrue(style.contains("ae2lt:textures/guis/tianshu_inventory_editor.png"));
-            assertTrue(style.contains("\"textureWidth\": 256"));
-            assertTrue(style.contains("\"textureHeight\": 256"));
-            assertTrue(style.contains("\"srcRect\": [0, 0, 228,"));
-        }
+        String ruleStyle = Files.readString(Path.of(
+                "src/main/resources/assets/ae2/screens/tianshu_maintenance_rule.json"));
+        assertTrue(ruleStyle.contains("ae2lt:textures/guis/tianshu_maintenance_rule.png"));
+        assertTrue(ruleStyle.contains("\"textureWidth\": 207"));
+        assertTrue(ruleStyle.contains("\"textureHeight\": 228"));
+        assertTrue(ruleStyle.contains("\"srcRect\": [0, 0, 207, 228]"));
+        assertTrue(ruleStyle.contains("\"scrollbar\": { \"left\": 192, \"top\": 132"));
+
+        String compactReserveStyle = Files.readString(Path.of(
+                "src/main/resources/assets/ae2/screens/tianshu_reserve_edit.json"));
+        assertTrue(compactReserveStyle.contains("ae2lt:textures/guis/tianshu_reserve_edit.png"));
+        assertTrue(compactReserveStyle.contains("\"textureWidth\": 207"));
+        assertTrue(compactReserveStyle.contains("\"textureHeight\": 148"));
+        assertTrue(compactReserveStyle.contains("\"srcRect\": [0, 0, 207, 148]"));
+
+        String expandedReserveStyle = Files.readString(Path.of(
+                "src/main/resources/assets/ae2/screens/tianshu_reserve_edit_expanded.json"));
+        assertTrue(expandedReserveStyle.contains("ae2lt:textures/guis/tianshu_maintenance_rule.png"));
+        assertTrue(expandedReserveStyle.contains("\"textureHeight\": 228"));
+        assertTrue(expandedReserveStyle.contains("\"srcRect\": [0, 0, 207, 228]"));
+        assertTrue(expandedReserveStyle.contains("\"scrollbar\": { \"left\": 192, \"top\": 132"));
+
+        assertTrue(overview.contains("\"/screens/tianshu_reserve_edit_expanded.json\""));
+        assertTrue(rule.contains("\"/screens/tianshu_reserve_edit_expanded.json\""));
     }
 
     private static void assertSprite(Path texture, int expectedWidth, int expectedHeight) throws Exception {
