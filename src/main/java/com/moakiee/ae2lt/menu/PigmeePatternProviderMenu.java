@@ -1,10 +1,10 @@
 package com.moakiee.ae2lt.menu;
 
-import appeng.api.crafting.PatternDetailsHelper;
 import appeng.menu.AEBaseMenu;
 import appeng.menu.SlotSemantics;
 import appeng.menu.implementations.MenuTypeBuilder;
 import appeng.menu.slot.AppEngSlot;
+import appeng.menu.slot.RestrictedInputSlot;
 import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.blockentity.PigmeePatternProviderBlockEntity;
 import com.moakiee.ae2lt.logic.PigmeePatternProviderReturnInventory;
@@ -13,7 +13,6 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.inventory.Slot;
-import net.minecraft.world.item.ItemStack;
 
 public final class PigmeePatternProviderMenu extends AEBaseMenu {
     public static final MenuType<PigmeePatternProviderMenu> TYPE = MenuTypeBuilder
@@ -39,7 +38,13 @@ public final class PigmeePatternProviderMenu extends AEBaseMenu {
 
         var patternInventory = host.getPatternInventory();
         for (int slot = 0; slot < PigmeePatternProviderBlockEntity.PATTERN_SLOT_COUNT; slot++) {
-            var patternSlot = new PatternSlot(patternInventory, slot);
+            var patternSlot = new RestrictedInputSlot(
+                    RestrictedInputSlot.PlacableItemType.PROVIDER_PATTERN,
+                    patternInventory,
+                    slot);
+            // Keep the Pigmee screen's existing slot artwork while retaining AE2's
+            // provider behavior that renders encoded patterns as their output.
+            patternSlot.setIcon(null);
             patternSlot.x = PATTERN_X + slot * SLOT_SPACING;
             patternSlot.y = PATTERN_Y;
             addSlot(patternSlot, SlotSemantics.ENCODED_PATTERN);
@@ -76,14 +81,4 @@ public final class PigmeePatternProviderMenu extends AEBaseMenu {
         }
     }
 
-    private static final class PatternSlot extends AppEngSlot {
-        private PatternSlot(appeng.api.inventories.InternalInventory inventory, int slot) {
-            super(inventory, slot);
-        }
-
-        @Override
-        public boolean mayPlace(ItemStack stack) {
-            return PatternDetailsHelper.isEncodedPattern(stack) && super.mayPlace(stack);
-        }
-    }
 }
