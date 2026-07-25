@@ -882,14 +882,16 @@ public class MatrixControllerBlockEntity extends BlockEntity implements Crafting
     }
 
     private void bindMembers(MatrixMultiblockScanResult result) {
+        MatrixPortBlockEntity linkedPort = null;
         if (level.isLoaded(result.portPos())
                 && level.getBlockEntity(result.portPos()) instanceof MatrixPortBlockEntity port) {
             port.bindToController(worldPosition, machineId);
+            linkedPort = port;
         }
         for (MatrixMultiblockMember member : result.patternMembers()) {
             if (level.isLoaded(member.worldPos())
                     && level.getBlockEntity(member.worldPos()) instanceof MatrixPatternStorageBlockEntity storage) {
-                storage.setControllerPos(worldPosition);
+                storage.bindToController(worldPosition, linkedPort);
             }
         }
     }

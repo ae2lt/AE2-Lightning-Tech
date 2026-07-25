@@ -6,13 +6,16 @@ import java.util.List;
 import com.moakiee.ae2lt.logic.craft.MatrixMultiblockComponent;
 import com.moakiee.ae2lt.logic.craft.MatrixPatternCore;
 import com.moakiee.ae2lt.logic.craft.MatrixPatternStorageTier;
+import com.moakiee.ae2lt.logic.terminal.InternalPatternContainerLink;
 import com.moakiee.ae2lt.registry.ModBlockEntities;
+import com.moakiee.ae2lt.registry.ModBlocks;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
@@ -26,9 +29,16 @@ import net.neoforged.neoforge.items.IItemHandlerModifiable;
 
 import appeng.api.crafting.IPatternDetails;
 import appeng.api.crafting.PatternDetailsHelper;
+import appeng.api.implementations.blockentities.PatternContainerGroup;
+import appeng.api.inventories.BaseInternalInventory;
+import appeng.api.inventories.InternalInventory;
+import appeng.api.networking.IGrid;
+import appeng.api.stacks.AEItemKey;
 import appeng.blockentity.crafting.IMolecularAssemblerSupportedPattern;
+import appeng.helpers.patternprovider.PatternContainer;
 
-public class MatrixPatternStorageBlockEntity extends BlockEntity implements MatrixPatternCore {
+public class MatrixPatternStorageBlockEntity extends BlockEntity
+        implements MatrixPatternCore, PatternContainer {
     private static final String TAG_ITEMS = "Items";
     private static final String TAG_SLOT = "Slot";
     private static final String TAG_STACK = "Stack";
@@ -37,6 +47,8 @@ public class MatrixPatternStorageBlockEntity extends BlockEntity implements Matr
 
     private final NonNullList<ItemStack> items = NonNullList.withSize(T2_CAPACITY, ItemStack.EMPTY);
     private final PatternInventory inventory = new PatternInventory();
+    private final InternalInventory terminalPatternInventory = new TerminalPatternInventory();
+    private final InternalPatternContainerLink terminalLink;
     private final List<IPatternDetails> cachedPatterns = new ArrayList<>();
     private BlockPos controllerPos;
     private boolean patternsDirty = true;
@@ -44,6 +56,7 @@ public class MatrixPatternStorageBlockEntity extends BlockEntity implements Matr
 
     public MatrixPatternStorageBlockEntity(BlockPos pos, BlockState blockState) {
         super(ModBlockEntities.MATRIX_PATTERN_STORAGE.get(), pos, blockState);
+        terminalLink = new InternalPatternContainerLink(this, blockState.getBlock());
     }
 
     public MatrixPatternStorageTier tier() {
@@ -98,6 +111,48 @@ public class MatrixPatternStorageBlockEntity extends BlockEntity implements Matr
 
     public void setControllerPos(BlockPos controllerPos) {
         this.controllerPos = controllerPos == null ? null : controllerPos.immutable();
+        if (controllerPos == null) {
+            terminalLink.disconnect();
+        }
+    }
+
+    public void bindToController(BlockPos controllerPos, MatrixPortBlockEntity port) {
+        setControllerPos(controllerPos);
+        if (controllerPos != null && port != null) {
+            terminalLink.bind(port.getMainNode());
+        } else {
+            terminalLink.disconnect();
+        }
+    }
+
+    @Override
+    public IGrid getGrid() {
+        return terminalLink.getGrid();
+    }
+
+    @Override
+    public boolean isVisibleInTerminal() {
+        return controllerPos != null && terminalLink.isActive();
+    }
+
+    @Override
+    public InternalInventory getTerminalPatternInventory() {
+        return terminalPatternInventory;
+    }
+
+    @Override
+    public long getTerminalSortOrder() {
+        var pos = getBlockPos();
+        return (long) pos.getZ() << 24 ^ (long) pos.getX() << 8 ^ pos.getY();
+    }
+
+    @Override
+    public PatternContainerGroup getTerminalGroup() {
+        return new PatternContainerGroup(
+                AEItemKey.of(ModBlocks.MATTER_WARPING_MATRIX_CONTROLLER.get()),
+                ModBlocks.MATTER_WARPING_MATRIX_CONTROLLER.get().getName(),
+                List.of(Component.translatable(
+                        "ae2lt.matrix.terminal.tooltip", 1, capacity())));
     }
 
     public boolean isT1() {
@@ -232,6 +287,55 @@ public class MatrixPatternStorageBlockEntity extends BlockEntity implements Matr
     @Override
     public Packet<ClientGamePacketListener> getUpdatePacket() {
         return ClientboundBlockEntityDataPacket.create(this);
+    }
+
+    @Override
+    public void onChunkUnloaded() {
+        terminalLink.disconnect();
+        super.onChunkUnloaded();
+    }
+
+    @Override
+    public void setRemoved() {
+        terminalLink.disconnect();
+        super.setRemoved();
+    }
+
+    private final class TerminalPatternInventory extends BaseInternalInventory {
+        @Override
+        public int size() {
+            return capacity();
+        }
+
+        @Override
+        public ItemStack getStackInSlot(int slotIndex) {
+            return inventory.getStackInSlot(slotIndex);
+        }
+
+        @Override
+        public void setItemDirect(int slotIndex, ItemStack stack) {
+            inventory.setStackInSlot(slotIndex, stack == null ? ItemStack.EMPTY : stack);
+        }
+
+        @Override
+        public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
+            return inventory.insertItem(slot, stack, simulate);
+        }
+
+        @Override
+        public ItemStack extractItem(int slot, int amount, boolean simulate) {
+            return inventory.extractItem(slot, amount, simulate);
+        }
+
+        @Override
+        public int getSlotLimit(int slot) {
+            return inventory.getSlotLimit(slot);
+        }
+
+        @Override
+        public boolean isItemValid(int slot, ItemStack stack) {
+            return inventory.isItemValid(slot, stack);
+        }
     }
 
     public final class PatternInventory implements IItemHandlerModifiable {
