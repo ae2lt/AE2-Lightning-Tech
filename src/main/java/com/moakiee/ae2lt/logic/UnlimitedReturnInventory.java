@@ -36,18 +36,15 @@ public class UnlimitedReturnInventory extends PatternProviderReturnInventory {
     public static UnlimitedReturnInventory create(Runnable listener,
                                                   @Nullable AEKeySlotFilter filter,
                                                   int slots) {
-        // AE2's slot count is a global mutable static read by the super constructor.
-        // Guard the write-construct-restore window so a concurrently constructed
-        // provider (integrated-server client thread) can't observe the wrong size.
+        // AE2 reads this global value from the super constructor. Keep the
+        // mutation window minimal and always restore it, even if construction fails.
         UnlimitedReturnInventory inv;
-        synchronized (PatternProviderReturnInventory.class) {
-            int saved = PatternProviderReturnInventory.NUMBER_OF_SLOTS;
+        int saved = PatternProviderReturnInventory.NUMBER_OF_SLOTS;
+        try {
             PatternProviderReturnInventory.NUMBER_OF_SLOTS = slots;
-            try {
-                inv = new UnlimitedReturnInventory(listener);
-            } finally {
-                PatternProviderReturnInventory.NUMBER_OF_SLOTS = saved;
-            }
+            inv = new UnlimitedReturnInventory(listener);
+        } finally {
+            PatternProviderReturnInventory.NUMBER_OF_SLOTS = saved;
         }
         if (filter != null) {
             inv.setFilter(filter);
