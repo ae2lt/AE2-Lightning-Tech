@@ -1179,6 +1179,7 @@
   "ae2lt.tianshu.maintenance.status.offline": "Tianshu offline",
   "ae2lt.tianshu.reserve.title": "Reserved Inventory",
   "ae2lt.tianshu.reserve.amount": "Reserve",
+  "ae2lt.tianshu.reserve.delete": "Delete",
   "ae2lt.tianshu.reserve.global": "Tianshu global",
   "ae2lt.tianshu.reserve.rule": "Rule additional",
   "ae2lt.tianshu.reserve.exact": "Exact match",

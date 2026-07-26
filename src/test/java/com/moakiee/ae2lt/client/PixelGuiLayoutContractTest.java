@@ -252,6 +252,12 @@ final class PixelGuiLayoutContractTest {
         assertTrue(rule.contains("widgets.addCheckbox("));
         assertTrue(rule.contains("widgets.addScrollBar(\"scrollbar\", Scrollbar.SMALL)"));
         assertTrue(rule.contains("widgets.addButton("));
+        assertTrue(overview.contains("widgets.addButton(\"delete\""));
+        assertTrue(overview.contains(
+                "menu.sendGlobalReserve(entry.key(), 0L, entry.globalMode())"));
+        assertTrue(rule.contains("widgets.addButton(\"delete\""));
+        assertTrue(rule.contains("if (global) globalAmount = 0L"));
+        assertTrue(rule.contains("else ruleAmount = 0L"));
 
         for (String screen : List.of(overview, rule)) {
             assertFalse(screen.contains("Button.builder("));
@@ -290,6 +296,8 @@ final class PixelGuiLayoutContractTest {
         assertTrue(compactReserveStyle.contains("\"textureWidth\": 207"));
         assertTrue(compactReserveStyle.contains("\"textureHeight\": 148"));
         assertTrue(compactReserveStyle.contains("\"srcRect\": [0, 0, 207, 148]"));
+        assertTrue(compactReserveStyle.contains(
+                "\"delete\": { \"left\": 9, \"top\": 121, \"width\": 52"));
 
         String expandedReserveStyle = Files.readString(Path.of(
                 "src/main/resources/assets/ae2/screens/tianshu_reserve_edit_expanded.json"));
@@ -297,6 +305,8 @@ final class PixelGuiLayoutContractTest {
         assertTrue(expandedReserveStyle.contains("\"textureHeight\": 228"));
         assertTrue(expandedReserveStyle.contains("\"srcRect\": [0, 0, 207, 228]"));
         assertTrue(expandedReserveStyle.contains("\"scrollbar\": { \"left\": 192, \"top\": 132"));
+        assertTrue(expandedReserveStyle.contains(
+                "\"delete\": { \"left\": 9, \"top\": 201, \"width\": 52"));
 
         assertTrue(overview.contains("\"/screens/tianshu_reserve_edit_expanded.json\""));
         assertTrue(rule.contains("\"/screens/tianshu_reserve_edit_expanded.json\""));

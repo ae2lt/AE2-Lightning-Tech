@@ -431,6 +431,7 @@ public final class TianshuMaintenanceRuleScreen<M extends TianshuPatternEncoding
         private final AETextField amount;
         private final AE2Button scopeButton;
         private final AE2Button modeButton;
+        private final AE2Button deleteButton;
         private final AE2Button saveButton;
         private final Scrollbar scrollbar;
         private boolean global = true;
@@ -475,6 +476,8 @@ public final class TianshuMaintenanceRuleScreen<M extends TianshuPatternEncoding
             widgets.addButton("zero", Component.literal("0"), () -> amount.setValue("0"));
             widgets.addButton("stack", Component.literal("64"), () -> amount.setValue("64"));
             widgets.addButton("infinite", Component.literal("∞"), () -> amount.setValue("-1"));
+            deleteButton = widgets.addButton("delete",
+                    Component.translatable("ae2lt.tianshu.reserve.delete"), this::delete);
             widgets.addButton("cancel", Component.translatable("gui.cancel"), this::returnToParent);
             saveButton = widgets.addButton("save", Component.translatable("gui.done"), this::save);
             widgets.add("back", new TabButton(
@@ -561,9 +564,20 @@ public final class TianshuMaintenanceRuleScreen<M extends TianshuPatternEncoding
             returnToParent();
         }
 
+        private void delete() {
+            if (global) globalAmount = 0L;
+            else ruleAmount = 0L;
+            reserve.globalAmount = globalAmount;
+            reserve.globalMode = globalMode;
+            reserve.ruleAmount = ruleAmount;
+            reserve.ruleMode = ruleMode;
+            returnToParent();
+        }
+
         @Override
         protected void updateBeforeRender() {
             super.updateBeforeRender();
+            deleteButton.active = (global ? globalAmount : ruleAmount) != 0L;
             saveButton.active = parsedAmount() != Long.MIN_VALUE;
             scopeButton.setMessage(scopeLabel());
             modeButton.setMessage(modeLabel());

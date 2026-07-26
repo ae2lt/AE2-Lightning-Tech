@@ -16,6 +16,7 @@
     "stack": { "left": 148, "top": 92, "width": 22, "height": 20 },
     "infinite": { "left": 173, "top": 92, "width": 24, "height": 20 },
     "scrollbar": { "left": 192, "top": 132, "width": 8, "height": 55 },
+    "delete": { "left": 9, "top": 201, "width": 52, "height": 20 },
     "cancel": { "left": 94, "top": 201, "width": 50, "height": 20 },
     "save": { "left": 148, "top": 201, "width": 49, "height": 20 }
   }

@@ -1179,6 +1179,7 @@
   "ae2lt.tianshu.maintenance.status.offline": "绑定的天枢已离线",
   "ae2lt.tianshu.reserve.title": "库存保留",
   "ae2lt.tianshu.reserve.amount": "保留数量",
+  "ae2lt.tianshu.reserve.delete": "删除",
   "ae2lt.tianshu.reserve.global": "天枢全局",
   "ae2lt.tianshu.reserve.rule": "本规则附加",
   "ae2lt.tianshu.reserve.exact": "精确匹配",

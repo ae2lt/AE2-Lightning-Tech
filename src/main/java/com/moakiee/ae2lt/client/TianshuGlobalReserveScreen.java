@@ -492,6 +492,7 @@ public final class TianshuGlobalReserveScreen<M extends TianshuPatternEncodingTe
         private final List<ReserveVariant> variants;
         private final AETextField amount;
         private final AE2Button modeButton;
+        private final AE2Button deleteButton;
         private final AE2Button saveButton;
         private final Scrollbar scrollbar;
         private ReservedStockMatchMode mode;
@@ -529,6 +530,8 @@ public final class TianshuGlobalReserveScreen<M extends TianshuPatternEncodingTe
             widgets.addButton("zero", Component.literal("0"), () -> amount.setValue("0"));
             widgets.addButton("stack", Component.literal("64"), () -> amount.setValue("64"));
             widgets.addButton("infinite", Component.literal("∞"), () -> amount.setValue("-1"));
+            deleteButton = widgets.addButton("delete",
+                    Component.translatable("ae2lt.tianshu.reserve.delete"), this::delete);
             saveButton = widgets.addButton("save", Component.translatable("gui.done"), this::save);
             widgets.addButton("cancel", Component.translatable("gui.cancel"), this::returnToParent);
             widgets.add("back", new TabButton(
@@ -574,9 +577,15 @@ public final class TianshuGlobalReserveScreen<M extends TianshuPatternEncodingTe
             returnToParent();
         }
 
+        private void delete() {
+            menu.sendGlobalReserve(entry.key(), 0L, entry.globalMode());
+            returnToParent();
+        }
+
         @Override
         protected void updateBeforeRender() {
             super.updateBeforeRender();
+            deleteButton.active = entry.globalReserveConfigured();
             saveButton.active = parsedAmount() != Long.MIN_VALUE;
             modeButton.setMessage(modeLabel());
             boolean showVariants = mode == ReservedStockMatchMode.IGNORE_SECONDARY
