@@ -37,6 +37,7 @@ public final class MatrixCraftingCluster {
     private final List<MatrixCraftCore> craftCores;
     private final MatrixHost host;
     private final CraftingCore engine;
+    private final MatrixCraftingEnergy energy;
     private double heat;
     private long lastLimiterTick = Long.MIN_VALUE;
     private long limiterRemaining;
@@ -50,12 +51,14 @@ public final class MatrixCraftingCluster {
                                  List<? extends MatrixCraftCore> craftCores,
                                  CraftingCoreHost host,
                                  CopyAssembler assembler,
-                                 CraftingCoreRegistry registry) {
+                                 CraftingCoreRegistry registry,
+                                 MatrixCraftingEnergy energy) {
         this.formed = Objects.requireNonNull(formed);
         this.patternCores = new ArrayList<>(patternCores);
         this.craftCores = new ArrayList<>(craftCores);
         this.host = new MatrixHost(Objects.requireNonNull(host));
         this.engine = new CraftingCore(this.host, assembler, registry);
+        this.energy = Objects.requireNonNull(energy);
     }
 
     public void addPatternCore(MatrixPatternCore core) {
@@ -109,6 +112,8 @@ public final class MatrixCraftingCluster {
         refreshLimiterBudget();
         if (providerCallsRemaining <= 0) return 0;
         long capacity = availableCapacity();
+        capacity = Math.min(capacity,
+                Math.max(0L, energy.affordableOperations(capacity)));
         if (details instanceof com.moakiee.thunderbolt.ae2.batch.BatchCopyLimitPattern limited) {
             capacity = Math.min(capacity, Math.max(1, limited.maxBatchCopies()));
         }
@@ -127,16 +132,25 @@ public final class MatrixCraftingCluster {
         long accepted = engine.pushBatch(details, oneCopyTemplate, copies);
         limiterRemaining = Math.max(0L, limiterRemaining - accepted);
         operationsConsumedThisTick = saturatedAdd(operationsConsumedThisTick, accepted);
+        if (accepted > 0L) {
+            energy.consumeOperations(accepted);
+        }
         return maxCraft - accepted;
     }
 
     /** Vanilla one-copy path through the matrix main core. */
     public boolean pushSingle(IPatternDetails details, KeyCounter[] oneCopyTemplate) {
-        if (!hasPattern(details) || availableCapacity() <= 0 || providerCallsRemaining <= 0) return false;
+        if (!hasPattern(details) || availableCapacity() <= 0 || providerCallsRemaining <= 0
+                || energy.affordableOperations(1L) < 1L) {
+            return false;
+        }
         providerCallsRemaining--;
         long accepted = engine.pushBatch(details, oneCopyTemplate, 1L);
         limiterRemaining = Math.max(0L, limiterRemaining - accepted);
         operationsConsumedThisTick = saturatedAdd(operationsConsumedThisTick, accepted);
+        if (accepted == 1L) {
+            energy.consumeOperations(1L);
+        }
         return accepted == 1L;
     }
 
@@ -148,7 +162,8 @@ public final class MatrixCraftingCluster {
     }
 
     public boolean isBusy() {
-        return !formed.getAsBoolean() || availableCapacity() <= 0 || providerCallsRemaining <= 0;
+        return !formed.getAsBoolean() || availableCapacity() <= 0 || providerCallsRemaining <= 0
+                || energy.affordableOperations(1L) < 1L;
     }
 
     public long availableCapacity() {

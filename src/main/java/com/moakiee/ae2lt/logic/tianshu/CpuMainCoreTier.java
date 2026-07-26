@@ -3,18 +3,25 @@ package com.moakiee.ae2lt.logic.tianshu;
 import com.moakiee.ae2lt.logic.compute.ComputeTier;
 
 public enum CpuMainCoreTier {
-    BASELINE(ComputeTier.BASELINE),
-    QUANTUM(ComputeTier.QUANTUM),
-    OVERLOAD(ComputeTier.OVERLOAD),
-    MULTIDIMENSIONAL(ComputeTier.MULTIDIMENSIONAL);
+    BASELINE(ComputeTier.BASELINE, 256.0D),
+    QUANTUM(ComputeTier.QUANTUM, 4_096.0D),
+    OVERLOAD(ComputeTier.OVERLOAD, 262_144.0D),
+    // Creative/development tier: retain the port's legacy link cost.
+    MULTIDIMENSIONAL(ComputeTier.MULTIDIMENSIONAL, 8.0D);
 
     private final ComputeTier computeTier;
+    private final double idlePowerUsage;
 
-    CpuMainCoreTier(ComputeTier computeTier) {
+    CpuMainCoreTier(ComputeTier computeTier, double idlePowerUsage) {
         this.computeTier = computeTier;
+        this.idlePowerUsage = idlePowerUsage;
     }
 
     public ComputeTier computeTier() {
         return computeTier;
+    }
+
+    public double idlePowerUsage() {
+        return idlePowerUsage;
     }
 }

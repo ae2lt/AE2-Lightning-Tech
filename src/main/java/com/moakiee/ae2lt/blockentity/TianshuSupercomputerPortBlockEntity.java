@@ -13,6 +13,7 @@ import java.util.UUID;
 import org.jetbrains.annotations.Nullable;
 
 import com.google.common.collect.ImmutableSet;
+import com.moakiee.ae2lt.logic.tianshu.CpuMainCoreTier;
 import com.moakiee.ae2lt.logic.tianshu.TianshuFunctionProfile;
 import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternRepository;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.TianshuInventoryMaintenanceService;
@@ -50,6 +51,7 @@ import net.minecraft.world.level.block.state.BlockState;
  */
 public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
         implements TimeWheelCraftingCpuPoolProvider, ICraftingProvider, ICraftingRequester {
+    private static final double LINK_IDLE_POWER = 8.0D;
     private static final String TAG_CONTROLLER_POS = "ControllerPos";
     private static final String TAG_FORMED = "Formed";
     private static final String TAG_CPU_POOL = "CpuPool";
@@ -89,7 +91,7 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
         return super.createMainNode()
                 .setTagName("tianshu_supercomputer_port")
                 .setVisualRepresentation(ModBlocks.TIANSHU_SUPERCOMPUTER_PORT.get())
-                .setIdlePowerUsage(8.0D)
+                .setIdlePowerUsage(LINK_IDLE_POWER)
                 .setFlags(GridFlags.REQUIRE_CHANNEL)
                 .addService(ExtendedCraftingCpuClusterProvider.class, this)
                 .addService(TimeWheelCraftingCpuPoolProvider.class, this)
@@ -120,13 +122,15 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
         this.boundMachineId = null;
         this.linkedCpuPool = null;
         this.formed = false;
+        getMainNode().setIdlePowerUsage(LINK_IDLE_POWER);
         if (formedChanged) onGridConnectableSidesChanged();
         updateLinkState(bindingChanged);
     }
 
     public void bindToController(BlockPos controllerPos, UUID machineId,
-                                 TimeWheelCraftingCpuPool cpuPool) {
-        if (controllerPos == null || machineId == null || cpuPool == null) {
+                                 TimeWheelCraftingCpuPool cpuPool,
+                                 CpuMainCoreTier mainCore) {
+        if (controllerPos == null || machineId == null || cpuPool == null || mainCore == null) {
             bindToController(null);
             return;
         }
@@ -139,6 +143,7 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
         this.boundMachineId = machineId;
         this.linkedCpuPool = cpuPool;
         this.formed = true;
+        getMainNode().setIdlePowerUsage(mainCore.idlePowerUsage());
         this.legacyTianshuId = null;
         if (formedChanged) onGridConnectableSidesChanged();
         updateLinkState(bindingChanged);
@@ -147,6 +152,7 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
     public void suspendFromController(BlockPos expectedControllerPos) {
         if (formed && expectedControllerPos != null && expectedControllerPos.equals(controllerPos)) {
             formed = false;
+            getMainNode().setIdlePowerUsage(LINK_IDLE_POWER);
             onGridConnectableSidesChanged();
             updateLinkState(true);
         }

@@ -13,6 +13,7 @@ import com.moakiee.ae2lt.block.MatrixPatternStorageBlock;
 import com.moakiee.ae2lt.logic.craft.MatrixAutoBuildPlan;
 import com.moakiee.ae2lt.logic.craft.MatrixCraftCore;
 import com.moakiee.ae2lt.logic.craft.MatrixCraftingCluster;
+import com.moakiee.ae2lt.logic.craft.MatrixCraftingEnergy;
 import com.moakiee.ae2lt.logic.craft.MatrixMultiblockComponent;
 import com.moakiee.ae2lt.logic.craft.MatrixCraftingMath;
 import com.moakiee.ae2lt.logic.craft.MatrixCraftingProfile;
@@ -37,6 +38,8 @@ import com.moakiee.thunderbolt.core.craft.CraftingCoreHost;
 import com.moakiee.thunderbolt.core.craft.MolecularCopyAssembler;
 
 import appeng.api.crafting.IPatternDetails;
+import appeng.api.config.Actionable;
+import appeng.api.config.PowerMultiplier;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.KeyCounter;
 import net.minecraft.ChatFormatting;
@@ -58,7 +61,9 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 
-public class MatrixControllerBlockEntity extends BlockEntity implements CraftingCoreHost {
+public class MatrixControllerBlockEntity extends BlockEntity
+        implements CraftingCoreHost, MatrixCraftingEnergy {
+    private static final double POWER_EPSILON = 0.01D;
     private static final long NO_SCHEDULED_SCAN = Long.MIN_VALUE;
     private static final int AUTO_BUILD_INTERVAL_TICKS = 1;
     private static final int CHUNK_RECHECK_INTERVAL_TICKS = 20;
@@ -105,7 +110,8 @@ public class MatrixControllerBlockEntity extends BlockEntity implements Crafting
             List.of(craftCore),
             this,
             new MolecularCopyAssembler(this::getLevel),
-            AE2LightningTech.craftingCoreRegistry());
+            AE2LightningTech.craftingCoreRegistry(),
+            this);
     private UUID loadedRuntimeId;
     private List<BlockPos> patternStoragePositions = List.of();
     private List<MatrixPatternStorageBlockEntity> cachedPatternStorages = List.of();
@@ -617,6 +623,44 @@ public class MatrixControllerBlockEntity extends BlockEntity implements Crafting
     public boolean isConnected() {
         var port = getLinkedPort();
         return port != null && port.isLinkConnected();
+    }
+
+    @Override
+    public long affordableOperations(long requestedOperations) {
+        if (requestedOperations <= 0L) {
+            return 0L;
+        }
+        var port = getLinkedPort();
+        var grid = port != null && port.isLinkConnected() ? port.getGrid() : null;
+        if (grid == null) {
+            return 0L;
+        }
+        double requestedPower = (double) requestedOperations;
+        double available = grid.getEnergyService().extractAEPower(
+                requestedPower, Actionable.SIMULATE, PowerMultiplier.CONFIG);
+        if (available == Double.POSITIVE_INFINITY
+                || available >= requestedPower - POWER_EPSILON) {
+            return requestedOperations;
+        }
+        if (!Double.isFinite(available)) {
+            return 0L;
+        }
+        return Math.min(requestedOperations, Math.max(0L, (long) Math.floor(available)));
+    }
+
+    @Override
+    public void consumeOperations(long acceptedOperations) {
+        if (acceptedOperations <= 0L) {
+            return;
+        }
+        var port = getLinkedPort();
+        var grid = port != null && port.isLinkConnected() ? port.getGrid() : null;
+        if (grid != null) {
+            grid.getEnergyService().extractAEPower(
+                    (double) acceptedOperations,
+                    Actionable.MODULATE,
+                    PowerMultiplier.CONFIG);
+        }
     }
 
     @Override

@@ -577,7 +577,7 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
             cpuPool.resolvePendingLoad();
             // Publishing the port mounts its crafting provider synchronously. Finish restoring
             // every controller-owned service before AE2 calls getAvailablePatterns during mount.
-            port.bindToController(worldPosition, machineId, cpuPool);
+            port.bindToController(worldPosition, machineId, cpuPool, coreProfile.mainCore());
             // The port is now authoritative and its AE node is ready to act as the sole
             // channel-consuming link. Rebind each physical warehouse as an independent,
             // channel-free PatternContainer leaf.
