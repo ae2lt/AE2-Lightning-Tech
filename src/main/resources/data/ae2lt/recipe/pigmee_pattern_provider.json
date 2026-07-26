@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "ITI",
+    "LPL",
+    "ITI"
+  ],
+  "key": {
+    "I": {
+      "item": "minecraft:iron_ingot"
+    },
+    "T": {
+      "item": "minecraft:crafting_table"
+    },
+    "L": {
+      "item": "ae2:logic_processor"
+    },
+    "P": {
+      "item": "ae2lt:pigmee_fumo"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "ae2lt:pigmee_pattern_provider"
+  }
+}

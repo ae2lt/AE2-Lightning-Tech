@@ -6,10 +6,20 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.component.CustomData;
+import net.minecraft.world.item.context.UseOnContext;
+import net.minecraft.world.level.Level;
+
+import appeng.core.localization.PlayerMessages;
+import appeng.recipes.game.StorageCellDisassemblyRecipe;
+import appeng.util.InteractionUtil;
 
 /**
  * A two-counter storage cell dedicated to the two lightning key variants.
@@ -51,6 +61,21 @@ public final class BulkLightningStorageCellItem extends Item {
     }
 
     @Override
+    public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
+        disassembleCell(player.getItemInHand(hand), level, player);
+        return new InteractionResultHolder<>(
+                InteractionResult.sidedSuccess(level.isClientSide()),
+                player.getItemInHand(hand));
+    }
+
+    @Override
+    public InteractionResult onItemUseFirst(ItemStack stack, UseOnContext context) {
+        return disassembleCell(stack, context.getLevel(), context.getPlayer())
+                ? InteractionResult.sidedSuccess(context.getLevel().isClientSide())
+                : InteractionResult.PASS;
+    }
+
+    @Override
     public void appendHoverText(ItemStack stack, TooltipContext context,
                                 List<Component> tooltipComponents, TooltipFlag tooltipFlag) {
         StoredAmounts amounts = readStoredAmounts(stack);
@@ -64,6 +89,34 @@ public final class BulkLightningStorageCellItem extends Item {
                 "tooltip.ae2lt.bulk_lightning_storage.extreme_high_voltage",
                 String.format("%,d", amounts.extremeHighVoltage()))
                 .withStyle(ChatFormatting.GRAY));
+    }
+
+    private boolean disassembleCell(ItemStack stack, Level level, Player player) {
+        if (player == null || !InteractionUtil.isInAlternateUseMode(player)) {
+            return false;
+        }
+
+        var disassembledStacks = StorageCellDisassemblyRecipe.getDisassemblyResult(level, stack.getItem());
+        if (disassembledStacks.isEmpty()) {
+            return false;
+        }
+
+        var playerInventory = player.getInventory();
+        if (playerInventory.getSelected() != stack) {
+            return false;
+        }
+
+        var storedAmounts = readStoredAmounts(stack);
+        if (storedAmounts.highVoltage() != 0 || storedAmounts.extremeHighVoltage() != 0) {
+            player.displayClientMessage(PlayerMessages.OnlyEmptyCellsCanBeDisassembled.text(), true);
+            return false;
+        }
+
+        playerInventory.setItem(playerInventory.selected, ItemStack.EMPTY);
+        for (var disassembledStack : disassembledStacks) {
+            playerInventory.placeItemBackInInventory(disassembledStack.copy());
+        }
+        return true;
     }
 
     private static long sanitize(long amount) {

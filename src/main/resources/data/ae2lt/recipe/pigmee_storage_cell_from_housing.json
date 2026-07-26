@@ -3,13 +3,7 @@
   "category": "misc",
   "ingredients": [
     {
-      "item": "ae2lt:pigmee_fumo"
-    },
-    {
-      "item": "ae2:crafting_accelerator"
-    },
-    {
-      "item": "ae2:crafting_unit"
+      "item": "ae2lt:pigmee_item_cell_housing"
     },
     {
       "item": "ae2lt:pigmee_storage_component"
@@ -17,6 +11,6 @@
   ],
   "result": {
     "count": 1,
-    "id": "ae2lt:pigmee_mentalmath_unit"
+    "id": "ae2lt:pigmee_storage_cell"
   }
 }

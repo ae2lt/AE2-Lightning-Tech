@@ -1,0 +1,30 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "a": {
+      "item": "ae2:quartz_glass"
+    },
+    "b": {
+      "tag": "c:dusts/redstone"
+    },
+    "c": {
+      "tag": "c:ingots/iron"
+    },
+    "d": {
+      "tag": "c:ingots/copper"
+    },
+    "p": {
+      "item": "ae2lt:pigmee_fumo"
+    }
+  },
+  "pattern": [
+    "aba",
+    "bpb",
+    "cdc"
+  ],
+  "result": {
+    "count": 1,
+    "id": "ae2lt:pigmee_item_cell_housing"
+  }
+}

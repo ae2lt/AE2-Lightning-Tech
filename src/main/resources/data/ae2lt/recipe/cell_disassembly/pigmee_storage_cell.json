@@ -1,0 +1,14 @@
+{
+  "type": "ae2:storage_cell_disassembly",
+  "cell": "ae2lt:pigmee_storage_cell",
+  "cell_disassembly_items": [
+    {
+      "count": 1,
+      "id": "ae2lt:pigmee_item_cell_housing"
+    },
+    {
+      "count": 1,
+      "id": "ae2lt:pigmee_storage_component"
+    }
+  ]
+}
