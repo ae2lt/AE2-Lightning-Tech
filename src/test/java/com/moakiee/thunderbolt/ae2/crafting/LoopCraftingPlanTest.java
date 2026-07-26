@@ -15,6 +15,7 @@ import appeng.crafting.CraftingPlan;
 import com.moakiee.thunderbolt.ae2.timewheel.ReusableSeedPattern;
 import com.moakiee.thunderbolt.ae2.timewheel.TimeWheelCraftingCpuPoolHost;
 import com.moakiee.thunderbolt.ae2.timewheel.TimeWheelPoolRestrictedPattern;
+import com.moakiee.thunderbolt.core.planner.ReusableBootstrapRoute;
 import com.moakiee.thunderbolt.core.planner.ReusableStockUsageKey;
 import com.mojang.serialization.MapCodec;
 import java.util.LinkedHashMap;
@@ -126,6 +127,33 @@ class LoopCraftingPlanTest {
 
         assertThrows(IllegalStateException.class,
                 () -> LoopCraftingPlan.wrapIfNeeded(delegate, usage));
+    }
+
+    @Test
+    void convertedHostStateIsTrackedAsBootstrapInputNotAsAnAcceptedSeedVariant() {
+        var returnedDust = new TestKey("returned_dust");
+        var borrowedCrystal = new TestKey("borrowed_crystal");
+        var pattern = new TestLoopPattern(returnedDust, UUID.randomUUID(), true);
+        var delegate = new CraftingPlan(
+                new GenericStack(borrowedCrystal, 1L), 0L, false, false,
+                new KeyCounter(), new KeyCounter(), new KeyCounter(), Map.of(pattern, 1L));
+        var source = pattern.reusableStockSource();
+        var route = new ReusableBootstrapRoute<>(
+                source.routingScope(), returnedDust);
+        Map<ReusableStockUsageKey<AEKey>, Long> usage = Map.of(
+                new ReusableStockUsageKey<>(
+                        source.storageScope(), source.poolScope(), route,
+                        borrowedCrystal, borrowedCrystal), 64L);
+
+        var plan = (LoopCraftingPlan) LoopCraftingPlan.wrapIfNeeded(delegate, usage);
+
+        assertEquals(Map.of(borrowedCrystal, 64L), plan.hostReusableSeeds());
+        var allocation = plan.hostReusableSeedAllocations().getFirst();
+        assertTrue(allocation.bootstrap());
+        assertEquals(returnedDust, allocation.plannedKey());
+        assertEquals(borrowedCrystal, allocation.actualKey());
+        assertEquals(64L, allocation.amount());
+        assertTrue(plan.acceptsReusableSeedVariant(allocation, borrowedCrystal));
     }
 
     private static ReusableStockUsageKey<AEKey> usage(TestLoopPattern pattern, AEKey seed) {
