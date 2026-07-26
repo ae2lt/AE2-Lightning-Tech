@@ -1157,7 +1157,7 @@
   "ae2lt.tianshu.maintenance.column.global_short": "Global",
   "ae2lt.tianshu.maintenance.column.rule_short": "Extra",
   "ae2lt.tianshu.maintenance.error.number": "Enter non-negative whole numbers",
-  "ae2lt.tianshu.maintenance.error.thresholds": "Stop target must exceed start threshold",
+  "ae2lt.tianshu.maintenance.error.thresholds": "Stop target must be at least the start threshold",
   "ae2lt.tianshu.maintenance.error.batch": "Amount per job must be positive",
   "ae2lt.tianshu.maintenance.tooltip.stock": "Current stock: %s",
   "ae2lt.tianshu.maintenance.tooltip.thresholds": "Start below %s · stop at %s",

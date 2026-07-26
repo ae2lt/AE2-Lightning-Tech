@@ -1157,7 +1157,7 @@
   "ae2lt.tianshu.maintenance.column.global_short": "全局",
   "ae2lt.tianshu.maintenance.column.rule_short": "附加",
   "ae2lt.tianshu.maintenance.error.number": "请输入有效的非负整数",
-  "ae2lt.tianshu.maintenance.error.thresholds": "停止上限必须大于启动下限",
+  "ae2lt.tianshu.maintenance.error.thresholds": "停止上限必须大于等于启动下限",
   "ae2lt.tianshu.maintenance.error.batch": "单次合成量必须大于零",
   "ae2lt.tianshu.maintenance.tooltip.stock": "当前库存：%s",
   "ae2lt.tianshu.maintenance.tooltip.thresholds": "低于 %s 启动 · 达到 %s 停止",

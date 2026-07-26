@@ -145,10 +145,17 @@ class ClosedLoopPatternRepositoryTest {
         assertEquals(0, InventoryMaintenanceDecision.evaluate(
                 new InventoryMaintenanceRule(id, key, 10, 20, 1, false, true, null), 0, false).requestAmount());
 
+        var equalThresholds = new InventoryMaintenanceRule(
+                id, key, 20, 20, 64, true, false, null);
+        assertEquals(1, InventoryMaintenanceDecision.evaluate(
+                equalThresholds, 19, false).requestAmount());
+        assertEquals(false, InventoryMaintenanceDecision.evaluate(
+                equalThresholds, 20, false).replenishing());
+
         assertThrows(IllegalArgumentException.class,
                 () -> new InventoryMaintenanceRule(id, key, -1, 20, 1, true, false, null));
         assertThrows(IllegalArgumentException.class,
-                () -> new InventoryMaintenanceRule(id, key, 20, 20, 1, true, false, null));
+                () -> new InventoryMaintenanceRule(id, key, 21, 20, 1, true, false, null));
         assertThrows(IllegalArgumentException.class,
                 () -> new InventoryMaintenanceRule(id, key, 10, 20, 0, true, false, null));
     }

@@ -1967,7 +1967,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
             sendMaintenanceEditorData(player, packet.target());
             return;
         }
-        if (packet.lower() < 0 || packet.upper() <= packet.lower() || packet.amountPerJob() <= 0) {
+        if (packet.lower() < 0 || packet.upper() < packet.lower() || packet.amountPerJob() <= 0) {
             sendMaintenanceEditorData(player, packet.target());
             return;
         }

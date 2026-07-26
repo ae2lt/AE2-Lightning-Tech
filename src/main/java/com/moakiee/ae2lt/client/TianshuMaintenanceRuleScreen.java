@@ -296,7 +296,7 @@ public final class TianshuMaintenanceRuleScreen<M extends TianshuPatternEncoding
         if (parsedLower == null || parsedUpper == null || parsedPerJob == null) {
             return Component.translatable("ae2lt.tianshu.maintenance.error.number");
         }
-        if (parsedUpper <= parsedLower) {
+        if (parsedUpper < parsedLower) {
             return Component.translatable("ae2lt.tianshu.maintenance.error.thresholds");
         }
         if (parsedPerJob <= 0L) {

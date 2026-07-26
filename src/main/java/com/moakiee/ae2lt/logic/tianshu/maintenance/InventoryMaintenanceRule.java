@@ -17,8 +17,8 @@ public record InventoryMaintenanceRule(
     public InventoryMaintenanceRule {
         id = Objects.requireNonNull(id, "id");
         key = Objects.requireNonNull(key, "key");
-        if (lowerThreshold < 0 || upperThreshold <= lowerThreshold) {
-            throw new IllegalArgumentException("maintenance thresholds require 0 <= lower < upper");
+        if (lowerThreshold < 0 || upperThreshold < lowerThreshold) {
+            throw new IllegalArgumentException("maintenance thresholds require 0 <= lower <= upper");
         }
         if (amountPerJob <= 0) throw new IllegalArgumentException("amount per job must be positive");
     }
