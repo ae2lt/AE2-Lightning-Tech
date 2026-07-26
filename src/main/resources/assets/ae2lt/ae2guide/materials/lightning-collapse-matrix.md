@@ -15,7 +15,8 @@ item_ids:
 The **Lightning Collapse Matrix** is one of the key end-tier components in AE2 Lightning Tech. It is not a consumable — instead, it acts as a **substitution / parallelism catalyst**. Keeping a matrix in a machine's matrix slot unlocks the machine's higher-tier operating mode.
 
 `A powerful alloy compresses an immense amount of Lightning into a stable form; its energy wave is the opposite of volatile Overload TNT.`
-`~~Perhaps these energies can neutralize each other?~~`
+
+~~Perhaps these energies can neutralize each other?~~
 
 ## How to Obtain
 
@@ -39,14 +40,8 @@ The Lightning Collapse Matrix is **not consumed** during processing, but it must
 * [Crystal Catalyzer](../machines/crystal-catalyzer.md) — applies in both Crystal Mode and Dust Mode; with a matrix installed, post-parallel per-operation output is increased to **4×**.
 * [Overload Processing Factory](../machines/overload-processing-factory.md) — multi-matrix parallelism: each additional matrix unlocks another tier of parallelism (up to 32 matrices in the slot, 8 parallel operations per matrix by default).
 
-## Fast Installation and Memory Cards
-
-Hold Lightning Collapse Matrices and **sneak-use** any machine listed above to insert as many as that machine's matrix slot accepts. Single-matrix machines take one; the Overload Processing Factory can take up to 32. Any remainder stays in your hand.
-
-An <ItemLink id="ae2:memory_card" /> also saves the installed matrix count as part of the machine template. Loading that template into the same machine type restores the saved count: missing matrices are taken only from your main inventory, while excess matrices are returned to it (or dropped if the inventory is full). The count is clamped to the target machine's current slot capacity. The card stores a desired count, **not the matrix items themselves**, so this never duplicates matrices.
-
 ## Field Notes
 
 > A field team once filed an additional experiment report: when the matrix is **dropped in the world**, an unintended reaction can occur; the case where that reaction was ignited is logged on the [Overload TNT](../lightning/overload-tnt.md) page.
 
-The product is an unregistered cell that can be placed into an <ItemLink id="ae2:drive" /> for decoding. It can only be read once and cannot be written to. The report says the decoded patterns are distributed extremely unevenly. After many experiments, the team summarized a special report: "Sample distribution is extremely uneven; the rarest one is not a cell, it is a notebook with nothing written in it yet."
+The product is an unregistered cell that can be placed into an <ItemLink id="ae2:drive" /> for decoding. It can only be read once and cannot be written to. The report says the decoded patterns are distributed extremely unevenly. After many experiments, the team compiled a special report.

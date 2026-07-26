@@ -56,11 +56,11 @@ Overload Mode requires a Flux Cell in the cell slot. The cell becomes the active
 
 Wireless links must be in the same dimension and within **128 blocks** by default. The distance limit is configurable; setting it to 0 disables the limit. One supply can store up to **64** wireless connections. Hold **Ctrl** while right-clicking a target to batch-toggle contiguous machines of the same type.
 
-The same wireless connect tool used for the Overloaded ME Interface and the Overloaded Pattern Provider works here — one tool, three hosts.
-
 ## Tips
 
 * For most bases, Normal Mode is enough — it runs continuously and has no extra cost multiplier
 * Use Overload Mode for clusters of high-draw machines, such as mass-crafting setups, when the 2× cost is acceptable
 * A higher-tier Flux Cell gives a larger burst buffer, which smooths short ME-network FE shortages
 * The supply can be used together with the Overloaded ME Interface and Overloaded Pattern Provider
+
+> Note: Overload Mode can cause considerable lag. Avoid running multiple supplies under heavy load unless necessary, as this may crash the game.

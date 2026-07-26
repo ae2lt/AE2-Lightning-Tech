@@ -18,6 +18,7 @@ item_ids:
 The **Lightning Collector** is the starting point of the Lightning system. When lightning strikes the **Lightning Rod directly above the collector**, the collector injects Lightning energy directly into the ME network.
 
 *`"Borrowing from others, seeking oneself."`*
+
 `— Mysterious Block`
 
 ## Basic Usage
