@@ -192,7 +192,11 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
 
         // auto-return backoff
         long nextPollTick;
-        int backoffInterval = BACKOFF_MIN;
+        int backoffInterval;
+
+        ConnectionState(int initialBackoffInterval) {
+            this.backoffInterval = initialBackoffInterval;
+        }
 
         boolean isInProbeWindow(long gameTick) {
             if (cooldownUntil < 0 || gameTick >= cooldownUntil) return false;
@@ -297,7 +301,8 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
     private final Map<WirelessConnection, ConnectionState> connectionStates = new HashMap<>();
 
     private ConnectionState getOrCreateState(WirelessConnection conn) {
-        return connectionStates.computeIfAbsent(conn, k -> new ConnectionState());
+        return connectionStates.computeIfAbsent(
+                conn, k -> new ConnectionState(wirelessReturnBackoffMin()));
     }
 
     // ---- push timing wheel + ready queue ----------------------------------------
@@ -399,10 +404,10 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
     private static final int BACKOFF_MIN_FAST = 1;
 
     /** Maximum polling interval (cap for exponential growth). */
-    private static final int BACKOFF_MAX = 1200;  // 60 seconds
+    private static final int BACKOFF_MAX = 100;  // 5 seconds
 
     /** Backoff cap in FAST speed mode: pay 1.5x idle power for snappier returns. */
-    private static final int BACKOFF_MAX_FAST = 100;  // 5 seconds
+    private static final int BACKOFF_MAX_FAST = 20;  // 1 second
 
     /** Wireless round-robin return: spread all machines across this many ticks. */
     private static final int RETURN_SPREAD_TICKS = 20;
@@ -1584,7 +1589,10 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
             if (gameTick < machineNextPoll.getOrDefault(key, 0L)) continue;
 
             var adapter = MachineAdapterRegistry.find(level, targetPos);
-            if (adapter == null) continue;
+            if (adapter == null) {
+                updateBackoff(key, gameTick, false);
+                continue;
+            }
 
             var face = dir.getOpposite();
             boolean found = adapter.extractOutputs(
@@ -1620,10 +1628,16 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
             if (gameTick < state.nextPollTick) continue;
 
             var targetLevel = resolveTargetLevel(sl, conn);
-            if (targetLevel == null) continue;
+            if (targetLevel == null) {
+                state.updateBackoff(gameTick, false, backoffMin, backoffCap);
+                continue;
+            }
 
             var adapter = state.resolveAdapter(targetLevel, conn.pos());
-            if (adapter == null) continue;
+            if (adapter == null) {
+                state.updateBackoff(gameTick, false, backoffMin, backoffCap);
+                continue;
+            }
 
             boolean found = adapter.extractOutputs(
                     targetLevel, conn.pos(), conn.boundFace(), allowedOutputs, wirelessSource,
@@ -1637,7 +1651,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
                 == OverloadedPatternProviderBlockEntity.WirelessSpeedMode.FAST;
     }
 
-    /** FAST trades 1.5x idle power for per-tick polling of active machines and a 5s idle cap. */
+    /** FAST trades 1.5x idle power for per-tick polling of active machines and a 1s idle cap. */
     private int wirelessReturnBackoffMin() {
         return isFastWirelessSpeed() ? BACKOFF_MIN_FAST : BACKOFF_MIN;
     }
@@ -2178,7 +2192,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
             return nextPollTick;
         }
 
-        var connections = overloadedHost.getConnections();
+        var connections = getOrRefreshValidConnections(sl, sl.getGameTime());
         if (connections.isEmpty()) {
             return Long.MAX_VALUE;
         }

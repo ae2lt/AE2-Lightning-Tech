@@ -437,14 +437,10 @@ public class OverloadedInterfaceLogic extends InterfaceLogic {
             long capSum = 0;
             for (int i = 0; i < size(); i++) {
                 if (!matchesConfiguredSlot(i, what)) continue;
-                capSum = saturatingAdd(capSum, capForSlot(i));
+                capSum = OverloadedAmountMath.saturatingAdd(capSum, capForSlot(i));
                 if (capSum == Long.MAX_VALUE) break;
             }
             return capSum > 0 ? visibleNetworkAmount(what, capSum) : 0;
-        }
-
-        private static long saturatingAdd(long a, long b) {
-            return Long.MAX_VALUE - a < b ? Long.MAX_VALUE : a + b;
         }
 
         // ── Display: server queries ME network & syncs stacks[]; client uses synced stacks[] ─
@@ -616,26 +612,43 @@ public class OverloadedInterfaceLogic extends InterfaceLogic {
                 for (int slot = 0; slot < size(); slot++) {
                     var key = cfg().getKey(slot);
                     if (key == null) continue;
-                    capByKey.merge(key, capForSlot(slot), ProxiedStorageInv::saturatingAdd);
+                    capByKey.merge(
+                            key, capForSlot(slot), OverloadedAmountMath::saturatingAdd);
                 }
+
+                // A network variant can match several configured keys. Aggregate
+                // every matching slot cap, but retain only one copy of the
+                // physical network amount for that variant.
+                var capByVariant = new LinkedHashMap<AEKey, Long>();
+                var amountByVariant = new LinkedHashMap<AEKey, Long>();
                 for (var capEntry : capByKey.entrySet()) {
                     var key = capEntry.getKey();
                     long cap = capEntry.getValue();
-                    long configuredAmount = visibleNetworkAmount(key, cap);
-                    if (configuredAmount > 0) fresh.add(key, configuredAmount);
+                    long configuredAmount = visibleNetworkAmount(key, Long.MAX_VALUE);
+                    OverloadedAmountMath.mergeSharedExposure(
+                            capByVariant, amountByVariant, key, cap, configuredAmount);
 
                     if (fuzzy && key.supportsFuzzyRangeSearch()) {
                         for (var entry : cache.findFuzzy(key, fuzzyMode)) {
                             var variant = entry.getKey();
-                            // Skip configured keys: they are added with their
-                            // own cap in the main loop
-                            if (variant.equals(key) || capByKey.containsKey(variant)) continue;
-                            long amount = cap == Long.MAX_VALUE
-                                    ? entry.getLongValue()
-                                    : Math.min(cap, entry.getLongValue());
-                            if (amount > 0) fresh.add(variant, amount);
+                            // The exact key was already counted for this
+                            // configured entry above.
+                            if (variant.equals(key)) continue;
+                            OverloadedAmountMath.mergeSharedExposure(
+                                    capByVariant,
+                                    amountByVariant,
+                                    variant,
+                                    cap,
+                                    entry.getLongValue());
                         }
                     }
+                }
+                for (var exposedEntry : capByVariant.entrySet()) {
+                    var variant = exposedEntry.getKey();
+                    long cap = exposedEntry.getValue();
+                    long networkAmount = amountByVariant.getOrDefault(variant, 0L);
+                    long amount = OverloadedAmountMath.capVisibleAmount(networkAmount, cap);
+                    if (amount > 0) fresh.add(variant, amount);
                 }
                 availableStacksCache = fresh;
                 availableStacksCacheTick = now;

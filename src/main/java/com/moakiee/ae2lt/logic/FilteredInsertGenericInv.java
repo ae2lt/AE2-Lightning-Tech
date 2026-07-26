@@ -69,6 +69,9 @@ public class FilteredInsertGenericInv implements GenericInternalInventory {
 
     @Override
     public void setStack(int slot, @Nullable GenericStack newStack) {
+        if (newStack != null && !insertAllowed.test(newStack.what())) {
+            return;
+        }
         delegate.setStack(slot, newStack);
     }
 
