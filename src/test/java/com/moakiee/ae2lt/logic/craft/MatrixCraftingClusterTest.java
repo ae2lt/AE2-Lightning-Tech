@@ -114,7 +114,8 @@ class MatrixCraftingClusterTest {
         var cluster = new MatrixCraftingCluster(
                 () -> true,
                 List.of(() -> List.of(loopPattern)), cores,
-                new FakeHost(), assembler, new CraftingCoreRegistry());
+                new FakeHost(), assembler, new CraftingCoreRegistry(),
+                MatrixCraftingEnergy.UNLIMITED);
 
         assertEquals(32, cluster.getBatchCapacity(loopPattern));
         assertTrue(cluster.pushSingle(loopPattern, emptyInputs()));
@@ -153,6 +154,68 @@ class MatrixCraftingClusterTest {
                 cluster.availableProviderCalls());
     }
 
+    @Test
+    void batchConsumesOneAePerAcceptedCopy() {
+        var host = new FakeHost();
+        var assembler = new FakeAssembler();
+        var energy = new FakeEnergy(256L);
+        var units = new java.util.ArrayList<MatrixCraftingUnit>();
+        units.add(MatrixCraftingUnit.overloadCore());
+        for (int i = 0; i < 4; i++) units.add(MatrixCraftingUnit.t1Threader());
+        for (int i = 0; i < 15; i++) units.add(MatrixCraftingUnit.amplifier());
+        var cluster = new MatrixCraftingCluster(
+                () -> true,
+                List.of(() -> List.of(PATTERN)),
+                List.of(new FakeCraftCore(units.toArray(MatrixCraftingUnit[]::new))),
+                host,
+                assembler,
+                new CraftingCoreRegistry(),
+                energy);
+
+        assertEquals(256L, cluster.getBatchCapacity(PATTERN));
+        assertEquals(744L, cluster.pushBatch(PATTERN, emptyInputs(), 1_000L));
+        assertEquals(256L, energy.consumed);
+        assertEquals(256L, cluster.threadsInFlight());
+        assertTrue(cluster.isBusy());
+    }
+
+    @Test
+    void rejectedBatchDoesNotConsumeEnergy() {
+        var energy = new FakeEnergy(100L);
+        var cluster = new MatrixCraftingCluster(
+                () -> true,
+                List.of(() -> List.of(PATTERN)),
+                List.of(new FakeCraftCore(
+                        MatrixCraftingUnit.stableCore(),
+                        MatrixCraftingUnit.t1Threader())),
+                new FakeHost(),
+                (details, oneCopyInputs) -> null,
+                new CraftingCoreRegistry(),
+                energy);
+
+        assertEquals(10L, cluster.pushBatch(PATTERN, emptyInputs(), 10L));
+        assertEquals(0L, energy.consumed);
+    }
+
+    @Test
+    void singleDispatchConsumesOneAeOnlyAfterAcceptance() {
+        var energy = new FakeEnergy(1L);
+        var cluster = new MatrixCraftingCluster(
+                () -> true,
+                List.of(() -> List.of(PATTERN)),
+                List.of(new FakeCraftCore(
+                        MatrixCraftingUnit.stableCore(),
+                        MatrixCraftingUnit.t1Threader())),
+                new FakeHost(),
+                new FakeAssembler(),
+                new CraftingCoreRegistry(),
+                energy);
+
+        assertTrue(cluster.pushSingle(PATTERN, emptyInputs()));
+        assertEquals(1L, energy.consumed);
+        assertFalse(cluster.pushSingle(PATTERN, emptyInputs()));
+    }
+
     private static MatrixCraftingCluster cluster(List<FakeCraftCore> cores) {
         return cluster(new FakeHost(), cores);
     }
@@ -168,7 +231,8 @@ class MatrixCraftingClusterTest {
                 cores,
                 host,
                 assembler,
-                new CraftingCoreRegistry());
+                new CraftingCoreRegistry(),
+                MatrixCraftingEnergy.UNLIMITED);
     }
 
     private static KeyCounter[] emptyInputs() {
@@ -195,6 +259,25 @@ class MatrixCraftingClusterTest {
         @Override
         public List<MatrixCraftingUnit> craftingUnits() {
             return units;
+        }
+    }
+
+    private static final class FakeEnergy implements MatrixCraftingEnergy {
+        private final long available;
+        private long consumed;
+
+        private FakeEnergy(long available) {
+            this.available = available;
+        }
+
+        @Override
+        public long affordableOperations(long requestedOperations) {
+            return Math.min(Math.max(0L, requestedOperations), available - consumed);
+        }
+
+        @Override
+        public void consumeOperations(long acceptedOperations) {
+            consumed += acceptedOperations;
         }
     }
 

@@ -128,7 +128,8 @@ class MatrixMultiblockInterfaceTest {
                 cores,
                 host,
                 assembler,
-                new CraftingCoreRegistry());
+                new CraftingCoreRegistry(),
+                MatrixCraftingEnergy.UNLIMITED);
     }
 
     private static KeyCounter[] emptyInputs() {

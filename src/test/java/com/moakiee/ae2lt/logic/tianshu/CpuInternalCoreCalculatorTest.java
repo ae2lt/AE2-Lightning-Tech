@@ -12,6 +12,14 @@ class CpuInternalCoreCalculatorTest {
     private static final long GIB = 1024L * MIB;
 
     @Test
+    void mainCoreTiersExposeTheirIdlePowerCosts() {
+        assertEquals(256.0D, CpuMainCoreTier.BASELINE.idlePowerUsage());
+        assertEquals(4_096.0D, CpuMainCoreTier.QUANTUM.idlePowerUsage());
+        assertEquals(262_144.0D, CpuMainCoreTier.OVERLOAD.idlePowerUsage());
+        assertEquals(8.0D, CpuMainCoreTier.MULTIDIMENSIONAL.idlePowerUsage());
+    }
+
+    @Test
     void baselineUsesIndependentStorageDispatchAndBatchBudgets() {
         var profile = CpuInternalCoreCalculator.calculate(CpuMainCoreTier.BASELINE, 1, 2, 0);
 
