@@ -44,7 +44,7 @@ final class CoreEffectRenderTypes extends RenderType {
                 AE2LightningTech.MODID + "_core_effect_" + name,
                 DefaultVertexFormat.POSITION_COLOR_NORMAL,
                 VertexFormat.Mode.TRIANGLES,
-                131072,
+                262144,
                 false,
                 true,
                 state);

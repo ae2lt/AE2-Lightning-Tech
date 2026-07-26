@@ -27,88 +27,58 @@ final class CoreEffectGeometry {
                              CoreEffectPalette palette, float time, boolean working) {
         var consumer = buffers.getBuffer(CoreEffectRenderTypes.matrix());
         float activity = working ? 1.0F : 0.0F;
-        float contraction = 1.0F - activity * (0.14F + 0.045F * (float) Math.sin(time * 5.0F));
+        float speed = working ? 48.0F : 8.0F;
+        float contraction = 1.0F - activity * (0.07F + 0.02F * (float) Math.sin(time * 4.5F));
+        float pulse = 1.0F + activity * 0.035F * (float) Math.sin(time * 6.0F);
 
         stack.pushPose();
         stack.scale(1.50F, 1.50F, 1.50F);
-        stack.mulPose(Axis.YP.rotationDegrees(time * (1.6F + activity * 13.4F)));
-        stack.mulPose(Axis.XP.rotationDegrees(12.0F));
-        stack.mulPose(Axis.ZP.rotationDegrees(-7.0F));
 
         stack.pushPose();
-        stack.mulPose(Axis.XP.rotationDegrees(time * (-2.0F - activity * 18.0F)));
-        stack.mulPose(Axis.YP.rotationDegrees(time * (3.0F + activity * 23.0F)));
-        CoreEffectMesh.icosahedron(
+        stack.mulPose(Axis.YP.rotationDegrees(time * speed * 0.42F));
+        stack.mulPose(Axis.XP.rotationDegrees(time * -speed * 0.27F));
+        CoreEffectMesh.sphere(
                 stack,
                 consumer,
-                0.58F + activity * 0.035F * (float) Math.sin(time * 4.0F),
+                0.72F * pulse,
                 palette.primaryR() * 0.18F,
                 palette.primaryG() * 0.18F,
                 palette.primaryB() * 0.18F,
                 0.98F);
         stack.popPose();
 
-        for (int plate = 0; plate < 7; plate++) {
-            stack.pushPose();
-            int plane = plate % 3;
-            if (plane == 1) {
-                stack.mulPose(Axis.XP.rotationDegrees(68.0F));
-            } else if (plane == 2) {
-                stack.mulPose(Axis.ZP.rotationDegrees(74.0F));
-            }
-            float direction = (plate & 1) == 0 ? 1.0F : -1.0F;
-            stack.mulPose(Axis.YP.rotationDegrees(
-                    plate * 137.5F + time * direction * (2.0F + activity * 24.0F)));
-            stack.scale(contraction, contraction, contraction);
-            boolean accent = plate % 3 == 1;
-            CoreEffectMesh.annularSegment(
-                    stack,
-                    consumer,
-                    0.78F + (plate % 2) * 0.06F,
-                    1.18F + (plate % 2) * 0.08F,
-                    0.055F,
-                    43.0F + (plate % 3) * 7.0F,
-                    8,
-                    accent ? palette.accentR() : palette.primaryR(),
-                    accent ? palette.accentG() : palette.primaryG(),
-                    accent ? palette.accentB() : palette.primaryB(),
-                    0.88F);
-            stack.popPose();
-        }
-
-        renderMatterShards(stack, consumer, palette, time, working);
+        renderMatrixRing(stack, consumer, 1.02F * contraction, 0.105F, 0.028F,
+                time * speed, 18.0F, 0.0F,
+                1.00F, 0.97F, 0.99F);
+        renderMatrixRing(stack, consumer, 1.22F * contraction, 0.092F, 0.024F,
+                -time * speed * 0.78F, 68.0F, 28.0F,
+                0.96F, 0.75F, 0.85F);
+        renderMatrixRing(stack, consumer, 1.42F * contraction, 0.080F, 0.021F,
+                time * speed * 0.56F, 112.0F, -24.0F,
+                1.00F, 0.90F, 0.95F);
         stack.popPose();
     }
 
-    private static void renderMatterShards(PoseStack stack,
-                                           com.mojang.blaze3d.vertex.VertexConsumer consumer,
-                                           CoreEffectPalette palette,
-                                           float time, boolean working) {
-        float speed = working ? 1.25F : 0.10F;
-        for (int shard = 0; shard < 12; shard++) {
-            float cycle = time * speed + shard / 12.0F;
-            float progress = cycle - (float) Math.floor(cycle);
-            float radius = 1.72F - progress * 1.05F;
-            float angle = progress * 720.0F + shard * 137.5F;
-            float height = (float) Math.sin(Math.toRadians(angle * 0.7F)) * radius * 0.34F;
-
-            stack.pushPose();
-            stack.mulPose(Axis.YP.rotationDegrees(angle));
-            stack.translate(radius, height, 0.0F);
-            stack.mulPose(Axis.YP.rotationDegrees(angle * 0.37F));
-            stack.mulPose(Axis.ZP.rotationDegrees(angle * -0.23F));
-            stack.scale(1.0F, 0.34F, 0.48F);
-            boolean accent = shard % 4 == 0;
-            CoreEffectMesh.cube(
-                    stack,
-                    consumer,
-                    0.105F * (0.72F + progress * 0.28F),
-                    accent ? palette.accentR() : palette.primaryR(),
-                    accent ? palette.accentG() : palette.primaryG(),
-                    accent ? palette.accentB() : palette.primaryB(),
-                    0.82F);
-            stack.popPose();
-        }
+    private static void renderMatrixRing(PoseStack stack,
+                                         com.mojang.blaze3d.vertex.VertexConsumer consumer,
+                                         float radius, float halfWidth, float halfThickness,
+                                         float yaw, float pitch, float roll,
+                                         float red, float green, float blue) {
+        stack.pushPose();
+        stack.mulPose(Axis.YP.rotationDegrees(yaw));
+        stack.mulPose(Axis.XP.rotationDegrees(pitch));
+        stack.mulPose(Axis.ZP.rotationDegrees(roll));
+        CoreEffectMesh.ringBand(
+                stack,
+                consumer,
+                radius - halfWidth,
+                radius + halfWidth,
+                halfThickness,
+                red,
+                green,
+                blue,
+                0.94F);
+        stack.popPose();
     }
 
     private static void renderCubeCore(PoseStack stack,
