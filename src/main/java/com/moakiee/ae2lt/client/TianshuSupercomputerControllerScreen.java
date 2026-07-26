@@ -1,120 +1,112 @@
 package com.moakiee.ae2lt.client;
 
 import com.moakiee.ae2lt.logic.tianshu.TianshuMultiblockScanIssue;
-import com.moakiee.ae2lt.logic.compute.UnifiedCraftingComputeCalculator;
 import com.moakiee.ae2lt.menu.TianshuSupercomputerControllerMenu;
 import com.moakiee.ae2lt.network.TianshuControllerActionPacket;
+import com.moakiee.ae2lt.registry.ModBlocks;
+
 import java.util.Locale;
+
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.client.gui.components.Tooltip;
+import net.minecraft.client.resources.language.I18n;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 import net.neoforged.neoforge.network.PacketDistributor;
 
+import appeng.client.gui.Icon;
+import appeng.client.gui.widgets.IconButton;
+
 public class TianshuSupercomputerControllerScreen
-        extends AbstractContainerScreen<TianshuSupercomputerControllerMenu> {
-    private Button fastPlanningButton;
+        extends MultiblockControllerScreen<TianshuSupercomputerControllerMenu> {
+
+    private FastPlanningButton fastPlanningButton;
 
     public TianshuSupercomputerControllerScreen(
             TianshuSupercomputerControllerMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title);
-        imageWidth = 360;
-        imageHeight = 204;
-        inventoryLabelY = 10_000;
     }
 
     @Override
     protected void init() {
         super.init();
-        addRenderableWidget(Button.builder(
+        int x = leftPos - 18;
+        int y = topPos;
+
+        var build = new ItemIconButton(
+                ModBlocks.TIANSHU_SUPERCOMPUTER_CASING.get().asItem(),
                 Component.translatable("ae2lt.tianshu.gui.build"),
-                button -> PacketDistributor.sendToServer(
-                        new TianshuControllerActionPacket(menu.token(), menu.getBlockPos(),
-                                TianshuControllerActionPacket.Action.AUTO_BUILD)))
-                .bounds(leftPos + 10, topPos + 172, 108, 20)
-                .build());
-        fastPlanningButton = addRenderableWidget(Button.builder(
-                fastPlanningText(),
-                button -> PacketDistributor.sendToServer(
-                        new TianshuControllerActionPacket(menu.token(), menu.getBlockPos(),
-                                TianshuControllerActionPacket.Action.TOGGLE_FAST_PLANNING)))
-                .bounds(leftPos + 126, topPos + 172, 108, 20)
-                .build());
+                btn -> sendAction(TianshuControllerActionPacket.Action.AUTO_BUILD));
+        build.setPosition(x, y);
+        addRenderableWidget(build);
+
+        fastPlanningButton = new FastPlanningButton(
+                btn -> sendAction(TianshuControllerActionPacket.Action.TOGGLE_FAST_PLANNING));
+        fastPlanningButton.setPosition(x, y + 22);
+        fastPlanningButton.refresh();
+        addRenderableWidget(fastPlanningButton);
+    }
+
+    private void sendAction(TianshuControllerActionPacket.Action action) {
+        PacketDistributor.sendToServer(
+                new TianshuControllerActionPacket(menu.token(), menu.getBlockPos(), action));
     }
 
     @Override
     protected void containerTick() {
         super.containerTick();
-        if (fastPlanningButton != null) fastPlanningButton.setMessage(fastPlanningText());
-    }
-
-    private Component fastPlanningText() {
-        return Component.translatable(menu.isFastPlanningEnabled()
-                ? "ae2lt.tianshu.gui.fast_planning.on"
-                : "ae2lt.tianshu.gui.fast_planning.off");
-    }
-
-    @Override
-    protected void renderBg(GuiGraphics graphics, float partialTick, int mouseX, int mouseY) {
-        graphics.fill(leftPos, topPos, leftPos + imageWidth, topPos + imageHeight, 0xFF181D24);
-        graphics.fill(leftPos + 4, topPos + 4, leftPos + imageWidth - 4, topPos + imageHeight - 4, 0xFF27313D);
-        graphics.fill(leftPos + 10, topPos + 30, leftPos + imageWidth - 10, topPos + 58, 0xFF11161C);
-        graphics.fill(leftPos + 10, topPos + 66, leftPos + imageWidth - 10, topPos + 164, 0xFF202832);
+        if (fastPlanningButton != null) {
+            fastPlanningButton.refresh();
+        }
     }
 
     @Override
     protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
-        graphics.drawString(font, title, 12, 11, 0xE8F4FF, false);
-        int statusColor = menu.isFormed() ? 0x74F29A : 0xFF9D7A;
-        graphics.drawString(font, Component.translatable(
-                menu.isFormed() ? "ae2lt.tianshu.gui.formed" : "ae2lt.tianshu.gui.unformed"),
-                14, 38, statusColor, false);
+        drawTitle(graphics);
+
         if (!menu.isFormed()) {
-            graphics.drawString(font, issueText(), 14, 72, 0xFFB8A8, false);
+            drawStatus(graphics, Component.translatable("ae2lt.tianshu.gui.unformed"), COL_AMBER);
+            drawUnformed(graphics, issueText(), "ae2lt.matrix.gui.hint_unformed");
             return;
         }
-        var computeTier = menu.getTier().computeTier();
-        long rawDispatch = UnifiedCraftingComputeCalculator.DISPATCH_PER_UNIT
-                * (long) menu.getParallelUnits();
-        long dispatchGain = UnifiedCraftingComputeCalculator.dispatchGain(
-                computeTier, menu.getAmplifierUnits());
-        long storageGain = UnifiedCraftingComputeCalculator.storageGain(
-                computeTier, menu.getAmplifierUnits());
-        long externalStorage = UnifiedCraftingComputeCalculator.saturatedMultiply(
-                UnifiedCraftingComputeCalculator.STORAGE_PER_UNIT * (long) menu.getStorageUnits(),
-                storageGain);
-        graphics.drawString(font, Component.translatable("ae2lt.tianshu.gui.tier", tierName()),
-                14, 72, 0xE8F4FF, false);
-        graphics.drawString(font, Component.translatable("ae2lt.tianshu.gui.cores",
-                menu.getParallelUnits(), menu.getAmplifierUnits(), menu.getStorageUnits()),
-                14, 86, 0xB7C8D8, false);
-        graphics.drawString(font, Component.translatable("ae2lt.tianshu.gui.functional_storages",
-                menu.getClosedLoopPatternStorages(), menu.getClosedLoopSeedStorages()),
-                14, 100, 0xB7C8D8, false);
-        graphics.drawString(font, Component.translatable("ae2lt.tianshu.gui.gains",
-                1 + menu.getAmplifierUnits(), formatBudget(dispatchGain), formatBudget(storageGain)),
-                14, 114, 0xB7C8D8, false);
-        graphics.drawString(font, Component.translatable("ae2lt.tianshu.gui.dispatch_budget",
-                formatBudget(rawDispatch), menu.getSuccessfulDispatchesPerTick(),
-                menu.isCapped() ? Component.translatable("ae2lt.tianshu.gui.capped") : Component.empty()),
-                14, 128, menu.isCapped() ? 0xF2D37A : 0xB7C8D8, false);
-        graphics.drawString(font, Component.translatable("ae2lt.tianshu.gui.storage_split",
-                formatStorage(computeTier.internalStorage()), formatStorage(externalStorage),
-                formatStorage(menu.getStorageBytes())), 14, 142, 0xB7C8D8, false);
-        graphics.drawString(font, Component.translatable("ae2lt.tianshu.gui.copies",
-                formatBudget(menu.getMaxCopiesPerTick())), 14, 156, 0xB7C8D8, false);
+        drawStatus(graphics, Component.translatable("ae2lt.tianshu.gui.formed", tierName()), COL_GREEN);
+
+        int y = ROW_Y;
+        drawRow(graphics, y, Component.translatable("ae2lt.tianshu.gui.label_storage"),
+                formatStorage(menu.getStorageBytes()), COL_VALUE);
+        y += LINE_H;
+
+        boolean capped = menu.isCapped();
+        drawRow(graphics, y, Component.translatable("ae2lt.tianshu.gui.label_dispatches"),
+                formatCount(menu.getSuccessfulDispatchesPerTick()) + "/t"
+                        + (capped ? I18n.get("ae2lt.tianshu.gui.capped") : ""),
+                capped ? COL_AMBER : COL_VALUE);
+        y += LINE_H;
+
+        drawRow(graphics, y, Component.translatable("ae2lt.tianshu.gui.label_loop"),
+                I18n.get("ae2lt.tianshu.gui.value_loop",
+                        formatCount(menu.getClosedLoopPatternStorages()),
+                        formatCount(menu.getClosedLoopSeedStorages())),
+                COL_VALUE);
+
+        boolean fast = menu.isFastPlanningEnabled();
+        drawRow(graphics, FOOTER_MID_Y, Component.translatable("ae2lt.tianshu.gui.label_fast"),
+                I18n.get(fast ? "ae2lt.tianshu.gui.fast_on" : "ae2lt.tianshu.gui.fast_off"),
+                fast ? COL_GREEN : COL_MUTED);
     }
 
     private Component issueText() {
         int ordinal = menu.getIssue();
         var values = TianshuMultiblockScanIssue.values();
-        String name = ordinal >= 0 && ordinal < values.length ? values[ordinal].name().toLowerCase(Locale.ROOT) : "unknown";
+        String name = ordinal >= 0 && ordinal < values.length
+                ? values[ordinal].name().toLowerCase(Locale.ROOT) : "unknown";
         return Component.translatable("ae2lt.tianshu.issue." + name);
     }
 
     private Component tierName() {
-        return Component.translatable("ae2lt.tianshu.tier." + menu.getTier().name().toLowerCase(Locale.ROOT));
+        var tier = menu.getTier();
+        return tier == null ? Component.literal("—")
+                : Component.translatable("ae2lt.tianshu.tier." + tier.name().toLowerCase(Locale.ROOT));
     }
 
     private static String formatStorage(long bytes) {
@@ -123,14 +115,23 @@ public class TianshuSupercomputerControllerScreen
         return String.format(Locale.ROOT, "%.0f MiB", bytes / (1024.0 * 1024));
     }
 
-    private static String formatBudget(long value) {
-        return value == Long.MAX_VALUE ? "∞" : String.format(Locale.ROOT, "%,d", value);
-    }
+    /** Toggle button mirroring the fast-planning state with AE2 icons. */
+    private class FastPlanningButton extends IconButton {
+        FastPlanningButton(OnPress onPress) {
+            super(onPress);
+        }
 
-    @Override
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(graphics, mouseX, mouseY, partialTick);
-        super.render(graphics, mouseX, mouseY, partialTick);
-        renderTooltip(graphics, mouseX, mouseY);
+        void refresh() {
+            var text = Component.translatable(menu.isFastPlanningEnabled()
+                    ? "ae2lt.tianshu.gui.fast_planning.on"
+                    : "ae2lt.tianshu.gui.fast_planning.off");
+            setMessage(text);
+            setTooltip(Tooltip.create(text));
+        }
+
+        @Override
+        protected Icon getIcon() {
+            return menu.isFastPlanningEnabled() ? Icon.REDSTONE_ON : Icon.REDSTONE_OFF;
+        }
     }
 }
