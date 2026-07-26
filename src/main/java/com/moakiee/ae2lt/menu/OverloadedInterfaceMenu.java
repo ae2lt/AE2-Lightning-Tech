@@ -287,6 +287,8 @@ public class OverloadedInterfaceMenu extends InterfaceMenu implements FrequencyB
 
     public void toggleUnlimited(int slot) {
         if (isClientSide()) { sendClientAction("toggleUnlimited", slot); return; }
+        // Client-supplied index; getConfig().getKey would AIOOBE on a bad packet
+        if (slot < 0 || slot >= OverloadedInterfaceBlockEntity.SLOT_COUNT) return;
         if (host instanceof OverloadedInterfaceBlockEntity be) {
             boolean nowUnlimited = !be.isSlotUnlimited(slot);
             be.setSlotUnlimited(slot, nowUnlimited);
@@ -522,10 +524,12 @@ public class OverloadedInterfaceMenu extends InterfaceMenu implements FrequencyB
             sendClientAction(ACTION_OPEN_SET_AMOUNT, configSlot);
             return;
         }
+        // Client-supplied index; getConfig().getStack would AIOOBE on a bad packet
+        if (configSlot < 0 || configSlot >= OverloadedInterfaceBlockEntity.SLOT_COUNT) return;
         var stack = getHost().getConfig().getStack(configSlot);
         if (stack != null) {
             SetStockAmountMenu.open((ServerPlayer) getPlayer(), getLocator(), configSlot,
-                    stack.what(), (int) stack.amount());
+                    stack.what(), (int) Math.min(stack.amount(), Integer.MAX_VALUE));
             if (getPlayer().containerMenu instanceof SetStockAmountMenu sam) {
                 long cap = stack.what().getType().getAmountPerByte() * 1024L;
                 try {

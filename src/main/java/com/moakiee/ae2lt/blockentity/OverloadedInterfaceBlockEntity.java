@@ -11,7 +11,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Predicate;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -21,8 +20,8 @@ import com.moakiee.ae2lt.grid.FrequencyBindingHost;
 import com.moakiee.ae2lt.item.OverloadedFilterComponentItem;
 import com.moakiee.ae2lt.logic.AppFluxHelper;
 import com.moakiee.ae2lt.logic.ConnectionEndpoints;
-import com.moakiee.ae2lt.logic.DirectMEInsertInventory;
 import com.moakiee.ae2lt.logic.EjectModeRegistry;
+import com.moakiee.ae2lt.logic.FilteredInsertGenericInv;
 import com.moakiee.ae2lt.logic.OverloadedInterfaceLogic;
 import com.moakiee.ae2lt.logic.OverloadedInterfaceTickDecider;
 import com.moakiee.ae2lt.logic.WirelessConnectionLists;
@@ -603,7 +602,7 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
             return !stack.isEmpty() && stack.getItem() instanceof OverloadedFilterComponentItem;
         }
     };
-    private @Nullable DirectMEInsertInventory directInsertInv;
+    private @Nullable GenericInternalInventory exposedGenericInv;
     /** Shared NORMAL-mode distributor (32-slot adaptive wheel + cap listeners). */
     private final WirelessEnergyDistributor wirelessDistributor =
             new WirelessEnergyDistributor(new DistributorHost());
@@ -696,15 +695,20 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         return AECableType.DENSE_SMART;
     }
 
-    // ── Direct ME insert inventory ───────────────────────────────────────
+    // ── Exposed generic inventory (pipes / eject forwarding) ─────────────
 
-    public GenericInternalInventory getDirectInsertInventory() {
-        if (directInsertInv == null) {
-            directInsertInv = new DirectMEInsertInventory(
-                    getMainNode(), machineSource);
-            rebuildFilter();
+    /**
+     * Capability-facing view of the proxied storage. Passive insertions
+     * (pipes, eject-mode forwarding) go through the filter component;
+     * internal paths (crafting returns, GUI) use the proxy directly.
+     */
+    public @Nullable GenericInternalInventory getExposedGenericInv() {
+        if (exposedGenericInv == null
+                && getInterfaceLogic() instanceof OverloadedInterfaceLogic ol) {
+            exposedGenericInv = new FilteredInsertGenericInv(
+                    ol.getProxiedStorage(), this::isInsertAllowedByFilter);
         }
-        return directInsertInv;
+        return exposedGenericInv;
     }
 
     public AppEngInternalInventory getFilterInv() {
@@ -720,8 +724,6 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
             importFilterKeys = null;
             importFilterFuzzyMode = null;
             importFilterInverted = false;
-            if (directInsertInv != null) directInsertInv.setFilter(null);
-            wakeWirelessIo();
             return;
         }
         var config = cwi.getConfigInventory(filterStack);
@@ -733,32 +735,15 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
             importFilterKeys = null;
             importFilterFuzzyMode = null;
             importFilterInverted = false;
-            if (directInsertInv != null) directInsertInv.setFilter(null);
-            wakeWirelessIo();
             return;
         }
 
         var upgrades = cwi.getUpgrades(filterStack);
         boolean hasFuzzy = upgrades.getInstalledUpgrades(AEItems.FUZZY_CARD) > 0;
         boolean hasInverter = upgrades.getInstalledUpgrades(AEItems.INVERTER_CARD) > 0;
-        FuzzyMode fm = hasFuzzy ? cwi.getFuzzyMode(filterStack) : null;
         importFilterKeys = Set.copyOf(keys);
-        importFilterFuzzyMode = fm;
+        importFilterFuzzyMode = hasFuzzy ? cwi.getFuzzyMode(filterStack) : null;
         importFilterInverted = hasInverter;
-
-        Predicate<AEKey> matches;
-        if (fm != null) {
-            matches = w -> {
-                for (var fk : keys)
-                    if (w.equals(fk) || w.fuzzyEquals(fk, fm)) return true;
-                return false;
-            };
-        } else {
-            matches = keys::contains;
-        }
-        Predicate<AEKey> predicate = hasInverter ? matches.negate() : matches;
-        if (directInsertInv != null) directInsertInv.setFilter(predicate);
-        wakeWirelessIo();
     }
 
     // ── Mode accessors ───────────────────────────────────────────────────
@@ -1530,6 +1515,14 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
 
     private boolean isImportAllowed(AEKey key) {
         if (getExportBlacklist().contains(key)) return false;
+        return isInsertAllowedByFilter(key);
+    }
+
+    /**
+     * Filter-component check alone (no export blacklist — eject may legally
+     * return items that are also configured for stocking).
+     */
+    public boolean isInsertAllowedByFilter(AEKey key) {
         var keys = importFilterKeys;
         if (keys == null || keys.isEmpty()) return true;
         var fuzzyMode = importFilterFuzzyMode;
@@ -2118,15 +2111,8 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
                     tag, TAG_IO_SPEED_MODE, IOSpeedMode.class, this.ioSpeedMode);
             this.exportMode = com.moakiee.ae2lt.logic.MemoryCardConfigSupport.readEnum(
                     tag, TAG_EXPORT_MODE, ExportMode.class, this.exportMode);
-            var newImportMode = com.moakiee.ae2lt.logic.MemoryCardConfigSupport.readEnum(
+            this.importMode = com.moakiee.ae2lt.logic.MemoryCardConfigSupport.readEnum(
                     tag, TAG_IMPORT_MODE, ImportMode.class, this.importMode);
-            if (newImportMode != this.importMode) {
-                var old = this.importMode;
-                this.importMode = newImportMode;
-                if ((old == ImportMode.EJECT) != (newImportMode == ImportMode.EJECT)) {
-                    refreshEjectRegistrations();
-                }
-            }
             if (tag.contains(TAG_ENERGY_DIR)) {
                 this.energyOutputDir = com.moakiee.ae2lt.logic.MemoryCardConfigSupport.readDirection(tag, TAG_ENERGY_DIR);
             }
@@ -2138,6 +2124,9 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
             }
             FrequencyBindingHelper.importMemoryFrequency(tag, this::setFrequency);
             invalidateConnectionCache();
+            // Unconditional: eject registration depends on interfaceMode AND
+            // importMode, both possibly changed above (idempotent re-register)
+            refreshEjectRegistrations();
             recomputeIdlePower();
             saveChanges();
             markForUpdate();

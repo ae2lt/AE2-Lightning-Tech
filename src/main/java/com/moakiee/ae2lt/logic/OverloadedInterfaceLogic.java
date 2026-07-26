@@ -37,6 +37,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
 
 public class OverloadedInterfaceLogic extends InterfaceLogic {
@@ -122,6 +123,10 @@ public class OverloadedInterfaceLogic extends InterfaceLogic {
         setField(F_UPGRADES, newUpgrades);
         this.ourUpgrades = newUpgrades;
 
+        // Relies on ClassToInstanceMap.putInstance last-write-wins to replace
+        // the stocking Ticker registered by the InterfaceLogic constructor; if
+        // AE2 ever rejects duplicate services, the vanilla ticker would return
+        // and ping-pong items through the proxied storage.
         mainNode.addService(IGridTickable.class, new ProxyTicker());
     }
 
@@ -427,15 +432,19 @@ public class OverloadedInterfaceLogic extends InterfaceLogic {
         private long exposedAmount(AEKey what) {
             var grid = logic.mainNode.getGrid();
             if (grid == null) return 0;
-            long total = 0;
+            // Aggregate caps first: same-key slots mirror the same network
+            // stock, so summing per-slot visible amounts would double-count
+            long capSum = 0;
             for (int i = 0; i < size(); i++) {
                 if (!matchesConfiguredSlot(i, what)) continue;
-                long cap = capForSlot(i);
-                long amount = visibleNetworkAmount(what, cap);
-                if (Long.MAX_VALUE - total < amount) return Long.MAX_VALUE;
-                total += amount;
+                capSum = saturatingAdd(capSum, capForSlot(i));
+                if (capSum == Long.MAX_VALUE) break;
             }
-            return total;
+            return capSum > 0 ? visibleNetworkAmount(what, capSum) : 0;
+        }
+
+        private static long saturatingAdd(long a, long b) {
+            return Long.MAX_VALUE - a < b ? Long.MAX_VALUE : a + b;
         }
 
         // ── Display: server queries ME network & syncs stacks[]; client uses synced stacks[] ─
@@ -601,21 +610,30 @@ public class OverloadedInterfaceLogic extends InterfaceLogic {
                 var cache = grid.getStorageService().getCachedInventory();
                 boolean fuzzy = logic.ourUpgrades.isInstalled(AEItems.FUZZY_CARD);
                 var fuzzyMode = fuzzy ? logic.getConfigManager().getSetting(Settings.FUZZY_MODE) : null;
+                // Aggregate caps per key: same-key slots mirror the same
+                // network stock and must not double-count
+                var capByKey = new LinkedHashMap<AEKey, Long>();
                 for (int slot = 0; slot < size(); slot++) {
                     var key = cfg().getKey(slot);
                     if (key == null) continue;
-
-                    long cap = capForSlot(slot);
+                    capByKey.merge(key, capForSlot(slot), ProxiedStorageInv::saturatingAdd);
+                }
+                for (var capEntry : capByKey.entrySet()) {
+                    var key = capEntry.getKey();
+                    long cap = capEntry.getValue();
                     long configuredAmount = visibleNetworkAmount(key, cap);
                     if (configuredAmount > 0) fresh.add(key, configuredAmount);
 
                     if (fuzzy && key.supportsFuzzyRangeSearch()) {
                         for (var entry : cache.findFuzzy(key, fuzzyMode)) {
-                            if (entry.getKey().equals(key)) continue;
+                            var variant = entry.getKey();
+                            // Skip configured keys: they are added with their
+                            // own cap in the main loop
+                            if (variant.equals(key) || capByKey.containsKey(variant)) continue;
                             long amount = cap == Long.MAX_VALUE
                                     ? entry.getLongValue()
                                     : Math.min(cap, entry.getLongValue());
-                            if (amount > 0) fresh.add(entry.getKey(), amount);
+                            if (amount > 0) fresh.add(variant, amount);
                         }
                     }
                 }

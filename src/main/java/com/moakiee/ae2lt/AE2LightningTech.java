@@ -706,11 +706,10 @@ public class AE2LightningTech {
         event.registerBlock(
                 AECapabilities.GENERIC_INTERNAL_INV,
                 (level, pos, state, blockEntity, context) -> {
+                    // Filtered wrapper: passive insertions (pipes, eject
+                    // forwarding) respect the filter component
                     if (blockEntity instanceof OverloadedInterfaceBlockEntity be) {
-                        var logic = be.getInterfaceLogic();
-                        if (logic instanceof com.moakiee.ae2lt.logic.OverloadedInterfaceLogic ol) {
-                            return ol.getProxiedStorage();
-                        }
+                        return be.getExposedGenericInv();
                     }
                     return null;
                 },
