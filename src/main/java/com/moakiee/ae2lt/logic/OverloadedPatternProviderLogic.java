@@ -129,8 +129,12 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
     private final Map<Integer, ItemStack> pendingOverflowPatternDefinitions = new HashMap<>();
     private final List<PendingBucketLoad> pendingOverflowBuckets = new ArrayList<>();
 
-    /** Legacy persisted round-robin position. */
-    private int wirelessRoundRobin = 0;
+    /**
+     * Items salvaged from NBT slots that no longer exist after a capacity
+     * shrink (config change). Drained back into the network by the ticker;
+     * dropped on block break as a last resort. Never voided.
+     */
+    private final List<GenericStack> pendingRestoreOverflow = new ArrayList<>();
 
     // ---- unified per-connection state ---------------------------------------------
 
@@ -268,14 +272,14 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
             probeSkipCounter++;
         }
 
-        void resetBackoff(long gameTick) {
-            backoffInterval = BACKOFF_MIN;
-            nextPollTick = gameTick + BACKOFF_MIN;
+        void resetBackoff(long gameTick, int min) {
+            backoffInterval = min;
+            nextPollTick = gameTick + min;
         }
 
-        void updateBackoff(long gameTick, boolean foundItems) {
-            backoffInterval = foundItems ? BACKOFF_MIN
-                    : Math.min(backoffInterval * 2, BACKOFF_MAX);
+        void updateBackoff(long gameTick, boolean foundItems, int min, int cap) {
+            backoffInterval = foundItems ? min
+                    : Math.min(backoffInterval * 2, cap);
             nextPollTick = gameTick + backoffInterval;
         }
 
@@ -391,8 +395,14 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
     /** Minimum polling interval (reset value after a successful extraction). */
     private static final int BACKOFF_MIN = 10;    // 0.5 second
 
+    /** FAST minimum: an actively producing machine is polled every tick. */
+    private static final int BACKOFF_MIN_FAST = 1;
+
     /** Maximum polling interval (cap for exponential growth). */
     private static final int BACKOFF_MAX = 1200;  // 60 seconds
+
+    /** Backoff cap in FAST speed mode: pay 1.5x idle power for snappier returns. */
+    private static final int BACKOFF_MAX_FAST = 100;  // 5 seconds
 
     /** Wireless round-robin return: spread all machines across this many ticks. */
     private static final int RETURN_SPREAD_TICKS = 20;
@@ -529,11 +539,6 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
     public void resetCraftingLock() {
         super.resetCraftingLock();
         clearPendingUnlockRule();
-    }
-
-    @Override
-    public void onChangeInventory(appeng.util.inv.AppEngInternalInventory inv, int slot) {
-        super.onChangeInventory(inv, slot);
     }
 
     // ---- page management --------------------------------------------------------
@@ -684,13 +689,19 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
         boolean fastMode = overloadedHost.getWirelessSpeedMode()
                 == OverloadedPatternProviderBlockEntity.WirelessSpeedMode.FAST;
 
-        if (pushStructuresDirty || (valid != pushWheelValidRef && !valid.equals(pushWheelValidRef))) {
-            rebuildPushStructures(valid, gameTick, dispatchMode);
+        if (pushStructuresDirty || valid != pushWheelValidRef) {
+            if (!pushStructuresDirty && valid.equals(pushWheelValidRef)) {
+                // Same content, fresh snapshot instance — adopt the reference so
+                // subsequent pushes take the identity fast path instead of a full equals.
+                pushWheelValidRef = valid;
+            } else {
+                rebuildPushStructures(valid, gameTick, dispatchMode);
+            }
         }
         advancePushWheel(gameTick, fastMode, dispatchMode);
 
         return switch (dispatchMode) {
-            case EVEN_DISTRIBUTION -> wirelessPushEvenDistribution(pattern, inputs, valid, server, gameTick);
+            case EVEN_DISTRIBUTION -> wirelessPushEvenDistribution(pattern, inputs, valid, server, gameTick, fastMode);
             case SINGLE_TARGET -> wirelessPushSingleTarget(pattern, inputs, valid, server, gameTick, fastMode);
         };
     }
@@ -699,7 +710,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
 
     private boolean wirelessPushEvenDistribution(IPatternDetails pattern, KeyCounter[] inputs,
             List<WirelessConnection> valid, net.minecraft.server.MinecraftServer server,
-            long gameTick) {
+            long gameTick, boolean fastMode) {
         int scanBudget = evenReadyQueue.size();
         var patternKey = pattern.getDefinition();
         while (scanBudget-- > 0 && !evenReadyQueue.isEmpty()) {
@@ -752,7 +763,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
                     }
                 }
                 case SOFT_FAIL -> {
-                    patternPenalties.recordRejection(conn, patternKey, gameTick);
+                    patternPenalties.recordRejection(conn, patternKey, gameTick, fastMode);
                     evenReadyQueue.rotateHeadToTail();
                 }
                 case GLOBAL_ABORT -> {
@@ -999,7 +1010,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
         alertGridTick();
 
         if (overloadedHost.isAutoReturn()) {
-            getOrCreateState(conn).resetBackoff(targetLevel.getGameTime());
+            getOrCreateState(conn).resetBackoff(targetLevel.getGameTime(), wirelessReturnBackoffMin());
         }
         return WirelessPushOutcome.SUCCESS;
     }
@@ -1259,7 +1270,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
         alertGridTick();
 
         if (overloadedHost.isAutoReturn()) {
-            getOrCreateState(conn).resetBackoff(targetLevel.getGameTime());
+            getOrCreateState(conn).resetBackoff(targetLevel.getGameTime(), wirelessReturnBackoffMin());
         }
         return WirelessPushOutcome.SUCCESS;
     }
@@ -1470,14 +1481,17 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
     // ---- auto-return (full-scan + per-machine exponential backoff) ---------------
 
     /**
-     * Called every server tick (via BlockEntityTicker).
+     * Auto-return driver (invoked from the grid ticker).
      * <p>
-     * Iterates <b>all</b> connected machines each tick, but only actually polls
-     * a machine when its individual backoff timer has elapsed.
+     * Both modes poll a machine only when its individual backoff timer elapsed:
      * <ul>
-     *   <li>Extraction found → reset that machine's interval to {@link #BACKOFF_MIN}.</li>
-     *   <li>Empty poll → double the interval (capped at {@link #BACKOFF_MAX}).</li>
+     *   <li>Extraction found → reset that machine's interval to {@link #BACKOFF_MIN}
+     *       ({@link #BACKOFF_MIN_FAST} = every tick in FAST speed mode).</li>
+     *   <li>Empty poll → double the interval, capped at {@link #BACKOFF_MAX}
+     *       ({@link #BACKOFF_MAX_FAST} in FAST speed mode).</li>
      * </ul>
+     * Wireless NORMAL speed additionally spreads eligible polls across
+     * {@link #RETURN_SPREAD_TICKS} ticks; FAST checks every timer each tick.
      * Only items whose {@link AEKey} matches a loaded pattern output are extracted.
      */
     public void tickAutoReturn() {
@@ -1511,6 +1525,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
      */
     public boolean hasAnyTickWork() {
         if (!pendingOverflowByConn.isEmpty()) return true;
+        if (!pendingRestoreOverflow.isEmpty()) return true;
         if (overloadedHost.getProviderMode() == ProviderMode.WIRELESS
                 && gridNode.isActive()
                 && isInductionCardInstalled()
@@ -1586,25 +1601,49 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
         long elapsed = lastReturnRobinTick >= 0 ? gameTick - lastReturnRobinTick : 1;
         lastReturnRobinTick = gameTick;
 
-        int perTick = Math.max(1, (total + RETURN_SPREAD_TICKS - 1) / RETURN_SPREAD_TICKS);
+        boolean fastReturn = isFastWirelessSpeed();
+        // FAST: no spread floor — check every connection's timer each tick (cheap
+        // long compare); only machines whose backoff elapsed actually get polled,
+        // so an actively producing machine is drained every single tick.
+        int perTick = fastReturn ? total
+                : Math.max(1, (total + RETURN_SPREAD_TICKS - 1) / RETURN_SPREAD_TICKS);
         int toProcess = (int) Math.min((long) perTick * elapsed, total);
+        int backoffMin = fastReturn ? BACKOFF_MIN_FAST : BACKOFF_MIN;
+        int backoffCap = fastReturn ? BACKOFF_MAX_FAST : BACKOFF_MAX;
 
         for (int i = 0; i < toProcess; i++) {
             int idx = returnRobinIndex % total;
             returnRobinIndex = (returnRobinIndex + 1) % total;
 
             var conn = valid.get(idx);
+            var state = getOrCreateState(conn);
+            if (gameTick < state.nextPollTick) continue;
+
             var targetLevel = resolveTargetLevel(sl, conn);
             if (targetLevel == null) continue;
 
-            var state = getOrCreateState(conn);
             var adapter = state.resolveAdapter(targetLevel, conn.pos());
             if (adapter == null) continue;
 
-            adapter.extractOutputs(
+            boolean found = adapter.extractOutputs(
                     targetLevel, conn.pos(), conn.boundFace(), allowedOutputs, wirelessSource,
                     returnInvSink);
+            state.updateBackoff(gameTick, found, backoffMin, backoffCap);
         }
+    }
+
+    private boolean isFastWirelessSpeed() {
+        return overloadedHost.getWirelessSpeedMode()
+                == OverloadedPatternProviderBlockEntity.WirelessSpeedMode.FAST;
+    }
+
+    /** FAST trades 1.5x idle power for per-tick polling of active machines and a 5s idle cap. */
+    private int wirelessReturnBackoffMin() {
+        return isFastWirelessSpeed() ? BACKOFF_MIN_FAST : BACKOFF_MIN;
+    }
+
+    private int wirelessReturnBackoffCap() {
+        return isFastWirelessSpeed() ? BACKOFF_MAX_FAST : BACKOFF_MAX;
     }
 
     /** Unified machine key without transient String allocation. */
@@ -1711,9 +1750,10 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
         var adapter = state.resolveAdapter(targetLevel, conn.pos());
         if (adapter == null) return;
 
-        adapter.extractOutputs(
+        boolean found = adapter.extractOutputs(
                 targetLevel, conn.pos(), conn.boundFace(), allowedOutputs, wirelessSource,
                 returnInvSink);
+        state.updateBackoff(gameTick, found, wirelessReturnBackoffMin(), wirelessReturnBackoffCap());
     }
 
     public boolean handleOverloadUnlockOnReturnedStack(GenericStack returnedStack) {
@@ -2114,9 +2154,6 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
         if (getOrBuildOutputFilter().isEmpty()) {
             return false;
         }
-        if (overloadedHost.getProviderMode() == ProviderMode.WIRELESS) {
-            return true;
-        }
         return getNextAutoReturnPollTick() <= gameTick;
     }
 
@@ -2259,6 +2296,21 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
         for (int i = 0; i < limit; i++) {
             inv.setItemDirect(i, stored[i] != null ? stored[i] : ItemStack.EMPTY);
         }
+        // Capacity shrank since this data was written — salvage the tail instead of deleting it.
+        int salvaged = 0;
+        for (int i = limit; i < stored.length; i++) {
+            var stack = stored[i];
+            var key = stack != null ? AEItemKey.of(stack) : null;
+            if (key != null && !stack.isEmpty()) {
+                pendingRestoreOverflow.add(new GenericStack(key, stack.getCount()));
+                salvaged++;
+            }
+        }
+        if (salvaged > 0) {
+            org.slf4j.LoggerFactory.getLogger("ae2lt").warn(
+                    "[SavedData] Capacity at {} smaller than stored data; salvaged {} patterns into the restore queue",
+                    overloadedHost.getBlockPos(), salvaged);
+        }
         savedData.remove(overloadedHost.getBlockPos().asLong());
         return true;
     }
@@ -2310,6 +2362,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
             var accessor = (PatternProviderLogicAccessor) OverloadedPatternProviderLogic.this;
             boolean parentDidWork = accessor.invokeDoWork();
             flushWirelessSends();
+            drainPendingRestoreOverflow();
             tickAutoReturn();
             var level = overloadedHost.getLevel();
             long gameTick = level instanceof ServerLevel sl ? sl.getGameTime() : Long.MAX_VALUE;
@@ -2353,6 +2406,10 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
         for (var bucket : pendingOverflowByConn.values()) {
             addBucketDrops(bucket, drops);
         }
+        for (var stack : pendingRestoreOverflow) {
+            stack.what().addDrops(stack.amount(), drops,
+                    overloadedHost.getLevel(), overloadedHost.getBlockPos());
+        }
         if (totalCapacity > 36) {
             removeSavedData();
         }
@@ -2364,6 +2421,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
         if (totalCapacity > 36) {
             removeSavedData();
         }
+        pendingRestoreOverflow.clear();
         clearWirelessOverflowState();
         connectionStates.clear();
         machineNextPoll.clear();
@@ -2394,14 +2452,20 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
     private static final String TAG_OVERFLOW_REMAINING = "remaining";
     private static final String TAG_OVERFLOW_FALLBACK = "fallback";
     private static final String TAG_OVERFLOW_COMPACT = "compact";
-    private static final String TAG_W_ROUND_ROBIN = "WirelessRoundRobin";
+    private static final String TAG_RESTORE_OVERFLOW = "ae2lt:restore_overflow";
     private static final String TAG_UNLOCK_MATCH_MODE = "Ae2ltUnlockMatchMode";
     private static final String TAG_UNLOCK_TEMPLATE = "Ae2ltUnlockTemplate";
 
     @Override
     public void writeToNBT(CompoundTag tag, HolderLookup.Provider registries) {
         super.writeToNBT(tag, registries);
-        tag.putInt(TAG_W_ROUND_ROBIN, wirelessRoundRobin);
+        if (!pendingRestoreOverflow.isEmpty()) {
+            var restoreList = new ListTag();
+            for (var stack : pendingRestoreOverflow) {
+                restoreList.add(GenericStack.writeTag(registries, stack));
+            }
+            tag.put(TAG_RESTORE_OVERFLOW, restoreList);
+        }
         if (pendingUnlockMatchMode != null) {
             tag.putString(TAG_UNLOCK_MATCH_MODE, pendingUnlockMatchMode.name());
         }
@@ -2415,7 +2479,12 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
     public void readFromNBT(CompoundTag tag, HolderLookup.Provider registries) {
         super.readFromNBT(tag, registries);
         needsSavedDataLoad = totalCapacity > 36 && !hasPatternInventoryContents();
-        wirelessRoundRobin = tag.getInt(TAG_W_ROUND_ROBIN);
+        pendingRestoreOverflow.clear();
+        salvageTruncatedNbtSlots(tag, registries);
+        if (tag.contains(TAG_RESTORE_OVERFLOW, Tag.TAG_LIST)) {
+            pendingRestoreOverflow.addAll(readGenericStackList(
+                    registries, tag.getList(TAG_RESTORE_OVERFLOW, Tag.TAG_COMPOUND)));
+        }
         pendingUnlockMatchMode = null;
         pendingUnlockTemplate = null;
         if (tag.contains(TAG_UNLOCK_MATCH_MODE, Tag.TAG_STRING)) {
@@ -2451,6 +2520,66 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
             }
         }
         return false;
+    }
+
+    /**
+     * Vanilla NBT restore silently drops slots beyond the current inventory size.
+     * When the configured capacity shrank, salvage those slots into
+     * {@link #pendingRestoreOverflow} instead of losing patterns / buffered items.
+     */
+    private void salvageTruncatedNbtSlots(CompoundTag tag, HolderLookup.Provider registries) {
+        int salvaged = 0;
+
+        var patternInvSize = ((PatternProviderLogicAccessor) this).getPatternInventory().size();
+        var patternsTag = tag.getList(NBT_MEMORY_CARD_PATTERNS, Tag.TAG_COMPOUND);
+        for (int i = 0; i < patternsTag.size(); i++) {
+            var itemTag = patternsTag.getCompound(i);
+            if (itemTag.getInt("Slot") < patternInvSize) continue;
+            var stack = ItemStack.parseOptional(registries, itemTag);
+            var key = AEItemKey.of(stack);
+            if (key != null && !stack.isEmpty()) {
+                pendingRestoreOverflow.add(new GenericStack(key, stack.getCount()));
+                salvaged++;
+            }
+        }
+
+        var returnTag = tag.getList(NBT_RETURN_INV, Tag.TAG_COMPOUND);
+        for (int i = fullReturnInv.size(); i < returnTag.size(); i++) {
+            var stack = GenericStack.readTag(registries, returnTag.getCompound(i));
+            if (stack != null && stack.amount() > 0) {
+                pendingRestoreOverflow.add(stack);
+                salvaged++;
+            }
+        }
+
+        if (salvaged > 0) {
+            org.slf4j.LoggerFactory.getLogger("ae2lt").warn(
+                    "Pattern provider at {} shrank below its saved size; salvaged {} stacks into the restore queue",
+                    overloadedHost.getBlockPos(), salvaged);
+        }
+    }
+
+    /** Push salvaged stacks back into the network; leftovers stay queued (never voided). */
+    private void drainPendingRestoreOverflow() {
+        if (pendingRestoreOverflow.isEmpty()) return;
+        boolean changed = false;
+        for (int i = 0; i < pendingRestoreOverflow.size(); ) {
+            var stack = pendingRestoreOverflow.get(i);
+            long remaining = insertStackToNetwork(stack.what(), stack.amount());
+            if (remaining <= 0) {
+                pendingRestoreOverflow.remove(i);
+                changed = true;
+                continue;
+            }
+            if (remaining != stack.amount()) {
+                pendingRestoreOverflow.set(i, new GenericStack(stack.what(), remaining));
+                changed = true;
+            }
+            i++;
+        }
+        if (changed) {
+            saveChanges();
+        }
     }
 
     private void addBucketDrops(ConnBucket bucket, List<ItemStack> drops) {

@@ -7,6 +7,9 @@ import java.util.Map;
 final class PatternDispatchPenaltyTracker<T, P> {
     private static final int INITIAL_COOLDOWN = 5;
     private static final int MAX_COOLDOWN = 40;
+    // FAST speed mode: retry rejected (target, pattern) pairs much sooner
+    private static final int FAST_INITIAL_COOLDOWN = 2;
+    private static final int FAST_MAX_COOLDOWN = 10;
 
     private final Map<T, Map<P, Penalty>> penalties = new HashMap<>();
 
@@ -17,12 +20,14 @@ final class PatternDispatchPenaltyTracker<T, P> {
         return penalty != null && gameTick < penalty.retryAfter;
     }
 
-    void recordRejection(T target, P pattern, long gameTick) {
+    void recordRejection(T target, P pattern, long gameTick, boolean fast) {
+        int initial = fast ? FAST_INITIAL_COOLDOWN : INITIAL_COOLDOWN;
+        int max = fast ? FAST_MAX_COOLDOWN : MAX_COOLDOWN;
         var byPattern = penalties.computeIfAbsent(target, ignored -> new HashMap<>());
         var penalty = byPattern.get(pattern);
         int cooldown = penalty == null
-                ? INITIAL_COOLDOWN
-                : Math.min(MAX_COOLDOWN, penalty.cooldown * 2);
+                ? initial
+                : Math.min(max, penalty.cooldown * 2);
         byPattern.put(pattern, new Penalty(gameTick + cooldown, cooldown));
     }
 

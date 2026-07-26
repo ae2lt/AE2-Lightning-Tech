@@ -200,9 +200,10 @@ public class OverloadedPatternProviderBlockEntity extends PatternProviderBlockEn
         if (providerMode == ProviderMode.WIRELESS) {
             idle += IDLE_WIRELESS_BONUS;
             idle += connections.size() * IDLE_PER_CONNECTION;
-        }
-        if (wirelessSpeedMode == WirelessSpeedMode.FAST) {
-            idle *= IDLE_FAST_MULTIPLIER;
+            // FAST only affects wireless dispatch/return — no surcharge in NORMAL mode
+            if (wirelessSpeedMode == WirelessSpeedMode.FAST) {
+                idle *= IDLE_FAST_MULTIPLIER;
+            }
         }
         getMainNode().setIdlePowerUsage(idle);
     }
@@ -315,6 +316,9 @@ public class OverloadedPatternProviderBlockEntity extends PatternProviderBlockEn
         }
         this.wirelessSpeedMode = wirelessSpeedMode;
         recomputeIdlePower();
+        // Reset per-connection pacing so the new speed takes effect immediately
+        // instead of waiting out backoff intervals accrued under the old mode.
+        notifyLogicStateChanged();
         saveChanges();
         markForClientUpdate();
     }
