@@ -38,15 +38,19 @@ public class TianshuSupercomputerControllerBlock extends Block implements Entity
     public static final net.minecraft.world.level.block.state.properties.DirectionProperty FACING =
             HorizontalDirectionalBlock.FACING;
     public static final BooleanProperty FORMED = BooleanProperty.create("formed");
+    public static final BooleanProperty WORKING = BooleanProperty.create("working");
 
     public TianshuSupercomputerControllerBlock(Properties properties) {
         super(properties);
-        registerDefaultState(defaultBlockState().setValue(FACING, Direction.NORTH).setValue(FORMED, false));
+        registerDefaultState(defaultBlockState()
+                .setValue(FACING, Direction.NORTH)
+                .setValue(FORMED, false)
+                .setValue(WORKING, false));
     }
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-        builder.add(FACING, FORMED);
+        builder.add(FACING, FORMED, WORKING);
     }
 
     @Nullable

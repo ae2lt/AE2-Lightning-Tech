@@ -1,6 +1,8 @@
 package com.moakiee.ae2lt.client;
 
 import com.moakiee.ae2lt.AE2LightningTech;
+import com.moakiee.ae2lt.client.core.MatrixCoreEffectRenderer;
+import com.moakiee.ae2lt.client.core.TianshuCoreEffectRenderer;
 import com.moakiee.ae2lt.registry.ModEntities;
 import com.moakiee.ae2lt.registry.ModBlockEntities;
 import net.minecraft.client.resources.model.ModelResourceLocation;
@@ -37,6 +39,12 @@ public final class ModEntityRenderers {
         event.registerBlockEntityRenderer(
                 ModBlockEntities.PIGMEE_MOLECULAR_ASSEMBLER.get(),
                 PigmeeMolecularAssemblerRenderer::new);
+        event.registerBlockEntityRenderer(
+                ModBlockEntities.MATRIX_CONTROLLER.get(),
+                MatrixCoreEffectRenderer::new);
+        event.registerBlockEntityRenderer(
+                ModBlockEntities.TIANSHU_SUPERCOMPUTER_CONTROLLER.get(),
+                TianshuCoreEffectRenderer::new);
     }
 
     @SubscribeEvent

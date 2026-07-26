@@ -135,6 +135,7 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
                                   TianshuSupercomputerControllerBlockEntity controller) {
         if (!controller.persistentStateOwner) {
             if (controller.formed) controller.deform();
+            controller.syncWorkingState();
             return;
         }
         if ((controller.formed || controller.waitingForChunks)
@@ -156,6 +157,7 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
             controller.persistRuntimeStateIfChanged();
             controller.refreshClosedLoopProviderForDependencyChanges(port);
         }
+        controller.syncWorkingState();
     }
 
     public boolean isFormed() {
@@ -643,11 +645,31 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
     private void syncControllerState() {
         BlockState state = getBlockState();
         boolean activeFormed = isFormed();
-        if (state.getValue(TianshuSupercomputerControllerBlock.FORMED) != activeFormed) {
-            level.setBlock(worldPosition, state.setValue(
-                    TianshuSupercomputerControllerBlock.FORMED, activeFormed), Block.UPDATE_CLIENTS);
+        boolean activeWorking = activeFormed && hasActiveCpuTasks();
+        if (state.getValue(TianshuSupercomputerControllerBlock.FORMED) != activeFormed
+                || state.getValue(TianshuSupercomputerControllerBlock.WORKING) != activeWorking) {
+            level.setBlock(
+                    worldPosition,
+                    state.setValue(TianshuSupercomputerControllerBlock.FORMED, activeFormed)
+                            .setValue(TianshuSupercomputerControllerBlock.WORKING, activeWorking),
+                    Block.UPDATE_CLIENTS);
         }
         setChanged();
+    }
+
+    private void syncWorkingState() {
+        BlockState state = getBlockState();
+        boolean activeWorking = isFormed() && hasActiveCpuTasks();
+        if (state.getValue(TianshuSupercomputerControllerBlock.WORKING) != activeWorking) {
+            level.setBlock(
+                    worldPosition,
+                    state.setValue(TianshuSupercomputerControllerBlock.WORKING, activeWorking),
+                    Block.UPDATE_CLIENTS);
+        }
+    }
+
+    private boolean hasActiveCpuTasks() {
+        return !cpuPool.getActiveCpus().isEmpty();
     }
 
     private void prepareRuntime(TianshuSupercomputerPortBlockEntity port) {

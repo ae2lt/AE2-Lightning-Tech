@@ -10,6 +10,7 @@ public final class AE2LTClientConfig {
     private static final ModConfigSpec.EnumValue<TianshuUploadTrigger> TIANSHU_UPLOAD_TRIGGER;
     private static final ModConfigSpec.BooleanValue TIANSHU_INTERCEPT_DUPLICATE_ENCODING;
     private static final ModConfigSpec.ConfigValue<List<? extends String>> TIANSHU_UPLOAD_ALIASES;
+    private static final ModConfigSpec.BooleanValue RENDER_MULTIBLOCK_CORE_EFFECTS;
 
     static {
         var builder = new ModConfigSpec.Builder();
@@ -26,6 +27,11 @@ public final class AE2LTClientConfig {
                         value -> value instanceof String text
                                 && text.length() <= 512
                                 && text.indexOf('=') > 0);
+        builder.pop();
+        builder.push("rendering");
+        RENDER_MULTIBLOCK_CORE_EFFECTS = builder
+                .comment("Render formed Tianshu and matter-warping core effects")
+                .define("multiblockCoreEffects", true);
         builder.pop();
         SPEC = builder.build();
     }
@@ -45,6 +51,10 @@ public final class AE2LTClientConfig {
 
     public static boolean interceptDuplicatePatternEncoding() {
         return TIANSHU_INTERCEPT_DUPLICATE_ENCODING.get();
+    }
+
+    public static boolean renderMultiblockCoreEffects() {
+        return RENDER_MULTIBLOCK_CORE_EFFECTS.get();
     }
 
     public static void setInterceptDuplicatePatternEncoding(boolean enabled) {

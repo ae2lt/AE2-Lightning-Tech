@@ -99,6 +99,13 @@ versionRange = "*"
 ordering = "BEFORE"
 side = "BOTH"
 
+[[dependencies."${mod_id}"]]
+modId = "veil"
+type = "required"
+versionRange = "[4.3.0,5.0.0)"
+ordering = "AFTER"
+side = "CLIENT"
+
 # Thunderbolt Core hosts the extracted AE2 infrastructure (fast crafting planner, channel/batch/cell/
 # matrix algorithms). Required: ae2lt's mixins and logic depend on its classes at runtime.
 [[dependencies."${mod_id}"]]

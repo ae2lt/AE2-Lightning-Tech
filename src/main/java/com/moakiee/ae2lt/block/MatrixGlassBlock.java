@@ -40,7 +40,13 @@ public class MatrixGlassBlock extends MatrixFormedBlock {
 
     @Override
     protected boolean skipRendering(BlockState state, BlockState adjacentState, Direction side) {
-        return adjacentState.getBlock() instanceof MatrixGlassBlock;
+        boolean facesHiddenCore = state.getValue(FORMED)
+                && adjacentState.hasProperty(MatrixFormedBlock.FORMED)
+                && adjacentState.getValue(MatrixFormedBlock.FORMED)
+                && adjacentState.getBlock() instanceof MatrixMultiblockComponentBlock componentBlock
+                && (componentBlock.matrixComponent(adjacentState).isMainCore()
+                        || componentBlock.matrixComponent(adjacentState).isCraftingUnit());
+        return adjacentState.getBlock() instanceof MatrixGlassBlock || facesHiddenCore;
     }
 
     @Override

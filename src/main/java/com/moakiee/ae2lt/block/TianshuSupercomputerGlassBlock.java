@@ -12,7 +12,13 @@ public class TianshuSupercomputerGlassBlock extends TianshuSupercomputerStructur
 
     @Override
     protected boolean skipRendering(BlockState state, BlockState adjacentState, Direction side) {
-        return adjacentState.is(this) || super.skipRendering(state, adjacentState, side);
+        boolean facesHiddenCore = state.getValue(FORMED)
+                && adjacentState.getBlock() instanceof TianshuSupercomputingUnitBlock
+                && adjacentState.hasProperty(TianshuSupercomputingUnitBlock.FORMED)
+                && adjacentState.getValue(TianshuSupercomputingUnitBlock.FORMED);
+        return adjacentState.is(this)
+                || facesHiddenCore
+                || super.skipRendering(state, adjacentState, side);
     }
 
     @Override

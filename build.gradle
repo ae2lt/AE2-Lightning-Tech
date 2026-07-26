@@ -31,6 +31,10 @@ repositories {
         url = "https://maven.theillusivec4.top/"
     }
     maven {
+        name = "BlameJared"
+        url = "https://maven.blamejared.com"
+    }
+    maven {
         url = "https://raw.githubusercontent.com/Fuzss/modresources/main/maven/"
     }
     maven {
@@ -195,6 +199,10 @@ dependencies {
     jdbProbeModPaths.each { runtimeOnly files(it) }
 
     implementation "curse.maven:applied-energistics-2-223794:7027323"
+    implementation("foundry.veil:veil-neoforge-${minecraft_version}:${veil_version}") {
+        exclude group: "maven.modrinth"
+        exclude group: "me.fallenbreath"
+    }
     // The API is embedded so the wireless terminal item remains loadable when the optional
     // AE2WTLib implementation is not installed. This is the integration pattern used by
     // AE2WTLib's other external terminal mods.
