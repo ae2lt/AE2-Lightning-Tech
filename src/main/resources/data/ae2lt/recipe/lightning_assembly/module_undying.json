@@ -10,7 +10,31 @@
     },
     {
       "ingredient": {
+        "item": "ae2lt:hyperdimensional_topological_lattice"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
         "item": "ae2lt:lightning_collapse_matrix"
+      },
+      "count": 16
+    },
+    {
+      "ingredient": {
+        "item": "ae2lt:firmament_essence"
+      },
+      "count": 32
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:golden_apple"
+      },
+      "count": 256
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:echo_shard"
       },
       "count": 64
     },
@@ -18,14 +42,14 @@
       "ingredient": {
         "item": "minecraft:totem_of_undying"
       },
-      "count": 1024
+      "count": 64
     }
   ],
   "result": {
     "id": "ae2lt:module_undying",
     "count": 1
   },
-  "totalEnergy": 64000000,
-  "lightningCost": 256,
+  "totalEnergy": 128000000,
+  "lightningCost": 4096,
   "lightningTier": "extreme_high_voltage"
 }

@@ -12,32 +12,32 @@
       "ingredient": {
         "item": "ae2lt:module_matrix_shield"
       },
-      "count": 2
+      "count": 1
     },
     {
       "ingredient": {
-        "item": "ae2lt:overload_singularity"
+        "item": "ae2lt:lightning_collapse_matrix"
       },
-      "count": 128
+      "count": 16
     },
     {
       "ingredient": {
         "item": "minecraft:amethyst_shard"
       },
-      "count": 1024
+      "count": 512
     },
     {
       "ingredient": {
         "item": "minecraft:shulker_shell"
       },
-      "count": 1024
+      "count": 256
     }
   ],
   "result": {
     "id": "ae2lt:module_phase_shield",
     "count": 1
   },
-  "totalEnergy": 16000000,
-  "lightningCost": 64,
+  "totalEnergy": 64000000,
+  "lightningCost": 256,
   "lightningTier": "extreme_high_voltage"
 }

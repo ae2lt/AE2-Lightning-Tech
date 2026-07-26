@@ -10,28 +10,40 @@
     },
     {
       "ingredient": {
-        "item": "ae2lt:module_phase_shield"
+        "item": "ae2lt:entangled_topological_lattice"
       },
-      "count": 1
-    },
-    {
-      "ingredient": {
-        "item": "ae2lt:module_undying"
-      },
-      "count": 1
+      "count": 16
     },
     {
       "ingredient": {
         "item": "ae2lt:lightning_collapse_matrix"
       },
+      "count": 8
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:lodestone"
+      },
       "count": 64
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:respawn_anchor"
+      },
+      "count": 64
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:heavy_core"
+      },
+      "count": 1
     }
   ],
   "result": {
     "id": "ae2lt:module_phase_lock",
     "count": 1
   },
-  "totalEnergy": 64000000,
-  "lightningCost": 256,
+  "totalEnergy": 112000000,
+  "lightningCost": 2048,
   "lightningTier": "extreme_high_voltage"
 }

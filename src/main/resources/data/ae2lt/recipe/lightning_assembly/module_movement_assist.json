@@ -16,9 +16,9 @@
     },
     {
       "ingredient": {
-        "item": "minecraft:sugar"
+        "item": "minecraft:sculk"
       },
-      "count": 128
+      "count": 32
     },
     {
       "ingredient": {
