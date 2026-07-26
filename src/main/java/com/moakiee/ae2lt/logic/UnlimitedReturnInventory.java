@@ -10,8 +10,9 @@ import appeng.api.storage.AEKeySlotFilter;
 import appeng.helpers.patternprovider.PatternProviderReturnInventory;
 
 /**
- * 18-slot return inventory with unlimited per-type capacity and automatic
- * same-type merging. Replaces the vanilla 9-slot return inventory.
+ * Return inventory (9 slots, or pages*9 for extended providers) with unlimited
+ * per-type capacity and automatic same-type merging. Replaces the vanilla
+ * 9-slot return inventory.
  * <p>
  * Insert-only: extraction is blocked to prevent players from using it
  * as storage. Items leave via {@link #injectIntoNetwork} (AE2 doWork)
@@ -35,10 +36,19 @@ public class UnlimitedReturnInventory extends PatternProviderReturnInventory {
     public static UnlimitedReturnInventory create(Runnable listener,
                                                   @Nullable AEKeySlotFilter filter,
                                                   int slots) {
-        int saved = PatternProviderReturnInventory.NUMBER_OF_SLOTS;
-        PatternProviderReturnInventory.NUMBER_OF_SLOTS = slots;
-        var inv = new UnlimitedReturnInventory(listener);
-        PatternProviderReturnInventory.NUMBER_OF_SLOTS = saved;
+        // AE2's slot count is a global mutable static read by the super constructor.
+        // Guard the write-construct-restore window so a concurrently constructed
+        // provider (integrated-server client thread) can't observe the wrong size.
+        UnlimitedReturnInventory inv;
+        synchronized (PatternProviderReturnInventory.class) {
+            int saved = PatternProviderReturnInventory.NUMBER_OF_SLOTS;
+            PatternProviderReturnInventory.NUMBER_OF_SLOTS = slots;
+            try {
+                inv = new UnlimitedReturnInventory(listener);
+            } finally {
+                PatternProviderReturnInventory.NUMBER_OF_SLOTS = saved;
+            }
+        }
         if (filter != null) {
             inv.setFilter(filter);
         }
