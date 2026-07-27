@@ -87,6 +87,7 @@ import com.moakiee.ae2lt.logic.MachineAdapterRegistry;
 import com.moakiee.thunderbolt.CoreConfig;
 import com.moakiee.thunderbolt.ae2.batch.BatchExecutor;
 import com.moakiee.thunderbolt.ae2.channel.ChannelProviderRegistry;
+import com.moakiee.thunderbolt.ae2.overload.pattern.WrappedPatternDetails;
 import com.moakiee.thunderbolt.core.craft.CraftingCoreRegistry;
 import com.moakiee.ae2lt.logic.railgun.RailgunEnergyBuffer;
 import com.moakiee.ae2lt.celestweave.ArmorEnergyBuffer;
@@ -731,6 +732,10 @@ public class AE2LightningTech {
         BatchExecutor.setBatchEligibleRule(details -> {
             if (details instanceof com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopExpandedPatternDetails) {
                 return details instanceof com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopBatchPatternDetails;
+            }
+            if (details instanceof WrappedPatternDetails wrapped) {
+                return wrapped.wrappedPatternDetails()
+                        instanceof IMolecularAssemblerSupportedPattern;
             }
             return details instanceof IMolecularAssemblerSupportedPattern;
         });

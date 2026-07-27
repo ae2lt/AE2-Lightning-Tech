@@ -40,13 +40,24 @@ public interface MachineAdapter {
     boolean canAccept(ServerLevel level, BlockPos pos, Direction face, IPatternDetails pattern);
 
     /**
+     * Whether this target supports aggregated copies. Dedicated crafting
+     * machines whose {@code pushPattern} call is itself the execution event
+     * should return {@code false} and remain on one-copy dispatch.
+     */
+    default boolean supportsBatch(
+            ServerLevel level, BlockPos pos, Direction face, IPatternDetails pattern) {
+        return true;
+    }
+
+    /**
      * Attempt to push up to {@code maxCopies} copies of the pattern's inputs.
      *
      * @param blocking      if {@code true}, refuse when the target already holds pattern inputs
      * @param patternInputs the union of all input keys (secondary dropped); used only when blocking
      * @param cachedTarget  调用方预取的 target（命中缓存可避免重复 BlockCapability 查询）；
      *                      为 null 时实现需自行解析。仅 generic inventory 路径会用到。
-     * @return a {@link PushResult} containing the number of accepted copies and any overflow items
+     * @return a {@link PushResult} containing the number of copies whose
+     *         ownership was accepted and any provider-owned overflow
      */
     PushResult pushCopies(ServerLevel level, BlockPos pos, Direction face,
                           IPatternDetails pattern, KeyCounter[] inputs, int maxCopies,

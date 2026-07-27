@@ -162,6 +162,12 @@ final class AE2NativeMachineAdapter implements MachineAdapter {
         return pattern.supportsPushInputsToExternalInventory();
     }
 
+    @Override
+    public boolean supportsBatch(
+            ServerLevel level, BlockPos pos, Direction face, IPatternDetails pattern) {
+        return ICraftingMachine.of(level, pos, face) == null;
+    }
+
     // ---- pushCopies -------------------------------------------------------------
 
     @Override
@@ -203,19 +209,38 @@ final class AE2NativeMachineAdapter implements MachineAdapter {
             return PushResult.REJECTED;
         }
 
-        if (!adapterAcceptsAll(target, inputs)) {
+        var plannedInputs = planScaledInputs(pattern, inputs, maxCopies);
+        if (plannedInputs == null || plannedInputs.isEmpty()) {
+            return PushResult.REJECTED;
+        }
+
+        if (!adapterAcceptsAll(target, plannedInputs)) {
             return PushResult.REJECTED;
         }
 
         var overflow = new ArrayList<GenericStack>();
-        pattern.pushInputsToExternalInventory(inputs, (what, amount) -> {
-            var inserted = target.insert(what, amount, Actionable.MODULATE);
-            if (inserted < amount) {
-                overflow.add(new GenericStack(what, amount - inserted));
+        boolean insertedAny = false;
+        for (int i = 0; i < plannedInputs.size(); i++) {
+            var input = plannedInputs.get(i);
+            long inserted = target.insert(input.what(), input.amount(), Actionable.MODULATE);
+            if (inserted > 0) {
+                insertedAny = true;
             }
-        });
+            if (inserted < input.amount()) {
+                if (!insertedAny) {
+                    // No ownership moved yet. Let the CPU keep the complete
+                    // candidate batch instead of parking it in overflow.
+                    return PushResult.REJECTED;
+                }
+                overflow.add(new GenericStack(input.what(), input.amount() - inserted));
+                for (int remaining = i + 1; remaining < plannedInputs.size(); remaining++) {
+                    overflow.add(plannedInputs.get(remaining));
+                }
+                break;
+            }
+        }
 
-        return new PushResult(1, overflow);
+        return insertedAny ? new PushResult(maxCopies, overflow) : PushResult.REJECTED;
     }
 
     // ---- extractOutputs ---------------------------------------------------------
@@ -282,12 +307,33 @@ final class AE2NativeMachineAdapter implements MachineAdapter {
         return machine;
     }
 
-    private static boolean adapterAcceptsAll(PatternProviderTarget target, KeyCounter[] inputHolder) {
-        for (var inputList : inputHolder) {
-            for (var input : inputList) {
-                if (target.insert(input.getKey(), input.getLongValue(), Actionable.SIMULATE) == 0) {
-                    return false;
+    @Nullable
+    private static List<GenericStack> planScaledInputs(
+            IPatternDetails pattern, KeyCounter[] inputHolder, int copies) {
+        if (copies <= 0) {
+            return null;
+        }
+
+        var planned = new ArrayList<GenericStack>();
+        try {
+            pattern.pushInputsToExternalInventory(inputHolder, (what, amount) -> {
+                long scaled = Math.multiplyExact(amount, (long) copies);
+                if (scaled > 0) {
+                    planned.add(new GenericStack(what, scaled));
                 }
+            });
+        } catch (ArithmeticException ignored) {
+            // Scaling must be proven safe before the first external mutation.
+            return null;
+        }
+        return planned;
+    }
+
+    private static boolean adapterAcceptsAll(
+            PatternProviderTarget target, List<GenericStack> plannedInputs) {
+        for (var input : plannedInputs) {
+            if (target.insert(input.what(), input.amount(), Actionable.SIMULATE) == 0) {
+                return false;
             }
         }
         return true;
