@@ -1,11 +1,52 @@
 package com.moakiee.ae2lt.config;
 
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
 import com.moakiee.ae2lt.blockentity.ExtendedPatternProviderCapacity;
 
+import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
 public final class AE2LTCommonConfig {
     public static final int CURRENT_CONFIG_VERSION = 3;
+    private static final List<String> DEFAULT_EASTER_EGG_WEIGHTS = List.of(
+            "avaritia:infinity_ingot=1200",
+            "mekanism_extras:qio_drive_singularity=1200",
+            "modern_industrialization:quantum_upgrade=1200",
+            "bigreactors:inanite_block=776",
+            "draconicevolution:chaotic_core=760",
+            "occultism:celestial_chalice=744",
+            "appflux:core_256m=460",
+            "advanced_ae:data_entangler=455",
+            "advanced_ae:quantum_multi_threader=445",
+            "megacells:cell_component_256m=440",
+            "ae2omnicells:quantum_omni_cell_component_256m=435",
+            "mekanism_extras:infinite_induction_cell=415",
+            "mekanism_extras:infinite_induction_provider=415",
+            "mekanism:pellet_antimatter=252",
+            "mekanism_extras:infinite_control_circuit=240",
+            "ars_nouveau:wilden_tribute=204",
+            "minecraft:elytra=138",
+            "minecraft:heavy_core=132",
+            "minecraft:dragon_head=114",
+            "ae2:256k_crafting_storage=98",
+            "mekanism:ultimate_induction_cell=76",
+            "mekanism:ultimate_induction_provider=76",
+            "pneumaticcraft:micromissiles=72",
+            "minecraft:dragon_egg=54",
+            "minecraft:heart_of_the_sea=40",
+            "minecraft:echo_shard=36",
+            "minecraft:nether_star=32",
+            "minecraft:torchflower=8",
+            "minecraft:recovery_compass=7",
+            "minecraft:slime_ball=4");
+    private static final Set<ResourceLocation> DEFAULT_EASTER_EGG_CANDIDATE_IDS = Set.copyOf(
+            DEFAULT_EASTER_EGG_WEIGHTS.stream()
+                    .map(entry -> ResourceLocation.parse(entry.substring(0, entry.lastIndexOf('='))))
+                    .toList());
 
     public static final ModConfigSpec SPEC;
 
@@ -32,8 +73,40 @@ public final class AE2LTCommonConfig {
         return VALUES.overloadTntEnableTerrainDamage.get();
     }
 
-    public static boolean overloadTntEnableMysteriousCellEasterEgg() {
-        return VALUES.overloadTntEnableMysteriousCellEasterEgg.get();
+    public static boolean easterEggEnabled() {
+        return VALUES.easterEggEnabled.get();
+    }
+
+    public static String easterEggItem() {
+        return VALUES.easterEggItem.get();
+    }
+
+    public static int easterEggWeight() {
+        return VALUES.easterEggWeight.get();
+    }
+
+    public static Map<ResourceLocation, Integer> easterEggWeights() {
+        Map<ResourceLocation, Integer> parsed = new LinkedHashMap<>();
+        for (String entry : VALUES.easterEggWeights.get()) {
+            int separator = entry.lastIndexOf('=');
+            if (separator <= 0 || separator == entry.length() - 1) {
+                continue;
+            }
+            ResourceLocation id = ResourceLocation.tryParse(entry.substring(0, separator).strip());
+            if (id == null) {
+                continue;
+            }
+            try {
+                parsed.put(id, Integer.parseInt(entry.substring(separator + 1).strip()));
+            } catch (NumberFormatException ignored) {
+                // The config spec rejects malformed entries; keep this tolerant for live reloads.
+            }
+        }
+        return Map.copyOf(parsed);
+    }
+
+    public static boolean isDefaultEasterEggCandidate(ResourceLocation id) {
+        return DEFAULT_EASTER_EGG_CANDIDATE_IDS.contains(id);
     }
 
     public static int overloadTntGlobalBlockBudgetPerTick() {
@@ -252,7 +325,10 @@ public final class AE2LTCommonConfig {
         private final ModConfigSpec.IntValue lightningCollectorCooldownTicks;
         private final ModConfigSpec.IntValue electroChimeMaxCatalysis;
         private final ModConfigSpec.BooleanValue overloadTntEnableTerrainDamage;
-        private final ModConfigSpec.BooleanValue overloadTntEnableMysteriousCellEasterEgg;
+        private final ModConfigSpec.BooleanValue easterEggEnabled;
+        private final ModConfigSpec.ConfigValue<String> easterEggItem;
+        private final ModConfigSpec.IntValue easterEggWeight;
+        private final ModConfigSpec.ConfigValue<List<? extends String>> easterEggWeights;
         private final ModConfigSpec.IntValue overloadTntGlobalBlockBudgetPerTick;
         private final ModConfigSpec.IntValue overloadTntGlobalLightningBudgetPerTick;
         private final ModConfigSpec.BooleanValue shulkerBulletCollectionEnabled;
@@ -400,15 +476,31 @@ public final class AE2LTCommonConfig {
             overloadTntEnableTerrainDamage = builder
                     .comment("Controls whether overload TNT can damage terrain with the custom blast task.")
                     .define("enableTerrainDamage", true);
-            overloadTntEnableMysteriousCellEasterEgg = builder
-                    .comment("Controls whether overload TNT can consume a Lightning Collapse Matrix to drop a Mysterious Cell.")
-                    .define("enableMysteriousCellEasterEgg", true);
             overloadTntGlobalBlockBudgetPerTick = builder
                     .comment("Maximum blocks processed per tick across all overload TNT tasks.")
                     .defineInRange("globalBlockBudgetPerTick", 2400, 0, Integer.MAX_VALUE);
             overloadTntGlobalLightningBudgetPerTick = builder
                     .comment("Maximum lightning strikes processed per tick across all overload TNT tasks.")
                     .defineInRange("globalLightningBudgetPerTick", 8, 0, Integer.MAX_VALUE);
+            builder.pop();
+
+            builder.push("easterEgg");
+            easterEggEnabled = builder
+                    .comment("Enables easter eggs.")
+                    .define("enabled", true);
+            easterEggItem = builder
+                    .comment("Easter egg item id.")
+                    .define("eastereggitem", "ae2lt:lightning_collapse_matrix",
+                            value -> value instanceof String text && ResourceLocation.tryParse(text) != null);
+            easterEggWeight = builder
+                    .comment("Easter egg weight.")
+                    .defineInRange("eastereggweight", 50, 0, 10000);
+            easterEggWeights = builder
+                    .comment("Easter egg weights. Format: item_id=weight.")
+                    .defineListAllowEmpty(
+                            "eastereggweights",
+                            DEFAULT_EASTER_EGG_WEIGHTS,
+                            AE2LTCommonConfig::isEasterEggWeightEntry);
             builder.pop();
 
             builder.push("floatingMatter");
@@ -680,6 +772,23 @@ public final class AE2LTCommonConfig {
                     .defineInRange("cleanupBatchSize", 128, 1, Integer.MAX_VALUE);
             builder.pop();
             builder.pop();
+        }
+    }
+
+    private static boolean isEasterEggWeightEntry(Object value) {
+        if (!(value instanceof String text)) {
+            return false;
+        }
+        int separator = text.lastIndexOf('=');
+        if (separator <= 0 || separator == text.length() - 1
+                || ResourceLocation.tryParse(text.substring(0, separator).strip()) == null) {
+            return false;
+        }
+        try {
+            int weight = Integer.parseInt(text.substring(separator + 1).strip());
+            return weight >= 1 && weight <= 1_000_000;
+        } catch (NumberFormatException ignored) {
+            return false;
         }
     }
 }

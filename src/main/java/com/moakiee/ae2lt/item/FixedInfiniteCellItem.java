@@ -23,6 +23,7 @@ import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.component.CustomData;
 import net.neoforged.neoforge.server.ServerLifecycleHooks;
 
+import com.moakiee.ae2lt.config.AE2LTCommonConfig;
 import com.moakiee.ae2lt.me.key.LightningKey;
 import com.moakiee.ae2lt.registry.ModFumos;
 import com.moakiee.ae2lt.registry.ModItems;
@@ -156,11 +157,9 @@ public final class FixedInfiniteCellItem extends Item {
     /**
      * 按 seed + 世界种子 hash 出 10000 个 roll 区间,再映射到一个 outcome:
      * <ul>
-     *   <li>roll 0..49 → RESEARCH_NOTE (50/10000, 0.5%, UR 暗门;是 HV/EHV/矩阵/无限存储
-     *       仪式的唯一入口)</li>
-     *   <li>roll 50..2049 → MOAKIEE_FUMO (2000/10000, 20%, 作者彩蛋)</li>
-     *   <li>roll 2050..4049 → CYSTRYSU_FUMO (2000/10000, 20%, 作者彩蛋)</li>
-     *   <li>roll 4050..9999 → LIGHTNING_ROD (5950/10000, 59.5%, R)</li>
+     *   <li>首段 → RESEARCH_NOTE,长度由 common config 的 eastereggweight 决定</li>
+     *   <li>随后两段各 2000 → 两种作者玩偶</li>
+     *   <li>剩余区间 → LIGHTNING_ROD</li>
      * </ul>
      * HIGH_VOLTAGE / EXTREME_HIGH_VOLTAGE / LIGHTNING_COLLAPSE_MATRIX /
      * INFINITE_STORAGE_CELL 全部仅通过研究笔记仪式产出,不再由扭蛋直接抽到。
@@ -169,9 +168,12 @@ public final class FixedInfiniteCellItem extends Item {
         long mixed = (seed.getLeastSignificantBits() ^ worldSeed)
                    ^ (seed.getMostSignificantBits() ^ Long.reverseBytes(worldSeed));
         int roll = Math.floorMod(mixed, 10000);
-        if (roll <= 49) return CellOutcome.RESEARCH_NOTE;
-        if (roll <= 2049) return CellOutcome.MOAKIEE_FUMO;
-        if (roll <= 4049) return CellOutcome.CYSTRYSU_FUMO;
+        int noteEnd = AE2LTCommonConfig.easterEggWeight();
+        int moakieeEnd = Math.min(10000, noteEnd + 2000);
+        int cystrysuEnd = Math.min(10000, moakieeEnd + 2000);
+        if (roll < noteEnd) return CellOutcome.RESEARCH_NOTE;
+        if (roll < moakieeEnd) return CellOutcome.MOAKIEE_FUMO;
+        if (roll < cystrysuEnd) return CellOutcome.CYSTRYSU_FUMO;
         return CellOutcome.LIGHTNING_ROD;
     }
 

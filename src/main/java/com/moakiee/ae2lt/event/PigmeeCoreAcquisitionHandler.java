@@ -1,6 +1,7 @@
 package com.moakiee.ae2lt.event;
 
 import com.moakiee.ae2lt.AE2LightningTech;
+import com.moakiee.ae2lt.registry.ModBlocks;
 import com.moakiee.ae2lt.registry.ModItems;
 
 import net.minecraft.core.particles.ParticleTypes;
@@ -14,7 +15,8 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
 
 /**
- * Turns an adult pig struck by a falling anvil into the reusable Pigmee crafting core.
+ * Turns an adult pig standing on an Overload Crystal Block and struck by a falling anvil into the
+ * reusable Pigmee crafting core.
  *
  * <p>This intercepts the incoming damage instead of waiting for normal death, so the conversion
  * has exactly one output and cannot also emit pork or Looting-scaled drops.
@@ -30,6 +32,7 @@ public final class PigmeeCoreAcquisitionHandler {
                 || pig.isBaby()
                 || pig.isRemoved()
                 || !event.getSource().is(DamageTypes.FALLING_ANVIL)
+                || !isAnvilLandingOnOverloadCrystal(pig)
                 || !(pig.level() instanceof ServerLevel level)) {
             return;
         }
@@ -57,5 +60,11 @@ public final class PigmeeCoreAcquisitionHandler {
                 pig.getBbHeight() * 0.25D,
                 pig.getBbWidth() * 0.25D,
                 0.02D);
+    }
+
+    private static boolean isAnvilLandingOnOverloadCrystal(Pig pig) {
+        // Once the pig is converted, the falling anvil occupies its space and lands on the same
+        // supporting surface. Requiring that surface here makes the impact itself the trigger.
+        return pig.getBlockStateOn().is(ModBlocks.OVERLOAD_CRYSTAL_BLOCK.get());
     }
 }

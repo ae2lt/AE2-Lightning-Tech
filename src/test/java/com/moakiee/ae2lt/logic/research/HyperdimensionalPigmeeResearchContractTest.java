@@ -18,12 +18,13 @@ class HyperdimensionalPigmeeResearchContractTest {
         assertTrue(generator.contains("item(\"module_undying\")"));
         assertTrue(generator.contains("item(\"module_phase_lock\")"));
         assertTrue(generator.contains("private static final int RANDOM_ITEM_COUNT = 6"));
-        assertTrue(generator.contains("RANDOM_CANDIDATES"));
+        assertTrue(generator.contains("AE2LTCommonConfig.easterEggWeights()"));
+        assertTrue(generator.contains("configuredAvailableCandidates()"));
         assertTrue(generator.contains("weightedPickAvailable(RANDOM_ITEM_COUNT, random)"));
         assertTrue(generator.contains("shuffle(randomSelected, random)"));
         assertTrue(generator.contains("selected.addAll(randomSelected)"));
         assertFalse(generator.contains("shuffle(selected, random)"));
-        assertTrue(generator.contains("candidate(\"minecraft\", \"nether_star\""));
+        assertFalse(generator.contains("RANDOM_CANDIDATES"));
     }
 
     @Test

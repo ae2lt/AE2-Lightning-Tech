@@ -4,7 +4,8 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
 /**
- * Reusable catalyst obtained by dropping an anvil onto an adult pig.
+ * Reusable catalyst obtained by dropping an anvil onto an adult pig standing on an Overload
+ * Crystal Block.
  *
  * <p>The stack-sensitive remainder API is shared by vanilla crafting, AE2 pattern decoding and
  * Thunderbolt batch dispatch. Returning the exact input stack therefore lets one core serve an

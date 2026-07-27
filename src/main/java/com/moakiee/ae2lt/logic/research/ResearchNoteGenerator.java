@@ -4,10 +4,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import com.moakiee.ae2lt.config.AE2LTCommonConfig;
+
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.Items;
 
@@ -25,43 +26,11 @@ public final class ResearchNoteGenerator {
             item("module_undying"),
             item("module_phase_lock"));
 
-    private static final List<Candidate> RANDOM_CANDIDATES = List.of(
-            candidate("avaritia", "infinity_ingot", Tier.SSS, 100),
-            candidate("mekanism_extras", "qio_drive_singularity", Tier.SSS, 99),
-            candidate("modern_industrialization", "quantum_upgrade", Tier.SSS, 98),
-            candidate("bigreactors", "inanite_block", Tier.SS, 95),
-            candidate("draconicevolution", "chaotic_core", Tier.SS, 93),
-            candidate("occultism", "celestial_chalice", Tier.SS, 91),
-            candidate("appflux", "core_256m", Tier.S, 90),
-            candidate("advanced_ae", "data_entangler", Tier.S, 89),
-            candidate("advanced_ae", "quantum_multi_threader", Tier.S, 87),
-            candidate("megacells", "cell_component_256m", Tier.S, 86),
-            candidate("ae2omnicells", "quantum_omni_cell_component_256m", Tier.S, 85),
-            candidate("mekanism_extras", "infinite_induction_cell", Tier.S, 81),
-            candidate("mekanism_extras", "infinite_induction_provider", Tier.S, 81),
-            candidate("mekanism", "pellet_antimatter", Tier.A, 84),
-            candidate("mekanism_extras", "infinite_control_circuit", Tier.A, 80),
-            candidate("ars_nouveau", "wilden_tribute", Tier.A, 68),
-            candidate("minecraft", "elytra", Tier.A, 54),
-            candidate("minecraft", "heavy_core", Tier.A, 52),
-            candidate("minecraft", "dragon_head", Tier.A, 46),
-            candidate("ae2", "256k_crafting_storage", Tier.B, 49),
-            candidate("mekanism", "ultimate_induction_cell", Tier.B, 38),
-            candidate("mekanism", "ultimate_induction_provider", Tier.B, 38),
-            candidate("pneumaticcraft", "micromissiles", Tier.B, 36),
-            candidate("minecraft", "dragon_egg", Tier.B, 35),
-            candidate("minecraft", "heart_of_the_sea", Tier.B, 28),
-            candidate("minecraft", "echo_shard", Tier.B, 26),
-            candidate("minecraft", "nether_star", Tier.B, 24),
-            candidate("minecraft", "torchflower", Tier.C, 16),
-            candidate("minecraft", "recovery_compass", Tier.C, 15),
-            candidate("minecraft", "slime_ball", Tier.C, 12));
-
     private ResearchNoteGenerator() {
     }
 
     public static boolean hasValidPool() {
-        return RANDOM_CANDIDATES.stream().filter(ResearchNoteGenerator::isAvailable).count() >= RANDOM_ITEM_COUNT;
+        return configuredAvailableCandidates().size() >= RANDOM_ITEM_COUNT;
     }
 
     public static ResearchNoteData generate(ServerLevel level) {
@@ -91,17 +60,17 @@ public final class ResearchNoteGenerator {
     }
 
     private static List<Candidate> weightedPickAvailable(int count, RandomSource random) {
-        List<Candidate> pool = RANDOM_CANDIDATES.stream()
-                .filter(ResearchNoteGenerator::isAvailable)
-                .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
+        List<Candidate> pool = new ArrayList<>(configuredAvailableCandidates());
         List<Candidate> picked = new ArrayList<>(count);
         while (picked.size() < count && !pool.isEmpty()) {
-            int totalWeight = pool.stream().mapToInt(Candidate::effectiveWeight).sum();
-            int roll = random.nextInt(totalWeight);
-            int cursor = 0;
+            long totalWeight = pool.stream()
+                    .mapToLong(Candidate::weight)
+                    .sum();
+            long roll = Math.floorMod(random.nextLong(), totalWeight);
+            long cursor = 0L;
             for (int i = 0; i < pool.size(); i++) {
                 Candidate candidate = pool.get(i);
-                cursor += candidate.effectiveWeight();
+                cursor += candidate.weight();
                 if (roll < cursor) {
                     picked.add(candidate);
                     pool.remove(i);
@@ -110,6 +79,13 @@ public final class ResearchNoteGenerator {
             }
         }
         return picked;
+    }
+
+    private static List<Candidate> configuredAvailableCandidates() {
+        return AE2LTCommonConfig.easterEggWeights().entrySet().stream()
+                .map(entry -> new Candidate(entry.getKey(), entry.getValue()))
+                .filter(ResearchNoteGenerator::isAvailable)
+                .toList();
     }
 
     private static boolean isAvailable(Candidate candidate) {
@@ -142,47 +118,16 @@ public final class ResearchNoteGenerator {
         return ResourceLocation.fromNamespaceAndPath("ae2lt", path);
     }
 
-    private static Candidate candidate(String namespace, String path, Tier tier, int baseWeight) {
-        return new Candidate(ResourceLocation.fromNamespaceAndPath(namespace, path), tier, baseWeight);
-    }
-
     private record SelectedItem(ResourceLocation id, String descriptionKey) {
     }
 
-    private record Candidate(ResourceLocation id, Tier tier, int baseWeight) {
-        private int effectiveWeight() {
-            int weight = baseWeight;
-            if ("minecraft".equals(id.getNamespace())) {
-                weight -= 8;
-            }
-            if (tier.isHighTier() && !"minecraft".equals(id.getNamespace())) {
-                weight += 2;
-            }
-            return Mth.clamp(weight, 1, 100) * tier.multiplier;
-        }
-
+    private record Candidate(ResourceLocation id, int weight) {
         private String pickDescriptionKey(RandomSource random) {
+            if (!AE2LTCommonConfig.isDefaultEasterEggCandidate(id)) {
+                return itemTranslationKey(id);
+            }
             return "ae2lt.research_note.desc." + id.getNamespace() + "."
                     + id.getPath().replace('/', '.') + "." + random.nextInt(2);
-        }
-    }
-
-    private enum Tier {
-        SSS(12),
-        SS(8),
-        S(5),
-        A(3),
-        B(2),
-        C(1);
-
-        private final int multiplier;
-
-        Tier(int multiplier) {
-            this.multiplier = multiplier;
-        }
-
-        private boolean isHighTier() {
-            return this == SSS || this == SS || this == S;
         }
     }
 }

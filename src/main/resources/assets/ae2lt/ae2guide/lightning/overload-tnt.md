@@ -39,10 +39,9 @@ Overload TNT respects cleanup safeguards: **bedrock, barrier blocks, end portal 
 
 ## Configuration and Disabling
 
-Two independent options under `overloadTnt` in `ae2lt-common.toml` control the detonation:
-
-* `enableTerrainDamage` (default **enabled**) controls the normal blast. When disabled, its lightning rain, terrain searing, thunderstorm, and mob damage are skipped.
-* `enableMysteriousCellEasterEgg` (default **enabled**) controls the anomalous reaction. A dropped Lightning Collapse Matrix nearby takes priority over the normal blast, independently of the terrain-damage option.
+`overloadTnt.enableTerrainDamage` in `ae2lt-common.toml` controls the normal blast and is
+**enabled** by default. When disabled, its lightning rain, terrain searing, thunderstorm, and mob
+damage are skipped.
 
 ## Usage Tips
 

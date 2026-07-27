@@ -39,10 +39,8 @@ item_ids:
 
 ## 配置与关闭
 
-配置 `ae2lt-common.toml` 中有两个相互独立的开关：
-
-* `overloadTnt.enableTerrainDamage`（默认**开启**）控制常规引爆：开启时执行闪电轰击、地表烧灼、雷暴与生物伤害；关闭时跳过这些效果。
-* `overloadTnt.enableMysteriousCellEasterEgg`（默认**开启**）控制异常反应。若附近存在掉落状态的闪电坍缩矩阵，该反应会优先于常规引爆，并且不受地形破坏开关影响。
+`ae2lt-common.toml` 中的 `overloadTnt.enableTerrainDamage`（默认**开启**）控制常规引爆：
+开启时执行闪电轰击、地表烧灼、雷暴与生物伤害；关闭时跳过这些效果。
 
 ## 使用建议
 
