@@ -802,6 +802,7 @@ public class CrystalCatalyzerBlockEntity extends AENetworkedBlockEntity
                                @org.jetbrains.annotations.Nullable Player player) {
         super.exportSettings(mode, builder, player);
         MemoryCardConfigSupport.exportAutoExportSettings(mode, builder, autoExport, allowedOutputs, tag -> {
+            MemoryCardConfigSupport.writeEnum(tag, TAG_MODE, this.mode);
             FrequencyBindingHelper.writeMemoryFrequency(tag, getFrequencyId());
             MemoryCardConfigSupport.writeMatrixCount(tag, this);
         });
@@ -816,6 +817,12 @@ public class CrystalCatalyzerBlockEntity extends AENetworkedBlockEntity
                 v -> this.autoExport = v,
                 sides -> this.allowedOutputs = sides,
                 tag -> {
+                    Mode importedMode = MemoryCardConfigSupport.readEnum(
+                            tag, TAG_MODE, Mode.class, this.mode);
+                    if (this.mode != importedMode) {
+                        this.mode = importedMode;
+                        abortProcessing();
+                    }
                     FrequencyBindingHelper.importMemoryFrequency(tag, this::setFrequency);
                     MemoryCardConfigSupport.restoreMatrixCount(tag, player, this);
                 },
@@ -823,6 +830,7 @@ public class CrystalCatalyzerBlockEntity extends AENetworkedBlockEntity
                     exportTargetCache.invalidate();
                     saveChanges();
                     markForClientUpdate();
+                    logic.onStateChanged();
                 });
     }
 

@@ -460,7 +460,8 @@ public class TeslaCoilBlockEntity extends AENetworkedBlockEntity
             FrequencyBindingHelper.importMemoryFrequency(tag, this::setFrequency);
             MemoryCardConfigSupport.restoreMatrixCount(tag, player, this);
             saveChanges();
-            markForUpdate();
+            markForClientUpdate();
+            logic.onStateChanged();
         });
     }
 
