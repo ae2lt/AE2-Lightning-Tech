@@ -84,7 +84,9 @@ import com.moakiee.ae2lt.me.cell.BulkLightningCellHandler;
 import com.moakiee.ae2lt.me.cell.FixedInfiniteCellHandler;
 
 import com.moakiee.ae2lt.logic.MachineAdapterRegistry;
+import com.moakiee.thunderbolt.CoreConfig;
 import com.moakiee.thunderbolt.ae2.batch.BatchExecutor;
+import com.moakiee.thunderbolt.ae2.channel.ChannelProviderRegistry;
 import com.moakiee.thunderbolt.core.craft.CraftingCoreRegistry;
 import com.moakiee.ae2lt.logic.railgun.RailgunEnergyBuffer;
 import com.moakiee.ae2lt.logic.research.ResearchNoteGenerator;
@@ -734,6 +736,14 @@ public class AE2LightningTech {
             return details instanceof IMolecularAssemblerSupportedPattern;
         });
         event.enqueueWork(() -> {
+            // Thunderbolt keeps controller discovery content-agnostic. Register the
+            // AE2LT controller family before any grid can be created so infinite
+            // channel mode can use AE2's native pathing with these nodes as roots.
+            // Registering the base class also covers both wireless subclasses.
+            ChannelProviderRegistry.registerController(OverloadedControllerBlockEntity.class);
+            CoreConfig.setChannelsPerController(
+                    AE2LTCommonConfig.overloadedControllerChannelsPerController());
+
             var lightningCollectorBlock = ModBlocks.LIGHTNING_COLLECTOR.get();
             var lightningCollectorBeType = ModBlockEntities.LIGHTNING_COLLECTOR.get();
             lightningCollectorBlock.setBlockEntity(
