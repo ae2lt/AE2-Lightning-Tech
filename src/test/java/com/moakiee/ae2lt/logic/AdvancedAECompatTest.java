@@ -1,0 +1,89 @@
+package com.moakiee.ae2lt.logic;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import appeng.api.crafting.IPatternDetails;
+import appeng.api.stacks.AEItemKey;
+import appeng.api.stacks.AEKey;
+import appeng.api.stacks.GenericStack;
+import appeng.api.stacks.KeyCounter;
+import com.moakiee.thunderbolt.ae2.overload.pattern.WrappedPatternDetails;
+import java.util.HashMap;
+import java.util.List;
+import net.minecraft.core.Direction;
+import net.pedroksl.advanced_ae.common.patterns.IAdvPatternDetails;
+import org.junit.jupiter.api.Test;
+
+class AdvancedAECompatTest {
+    @Test
+    void resolvesDirectionsThroughPatternWrappers() {
+        IPatternDetails wrapped = new Wrapper(new DirectionalPattern());
+
+        assertEquals(Direction.NORTH, AdvancedAECompat.getDirectionForKey(wrapped, null));
+    }
+
+    private static final class Wrapper implements IPatternDetails, WrappedPatternDetails {
+        private final IPatternDetails delegate;
+
+        private Wrapper(IPatternDetails delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public IPatternDetails wrappedPatternDetails() {
+            return delegate;
+        }
+
+        @Override
+        public AEItemKey getDefinition() {
+            return delegate.getDefinition();
+        }
+
+        @Override
+        public IInput[] getInputs() {
+            return delegate.getInputs();
+        }
+
+        @Override
+        public List<GenericStack> getOutputs() {
+            return delegate.getOutputs();
+        }
+    }
+
+    private static final class DirectionalPattern implements IPatternDetails, IAdvPatternDetails {
+        @Override
+        public boolean directionalInputsSet() {
+            return true;
+        }
+
+        @Override
+        public HashMap<AEKey, Direction> getDirectionMap() {
+            return new HashMap<>();
+        }
+
+        @Override
+        public Direction getDirectionSideForInputKey(AEKey key) {
+            return Direction.NORTH;
+        }
+
+        @Override
+        public void pushInputsToExternalInventory(
+                KeyCounter[] inputs, PatternInputSink inputSink) {
+        }
+
+        @Override
+        public AEItemKey getDefinition() {
+            return null;
+        }
+
+        @Override
+        public IInput[] getInputs() {
+            return new IInput[0];
+        }
+
+        @Override
+        public List<GenericStack> getOutputs() {
+            return List.of();
+        }
+    }
+}

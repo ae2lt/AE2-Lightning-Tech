@@ -17,7 +17,7 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * Persistent one-shot processing configuration bound to the terminal's current fake-slot draft.
+ * Persistent processing configuration bound to the terminal's current fake-slot draft.
  */
 public record ProcessingPatternTerminalDraft(
         ProcessingPatternEncodingType type,
@@ -25,7 +25,11 @@ public record ProcessingPatternTerminalDraft(
         List<GenericStack> outputs,
         @Nullable AdvancedConfig advancedConfig,
         @Nullable OverloadConfig overloadConfig) implements PacketWritable {
-    private static final int MAX_SLOTS = 64;
+    // AE2's extended processing terminal inventory has 81 inputs and 27 outputs.
+    // Keep the two protocol bounds distinct so a valid full input snapshot is accepted
+    // without also permitting impossible output or configuration payload sizes.
+    private static final int MAX_INPUT_SLOTS = 81;
+    private static final int MAX_OUTPUT_SLOTS = 27;
     private static final String TAG_TYPE = "Type";
     private static final String TAG_INPUT_SIZE = "InputSize";
     private static final String TAG_OUTPUT_SIZE = "OutputSize";
@@ -42,43 +46,33 @@ public record ProcessingPatternTerminalDraft(
 
     public ProcessingPatternTerminalDraft {
         type = Objects.requireNonNull(type, "type");
-        inputs = immutableNullableCopy(inputs, "inputs");
-        outputs = immutableNullableCopy(outputs, "outputs");
-        switch (type) {
-            case NORMAL -> {
-                if (advancedConfig != null || overloadConfig != null) {
-                    throw new IllegalArgumentException("normal processing draft cannot carry configuration");
+        inputs = immutableNullableCopy(inputs, "inputs", MAX_INPUT_SLOTS);
+        outputs = immutableNullableCopy(outputs, "outputs", MAX_OUTPUT_SLOTS);
+        if (type != ProcessingPatternEncodingType.fromConfigs(advancedConfig, overloadConfig)) {
+            throw new IllegalArgumentException("processing draft type does not match configuration");
+        }
+        if (advancedConfig != null) {
+            var directions = advancedConfig.directions();
+            if (directions.length > inputs.size()) {
+                throw new IllegalArgumentException("too many advanced directions");
+            }
+            for (int direction : directions) {
+                if (direction < 0 || direction > 6) {
+                    throw new IllegalArgumentException("invalid advanced direction");
                 }
             }
-            case ADVANCED -> {
-                if (advancedConfig == null || overloadConfig != null) {
-                    throw new IllegalArgumentException("invalid advanced processing draft");
-                }
-                var directions = advancedConfig.directions();
-                if (directions.length > inputs.size()) {
-                    throw new IllegalArgumentException("too many advanced directions");
-                }
-                for (int direction : directions) {
-                    if (direction < 0 || direction > 6) {
-                        throw new IllegalArgumentException("invalid advanced direction");
-                    }
-                }
-            }
-            case OVERLOAD -> {
-                if (advancedConfig != null || overloadConfig == null) {
-                    throw new IllegalArgumentException("invalid overload processing draft");
-                }
-                validateSlots(overloadConfig.inputIdOnly(), inputs.size());
-                validateSlots(overloadConfig.outputIdOnly(), outputs.size());
-            }
+        }
+        if (overloadConfig != null) {
+            validateSlots(overloadConfig.inputIdOnly(), inputs.size());
+            validateSlots(overloadConfig.outputIdOnly(), outputs.size());
         }
     }
 
     public ProcessingPatternTerminalDraft(RegistryFriendlyByteBuf data) {
         this(
                 data.readEnum(ProcessingPatternEncodingType.class),
-                readStacks(data),
-                readStacks(data),
+                readStacks(data, MAX_INPUT_SLOTS, "input size"),
+                readStacks(data, MAX_OUTPUT_SLOTS, "output size"),
                 readAdvancedConfig(data),
                 readOverloadConfig(data));
     }
@@ -99,6 +93,14 @@ public record ProcessingPatternTerminalDraft(
         return new ProcessingPatternTerminalDraft(
                 ProcessingPatternEncodingType.OVERLOAD, inputs, outputs,
                 null, Objects.requireNonNull(config, "config"));
+    }
+
+    public static ProcessingPatternTerminalDraft configured(
+            List<GenericStack> inputs, List<GenericStack> outputs,
+            @Nullable AdvancedConfig advancedConfig, @Nullable OverloadConfig overloadConfig) {
+        return new ProcessingPatternTerminalDraft(
+                ProcessingPatternEncodingType.fromConfigs(advancedConfig, overloadConfig),
+                inputs, outputs, advancedConfig, overloadConfig);
     }
 
     public boolean matches(List<GenericStack> currentInputs, List<GenericStack> currentOutputs) {
@@ -128,21 +130,22 @@ public record ProcessingPatternTerminalDraft(
         try {
             var type = ProcessingPatternEncodingType.valueOf(tag.getString(TAG_TYPE));
             if (type == ProcessingPatternEncodingType.NORMAL) return null;
-            int inputSize = checkedSize(tag.getInt(TAG_INPUT_SIZE));
-            int outputSize = checkedSize(tag.getInt(TAG_OUTPUT_SIZE));
+            int inputSize = checkedSize(
+                    tag.getInt(TAG_INPUT_SIZE), MAX_INPUT_SLOTS, "input size");
+            int outputSize = checkedSize(
+                    tag.getInt(TAG_OUTPUT_SIZE), MAX_OUTPUT_SLOTS, "output size");
             var inputs = readStacks(
                     tag.getList(TAG_INPUTS, Tag.TAG_COMPOUND), inputSize, registries);
             var outputs = readStacks(
                     tag.getList(TAG_OUTPUTS, Tag.TAG_COMPOUND), outputSize, registries);
-            return switch (type) {
-                case ADVANCED -> advanced(
-                        inputs, outputs, new AdvancedConfig(tag.getIntArray(TAG_DIRECTIONS)));
-                case OVERLOAD -> overload(
-                        inputs, outputs, new OverloadConfig(
-                                tag.getIntArray(TAG_INPUT_ID_ONLY),
-                                tag.getIntArray(TAG_OUTPUT_ID_ONLY)));
-                case NORMAL -> null;
-            };
+            var advanced = type.hasAdvanced()
+                    ? new AdvancedConfig(tag.getIntArray(TAG_DIRECTIONS)) : null;
+            var overload = type.hasOverload()
+                    ? new OverloadConfig(
+                            tag.getIntArray(TAG_INPUT_ID_ONLY),
+                            tag.getIntArray(TAG_OUTPUT_ID_ONLY))
+                    : null;
+            return configured(inputs, outputs, advanced, overload);
         } catch (RuntimeException ignored) {
             return null;
         }
@@ -195,8 +198,8 @@ public record ProcessingPatternTerminalDraft(
     }
 
     private static List<GenericStack> immutableNullableCopy(
-            List<GenericStack> stacks, String name) {
-        if (stacks == null || stacks.size() > MAX_SLOTS) {
+            List<GenericStack> stacks, String name, int maxSize) {
+        if (stacks == null || stacks.size() > maxSize) {
             throw new IllegalArgumentException("invalid processing draft " + name);
         }
         return Collections.unmodifiableList(new ArrayList<>(stacks));
@@ -270,8 +273,9 @@ public record ProcessingPatternTerminalDraft(
         for (var stack : stacks) GenericStack.writeBuffer(stack, data);
     }
 
-    private static List<GenericStack> readStacks(RegistryFriendlyByteBuf data) {
-        int size = checkedSize(data.readVarInt());
+    private static List<GenericStack> readStacks(
+            RegistryFriendlyByteBuf data, int maxSize, String name) {
+        int size = checkedSize(data.readVarInt(), maxSize, name);
         var result = new ArrayList<GenericStack>(size);
         for (int i = 0; i < size; i++) result.add(GenericStack.readBuffer(data));
         return result;
@@ -282,8 +286,9 @@ public record ProcessingPatternTerminalDraft(
         for (int value : values) data.writeVarInt(value);
     }
 
-    private static int[] readIntArray(RegistryFriendlyByteBuf data) {
-        int size = checkedSize(data.readVarInt());
+    private static int[] readIntArray(
+            RegistryFriendlyByteBuf data, int maxSize, String name) {
+        int size = checkedSize(data.readVarInt(), maxSize, name);
         var result = new int[size];
         for (int i = 0; i < size; i++) result[i] = data.readVarInt();
         return result;
@@ -291,19 +296,24 @@ public record ProcessingPatternTerminalDraft(
 
     @Nullable
     private static AdvancedConfig readAdvancedConfig(RegistryFriendlyByteBuf data) {
-        return data.readBoolean() ? new AdvancedConfig(readIntArray(data)) : null;
+        return data.readBoolean()
+                ? new AdvancedConfig(readIntArray(
+                        data, MAX_INPUT_SLOTS, "advanced direction count"))
+                : null;
     }
 
     @Nullable
     private static OverloadConfig readOverloadConfig(RegistryFriendlyByteBuf data) {
         return data.readBoolean()
-                ? new OverloadConfig(readIntArray(data), readIntArray(data))
+                ? new OverloadConfig(
+                        readIntArray(data, MAX_INPUT_SLOTS, "overload input slot count"),
+                        readIntArray(data, MAX_OUTPUT_SLOTS, "overload output slot count"))
                 : null;
     }
 
-    private static int checkedSize(int size) {
-        if (size < 0 || size > MAX_SLOTS) {
-            throw new IllegalArgumentException("invalid processing draft size");
+    private static int checkedSize(int size, int maxSize, String name) {
+        if (size < 0 || size > maxSize) {
+            throw new IllegalArgumentException("invalid processing draft " + name);
         }
         return size;
     }

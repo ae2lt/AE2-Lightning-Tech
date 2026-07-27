@@ -416,9 +416,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     public void armAdvancedEncoding(ProcessingPatternEncodingType.AdvancedConfig config) {
         if (config == null) return;
         if (isClientSide()) {
-            processingDraftSync = ProcessingPatternTerminalDraft.advanced(
-                    snapshotProcessingInputs(), snapshotProcessingOutputs(), config);
-            processingEncodingType = ProcessingPatternEncodingType.ADVANCED;
+            updateAdvancedEncodingConfig(config);
             sendClientAction("armAdvancedEncoding", config);
         } else {
             armAdvancedEncodingServer(config);
@@ -431,9 +429,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
                 || !validDirections(config.directions())
                 || !AdvancedAECompat.isLoaded()
                 || tianshuMode != TianshuEncodingMode.PROCESSING) return;
-        processingDraftSync = ProcessingPatternTerminalDraft.advanced(
-                snapshotProcessingInputs(), snapshotProcessingOutputs(), config);
-        processingEncodingType = ProcessingPatternEncodingType.ADVANCED;
+        updateAdvancedEncodingConfig(config);
         persistProcessingDraft();
         broadcastChanges();
     }
@@ -441,9 +437,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     public void armOverloadEncoding(ProcessingPatternEncodingType.OverloadConfig config) {
         if (config == null) return;
         if (isClientSide()) {
-            processingDraftSync = ProcessingPatternTerminalDraft.overload(
-                    snapshotProcessingInputs(), snapshotProcessingOutputs(), config);
-            processingEncodingType = ProcessingPatternEncodingType.OVERLOAD;
+            updateOverloadEncodingConfig(config);
             sendClientAction("armOverloadEncoding", config);
         } else {
             armOverloadEncodingServer(config);
@@ -458,23 +452,47 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
                 || !validSlots(config.inputIdOnly(), getProcessingInputSlots().length)
                 || !validSlots(config.outputIdOnly(), getProcessingOutputSlots().length)
                 || tianshuMode != TianshuEncodingMode.PROCESSING) return;
-        processingDraftSync = ProcessingPatternTerminalDraft.overload(
-                snapshotProcessingInputs(), snapshotProcessingOutputs(), config);
-        processingEncodingType = ProcessingPatternEncodingType.OVERLOAD;
+        updateOverloadEncodingConfig(config);
         persistProcessingDraft();
         broadcastChanges();
     }
 
+    private void updateAdvancedEncodingConfig(
+            ProcessingPatternEncodingType.AdvancedConfig config) {
+        var inputs = snapshotProcessingInputs();
+        var outputs = snapshotProcessingOutputs();
+        var overload = processingDraftSync.matches(inputs, outputs)
+                ? processingDraftSync.overloadConfig() : null;
+        setProcessingDraft(inputs, outputs, config, overload);
+    }
+
+    private void updateOverloadEncodingConfig(
+            ProcessingPatternEncodingType.OverloadConfig config) {
+        var inputs = snapshotProcessingInputs();
+        var outputs = snapshotProcessingOutputs();
+        var advanced = processingDraftSync.matches(inputs, outputs)
+                ? processingDraftSync.advancedConfig() : null;
+        setProcessingDraft(inputs, outputs, advanced, config);
+    }
+
+    private void setProcessingDraft(
+            List<GenericStack> inputs,
+            List<GenericStack> outputs,
+            @Nullable ProcessingPatternEncodingType.AdvancedConfig advanced,
+            @Nullable ProcessingPatternEncodingType.OverloadConfig overload) {
+        processingDraftSync = ProcessingPatternTerminalDraft.configured(
+                inputs, outputs, advanced, overload);
+        processingEncodingType = processingDraftSync.type();
+    }
+
     @Nullable
     public ProcessingPatternEncodingType.AdvancedConfig getAdvancedEncodingConfig() {
-        return processingDraftSync.type() == ProcessingPatternEncodingType.ADVANCED
-                ? processingDraftSync.advancedConfig() : null;
+        return processingDraftSync.advancedConfig();
     }
 
     @Nullable
     public ProcessingPatternEncodingType.OverloadConfig getOverloadEncodingConfig() {
-        return processingDraftSync.type() == ProcessingPatternEncodingType.OVERLOAD
-                ? processingDraftSync.overloadConfig() : null;
+        return processingDraftSync.overloadConfig();
     }
 
     private void resetProcessingEncodingType() {
@@ -511,7 +529,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     private void restoreProcessingDraft(@Nullable ProcessingPatternTerminalDraft draft) {
         if (draft == null) return;
         boolean supported = draft.type() != ProcessingPatternEncodingType.NORMAL
-                && (draft.type() != ProcessingPatternEncodingType.ADVANCED
+                && (!draft.type().hasAdvanced()
                         || AdvancedAECompat.isLoaded());
         if (tianshuMode == TianshuEncodingMode.PROCESSING
                 && supported
@@ -2026,7 +2044,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
             boolean stagedNetworkBlank = stageNetworkBlankPattern();
             try {
                 super.encode();
-                applyOneShotProcessingConversion();
+                applyConfiguredProcessingConversion();
                 var encoded = tianshuHost.getLogic().getEncodedPatternInv().getStackInSlot(0);
                 if (TianshuPatternUploadRouting.isValidEncodingResult(encoded, getPlayer().level())) {
                     triggeredUploadAck++;
@@ -2064,11 +2082,8 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
                 || processingEncodingType == ProcessingPatternEncodingType.NORMAL) {
             return candidate == null ? ItemStack.EMPTY : candidate;
         }
-        var converted = switch (processingEncodingType) {
-            case ADVANCED -> convertToAdvanced(candidate, getAdvancedEncodingConfig());
-            case OVERLOAD -> convertToOverload(candidate, getOverloadEncodingConfig());
-            case NORMAL -> null;
-        };
+        var converted = convertConfiguredProcessingPattern(
+                candidate, getAdvancedEncodingConfig(), getOverloadEncodingConfig());
         return converted == null || converted.isEmpty() ? candidate : converted;
     }
 
@@ -2136,25 +2151,37 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         return encodeSelectedClosedLoopCandidate();
     }
 
-    /** Consumes the armed one-shot configuration and converts the freshly encoded pattern. */
-    private void applyOneShotProcessingConversion() {
+    /** Applies the persistent processing configuration to the freshly encoded pattern. */
+    private void applyConfiguredProcessingConversion() {
         if (tianshuMode != TianshuEncodingMode.PROCESSING
                 || processingEncodingType == ProcessingPatternEncodingType.NORMAL) return;
-        var type = processingEncodingType;
         var advancedConfig = getAdvancedEncodingConfig();
         var overloadConfig = getOverloadEncodingConfig();
-        resetProcessingEncodingType();
         var inventory = tianshuHost.getLogic().getEncodedPatternInv();
         var source = inventory.getStackInSlot(0);
         if (source.isEmpty()) return;
-        var converted = switch (type) {
-            case ADVANCED -> convertToAdvanced(source, advancedConfig);
-            case OVERLOAD -> convertToOverload(source, overloadConfig);
-            case NORMAL -> null;
-        };
+        var converted = convertConfiguredProcessingPattern(
+                source, advancedConfig, overloadConfig);
         if (converted != null && !converted.isEmpty()) {
             inventory.setItemDirect(0, converted);
         }
+    }
+
+    @Nullable
+    private ItemStack convertConfiguredProcessingPattern(
+            ItemStack source,
+            @Nullable ProcessingPatternEncodingType.AdvancedConfig advancedConfig,
+            @Nullable ProcessingPatternEncodingType.OverloadConfig overloadConfig) {
+        ItemStack converted = source;
+        if (advancedConfig != null) {
+            converted = convertToAdvanced(converted, advancedConfig);
+            if (converted == null || converted.isEmpty()) return null;
+        }
+        if (overloadConfig != null) {
+            converted = convertToOverload(converted, overloadConfig);
+            if (converted == null || converted.isEmpty()) return null;
+        }
+        return converted;
     }
 
     @Nullable

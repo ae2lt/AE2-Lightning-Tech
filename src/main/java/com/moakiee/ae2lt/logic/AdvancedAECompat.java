@@ -6,10 +6,14 @@ import net.minecraft.core.Direction;
 import net.neoforged.fml.ModList;
 
 import appeng.api.crafting.IPatternDetails;
+import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.GenericStack;
 import appeng.crafting.pattern.AEProcessingPattern;
 import appeng.api.crafting.PatternDetailsHelper;
+import com.moakiee.thunderbolt.ae2.overload.model.MatchMode;
+import com.moakiee.thunderbolt.ae2.overload.pattern.OverloadedProviderOnlyPatternDetails;
+import com.moakiee.thunderbolt.ae2.overload.pattern.WrappedPatternDetails;
 import java.util.LinkedHashMap;
 import java.util.List;
 import net.minecraft.world.item.ItemStack;
@@ -41,8 +45,9 @@ public final class AdvancedAECompat {
      *         a non-empty direction map.
      */
     public static boolean isDirectional(IPatternDetails pattern) {
+        var unwrapped = unwrap(pattern);
         return isLoaded()
-                && pattern instanceof IAdvPatternDetails adv
+                && unwrapped instanceof IAdvPatternDetails adv
                 && adv.directionalInputsSet();
     }
 
@@ -52,10 +57,49 @@ public final class AdvancedAECompat {
      */
     @Nullable
     public static Direction getDirectionForKey(IPatternDetails pattern, AEKey key) {
-        if (pattern instanceof IAdvPatternDetails adv) {
-            return adv.getDirectionSideForInputKey(key);
+        var unwrapped = unwrap(pattern);
+        if (!(unwrapped instanceof IAdvPatternDetails adv)) {
+            return null;
+        }
+        var direct = adv.getDirectionSideForInputKey(key);
+        if (direct != null) {
+            return direct;
+        }
+
+        // An overload pattern may accept an id-only variant whose component-bearing AEKey
+        // differs from the key stored by AdvancedAE's direction map. Resolve that variant
+        // through the overload slot and then query the original directional input key.
+        if (pattern instanceof OverloadedProviderOnlyPatternDetails overload
+                && key instanceof AEItemKey itemKey) {
+            var sourceInputs = unwrapped.getInputs();
+            for (var input : overload.overloadPatternDetailsView().inputs()) {
+                if (input.matchMode() != MatchMode.ID_ONLY
+                        || input.template().getItem() != itemKey.getItem()
+                        || input.slotIndex() < 0
+                        || input.slotIndex() >= sourceInputs.length) {
+                    continue;
+                }
+                for (var possible : sourceInputs[input.slotIndex()].getPossibleInputs()) {
+                    var direction = adv.getDirectionSideForInputKey(possible.what());
+                    if (direction != null) {
+                        return direction;
+                    }
+                }
+            }
         }
         return null;
+    }
+
+    private static IPatternDetails unwrap(IPatternDetails pattern) {
+        var current = pattern;
+        for (int depth = 0; depth < 8 && current instanceof WrappedPatternDetails wrapped; depth++) {
+            var next = wrapped.wrappedPatternDetails();
+            if (next == null || next == current) {
+                break;
+            }
+            current = next;
+        }
+        return current;
     }
 
     /** Converts a processing pattern to an AdvancedAE pattern with all inputs using any side. */

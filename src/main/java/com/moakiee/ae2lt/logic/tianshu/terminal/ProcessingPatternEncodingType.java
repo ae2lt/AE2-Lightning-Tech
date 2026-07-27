@@ -1,10 +1,39 @@
 package com.moakiee.ae2lt.logic.tianshu.terminal;
 
-/** One-shot conversion applied to the next processing-pattern encode. */
+/** Persistent conversions applied to processing-pattern encoding. */
 public enum ProcessingPatternEncodingType {
-    NORMAL,
-    ADVANCED,
-    OVERLOAD;
+    NORMAL(false, false),
+    ADVANCED(true, false),
+    OVERLOAD(false, true),
+    ADVANCED_OVERLOAD(true, true);
+
+    private final boolean advanced;
+    private final boolean overload;
+
+    ProcessingPatternEncodingType(boolean advanced, boolean overload) {
+        this.advanced = advanced;
+        this.overload = overload;
+    }
+
+    public boolean hasAdvanced() {
+        return advanced;
+    }
+
+    public boolean hasOverload() {
+        return overload;
+    }
+
+    public boolean includes(ProcessingPatternEncodingType capability) {
+        return (!capability.advanced || advanced) && (!capability.overload || overload);
+    }
+
+    public static ProcessingPatternEncodingType fromConfigs(
+            AdvancedConfig advancedConfig, OverloadConfig overloadConfig) {
+        if (advancedConfig != null) {
+            return overloadConfig != null ? ADVANCED_OVERLOAD : ADVANCED;
+        }
+        return overloadConfig != null ? OVERLOAD : NORMAL;
+    }
 
     /** Per-input target sides for advanced patterns; 0 = any side, 1..6 = Direction ordinal + 1. */
     public record AdvancedConfig(int[] directions) {

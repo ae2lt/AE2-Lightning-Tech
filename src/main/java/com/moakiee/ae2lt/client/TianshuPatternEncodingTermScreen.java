@@ -226,7 +226,7 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
                                       boolean visible, boolean enabled, String key) {
         button.visible = visible;
         button.active = enabled;
-        boolean armed = menu.processingEncodingType == type;
+        boolean armed = menu.processingEncodingType.includes(type);
         button.setMessage(Component.translatable(
                 "ae2lt.tianshu.terminal.encoding." + key + ".short")
                 .withStyle(armed ? ChatFormatting.GREEN : ChatFormatting.WHITE));
