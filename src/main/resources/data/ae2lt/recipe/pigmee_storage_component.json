@@ -1,14 +1,22 @@
 {
-  "type": "minecraft:crafting_shapeless",
+  "type": "minecraft:crafting_shaped",
   "category": "misc",
-  "ingredients": [
-    {
-      "item": "ae2lt:pigmee_fumo"
-    },
-    {
-      "item": "minecraft:chest"
-    }
+  "pattern": [
+    " B ",
+    "CPC",
+    " B "
   ],
+  "key": {
+    "B": {
+      "item": "minecraft:stone_button"
+    },
+    "C": {
+      "item": "minecraft:chest"
+    },
+    "P": {
+      "item": "ae2lt:pigmee_fumo"
+    }
+  },
   "result": {
     "count": 1,
     "id": "ae2lt:pigmee_storage_component"

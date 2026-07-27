@@ -34,12 +34,28 @@ class PigmeeRecipeContractTest {
     }
 
     @Test
-    void pigmeeStorageUsesAChestAndASimpleNonPigmeeHousing() throws Exception {
+    void functionalBlocksUseFullThreeByThreeWorkbenchLayouts() throws Exception {
+        for (String filename : List.of(
+                "pigmee_pattern_provider.json",
+                "pigmee_molecular_assembler.json",
+                "pigmee_mentalmath_unit.json",
+                "pigmee_item_cell_housing.json",
+                "pigmee_storage_component.json")) {
+            JsonObject recipe = readRecipe(filename);
+            assertEquals("minecraft:crafting_shaped", recipe.get("type").getAsString(), filename);
+            assertEquals(3, recipe.getAsJsonArray("pattern").size(), filename);
+            recipe.getAsJsonArray("pattern").forEach(
+                    row -> assertEquals(3, row.getAsString().length(), filename));
+        }
+    }
+
+    @Test
+    void pigmeeStorageLooksLikeStorageAndTheHousingLooksLikeAHousing() throws Exception {
         JsonObject component = readRecipe("pigmee_storage_component.json");
         String componentJson = component.toString();
         assertTrue(componentJson.contains("ae2lt:pigmee_fumo"));
         assertTrue(componentJson.contains("minecraft:chest"));
-        assertEquals(2, component.getAsJsonArray("ingredients").size());
+        assertTrue(componentJson.contains("minecraft:stone_button"));
 
         JsonObject housing = readRecipe("pigmee_item_cell_housing.json");
         String housingJson = housing.toString();
@@ -50,14 +66,16 @@ class PigmeeRecipeContractTest {
     }
 
     @Test
-    void mentalmathUnitUsesPigmeeStorageAndPhysicalControls() throws Exception {
+    void mentalmathUnitIsAFullPhysicalControlPanel() throws Exception {
         JsonObject recipe = readRecipe("pigmee_mentalmath_unit.json");
         String json = recipe.toString();
         assertTrue(json.contains("ae2lt:pigmee_storage_component"));
         assertTrue(json.contains("minecraft:stone_button"));
         assertTrue(json.contains("minecraft:lever"));
         assertTrue(json.contains("minecraft:stone_pressure_plate"));
-        assertEquals(4, recipe.getAsJsonArray("ingredients").size());
+        assertEquals("BBB", recipe.getAsJsonArray("pattern").get(0).getAsString());
+        assertEquals("LCL", recipe.getAsJsonArray("pattern").get(1).getAsString());
+        assertEquals("PPP", recipe.getAsJsonArray("pattern").get(2).getAsString());
     }
 
     private static JsonObject readRecipe(String filename) throws Exception {

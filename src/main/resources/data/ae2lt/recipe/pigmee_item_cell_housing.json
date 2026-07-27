@@ -1,17 +1,22 @@
 {
-  "type": "minecraft:crafting_shapeless",
+  "type": "minecraft:crafting_shaped",
   "category": "misc",
-  "ingredients": [
-    {
+  "pattern": [
+    "GIG",
+    "IWI",
+    "GIG"
+  ],
+  "key": {
+    "G": {
       "item": "minecraft:glass_pane"
     },
-    {
+    "W": {
       "item": "minecraft:pink_wool"
     },
-    {
+    "I": {
       "item": "minecraft:iron_nugget"
     }
-  ],
+  },
   "result": {
     "count": 1,
     "id": "ae2lt:pigmee_item_cell_housing"
