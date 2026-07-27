@@ -39,6 +39,7 @@ import com.moakiee.ae2lt.item.PhaseFlightSubmoduleItem;
 import com.moakiee.ae2lt.item.PhaseLockProjectionItem;
 import com.moakiee.ae2lt.item.PhaseLockSubmoduleItem;
 import com.moakiee.ae2lt.item.PerfectElectroChimeCrystalItem;
+import com.moakiee.ae2lt.item.PigmeeCoreItem;
 import com.moakiee.ae2lt.item.PigmeeStorageCellItem;
 import com.moakiee.ae2lt.item.ResearchNoteItem;
 import com.moakiee.ae2lt.item.WeatherCondensateItem;
@@ -186,6 +187,12 @@ public final class ModItems {
 
     public static final DeferredItem<Item> PIGMEE_ITEM_CELL_HOUSING =
             ITEMS.registerSimpleItem("pigmee_item_cell_housing", new Item.Properties());
+
+    public static final DeferredItem<PigmeeCoreItem> PIGMEE_CORE =
+            ITEMS.registerItem(
+                    "pigmee_core",
+                    PigmeeCoreItem::new,
+                    new Item.Properties().stacksTo(1));
 
     public static final DeferredItem<Item> PIGMEE_STORAGE_COMPONENT =
             ITEMS.registerSimpleItem("pigmee_storage_component", new Item.Properties());
