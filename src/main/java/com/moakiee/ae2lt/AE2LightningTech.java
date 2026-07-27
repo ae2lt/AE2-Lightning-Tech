@@ -92,16 +92,20 @@ import com.moakiee.ae2lt.logic.research.ResearchNoteModulationHandler;
 import com.moakiee.ae2lt.celestweave.ArmorEnergyBuffer;
 import com.moakiee.ae2lt.celestweave.CelestweaveArmorMaterials;
 import com.moakiee.ae2lt.overload.pattern.OverloadPatternDecoder;
+import com.moakiee.ae2lt.recipe.RecipeConflictScanner;
 import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternDecoder;
 
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.server.ServerStartingEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
+import com.mojang.logging.LogUtils;
+import org.slf4j.Logger;
 
 @Mod(AE2LightningTech.MODID)
 public class AE2LightningTech {
     public static final String MODID = "ae2lt";
+    private static final Logger LOG = LogUtils.getLogger();
     private static final CraftingCoreRegistry CRAFTING_CORE_REGISTRY = new CraftingCoreRegistry();
 
     public static final DeferredRegister<CreativeModeTab> CREATIVE_MODE_TABS =
@@ -1051,6 +1055,15 @@ public class AE2LightningTech {
         WirelessFrequencyManager.onServerStart(event.getServer());
         WirelessLinkRegistry.onServerStart(event.getServer());
         ResearchNoteGenerator.onServerStarting();
+        var recipeConflicts = RecipeConflictScanner.scan(event.getServer().getRecipeManager());
+        if (recipeConflicts.isEmpty()) {
+            LOG.info("[AE2LT recipe conflict scan] no conflicts found");
+        } else {
+            LOG.warn(
+                    "[AE2LT recipe conflict scan] {} matching recipe ids: {}",
+                    recipeConflicts.size(),
+                    recipeConflicts);
+        }
     }
 
     private void onServerStopped(ServerStoppedEvent event) {
