@@ -88,6 +88,10 @@ public final class NetworkInit {
                 PigmeeAssemblerAnimationPacket.STREAM_CODEC,
                 PigmeeAssemblerAnimationPacket::handle);
         registrar.playToClient(
+                RitualItemBurstPacket.TYPE,
+                RitualItemBurstPacket.STREAM_CODEC,
+                RitualItemBurstPacket::handle);
+        registrar.playToClient(
                 SyncFrequencyListPacket.TYPE,
                 SyncFrequencyListPacket.STREAM_CODEC,
                 SyncFrequencyListPacket::handle);

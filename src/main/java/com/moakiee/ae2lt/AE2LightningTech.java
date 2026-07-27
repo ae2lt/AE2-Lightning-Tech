@@ -89,8 +89,6 @@ import com.moakiee.thunderbolt.ae2.batch.BatchExecutor;
 import com.moakiee.thunderbolt.ae2.channel.ChannelProviderRegistry;
 import com.moakiee.thunderbolt.core.craft.CraftingCoreRegistry;
 import com.moakiee.ae2lt.logic.railgun.RailgunEnergyBuffer;
-import com.moakiee.ae2lt.logic.research.ResearchNoteGenerator;
-import com.moakiee.ae2lt.logic.research.ResearchNoteModulationHandler;
 import com.moakiee.ae2lt.celestweave.ArmorEnergyBuffer;
 import com.moakiee.ae2lt.celestweave.CelestweaveArmorMaterials;
 import com.moakiee.ae2lt.overload.pattern.OverloadPatternDecoder;
@@ -331,6 +329,7 @@ public class AE2LightningTech {
                     .icon(() -> ModFumos.PIGMEE_FUMO_ITEM.get().getDefaultInstance())
                     .displayItems((parameters, output) -> {
                         output.accept(ModFumos.PIGMEE_FUMO_ITEM.get());
+                        output.accept(ModFumos.CREATIVE_PIGMEE_FUMO_ITEM.get());
                         output.accept(ModBlocks.PIGMEE_MENTALMATH_UNIT);
                         output.accept(ModBlocks.PIGMEE_PATTERN_PROVIDER);
                         output.accept(ModBlocks.PIGMEE_MOLECULAR_ASSEMBLER);
@@ -373,7 +372,6 @@ public class AE2LightningTech {
         NeoForge.EVENT_BUS.addListener(this::onServerStarting);
         NeoForge.EVENT_BUS.addListener(this::onServerStopped);
         NeoForge.EVENT_BUS.addListener(this::onServerTickPost);
-        NeoForge.EVENT_BUS.register(new ResearchNoteModulationHandler());
     }
 
     // Prevents automation from accessing the workbench inventory
@@ -1065,7 +1063,6 @@ public class AE2LightningTech {
     private void onServerStarting(ServerStartingEvent event) {
         WirelessFrequencyManager.onServerStart(event.getServer());
         WirelessLinkRegistry.onServerStart(event.getServer());
-        ResearchNoteGenerator.onServerStarting();
         var recipeConflicts = RecipeConflictScanner.scan(event.getServer().getRecipeManager());
         if (recipeConflicts.isEmpty()) {
             LOG.info("[AE2LT recipe conflict scan] no conflicts found");
@@ -1081,7 +1078,6 @@ public class AE2LightningTech {
         WirelessLinkRegistry.onServerStop();
         WirelessFrequencyManager.onServerStop();
         CRAFTING_CORE_REGISTRY.clear();
-        ResearchNoteGenerator.onServerStopped();
         com.moakiee.ae2lt.registry.ModDamageTypes.clearCache();
     }
 

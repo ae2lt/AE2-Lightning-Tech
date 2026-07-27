@@ -6,7 +6,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.ChunkPos;
 import net.neoforged.neoforge.network.PacketDistributor;
 
-/** Lightweight server-side packet dispatch helpers (railgun specific). */
+/** Lightweight server-side packet dispatch helpers. */
 public final class NetworkHandler {
 
     private NetworkHandler() {}

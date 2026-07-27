@@ -23,6 +23,7 @@ import com.moakiee.ae2lt.grid.FrequencyBindingHost;
 import com.moakiee.ae2lt.item.WeatherCondensateItem;
 import com.moakiee.ae2lt.logic.WeatherControlHelper;
 import com.moakiee.ae2lt.logic.energy.PowerCostUtil;
+import com.moakiee.ae2lt.logic.research.ResearchRitualService;
 import com.moakiee.ae2lt.machine.atmosphericionizer.AtmosphericIonizerInventory;
 import com.moakiee.ae2lt.machine.atmosphericionizer.AtmosphericIonizerLogic;
 import com.moakiee.ae2lt.machine.atmosphericionizer.AtmosphericIonizerStatus;
@@ -354,6 +355,7 @@ public class AtmosphericIonizerBlockEntity extends AENetworkedBlockEntity
         BlockPos strikePos = worldPosition.above(RITUAL_STRIKE_HEIGHT_OFFSET);
         bolt.moveTo(Vec3.atBottomCenterOf(strikePos));
         bolt.setVisualOnly(false);
+        ResearchRitualService.markRitualLightning(bolt, worldPosition);
         serverLevel.addFreshEntity(bolt);
         LOG.info("[ae2lt/ionizer] thunderstorm nucleation -> spawn lightning at {} (ionizer={})", strikePos,
                 worldPosition);
@@ -487,5 +489,4 @@ public class AtmosphericIonizerBlockEntity extends AENetworkedBlockEntity
         return extracted >= amount - POWER_EPSILON;
     }
 }
-
 

@@ -3,6 +3,7 @@ package com.moakiee.ae2lt.registry;
 import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.entity.FloatingMatterEntity;
 import com.moakiee.ae2lt.entity.OverloadTntEntity;
+import com.moakiee.ae2lt.entity.RitualHyperdimensionalPigmeeEntity;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
@@ -31,6 +32,19 @@ public final class ModEntities {
                             .clientTrackingRange(6)
                             .updateInterval(20)
                             .build("floating_matter"));
+
+    public static final DeferredHolder<EntityType<?>, EntityType<RitualHyperdimensionalPigmeeEntity>>
+            RITUAL_HYPERDIMENSIONAL_PIGMEE =
+                    ENTITY_TYPES.register(
+                            "ritual_hyperdimensional_pigmee",
+                            () -> EntityType.Builder
+                                    .<RitualHyperdimensionalPigmeeEntity>of(
+                                            RitualHyperdimensionalPigmeeEntity::new,
+                                            MobCategory.MISC)
+                                    .sized(0.25F, 0.25F)
+                                    .clientTrackingRange(10)
+                                    .updateInterval(10)
+                                    .build("ritual_hyperdimensional_pigmee"));
 
     private ModEntities() {
     }

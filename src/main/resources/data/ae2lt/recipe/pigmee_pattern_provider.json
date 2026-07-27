@@ -1,25 +1,20 @@
 {
-  "type": "minecraft:crafting_shaped",
+  "type": "minecraft:crafting_shapeless",
   "category": "misc",
-  "pattern": [
-    "ITI",
-    "LPL",
-    "ITI"
-  ],
-  "key": {
-    "I": {
-      "item": "minecraft:iron_ingot"
-    },
-    "T": {
-      "item": "minecraft:crafting_table"
-    },
-    "L": {
-      "item": "ae2:logic_processor"
-    },
-    "P": {
+  "ingredients": [
+    {
       "item": "ae2lt:pigmee_fumo"
+    },
+    {
+      "item": "minecraft:chest"
+    },
+    {
+      "item": "minecraft:stone_button"
+    },
+    {
+      "item": "minecraft:lever"
     }
-  },
+  ],
   "result": {
     "count": 1,
     "id": "ae2lt:pigmee_pattern_provider"

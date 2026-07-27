@@ -1,27 +1,16 @@
 {
-  "type": "minecraft:crafting_shaped",
+  "type": "minecraft:crafting_shapeless",
   "category": "misc",
-  "key": {
-    "a": {
-      "item": "ae2:quartz_glass"
+  "ingredients": [
+    {
+      "item": "minecraft:glass_pane"
     },
-    "b": {
-      "tag": "c:dusts/redstone"
+    {
+      "item": "minecraft:pink_wool"
     },
-    "c": {
-      "tag": "c:ingots/iron"
-    },
-    "d": {
-      "tag": "c:ingots/copper"
-    },
-    "p": {
-      "item": "ae2lt:pigmee_fumo"
+    {
+      "item": "minecraft:iron_nugget"
     }
-  },
-  "pattern": [
-    "aba",
-    "bpb",
-    "cdc"
   ],
   "result": {
     "count": 1,

@@ -1,25 +1,20 @@
 {
-  "type": "minecraft:crafting_shaped",
+  "type": "minecraft:crafting_shapeless",
   "category": "misc",
-  "pattern": [
-    "IQI",
-    "LPL",
-    "IQI"
-  ],
-  "key": {
-    "I": {
-      "item": "minecraft:iron_ingot"
-    },
-    "Q": {
-      "item": "ae2:quartz_glass"
-    },
-    "L": {
-      "item": "ae2:logic_processor"
-    },
-    "P": {
+  "ingredients": [
+    {
       "item": "ae2lt:pigmee_fumo"
+    },
+    {
+      "item": "minecraft:crafting_table"
+    },
+    {
+      "item": "minecraft:stone_button"
+    },
+    {
+      "item": "minecraft:lever"
     }
-  },
+  ],
   "result": {
     "count": 1,
     "id": "ae2lt:pigmee_molecular_assembler"

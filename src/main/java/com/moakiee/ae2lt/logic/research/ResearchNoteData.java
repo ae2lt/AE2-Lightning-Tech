@@ -28,26 +28,6 @@ public record ResearchNoteData(
     public static final String TAG_RECIPE_ITEMS = "RecipeItems";
     public static final String TAG_DESCRIPTIONS = "Descriptions";
     public static final String TAG_CONSUMED = "Consumed";
-    /** 仅存在于空白笔记(未生成前)上,铁砧调制后写入。玩家右键派生时被读取并强制覆盖随机 goal。 */
-    public static final String TAG_FORCED_GOAL = "ForcedGoal";
-
-    public static boolean isBlank(ItemStack stack) {
-        CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
-        return !tag.contains(TAG_GOAL, Tag.TAG_STRING);
-    }
-
-    public static @Nullable RitualGoal readForcedGoal(ItemStack stack) {
-        CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
-        if (!tag.contains(TAG_FORCED_GOAL, Tag.TAG_STRING)) {
-            return null;
-        }
-        return RitualGoal.fromName(tag.getString(TAG_FORCED_GOAL));
-    }
-
-    public static void writeForcedGoal(ItemStack stack, RitualGoal goal) {
-        CustomData.update(DataComponents.CUSTOM_DATA, stack, tag -> tag.putString(TAG_FORCED_GOAL, goal.name()));
-    }
-
     public static boolean isConsumed(ItemStack stack) {
         ResearchNoteData data = read(stack);
         return data != null && data.consumed();

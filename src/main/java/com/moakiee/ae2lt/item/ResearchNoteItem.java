@@ -5,10 +5,8 @@ import java.util.List;
 
 import org.jetbrains.annotations.Nullable;
 
-import com.moakiee.ae2lt.logic.research.NoteModulationCatalysts;
 import com.moakiee.ae2lt.logic.research.ResearchNoteData;
 import com.moakiee.ae2lt.logic.research.ResearchNoteGenerator;
-import com.moakiee.ae2lt.logic.research.RitualGoal;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.component.DataComponents;
@@ -41,12 +39,11 @@ public class ResearchNoteItem extends Item {
     @Override
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         ItemStack heldStack = player.getItemInHand(hand);
+        ResearchNoteData data = ResearchNoteData.read(heldStack);
+
         if (level.isClientSide()) {
             return InteractionResultHolder.sidedSuccess(heldStack, true);
         }
-
-        ServerLevel serverLevel = (ServerLevel) level;
-        ResearchNoteData data = ResearchNoteData.read(heldStack);
 
         if (data == null) {
             // 空白笔记:只负责"消耗 1 张、产出 1 张已生成笔记",不打开书。
@@ -57,8 +54,7 @@ public class ResearchNoteItem extends Item {
                 return InteractionResultHolder.fail(heldStack);
             }
 
-            RitualGoal forcedGoal = ResearchNoteData.readForcedGoal(heldStack);
-            ResearchNoteData generated = ResearchNoteGenerator.generate(serverLevel, forcedGoal);
+            ResearchNoteData generated = ResearchNoteGenerator.generate((ServerLevel) level);
             ItemStack generatedStack = new ItemStack(this);
             applyGeneratedState(generatedStack, generated);
 
@@ -92,30 +88,10 @@ public class ResearchNoteItem extends Item {
             TooltipFlag tooltipFlag) {
         ResearchNoteData data = ResearchNoteData.read(stack);
         if (data == null) {
-            RitualGoal forcedGoal = ResearchNoteData.readForcedGoal(stack);
-            if (forcedGoal != null) {
-                tooltipComponents.add(Component.translatable("ae2lt.research_note.tooltip.modulated",
-                        forcedGoal.getDisplayName()).withStyle(ChatFormatting.AQUA));
-                tooltipComponents.add(Component.translatable("ae2lt.research_note.tooltip.open_hint")
-                        .withStyle(ChatFormatting.DARK_GRAY));
-                return;
-            }
             tooltipComponents.add(Component.translatable("ae2lt.research_note.tooltip.blank")
                     .withStyle(ChatFormatting.GRAY));
             tooltipComponents.add(Component.translatable("ae2lt.research_note.tooltip.open_hint")
                     .withStyle(ChatFormatting.DARK_GRAY));
-            tooltipComponents.add(Component.translatable("ae2lt.research_note.tooltip.modulation_hint")
-                    .withStyle(ChatFormatting.DARK_AQUA));
-            for (RitualGoal goal : RitualGoal.values()) {
-                Item catalyst = NoteModulationCatalysts.getCatalyst(goal);
-                if (catalyst == null) {
-                    continue;
-                }
-                tooltipComponents.add(Component.literal("  ")
-                        .append(catalyst.getDescription().copy().withStyle(ChatFormatting.GRAY))
-                        .append(Component.literal(" -> ").withStyle(ChatFormatting.DARK_GRAY))
-                        .append(goal.getDisplayName().copy().withStyle(ChatFormatting.GRAY)));
-            }
             return;
         }
 

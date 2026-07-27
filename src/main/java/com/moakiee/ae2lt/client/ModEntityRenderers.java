@@ -24,6 +24,9 @@ public final class ModEntityRenderers {
     public static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerEntityRenderer(ModEntities.OVERLOAD_TNT.get(), TntRenderer::new);
         event.registerEntityRenderer(ModEntities.FLOATING_MATTER.get(), ItemEntityRenderer::new);
+        event.registerEntityRenderer(
+                ModEntities.RITUAL_HYPERDIMENSIONAL_PIGMEE.get(),
+                RitualHyperdimensionalPigmeeRenderer::new);
         event.registerBlockEntityRenderer(
                 ModBlockEntities.LIGHTNING_SIMULATION_CHAMBER.get(),
                 LightningSimulationChamberRenderer::new);
@@ -57,6 +60,8 @@ public final class ModEntityRenderers {
         wrapFumoItemModel(event, "moakiee_fumo");
         wrapFumoItemModel(event, "cystrysu_fumo");
         wrapFumoItemModel(event, "pigmee_fumo");
+        wrapFumoItemModel(event, "creative_pigmee_fumo");
+        wrapFumoItemModel(event, "hyperdimensional_pigmee_fumo");
     }
 
     private static void wrapFumoItemModel(ModelEvent.ModifyBakingResult event, String itemId) {

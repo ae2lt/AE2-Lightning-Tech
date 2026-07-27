@@ -1,21 +1,13 @@
 {
-  "type": "minecraft:crafting_shaped",
+  "type": "minecraft:crafting_shapeless",
   "category": "misc",
-  "key": {
-    "a": {
-      "tag": "c:dusts/redstone"
-    },
-    "b": {
-      "tag": "ae2:all_certus_quartz"
-    },
-    "c": {
+  "ingredients": [
+    {
       "item": "ae2lt:pigmee_fumo"
+    },
+    {
+      "item": "minecraft:chest"
     }
-  },
-  "pattern": [
-    "aba",
-    "bcb",
-    "aba"
   ],
   "result": {
     "count": 1,
