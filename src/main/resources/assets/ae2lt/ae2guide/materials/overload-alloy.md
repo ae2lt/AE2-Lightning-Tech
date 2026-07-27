@@ -34,7 +34,7 @@ Overload Alloy can be obtained from two machines:
 | Machine | Inputs | Lightning | Energy | Output |
 |---------|--------|-----------|--------|--------|
 | Lightning Simulation Room | `1` Overload Alloy Blank + `4` Overload Crystal Dust | `1` High Voltage Lightning | `20,000` | `1` Overload Alloy |
-| Overload Processing Factory | `1` Copper Block + `1` Iron Block + `1` Gold Block + `1` Amethyst Block + `1` Eye of Ender + `1` Chorus Fruit | `1` High Voltage Lightning | `100,000` | `27` Overload Alloy |
+| Overload Processing Factory | `1` Copper Block + `1` Iron Block + `1` Gold Block + `1` Amethyst Block + `1` Eye of Ender + `3` Diamonds | `1` High Voltage Lightning | `100,000` | `27` Overload Alloy |
 
 ## Items
 
