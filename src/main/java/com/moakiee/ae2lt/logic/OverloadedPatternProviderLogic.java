@@ -2,9 +2,12 @@ package com.moakiee.ae2lt.logic;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
@@ -383,6 +386,18 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
 
     private static final int TARGET_CACHE_TTL = 20;
     private final Map<TargetCacheKey, TargetCacheEntry> targetCache = new HashMap<>();
+    /**
+     * Targets whose inventory was confirmed blocked during the current game tick.
+     *
+     * <p>Only the blocked result is cached. A clear target is scanned again before
+     * the next physical push because the preceding push may have changed its
+     * inventory. Identity semantics deliberately tie the decision to the exact
+     * cached {@link PatternProviderTarget}; replacing the target invalidates the
+     * decision automatically.
+     */
+    private final Set<PatternProviderTarget> blockedTargetsThisTick =
+            Collections.newSetFromMap(new IdentityHashMap<>());
+    private long blockedTargetsGameTick = Long.MIN_VALUE;
 
     // ---- adaptive batch dispatch -------------------------------------------------
 
@@ -1076,28 +1091,37 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
             BlockEntity targetBlockEntity,
             @Nullable PatternProviderTarget cachedTarget,
             IPatternDetails pattern) {
-        boolean craftingLocked = getCraftingLockedReason() != LockCraftingMode.NONE;
-        boolean blockingEnabled = isBlocking();
+        if (getCraftingLockedReason() != LockCraftingMode.NONE) {
+            return true;
+        }
+        if (!isBlocking()) {
+            return false;
+        }
 
-        // containsPatternInput may rebuild AE2's external-storage cache and scan
-        // every exposed slot. The policy cannot use this result when crafting is
-        // already locked or blocking is disabled, so avoid the scan in both cases.
-        var patternInputs = ((PatternProviderLogicAccessor) this).getPatternInputs();
-        boolean targetContainsPatternInput = !craftingLocked
-                && blockingEnabled
-                && cachedTarget != null
-                && cachedTarget.containsPatternInput(patternInputs);
-        boolean samePatternBlockingEnabled =
-                overloadedHost.getBlockingMode() == BlockingMode.SAME_PATTERN;
         var previous = getLastSuccessfulPattern(
                 level, pos, face, targetBlockEntity);
-        return BatchBlockingPolicy.isBlocked(
-                craftingLocked,
-                blockingEnabled,
-                targetContainsPatternInput,
-                samePatternBlockingEnabled,
-                previous,
-                pattern);
+        if (overloadedHost.getBlockingMode() == BlockingMode.SAME_PATTERN
+                && BatchBlockingPolicy.samePattern(previous, pattern)) {
+            return false;
+        }
+        if (cachedTarget == null) {
+            return false;
+        }
+
+        long gameTick = level.getGameTime();
+        if (blockedTargetsGameTick != gameTick) {
+            blockedTargetsThisTick.clear();
+            blockedTargetsGameTick = gameTick;
+        } else if (blockedTargetsThisTick.contains(cachedTarget)) {
+            return true;
+        }
+
+        var patternInputs = ((PatternProviderLogicAccessor) this).getPatternInputs();
+        boolean blocked = cachedTarget.containsPatternInput(patternInputs);
+        if (blocked) {
+            blockedTargetsThisTick.add(cachedTarget);
+        }
+        return blocked;
     }
 
     private BatchRampResult dispatchBatchRamp(
@@ -2847,6 +2871,8 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
         clearReadyQueuesAndQueuedFlags();
         lastPushWheelTick = -1;
         targetCache.clear();
+        blockedTargetsThisTick.clear();
+        blockedTargetsGameTick = Long.MIN_VALUE;
         lastSuccessfulPatterns.clear();
         connectionStates.clear();
         patternPenalties.clear();
