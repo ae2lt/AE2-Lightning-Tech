@@ -52,6 +52,17 @@ final class ReadyDispatchQueue<T, S extends ReadyDispatchQueue.State> {
         return target;
     }
 
+    boolean remove(T target) {
+        if (!queue.remove(target)) {
+            return false;
+        }
+        var state = stateLookup.apply(target);
+        if (state != null) {
+            state.setQueued(false);
+        }
+        return true;
+    }
+
     boolean isEmpty() {
         return queue.isEmpty();
     }

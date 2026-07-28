@@ -15,14 +15,18 @@ final class PatternDispatchPenaltyTracker<T, P> {
     private final DueTaskQueue<TargetPattern<T, P>> expirations = new DueTaskQueue<>();
 
     boolean shouldSkip(T target, P pattern, long gameTick) {
-        purgeExpired(gameTick);
-        var byPattern = penalties.get(target);
-        if (byPattern == null) return false;
-        var penalty = byPattern.get(pattern);
-        return penalty != null && gameTick < penalty.retryAfter;
+        return retryAfter(target, pattern, gameTick) > gameTick;
     }
 
-    void recordRejection(T target, P pattern, long gameTick, boolean fast) {
+    long retryAfter(T target, P pattern, long gameTick) {
+        purgeExpired(gameTick);
+        var byPattern = penalties.get(target);
+        if (byPattern == null) return Long.MIN_VALUE;
+        var penalty = byPattern.get(pattern);
+        return penalty == null ? Long.MIN_VALUE : penalty.retryAfter;
+    }
+
+    long recordRejection(T target, P pattern, long gameTick, boolean fast) {
         purgeExpired(gameTick);
         int initial = fast ? FAST_INITIAL_COOLDOWN : INITIAL_COOLDOWN;
         int max = fast ? FAST_MAX_COOLDOWN : MAX_COOLDOWN;
@@ -34,6 +38,7 @@ final class PatternDispatchPenaltyTracker<T, P> {
         long retryAfter = gameTick + cooldown;
         byPattern.put(pattern, new Penalty(retryAfter, cooldown));
         expirations.schedule(new TargetPattern<>(target, pattern), retryAfter);
+        return retryAfter;
     }
 
     void recordSuccess(T target, P pattern) {

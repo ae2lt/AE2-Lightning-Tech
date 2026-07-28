@@ -6,6 +6,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -122,8 +123,6 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
     private static final int GLOBAL_BUCKETS_MAX = OverloadedPatternProviderBlockEntity.MAX_WIRELESS_CONNECTIONS;
     private static final int GLOBAL_BUCKETS_REARM = 768;
     private static final int OVERFLOW_FLUSH_BUDGET = 64;
-    private static final int OVERFLOW_RETRY_MIN = 1;
-    private static final int OVERFLOW_RETRY_MAX = 20;
 
     /** Per-target wireless overflow buckets. A bucketed connection is not eligible for new pushes. */
     private final Object2ObjectOpenHashMap<WirelessConnection, ConnBucket> pendingOverflowByConn =
@@ -336,45 +335,59 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
             new ReadyDispatchQueue<>(connectionStates::get);
     private final PatternDispatchPenaltyTracker<WirelessConnection, AEItemKey> patternPenalties =
             new PatternDispatchPenaltyTracker<>();
+    private final DispatchFairnessScheduler<WirelessConnection, AEItemKey> wirelessBatchFairness =
+            new DispatchFairnessScheduler<>();
     private List<WirelessConnection> pushWheelValidRef = List.of();
     private boolean pushStructuresDirty = true;
     private long lastPushWheelTick = -1;
+    private long wirelessDispatchTopologyVersion;
 
     private static final class ConnBucket {
         final boolean compactMode;
         short patternId;
         short stuckIdx;
         long remaining;
-        final List<GenericStack> fallbackList;
-        int retryDelay = OVERFLOW_RETRY_MIN;
+        final RoutedPatternOverflow fallback;
+        int retryDelay = ProviderDispatchPolicy.initialOverflowRetryDelay();
 
         private ConnBucket(boolean compactMode, short patternId, short stuckIdx,
-                           long remaining, List<GenericStack> fallbackList) {
+                           long remaining, RoutedPatternOverflow fallback) {
             this.compactMode = compactMode;
             this.patternId = patternId;
             this.stuckIdx = stuckIdx;
             this.remaining = remaining;
-            this.fallbackList = fallbackList;
+            this.fallback = fallback;
         }
 
         static ConnBucket compact(short patternId, short stuckIdx, long remaining) {
-            return new ConnBucket(true, patternId, stuckIdx, remaining, new ArrayList<>());
+            return new ConnBucket(
+                    true, patternId, stuckIdx, remaining,
+                    RoutedPatternOverflow.unrouted(List.of()));
         }
 
         static ConnBucket fallback(short patternId, List<GenericStack> overflow) {
-            return new ConnBucket(false, patternId, (short) 0, 0, new ArrayList<>(overflow));
+            return new ConnBucket(
+                    false, patternId, (short) 0, 0,
+                    RoutedPatternOverflow.unrouted(overflow));
+        }
+
+        static ConnBucket routedFallback(
+                short patternId, List<RoutedPatternOverflow.Entry> overflow) {
+            return new ConnBucket(
+                    false, patternId, (short) 0, 0,
+                    RoutedPatternOverflow.routed(overflow));
         }
     }
 
-    private enum OverflowFlushResult {
-        CLEARED,
-        PROGRESSED,
-        BLOCKED
-    }
-
     private record PendingBucketLoad(WirelessConnection conn, short patternId, short stuckIdx,
-                                     long remaining, List<GenericStack> fallbackList,
+                                     long remaining, List<RoutedPatternOverflow.Entry> fallback,
                                      boolean compactMode) {}
+
+    private record LocalDirectionalOverflow(
+            Direction targetDirection, RoutedPatternOverflow overflow) {}
+
+    @Nullable
+    private LocalDirectionalOverflow pendingLocalDirectionalOverflow;
 
     // ---- PatternProviderTarget cache (avoids recreating strategies every push) -----
 
@@ -447,6 +460,11 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
 
     /** NORMAL-mode target cursor; wireless modes reuse their existing ready queues. */
     private int normalBatchTargetCursor;
+    private long normalFairnessSyncVersion;
+    private final PatternDispatchPenaltyTracker<TargetCacheKey, AEItemKey> normalPatternPenalties =
+            new PatternDispatchPenaltyTracker<>();
+    private final DispatchFairnessScheduler<TargetCacheKey, AEItemKey> normalBatchFairness =
+            new DispatchFairnessScheduler<>();
     /**
      * Last physically dispatched pattern per target. This is runtime-only:
      * after a reload, refusing one uncertain continuation is safer than
@@ -682,6 +700,9 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
     @Override
     public void updatePatterns() {
         patternPenalties.clear();
+        normalPatternPenalties.clear();
+        wirelessBatchFairness.clear();
+        normalBatchFairness.clear();
         var accessor = (PatternProviderLogicAccessor) this;
         var patterns = accessor.getPatterns();
         var patternInputs = accessor.getPatternInputs();
@@ -724,6 +745,12 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
         }
 
         if (overloadedHost.getProviderMode() == ProviderMode.NORMAL) {
+            if (pendingLocalDirectionalOverflow != null) {
+                flushLocalDirectionalOverflow();
+                if (pendingLocalDirectionalOverflow != null) {
+                    return false;
+                }
+            }
             if (!AdvancedAECompat.isDirectional(patternDetails)
                     && overloadedHost.getBlockingMode() == BlockingMode.SAME_PATTERN) {
                 return pushNormalBatch(patternDetails, inputHolder, 1L) == 0L;
@@ -798,7 +825,8 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
             KeyCounter[] oneCopyTemplate,
             long maxCraft) {
         var accessor = (PatternProviderLogicAccessor) this;
-        if (!accessor.getSendList().isEmpty()
+        if (pendingLocalDirectionalOverflow != null
+                || !accessor.getSendList().isEmpty()
                 || !gridNode.isActive()
                 || !availablePatternSet.contains(pattern)
                 || getCraftingLockedReason() != LockCraftingMode.NONE) {
@@ -815,44 +843,88 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
             return maxCraft;
         }
 
-        long remaining = maxCraft;
-        // Physical providers have at most six adjacent targets. Check every
-        // side at least once so the SAME_PATTERN single-copy path retains
-        // vanilla's ability to skip an unavailable side and use another one.
-        int attemptBudget = Math.max(
-                targetList.size(),
-                BatchDispatchPolicy.targetAttemptBudget(maxCraft));
+        long gameTick = serverLevel.getGameTime();
+        var definition = pattern.getDefinition();
+        var contexts = new LinkedHashMap<TargetCacheKey, BatchTargetContext>();
         int cursor = Math.floorMod(normalBatchTargetCursor, targetList.size());
-        double oneCopyCost = PowerCostUtil.totalCost(oneCopyTemplate);
-
-        for (int attempts = 0; attempts < attemptBudget && remaining > 0L; attempts++) {
+        for (int i = 0; i < targetList.size(); i++) {
             var pushDirection = targetList.get(cursor);
             cursor = (cursor + 1) % targetList.size();
-            normalBatchTargetCursor = cursor;
-
-            var context = resolveNormalBatchTarget(serverLevel, pushDirection, pattern);
-            if (context == null) {
-                continue;
+            var context = resolveNormalBatchTarget(
+                    serverLevel, pushDirection, pattern);
+            if (context != null) {
+                contexts.put(
+                        targetKey(
+                                context.level(), context.pos(), context.face()),
+                        context);
             }
+        }
+        normalBatchTargetCursor = (normalBatchTargetCursor + 1) % targetList.size();
+        if (contexts.isEmpty()) {
+            return maxCraft;
+        }
 
-            long share = BatchDispatchPolicy.geometricShare(remaining, targetList.size());
-            var ramp = dispatchBatchRamp(
-                    context, pattern, oneCopyTemplate, share, oneCopyCost);
-            if (ramp.ownedCopies() <= 0L) {
-                if (ramp.globalAbort()) {
+        long remaining = maxCraft;
+        double oneCopyCost = PowerCostUtil.totalCost(oneCopyTemplate);
+
+        try (var pass = normalBatchFairness.beginPass(
+                definition,
+                contexts.keySet(),
+                ++normalFairnessSyncVersion,
+                gameTick)) {
+            // Physical providers have at most six adjacent targets. A pass
+            // leases each active target at most once, ordered by the current
+            // 100-tick success count.
+            int attemptBudget = ProviderDispatchPolicy.targetVisitBudget(
+                    pass.activeTargetsAtStart());
+            for (int attempts = 0;
+                 attempts < attemptBudget && remaining > 0L;
+                 attempts++) {
+                var target = pass.poll();
+                if (target == null) {
                     break;
                 }
-                continue;
-            }
 
-            remaining -= ramp.ownedCopies();
-            // PatternProviderLogic stores the direction from provider to
-            // machine; the adapter face is the opposite side of that target.
-            accessor.setSendDirection(context.face().getOpposite());
-            accessor.invokeSendStacksOut();
-            finishSuccessfulBatchTarget(context);
-            if (ramp.globalAbort() || !accessor.getSendList().isEmpty()) {
-                break;
+                var context = contexts.get(target);
+                if (context == null) {
+                    pass.remove(target);
+                    continue;
+                }
+
+                long retryAfter = normalPatternPenalties.retryAfter(
+                        target, definition, gameTick);
+                if (retryAfter > gameTick) {
+                    pass.cooldown(target, retryAfter);
+                    continue;
+                }
+
+                long share = Math.min(remaining, pass.allowance(target));
+                if (share <= 0L) {
+                    continue;
+                }
+                var ramp = dispatchBatchRamp(
+                        context, pattern, oneCopyTemplate, share, oneCopyCost);
+                if (ramp.ownedCopies() <= 0L) {
+                    if (ramp.globalAbort()) {
+                        break;
+                    }
+                    long rejectionDue = normalPatternPenalties.recordRejection(
+                            target, definition, gameTick, false);
+                    pass.cooldown(target, rejectionDue);
+                    continue;
+                }
+
+                pass.success(target, ramp.ownedCopies());
+                normalPatternPenalties.recordSuccess(target, definition);
+                remaining -= ramp.ownedCopies();
+                // PatternProviderLogic stores the direction from provider to
+                // machine; the adapter face is the opposite side of that target.
+                accessor.setSendDirection(context.face().getOpposite());
+                accessor.invokeSendStacksOut();
+                finishSuccessfulBatchTarget(context);
+                if (ramp.globalAbort() || !accessor.getSendList().isEmpty()) {
+                    break;
+                }
             }
         }
         return remaining;
@@ -927,12 +999,29 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
             long gameTick,
             boolean fastMode,
             WirelessDispatchMode dispatchMode) {
-        boolean singleTarget = dispatchMode == WirelessDispatchMode.SINGLE_TARGET;
-        var readyQueue = singleTarget ? singleReadyQueue : evenReadyQueue;
+        if (dispatchMode == WirelessDispatchMode.SINGLE_TARGET) {
+            return pushWirelessSingleTargetBatch(
+                    pattern, oneCopyTemplate, maxCraft,
+                    server, gameTick, fastMode);
+        }
+
+        return pushWirelessFairBatch(
+                pattern, oneCopyTemplate, maxCraft,
+                server, gameTick, fastMode);
+    }
+
+    private long pushWirelessSingleTargetBatch(
+            IPatternDetails pattern,
+            KeyCounter[] oneCopyTemplate,
+            long maxCraft,
+            net.minecraft.server.MinecraftServer server,
+            long gameTick,
+            boolean fastMode) {
+        var readyQueue = singleReadyQueue;
         long remaining = maxCraft;
-        int attemptBudget = BatchDispatchPolicy.targetAttemptBudget(maxCraft);
+        int attemptBudget = ProviderDispatchPolicy.targetVisitBudget(
+                Math.min(1, readyQueue.size()));
         double oneCopyCost = PowerCostUtil.totalCost(oneCopyTemplate);
-        var definition = pattern.getDefinition();
 
         for (int attempts = 0;
              attempts < attemptBudget && remaining > 0L && !readyQueue.isEmpty();
@@ -940,11 +1029,6 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
             var conn = readyQueue.peek();
             if (pendingOverflowByConn.containsKey(conn)) {
                 readyQueue.removeHead();
-                continue;
-            }
-            if (!singleTarget
-                    && patternPenalties.shouldSkip(conn, definition, gameTick)) {
-                readyQueue.rotateHeadToTail();
                 continue;
             }
 
@@ -956,12 +1040,8 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
 
             boolean probing = state.probeArmed
                     && state.cooldownUntil >= 0L && gameTick < state.cooldownUntil;
-            long share = singleTarget
-                    ? remaining
-                    : BatchDispatchPolicy.geometricShare(
-                            remaining, readyQueue.size());
             var dispatch = tryPushBatchToConnection(
-                    pattern, oneCopyTemplate, share, oneCopyCost,
+                    pattern, oneCopyTemplate, remaining, oneCopyCost,
                     conn, server);
 
             if (dispatch.outcome().consumesTargetAttempt()) {
@@ -969,67 +1049,163 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
             }
             if (dispatch.ownedCopies() > 0L) {
                 remaining -= dispatch.ownedCopies();
-                if (!singleTarget) {
-                    patternPenalties.recordSuccess(conn, definition);
-                }
                 boolean backpressured = pendingOverflowByConn.containsKey(conn);
-                if (backpressured) {
-                    // The target accepted ownership but could not drain the
-                    // aggregate. Treat this as short-term saturation so it
-                    // does not immediately re-enter after the bucket clears.
-                    state.onPushFail(gameTick);
-                } else if (probing) {
+                // Accepted ownership is productive even when a defensive overflow
+                // bucket was needed. The bucket already excludes this target from
+                // new dispatches, so adding connection cooldown would punish the
+                // same backpressure twice.
+                if (probing) {
                     state.onProbeSuccess();
                 } else {
                     state.onPushSuccess(gameTick);
                 }
                 if (backpressured) {
                     readyQueue.removeHead();
-                } else if (!singleTarget) {
-                    readyQueue.rotateHeadToTail();
                 }
-                if (singleTarget
-                        || dispatch.outcome() == WirelessPushOutcome.GLOBAL_ABORT) {
-                    return remaining;
-                }
-                continue;
+                return remaining;
             }
 
             switch (dispatch.outcome()) {
                 case HARD_FAIL -> {
                     if (!isConnectionAlive(conn, server)) {
                         readyQueue.removeHead();
-                        if (!singleTarget) {
-                            patternPenalties.removeTarget(conn);
-                        }
                         connectionsDirty = true;
-                    } else if (singleTarget) {
-                        readyQueue.removeHead();
                     } else {
-                        readyQueue.rotateHeadToTail();
+                        readyQueue.removeHead();
                     }
                 }
                 case SOFT_FAIL -> {
-                    if (singleTarget) {
-                        readyQueue.removeHead();
-                        if (probing) {
-                            state.onProbeFail();
-                        } else {
-                            state.onPushFail(gameTick);
-                        }
-                        schedulePushWheel(conn, state, fastMode, dispatchMode);
+                    readyQueue.removeHead();
+                    if (probing) {
+                        state.onProbeFail();
                     } else {
-                        patternPenalties.recordRejection(
-                                conn, definition, gameTick, fastMode);
-                        readyQueue.rotateHeadToTail();
+                        state.onPushFail(gameTick);
                     }
+                    schedulePushWheel(
+                            conn, state, fastMode,
+                            WirelessDispatchMode.SINGLE_TARGET);
                 }
                 case GLOBAL_ABORT -> {
                     return remaining;
                 }
                 case SUCCESS -> {
-                    if (!singleTarget) {
-                        readyQueue.rotateHeadToTail();
+                }
+            }
+        }
+        return remaining;
+    }
+
+    private long pushWirelessFairBatch(
+            IPatternDetails pattern,
+            KeyCounter[] oneCopyTemplate,
+            long maxCraft,
+            net.minecraft.server.MinecraftServer server,
+            long gameTick,
+            boolean fastMode) {
+        long remaining = maxCraft;
+        double oneCopyCost = PowerCostUtil.totalCost(oneCopyTemplate);
+        var definition = pattern.getDefinition();
+
+        try (var pass = wirelessBatchFairness.beginPass(
+                definition,
+                pushWheelValidRef,
+                wirelessDispatchTopologyVersion,
+                gameTick)) {
+            int attemptBudget = ProviderDispatchPolicy.targetVisitBudget(
+                    pass.activeTargetsAtStart());
+            for (int attempts = 0;
+                 attempts < attemptBudget && remaining > 0L;
+                 attempts++) {
+                var conn = pass.poll();
+                if (conn == null) {
+                    break;
+                }
+
+                if (pendingOverflowByConn.containsKey(conn)) {
+                    wirelessBatchFairness.pauseTarget(conn);
+                    continue;
+                }
+
+                long retryAfter = patternPenalties.retryAfter(
+                        conn, definition, gameTick);
+                if (retryAfter > gameTick) {
+                    pass.cooldown(conn, retryAfter);
+                    continue;
+                }
+
+                var state = connectionStates.get(conn);
+                if (state == null) {
+                    pass.remove(conn);
+                    continue;
+                }
+                if (!state.ready) {
+                    pass.cooldown(
+                            conn,
+                            Math.max(gameTick + 1L, state.cooldownUntil));
+                    continue;
+                }
+
+                boolean probing = state.probeArmed
+                        && state.cooldownUntil >= 0L
+                        && gameTick < state.cooldownUntil;
+                long share = Math.min(remaining, pass.allowance(conn));
+                if (share <= 0L) {
+                    continue;
+                }
+                var dispatch = tryPushBatchToConnection(
+                        pattern, oneCopyTemplate, share, oneCopyCost,
+                        conn, server);
+
+                if (dispatch.outcome().consumesTargetAttempt()) {
+                    state.probeArmed = false;
+                }
+                if (dispatch.ownedCopies() > 0L) {
+                    pass.success(conn, dispatch.ownedCopies());
+                    patternPenalties.recordSuccess(conn, definition);
+                    remaining -= dispatch.ownedCopies();
+
+                    boolean backpressured =
+                            pendingOverflowByConn.containsKey(conn);
+                    if (probing) {
+                        state.onProbeSuccess();
+                    } else {
+                        state.onPushSuccess(gameTick);
+                    }
+                    if (backpressured) {
+                        wirelessBatchFairness.pauseTarget(conn);
+                        evenReadyQueue.remove(conn);
+                    }
+                    if (dispatch.outcome() == WirelessPushOutcome.GLOBAL_ABORT) {
+                        return remaining;
+                    }
+                    continue;
+                }
+
+                switch (dispatch.outcome()) {
+                    case HARD_FAIL -> {
+                        if (!isConnectionAlive(conn, server)) {
+                            pass.remove(conn);
+                            patternPenalties.removeTarget(conn);
+                            wirelessBatchFairness.removeTarget(conn);
+                            evenReadyQueue.remove(conn);
+                            connectionsDirty = true;
+                        } else {
+                            long due = patternPenalties.recordRejection(
+                                    conn, definition, gameTick, fastMode);
+                            pass.cooldown(conn, due);
+                        }
+                    }
+                    case SOFT_FAIL -> {
+                        long due = patternPenalties.recordRejection(
+                                conn, definition, gameTick, fastMode);
+                        pass.cooldown(conn, due);
+                    }
+                    case GLOBAL_ABORT -> {
+                        return remaining;
+                    }
+                    case SUCCESS -> {
+                        // SUCCESS with zero ownership is defensive-only. Keep
+                        // the unchanged lease out of this pass and retry later.
                     }
                 }
             }
@@ -1174,7 +1350,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
             }
 
             long remaining = maxCraft - ownedCopies;
-            long desired = BatchDispatchPolicy.nextRampChunk(
+            long desired = ProviderDispatchPolicy.nextRampChunk(
                     fullCredit, remaining);
             int chunkCopies = (int) Math.min(desired, Integer.MAX_VALUE);
 
@@ -1189,11 +1365,13 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
             }
 
             ownedCopies += chunk.ownedCopies();
-            if (!chunk.fullyInserted() || chunk.ownedCopies() != chunkCopies) {
+            if (!ProviderDispatchPolicy.mayContinueRamp(
+                    chunkCopies, chunk.ownedCopies(), chunk.fullyInserted())) {
                 break;
             }
 
-            fullCredit = saturatingAdd(fullCredit, chunkCopies);
+            fullCredit = ProviderDispatchPolicy.addRampCredit(
+                    fullCredit, chunkCopies);
 
             // The adapter API uses an int-sized physical batch. Do not turn a
             // long-sized caller request into billions of identical max-int calls.
@@ -1405,14 +1583,13 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
                 case SUCCESS -> {
                     patternPenalties.recordSuccess(conn, patternKey);
                     boolean backpressured = pendingOverflowByConn.containsKey(conn);
-                    if (backpressured) {
-                        state.onPushFail(gameTick);
-                    } else if (probing) {
+                    if (probing) {
                         state.onProbeSuccess();
                     } else {
                         state.onPushSuccess(gameTick);
                     }
                     if (backpressured) {
+                        wirelessBatchFairness.pauseTarget(conn);
                         evenReadyQueue.removeHead();
                     } else {
                         evenReadyQueue.rotateHeadToTail();
@@ -1423,13 +1600,17 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
                     if (!isConnectionAlive(conn, server)) {
                         evenReadyQueue.removeHead();
                         patternPenalties.removeTarget(conn);
+                        wirelessBatchFairness.removeTarget(conn);
                         connectionsDirty = true;
                     } else {
                         evenReadyQueue.rotateHeadToTail();
                     }
                 }
                 case SOFT_FAIL -> {
-                    patternPenalties.recordRejection(conn, patternKey, gameTick, fastMode);
+                    long retryAfter = patternPenalties.recordRejection(
+                            conn, patternKey, gameTick, fastMode);
+                    wirelessBatchFairness.excludeUntil(
+                            patternKey, conn, retryAfter, gameTick);
                     evenReadyQueue.rotateHeadToTail();
                 }
                 case GLOBAL_ABORT -> {
@@ -1470,9 +1651,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
             switch (outcome) {
                 case SUCCESS -> {
                     boolean backpressured = pendingOverflowByConn.containsKey(conn);
-                    if (backpressured) {
-                        state.onPushFail(gameTick);
-                    } else if (probing) {
+                    if (probing) {
                         state.onProbeSuccess();
                     } else {
                         state.onPushSuccess(gameTick);
@@ -1533,6 +1712,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
             }
         }
         pushWheelValidRef = valid;
+        wirelessDispatchTopologyVersion++;
         pushStructuresDirty = false;
         lastPushWheelTick = gameTick;
     }
@@ -1705,11 +1885,30 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
         }
 
         pendingOverflowByConn.put(conn, bucket);
-        scheduleOverflowRetry(conn, bucket, currentGameTick());
+        scheduleInitialOverflowRetry(conn, bucket, currentGameTick());
         connectionsDirty = true;
         pushStructuresDirty = true;
         refreshGlobalBackpressure();
         alertGridTick();
+        saveChanges();
+    }
+
+    private void bucketRoutedOverflow(
+            WirelessConnection conn,
+            IPatternDetails pattern,
+            List<RoutedPatternOverflow.Entry> overflow) {
+        if (overflow.isEmpty()) {
+            return;
+        }
+
+        var bucket = ConnBucket.routedFallback(internPattern(pattern), overflow);
+        pendingOverflowByConn.put(conn, bucket);
+        scheduleInitialOverflowRetry(conn, bucket, currentGameTick());
+        connectionsDirty = true;
+        pushStructuresDirty = true;
+        refreshGlobalBackpressure();
+        alertGridTick();
+        saveChanges();
     }
 
     private short internPattern(IPatternDetails pattern) {
@@ -1831,6 +2030,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
      */
     private boolean pushPatternDirectionally(IPatternDetails pattern, KeyCounter[] inputs) {
         var accessor = (PatternProviderLogicAccessor) this;
+        if (pendingLocalDirectionalOverflow != null) return false;
         if (!accessor.getSendList().isEmpty()) return false;
         if (!gridNode.isActive()) return false;
         if (!availablePatternSet.contains(pattern)) return false;
@@ -1863,12 +2063,15 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
 
                 if (!simulateDirectionalAcceptance(faceToTarget, defaultFace, pattern, inputs)) continue;
 
-                commitDirectionalPush(pattern, inputs, faceToTarget, defaultFace);
-
-                // sendDirection is provider -> target, while defaultFace is
-                // the target-side capability face.
-                accessor.setSendDirection(pushDir);
-                accessor.invokeSendStacksOut();
+                var overflow = commitDirectionalPush(
+                        pattern, inputs, faceToTarget, defaultFace);
+                if (!overflow.isEmpty()) {
+                    pendingLocalDirectionalOverflow = new LocalDirectionalOverflow(
+                            pushDir, RoutedPatternOverflow.routed(overflow));
+                    if (!flushLocalDirectionalOverflow()) {
+                        saveChanges();
+                    }
+                }
                 accessor.invokeOnPushPatternSuccess(pattern);
                 syncPendingUnlockRule(pattern);
                 markPatternDispatched(
@@ -1924,10 +2127,11 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
             if (!simulateDirectionalAcceptance(faceToTarget, defaultFace, pattern, inputs))
                 return WirelessPushOutcome.SOFT_FAIL;
 
-            var overflow = commitDirectionalPushWithOverflow(pattern, inputs, faceToTarget, defaultFace);
+            var overflow = commitDirectionalPush(
+                    pattern, inputs, faceToTarget, defaultFace);
             PowerCostUtil.consumeRaw(grid, cost);
             if (!overflow.isEmpty()) {
-                bucketOverflow(conn, pattern, overflow, true);
+                bucketRoutedOverflow(conn, pattern, overflow);
             }
         } finally {
             EjectModeRegistry.setBypass(false);
@@ -2010,35 +2214,13 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
     }
 
     /**
-     * Commit directional push for NORMAL mode.
-     * Overflow goes to the parent's sendList via accessor.
+     * Commits one directional push while retaining the exact target face for every
+     * remainder. Both local and wireless retries consume this routed form.
      */
-    private void commitDirectionalPush(IPatternDetails pattern, KeyCounter[] inputs,
-            Map<Direction, PatternProviderTarget> faceToTarget, Direction defaultFace) {
-        var accessor = (PatternProviderLogicAccessor) this;
-        pattern.pushInputsToExternalInventory(inputs, (what, amount) -> {
-            var dir = AdvancedAECompat.getDirectionForKey(pattern, what);
-            var face = dir != null ? dir : defaultFace;
-            var target = faceToTarget.get(face);
-            if (target != null) {
-                var inserted = target.insert(what, amount, Actionable.MODULATE);
-                if (inserted < amount) {
-                    accessor.invokeAddToSendList(what, amount - inserted);
-                }
-            } else {
-                accessor.invokeAddToSendList(what, amount);
-            }
-        });
-    }
-
-    /**
-     * Commit directional push for WIRELESS mode.
-     * Returns overflow items directly instead of using the parent's sendList.
-     */
-    private static List<GenericStack> commitDirectionalPushWithOverflow(
+    private static List<RoutedPatternOverflow.Entry> commitDirectionalPush(
             IPatternDetails pattern, KeyCounter[] inputs,
             Map<Direction, PatternProviderTarget> faceToTarget, Direction defaultFace) {
-        var overflow = new ArrayList<GenericStack>();
+        var overflow = new ArrayList<RoutedPatternOverflow.Entry>();
         pattern.pushInputsToExternalInventory(inputs, (what, amount) -> {
             var dir = AdvancedAECompat.getDirectionForKey(pattern, what);
             var face = dir != null ? dir : defaultFace;
@@ -2046,16 +2228,60 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
             if (target != null) {
                 var inserted = target.insert(what, amount, Actionable.MODULATE);
                 if (inserted < amount) {
-                    overflow.add(new GenericStack(what, amount - inserted));
+                    overflow.add(new RoutedPatternOverflow.Entry(
+                            face, new GenericStack(what, amount - inserted)));
                 }
             } else {
-                overflow.add(new GenericStack(what, amount));
+                overflow.add(new RoutedPatternOverflow.Entry(
+                        face, new GenericStack(what, amount)));
             }
         });
         return overflow;
     }
 
     // ---- overflow flush ---------------------------------------------------------
+
+    private boolean flushLocalDirectionalOverflow() {
+        var pending = pendingLocalDirectionalOverflow;
+        if (pending == null) {
+            return false;
+        }
+
+        var level = overloadedHost.getLevel();
+        if (!(level instanceof ServerLevel serverLevel)) {
+            return false;
+        }
+        var targetPos = overloadedHost.getBlockPos().relative(pending.targetDirection());
+        var targetBlockEntity = serverLevel.getBlockEntity(targetPos);
+        if (targetBlockEntity == null) {
+            return false;
+        }
+
+        EjectModeRegistry.setBypass(true);
+        boolean progressed;
+        try {
+            progressed = pending.overflow().flush(
+                    pending.targetDirection().getOpposite(),
+                    (face, what, amount) -> {
+                        var target = getCachedTarget(
+                                serverLevel, targetPos, targetBlockEntity,
+                                face, wirelessSource);
+                        return target == null
+                                ? 0L
+                                : target.insert(what, amount, Actionable.MODULATE);
+                    });
+        } finally {
+            EjectModeRegistry.setBypass(false);
+        }
+
+        if (pending.overflow().isEmpty()) {
+            pendingLocalDirectionalOverflow = null;
+        }
+        if (progressed) {
+            saveChanges();
+        }
+        return progressed;
+    }
 
     private void flushWirelessSends() {
         if (pendingOverflowByConn.isEmpty()) return;
@@ -2067,6 +2293,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
         var server = sl.getServer();
 
         int attempts = 0;
+        boolean overflowStateChanged = false;
         while (attempts < OVERFLOW_FLUSH_BUDGET) {
             var conn = overflowRetrySchedule.pollDue(gameTick);
             if (conn == null) {
@@ -2098,26 +2325,40 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
 
             var result = bucket.compactMode
                     ? flushCompactBucket(bucket, conn, targetLevel, adapter, cached)
-                    : flushFallbackBucket(bucket, conn, targetLevel, adapter, cached);
+                    : flushFallbackBucket(bucket, conn, targetLevel, adapter, cached, be);
 
-            if (result == OverflowFlushResult.CLEARED) {
+            if (result.removeBucket()) {
                 pendingOverflowByConn.remove(conn);
+                wirelessBatchFairness.resumeTarget(conn, gameTick);
                 connectionsDirty = true;
                 pushStructuresDirty = true;
-            } else if (result == OverflowFlushResult.PROGRESSED) {
-                bucket.retryDelay = OVERFLOW_RETRY_MIN;
-                scheduleOverflowRetry(conn, bucket, gameTick + OVERFLOW_RETRY_MIN);
-            } else {
-                scheduleBlockedOverflowRetry(conn, bucket, gameTick);
+            } else if (result.reschedule()) {
+                bucket.retryDelay = ProviderDispatchPolicy.nextOverflowRetryDelay(
+                        bucket.retryDelay, result);
+                scheduleOverflowRetry(conn, bucket, gameTick + bucket.retryDelay);
             }
+            overflowStateChanged |= result.persistentStateChanged();
         }
         refreshGlobalBackpressure();
+        if (overflowStateChanged) {
+            saveChanges();
+        }
     }
 
-    private OverflowFlushResult flushCompactBucket(ConnBucket bucket, WirelessConnection conn,
+    /**
+     * Called by the already-active block-entity ticker. This only performs an
+     * O(1) due-queue check until a retry is actually due; capability access
+     * remains bounded by {@link #OVERFLOW_FLUSH_BUDGET}.
+     */
+    public void tickOverflowRetries() {
+        flushWirelessSends();
+    }
+
+    private ProviderDispatchPolicy.OverflowAttemptResult flushCompactBucket(
+            ConnBucket bucket, WirelessConnection conn,
             ServerLevel targetLevel, MachineAdapter adapter, @Nullable PatternProviderTarget cached) {
         var pattern = patternById.get(Short.toUnsignedInt(bucket.patternId));
-        if (pattern == null) return OverflowFlushResult.CLEARED;
+        if (pattern == null) return ProviderDispatchPolicy.OverflowAttemptResult.CLEARED;
         var inputs = pattern.getInputs();
         boolean progressed = false;
 
@@ -2125,7 +2366,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
             var input = inputs[bucket.stuckIdx];
             var possible = input.getPossibleInputs();
             if (possible.length != 1) {
-                return OverflowFlushResult.CLEARED;
+                return ProviderDispatchPolicy.OverflowAttemptResult.CLEARED;
             }
             var single = new ArrayList<GenericStack>(1);
             single.add(new GenericStack(possible[0].what(), bucket.remaining));
@@ -2135,12 +2376,14 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
             long left = single.isEmpty() ? 0 : single.get(0).amount();
             long inserted = bucket.remaining - left;
             if (inserted == 0) {
-                return progressed ? OverflowFlushResult.PROGRESSED : OverflowFlushResult.BLOCKED;
+                return progressed
+                        ? ProviderDispatchPolicy.OverflowAttemptResult.PROGRESSED
+                        : ProviderDispatchPolicy.OverflowAttemptResult.BLOCKED;
             }
             progressed = true;
             if (left > 0) {
                 bucket.remaining = left;
-                return OverflowFlushResult.PROGRESSED;
+                return ProviderDispatchPolicy.OverflowAttemptResult.PROGRESSED;
             }
 
             bucket.stuckIdx++;
@@ -2148,35 +2391,67 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
                 bucket.remaining = inputAmount(inputs[bucket.stuckIdx]);
             }
         }
-        return OverflowFlushResult.CLEARED;
+        return ProviderDispatchPolicy.OverflowAttemptResult.CLEARED;
     }
 
-    private OverflowFlushResult flushFallbackBucket(ConnBucket bucket, WirelessConnection conn,
-            ServerLevel targetLevel, MachineAdapter adapter, @Nullable PatternProviderTarget cached) {
-        long before = totalStackAmount(bucket.fallbackList);
-        adapter.flushOverflow(targetLevel, conn.pos(), conn.boundFace(),
-                bucket.fallbackList, wirelessSource, cached);
-        if (bucket.fallbackList.isEmpty()) {
-            return OverflowFlushResult.CLEARED;
+    private ProviderDispatchPolicy.OverflowAttemptResult flushFallbackBucket(
+            ConnBucket bucket, WirelessConnection conn,
+            ServerLevel targetLevel, MachineAdapter adapter,
+            @Nullable PatternProviderTarget cached,
+            @Nullable BlockEntity targetBlockEntity) {
+        if (!bucket.fallback.hasExplicitFaces()) {
+            boolean progressed = bucket.fallback.flushUnrouted(
+                    stacks -> adapter.flushOverflow(
+                            targetLevel, conn.pos(), conn.boundFace(),
+                            stacks, wirelessSource, cached));
+            if (bucket.fallback.isEmpty()) {
+                return ProviderDispatchPolicy.OverflowAttemptResult.CLEARED;
+            }
+            return progressed
+                    ? ProviderDispatchPolicy.OverflowAttemptResult.PROGRESSED
+                    : ProviderDispatchPolicy.OverflowAttemptResult.BLOCKED;
         }
-        return totalStackAmount(bucket.fallbackList) < before
-                ? OverflowFlushResult.PROGRESSED
-                : OverflowFlushResult.BLOCKED;
-    }
 
-    private static long totalStackAmount(List<GenericStack> stacks) {
-        long total = 0L;
-        for (var stack : stacks) {
-            total = saturatingAdd(total, stack.amount());
+        if (targetBlockEntity == null) {
+            return ProviderDispatchPolicy.OverflowAttemptResult.BLOCKED;
         }
-        return total;
+
+        EjectModeRegistry.setBypass(true);
+        boolean progressed;
+        try {
+            progressed = bucket.fallback.flush(
+                    conn.boundFace(),
+                    (face, what, amount) -> {
+                        var target = getCachedTarget(
+                                targetLevel, conn.pos(), targetBlockEntity,
+                                face, wirelessSource);
+                        return target == null
+                                ? 0L
+                                : target.insert(what, amount, Actionable.MODULATE);
+                    });
+        } finally {
+            EjectModeRegistry.setBypass(false);
+        }
+
+        if (bucket.fallback.isEmpty()) {
+            return ProviderDispatchPolicy.OverflowAttemptResult.CLEARED;
+        }
+        return progressed
+                ? ProviderDispatchPolicy.OverflowAttemptResult.PROGRESSED
+                : ProviderDispatchPolicy.OverflowAttemptResult.BLOCKED;
     }
 
     private void scheduleBlockedOverflowRetry(
             WirelessConnection conn, ConnBucket bucket, long gameTick) {
-        bucket.retryDelay = Math.min(
-                OVERFLOW_RETRY_MAX,
-                Math.max(OVERFLOW_RETRY_MIN + 1, bucket.retryDelay * 2));
+        bucket.retryDelay = ProviderDispatchPolicy.nextOverflowRetryDelay(
+                bucket.retryDelay,
+                ProviderDispatchPolicy.OverflowAttemptResult.BLOCKED);
+        scheduleOverflowRetry(conn, bucket, gameTick + bucket.retryDelay);
+    }
+
+    private void scheduleInitialOverflowRetry(
+            WirelessConnection conn, ConnBucket bucket, long gameTick) {
+        bucket.retryDelay = ProviderDispatchPolicy.initialOverflowRetryDelay();
         scheduleOverflowRetry(conn, bucket, gameTick + bucket.retryDelay);
     }
 
@@ -2250,6 +2525,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
      * allowing the tick to be completely skipped.
      */
     public boolean hasAnyTickWork() {
+        if (pendingLocalDirectionalOverflow != null) return true;
         if (!pendingOverflowByConn.isEmpty()) return true;
         if (!pendingRestoreOverflow.isEmpty()) return true;
         if (overloadedHost.getProviderMode() == ProviderMode.WIRELESS
@@ -2824,6 +3100,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
         pushStructuresDirty = true;
         refreshGlobalBackpressure();
         alertGridTick();
+        saveChanges();
         return true;
     }
 
@@ -2832,17 +3109,13 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
             return drainCompactBucketToNetwork(bucket);
         }
 
-        for (int i = 0; i < bucket.fallbackList.size(); ) {
-            var stack = bucket.fallbackList.get(i);
-            long remaining = insertStackToNetwork(stack.what(), stack.amount());
-            if (remaining <= 0) {
-                bucket.fallbackList.remove(i);
-                continue;
-            }
-            bucket.fallbackList.set(i, new GenericStack(stack.what(), remaining));
-            return false;
-        }
-        return true;
+        bucket.fallback.flush(
+                Direction.DOWN,
+                (face, what, amount) -> {
+                    long remaining = insertStackToNetwork(what, amount);
+                    return amount - remaining;
+                });
+        return bucket.fallback.isEmpty();
     }
 
     private boolean drainCompactBucketToNetwork(ConnBucket bucket) {
@@ -2986,6 +3259,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
         connectionStates.clear();
         wirelessReturnSchedule.clear();
         patternPenalties.clear();
+        wirelessBatchFairness.clear();
         wirelessDistributor.clearTickState(true);
     }
 
@@ -3135,6 +3409,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
 
             var accessor = (PatternProviderLogicAccessor) OverloadedPatternProviderLogic.this;
             boolean parentDidWork = accessor.invokeDoWork();
+            boolean localDirectionalDidWork = flushLocalDirectionalOverflow();
             flushWirelessSends();
             drainPendingRestoreOverflow();
             tickAutoReturn();
@@ -3148,6 +3423,11 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
             boolean parentHasWork = accessor.invokeHasWorkToDo();
             if (parentHasWork) {
                 return parentDidWork ? TickRateModulation.URGENT : TickRateModulation.SLOWER;
+            }
+            if (pendingLocalDirectionalOverflow != null) {
+                return localDirectionalDidWork
+                        ? TickRateModulation.URGENT
+                        : TickRateModulation.SLOWER;
             }
 
             if (hasAnyTickWork()) {
@@ -3169,7 +3449,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
         if (overloadedHost.getProviderMode() == ProviderMode.WIRELESS) {
             return false;
         }
-        return super.isBusy();
+        return pendingLocalDirectionalOverflow != null || super.isBusy();
     }
 
     // ---- drops & clearing -------------------------------------------------------
@@ -3179,6 +3459,13 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
         super.addDrops(drops);
         for (var bucket : pendingOverflowByConn.values()) {
             addBucketDrops(bucket, drops);
+        }
+        if (pendingLocalDirectionalOverflow != null) {
+            for (var entry : pendingLocalDirectionalOverflow.overflow().snapshot()) {
+                var stack = entry.stack();
+                stack.what().addDrops(stack.amount(), drops,
+                        overloadedHost.getLevel(), overloadedHost.getBlockPos());
+            }
         }
         for (var stack : pendingRestoreOverflow) {
             stack.what().addDrops(stack.amount(), drops,
@@ -3196,7 +3483,10 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
             removeSavedData();
         }
         pendingRestoreOverflow.clear();
+        pendingLocalDirectionalOverflow = null;
         clearWirelessOverflowState();
+        normalBatchFairness.clear();
+        normalPatternPenalties.clear();
         connectionStates.clear();
         machineNextPoll.clear();
         machineBackoff.clear();
@@ -3223,7 +3513,12 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
     private static final String TAG_OVERFLOW_IDX = "idx";
     private static final String TAG_OVERFLOW_REMAINING = "remaining";
     private static final String TAG_OVERFLOW_FALLBACK = "fallback";
+    private static final String TAG_OVERFLOW_FACE = "ae2lt:face";
     private static final String TAG_OVERFLOW_COMPACT = "compact";
+    private static final String TAG_LOCAL_DIRECTIONAL_OVERFLOW =
+            "ae2lt:local_directional_overflow";
+    private static final String TAG_LOCAL_TARGET_DIRECTION = "target_direction";
+    private static final String TAG_LOCAL_OVERFLOW_ENTRIES = "entries";
     private static final String TAG_RESTORE_OVERFLOW = "ae2lt:restore_overflow";
     private static final String TAG_UNLOCK_MATCH_MODE = "Ae2ltUnlockMatchMode";
     private static final String TAG_UNLOCK_TEMPLATE = "Ae2ltUnlockTemplate";
@@ -3243,6 +3538,17 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
         }
         if (pendingUnlockTemplate != null && !pendingUnlockTemplate.isEmpty()) {
             tag.put(TAG_UNLOCK_TEMPLATE, pendingUnlockTemplate.saveOptional(registries));
+        }
+        if (pendingLocalDirectionalOverflow != null) {
+            var localTag = new CompoundTag();
+            localTag.putByte(
+                    TAG_LOCAL_TARGET_DIRECTION,
+                    (byte) pendingLocalDirectionalOverflow.targetDirection().get3DDataValue());
+            localTag.put(
+                    TAG_LOCAL_OVERFLOW_ENTRIES,
+                    writeRoutedOverflow(
+                            pendingLocalDirectionalOverflow.overflow(), registries));
+            tag.put(TAG_LOCAL_DIRECTIONAL_OVERFLOW, localTag);
         }
         writeWirelessOverflowToNBT(tag, registries);
     }
@@ -3270,6 +3576,20 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
             pendingUnlockTemplate = ItemStack.parseOptional(registries, tag.getCompound(TAG_UNLOCK_TEMPLATE));
             if (pendingUnlockTemplate.isEmpty()) {
                 pendingUnlockTemplate = null;
+            }
+        }
+        pendingLocalDirectionalOverflow = null;
+        if (tag.contains(TAG_LOCAL_DIRECTIONAL_OVERFLOW, Tag.TAG_COMPOUND)) {
+            var localTag = tag.getCompound(TAG_LOCAL_DIRECTIONAL_OVERFLOW);
+            int directionId = localTag.getByte(TAG_LOCAL_TARGET_DIRECTION);
+            var entries = readRoutedOverflow(
+                    registries,
+                    localTag.getList(TAG_LOCAL_OVERFLOW_ENTRIES, Tag.TAG_COMPOUND));
+            if (directionId >= 0 && directionId < Direction.values().length
+                    && !entries.isEmpty()) {
+                pendingLocalDirectionalOverflow = new LocalDirectionalOverflow(
+                        Direction.from3DDataValue(directionId),
+                        RoutedPatternOverflow.routed(entries));
             }
         }
         readWirelessOverflowFromNBT(tag, registries);
@@ -3369,7 +3689,8 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
             return;
         }
 
-        for (var stack : bucket.fallbackList) {
+        for (var entry : bucket.fallback.snapshot()) {
+            var stack = entry.stack();
             stack.what().addDrops(stack.amount(), drops,
                     overloadedHost.getLevel(), overloadedHost.getBlockPos());
         }
@@ -3415,11 +3736,9 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
                 bucketTag.putShort(TAG_OVERFLOW_IDX, bucket.stuckIdx);
                 bucketTag.putLong(TAG_OVERFLOW_REMAINING, bucket.remaining);
             } else {
-                var fallback = new ListTag();
-                for (var stack : bucket.fallbackList) {
-                    fallback.add(GenericStack.writeTag(registries, stack));
-                }
-                bucketTag.put(TAG_OVERFLOW_FALLBACK, fallback);
+                bucketTag.put(
+                        TAG_OVERFLOW_FALLBACK,
+                        writeRoutedOverflow(bucket.fallback, registries));
             }
             bucketList.add(bucketTag);
         }
@@ -3458,7 +3777,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
                             List.of(),
                             true));
                 } else {
-                    var fallback = readGenericStackList(registries,
+                    var fallback = readRoutedOverflow(registries,
                             bucketTag.getList(TAG_OVERFLOW_FALLBACK, Tag.TAG_COMPOUND));
                     if (!fallback.isEmpty()) {
                         pendingOverflowBuckets.add(new PendingBucketLoad(
@@ -3482,8 +3801,57 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
         if (!fallback.isEmpty()) {
             pendingOverflowBuckets.add(new PendingBucketLoad(
                     WirelessConnection.fromTag(tag.getCompound(TAG_W_SEND_CONN)),
-                    (short) 0, (short) 0, 0, fallback, false));
+                    (short) 0, (short) 0, 0,
+                    toUnroutedOverflow(fallback), false));
         }
+    }
+
+    private static ListTag writeRoutedOverflow(
+            RoutedPatternOverflow overflow,
+            HolderLookup.Provider registries) {
+        var list = new ListTag();
+        for (var entry : overflow.snapshot()) {
+            var stackTag = GenericStack.writeTag(registries, entry.stack());
+            if (entry.face() != null) {
+                stackTag.putByte(
+                        TAG_OVERFLOW_FACE,
+                        (byte) entry.face().get3DDataValue());
+            }
+            list.add(stackTag);
+        }
+        return list;
+    }
+
+    private static List<RoutedPatternOverflow.Entry> readRoutedOverflow(
+            HolderLookup.Provider registries,
+            ListTag list) {
+        var entries = new ArrayList<RoutedPatternOverflow.Entry>(list.size());
+        for (int i = 0; i < list.size(); i++) {
+            var stackTag = list.getCompound(i);
+            var stack = GenericStack.readTag(registries, stackTag);
+            if (stack == null || stack.amount() <= 0L) {
+                continue;
+            }
+
+            Direction face = null;
+            if (stackTag.contains(TAG_OVERFLOW_FACE, Tag.TAG_BYTE)) {
+                int faceId = stackTag.getByte(TAG_OVERFLOW_FACE);
+                if (faceId >= 0 && faceId < Direction.values().length) {
+                    face = Direction.from3DDataValue(faceId);
+                }
+            }
+            entries.add(new RoutedPatternOverflow.Entry(face, stack));
+        }
+        return entries;
+    }
+
+    private static List<RoutedPatternOverflow.Entry> toUnroutedOverflow(
+            List<GenericStack> stacks) {
+        var entries = new ArrayList<RoutedPatternOverflow.Entry>(stacks.size());
+        for (var stack : stacks) {
+            entries.add(new RoutedPatternOverflow.Entry(null, stack));
+        }
+        return entries;
     }
 
     private static List<GenericStack> readGenericStackList(HolderLookup.Provider registries, ListTag list) {
@@ -3527,15 +3895,17 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
                 }
                 pendingOverflowByConn.put(pending.conn(),
                         ConnBucket.compact(pending.patternId(), pending.stuckIdx(), pending.remaining()));
-            } else if (!pending.fallbackList().isEmpty()) {
+            } else if (!pending.fallback().isEmpty()) {
                 pendingOverflowByConn.put(pending.conn(),
-                        ConnBucket.fallback(pending.patternId(), pending.fallbackList()));
+                        ConnBucket.routedFallback(
+                                pending.patternId(), pending.fallback()));
             }
         }
 
         long gameTick = currentGameTick();
         for (var entry : pendingOverflowByConn.object2ObjectEntrySet()) {
-            scheduleOverflowRetry(entry.getKey(), entry.getValue(), gameTick);
+            wirelessBatchFairness.pauseTarget(entry.getKey());
+            scheduleInitialOverflowRetry(entry.getKey(), entry.getValue(), gameTick);
         }
 
         pendingOverflowPatternDefinitions.clear();
@@ -3554,5 +3924,6 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
         patternById.clear();
         nextPatternId = 0;
         wirelessGlobalBackpressure = false;
+        wirelessBatchFairness.clear();
     }
 }
