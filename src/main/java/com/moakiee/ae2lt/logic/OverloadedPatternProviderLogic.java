@@ -816,7 +816,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
 
         var cachedTarget = getCachedTarget(
                 level, targetPos, targetBe, face, wirelessSource);
-        if (isBatchTargetBlocked(cachedTarget, pattern)) {
+        if (isBatchTargetBlocked(cachedTarget)) {
             return null;
         }
         return new BatchTargetContext(
@@ -1013,7 +1013,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
 
         var cachedTarget = getCachedTarget(
                 targetLevel, conn.pos(), targetBe, conn.boundFace(), wirelessSource);
-        if (isBatchTargetBlocked(cachedTarget, pattern)) {
+        if (isBatchTargetBlocked(cachedTarget)) {
             return new BatchTargetDispatchResult(0L, WirelessPushOutcome.SOFT_FAIL);
         }
 
@@ -1038,15 +1038,12 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
                         : WirelessPushOutcome.SUCCESS);
     }
 
-    private boolean isBatchTargetBlocked(
-            @Nullable PatternProviderTarget cachedTarget, IPatternDetails pattern) {
+    private boolean isBatchTargetBlocked(@Nullable PatternProviderTarget cachedTarget) {
         if (!isBlocking() || cachedTarget == null) {
             return false;
         }
         var patternInputs = ((PatternProviderLogicAccessor) this).getPatternInputs();
-        return cachedTarget.containsPatternInput(patternInputs)
-                && !AdvancedBlockingCompat.shouldBypassBlocking(
-                        this, cachedTarget, pattern);
+        return cachedTarget.containsPatternInput(patternInputs);
     }
 
     private BatchRampResult dispatchBatchRamp(
@@ -1504,13 +1501,6 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
         PatternProviderTarget cachedTarget = (targetBe != null)
                 ? getCachedTarget(targetLevel, conn.pos(), targetBe, conn.boundFace(), wirelessSource)
                 : null;
-        // EAP advanced-blocking compat: when ADVANCED_BLOCKING is on and the
-        // target fully covers every input slot, treat the push as not blocked
-        // (mirrors EAP's @Redirect on PatternProviderTarget.containsPatternInput).
-        if (blocking && cachedTarget != null
-                && AdvancedBlockingCompat.shouldBypassBlocking(this, cachedTarget, pattern)) {
-            blocking = false;
-        }
         var result = adapter.pushCopies(
                 targetLevel, conn.pos(), conn.boundFace(),
                 pattern, inputs, 1,
@@ -1707,9 +1697,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
 
                 if (isBlocking()) {
                     var anyTarget = faceToTarget.values().iterator().next();
-                    // EAP advanced-blocking compat: bypass when target fully matches.
-                    if (anyTarget.containsPatternInput(patternInputKeys)
-                            && !AdvancedBlockingCompat.shouldBypassBlocking(this, anyTarget, pattern)) continue;
+                    if (anyTarget.containsPatternInput(patternInputKeys)) continue;
                 }
 
                 if (!simulateDirectionalAcceptance(faceToTarget, defaultFace, pattern, inputs)) continue;
@@ -1768,9 +1756,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
             if (isBlocking()) {
                 var patternInputKeys = ((PatternProviderLogicAccessor) this).getPatternInputs();
                 var anyTarget = faceToTarget.values().iterator().next();
-                // EAP advanced-blocking compat: bypass when target fully matches.
-                if (anyTarget.containsPatternInput(patternInputKeys)
-                        && !AdvancedBlockingCompat.shouldBypassBlocking(this, anyTarget, pattern)) return WirelessPushOutcome.SOFT_FAIL;
+                if (anyTarget.containsPatternInput(patternInputKeys)) return WirelessPushOutcome.SOFT_FAIL;
             }
 
             if (!simulateDirectionalAcceptance(faceToTarget, defaultFace, pattern, inputs))
