@@ -69,7 +69,6 @@ import appeng.api.storage.StorageCells;
 import appeng.api.upgrades.Upgrades;
 import appeng.block.AEBaseEntityBlock;
 import appeng.blockentity.AEBaseBlockEntity;
-import appeng.blockentity.crafting.IMolecularAssemblerSupportedPattern;
 import appeng.core.definitions.AEItems;
 import appeng.items.tools.powered.WirelessTerminalItem;
 import appeng.items.tools.powered.powersink.PoweredItemCapabilities;
@@ -84,10 +83,10 @@ import com.moakiee.ae2lt.me.cell.BulkLightningCellHandler;
 import com.moakiee.ae2lt.me.cell.FixedInfiniteCellHandler;
 
 import com.moakiee.ae2lt.logic.MachineAdapterRegistry;
+import com.moakiee.ae2lt.logic.craft.BatchPatternEligibility;
 import com.moakiee.thunderbolt.CoreConfig;
 import com.moakiee.thunderbolt.ae2.batch.BatchExecutor;
 import com.moakiee.thunderbolt.ae2.channel.ChannelProviderRegistry;
-import com.moakiee.thunderbolt.ae2.overload.pattern.WrappedPatternDetails;
 import com.moakiee.thunderbolt.core.craft.CraftingCoreRegistry;
 import com.moakiee.ae2lt.logic.railgun.RailgunEnergyBuffer;
 import com.moakiee.ae2lt.celestweave.ArmorEnergyBuffer;
@@ -729,16 +728,7 @@ public class AE2LightningTech {
      */
     private void commonSetup(FMLCommonSetupEvent event) {
         FrequencyApi.setProvider(new FrequencyApiBridge());
-        BatchExecutor.setBatchEligibleRule(details -> {
-            if (details instanceof com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopExpandedPatternDetails) {
-                return details instanceof com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopBatchPatternDetails;
-            }
-            if (details instanceof WrappedPatternDetails wrapped) {
-                return wrapped.wrappedPatternDetails()
-                        instanceof IMolecularAssemblerSupportedPattern;
-            }
-            return details instanceof IMolecularAssemblerSupportedPattern;
-        });
+        BatchExecutor.setBatchEligibleRule(BatchPatternEligibility::isEligible);
         event.enqueueWork(() -> {
             // Thunderbolt keeps controller discovery content-agnostic. Register the
             // AE2LT controller family before any grid can be created so infinite
