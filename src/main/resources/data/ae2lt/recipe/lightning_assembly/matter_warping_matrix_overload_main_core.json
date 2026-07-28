@@ -28,21 +28,9 @@
     },
     {
       "ingredient": {
-        "item": "minecraft:heavy_core"
-      },
-      "count": 1
-    },
-    {
-      "ingredient": {
         "item": "ae2lt:floating_matter"
       },
       "count": 64
-    },
-    {
-      "ingredient": {
-        "item": "minecraft:ominous_trial_key"
-      },
-      "count": 2
     },
     {
       "ingredient": {

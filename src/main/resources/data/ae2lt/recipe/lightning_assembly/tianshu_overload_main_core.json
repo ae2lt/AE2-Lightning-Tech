@@ -43,7 +43,7 @@
     "id": "ae2lt:tianshu_overload_main_core",
     "count": 1
   },
-  "totalEnergy": 128000000,
-  "lightningCost": 4096,
+  "totalEnergy": 120000000,
+  "lightningCost": 16384,
   "lightningTier": "extreme_high_voltage"
 }
