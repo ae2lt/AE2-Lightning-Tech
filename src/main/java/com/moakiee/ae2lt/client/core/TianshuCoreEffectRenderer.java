@@ -13,9 +13,20 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.phys.AABB;
 
+import java.util.Map;
+import java.util.WeakHashMap;
+
 public final class TianshuCoreEffectRenderer
         implements BlockEntityRenderer<TianshuSupercomputerControllerBlockEntity> {
     private static final BlockPos CORE_LOCAL = new BlockPos(3, 3, 3);
+    private static final CoreEffectAnimationState.MotionProfile MOTION =
+            new CoreEffectAnimationState.MotionProfile(
+                    1.0D / 5.5D, 1.0D / 0.72D, 18.0D,
+                    3.0D, 30.0D, 360.0D,
+                    0.0D, 0.0D);
+
+    private final Map<TianshuSupercomputerControllerBlockEntity, CoreEffectAnimationState> animations =
+            new WeakHashMap<>();
 
     public TianshuCoreEffectRenderer(BlockEntityRendererProvider.Context context) {
     }
@@ -37,14 +48,17 @@ public final class TianshuCoreEffectRenderer
         CoreEffectPalette palette = palette(component);
         boolean working = state.hasProperty(TianshuSupercomputerControllerBlock.WORKING)
                 && state.getValue(TianshuSupercomputerControllerBlock.WORKING);
-        float time = (controller.getLevel().getGameTime() + partialTick) / 20.0F;
+        double renderTick = controller.getLevel().getGameTime() + (double) partialTick;
+        var animation = animations.computeIfAbsent(
+                controller, ignored -> new CoreEffectAnimationState()).sample(renderTick, working, MOTION);
 
         stack.pushPose();
         stack.translate(
                 center.getX() + 0.5D - controller.getBlockPos().getX(),
                 center.getY() + 0.5D - controller.getBlockPos().getY(),
                 center.getZ() + 0.5D - controller.getBlockPos().getZ());
-        CoreEffectGeometry.renderTianshu(stack, buffers, palette, time, working);
+        CoreEffectGeometry.renderTianshu(
+                stack, buffers, palette, animation.primaryPhase(), animation.secondaryPhase());
         stack.popPose();
     }
 

@@ -9,29 +9,27 @@ final class CoreEffectGeometry {
     }
 
     static void renderTianshu(PoseStack stack, MultiBufferSource buffers,
-                              CoreEffectPalette palette, float time, boolean working) {
+                              CoreEffectPalette palette,
+                              double stepPhase, double spinDegrees) {
         var consumer = buffers.getBuffer(CoreEffectRenderTypes.tianshu());
         stack.pushPose();
         stack.scale(1.80F, 1.80F, 1.80F);
-        renderCubeCore(
-                stack,
-                consumer,
-                palette,
-                time,
-                working ? 0.72F : 5.5F,
-                working ? 30.0F : 3.0F);
+        renderCubeCore(stack, consumer, palette, stepPhase, spinDegrees);
         stack.popPose();
     }
 
     static void renderMatrix(PoseStack stack, MultiBufferSource buffers,
-                             CoreEffectPalette palette, float time, boolean working) {
+                             CoreEffectPalette palette,
+                             CoreEffectAnimationState.Sample animation) {
         var coreConsumer = buffers.getBuffer(CoreEffectRenderTypes.matrixCore());
-        float activity = working ? 1.0F : 0.0F;
-        float coreSpeed = working ? 48.0F : 8.0F;
-        float ringSpeed = working ? 84.0F : 22.0F;
-        float contraction = 1.0F - activity * (0.07F + 0.02F * (float) Math.sin(time * 4.5F));
-        float pulse = 1.0F + activity * 0.035F * (float) Math.sin(time * 6.0F);
-        float glowPulse = 0.94F + 0.06F * (float) Math.sin(time * (working ? 4.2F : 1.2F));
+        float activity = (float) animation.activity();
+        float ambientTime = (float) animation.ambientTime();
+        float corePhase = (float) animation.primaryPhase();
+        float ringPhase = (float) animation.secondaryPhase();
+        float contraction = 1.0F
+                - activity * (0.07F + 0.02F * (float) Math.sin(ambientTime * 4.5F));
+        float pulse = 1.0F + activity * 0.035F * (float) Math.sin(ambientTime * 6.0F);
+        float glowPulse = 0.94F + 0.06F * (float) Math.sin(animation.glowPhase());
         float primaryR = brighten(palette.primaryR(), 0.34F);
         float primaryG = brighten(palette.primaryG(), 0.34F);
         float primaryB = brighten(palette.primaryB(), 0.34F);
@@ -43,8 +41,8 @@ final class CoreEffectGeometry {
         stack.scale(1.50F, 1.50F, 1.50F);
 
         stack.pushPose();
-        stack.mulPose(Axis.YP.rotationDegrees(time * coreSpeed * 0.42F));
-        stack.mulPose(Axis.XP.rotationDegrees(time * -coreSpeed * 0.27F));
+        stack.mulPose(Axis.YP.rotationDegrees(corePhase * 0.42F));
+        stack.mulPose(Axis.XP.rotationDegrees(corePhase * -0.27F));
         CoreEffectMesh.sphere(
                 stack,
                 coreConsumer,
@@ -58,8 +56,8 @@ final class CoreEffectGeometry {
         var glowConsumer = buffers.getBuffer(CoreEffectRenderTypes.matrixGlow());
         float ringRadius = 1.22F * contraction;
         float constraintRadius = 1.12F * contraction;
-        float diskAlpha = (working ? 0.34F : 0.22F) * glowPulse;
-        float innerYaw = time * ringSpeed * 0.55F;
+        float diskAlpha = lerp(0.22F, 0.34F, activity) * glowPulse;
+        float innerYaw = ringPhase * 0.55F;
         renderMatrixRing(stack, glowConsumer, ringRadius, 0.055F, 0.006F,
                 innerYaw, 10.0F, -6.0F,
                 primaryR, primaryG, primaryB, diskAlpha);
@@ -67,9 +65,9 @@ final class CoreEffectGeometry {
                 innerYaw, 10.0F, -6.0F,
                 accentR, accentG, accentB, diskAlpha * 1.65F);
 
-        float ringAlpha = (working ? 0.66F : 0.42F) * glowPulse;
-        float middleYaw = -time * ringSpeed * 0.82F;
-        float outerYaw = time * ringSpeed * 0.68F;
+        float ringAlpha = lerp(0.42F, 0.66F, activity) * glowPulse;
+        float middleYaw = -ringPhase * 0.82F;
+        float outerYaw = ringPhase * 0.68F;
         renderMatrixRing(stack, glowConsumer, constraintRadius, 0.018F, 0.014F,
                 middleYaw, 61.0F, 24.0F,
                 accentR, accentG, accentB, ringAlpha);
@@ -77,15 +75,16 @@ final class CoreEffectGeometry {
                 outerYaw, 118.0F, -20.0F,
                 primaryR, primaryG, primaryB, ringAlpha * 0.82F);
 
-        float nodePulse = 1.0F + (working ? 0.16F : 0.06F) * (float) Math.sin(time * 5.5F);
+        float nodePulse = 1.0F
+                + lerp(0.06F, 0.16F, activity) * (float) Math.sin(ambientTime * 5.5F);
         renderOrbitNodes(stack, glowConsumer,
                 constraintRadius, middleYaw, 61.0F, 24.0F,
-                time * ringSpeed * 1.65F,
+                ringPhase * 1.65F,
                 2, 0.074F * nodePulse,
                 1.00F, 0.64F, 0.16F, ringAlpha * 1.18F);
         renderOrbitNodes(stack, glowConsumer,
                 constraintRadius, outerYaw, 118.0F, -20.0F,
-                35.0F - time * ringSpeed * 1.25F,
+                35.0F - ringPhase * 1.25F,
                 3, 0.064F * nodePulse,
                 1.00F, 0.64F, 0.16F, ringAlpha * 1.02F);
         stack.popPose();
@@ -155,19 +154,23 @@ final class CoreEffectGeometry {
         return color + (1.0F - color) * amount;
     }
 
+    private static float lerp(float start, float end, float progress) {
+        return start + (end - start) * progress;
+    }
+
     private static void renderCubeCore(PoseStack stack,
                                        com.mojang.blaze3d.vertex.VertexConsumer consumer,
                                        CoreEffectPalette palette,
-                                       float time, float stepDuration, float spinSpeed) {
-        int step = (int) Math.floor(time / stepDuration);
-        float progress = time / stepDuration - step;
+                                       double stepPhase, double spinDegrees) {
+        int step = (int) Math.floor(stepPhase);
+        float progress = (float) (stepPhase - step);
         float turn = smoothStep(clamp((progress - 0.12F) / 0.70F)) * 90.0F;
         int axis = Math.floorMod(step, 3);
         int layer = Math.floorMod(step / 3, 3) - 1;
         float direction = (step & 1) == 0 ? 1.0F : -1.0F;
 
         stack.pushPose();
-        stack.mulPose(Axis.YP.rotationDegrees(time * spinSpeed));
+        stack.mulPose(Axis.YP.rotationDegrees((float) spinDegrees));
         stack.mulPose(Axis.XP.rotationDegrees(24.0F));
         stack.mulPose(Axis.ZP.rotationDegrees(-8.0F));
 

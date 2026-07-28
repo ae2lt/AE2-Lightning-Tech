@@ -14,7 +14,19 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.phys.AABB;
 
+import java.util.Map;
+import java.util.WeakHashMap;
+
 public final class MatrixCoreEffectRenderer implements BlockEntityRenderer<MatrixControllerBlockEntity> {
+    private static final CoreEffectAnimationState.MotionProfile MOTION =
+            new CoreEffectAnimationState.MotionProfile(
+                    8.0D, 48.0D, 36_000.0D,
+                    22.0D, 84.0D, 36_000.0D,
+                    1.2D, 4.2D);
+
+    private final Map<MatrixControllerBlockEntity, CoreEffectAnimationState> animations =
+            new WeakHashMap<>();
+
     public MatrixCoreEffectRenderer(BlockEntityRendererProvider.Context context) {
     }
 
@@ -36,14 +48,16 @@ public final class MatrixCoreEffectRenderer implements BlockEntityRenderer<Matri
         CoreEffectPalette palette = palette(component);
         boolean working = state.hasProperty(MatrixControllerBlock.WORKING)
                 && state.getValue(MatrixControllerBlock.WORKING);
-        float time = (controller.getLevel().getGameTime() + partialTick) / 20.0F;
+        double renderTick = controller.getLevel().getGameTime() + (double) partialTick;
+        var animation = animations.computeIfAbsent(
+                controller, ignored -> new CoreEffectAnimationState()).sample(renderTick, working, MOTION);
 
         stack.pushPose();
         stack.translate(
                 center.getX() + 0.5D - controller.getBlockPos().getX(),
                 center.getY() + 0.5D - controller.getBlockPos().getY(),
                 center.getZ() + 0.5D - controller.getBlockPos().getZ());
-        CoreEffectGeometry.renderMatrix(stack, buffers, palette, time, working);
+        CoreEffectGeometry.renderMatrix(stack, buffers, palette, animation);
         stack.popPose();
     }
 
