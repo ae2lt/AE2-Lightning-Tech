@@ -14,6 +14,7 @@ import com.moakiee.ae2lt.menu.TianshuPatternEncodingTermMenu;
 import dev.emi.emi.api.EmiApi;
 import dev.emi.emi.api.recipe.EmiRecipe;
 import java.util.ArrayList;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
@@ -41,12 +42,14 @@ public abstract class EmiEncodePatternTransferMixin {
             boolean doTransfer,
             CallbackInfoReturnable<Object> cir) {
         if (!doTransfer || !(menu instanceof TianshuPatternEncodingTermMenu tianshuMenu)) return;
+        // An actual transfer starts a new metadata generation. Clear before every early return so
+        // recipes without a discoverable type/ID can never inherit the previous recipe's ID.
+        TianshuRecipeTransferContext.clear(tianshuMenu);
         if (tianshuMenu.tianshuMode == TianshuEncodingMode.CLOSED_LOOP && emiRecipe != null) {
             var output = EmiStackHelper.ofOutputs(emiRecipe).stream().findFirst().orElse(null);
             if (output != null && tianshuMenu.markClosedLoopPrimaryOutput(
                     appeng.api.stacks.GenericStack.wrapInItemStack(output))) {
                 tianshuMenu.autoFillClosedLoop();
-                TianshuRecipeTransferContext.clear(tianshuMenu);
                 // AE2's EMI result type is package-private, so let the normal transfer complete
                 // and restore the Tianshu tab after its mode-change packet has been queued.
                 ae2lt$restoreClosedLoopMode = true;
@@ -54,7 +57,6 @@ public abstract class EmiEncodePatternTransferMixin {
             return;
         }
         tianshuMenu.resetProcessingEncoding();
-        TianshuRecipeTransferContext.clear(tianshuMenu);
         if (holder != null && TianshuRecipeTransferContext.isSupportedCraftingRecipe(holder)) return;
 
         String sourceKey = "";
@@ -113,6 +115,15 @@ public abstract class EmiEncodePatternTransferMixin {
                 && menu instanceof TianshuPatternEncodingTermMenu tianshuMenu) {
             ae2lt$restoreClosedLoopMode = false;
             tianshuMenu.setTianshuMode(TianshuEncodingMode.CLOSED_LOOP);
+            return;
+        }
+        if (doTransfer
+                && Screen.hasAltDown()
+                && menu instanceof TianshuPatternEncodingTermMenu tianshuMenu
+                && tianshuMenu.tianshuMode != TianshuEncodingMode.CLOSED_LOOP
+                && cir.getReturnValue() instanceof EmiRecipeTransferResultAccessor result
+                && result.ae2lt$canCraft()) {
+            tianshuMenu.encodeAndUploadDirectly();
         }
     }
 }

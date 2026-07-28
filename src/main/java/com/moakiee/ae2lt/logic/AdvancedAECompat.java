@@ -14,6 +14,8 @@ import appeng.api.crafting.PatternDetailsHelper;
 import com.moakiee.thunderbolt.ae2.overload.model.MatchMode;
 import com.moakiee.thunderbolt.ae2.overload.pattern.OverloadedProviderOnlyPatternDetails;
 import com.moakiee.thunderbolt.ae2.overload.pattern.WrappedPatternDetails;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import net.minecraft.world.item.ItemStack;
@@ -136,6 +138,57 @@ public final class AdvancedAECompat {
         }
         return AdvPatternDetailsEncoder.encodeProcessingPattern(
                 inputs, outputs, directions);
+    }
+
+    /**
+     * Restores an AdvancedAE processing pattern into the terminal's sparse editing model.
+     * Wrapped overload patterns are unwrapped first, so combined advanced-overload patterns
+     * recover their directional layer as well.
+     */
+    @Nullable
+    public static EditableProcessingPattern restoreForEditing(
+            IPatternDetails pattern, int maxInputSlots, int maxOutputSlots) {
+        if (!isLoaded() || pattern == null || maxInputSlots < 0 || maxOutputSlots < 0) {
+            return null;
+        }
+        var unwrapped = unwrap(pattern);
+        if (!(unwrapped instanceof AdvProcessingPattern advanced)) {
+            return null;
+        }
+        var sparseInputs = advanced.getSparseInputs();
+        var sparseOutputs = advanced.getSparseOutputs();
+        if (sparseInputs.size() > maxInputSlots || sparseOutputs.size() > maxOutputSlots) {
+            return null;
+        }
+        var inputs = nullableCopy(sparseInputs);
+        var outputs = nullableCopy(sparseOutputs);
+        var directions = new int[maxInputSlots];
+        for (int slot = 0; slot < inputs.size(); slot++) {
+            var input = inputs.get(slot);
+            if (input == null || input.what() == null) continue;
+            var direction = advanced.getDirectionSideForInputKey(input.what());
+            directions[slot] = direction == null ? 0 : direction.ordinal() + 1;
+        }
+        return new EditableProcessingPattern(inputs, outputs, directions);
+    }
+
+    private static List<GenericStack> nullableCopy(List<GenericStack> source) {
+        if (source == null || source.isEmpty()) return List.of();
+        return Collections.unmodifiableList(new ArrayList<>(source));
+    }
+
+    public record EditableProcessingPattern(
+            List<GenericStack> inputs, List<GenericStack> outputs, int[] directions) {
+        public EditableProcessingPattern {
+            inputs = Collections.unmodifiableList(new ArrayList<>(inputs));
+            outputs = Collections.unmodifiableList(new ArrayList<>(outputs));
+            directions = directions.clone();
+        }
+
+        @Override
+        public int[] directions() {
+            return directions.clone();
+        }
     }
 
     private AdvancedAECompat() {}

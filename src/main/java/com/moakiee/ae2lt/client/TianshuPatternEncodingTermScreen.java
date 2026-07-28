@@ -82,6 +82,7 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
     private int observedTianshuSelectionRevision = Integer.MIN_VALUE;
     private boolean observedMaintainableView;
     private long observedMaintenanceFilterRevision = Long.MIN_VALUE;
+    private ItemStack observedEncodedPattern = ItemStack.EMPTY;
     private final Map<appeng.api.stacks.AEKey, Long> syntheticMaintenanceEntries = new HashMap<>();
     private long nextSyntheticMaintenanceSerial = -10_000_000L;
 
@@ -133,6 +134,7 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
                 () -> switchToScreen(new TianshuOverloadPatternConfigScreen<>(this)));
         blankPatternItem = AEItems.BLANK_PATTERN.asItem();
         networkBlankPatternSlot = new NetworkBlankPatternSlot(repo);
+        observedEncodedPattern = firstEncodedPattern().copy();
         replaceViewModeButton();
         addToLeftToolbar(new MaintenanceOverviewButton());
     }
@@ -178,6 +180,7 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
     @Override
     protected void updateBeforeRender() {
         super.updateBeforeRender();
+        observeEncodedPatternSource();
         var selected = menu.tianshuMode;
         for (var mode : EncodingMode.values()) {
             var modeSelected = selected.ae2Mode() == mode;
@@ -193,7 +196,7 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
         syncSyntheticMaintenanceEntries();
         refreshMaintenancePartitionIfNeeded();
         if (menu.consumeTriggeredUpload()) {
-            openUploadScreen();
+            openUploadScreen(menu.consumeDirectUploadRequest());
             return;
         }
         if (awaitingMaintenanceEditor
@@ -222,6 +225,15 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
         setSlotsHidden(Ae2ltSlotSemantics.TIANSHU_GLOBAL_RESERVE_MARK, true);
     }
 
+    private void observeEncodedPatternSource() {
+        var current = firstEncodedPattern();
+        if (ItemStack.matches(observedEncodedPattern, current)) return;
+        observedEncodedPattern = current.copy();
+        if (menu.consumeExpectedEncodedSourceChange()) return;
+        TianshuRecipeTransferContext.clear(menu);
+        menu.clearClientUploadSelectionState();
+    }
+
     private void updateEncodingButton(AE2Button button, ProcessingPatternEncodingType type,
                                       boolean visible, boolean enabled, String key) {
         button.visible = visible;
@@ -246,7 +258,7 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
                 .map(Slot::getItem).filter(item -> !item.isEmpty()).findFirst().orElse(ItemStack.EMPTY);
     }
 
-    private void openUploadScreen() {
+    private void openUploadScreen(boolean directUploadRequested) {
         var stack = firstEncodedPattern();
         if (stack.isEmpty()) return;
         // The server is authoritative for validating a closed-loop payload. Routing by the
@@ -261,7 +273,8 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
                 : TianshuPatternUploadRouting.Route.INVALID;
         switch (route) {
             case CLOSED_LOOP_STORAGE, CRAFTING_ASSEMBLER -> menu.uploadEncodedPattern();
-            case PROCESSING_PROVIDER -> switchToScreen(new TianshuUploadTargetScreen<>(this));
+            case PROCESSING_PROVIDER -> switchToScreen(
+                    new TianshuUploadTargetScreen<>(this, directUploadRequested));
             case INVALID -> { }
         }
     }
