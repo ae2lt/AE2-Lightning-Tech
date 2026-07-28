@@ -1,12 +1,11 @@
 package com.moakiee.ae2lt.item;
 
 import com.moakiee.ae2lt.block.OverloadedInterfaceBlock;
-import com.moakiee.ae2lt.block.OverloadedPatternProviderBlock;
 import com.moakiee.ae2lt.block.OverloadedPowerSupplyBlock;
 import com.moakiee.ae2lt.blockentity.OverloadedInterfaceBlockEntity;
-import com.moakiee.ae2lt.blockentity.OverloadedPatternProviderBlockEntity;
 import com.moakiee.ae2lt.blockentity.OverloadedPowerSupplyBlockEntity;
 import com.moakiee.ae2lt.network.WirelessConnectorUsePacket;
+import com.moakiee.ae2lt.api.patternprovider.WirelessPatternProviderHost;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
@@ -68,7 +67,7 @@ public class OverloadedWirelessConnectorItem extends Item {
         var pos = context.getClickedPos();
         var state = level.getBlockState(pos);
         var targetBe = level.getBlockEntity(pos);
-        boolean isHost = state.getBlock() instanceof OverloadedPatternProviderBlock
+        boolean isHost = targetBe instanceof WirelessPatternProviderHost
                 || state.getBlock() instanceof OverloadedInterfaceBlock
                 || state.getBlock() instanceof OverloadedPowerSupplyBlock;
         boolean isMachine = targetBe != null;
@@ -174,9 +173,9 @@ public class OverloadedWirelessConnectorItem extends Item {
     }
 
     @Nullable
-    public static OverloadedPatternProviderBlockEntity getSelectedProvider(Level level, ItemStack stack) {
+    public static WirelessPatternProviderHost getSelectedProvider(Level level, ItemStack stack) {
         var be = resolveSelectedHost(level, stack);
-        return be instanceof OverloadedPatternProviderBlockEntity provider ? provider : null;
+        return be instanceof WirelessPatternProviderHost provider ? provider : null;
     }
 
     @Nullable

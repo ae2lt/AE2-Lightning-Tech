@@ -87,6 +87,7 @@ import com.moakiee.ae2lt.logic.craft.BatchPatternEligibility;
 import com.moakiee.thunderbolt.CoreConfig;
 import com.moakiee.thunderbolt.ae2.batch.BatchExecutor;
 import com.moakiee.thunderbolt.ae2.channel.ChannelProviderRegistry;
+import com.moakiee.ae2lt.api.patternprovider.WirelessPatternProviderPolicy;
 import com.moakiee.thunderbolt.core.craft.CraftingCoreRegistry;
 import com.moakiee.ae2lt.logic.railgun.RailgunEnergyBuffer;
 import com.moakiee.ae2lt.celestweave.ArmorEnergyBuffer;
@@ -342,6 +343,8 @@ public class AE2LightningTech {
 
     public AE2LightningTech(IEventBus modEventBus, ModContainer modContainer) {
         AE2LTConfigMigration.runIfNeeded();
+        WirelessPatternProviderPolicy.setMaxDistanceSupplier(
+                AE2LTCommonConfig::wirelessConnectorMaxDistance);
         // AddTerminalEvent is consumed during item registration. Install the callback now,
         // while its ItemWT instance remains deferred until that registry is writable.
         Ae2wtlibIntegration.registerTerminal();

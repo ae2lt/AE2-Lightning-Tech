@@ -44,6 +44,7 @@ import com.moakiee.ae2lt.logic.WirelessPatternContainerGroupSelector;
 import com.moakiee.ae2lt.menu.OverloadedPatternProviderMenu;
 import com.moakiee.ae2lt.registry.ModBlockEntities;
 import com.moakiee.ae2lt.registry.ModBlocks;
+import com.moakiee.ae2lt.api.patternprovider.WirelessPatternProviderHost;
 
 /**
  * BlockEntity for the Overloaded Pattern Provider.
@@ -57,7 +58,7 @@ import com.moakiee.ae2lt.registry.ModBlocks;
  * wireless dispatch or auto-return — those use wireless connector records instead.
  */
 public class OverloadedPatternProviderBlockEntity extends PatternProviderBlockEntity
-        implements FrequencyBindingHost {
+        implements FrequencyBindingHost, WirelessPatternProviderHost {
 
     /** Pattern slots displayed per GUI page. */
     public static final int SLOTS_PER_PAGE = 36;
@@ -383,6 +384,7 @@ public class OverloadedPatternProviderBlockEntity extends PatternProviderBlockEn
      * Add or update a wireless connection. If a connection to the same (dimension, pos)
      * already exists, the bound face is updated; otherwise a new record is added.
      */
+    @Override
     public boolean addOrUpdateConnection(ResourceKey<Level> dimension, BlockPos pos, Direction boundFace) {
         if (!isLocalDimension(dimension)) {
             return false;
@@ -417,6 +419,7 @@ public class OverloadedPatternProviderBlockEntity extends PatternProviderBlockEn
      *
      * @return true if a connection was removed
      */
+    @Override
     public boolean removeConnection(ResourceKey<Level> dimension, BlockPos pos) {
         int index = WirelessConnectionLists.indexOf(connections, dimension, pos);
         if (index < 0) {
@@ -432,8 +435,24 @@ public class OverloadedPatternProviderBlockEntity extends PatternProviderBlockEn
     }
 
     /** Returns an unmodifiable view of the current connections. */
+    @Override
     public List<WirelessConnection> getConnections() {
         return Collections.unmodifiableList(connections);
+    }
+
+    @Override
+    public BlockPos getProviderPos() {
+        return getBlockPos();
+    }
+
+    @Override
+    public boolean isWirelessProvider() {
+        return providerMode == ProviderMode.WIRELESS;
+    }
+
+    @Override
+    public int getMaxWirelessConnections() {
+        return MAX_WIRELESS_CONNECTIONS;
     }
 
     /**

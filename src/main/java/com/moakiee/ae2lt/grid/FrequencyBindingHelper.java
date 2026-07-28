@@ -1,6 +1,7 @@
 package com.moakiee.ae2lt.grid;
 
 import java.util.function.IntConsumer;
+import java.util.function.Consumer;
 
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -186,6 +187,28 @@ public final class FrequencyBindingHelper
 
     public static void importMemorySettings(SettingsFrom mode, DataComponentMap input, IntConsumer setter) {
         MemoryCardConfigSupport.importMemoryCardSettings(mode, input, tag -> importMemoryFrequency(tag, setter));
+    }
+
+    @Override
+    public void exportMemorySettings(
+            SettingsFrom mode,
+            DataComponentMap.Builder builder,
+            Consumer<CompoundTag> additionalWriter) {
+        MemoryCardConfigSupport.exportMemoryCardSettings(mode, builder, tag -> {
+            additionalWriter.accept(tag);
+            writeMemoryFrequency(tag, frequencyId);
+        });
+    }
+
+    @Override
+    public void importMemorySettings(
+            SettingsFrom mode,
+            DataComponentMap input,
+            Consumer<CompoundTag> additionalReader) {
+        MemoryCardConfigSupport.importMemoryCardSettings(mode, input, tag -> {
+            additionalReader.accept(tag);
+            importMemoryFrequency(tag, this::setFrequency);
+        });
     }
 
     public int getGridUsedChannels() {

@@ -37,10 +37,10 @@ import appeng.client.render.overlay.OverlayRenderType;
 
 import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.blockentity.OverloadedInterfaceBlockEntity;
-import com.moakiee.ae2lt.blockentity.OverloadedPatternProviderBlockEntity;
 import com.moakiee.ae2lt.blockentity.OverloadedPowerSupplyBlockEntity;
 import com.moakiee.ae2lt.item.OverloadedWirelessConnectorItem;
 import com.moakiee.ae2lt.logic.WirelessConnectorTargetHelper;
+import com.moakiee.ae2lt.api.patternprovider.WirelessPatternProviderHost;
 
 /**
  * Client-side renderer for the Overloaded Wireless Connector.
@@ -161,8 +161,8 @@ public class WirelessConnectorRenderer {
         for (BlockPos bePos : cachedHostPositions) {
             if (!mc.level.isLoaded(bePos)) continue;
             var be = mc.level.getBlockEntity(bePos);
-            if (be instanceof OverloadedPatternProviderBlockEntity provider) {
-                if (provider.getProviderMode() == OverloadedPatternProviderBlockEntity.ProviderMode.NORMAL) {
+            if (be instanceof WirelessPatternProviderHost provider) {
+                if (!provider.isWirelessProvider()) {
                     continue;
                 }
                 boolean isSelected = hasSelection
@@ -221,8 +221,8 @@ public class WirelessConnectorRenderer {
         if (selectionInCurrentDimension && !selectedRendered && mc.level.isLoaded(selectedPos)) {
             var selectedBe = mc.level.getBlockEntity(selectedPos);
             if (OverloadedWirelessConnectorItem.HOST_PROVIDER.equals(selectedHostType)
-                    && selectedBe instanceof OverloadedPatternProviderBlockEntity provider
-                    && provider.getProviderMode() != OverloadedPatternProviderBlockEntity.ProviderMode.NORMAL) {
+                    && selectedBe instanceof WirelessPatternProviderHost provider
+                    && provider.isWirelessProvider()) {
                 renderProviderHost(poseStack, buffer, mc.level, selectedPos, provider, true);
             } else if (OverloadedWirelessConnectorItem.HOST_INTERFACE.equals(selectedHostType)
                     && selectedBe instanceof OverloadedInterfaceBlockEntity iface
@@ -238,7 +238,8 @@ public class WirelessConnectorRenderer {
         if (selectionInCurrentDimension) {
             var selectedBe = mc.level.getBlockEntity(selectedPos);
             if (OverloadedWirelessConnectorItem.HOST_PROVIDER.equals(selectedHostType)
-                    && selectedBe instanceof OverloadedPatternProviderBlockEntity selectedProvider
+                    && selectedBe instanceof WirelessPatternProviderHost selectedProvider
+                    && selectedProvider.isWirelessProvider()
                     && mc.hitResult instanceof BlockHitResult bhr
                     && bhr.getType() == HitResult.Type.BLOCK
                     && !bhr.getBlockPos().equals(selectedPos)
@@ -357,7 +358,7 @@ public class WirelessConnectorRenderer {
     }
 
     private static void renderProviderHost(PoseStack poseStack, MultiBufferSource buffer,
-            Level level, BlockPos hostPos, OverloadedPatternProviderBlockEntity provider, boolean selected) {
+            Level level, BlockPos hostPos, WirelessPatternProviderHost provider, boolean selected) {
         renderInnerCube(poseStack, buffer, hostPos, selected ? COLOR_HOST_SELECTED : COLOR_HOST);
 
         for (var conn : provider.getConnections()) {
@@ -534,7 +535,7 @@ public class WirelessConnectorRenderer {
                 var chunk = level.getChunk(cx, cz);
                 for (var bePos : chunk.getBlockEntitiesPos()) {
                     var be = chunk.getBlockEntity(bePos);
-                    if (be instanceof OverloadedPatternProviderBlockEntity
+                    if (be instanceof WirelessPatternProviderHost
                             || be instanceof OverloadedInterfaceBlockEntity
                             || be instanceof OverloadedPowerSupplyBlockEntity) {
                         // Defensive copy: chunk.getBlockEntitiesPos() returns positions

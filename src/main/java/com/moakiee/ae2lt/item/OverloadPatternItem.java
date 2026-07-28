@@ -18,6 +18,7 @@ import com.moakiee.thunderbolt.ae2.overload.pattern.OverloadPatternPayload;
 import com.moakiee.thunderbolt.ae2.overload.pattern.OverloadPatternPayloadTagCodec;
 import com.moakiee.thunderbolt.ae2.overload.pattern.PatternExecutionHostKind;
 import com.moakiee.thunderbolt.ae2.overload.pattern.SourcePatternSnapshot;
+import com.moakiee.ae2lt.api.patternprovider.EncodedPatternPayloadValidator;
 
 /**
  * Final item form of an overload pattern.
@@ -26,7 +27,8 @@ import com.moakiee.thunderbolt.ae2.overload.pattern.SourcePatternSnapshot;
  * payload. It must not be treated as a transparent variant of a normal AE2
  * pattern item.
  */
-public class OverloadPatternItem extends EncodedPatternItem<IPatternDetails> {
+public class OverloadPatternItem extends EncodedPatternItem<IPatternDetails>
+        implements EncodedPatternPayloadValidator {
     private static final String TAG_OVERLOAD_PATTERN = "OverloadPattern";
 
     public OverloadPatternItem(Properties properties) {
@@ -35,6 +37,11 @@ public class OverloadPatternItem extends EncodedPatternItem<IPatternDetails> {
 
     public boolean hasPayload(ItemStack stack) {
         return readRootTag(stack).contains(TAG_OVERLOAD_PATTERN, CompoundTag.TAG_COMPOUND);
+    }
+
+    @Override
+    public boolean hasEncodedPatternPayload(ItemStack stack) {
+        return hasPayload(stack);
     }
 
     public Optional<OverloadPatternPayload> readPayload(ItemStack stack) {
