@@ -391,15 +391,12 @@ public final class FrequencyBindingHelper
 
         IGridNode myNode = host.getFrequencyBindingBlockEntity().getMainNode().getNode();
         if (myNode != null) {
-            for (var conn : myNode.getConnections()) {
-                if (conn == virtualConnection) {
-                    if (!conn.isInWorld()) {
-                        virtualConnection.destroy();
-                    }
-                    break;
-                }
-            }
+            WirelessLinkOps.destroy(virtualConnection, myNode);
             MultiblockLinkReadiness.refreshAfterVirtualConnectionRemoved(myNode);
+        } else {
+            // Still drop the identity-tracking entry if AE2 already detached the
+            // node and destroyed the connection as part of block removal.
+            WirelessLinkOps.destroy(virtualConnection, null);
         }
         virtualConnection = null;
     }

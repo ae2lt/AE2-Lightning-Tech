@@ -2,6 +2,7 @@ package com.moakiee.ae2lt.event;
 
 import appeng.api.parts.IPartItem;
 import appeng.parts.PartPlacement;
+import appeng.util.InteractionUtil;
 import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.grid.wirelesslink.WirelessLinkRegistry;
 import com.moakiee.ae2lt.item.OverloadedFrequencyCardItem;
@@ -27,11 +28,19 @@ public final class FrequencyCardAutoConnectHandler {
 
     @SubscribeEvent
     public static void onBlockPlaced(BlockEvent.EntityPlaceEvent event) {
-        if (!(event.getEntity() instanceof ServerPlayer player)) {
+        if (!(event.getLevel() instanceof ServerLevelAccessor levelAccessor)) {
             return;
         }
         var registry = WirelessLinkRegistry.get();
-        if (registry != null) {
+        if (registry == null) {
+            return;
+        }
+
+        var level = levelAccessor.getLevel();
+        if (registry.isPotentialLinkTarget(level, event.getPos())) {
+            registry.queueClusterTopologyChange(level, event.getPos());
+        }
+        if (event.getEntity() instanceof ServerPlayer player) {
             registry.queueAutoConnect(player, player.level().dimension(), event.getPos(), null, 2);
         }
     }
@@ -44,6 +53,38 @@ public final class FrequencyCardAutoConnectHandler {
         var registry = WirelessLinkRegistry.get();
         if (registry != null) {
             registry.onBlockChanged(levelAccessor.getLevel(), event.getPos());
+        }
+    }
+
+    /**
+     * AE2 cable-bus parts can be removed without breaking their host block, so a
+     * BlockEvent is not guaranteed. Snapshot the linked physical cluster before
+     * the click; the delayed reconciliation is harmless if the click does not
+     * actually change topology.
+     */
+    @SubscribeEvent(priority = EventPriority.LOWEST)
+    public static void onLeftClickBlock(PlayerInteractEvent.LeftClickBlock event) {
+        if (!(event.getEntity() instanceof ServerPlayer player)
+                || !(player.level() instanceof ServerLevel level)) {
+            return;
+        }
+        var registry = WirelessLinkRegistry.get();
+        if (registry != null && registry.isPotentialLinkTarget(level, event.getPos())) {
+            registry.prepareClusterTopologyChange(level, event.getPos());
+        }
+    }
+
+    @SubscribeEvent(priority = EventPriority.HIGHEST)
+    public static void onWrenchDisassemble(PlayerInteractEvent.RightClickBlock event) {
+        if (!(event.getEntity() instanceof ServerPlayer player)
+                || !(player.level() instanceof ServerLevel level)
+                || !InteractionUtil.isInAlternateUseMode(player)
+                || !InteractionUtil.canWrenchDisassemble(event.getItemStack())) {
+            return;
+        }
+        var registry = WirelessLinkRegistry.get();
+        if (registry != null && registry.isPotentialLinkTarget(level, event.getPos())) {
+            registry.prepareClusterTopologyChange(level, event.getPos());
         }
     }
 
@@ -117,6 +158,9 @@ public final class FrequencyCardAutoConnectHandler {
         var target = toAutoConnectTarget(event.getPos(), clickedFace, placement);
         var registry = WirelessLinkRegistry.get();
         if (registry != null) {
+            if (player.level() instanceof ServerLevel level) {
+                registry.queueClusterTopologyChange(level, target.pos());
+            }
             registry.queueAutoConnect(player, player.level().dimension(), target.pos(), target.side(), 2);
         }
     }

@@ -5,6 +5,7 @@ public enum WirelessLinkState {
     PENDING_TARGET_CHUNK(false, false),
     PENDING_TRANSMITTER(false, false),
     TARGET_NOT_READY(false, false),
+    CLUSTER_FREQUENCY_CONFLICT(false, false),
     FREQUENCY_INVALID(false, false),
     PERMISSION_DENIED(false, false),
     TARGET_MISSING(true, true),

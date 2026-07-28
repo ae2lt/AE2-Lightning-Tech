@@ -28,9 +28,11 @@ A bound card can only be used by the player who bound it. **Shift + right-click 
 
 ## Manual Linking
 
-Hold a bound frequency card and right-click a supported ME network device or selectable part to toggle between connecting and disconnecting it.
+Hold a bound frequency card and right-click a supported ME network device, selectable part, or cable body to toggle the entire physical ME cluster.
 
-Most AE2 network devices and selectable network parts can be linked. Cable bodies, controllers, and blocks without an available grid node cannot be linked. A target can only be linked to one frequency at a time; targets that belong to a different controller network are also rejected to avoid merging controller networks.
+Links are managed per physically connected cluster rather than per entrance block. Devices added to a linked cluster share its connection automatically. Physically joining clusters on the same frequency collapses them to one entrance. If removing a middle cable splits a linked cluster, every surviving component inherits the frequency: when linked `A-B-C` loses `B`, both `A` and `C` remain linked. Right-click any device, part, or cable in the cluster to disconnect it.
+
+Controllers and blocks without an available grid node still cannot be selected. A physical cluster can only use one frequency at a time. If clusters carrying different frequencies are physically joined, all frequency entrances are suspended without silently deleting their link records. Splitting the physical cluster restores each component's own link. Alternatively, right-click with either matching card to remove only that card's frequency and let the remaining frequency recover.
 
 If the card reports that the frequency is temporarily unavailable, the transmitter is usually not loaded. The link will recover once the Advanced Wireless Overloaded Controller is loaded again.
 
