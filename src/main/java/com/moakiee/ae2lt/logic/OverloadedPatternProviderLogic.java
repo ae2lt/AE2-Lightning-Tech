@@ -4,6 +4,7 @@ import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
@@ -120,10 +121,14 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
 
     private static final int GLOBAL_BUCKETS_MAX = OverloadedPatternProviderBlockEntity.MAX_WIRELESS_CONNECTIONS;
     private static final int GLOBAL_BUCKETS_REARM = 768;
+    private static final int OVERFLOW_FLUSH_BUDGET = 64;
+    private static final int OVERFLOW_RETRY_MIN = 1;
+    private static final int OVERFLOW_RETRY_MAX = 20;
 
     /** Per-target wireless overflow buckets. A bucketed connection is not eligible for new pushes. */
     private final Object2ObjectOpenHashMap<WirelessConnection, ConnBucket> pendingOverflowByConn =
             new Object2ObjectOpenHashMap<>();
+    private final DueTaskQueue<WirelessConnection> overflowRetrySchedule = new DueTaskQueue<>();
     private long lastWirelessOverflowFlushTick = Long.MIN_VALUE;
 
     /** Runtime-local pattern id tables used by compact overflow buckets. */
@@ -341,6 +346,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
         short stuckIdx;
         long remaining;
         final List<GenericStack> fallbackList;
+        int retryDelay = OVERFLOW_RETRY_MIN;
 
         private ConnBucket(boolean compactMode, short patternId, short stuckIdx,
                            long remaining, List<GenericStack> fallbackList) {
@@ -358,6 +364,12 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
         static ConnBucket fallback(short patternId, List<GenericStack> overflow) {
             return new ConnBucket(false, patternId, (short) 0, 0, new ArrayList<>(overflow));
         }
+    }
+
+    private enum OverflowFlushResult {
+        CLEARED,
+        PROGRESSED,
+        BLOCKED
     }
 
     private record PendingBucketLoad(WirelessConnection conn, short patternId, short stuckIdx,
@@ -447,6 +459,9 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
     @Nullable
     private AllowedOutputFilter cachedOutputFilter;
 
+    /** Constant-time membership mirror of PatternProviderLogic's visible pattern list. */
+    private final Set<IPatternDetails> availablePatternSet = new HashSet<>();
+
     /** Marks the cached output filter dirty when patterns change. */
     private boolean outputFilterDirty = true;
 
@@ -475,6 +490,8 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
 
     /** Wireless round-robin return: spread all machines across this many ticks. */
     private static final int RETURN_SPREAD_TICKS = 20;
+    /** Bounds machine-inventory scans even when every wireless target is active. */
+    private static final int MAX_RETURN_POLLS_PER_TICK = 64;
 
     /** AE2 grid tick range for the overloaded provider's custom scheduler. */
     private static final int GRID_TICK_MIN = 1;
@@ -485,6 +502,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
 
     /** Cached list of valid wireless connections (shared by energy + auto-return). */
     private List<WirelessConnection> validConnectionsCache = List.of();
+    private Set<WirelessConnection> validConnectionSet = Set.of();
 
     /** Game tick at which validConnectionsCache was last refreshed. */
     private long validConnectionsCacheTick = -1;
@@ -495,11 +513,8 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
     /** Prevents double execution when both BlockEntityTicker and AE2 Grid Ticker fire in the same tick. */
     private long lastEnergyTickGameTime = -1;
 
-    /** Wireless round-robin: index into valid connections for spread return. */
-    private int returnRobinIndex = 0;
-
-    /** Last game tick when round-robin return was executed. */
-    private long lastReturnRobinTick = -1;
+    /** Due-time queue for wireless auto-return; avoids scanning every connection for the next timer. */
+    private final DueTaskQueue<WirelessConnection> wirelessReturnSchedule = new DueTaskQueue<>();
 
     /** Last game tick when single-machine pre-distribution return was executed. */
     private long lastSingleReturnTick = -1;
@@ -674,6 +689,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
 
         patterns.clear();
         patternInputs.clear();
+        availablePatternSet.clear();
 
         var level = overloadedHost.getLevel();
         for (int slot = 0; slot < inventory.size(); slot++) {
@@ -684,6 +700,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
             }
 
             patterns.add(details);
+            availablePatternSet.add(details);
             for (var input : details.getInputs()) {
                 for (var possibleInput : input.getPossibleInputs()) {
                     patternInputs.add(possibleInput.what().dropSecondary());
@@ -783,7 +800,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
         var accessor = (PatternProviderLogicAccessor) this;
         if (!accessor.getSendList().isEmpty()
                 || !gridNode.isActive()
-                || !getAvailablePatterns().contains(pattern)
+                || !availablePatternSet.contains(pattern)
                 || getCraftingLockedReason() != LockCraftingMode.NONE) {
             return maxCraft;
         }
@@ -869,7 +886,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
         refreshGlobalBackpressure();
         if (wirelessGlobalBackpressure
                 || !gridNode.isActive()
-                || !getAvailablePatterns().contains(pattern)
+                || !availablePatternSet.contains(pattern)
                 || getCraftingLockedReason() != LockCraftingMode.NONE) {
             return maxCraft;
         }
@@ -1246,8 +1263,8 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
 
         if (overloadedHost.isAutoReturn()) {
             if (context.wirelessConnection() != null) {
-                getOrCreateState(context.wirelessConnection()).resetBackoff(
-                        context.level().getGameTime(), wirelessReturnBackoffMin());
+                resetWirelessReturnBackoff(
+                        context.wirelessConnection(), context.level().getGameTime());
             } else {
                 resetBackoffAllTargets();
             }
@@ -1314,7 +1331,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
         refreshGlobalBackpressure();
         if (wirelessGlobalBackpressure) return false;
         if (!gridNode.isActive()) return false;
-        if (!getAvailablePatterns().contains(pattern)) return false;
+        if (!availablePatternSet.contains(pattern)) return false;
         if (getCraftingLockedReason() != LockCraftingMode.NONE) return false;
 
         var level = overloadedHost.getLevel();
@@ -1663,7 +1680,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
         alertGridTick();
 
         if (overloadedHost.isAutoReturn()) {
-            getOrCreateState(conn).resetBackoff(targetLevel.getGameTime(), wirelessReturnBackoffMin());
+            resetWirelessReturnBackoff(conn, targetLevel.getGameTime());
         }
         return WirelessPushOutcome.SUCCESS;
     }
@@ -1688,6 +1705,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
         }
 
         pendingOverflowByConn.put(conn, bucket);
+        scheduleOverflowRetry(conn, bucket, currentGameTick());
         connectionsDirty = true;
         pushStructuresDirty = true;
         refreshGlobalBackpressure();
@@ -1815,7 +1833,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
         var accessor = (PatternProviderLogicAccessor) this;
         if (!accessor.getSendList().isEmpty()) return false;
         if (!gridNode.isActive()) return false;
-        if (!getAvailablePatterns().contains(pattern)) return false;
+        if (!availablePatternSet.contains(pattern)) return false;
         if (getCraftingLockedReason() != LockCraftingMode.NONE) return false;
         if (!pattern.supportsPushInputsToExternalInventory()) return false;
 
@@ -1922,7 +1940,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
         alertGridTick();
 
         if (overloadedHost.isAutoReturn()) {
-            getOrCreateState(conn).resetBackoff(targetLevel.getGameTime(), wirelessReturnBackoffMin());
+            resetWirelessReturnBackoff(conn, targetLevel.getGameTime());
         }
         return WirelessPushOutcome.SUCCESS;
     }
@@ -2048,48 +2066,66 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
         lastWirelessOverflowFlushTick = gameTick;
         var server = sl.getServer();
 
-        var iter = pendingOverflowByConn.object2ObjectEntrySet().iterator();
-        while (iter.hasNext()) {
-            var entry = iter.next();
-            var conn = entry.getKey();
-            var bucket = entry.getValue();
+        int attempts = 0;
+        while (attempts < OVERFLOW_FLUSH_BUDGET) {
+            var conn = overflowRetrySchedule.pollDue(gameTick);
+            if (conn == null) {
+                break;
+            }
+            var bucket = pendingOverflowByConn.get(conn);
+            if (bucket == null) {
+                continue;
+            }
+            attempts++;
 
             var targetLevel = server.getLevel(conn.dimension());
-            if (targetLevel == null || !targetLevel.isLoaded(conn.pos())) continue;
+            if (targetLevel == null || !targetLevel.isLoaded(conn.pos())) {
+                scheduleBlockedOverflowRetry(conn, bucket, gameTick);
+                continue;
+            }
 
             var state = getOrCreateState(conn);
             var adapter = state.resolveAdapter(targetLevel, conn.pos());
-            if (adapter == null) continue;
+            if (adapter == null) {
+                scheduleBlockedOverflowRetry(conn, bucket, gameTick);
+                continue;
+            }
 
             var be = targetLevel.getBlockEntity(conn.pos());
             var cached = (be != null)
                     ? getCachedTarget(targetLevel, conn.pos(), be, conn.boundFace(), wirelessSource)
                     : null;
 
-            boolean cleared = bucket.compactMode
+            var result = bucket.compactMode
                     ? flushCompactBucket(bucket, conn, targetLevel, adapter, cached)
                     : flushFallbackBucket(bucket, conn, targetLevel, adapter, cached);
 
-            if (cleared) {
-                iter.remove();
+            if (result == OverflowFlushResult.CLEARED) {
+                pendingOverflowByConn.remove(conn);
                 connectionsDirty = true;
                 pushStructuresDirty = true;
+            } else if (result == OverflowFlushResult.PROGRESSED) {
+                bucket.retryDelay = OVERFLOW_RETRY_MIN;
+                scheduleOverflowRetry(conn, bucket, gameTick + OVERFLOW_RETRY_MIN);
+            } else {
+                scheduleBlockedOverflowRetry(conn, bucket, gameTick);
             }
         }
         refreshGlobalBackpressure();
     }
 
-    private boolean flushCompactBucket(ConnBucket bucket, WirelessConnection conn,
+    private OverflowFlushResult flushCompactBucket(ConnBucket bucket, WirelessConnection conn,
             ServerLevel targetLevel, MachineAdapter adapter, @Nullable PatternProviderTarget cached) {
         var pattern = patternById.get(Short.toUnsignedInt(bucket.patternId));
-        if (pattern == null) return true;
+        if (pattern == null) return OverflowFlushResult.CLEARED;
         var inputs = pattern.getInputs();
+        boolean progressed = false;
 
         while (bucket.stuckIdx < inputs.length) {
             var input = inputs[bucket.stuckIdx];
             var possible = input.getPossibleInputs();
             if (possible.length != 1) {
-                return true;
+                return OverflowFlushResult.CLEARED;
             }
             var single = new ArrayList<GenericStack>(1);
             single.add(new GenericStack(possible[0].what(), bucket.remaining));
@@ -2098,10 +2134,13 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
 
             long left = single.isEmpty() ? 0 : single.get(0).amount();
             long inserted = bucket.remaining - left;
-            if (inserted == 0) return false;
+            if (inserted == 0) {
+                return progressed ? OverflowFlushResult.PROGRESSED : OverflowFlushResult.BLOCKED;
+            }
+            progressed = true;
             if (left > 0) {
                 bucket.remaining = left;
-                return false;
+                return OverflowFlushResult.PROGRESSED;
             }
 
             bucket.stuckIdx++;
@@ -2109,14 +2148,49 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
                 bucket.remaining = inputAmount(inputs[bucket.stuckIdx]);
             }
         }
-        return true;
+        return OverflowFlushResult.CLEARED;
     }
 
-    private boolean flushFallbackBucket(ConnBucket bucket, WirelessConnection conn,
+    private OverflowFlushResult flushFallbackBucket(ConnBucket bucket, WirelessConnection conn,
             ServerLevel targetLevel, MachineAdapter adapter, @Nullable PatternProviderTarget cached) {
+        long before = totalStackAmount(bucket.fallbackList);
         adapter.flushOverflow(targetLevel, conn.pos(), conn.boundFace(),
                 bucket.fallbackList, wirelessSource, cached);
-        return bucket.fallbackList.isEmpty();
+        if (bucket.fallbackList.isEmpty()) {
+            return OverflowFlushResult.CLEARED;
+        }
+        return totalStackAmount(bucket.fallbackList) < before
+                ? OverflowFlushResult.PROGRESSED
+                : OverflowFlushResult.BLOCKED;
+    }
+
+    private static long totalStackAmount(List<GenericStack> stacks) {
+        long total = 0L;
+        for (var stack : stacks) {
+            total = saturatingAdd(total, stack.amount());
+        }
+        return total;
+    }
+
+    private void scheduleBlockedOverflowRetry(
+            WirelessConnection conn, ConnBucket bucket, long gameTick) {
+        bucket.retryDelay = Math.min(
+                OVERFLOW_RETRY_MAX,
+                Math.max(OVERFLOW_RETRY_MIN + 1, bucket.retryDelay * 2));
+        scheduleOverflowRetry(conn, bucket, gameTick + bucket.retryDelay);
+    }
+
+    private void scheduleOverflowRetry(
+            WirelessConnection conn, ConnBucket bucket, long dueTick) {
+        if (pendingOverflowByConn.get(conn) != bucket) {
+            return;
+        }
+        overflowRetrySchedule.schedule(conn, dueTick);
+    }
+
+    private long currentGameTick() {
+        var level = overloadedHost.getLevel();
+        return level instanceof ServerLevel serverLevel ? serverLevel.getGameTime() : 0L;
     }
 
     private void refreshGlobalBackpressure() {
@@ -2182,7 +2256,8 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
                 && gridNode.isActive()
                 && isInductionCardInstalled()
                 && CACHED_APPFLUX_FE_KEY != null) return true;
-        if (overloadedHost.getReturnMode() == ReturnMode.AUTO) return true;
+        if (overloadedHost.getReturnMode() == ReturnMode.AUTO
+                && !getOrBuildOutputFilter().isEmpty()) return true;
         if (!fullReturnInv.isEmpty()) return true;
         return false;
     }
@@ -2253,44 +2328,81 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
         int total = valid.size();
         if (total == 0) return;
 
-        long elapsed = lastReturnRobinTick >= 0 ? gameTick - lastReturnRobinTick : 1;
-        lastReturnRobinTick = gameTick;
-
         boolean fastReturn = isFastWirelessSpeed();
-        // FAST: no spread floor — check every connection's timer each tick (cheap
-        // long compare); only machines whose backoff elapsed actually get polled,
-        // so an actively producing machine is drained every single tick.
-        int perTick = fastReturn ? total
-                : Math.max(1, (total + RETURN_SPREAD_TICKS - 1) / RETURN_SPREAD_TICKS);
-        int toProcess = (int) Math.min((long) perTick * elapsed, total);
+        int spreadBudget = Math.max(1, (total + RETURN_SPREAD_TICKS - 1) / RETURN_SPREAD_TICKS);
+        int toProcess = Math.min(
+                MAX_RETURN_POLLS_PER_TICK,
+                fastReturn ? total : spreadBudget);
         int backoffMin = fastReturn ? BACKOFF_MIN_FAST : BACKOFF_MIN;
         int backoffCap = fastReturn ? BACKOFF_MAX_FAST : BACKOFF_MAX;
 
         for (int i = 0; i < toProcess; i++) {
-            int idx = returnRobinIndex % total;
-            returnRobinIndex = (returnRobinIndex + 1) % total;
-
-            var conn = valid.get(idx);
+            var conn = wirelessReturnSchedule.pollDue(gameTick);
+            if (conn == null) {
+                break;
+            }
+            if (!validConnectionSet.contains(conn)) {
+                continue;
+            }
             var state = getOrCreateState(conn);
-            if (gameTick < state.nextPollTick) continue;
 
             var targetLevel = resolveTargetLevel(sl, conn);
             if (targetLevel == null) {
-                state.updateBackoff(gameTick, false, backoffMin, backoffCap);
+                updateWirelessReturnBackoff(conn, state, gameTick, false, backoffMin, backoffCap);
                 continue;
             }
 
             var adapter = state.resolveAdapter(targetLevel, conn.pos());
             if (adapter == null) {
-                state.updateBackoff(gameTick, false, backoffMin, backoffCap);
+                updateWirelessReturnBackoff(conn, state, gameTick, false, backoffMin, backoffCap);
                 continue;
             }
 
             boolean found = adapter.extractOutputs(
                     targetLevel, conn.pos(), conn.boundFace(), allowedOutputs, wirelessSource,
                     returnInvSink);
-            state.updateBackoff(gameTick, found, backoffMin, backoffCap);
+            updateWirelessReturnBackoff(conn, state, gameTick, found, backoffMin, backoffCap);
         }
+    }
+
+    private void syncWirelessReturnSchedule(long gameTick) {
+        if (overloadedHost.getReturnMode() != ReturnMode.AUTO) {
+            wirelessReturnSchedule.clear();
+            return;
+        }
+
+        wirelessReturnSchedule.retainAll(validConnectionSet);
+        int initialOffset = 0;
+        for (var conn : validConnectionsCache) {
+            if (wirelessReturnSchedule.contains(conn)) {
+                continue;
+            }
+            var state = getOrCreateState(conn);
+            long dueTick = state.nextPollTick > gameTick
+                    ? state.nextPollTick
+                    : gameTick + initialOffset++ % RETURN_SPREAD_TICKS;
+            state.nextPollTick = dueTick;
+            wirelessReturnSchedule.schedule(conn, dueTick);
+        }
+    }
+
+    private void resetWirelessReturnBackoff(WirelessConnection conn, long gameTick) {
+        var state = getOrCreateState(conn);
+        state.resetBackoff(gameTick, wirelessReturnBackoffMin());
+        if (overloadedHost.getReturnMode() == ReturnMode.AUTO) {
+            wirelessReturnSchedule.schedule(conn, state.nextPollTick);
+        }
+    }
+
+    private void updateWirelessReturnBackoff(
+            WirelessConnection conn,
+            ConnectionState state,
+            long gameTick,
+            boolean foundItems,
+            int min,
+            int cap) {
+        state.updateBackoff(gameTick, foundItems, min, cap);
+        wirelessReturnSchedule.schedule(conn, state.nextPollTick);
     }
 
     private boolean isFastWirelessSpeed() {
@@ -2414,7 +2526,9 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
         boolean found = adapter.extractOutputs(
                 targetLevel, conn.pos(), conn.boundFace(), allowedOutputs, wirelessSource,
                 returnInvSink);
-        state.updateBackoff(gameTick, found, wirelessReturnBackoffMin(), wirelessReturnBackoffCap());
+        updateWirelessReturnBackoff(
+                conn, state, gameTick, found,
+                wirelessReturnBackoffMin(), wirelessReturnBackoffCap());
     }
 
     public boolean handleOverloadUnlockOnReturnedStack(GenericStack returnedStack) {
@@ -2607,8 +2721,9 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
             return validConnectionsCache;
         }
 
-        // Validate + collect in a single pass
-        overloadedHost.clearInvalidConnections();
+        // The block entity already prunes at most 64 stale endpoints every
+        // 100 ticks. Repeating an unbounded prune here used to validate the
+        // complete connection list twice on every cache refresh.
         var server = providerLevel.getServer();
         var valid = new ArrayList<WirelessConnection>();
         for (var conn : overloadedHost.getConnections()) {
@@ -2628,11 +2743,21 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
             }
             valid.add(conn);
         }
-        validConnectionsCache = List.copyOf(valid);
-        pruneMachineBackoffState(validConnectionsCache);
+        var refreshedConnections = List.copyOf(valid);
+        boolean connectionsChanged = !refreshedConnections.equals(validConnectionsCache);
+        if (connectionsChanged) {
+            validConnectionsCache = refreshedConnections;
+            validConnectionSet = Set.copyOf(refreshedConnections);
+
+            var retainedStates = new HashSet<>(validConnectionSet);
+            retainedStates.addAll(pendingOverflowByConn.keySet());
+            connectionStates.keySet().retainAll(retainedStates);
+
+            rebuildValidTargets();
+            syncWirelessReturnSchedule(gameTick);
+        }
         validConnectionsCacheTick = gameTick;
         connectionsDirty = false;
-        rebuildValidTargets();
         return validConnectionsCache;
     }
 
@@ -2653,15 +2778,6 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
         }
         validTargetsCache = List.copyOf(targets);
         validTargetsVersion++;
-    }
-
-    private void pruneMachineBackoffState(List<WirelessConnection> validConnections) {
-        var activeMachineIds = new java.util.HashSet<MachineId>();
-        for (var conn : validConnections) {
-            activeMachineIds.add(new MachineId(conn.dimension(), conn.pos().asLong(), conn.boundFace()));
-        }
-        machineNextPoll.keySet().retainAll(activeMachineIds);
-        machineBackoff.keySet().retainAll(activeMachineIds);
     }
 
     // ---- target level resolution ---------------------------------------------
@@ -2703,6 +2819,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
             return false;
         }
         pendingOverflowByConn.remove(conn);
+        overflowRetrySchedule.remove(conn);
         connectionsDirty = true;
         pushStructuresDirty = true;
         refreshGlobalBackpressure();
@@ -2793,7 +2910,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
     }
 
     private boolean hasActiveOverloadedTickWork(long gameTick) {
-        if (!pendingOverflowByConn.isEmpty()) {
+        if (overflowRetrySchedule.nextDueTick() <= gameTick) {
             return true;
         }
         if (shouldTickWirelessEnergyNow(gameTick)) {
@@ -2843,16 +2960,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
         if (connections.isEmpty()) {
             return Long.MAX_VALUE;
         }
-
-        for (var conn : connections) {
-            var state = connectionStates.get(conn);
-            if (state != null) {
-                nextPollTick = Math.min(nextPollTick, state.nextPollTick);
-            } else {
-                return 0L;
-            }
-        }
-        return nextPollTick;
+        return wirelessReturnSchedule.nextDueTick();
     }
 
     protected void alertGridTick() {
@@ -2862,6 +2970,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
     private void invalidateValidConnectionsCache() {
         connectionsDirty = true;
         validConnectionsCache = List.of();
+        validConnectionSet = Set.of();
         validConnectionsCacheTick = -1;
         validTargetsCache = List.of();
         validTargetsVersion++;
@@ -2875,6 +2984,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
         blockedTargetsGameTick = Long.MIN_VALUE;
         lastSuccessfulPatterns.clear();
         connectionStates.clear();
+        wirelessReturnSchedule.clear();
         patternPenalties.clear();
         wirelessDistributor.clearTickState(true);
     }
@@ -3095,8 +3205,6 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
         invalidateValidConnectionsCache();
         inductionCardCacheDirty = true;
         lastEnergyTickGameTime = -1;
-        returnRobinIndex = 0;
-        lastReturnRobinTick = -1;
         lastSingleReturnTick = -1;
         invalidateCapabilitiesAt(EjectModeRegistry.unregisterAll(overloadedHost, true));
     }
@@ -3170,8 +3278,6 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
         invalidateValidConnectionsCache();
         inductionCardCacheDirty = true;
         lastEnergyTickGameTime = -1;
-        returnRobinIndex = 0;
-        lastReturnRobinTick = -1;
         lastSingleReturnTick = -1;
         refreshEjectRegistrations();
     }
@@ -3427,6 +3533,11 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
             }
         }
 
+        long gameTick = currentGameTick();
+        for (var entry : pendingOverflowByConn.object2ObjectEntrySet()) {
+            scheduleOverflowRetry(entry.getKey(), entry.getValue(), gameTick);
+        }
+
         pendingOverflowPatternDefinitions.clear();
         pendingOverflowBuckets.clear();
         connectionsDirty = true;
@@ -3436,6 +3547,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
 
     private void clearWirelessOverflowState() {
         pendingOverflowByConn.clear();
+        overflowRetrySchedule.clear();
         pendingOverflowPatternDefinitions.clear();
         pendingOverflowBuckets.clear();
         patternTable.clear();
