@@ -8,6 +8,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.texture.TextureAtlas;
 import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.client.resources.model.ModelResourceLocation;
 import net.minecraft.core.Direction;
@@ -63,7 +64,8 @@ final class HyperdimensionalPigmeeTextureLayer {
         BakedModel model = minecraft.getModelManager().getModel(MODEL);
         minecraft.getBlockRenderer().getModelRenderer().renderModel(
                 poseStack.last(),
-                buffers.getBuffer(RenderType.translucent()),
+                buffers.getBuffer(RenderType.entityTranslucentEmissive(
+                        TextureAtlas.LOCATION_BLOCKS)),
                 null,
                 model,
                 1.0F,
@@ -81,9 +83,11 @@ final class HyperdimensionalPigmeeTextureLayer {
         }
         Direction facing = state.getValue(com.moakiee.ae2lt.block.FumoBlock.FACING);
         return switch (facing) {
-            case SOUTH -> 180.0F;
-            case WEST -> 270.0F;
-            case EAST -> 90.0F;
+            // Blockstate Y rotations are baked with a negative Y-axis quaternion.
+            // PoseStack rotations must therefore use the inverse-signed angle.
+            case SOUTH -> -180.0F;
+            case WEST -> -270.0F;
+            case EAST -> -90.0F;
             default -> 0.0F;
         };
     }
