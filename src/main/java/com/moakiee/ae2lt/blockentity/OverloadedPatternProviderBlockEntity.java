@@ -86,10 +86,14 @@ public class OverloadedPatternProviderBlockEntity extends PatternProviderBlockEn
     /** Wireless speed mode: NORMAL = standard cooldown, FAST = probe-based early detection. */
     public enum WirelessSpeedMode { NORMAL, FAST }
 
+    /** Blocking behavior while AE2's blocking switch is enabled. */
+    public enum BlockingMode { NORMAL, SAME_PATTERN }
+
     private ProviderMode providerMode = ProviderMode.NORMAL;
     private ReturnMode returnMode = ReturnMode.OFF;
     private WirelessDispatchMode wirelessDispatchMode = WirelessDispatchMode.EVEN_DISTRIBUTION;
     private WirelessSpeedMode wirelessSpeedMode = WirelessSpeedMode.NORMAL;
+    private BlockingMode blockingMode = BlockingMode.NORMAL;
     private boolean filteredImport = false;
 
     /** Active wireless connection records. */
@@ -323,6 +327,20 @@ public class OverloadedPatternProviderBlockEntity extends PatternProviderBlockEn
         markForClientUpdate();
     }
 
+    public BlockingMode getBlockingMode() {
+        return blockingMode;
+    }
+
+    public void setBlockingMode(BlockingMode blockingMode) {
+        if (this.blockingMode == blockingMode) {
+            return;
+        }
+        this.blockingMode = blockingMode;
+        notifyLogicStateChanged();
+        saveChanges();
+        markForClientUpdate();
+    }
+
     public boolean isFilteredImport() {
         return filteredImport;
     }
@@ -458,6 +476,7 @@ public class OverloadedPatternProviderBlockEntity extends PatternProviderBlockEn
         data.writeByte(returnMode.ordinal());
         data.writeByte(wirelessDispatchMode.ordinal());
         data.writeByte(wirelessSpeedMode.ordinal());
+        data.writeByte(blockingMode.ordinal());
         data.writeBoolean(filteredImport);
         data.writeVarInt(connections.size());
         for (var conn : connections) {
@@ -482,6 +501,9 @@ public class OverloadedPatternProviderBlockEntity extends PatternProviderBlockEn
         var speedOrd = data.readByte();
         var newSpeedMode = speedOrd >= 0 && speedOrd < WirelessSpeedMode.values().length
                 ? WirelessSpeedMode.values()[speedOrd] : WirelessSpeedMode.NORMAL;
+        var blockingOrd = data.readByte();
+        var newBlockingMode = blockingOrd >= 0 && blockingOrd < BlockingMode.values().length
+                ? BlockingMode.values()[blockingOrd] : BlockingMode.NORMAL;
         var newFilteredImport = data.readBoolean();
         int count = data.readVarInt();
         var newConns = new ArrayList<WirelessConnection>(Math.min(count, MAX_WIRELESS_CONNECTIONS));
@@ -495,12 +517,14 @@ public class OverloadedPatternProviderBlockEntity extends PatternProviderBlockEn
         if (newMode != providerMode || newReturnMode != returnMode
                 || newDispatchMode != wirelessDispatchMode
                 || newSpeedMode != wirelessSpeedMode
+                || newBlockingMode != blockingMode
                 || newFilteredImport != filteredImport
                 || !newConns.equals(connections)) {
             providerMode = newMode;
             returnMode = newReturnMode;
             wirelessDispatchMode = newDispatchMode;
             wirelessSpeedMode = newSpeedMode;
+            blockingMode = newBlockingMode;
             filteredImport = newFilteredImport;
             connections.clear();
             connections.addAll(newConns);
@@ -519,6 +543,7 @@ public class OverloadedPatternProviderBlockEntity extends PatternProviderBlockEn
     private static final String TAG_RETURN_MODE = "ReturnMode";
     private static final String TAG_WIRELESS_DISPATCH_MODE = "WirelessDispatchMode";
     private static final String TAG_WIRELESS_SPEED_MODE = "WirelessSpeedMode";
+    private static final String TAG_BLOCKING_MODE = "BlockingMode";
     private static final String TAG_FILTERED_IMPORT = "FilteredImport";
     private static final String TAG_CONNECTIONS = "WirelessConnections";
 
@@ -529,6 +554,7 @@ public class OverloadedPatternProviderBlockEntity extends PatternProviderBlockEn
         data.putString(TAG_RETURN_MODE, returnMode.name());
         data.putString(TAG_WIRELESS_DISPATCH_MODE, wirelessDispatchMode.name());
         data.putString(TAG_WIRELESS_SPEED_MODE, wirelessSpeedMode.name());
+        data.putString(TAG_BLOCKING_MODE, blockingMode.name());
         data.putBoolean(TAG_FILTERED_IMPORT, filteredImport);
 
         data.put(TAG_CONNECTIONS, WirelessConnectionLists.writeTagList(connections));
@@ -568,6 +594,13 @@ public class OverloadedPatternProviderBlockEntity extends PatternProviderBlockEn
                 wirelessSpeedMode = WirelessSpeedMode.NORMAL;
             }
         }
+        if (data.contains(TAG_BLOCKING_MODE)) {
+            try {
+                blockingMode = BlockingMode.valueOf(data.getString(TAG_BLOCKING_MODE));
+            } catch (IllegalArgumentException ignored) {
+                blockingMode = BlockingMode.NORMAL;
+            }
+        }
         filteredImport = data.getBoolean(TAG_FILTERED_IMPORT);
         WirelessConnectionLists.readTagList(
                 data, TAG_CONNECTIONS, connections, MAX_WIRELESS_CONNECTIONS, WirelessConnection::fromTag);
@@ -589,6 +622,7 @@ public class OverloadedPatternProviderBlockEntity extends PatternProviderBlockEn
             com.moakiee.ae2lt.logic.MemoryCardConfigSupport.writeEnum(tag, TAG_RETURN_MODE, returnMode);
             com.moakiee.ae2lt.logic.MemoryCardConfigSupport.writeEnum(tag, TAG_WIRELESS_DISPATCH_MODE, wirelessDispatchMode);
             com.moakiee.ae2lt.logic.MemoryCardConfigSupport.writeEnum(tag, TAG_WIRELESS_SPEED_MODE, wirelessSpeedMode);
+            com.moakiee.ae2lt.logic.MemoryCardConfigSupport.writeEnum(tag, TAG_BLOCKING_MODE, blockingMode);
             tag.putBoolean(TAG_FILTERED_IMPORT, filteredImport);
             FrequencyBindingHelper.writeMemoryFrequency(tag, getFrequencyId());
         });
@@ -608,6 +642,8 @@ public class OverloadedPatternProviderBlockEntity extends PatternProviderBlockEn
                     tag, TAG_WIRELESS_DISPATCH_MODE, WirelessDispatchMode.class, this.wirelessDispatchMode);
             this.wirelessSpeedMode = com.moakiee.ae2lt.logic.MemoryCardConfigSupport.readEnum(
                     tag, TAG_WIRELESS_SPEED_MODE, WirelessSpeedMode.class, this.wirelessSpeedMode);
+            this.blockingMode = com.moakiee.ae2lt.logic.MemoryCardConfigSupport.readEnum(
+                    tag, TAG_BLOCKING_MODE, BlockingMode.class, this.blockingMode);
             com.moakiee.ae2lt.logic.MemoryCardConfigSupport.ifBoolean(tag, TAG_FILTERED_IMPORT,
                     v -> this.filteredImport = v);
             FrequencyBindingHelper.importMemoryFrequency(tag, this::setFrequency);

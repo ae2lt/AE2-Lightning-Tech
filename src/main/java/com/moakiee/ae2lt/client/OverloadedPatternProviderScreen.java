@@ -43,6 +43,7 @@ public class OverloadedPatternProviderScreen<M extends OverloadedPatternProvider
     private final TextureToggleButton wirelessStrategyButton;
     private final TextureToggleButton wirelessSpeedButton;
     private final TextureToggleButton filteredImportButton;
+    private final ProviderBlockingModeButton blockingModeButton;
 
     private static final int SLOTS_PER_PAGE = 36;
 
@@ -51,6 +52,11 @@ public class OverloadedPatternProviderScreen<M extends OverloadedPatternProvider
         super(menu, playerInventory, title, style);
 
         removeHiddenToolbarButtons();
+        removeVanillaBlockingModeButton();
+
+        this.blockingModeButton = new ProviderBlockingModeButton(
+                btn -> menu.clientCycleBlockingMode());
+        addToLeftToolbar(this.blockingModeButton);
 
         addToLeftToolbar(FrequencyBindingClient.createToolbarButton(menu));
 
@@ -135,7 +141,8 @@ public class OverloadedPatternProviderScreen<M extends OverloadedPatternProvider
         this.menu.showPage(this.menu.getCurrentPage());
 
         setTextContent("dialog_title", Component.translatable(this.menu.getTitleTranslationKey()));
-        setBlockingModeButtonVisible(this.menu.isBlockingModeVisible());
+        this.blockingModeButton.setState(this.menu.getBlockingModeOrdinal());
+        this.blockingModeButton.setVisibility(this.menu.isBlockingModeVisible());
 
         this.modeButton.setState(this.menu.isWirelessMode());
         this.modeButton.setVisibility(this.menu.isModeSwitchVisible());
@@ -173,10 +180,10 @@ public class OverloadedPatternProviderScreen<M extends OverloadedPatternProvider
         return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
 
-    private void setBlockingModeButtonVisible(boolean visible) {
-        var button = ((PatternProviderScreenAccessor) this).ae2lt$getBlockingModeButton();
-        button.visible = visible;
-        button.active = visible;
+    private void removeVanillaBlockingModeButton() {
+        var toolbar = ((AEBaseScreenAccessor) this).ae2lt$getVerticalToolbar();
+        var buttons = ((VerticalButtonBarAccessor) toolbar).ae2lt$getButtons();
+        buttons.remove(((PatternProviderScreenAccessor) this).ae2lt$getBlockingModeButton());
     }
 
     private void removeHiddenToolbarButtons() {

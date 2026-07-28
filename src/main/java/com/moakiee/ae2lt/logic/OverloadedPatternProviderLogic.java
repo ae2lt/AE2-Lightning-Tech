@@ -27,7 +27,6 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 
 import appeng.api.config.Actionable;
 import appeng.api.config.LockCraftingMode;
-import appeng.api.config.Settings;
 import appeng.api.crafting.IPatternDetails;
 import appeng.api.crafting.PatternDetailsHelper;
 import appeng.api.networking.IManagedGridNode;
@@ -51,6 +50,7 @@ import appeng.util.inv.filter.IAEItemFilter;
 
 import com.moakiee.ae2lt.blockentity.GhostOutputBlockEntity;
 import com.moakiee.ae2lt.blockentity.OverloadedPatternProviderBlockEntity;
+import com.moakiee.ae2lt.blockentity.OverloadedPatternProviderBlockEntity.BlockingMode;
 import com.moakiee.ae2lt.blockentity.OverloadedPatternProviderBlockEntity.ProviderMode;
 import com.moakiee.ae2lt.blockentity.OverloadedPatternProviderBlockEntity.ReturnMode;
 import com.moakiee.ae2lt.blockentity.OverloadedPatternProviderBlockEntity.WirelessConnection;
@@ -390,9 +390,21 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
             ServerLevel level,
             BlockPos pos,
             Direction face,
+            BlockEntity targetBlockEntity,
             MachineAdapter adapter,
             @Nullable PatternProviderTarget cachedTarget,
             @Nullable WirelessConnection wirelessConnection) {}
+
+    private static final class LastSuccessfulPattern {
+        private final WeakReference<BlockEntity> targetBlockEntity;
+        private final IPatternDetails pattern;
+
+        private LastSuccessfulPattern(
+                BlockEntity targetBlockEntity, IPatternDetails pattern) {
+            this.targetBlockEntity = new WeakReference<>(targetBlockEntity);
+            this.pattern = pattern;
+        }
+    }
 
     private record BatchChunkResult(long ownedCopies, boolean fullyInserted, boolean globalAbort) {
         private static final BatchChunkResult REJECTED =
@@ -408,6 +420,13 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
 
     /** NORMAL-mode target cursor; wireless modes reuse their existing ready queues. */
     private int normalBatchTargetCursor;
+    /**
+     * Last physically dispatched pattern per target. This is runtime-only:
+     * after a reload, refusing one uncertain continuation is safer than
+     * treating stale machine contents as ours.
+     */
+    private final Map<TargetCacheKey, LastSuccessfulPattern> lastSuccessfulPatterns =
+            new HashMap<>();
 
     /** Cached output filter derived from loaded patterns. */
     @Nullable
@@ -673,6 +692,10 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
         }
 
         if (overloadedHost.getProviderMode() == ProviderMode.NORMAL) {
+            if (!AdvancedAECompat.isDirectional(patternDetails)
+                    && overloadedHost.getBlockingMode() == BlockingMode.SAME_PATTERN) {
+                return pushNormalBatch(patternDetails, inputHolder, 1L) == 0L;
+            }
             double cost = PowerCostUtil.totalCost(inputHolder);
             var grid = gridNode.getGrid();
             if (!PowerCostUtil.canAfford(grid, cost)) {
@@ -734,9 +757,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
     private boolean canUseAdaptiveBatch(IPatternDetails details) {
         return details != null
                 && details.supportsPushInputsToExternalInventory()
-                && !AdvancedAECompat.isDirectional(details)
-                && getConfigManager().getSetting(Settings.LOCK_CRAFTING_MODE)
-                        == LockCraftingMode.NONE;
+                && !AdvancedAECompat.isDirectional(details);
     }
 
     private long pushNormalBatch(
@@ -762,7 +783,12 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
         }
 
         long remaining = maxCraft;
-        int attemptBudget = BatchDispatchPolicy.targetAttemptBudget(maxCraft);
+        // Physical providers have at most six adjacent targets. Check every
+        // side at least once so the SAME_PATTERN single-copy path retains
+        // vanilla's ability to skip an unavailable side and use another one.
+        int attemptBudget = Math.max(
+                targetList.size(),
+                BatchDispatchPolicy.targetAttemptBudget(maxCraft));
         int cursor = Math.floorMod(normalBatchTargetCursor, targetList.size());
         double oneCopyCost = PowerCostUtil.totalCost(oneCopyTemplate);
 
@@ -791,7 +817,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
             // machine; the adapter face is the opposite side of that target.
             accessor.setSendDirection(context.face().getOpposite());
             accessor.invokeSendStacksOut();
-            finishSuccessfulBatchTarget(pattern, context);
+            finishSuccessfulBatchTarget(context);
             if (ramp.globalAbort() || !accessor.getSendList().isEmpty()) {
                 break;
             }
@@ -816,11 +842,8 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
 
         var cachedTarget = getCachedTarget(
                 level, targetPos, targetBe, face, wirelessSource);
-        if (isBatchTargetBlocked(cachedTarget)) {
-            return null;
-        }
         return new BatchTargetContext(
-                level, targetPos, face, adapter, cachedTarget, null);
+                level, targetPos, face, targetBe, adapter, cachedTarget, null);
     }
 
     private long pushWirelessBatch(
@@ -1013,13 +1036,9 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
 
         var cachedTarget = getCachedTarget(
                 targetLevel, conn.pos(), targetBe, conn.boundFace(), wirelessSource);
-        if (isBatchTargetBlocked(cachedTarget)) {
-            return new BatchTargetDispatchResult(0L, WirelessPushOutcome.SOFT_FAIL);
-        }
-
         var context = new BatchTargetContext(
                 targetLevel, conn.pos(), conn.boundFace(),
-                adapter, cachedTarget, conn);
+                targetBe, adapter, cachedTarget, conn);
         var ramp = dispatchBatchRamp(
                 context, pattern, oneCopyTemplate, maxCraft, oneCopyCost);
         if (ramp.ownedCopies() <= 0L) {
@@ -1030,7 +1049,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
                             : WirelessPushOutcome.SOFT_FAIL);
         }
 
-        finishSuccessfulBatchTarget(pattern, context);
+        finishSuccessfulBatchTarget(context);
         return new BatchTargetDispatchResult(
                 ramp.ownedCopies(),
                 ramp.globalAbort()
@@ -1038,12 +1057,36 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
                         : WirelessPushOutcome.SUCCESS);
     }
 
-    private boolean isBatchTargetBlocked(@Nullable PatternProviderTarget cachedTarget) {
-        if (!isBlocking() || cachedTarget == null) {
-            return false;
-        }
+    private boolean isBatchTargetBlocked(
+            BatchTargetContext context, IPatternDetails pattern) {
+        return isTargetBlocked(
+                context.level(),
+                context.pos(),
+                context.face(),
+                context.targetBlockEntity(),
+                context.cachedTarget(),
+                pattern);
+    }
+
+    private boolean isTargetBlocked(
+            ServerLevel level,
+            BlockPos pos,
+            Direction face,
+            BlockEntity targetBlockEntity,
+            @Nullable PatternProviderTarget cachedTarget,
+            IPatternDetails pattern) {
         var patternInputs = ((PatternProviderLogicAccessor) this).getPatternInputs();
-        return cachedTarget.containsPatternInput(patternInputs);
+        boolean targetContainsPatternInput = cachedTarget != null
+                && cachedTarget.containsPatternInput(patternInputs);
+        var previous = getLastSuccessfulPattern(
+                level, pos, face, targetBlockEntity);
+        return BatchBlockingPolicy.isBlocked(
+                getCraftingLockedReason() != LockCraftingMode.NONE,
+                isBlocking(),
+                targetContainsPatternInput,
+                overloadedHost.getBlockingMode() == BlockingMode.SAME_PATTERN,
+                previous,
+                pattern);
     }
 
     private BatchRampResult dispatchBatchRamp(
@@ -1057,6 +1100,9 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
         }
         if (!context.adapter().supportsBatch(
                 context.level(), context.pos(), context.face(), pattern)) {
+            if (isBatchTargetBlocked(context, pattern)) {
+                return new BatchRampResult(0L, false);
+            }
             var single = pushBatchChunk(
                     context, pattern, oneCopyTemplate, 1, oneCopyCost);
             return new BatchRampResult(single.ownedCopies(), single.globalAbort());
@@ -1066,6 +1112,15 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
         long fullCredit = 0L;
 
         while (ownedCopies < maxCraft) {
+            // Blocking is a per-physical-push contract. In particular, vanilla
+            // blocking must stop after the first accepted chunk, while EAP
+            // advanced blocking may continue only when this exact pattern was
+            // the last successful dispatch to the same machine. Crafting locks
+            // (result, pulse and redstone level) are checked here as well.
+            if (isBatchTargetBlocked(context, pattern)) {
+                break;
+            }
+
             long remaining = maxCraft - ownedCopies;
             long desired = BatchDispatchPolicy.nextRampChunk(
                     fullCredit, remaining);
@@ -1143,16 +1198,15 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
             }
         }
 
+        recordSuccessfulBatchChunk(context, pattern);
+
         return new BatchChunkResult(
                 ownedCopies,
                 ownedCopies == copies && result.overflow().isEmpty(),
                 false);
     }
 
-    private void finishSuccessfulBatchTarget(
-            IPatternDetails pattern, BatchTargetContext context) {
-        ((PatternProviderLogicAccessor) this).invokeOnPushPatternSuccess(pattern);
-        syncPendingUnlockRule(pattern);
+    private void finishSuccessfulBatchTarget(BatchTargetContext context) {
         alertGridTick();
 
         if (overloadedHost.isAutoReturn()) {
@@ -1163,6 +1217,55 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
                 resetBackoffAllTargets();
             }
         }
+    }
+
+    @Nullable
+    private IPatternDetails getLastSuccessfulPattern(
+            ServerLevel level,
+            BlockPos pos,
+            Direction face,
+            BlockEntity targetBlockEntity) {
+        var key = targetKey(level, pos, face);
+        var entry = lastSuccessfulPatterns.get(key);
+        if (entry == null) {
+            return null;
+        }
+        if (entry.targetBlockEntity.get() != targetBlockEntity) {
+            lastSuccessfulPatterns.remove(key);
+            return null;
+        }
+        return entry.pattern;
+    }
+
+    private void recordSuccessfulBatchChunk(
+            BatchTargetContext context, IPatternDetails pattern) {
+        ((PatternProviderLogicAccessor) this).invokeOnPushPatternSuccess(pattern);
+        syncPendingUnlockRule(pattern);
+        markPatternDispatched(
+                context.level(),
+                context.pos(),
+                context.face(),
+                context.targetBlockEntity(),
+                pattern);
+    }
+
+    private void markPatternDispatched(
+            ServerLevel level,
+            BlockPos pos,
+            Direction face,
+            BlockEntity targetBlockEntity,
+            IPatternDetails pattern) {
+        lastSuccessfulPatterns.put(
+                targetKey(level, pos, face),
+                new LastSuccessfulPattern(targetBlockEntity, pattern));
+    }
+
+    private static TargetCacheKey targetKey(
+            ServerLevel level, BlockPos pos, Direction face) {
+        return new TargetCacheKey(
+                level.dimension(),
+                pos.asLong(),
+                face);
     }
 
     private static long saturatingAdd(long left, long right) {
@@ -1493,18 +1596,22 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
             return WirelessPushOutcome.GLOBAL_ABORT;
         }
 
-        boolean blocking = isBlocking();
         var patternInputs = ((PatternProviderLogicAccessor) this).getPatternInputs();
         // 预取 cached target：blocking 校验 + 后续 pushCopies 共用同一份，
         // 把 capability 查询从"每 push 1~2 次"降到"每 20 tick 1 次"
         var targetBe = targetLevel.getBlockEntity(conn.pos());
-        PatternProviderTarget cachedTarget = (targetBe != null)
-                ? getCachedTarget(targetLevel, conn.pos(), targetBe, conn.boundFace(), wirelessSource)
-                : null;
+        if (targetBe == null) return WirelessPushOutcome.HARD_FAIL;
+        PatternProviderTarget cachedTarget = getCachedTarget(
+                targetLevel, conn.pos(), targetBe, conn.boundFace(), wirelessSource);
+        if (isTargetBlocked(
+                targetLevel, conn.pos(), conn.boundFace(),
+                targetBe, cachedTarget, pattern)) {
+            return WirelessPushOutcome.SOFT_FAIL;
+        }
         var result = adapter.pushCopies(
                 targetLevel, conn.pos(), conn.boundFace(),
                 pattern, inputs, 1,
-                blocking, patternInputs, wirelessSource, cachedTarget);
+                false, patternInputs, wirelessSource, cachedTarget);
         if (result.acceptedCopies() == 0) return WirelessPushOutcome.SOFT_FAIL;
 
         PowerCostUtil.consumeRaw(grid, cost);
@@ -1515,6 +1622,9 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
 
         ((PatternProviderLogicAccessor) this).invokeOnPushPatternSuccess(pattern);
         syncPendingUnlockRule(pattern);
+        markPatternDispatched(
+                targetLevel, conn.pos(), conn.boundFace(),
+                targetBe, pattern);
         alertGridTick();
 
         if (overloadedHost.isAutoReturn()) {
@@ -1681,7 +1791,6 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
         if (targets.isEmpty()) return false;
 
         var providerPos = overloadedHost.getBlockPos();
-        var patternInputKeys = accessor.getPatternInputs();
 
         EjectModeRegistry.setBypass(true);
         try {
@@ -1695,10 +1804,9 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
                         sl, targetPos, be, defaultFace, pattern, inputs, wirelessSource);
                 if (faceToTarget == null) continue;
 
-                if (isBlocking()) {
-                    var anyTarget = faceToTarget.values().iterator().next();
-                    if (anyTarget.containsPatternInput(patternInputKeys)) continue;
-                }
+                var anyTarget = faceToTarget.values().iterator().next();
+                if (isTargetBlocked(
+                        sl, targetPos, defaultFace, be, anyTarget, pattern)) continue;
 
                 if (!simulateDirectionalAcceptance(faceToTarget, defaultFace, pattern, inputs)) continue;
 
@@ -1710,6 +1818,8 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
                 accessor.invokeSendStacksOut();
                 accessor.invokeOnPushPatternSuccess(pattern);
                 syncPendingUnlockRule(pattern);
+                markPatternDispatched(
+                        sl, targetPos, defaultFace, be, pattern);
                 return true;
             }
             return false;
@@ -1753,11 +1863,10 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
                     targetLevel, conn.pos(), be, defaultFace, pattern, inputs, wirelessSource);
             if (faceToTarget == null) return WirelessPushOutcome.SOFT_FAIL;
 
-            if (isBlocking()) {
-                var patternInputKeys = ((PatternProviderLogicAccessor) this).getPatternInputs();
-                var anyTarget = faceToTarget.values().iterator().next();
-                if (anyTarget.containsPatternInput(patternInputKeys)) return WirelessPushOutcome.SOFT_FAIL;
-            }
+            var anyTarget = faceToTarget.values().iterator().next();
+            if (isTargetBlocked(
+                    targetLevel, conn.pos(), defaultFace,
+                    be, anyTarget, pattern)) return WirelessPushOutcome.SOFT_FAIL;
 
             if (!simulateDirectionalAcceptance(faceToTarget, defaultFace, pattern, inputs))
                 return WirelessPushOutcome.SOFT_FAIL;
@@ -1773,6 +1882,8 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
 
         ((PatternProviderLogicAccessor) this).invokeOnPushPatternSuccess(pattern);
         syncPendingUnlockRule(pattern);
+        markPatternDispatched(
+                targetLevel, conn.pos(), defaultFace, be, pattern);
         alertGridTick();
 
         if (overloadedHost.isAutoReturn()) {
@@ -2725,6 +2836,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
         clearReadyQueuesAndQueuedFlags();
         lastPushWheelTick = -1;
         targetCache.clear();
+        lastSuccessfulPatterns.clear();
         connectionStates.clear();
         patternPenalties.clear();
         wirelessDistributor.clearTickState(true);

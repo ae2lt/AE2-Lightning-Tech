@@ -493,6 +493,17 @@ nextChunk = min(remaining, max(1, fullCopiesThisCall))
 - 专用 `ICraftingMachine` 只接收一份：只按实际接收的一份结算，其余仍归 CPU。
 - 能量不足：停止本次调用，已经发出的 copies 保持成功，未发出的 copies 返回 CPU。
 
+阻挡和原版合成锁必须在每个物理批次前重新判断，不能只在整次
+`pushBatch` 外层判断一次：
+
+- 普通阻挡在第一批进入目标后会阻止同次调用中的后续批次。
+- “允许同一样板继续”只在该目标上一次成功发配的是**完整相等的同一样板**
+  时放行；这是过载样板供应器自己的模式，不读取第三方供应器设置。比较先检查
+  样板自身缓存的 `hashCode`，再执行完整 `equals`。
+- 等待主产物、等待红石脉冲以及高/低电平锁继续使用 AE2 原版
+  `onPushPatternSuccess` 与 `getCraftingLockedReason` 状态机。每批成功后立即更新锁，
+  下一批开始前重新读取；不得因为处于 batch 路径而统一绕过。
+
 执行层分别维护：
 
 ```text
@@ -527,7 +538,6 @@ providerPowerCost = oneCopyPowerCost × ownedCopies
 
 以下路径在获得单独证明前继续回退到单份 `pushPattern`，不参与自适应批量：
 
-- 等待产物、等待脉冲等一次物理 push 即改变锁状态的模式。
 - 需要 `ICraftingMachine.pushPattern` 语义的专用合成机器。
 - 无法固定完整输入路由的第三方动态定向样板。
 - 无法区分部分输入所有权和供应器余量所有权的兼容目标。
