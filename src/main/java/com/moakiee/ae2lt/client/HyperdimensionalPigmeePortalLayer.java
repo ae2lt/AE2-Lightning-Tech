@@ -24,7 +24,7 @@ import net.neoforged.neoforge.client.model.data.ModelData;
  */
 final class HyperdimensionalPigmeePortalLayer {
     private static final long MODEL_SEED = 42L;
-    private static final float SHELL_SCALE = 1.0125F;
+    private static final float SURFACE_OFFSET = 0.002F;
 
     private HyperdimensionalPigmeePortalLayer() {
     }
@@ -34,7 +34,6 @@ final class HyperdimensionalPigmeePortalLayer {
         VertexConsumer consumer = buffers.getBuffer(RenderType.endPortal());
         RandomSource random = RandomSource.create();
 
-        beginShell(poseStack);
         for (RenderType sourceType : model.getRenderTypes(state, random, modelData)) {
             for (Direction direction : Direction.values()) {
                 random.setSeed(MODEL_SEED);
@@ -49,28 +48,18 @@ final class HyperdimensionalPigmeePortalLayer {
                     consumer,
                     model.getQuads(state, null, random, modelData, sourceType));
         }
-        poseStack.popPose();
     }
 
     static void renderItem(BakedModel model, PoseStack poseStack, MultiBufferSource buffers) {
         VertexConsumer consumer = buffers.getBuffer(RenderType.endPortal());
         RandomSource random = RandomSource.create();
 
-        beginShell(poseStack);
         for (Direction direction : Direction.values()) {
             random.setSeed(MODEL_SEED);
             renderQuads(poseStack.last(), consumer, model.getQuads(null, direction, random));
         }
         random.setSeed(MODEL_SEED);
         renderQuads(poseStack.last(), consumer, model.getQuads(null, null, random));
-        poseStack.popPose();
-    }
-
-    private static void beginShell(PoseStack poseStack) {
-        poseStack.pushPose();
-        poseStack.translate(0.5F, 0.5F, 0.5F);
-        poseStack.scale(SHELL_SCALE, SHELL_SCALE, SHELL_SCALE);
-        poseStack.translate(-0.5F, -0.5F, -0.5F);
     }
 
     private static void renderQuads(
@@ -78,13 +67,17 @@ final class HyperdimensionalPigmeePortalLayer {
         for (BakedQuad quad : quads) {
             int[] vertices = quad.getVertices();
             int stride = vertices.length / 4;
+            Direction direction = quad.getDirection();
+            float offsetX = direction.getStepX() * SURFACE_OFFSET;
+            float offsetY = direction.getStepY() * SURFACE_OFFSET;
+            float offsetZ = direction.getStepZ() * SURFACE_OFFSET;
             for (int vertex = 0; vertex < 4; vertex++) {
                 int offset = vertex * stride;
                 consumer.addVertex(
                         pose.pose(),
-                        Float.intBitsToFloat(vertices[offset]),
-                        Float.intBitsToFloat(vertices[offset + 1]),
-                        Float.intBitsToFloat(vertices[offset + 2]));
+                        Float.intBitsToFloat(vertices[offset]) + offsetX,
+                        Float.intBitsToFloat(vertices[offset + 1]) + offsetY,
+                        Float.intBitsToFloat(vertices[offset + 2]) + offsetZ);
             }
         }
     }

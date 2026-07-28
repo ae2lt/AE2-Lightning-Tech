@@ -56,25 +56,28 @@ public class FumoBlockRenderer implements BlockEntityRenderer<FumoBlockEntity> {
         ModelData modelData = ModelData.EMPTY;
         Level level = blockEntity.getLevel();
         BlockPos pos = blockEntity.getBlockPos();
+        boolean hyperdimensional = state.is(ModFumos.HYPERDIMENSIONAL_PIGMEE_FUMO.get());
 
         if (level != null) {
-            ModelBlockRenderer modelRenderer = dispatcher.getModelRenderer();
-            for (RenderType renderType : model.getRenderTypes(renderState, RAND, modelData)) {
-                modelRenderer.tesselateBlock(
-                        level,
-                        model,
-                        renderState,
-                        pos,
-                        poseStack,
-                        buffer.getBuffer(renderType),
-                        false,
-                        RAND,
-                        42L,
-                        packedOverlay,
-                        modelData,
-                        renderType);
+            if (!hyperdimensional) {
+                ModelBlockRenderer modelRenderer = dispatcher.getModelRenderer();
+                for (RenderType renderType : model.getRenderTypes(renderState, RAND, modelData)) {
+                    modelRenderer.tesselateBlock(
+                            level,
+                            model,
+                            renderState,
+                            pos,
+                            poseStack,
+                            buffer.getBuffer(renderType),
+                            false,
+                            RAND,
+                            42L,
+                            packedOverlay,
+                            modelData,
+                            renderType);
+                }
             }
-            if (state.is(ModFumos.HYPERDIMENSIONAL_PIGMEE_FUMO.get())) {
+            if (hyperdimensional) {
                 HyperdimensionalPigmeePortalLayer.renderBlock(
                         model, renderState, modelData, poseStack, buffer);
                 HyperdimensionalPigmeeTextureLayer.renderBlock(
@@ -87,18 +90,20 @@ public class FumoBlockRenderer implements BlockEntityRenderer<FumoBlockEntity> {
             float b = (color & 0xFF) / 255.0F;
             PoseStack.Pose pose = poseStack.last();
 
-            for (RenderType renderType : model.getRenderTypes(renderState, RAND, modelData)) {
-                VertexConsumer consumer = buffer.getBuffer(renderType);
-                for (Direction dir : Direction.values()) {
+            if (!hyperdimensional) {
+                for (RenderType renderType : model.getRenderTypes(renderState, RAND, modelData)) {
+                    VertexConsumer consumer = buffer.getBuffer(renderType);
+                    for (Direction dir : Direction.values()) {
+                        RAND.setSeed(42L);
+                        renderQuads(pose, consumer, model.getQuads(renderState, dir, RAND, modelData, renderType),
+                                r, g, b, packedLight, packedOverlay);
+                    }
                     RAND.setSeed(42L);
-                    renderQuads(pose, consumer, model.getQuads(renderState, dir, RAND, modelData, renderType),
+                    renderQuads(pose, consumer, model.getQuads(renderState, null, RAND, modelData, renderType),
                             r, g, b, packedLight, packedOverlay);
                 }
-                RAND.setSeed(42L);
-                renderQuads(pose, consumer, model.getQuads(renderState, null, RAND, modelData, renderType),
-                        r, g, b, packedLight, packedOverlay);
             }
-            if (state.is(ModFumos.HYPERDIMENSIONAL_PIGMEE_FUMO.get())) {
+            if (hyperdimensional) {
                 HyperdimensionalPigmeePortalLayer.renderBlock(
                         model, renderState, modelData, poseStack, buffer);
                 HyperdimensionalPigmeeTextureLayer.renderBlock(
