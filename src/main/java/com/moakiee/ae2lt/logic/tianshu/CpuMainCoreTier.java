@@ -4,7 +4,7 @@ import com.moakiee.ae2lt.logic.compute.ComputeTier;
 
 public enum CpuMainCoreTier {
     BASELINE(ComputeTier.BASELINE, 256.0D),
-    QUANTUM(ComputeTier.QUANTUM, 4_096.0D),
+    QUANTUM(ComputeTier.QUANTUM, 8_192.0D),
     OVERLOAD(ComputeTier.OVERLOAD, 262_144.0D),
     // Creative/development tier: retain the port's legacy link cost.
     MULTIDIMENSIONAL(ComputeTier.MULTIDIMENSIONAL, 8.0D);

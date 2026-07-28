@@ -2,7 +2,7 @@ package com.moakiee.ae2lt.logic.compute;
 
 public enum ComputeTier {
     BASELINE(0, 512, 1L << 20, 1_024L, false),
-    QUANTUM(15, 3_072, 256L << 20, 10_240L, false),
+    QUANTUM(15, 6_144, 256L << 20, 20_480L, false),
     OVERLOAD(15, 16_384, 64L << 30, 4_194_304L, false),
     MULTIDIMENSIONAL(0, 16_384, Long.MAX_VALUE, Long.MAX_VALUE, true);
 

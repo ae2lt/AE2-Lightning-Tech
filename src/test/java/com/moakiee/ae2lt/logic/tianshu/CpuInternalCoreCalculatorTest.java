@@ -14,7 +14,7 @@ class CpuInternalCoreCalculatorTest {
     @Test
     void mainCoreTiersExposeTheirIdlePowerCosts() {
         assertEquals(256.0D, CpuMainCoreTier.BASELINE.idlePowerUsage());
-        assertEquals(4_096.0D, CpuMainCoreTier.QUANTUM.idlePowerUsage());
+        assertEquals(8_192.0D, CpuMainCoreTier.QUANTUM.idlePowerUsage());
         assertEquals(262_144.0D, CpuMainCoreTier.OVERLOAD.idlePowerUsage());
         assertEquals(8.0D, CpuMainCoreTier.MULTIDIMENSIONAL.idlePowerUsage());
     }
@@ -32,11 +32,11 @@ class CpuInternalCoreCalculatorTest {
 
     @Test
     void fullQuantumProfileMatchesDesignTarget() {
-        var profile = CpuInternalCoreCalculator.calculate(CpuMainCoreTier.QUANTUM, 4, 1, 15);
+        var profile = CpuInternalCoreCalculator.calculate(CpuMainCoreTier.QUANTUM, 4, 2, 15);
 
         assertEquals(8L * GIB + 256L * MIB, profile.storageBytes());
-        assertEquals(3_072, profile.successfulDispatchesPerTick());
-        assertEquals(10_240, profile.maxCopiesPerTick());
+        assertEquals(6_144, profile.successfulDispatchesPerTick());
+        assertEquals(20_480, profile.maxCopiesPerTick());
         assertTrue(profile.parallelCapped());
     }
 

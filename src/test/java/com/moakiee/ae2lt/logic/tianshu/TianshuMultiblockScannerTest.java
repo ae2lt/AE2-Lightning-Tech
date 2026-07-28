@@ -138,12 +138,16 @@ class TianshuMultiblockScannerTest {
                 }
             }
         }
+        quantum.put(
+                TianshuMultiblockScanner.worldPos(
+                        CONTROLLER, new BlockPos(4, 4, 4), Direction.WEST),
+                TianshuMultiblockComponent.PARALLEL_UNIT);
 
         var quantumAttempt = TianshuMultiblockScanner.scan(
                 CONTROLLER, Direction.WEST, quantum::get);
         assertTrue(quantumAttempt.formed(), quantumAttempt.issues().toString());
         assertEquals(15, quantumAttempt.result().coreProfile().amplifierUnitCount());
-        assertEquals(3_072, quantumAttempt.result().coreProfile().successfulDispatchesPerTick());
+        assertEquals(6_144, quantumAttempt.result().coreProfile().successfulDispatchesPerTick());
 
         quantum.put(
                 TianshuMultiblockScanner.worldPos(

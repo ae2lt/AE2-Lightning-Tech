@@ -45,7 +45,7 @@ All 27 cells in the central 3×3×3 volume must be filled for the structure to f
 | Main Core | Internal Storage | Successful Dispatches/t Cap | Amplifier Units |
 |-----------|-----------------:|----------------------------:|-----------------|
 | <ItemLink id="ae2lt:tianshu_baseline_main_core" /> | 1 MiB | 512 | Unsupported |
-| <ItemLink id="ae2lt:tianshu_quantum_main_core" /> | 256 MiB | 3,072 | 0–15 |
+| <ItemLink id="ae2lt:tianshu_quantum_main_core" /> | 256 MiB | 6,144 | 0–15 |
 | <ItemLink id="ae2lt:tianshu_overload_main_core" /> | 64 GiB | 16,384 | 0–15 |
 | <ItemLink id="ae2lt:tianshu_multidimensional_main_core" /> | Infinite | 16,384 | Unsupported |
 
@@ -64,7 +64,7 @@ The Main Core provides internal crafting storage and sets the ceilings for the s
 | Main Core | Internal Storage | Successful Dispatches/t Cap | Maximum Copies/t | Amplifier Units |
 |-----------|-----------------:|----------------------------:|-----------------:|-----------------|
 | <ItemLink id="ae2lt:tianshu_baseline_main_core" /> | 1 MiB | 512 | 1,024 | Unsupported |
-| <ItemLink id="ae2lt:tianshu_quantum_main_core" /> | 256 MiB | 3,072 | 10,240 | 0–15 |
+| <ItemLink id="ae2lt:tianshu_quantum_main_core" /> | 256 MiB | 6,144 | 20,480 | 0–15 |
 | <ItemLink id="ae2lt:tianshu_overload_main_core" /> | 64 GiB | 16,384 | 4,194,304 | 0–15 |
 | <ItemLink id="ae2lt:tianshu_multidimensional_main_core" /> | Infinite | 16,384 | Infinite | Unsupported |
 
@@ -108,7 +108,7 @@ The resulting parameters are calculated as follows:
 * Total crafting storage equals the internal storage plus `64 MiB × S × external-storage gain`.
 * Maximum copies equal successful dispatches times the copy gain, capped by the Main Core's copy ceiling.
 
-For example, a Quantum core with 20 Parallel Units, 5 Amplifier Units, and 1 Storage Unit: the dispatch gain is ×12, so the formula gives `128 × 20 × 12 = 30,720` dispatches, capped at **3,072** by the Quantum ceiling; external storage is `64 MiB × 1 × 12 = 768 MiB`, giving **1 GiB** with the 256 MiB internal storage; the copy gain is ×6, so the formula gives `3,072 × 6 = 18,432` copies, capped at **10,240**. The controller screen indicates when a parameter has reached its cap.
+For example, a Quantum core with 20 Parallel Units, 5 Amplifier Units, and 1 Storage Unit: the dispatch gain is ×12, so the formula gives `128 × 20 × 12 = 30,720` dispatches, capped at **6,144** by the Quantum ceiling; external storage is `64 MiB × 1 × 12 = 768 MiB`, giving **1 GiB** with the 256 MiB internal storage; the copy gain is ×6, so the formula gives `6,144 × 6 = 36,864` copies, capped at **20,480**. The controller screen indicates when a parameter has reached its cap.
 
 To illustrate how the two budgets relate, consider a configuration with 512 successful dispatches and 1,024 maximum copies per tick: sending only single-copy patterns uses at most 512 of those copies per tick, while batch-capable targets can combine multiple executions of the same pattern within the same 512 accepted calls and use the full 1,024 copies. The provider and the target machine determine the actual grouping; a single machine is not guaranteed to accept the complete budget.
 
