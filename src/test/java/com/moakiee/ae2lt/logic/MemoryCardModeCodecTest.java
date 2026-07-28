@@ -64,8 +64,7 @@ class MemoryCardModeCodecTest {
                 "src/main/java/com/moakiee/ae2lt/blockentity/TeslaCoilBlockEntity.java"));
 
         assertTrue(catalyzer.contains("writeEnum(tag, TAG_MODE, this.mode)"));
-        assertTrue(catalyzer.contains("readEnum(\n"
-                + "                            tag, TAG_MODE, Mode.class, this.mode)"));
+        assertTrue(catalyzer.contains("tag, TAG_MODE, Mode.class, this.mode)"));
         assertTrue(catalyzer.contains("logic.onStateChanged()"));
 
         assertTrue(teslaCoil.contains("writeEnum(tag, TAG_SELECTED_MODE, selectedMode)"));

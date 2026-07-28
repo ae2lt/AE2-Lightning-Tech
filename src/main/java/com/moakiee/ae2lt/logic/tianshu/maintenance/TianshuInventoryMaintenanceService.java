@@ -14,10 +14,13 @@ import appeng.crafting.CraftingLink;
 import appeng.me.service.CraftingService;
 import com.google.common.collect.ImmutableSet;
 import com.moakiee.thunderbolt.ae2.crafting.ReservedStockCraftingRequester;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Future;
 import net.minecraft.core.HolderLookup;
@@ -31,7 +34,8 @@ public final class TianshuInventoryMaintenanceService
     private static final String TAG_LINKS = "Links";
     private static final String TAG_RESERVED_STOCK = "ReservedStock";
     private static final String TAG_RULE_RESERVED_STOCK = "RuleReservedStock";
-    private static final long CHECK_INTERVAL = 10L;
+    private static final int BACKGROUND_SCAN_PERIOD = 64;
+    private static final int MAX_URGENT_CHECKS_PER_TICK = 32;
     private static final long RETRY_INTERVAL = 100L;
 
     private final TianshuInventoryMaintenanceHost host;
@@ -42,7 +46,13 @@ public final class TianshuInventoryMaintenanceService
     private final Map<UUID, InventoryMaintenanceStatus> statuses = new HashMap<>();
     private final Map<UUID, Long> retryAfter = new HashMap<>();
     private final LinkedHashSet<CraftingLink> links = new LinkedHashSet<>();
-    private long nextCheckTick;
+    private final LinkedHashSet<UUID> urgentChecks = new LinkedHashSet<>();
+    private final FixedPeriodPollingSchedule backgroundSchedule =
+            new FixedPeriodPollingSchedule(BACKGROUND_SCAN_PERIOD);
+    private List<UUID> backgroundRuleIds = List.of();
+    private Set<UUID> activeRuleIds = Set.of();
+    private boolean ruleScheduleDirty = true;
+    private long lastServiceTick = Long.MIN_VALUE;
     private boolean linksRestored;
     private IGrid restoredGrid;
 
@@ -96,7 +106,8 @@ public final class TianshuInventoryMaintenanceService
         var result = repository.put(rule);
         if ((result == InventoryMaintenanceRepository.PutResult.ADDED
                 || result == InventoryMaintenanceRepository.PutResult.UPDATED)) {
-            nextCheckTick = 0L;
+            ruleScheduleDirty = true;
+            urgentChecks.add(rule.id());
             host.maintenanceStateChanged();
         }
         return result;
@@ -111,7 +122,11 @@ public final class TianshuInventoryMaintenanceService
         ruleReservedStock.remove(ruleId);
         retryAfter.remove(ruleId);
         statuses.remove(ruleId);
-        if (removed) host.maintenanceStateChanged();
+        urgentChecks.remove(ruleId);
+        if (removed) {
+            ruleScheduleDirty = true;
+            host.maintenanceStateChanged();
+        }
         return removed;
     }
 
@@ -159,7 +174,7 @@ public final class TianshuInventoryMaintenanceService
     public boolean retryNow(UUID ruleId) {
         if (repository.getById(ruleId) == null) return false;
         retryAfter.remove(ruleId);
-        nextCheckTick = 0L;
+        urgentChecks.add(ruleId);
         statuses.put(ruleId, InventoryMaintenanceStatus.IDLE);
         return true;
     }
@@ -175,65 +190,113 @@ public final class TianshuInventoryMaintenanceService
                 || !host.getFunctionProfile().supportsInventoryMaintenance()) return;
         restoreLinks((CraftingService) grid.getCraftingService());
         long now = level.getGameTime();
-        if (now < nextCheckTick) return;
-        nextCheckTick = now + CHECK_INTERVAL;
+        if (now == lastServiceTick) return;
+        lastServiceTick = now;
 
         var crafting = (CraftingService) grid.getCraftingService();
-        var activeRuleIds = new HashSet<UUID>();
-        for (var activeRule : repository.activeRules()) activeRuleIds.add(activeRule.id());
+        rebuildRuleScheduleIfNeeded();
         pollCalculations(crafting, activeRuleIds);
-        for (var original : repository.rules()) {
-            var rule = repository.get(original.key());
-            if (rule == null) continue;
-            var link = findLink(rule.activeCraftingId());
-            boolean activeLink = link != null && !link.isDone() && !link.isCanceled();
-            if (link != null && !activeLink) {
-                links.remove(link);
-                rule = rule.withRuntime(rule.replenishing(), null);
-                repository.put(rule);
-                host.maintenanceStateChanged();
-            }
-            if (!activeRuleIds.contains(rule.id())) {
-                cancelCalculation(rule.id());
-                statuses.put(rule.id(), activeLink
-                        ? InventoryMaintenanceStatus.CRAFTING : InventoryMaintenanceStatus.DISABLED);
-                continue;
-            }
-            if (!rule.enabled()) {
-                statuses.put(rule.id(), InventoryMaintenanceStatus.DISABLED);
-                continue;
-            }
 
-            long stock = grid.getStorageService().getInventory()
-                    .extract(rule.key(), Long.MAX_VALUE, Actionable.SIMULATE, host.getActionSource());
-            boolean calculationActive = calculations.containsKey(rule.id());
-            boolean otherCalculationActive = InventoryMaintenanceCalculationClaims.claimedByOther(
-                    grid, rule.key(), rule.id());
-            boolean networkTaskActive = activeLink || calculationActive || crafting.isRequesting(rule.key())
-                    || otherCalculationActive;
-            var decision = InventoryMaintenanceDecision.evaluate(rule, stock, networkTaskActive);
-            if (decision.replenishing() != rule.replenishing()) {
-                rule = rule.withRuntime(decision.replenishing(), rule.activeCraftingId());
-                repository.put(rule);
-                host.maintenanceStateChanged();
+        var checkedThisTick = new HashSet<UUID>();
+        int urgentBudget = MAX_URGENT_CHECKS_PER_TICK;
+        var urgentIterator = urgentChecks.iterator();
+        while (urgentBudget-- > 0 && urgentIterator.hasNext()) {
+            UUID ruleId = urgentIterator.next();
+            urgentIterator.remove();
+            if (checkedThisTick.add(ruleId)) {
+                checkRule(crafting, ruleId, now);
             }
-            if (activeLink) {
-                statuses.put(rule.id(), InventoryMaintenanceStatus.CRAFTING);
-            } else if (calculationActive) {
-                statuses.put(rule.id(), InventoryMaintenanceStatus.CALCULATING);
-            } else if (!decision.replenishing()) {
-                retryAfter.remove(rule.id());
-                statuses.put(rule.id(), stock >= rule.upperThreshold()
-                        ? InventoryMaintenanceStatus.SATISFIED : InventoryMaintenanceStatus.IDLE);
-            } else if (now < retryAfter.getOrDefault(rule.id(), 0L)) {
-                statuses.putIfAbsent(rule.id(), InventoryMaintenanceStatus.WAITING_RETRY);
-            } else if (otherCalculationActive) {
-                statuses.put(rule.id(), InventoryMaintenanceStatus.CALCULATING);
-            } else if (networkTaskActive) {
-                statuses.put(rule.id(), InventoryMaintenanceStatus.CRAFTING);
-            } else if (decision.requestAmount() > 0) {
-                beginCalculation(crafting, rule, decision.requestAmount());
+        }
+
+        int backgroundChecks = backgroundSchedule.checksThisTick(backgroundRuleIds.size());
+        for (int i = 0; i < backgroundChecks; i++) {
+            UUID ruleId = backgroundRuleIds.get(
+                    backgroundSchedule.nextIndex(backgroundRuleIds.size()));
+            if (checkedThisTick.add(ruleId)) {
+                checkRule(crafting, ruleId, now);
             }
+        }
+    }
+
+    private void rebuildRuleScheduleIfNeeded() {
+        if (!ruleScheduleDirty) return;
+        ruleScheduleDirty = false;
+
+        var activeIds = new HashSet<UUID>();
+        var enabledIds = new ArrayList<UUID>();
+        for (var rule : repository.activeRules()) {
+            activeIds.add(rule.id());
+            if (rule.enabled()) {
+                enabledIds.add(rule.id());
+            } else {
+                statuses.put(rule.id(), InventoryMaintenanceStatus.DISABLED);
+            }
+        }
+        for (var rule : repository.rules()) {
+            if (!activeIds.contains(rule.id())) {
+                statuses.put(rule.id(), InventoryMaintenanceStatus.DISABLED);
+            }
+        }
+        activeRuleIds = Set.copyOf(activeIds);
+        backgroundRuleIds = List.copyOf(enabledIds);
+        urgentChecks.removeIf(ruleId -> !activeRuleIds.contains(ruleId));
+        backgroundSchedule.reset();
+    }
+
+    private void checkRule(CraftingService crafting, UUID ruleId, long now) {
+        var grid = host.getGrid();
+        if (grid == null) return;
+        var rule = repository.getById(ruleId);
+        if (rule == null) return;
+
+        var link = findLink(rule.activeCraftingId());
+        boolean activeLink = link != null && !link.isDone() && !link.isCanceled();
+        if (link != null && !activeLink) {
+            links.remove(link);
+            rule = rule.withRuntime(rule.replenishing(), null);
+            repository.put(rule);
+            host.maintenanceStateChanged();
+        }
+        if (!activeRuleIds.contains(rule.id())) {
+            cancelCalculation(rule.id());
+            statuses.put(rule.id(), activeLink
+                    ? InventoryMaintenanceStatus.CRAFTING : InventoryMaintenanceStatus.DISABLED);
+            return;
+        }
+        if (!rule.enabled()) {
+            statuses.put(rule.id(), InventoryMaintenanceStatus.DISABLED);
+            return;
+        }
+
+        long stock = grid.getStorageService().getInventory()
+                .extract(rule.key(), Long.MAX_VALUE, Actionable.SIMULATE, host.getActionSource());
+        boolean calculationActive = calculations.containsKey(rule.id());
+        boolean otherCalculationActive = InventoryMaintenanceCalculationClaims.claimedByOther(
+                grid, rule.key(), rule.id());
+        boolean networkTaskActive = activeLink || calculationActive || crafting.isRequesting(rule.key())
+                || otherCalculationActive;
+        var decision = InventoryMaintenanceDecision.evaluate(rule, stock, networkTaskActive);
+        if (decision.replenishing() != rule.replenishing()) {
+            rule = rule.withRuntime(decision.replenishing(), rule.activeCraftingId());
+            repository.put(rule);
+            host.maintenanceStateChanged();
+        }
+        if (activeLink) {
+            statuses.put(rule.id(), InventoryMaintenanceStatus.CRAFTING);
+        } else if (calculationActive) {
+            statuses.put(rule.id(), InventoryMaintenanceStatus.CALCULATING);
+        } else if (!decision.replenishing()) {
+            retryAfter.remove(rule.id());
+            statuses.put(rule.id(), stock >= rule.upperThreshold()
+                    ? InventoryMaintenanceStatus.SATISFIED : InventoryMaintenanceStatus.IDLE);
+        } else if (now < retryAfter.getOrDefault(rule.id(), 0L)) {
+            statuses.putIfAbsent(rule.id(), InventoryMaintenanceStatus.WAITING_RETRY);
+        } else if (otherCalculationActive) {
+            statuses.put(rule.id(), InventoryMaintenanceStatus.CALCULATING);
+        } else if (networkTaskActive) {
+            statuses.put(rule.id(), InventoryMaintenanceStatus.CRAFTING);
+        } else if (decision.requestAmount() > 0) {
+            beginCalculation(crafting, rule, decision.requestAmount());
         }
     }
 
@@ -399,7 +462,8 @@ public final class TianshuInventoryMaintenanceService
         for (var ruleId : java.util.List.copyOf(calculations.keySet())) {
             if (!activeRuleIds.contains(ruleId)) cancelCalculation(ruleId);
         }
-        nextCheckTick = 0L;
+        ruleScheduleDirty = true;
+        urgentChecks.addAll(activeRuleIds);
     }
 
     private CraftingLink findLink(UUID id) {
@@ -435,7 +499,11 @@ public final class TianshuInventoryMaintenanceService
             if (changed.getCraftingID().equals(rule.activeCraftingId())) {
                 repository.put(rule.withRuntime(rule.replenishing(), null));
                 statuses.put(rule.id(), InventoryMaintenanceStatus.IDLE);
-                if (changed.isCanceled()) scheduleRetry(rule.id());
+                if (changed.isCanceled()) {
+                    scheduleRetry(rule.id());
+                } else {
+                    urgentChecks.add(rule.id());
+                }
             }
         }
         host.maintenanceStateChanged();
@@ -473,8 +541,14 @@ public final class TianshuInventoryMaintenanceService
         shutdownCalculations();
         statuses.clear();
         retryAfter.clear();
+        urgentChecks.clear();
         ruleReservedStock.clear();
         links.clear();
+        activeRuleIds = Set.of();
+        backgroundRuleIds = List.of();
+        backgroundSchedule.reset();
+        ruleScheduleDirty = true;
+        lastServiceTick = Long.MIN_VALUE;
         linksRestored = false;
         restoredGrid = null;
         repository.readFrom(parent.getCompound(TAG_REPOSITORY), registries);

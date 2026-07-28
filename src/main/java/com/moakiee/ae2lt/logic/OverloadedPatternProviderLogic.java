@@ -50,6 +50,7 @@ import appeng.util.inv.filter.IAEItemFilter;
 
 import com.moakiee.ae2lt.blockentity.GhostOutputBlockEntity;
 import com.moakiee.ae2lt.blockentity.OverloadedPatternProviderBlockEntity;
+import com.moakiee.ae2lt.blockentity.OverloadedPatternProviderBlockEntity.BlockingMode;
 import com.moakiee.ae2lt.blockentity.OverloadedPatternProviderBlockEntity.ProviderMode;
 import com.moakiee.ae2lt.blockentity.OverloadedPatternProviderBlockEntity.ReturnMode;
 import com.moakiee.ae2lt.blockentity.OverloadedPatternProviderBlockEntity.WirelessConnection;
@@ -60,6 +61,7 @@ import com.moakiee.ae2lt.logic.energy.WirelessEnergyDistributor;
 import com.moakiee.ae2lt.mixin.PatternProviderLogicAccessor;
 
 import com.moakiee.thunderbolt.ae2.overload.model.MatchMode;
+import com.moakiee.thunderbolt.ae2.api.crafting.IBatchCraftingProvider;
 import com.moakiee.thunderbolt.ae2.overload.pattern.OverloadedProviderOnlyPatternDetails;
 import com.moakiee.thunderbolt.ae2.overload.pattern.OverloadPatternDetails;
 
@@ -73,7 +75,8 @@ import com.moakiee.thunderbolt.ae2.overload.pattern.OverloadPatternDetails;
  * either round-robin single-target dispatch or even distribution across the
  * host's wireless connection list.
  */
-public class OverloadedPatternProviderLogic extends PatternProviderLogic {
+public class OverloadedPatternProviderLogic extends PatternProviderLogic
+        implements IBatchCraftingProvider {
 
     /** Full return inventory with totalPages * 9 slots. */
     private final UnlimitedReturnInventory fullReturnInv;
@@ -310,6 +313,8 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
     private static final int PUSH_WHEEL_BITS = 6;
     private static final int PUSH_WHEEL_SIZE = 1 << PUSH_WHEEL_BITS; // 64 — comfortably covers COOLDOWN_MAX (40)
     private static final int PUSH_WHEEL_MASK = PUSH_WHEEL_SIZE - 1;
+    /** Ordinary one-copy dispatch also stays O(1) in configured target count. */
+    private static final int SINGLE_PUSH_TARGET_ATTEMPTS = 2;
 
     @SuppressWarnings("unchecked")
     private final List<WirelessConnection>[] pushWheel = new List[PUSH_WHEEL_SIZE];
@@ -378,6 +383,50 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
 
     private static final int TARGET_CACHE_TTL = 20;
     private final Map<TargetCacheKey, TargetCacheEntry> targetCache = new HashMap<>();
+
+    // ---- adaptive batch dispatch -------------------------------------------------
+
+    private record BatchTargetContext(
+            ServerLevel level,
+            BlockPos pos,
+            Direction face,
+            BlockEntity targetBlockEntity,
+            MachineAdapter adapter,
+            @Nullable PatternProviderTarget cachedTarget,
+            @Nullable WirelessConnection wirelessConnection) {}
+
+    private static final class LastSuccessfulPattern {
+        private final WeakReference<BlockEntity> targetBlockEntity;
+        private final IPatternDetails pattern;
+
+        private LastSuccessfulPattern(
+                BlockEntity targetBlockEntity, IPatternDetails pattern) {
+            this.targetBlockEntity = new WeakReference<>(targetBlockEntity);
+            this.pattern = pattern;
+        }
+    }
+
+    private record BatchChunkResult(long ownedCopies, boolean fullyInserted, boolean globalAbort) {
+        private static final BatchChunkResult REJECTED =
+                new BatchChunkResult(0L, false, false);
+        private static final BatchChunkResult GLOBAL_ABORT =
+                new BatchChunkResult(0L, false, true);
+    }
+
+    private record BatchRampResult(long ownedCopies, boolean globalAbort) {}
+
+    private record BatchTargetDispatchResult(
+            long ownedCopies, WirelessPushOutcome outcome) {}
+
+    /** NORMAL-mode target cursor; wireless modes reuse their existing ready queues. */
+    private int normalBatchTargetCursor;
+    /**
+     * Last physically dispatched pattern per target. This is runtime-only:
+     * after a reload, refusing one uncertain continuation is safer than
+     * treating stale machine contents as ours.
+     */
+    private final Map<TargetCacheKey, LastSuccessfulPattern> lastSuccessfulPatterns =
+            new HashMap<>();
 
     /** Cached output filter derived from loaded patterns. */
     @Nullable
@@ -643,6 +692,10 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
         }
 
         if (overloadedHost.getProviderMode() == ProviderMode.NORMAL) {
+            if (!AdvancedAECompat.isDirectional(patternDetails)
+                    && overloadedHost.getBlockingMode() == BlockingMode.SAME_PATTERN) {
+                return pushNormalBatch(patternDetails, inputHolder, 1L) == 0L;
+            }
             double cost = PowerCostUtil.totalCost(inputHolder);
             var grid = gridNode.getGrid();
             if (!PowerCostUtil.canAfford(grid, cost)) {
@@ -667,6 +720,560 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
             return result;
         }
         return wirelessPushPattern(patternDetails, inputHolder);
+    }
+
+    @Override
+    public long getBatchCapacity(IPatternDetails details) {
+        if (isBusy()) {
+            return 0L;
+        }
+        return canUseAdaptiveBatch(details) ? Long.MAX_VALUE : 1L;
+    }
+
+    @Override
+    public long pushBatch(
+            IPatternDetails details, KeyCounter[] oneCopyTemplate, long maxCraft) {
+        if (maxCraft <= 0L) {
+            return 0L;
+        }
+        if (oneCopyTemplate == null) {
+            return maxCraft;
+        }
+        if (!canUseAdaptiveBatch(details)) {
+            return pushPattern(details, oneCopyTemplate) ? maxCraft - 1L : maxCraft;
+        }
+
+        // A bucket from a previous partial aggregate owns its inputs already.
+        // Try it once before selecting any target for new CPU-owned work.
+        if (!pendingOverflowByConn.isEmpty()) {
+            flushWirelessSends();
+        }
+
+        return overloadedHost.getProviderMode() == ProviderMode.WIRELESS
+                ? pushWirelessBatch(details, oneCopyTemplate, maxCraft)
+                : pushNormalBatch(details, oneCopyTemplate, maxCraft);
+    }
+
+    private boolean canUseAdaptiveBatch(IPatternDetails details) {
+        return overloadedHost.isAdaptiveBatchEnabled()
+                && details != null
+                && details.supportsPushInputsToExternalInventory()
+                && !AdvancedAECompat.isDirectional(details);
+    }
+
+    private long pushNormalBatch(
+            IPatternDetails pattern,
+            KeyCounter[] oneCopyTemplate,
+            long maxCraft) {
+        var accessor = (PatternProviderLogicAccessor) this;
+        if (!accessor.getSendList().isEmpty()
+                || !gridNode.isActive()
+                || !getAvailablePatterns().contains(pattern)
+                || getCraftingLockedReason() != LockCraftingMode.NONE) {
+            return maxCraft;
+        }
+
+        var level = overloadedHost.getLevel();
+        if (!(level instanceof ServerLevel serverLevel)) {
+            return maxCraft;
+        }
+
+        var targetList = List.copyOf(overloadedHost.getTargets());
+        if (targetList.isEmpty()) {
+            return maxCraft;
+        }
+
+        long remaining = maxCraft;
+        // Physical providers have at most six adjacent targets. Check every
+        // side at least once so the SAME_PATTERN single-copy path retains
+        // vanilla's ability to skip an unavailable side and use another one.
+        int attemptBudget = Math.max(
+                targetList.size(),
+                BatchDispatchPolicy.targetAttemptBudget(maxCraft));
+        int cursor = Math.floorMod(normalBatchTargetCursor, targetList.size());
+        double oneCopyCost = PowerCostUtil.totalCost(oneCopyTemplate);
+
+        for (int attempts = 0; attempts < attemptBudget && remaining > 0L; attempts++) {
+            var pushDirection = targetList.get(cursor);
+            cursor = (cursor + 1) % targetList.size();
+            normalBatchTargetCursor = cursor;
+
+            var context = resolveNormalBatchTarget(serverLevel, pushDirection, pattern);
+            if (context == null) {
+                continue;
+            }
+
+            long share = BatchDispatchPolicy.geometricShare(remaining, targetList.size());
+            var ramp = dispatchBatchRamp(
+                    context, pattern, oneCopyTemplate, share, oneCopyCost);
+            if (ramp.ownedCopies() <= 0L) {
+                if (ramp.globalAbort()) {
+                    break;
+                }
+                continue;
+            }
+
+            remaining -= ramp.ownedCopies();
+            // PatternProviderLogic stores the direction from provider to
+            // machine; the adapter face is the opposite side of that target.
+            accessor.setSendDirection(context.face().getOpposite());
+            accessor.invokeSendStacksOut();
+            finishSuccessfulBatchTarget(context);
+            if (ramp.globalAbort() || !accessor.getSendList().isEmpty()) {
+                break;
+            }
+        }
+        return remaining;
+    }
+
+    @Nullable
+    private BatchTargetContext resolveNormalBatchTarget(
+            ServerLevel level, Direction pushDirection, IPatternDetails pattern) {
+        var targetPos = overloadedHost.getBlockPos().relative(pushDirection);
+        var targetBe = level.getBlockEntity(targetPos);
+        if (targetBe == null) {
+            return null;
+        }
+
+        var face = pushDirection.getOpposite();
+        var adapter = MachineAdapterRegistry.find(level, targetPos);
+        if (adapter == null || !adapter.canAccept(level, targetPos, face, pattern)) {
+            return null;
+        }
+
+        var cachedTarget = getCachedTarget(
+                level, targetPos, targetBe, face, wirelessSource);
+        return new BatchTargetContext(
+                level, targetPos, face, targetBe, adapter, cachedTarget, null);
+    }
+
+    private long pushWirelessBatch(
+            IPatternDetails pattern,
+            KeyCounter[] oneCopyTemplate,
+            long maxCraft) {
+        refreshGlobalBackpressure();
+        if (wirelessGlobalBackpressure
+                || !gridNode.isActive()
+                || !getAvailablePatterns().contains(pattern)
+                || getCraftingLockedReason() != LockCraftingMode.NONE) {
+            return maxCraft;
+        }
+
+        var level = overloadedHost.getLevel();
+        if (!(level instanceof ServerLevel providerLevel)) {
+            return maxCraft;
+        }
+        var server = providerLevel.getServer();
+        long gameTick = providerLevel.getGameTime();
+        var valid = getOrRefreshValidConnections(providerLevel, gameTick);
+        if (valid.isEmpty()) {
+            return maxCraft;
+        }
+
+        var dispatchMode = overloadedHost.getWirelessDispatchMode();
+        boolean fastMode = overloadedHost.getWirelessSpeedMode()
+                == OverloadedPatternProviderBlockEntity.WirelessSpeedMode.FAST;
+        if (pushStructuresDirty || valid != pushWheelValidRef) {
+            if (!pushStructuresDirty && valid.equals(pushWheelValidRef)) {
+                pushWheelValidRef = valid;
+            } else {
+                rebuildPushStructures(valid, gameTick, dispatchMode);
+            }
+        }
+        advancePushWheel(gameTick, fastMode, dispatchMode);
+
+        return pushWirelessBatchTargets(
+                pattern, oneCopyTemplate, maxCraft,
+                server, gameTick, fastMode, dispatchMode);
+    }
+
+    private long pushWirelessBatchTargets(
+            IPatternDetails pattern,
+            KeyCounter[] oneCopyTemplate,
+            long maxCraft,
+            net.minecraft.server.MinecraftServer server,
+            long gameTick,
+            boolean fastMode,
+            WirelessDispatchMode dispatchMode) {
+        boolean singleTarget = dispatchMode == WirelessDispatchMode.SINGLE_TARGET;
+        var readyQueue = singleTarget ? singleReadyQueue : evenReadyQueue;
+        long remaining = maxCraft;
+        int attemptBudget = BatchDispatchPolicy.targetAttemptBudget(maxCraft);
+        double oneCopyCost = PowerCostUtil.totalCost(oneCopyTemplate);
+        var definition = pattern.getDefinition();
+
+        for (int attempts = 0;
+             attempts < attemptBudget && remaining > 0L && !readyQueue.isEmpty();
+             attempts++) {
+            var conn = readyQueue.peek();
+            if (pendingOverflowByConn.containsKey(conn)) {
+                readyQueue.removeHead();
+                continue;
+            }
+            if (!singleTarget
+                    && patternPenalties.shouldSkip(conn, definition, gameTick)) {
+                readyQueue.rotateHeadToTail();
+                continue;
+            }
+
+            var state = connectionStates.get(conn);
+            if (state == null || !state.ready) {
+                readyQueue.removeHead();
+                continue;
+            }
+
+            boolean probing = state.probeArmed
+                    && state.cooldownUntil >= 0L && gameTick < state.cooldownUntil;
+            long share = singleTarget
+                    ? remaining
+                    : BatchDispatchPolicy.geometricShare(
+                            remaining, readyQueue.size());
+            var dispatch = tryPushBatchToConnection(
+                    pattern, oneCopyTemplate, share, oneCopyCost,
+                    conn, server);
+
+            if (dispatch.outcome().consumesTargetAttempt()) {
+                state.probeArmed = false;
+            }
+            if (dispatch.ownedCopies() > 0L) {
+                remaining -= dispatch.ownedCopies();
+                if (!singleTarget) {
+                    patternPenalties.recordSuccess(conn, definition);
+                }
+                boolean backpressured = pendingOverflowByConn.containsKey(conn);
+                if (backpressured) {
+                    // The target accepted ownership but could not drain the
+                    // aggregate. Treat this as short-term saturation so it
+                    // does not immediately re-enter after the bucket clears.
+                    state.onPushFail(gameTick);
+                } else if (probing) {
+                    state.onProbeSuccess();
+                } else {
+                    state.onPushSuccess(gameTick);
+                }
+                if (backpressured) {
+                    readyQueue.removeHead();
+                } else if (!singleTarget) {
+                    readyQueue.rotateHeadToTail();
+                }
+                if (singleTarget
+                        || dispatch.outcome() == WirelessPushOutcome.GLOBAL_ABORT) {
+                    return remaining;
+                }
+                continue;
+            }
+
+            switch (dispatch.outcome()) {
+                case HARD_FAIL -> {
+                    if (!isConnectionAlive(conn, server)) {
+                        readyQueue.removeHead();
+                        if (!singleTarget) {
+                            patternPenalties.removeTarget(conn);
+                        }
+                        connectionsDirty = true;
+                    } else if (singleTarget) {
+                        readyQueue.removeHead();
+                    } else {
+                        readyQueue.rotateHeadToTail();
+                    }
+                }
+                case SOFT_FAIL -> {
+                    if (singleTarget) {
+                        readyQueue.removeHead();
+                        if (probing) {
+                            state.onProbeFail();
+                        } else {
+                            state.onPushFail(gameTick);
+                        }
+                        schedulePushWheel(conn, state, fastMode, dispatchMode);
+                    } else {
+                        patternPenalties.recordRejection(
+                                conn, definition, gameTick, fastMode);
+                        readyQueue.rotateHeadToTail();
+                    }
+                }
+                case GLOBAL_ABORT -> {
+                    return remaining;
+                }
+                case SUCCESS -> {
+                    if (!singleTarget) {
+                        readyQueue.rotateHeadToTail();
+                    }
+                }
+            }
+        }
+        return remaining;
+    }
+
+    private BatchTargetDispatchResult tryPushBatchToConnection(
+            IPatternDetails pattern,
+            KeyCounter[] oneCopyTemplate,
+            long maxCraft,
+            double oneCopyCost,
+            WirelessConnection conn,
+            net.minecraft.server.MinecraftServer server) {
+        if (pendingOverflowByConn.containsKey(conn)) {
+            return new BatchTargetDispatchResult(0L, WirelessPushOutcome.SOFT_FAIL);
+        }
+
+        var targetLevel = server.getLevel(conn.dimension());
+        if (targetLevel == null || !targetLevel.isLoaded(conn.pos())) {
+            return new BatchTargetDispatchResult(0L, WirelessPushOutcome.HARD_FAIL);
+        }
+
+        autoReturnBeforePush(targetLevel, conn);
+        var targetBe = targetLevel.getBlockEntity(conn.pos());
+        if (targetBe == null) {
+            return new BatchTargetDispatchResult(0L, WirelessPushOutcome.HARD_FAIL);
+        }
+
+        var state = getOrCreateState(conn);
+        var adapter = state.resolveAdapter(targetLevel, conn.pos());
+        if (adapter == null
+                || !adapter.canAccept(
+                        targetLevel, conn.pos(), conn.boundFace(), pattern)) {
+            return new BatchTargetDispatchResult(0L, WirelessPushOutcome.HARD_FAIL);
+        }
+
+        var cachedTarget = getCachedTarget(
+                targetLevel, conn.pos(), targetBe, conn.boundFace(), wirelessSource);
+        var context = new BatchTargetContext(
+                targetLevel, conn.pos(), conn.boundFace(),
+                targetBe, adapter, cachedTarget, conn);
+        var ramp = dispatchBatchRamp(
+                context, pattern, oneCopyTemplate, maxCraft, oneCopyCost);
+        if (ramp.ownedCopies() <= 0L) {
+            return new BatchTargetDispatchResult(
+                    0L,
+                    ramp.globalAbort()
+                            ? WirelessPushOutcome.GLOBAL_ABORT
+                            : WirelessPushOutcome.SOFT_FAIL);
+        }
+
+        finishSuccessfulBatchTarget(context);
+        return new BatchTargetDispatchResult(
+                ramp.ownedCopies(),
+                ramp.globalAbort()
+                        ? WirelessPushOutcome.GLOBAL_ABORT
+                        : WirelessPushOutcome.SUCCESS);
+    }
+
+    private boolean isBatchTargetBlocked(
+            BatchTargetContext context, IPatternDetails pattern) {
+        return isTargetBlocked(
+                context.level(),
+                context.pos(),
+                context.face(),
+                context.targetBlockEntity(),
+                context.cachedTarget(),
+                pattern);
+    }
+
+    private boolean isTargetBlocked(
+            ServerLevel level,
+            BlockPos pos,
+            Direction face,
+            BlockEntity targetBlockEntity,
+            @Nullable PatternProviderTarget cachedTarget,
+            IPatternDetails pattern) {
+        var patternInputs = ((PatternProviderLogicAccessor) this).getPatternInputs();
+        boolean targetContainsPatternInput = cachedTarget != null
+                && cachedTarget.containsPatternInput(patternInputs);
+        var previous = getLastSuccessfulPattern(
+                level, pos, face, targetBlockEntity);
+        return BatchBlockingPolicy.isBlocked(
+                getCraftingLockedReason() != LockCraftingMode.NONE,
+                isBlocking(),
+                targetContainsPatternInput,
+                overloadedHost.getBlockingMode() == BlockingMode.SAME_PATTERN,
+                previous,
+                pattern);
+    }
+
+    private BatchRampResult dispatchBatchRamp(
+            BatchTargetContext context,
+            IPatternDetails pattern,
+            KeyCounter[] oneCopyTemplate,
+            long maxCraft,
+            double oneCopyCost) {
+        if (maxCraft <= 0L) {
+            return new BatchRampResult(0L, false);
+        }
+        if (!context.adapter().supportsBatch(
+                context.level(), context.pos(), context.face(), pattern)) {
+            if (isBatchTargetBlocked(context, pattern)) {
+                return new BatchRampResult(0L, false);
+            }
+            var single = pushBatchChunk(
+                    context, pattern, oneCopyTemplate, 1, oneCopyCost);
+            return new BatchRampResult(single.ownedCopies(), single.globalAbort());
+        }
+
+        long ownedCopies = 0L;
+        long fullCredit = 0L;
+
+        while (ownedCopies < maxCraft) {
+            // Blocking is a per-physical-push contract. In particular, vanilla
+            // blocking must stop after the first accepted chunk, while EAP
+            // advanced blocking may continue only when this exact pattern was
+            // the last successful dispatch to the same machine. Crafting locks
+            // (result, pulse and redstone level) are checked here as well.
+            if (isBatchTargetBlocked(context, pattern)) {
+                break;
+            }
+
+            long remaining = maxCraft - ownedCopies;
+            long desired = BatchDispatchPolicy.nextRampChunk(
+                    fullCredit, remaining);
+            int chunkCopies = (int) Math.min(desired, Integer.MAX_VALUE);
+
+            var chunk = pushBatchChunk(
+                    context, pattern, oneCopyTemplate, chunkCopies, oneCopyCost);
+            if (chunk.globalAbort()) {
+                return new BatchRampResult(ownedCopies, true);
+            }
+
+            if (chunk.ownedCopies() <= 0L) {
+                break;
+            }
+
+            ownedCopies += chunk.ownedCopies();
+            if (!chunk.fullyInserted() || chunk.ownedCopies() != chunkCopies) {
+                break;
+            }
+
+            fullCredit = saturatingAdd(fullCredit, chunkCopies);
+
+            // The adapter API uses an int-sized physical batch. Do not turn a
+            // long-sized caller request into billions of identical max-int calls.
+            if (chunkCopies == Integer.MAX_VALUE) {
+                break;
+            }
+        }
+        return new BatchRampResult(ownedCopies, false);
+    }
+
+    private BatchChunkResult pushBatchChunk(
+            BatchTargetContext context,
+            IPatternDetails pattern,
+            KeyCounter[] oneCopyTemplate,
+            int copies,
+            double oneCopyCost) {
+        if (copies <= 0) {
+            return BatchChunkResult.REJECTED;
+        }
+
+        double requestedCost = oneCopyCost * copies;
+        var grid = gridNode.getGrid();
+        if (!Double.isFinite(requestedCost)
+                || !PowerCostUtil.canAfford(grid, requestedCost)) {
+            return BatchChunkResult.GLOBAL_ABORT;
+        }
+
+        var result = context.adapter().pushCopies(
+                context.level(), context.pos(), context.face(),
+                pattern, oneCopyTemplate, copies,
+                false,
+                ((PatternProviderLogicAccessor) this).getPatternInputs(),
+                wirelessSource,
+                context.cachedTarget());
+        long ownedCopies = Math.min(copies, Math.max(0, result.acceptedCopies()));
+        if (ownedCopies <= 0L) {
+            return BatchChunkResult.REJECTED;
+        }
+
+        PowerCostUtil.consumeRaw(grid, oneCopyCost * ownedCopies);
+        if (!result.overflow().isEmpty()) {
+            if (context.wirelessConnection() != null) {
+                // Aggregated amounts do not satisfy the compact bucket's
+                // one-copy shape invariant, so retain the exact list.
+                bucketOverflow(
+                        context.wirelessConnection(), pattern,
+                        result.overflow(), true);
+            } else {
+                var accessor = (PatternProviderLogicAccessor) this;
+                for (var overflow : result.overflow()) {
+                    accessor.invokeAddToSendList(
+                            overflow.what(), overflow.amount());
+                }
+            }
+        }
+
+        recordSuccessfulBatchChunk(context, pattern);
+
+        return new BatchChunkResult(
+                ownedCopies,
+                ownedCopies == copies && result.overflow().isEmpty(),
+                false);
+    }
+
+    private void finishSuccessfulBatchTarget(BatchTargetContext context) {
+        alertGridTick();
+
+        if (overloadedHost.isAutoReturn()) {
+            if (context.wirelessConnection() != null) {
+                getOrCreateState(context.wirelessConnection()).resetBackoff(
+                        context.level().getGameTime(), wirelessReturnBackoffMin());
+            } else {
+                resetBackoffAllTargets();
+            }
+        }
+    }
+
+    @Nullable
+    private IPatternDetails getLastSuccessfulPattern(
+            ServerLevel level,
+            BlockPos pos,
+            Direction face,
+            BlockEntity targetBlockEntity) {
+        var key = targetKey(level, pos, face);
+        var entry = lastSuccessfulPatterns.get(key);
+        if (entry == null) {
+            return null;
+        }
+        if (entry.targetBlockEntity.get() != targetBlockEntity) {
+            lastSuccessfulPatterns.remove(key);
+            return null;
+        }
+        return entry.pattern;
+    }
+
+    private void recordSuccessfulBatchChunk(
+            BatchTargetContext context, IPatternDetails pattern) {
+        ((PatternProviderLogicAccessor) this).invokeOnPushPatternSuccess(pattern);
+        syncPendingUnlockRule(pattern);
+        markPatternDispatched(
+                context.level(),
+                context.pos(),
+                context.face(),
+                context.targetBlockEntity(),
+                pattern);
+    }
+
+    private void markPatternDispatched(
+            ServerLevel level,
+            BlockPos pos,
+            Direction face,
+            BlockEntity targetBlockEntity,
+            IPatternDetails pattern) {
+        lastSuccessfulPatterns.put(
+                targetKey(level, pos, face),
+                new LastSuccessfulPattern(targetBlockEntity, pattern));
+    }
+
+    private static TargetCacheKey targetKey(
+            ServerLevel level, BlockPos pos, Direction face) {
+        return new TargetCacheKey(
+                level.dimension(),
+                pos.asLong(),
+                face);
+    }
+
+    private static long saturatingAdd(long left, long right) {
+        if (right > 0L && left > Long.MAX_VALUE - right) {
+            return Long.MAX_VALUE;
+        }
+        return left + right;
     }
 
     private boolean wirelessPushPattern(IPatternDetails pattern, KeyCounter[] inputs) {
@@ -716,7 +1323,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
     private boolean wirelessPushEvenDistribution(IPatternDetails pattern, KeyCounter[] inputs,
             List<WirelessConnection> valid, net.minecraft.server.MinecraftServer server,
             long gameTick, boolean fastMode) {
-        int scanBudget = evenReadyQueue.size();
+        int scanBudget = Math.min(SINGLE_PUSH_TARGET_ATTEMPTS, evenReadyQueue.size());
         var patternKey = pattern.getDefinition();
         while (scanBudget-- > 0 && !evenReadyQueue.isEmpty()) {
             var conn = evenReadyQueue.peek();
@@ -746,12 +1353,15 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
             switch (outcome) {
                 case SUCCESS -> {
                     patternPenalties.recordSuccess(conn, patternKey);
-                    if (probing) {
+                    boolean backpressured = pendingOverflowByConn.containsKey(conn);
+                    if (backpressured) {
+                        state.onPushFail(gameTick);
+                    } else if (probing) {
                         state.onProbeSuccess();
                     } else {
                         state.onPushSuccess(gameTick);
                     }
-                    if (pendingOverflowByConn.containsKey(conn)) {
+                    if (backpressured) {
                         evenReadyQueue.removeHead();
                     } else {
                         evenReadyQueue.rotateHeadToTail();
@@ -785,7 +1395,8 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
             List<WirelessConnection> valid, net.minecraft.server.MinecraftServer server,
             long gameTick, boolean fastMode) {
 
-        while (!singleReadyQueue.isEmpty()) {
+        int scanBudget = Math.min(SINGLE_PUSH_TARGET_ATTEMPTS, singleReadyQueue.size());
+        while (scanBudget-- > 0 && !singleReadyQueue.isEmpty()) {
             var conn = singleReadyQueue.peek();
             if (pendingOverflowByConn.containsKey(conn)) {
                 singleReadyQueue.removeHead();
@@ -807,12 +1418,15 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
             }
             switch (outcome) {
                 case SUCCESS -> {
-                    if (probing) {
+                    boolean backpressured = pendingOverflowByConn.containsKey(conn);
+                    if (backpressured) {
+                        state.onPushFail(gameTick);
+                    } else if (probing) {
                         state.onProbeSuccess();
                     } else {
                         state.onPushSuccess(gameTick);
                     }
-                    if (pendingOverflowByConn.containsKey(conn)) {
+                    if (backpressured) {
                         singleReadyQueue.removeHead();
                     }
                     return true;
@@ -983,25 +1597,22 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
             return WirelessPushOutcome.GLOBAL_ABORT;
         }
 
-        boolean blocking = isBlocking();
         var patternInputs = ((PatternProviderLogicAccessor) this).getPatternInputs();
         // 预取 cached target：blocking 校验 + 后续 pushCopies 共用同一份，
         // 把 capability 查询从"每 push 1~2 次"降到"每 20 tick 1 次"
         var targetBe = targetLevel.getBlockEntity(conn.pos());
-        PatternProviderTarget cachedTarget = (targetBe != null)
-                ? getCachedTarget(targetLevel, conn.pos(), targetBe, conn.boundFace(), wirelessSource)
-                : null;
-        // EAP advanced-blocking compat: when ADVANCED_BLOCKING is on and the
-        // target fully covers every input slot, treat the push as not blocked
-        // (mirrors EAP's @Redirect on PatternProviderTarget.containsPatternInput).
-        if (blocking && cachedTarget != null
-                && AdvancedBlockingCompat.shouldBypassBlocking(this, cachedTarget, pattern)) {
-            blocking = false;
+        if (targetBe == null) return WirelessPushOutcome.HARD_FAIL;
+        PatternProviderTarget cachedTarget = getCachedTarget(
+                targetLevel, conn.pos(), targetBe, conn.boundFace(), wirelessSource);
+        if (isTargetBlocked(
+                targetLevel, conn.pos(), conn.boundFace(),
+                targetBe, cachedTarget, pattern)) {
+            return WirelessPushOutcome.SOFT_FAIL;
         }
         var result = adapter.pushCopies(
                 targetLevel, conn.pos(), conn.boundFace(),
                 pattern, inputs, 1,
-                blocking, patternInputs, wirelessSource, cachedTarget);
+                false, patternInputs, wirelessSource, cachedTarget);
         if (result.acceptedCopies() == 0) return WirelessPushOutcome.SOFT_FAIL;
 
         PowerCostUtil.consumeRaw(grid, cost);
@@ -1012,6 +1623,9 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
 
         ((PatternProviderLogicAccessor) this).invokeOnPushPatternSuccess(pattern);
         syncPendingUnlockRule(pattern);
+        markPatternDispatched(
+                targetLevel, conn.pos(), conn.boundFace(),
+                targetBe, pattern);
         alertGridTick();
 
         if (overloadedHost.isAutoReturn()) {
@@ -1178,7 +1792,6 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
         if (targets.isEmpty()) return false;
 
         var providerPos = overloadedHost.getBlockPos();
-        var patternInputKeys = accessor.getPatternInputs();
 
         EjectModeRegistry.setBypass(true);
         try {
@@ -1192,21 +1805,22 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
                         sl, targetPos, be, defaultFace, pattern, inputs, wirelessSource);
                 if (faceToTarget == null) continue;
 
-                if (isBlocking()) {
-                    var anyTarget = faceToTarget.values().iterator().next();
-                    // EAP advanced-blocking compat: bypass when target fully matches.
-                    if (anyTarget.containsPatternInput(patternInputKeys)
-                            && !AdvancedBlockingCompat.shouldBypassBlocking(this, anyTarget, pattern)) continue;
-                }
+                var anyTarget = faceToTarget.values().iterator().next();
+                if (isTargetBlocked(
+                        sl, targetPos, defaultFace, be, anyTarget, pattern)) continue;
 
                 if (!simulateDirectionalAcceptance(faceToTarget, defaultFace, pattern, inputs)) continue;
 
                 commitDirectionalPush(pattern, inputs, faceToTarget, defaultFace);
 
-                accessor.setSendDirection(defaultFace);
+                // sendDirection is provider -> target, while defaultFace is
+                // the target-side capability face.
+                accessor.setSendDirection(pushDir);
                 accessor.invokeSendStacksOut();
                 accessor.invokeOnPushPatternSuccess(pattern);
                 syncPendingUnlockRule(pattern);
+                markPatternDispatched(
+                        sl, targetPos, defaultFace, be, pattern);
                 return true;
             }
             return false;
@@ -1250,13 +1864,10 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
                     targetLevel, conn.pos(), be, defaultFace, pattern, inputs, wirelessSource);
             if (faceToTarget == null) return WirelessPushOutcome.SOFT_FAIL;
 
-            if (isBlocking()) {
-                var patternInputKeys = ((PatternProviderLogicAccessor) this).getPatternInputs();
-                var anyTarget = faceToTarget.values().iterator().next();
-                // EAP advanced-blocking compat: bypass when target fully matches.
-                if (anyTarget.containsPatternInput(patternInputKeys)
-                        && !AdvancedBlockingCompat.shouldBypassBlocking(this, anyTarget, pattern)) return WirelessPushOutcome.SOFT_FAIL;
-            }
+            var anyTarget = faceToTarget.values().iterator().next();
+            if (isTargetBlocked(
+                    targetLevel, conn.pos(), defaultFace,
+                    be, anyTarget, pattern)) return WirelessPushOutcome.SOFT_FAIL;
 
             if (!simulateDirectionalAcceptance(faceToTarget, defaultFace, pattern, inputs))
                 return WirelessPushOutcome.SOFT_FAIL;
@@ -1272,6 +1883,8 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
 
         ((PatternProviderLogicAccessor) this).invokeOnPushPatternSuccess(pattern);
         syncPendingUnlockRule(pattern);
+        markPatternDispatched(
+                targetLevel, conn.pos(), defaultFace, be, pattern);
         alertGridTick();
 
         if (overloadedHost.isAutoReturn()) {
@@ -2224,6 +2837,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic {
         clearReadyQueuesAndQueuedFlags();
         lastPushWheelTick = -1;
         targetCache.clear();
+        lastSuccessfulPatterns.clear();
         connectionStates.clear();
         patternPenalties.clear();
         wirelessDistributor.clearTickState(true);

@@ -6,8 +6,12 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 
+import appeng.api.config.ActionItems;
+import appeng.client.gui.Icon;
 import appeng.client.gui.implementations.PatternProviderScreen;
 import appeng.client.gui.style.ScreenStyle;
+import appeng.client.gui.widgets.ActionButton;
+import appeng.client.gui.widgets.ToggleButton;
 import appeng.menu.SlotSemantics;
 
 import com.moakiee.ae2lt.api.client.PatternProviderToolbarButtonHider;
@@ -25,24 +29,16 @@ public class OverloadedPatternProviderScreen<M extends OverloadedPatternProvider
             List.of(Component.translatable("ae2lt.gui.return_mode.auto"));
     private static final List<Component> RETURN_TIP_EJECT =
             List.of(Component.translatable("ae2lt.gui.return_mode.eject"));
-    private static final List<Component> FILTER_TIP_ON =
-            List.of(Component.translatable("ae2lt.gui.filtered_import.on"));
-    private static final List<Component> FILTER_TIP_OFF =
-            List.of(Component.translatable("ae2lt.gui.filtered_import.off"));
-    private static final List<Component> STRATEGY_TIP_SINGLE =
-            List.of(Component.translatable("ae2lt.gui.wireless_strategy.single"));
-    private static final List<Component> STRATEGY_TIP_EVEN =
-            List.of(Component.translatable("ae2lt.gui.wireless_strategy.even"));
-    private static final List<Component> SPEED_TIP_FAST =
-            List.of(Component.translatable("ae2lt.gui.wireless_speed.fast"));
-    private static final List<Component> SPEED_TIP_NORMAL =
-            List.of(Component.translatable("ae2lt.gui.wireless_speed.normal"));
+    private static final List<Component> ADAPTIVE_BATCH_TIP_ON =
+            List.of(Component.translatable("ae2lt.gui.adaptive_batch.on"));
+    private static final List<Component> ADAPTIVE_BATCH_TIP_OFF =
+            List.of(Component.translatable("ae2lt.gui.adaptive_batch.off"));
 
     private final TextureToggleButton modeButton;
     private final TextureToggleButton autoReturnButton;
-    private final TextureToggleButton wirelessStrategyButton;
-    private final TextureToggleButton wirelessSpeedButton;
-    private final TextureToggleButton filteredImportButton;
+    private final ProviderBlockingModeButton blockingModeButton;
+    private final ToggleButton adaptiveBatchButton;
+    private final ActionButton advancedSettingsButton;
 
     private static final int SLOTS_PER_PAGE = 36;
 
@@ -51,6 +47,11 @@ public class OverloadedPatternProviderScreen<M extends OverloadedPatternProvider
         super(menu, playerInventory, title, style);
 
         removeHiddenToolbarButtons();
+        removeVanillaBlockingModeButton();
+
+        this.blockingModeButton = new ProviderBlockingModeButton(
+                btn -> menu.clientCycleBlockingMode());
+        addToLeftToolbar(this.blockingModeButton);
 
         addToLeftToolbar(FrequencyBindingClient.createToolbarButton(menu));
 
@@ -66,26 +67,20 @@ public class OverloadedPatternProviderScreen<M extends OverloadedPatternProvider
         this.modeButton.setTooltipOff(List.of(Component.translatable("ae2lt.gui.provider_mode.normal")));
         addToLeftToolbar(this.modeButton);
 
-        this.wirelessStrategyButton = new TextureToggleButton(
-                TextureToggleButton.ButtonType.WIRELESS_STRATEGY,
-                btn -> menu.clientToggleWirelessDispatchMode());
-        this.wirelessStrategyButton.setTooltipOn(STRATEGY_TIP_EVEN);
-        this.wirelessStrategyButton.setTooltipOff(STRATEGY_TIP_SINGLE);
-        addToLeftToolbar(this.wirelessStrategyButton);
+        this.adaptiveBatchButton = new ToggleButton(
+                Icon.COPY_MODE_ON,
+                Icon.COPY_MODE_OFF,
+                state -> menu.clientToggleAdaptiveBatch());
+        this.adaptiveBatchButton.setTooltipOn(ADAPTIVE_BATCH_TIP_ON);
+        this.adaptiveBatchButton.setTooltipOff(ADAPTIVE_BATCH_TIP_OFF);
+        addToLeftToolbar(this.adaptiveBatchButton);
 
-        this.wirelessSpeedButton = new TextureToggleButton(
-                TextureToggleButton.ButtonType.SPEED,
-                btn -> menu.clientToggleWirelessSpeedMode());
-        this.wirelessSpeedButton.setTooltipOn(SPEED_TIP_FAST);
-        this.wirelessSpeedButton.setTooltipOff(SPEED_TIP_NORMAL);
-        addToLeftToolbar(this.wirelessSpeedButton);
-
-        this.filteredImportButton = new TextureToggleButton(
-                TextureToggleButton.ButtonType.FILTERED_IMPORT,
-                btn -> menu.clientToggleFilteredImport());
-        this.filteredImportButton.setTooltipOn(FILTER_TIP_ON);
-        this.filteredImportButton.setTooltipOff(FILTER_TIP_OFF);
-        addToLeftToolbar(this.filteredImportButton);
+        this.advancedSettingsButton = new ActionButton(
+                ActionItems.COG,
+                () -> switchToScreen(new OverloadedPatternProviderAdvancedScreen<>(this)));
+        this.advancedSettingsButton.setMessage(
+                Component.translatable("ae2lt.gui.provider_advanced.open"));
+        addToLeftToolbar(this.advancedSettingsButton);
     }
 
     @Override
@@ -135,7 +130,8 @@ public class OverloadedPatternProviderScreen<M extends OverloadedPatternProvider
         this.menu.showPage(this.menu.getCurrentPage());
 
         setTextContent("dialog_title", Component.translatable(this.menu.getTitleTranslationKey()));
-        setBlockingModeButtonVisible(this.menu.isBlockingModeVisible());
+        this.blockingModeButton.setState(this.menu.getBlockingModeOrdinal());
+        this.blockingModeButton.setVisibility(this.menu.isBlockingModeVisible());
 
         this.modeButton.setState(this.menu.isWirelessMode());
         this.modeButton.setVisibility(this.menu.isModeSwitchVisible());
@@ -145,16 +141,9 @@ public class OverloadedPatternProviderScreen<M extends OverloadedPatternProvider
         this.autoReturnButton.setTooltipAt(ReturnMode.EJECT.ordinal(), RETURN_TIP_EJECT);
         this.autoReturnButton.setStateIndex(this.menu.getReturnModeOrdinal());
 
-        this.filteredImportButton.setState(this.menu.isFilteredImport());
-        this.filteredImportButton.setVisibility(this.menu.isFilteredImportVisible());
-
-        this.wirelessStrategyButton.setState(this.menu.isEvenDistributionMode());
-        this.wirelessStrategyButton.setVisibility(
-                this.menu.isWirelessMode() && this.menu.isWirelessTuningVisible());
-
-        this.wirelessSpeedButton.setState(this.menu.isFastSpeedMode());
-        this.wirelessSpeedButton.setVisibility(
-                this.menu.isWirelessMode() && this.menu.isWirelessTuningVisible());
+        this.adaptiveBatchButton.setState(this.menu.isAdaptiveBatchEnabled());
+        this.advancedSettingsButton.setVisibility(
+                this.menu.isWirelessTuningVisible() || this.menu.isFilteredImportVisible());
     }
 
     @Override
@@ -173,10 +162,10 @@ public class OverloadedPatternProviderScreen<M extends OverloadedPatternProvider
         return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
 
-    private void setBlockingModeButtonVisible(boolean visible) {
-        var button = ((PatternProviderScreenAccessor) this).ae2lt$getBlockingModeButton();
-        button.visible = visible;
-        button.active = visible;
+    private void removeVanillaBlockingModeButton() {
+        var toolbar = ((AEBaseScreenAccessor) this).ae2lt$getVerticalToolbar();
+        var buttons = ((VerticalButtonBarAccessor) toolbar).ae2lt$getButtons();
+        buttons.remove(((PatternProviderScreenAccessor) this).ae2lt$getBlockingModeButton());
     }
 
     private void removeHiddenToolbarButtons() {

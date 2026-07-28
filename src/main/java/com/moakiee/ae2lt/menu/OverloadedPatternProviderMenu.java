@@ -6,6 +6,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.MenuType;
 
+import appeng.api.config.Settings;
+import appeng.api.config.YesNo;
 import appeng.helpers.patternprovider.PatternProviderLogicHost;
 import appeng.menu.SlotSemantics;
 import appeng.menu.guisync.GuiSync;
@@ -16,6 +18,7 @@ import appeng.menu.slot.AppEngSlot;
 import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.api.pattern.PatternProviderUiProfile;
 import com.moakiee.ae2lt.blockentity.OverloadedPatternProviderBlockEntity;
+import com.moakiee.ae2lt.blockentity.OverloadedPatternProviderBlockEntity.BlockingMode;
 import com.moakiee.ae2lt.blockentity.OverloadedPatternProviderBlockEntity.ProviderMode;
 import com.moakiee.ae2lt.blockentity.OverloadedPatternProviderBlockEntity.ReturnMode;
 import com.moakiee.ae2lt.blockentity.OverloadedPatternProviderBlockEntity.WirelessDispatchMode;
@@ -41,31 +44,40 @@ public class OverloadedPatternProviderMenu extends PatternProviderMenu implement
             | PROFILE_WIRELESS_TUNING
             | PROFILE_BLOCKING_MODE;
 
-    @GuiSync(10)
+    // Keep AE2LT fields in a dedicated high range. Pattern-provider addons commonly
+    // inject low IDs into PatternProviderMenu (ExtendedAE Plus uses 20 and 21).
+    @GuiSync(22000)
     public int providerMode;
 
-    @GuiSync(11)
+    @GuiSync(22001)
     public int returnMode;
 
-    @GuiSync(12)
+    @GuiSync(22002)
     public int filteredImport;
 
-    @GuiSync(13)
+    @GuiSync(22003)
     public int wirelessDispatchMode;
 
-    @GuiSync(16)
+    @GuiSync(22006)
     public int wirelessSpeedMode;
 
-    @GuiSync(17)
+    @GuiSync(22007)
     public int uiProfileFlags = DEFAULT_PROFILE_FLAGS;
 
-    @GuiSync(18)
+    @GuiSync(22008)
     public String titleTranslationKey = PatternProviderUiProfile.DEFAULT_TITLE_TRANSLATION_KEY;
 
-    @GuiSync(14)
+    /** 0 = off, 1 = normal blocking, 2 = allow the same pattern. */
+    @GuiSync(22009)
+    public int blockingMode;
+
+    @GuiSync(22010)
+    public int adaptiveBatchEnabled;
+
+    @GuiSync(22004)
     public int currentPage;
 
-    @GuiSync(15)
+    @GuiSync(22005)
     public int totalPages;
 
     private final PatternProviderLogicHost host;
@@ -87,6 +99,8 @@ public class OverloadedPatternProviderMenu extends PatternProviderMenu implement
         registerClientAction("toggleWirelessDispatchMode", this::toggleWirelessDispatchMode);
         registerClientAction("toggleWirelessSpeedMode", this::toggleWirelessSpeedMode);
         registerClientAction("toggleFilteredImport", this::toggleFilteredImport);
+        registerClientAction("toggleAdaptiveBatch", this::toggleAdaptiveBatch);
+        registerClientAction("cycleBlockingMode", this::cycleBlockingMode);
         registerClientAction("nextPage", this::nextPage);
         registerClientAction("prevPage", this::prevPage);
 
@@ -121,6 +135,8 @@ public class OverloadedPatternProviderMenu extends PatternProviderMenu implement
             filteredImport = be.isFilteredImport() ? 1 : 0;
             wirelessDispatchMode = be.getWirelessDispatchMode().ordinal();
             wirelessSpeedMode = be.getWirelessSpeedMode().ordinal();
+            blockingMode = getBlockingState(be);
+            adaptiveBatchEnabled = be.isAdaptiveBatchEnabled() ? 1 : 0;
             syncUiProfile(be);
             var logic = (OverloadedPatternProviderLogic) be.getLogic();
             currentPage = logic.getCurrentPage();
@@ -174,6 +190,31 @@ public class OverloadedPatternProviderMenu extends PatternProviderMenu implement
         }
     }
 
+    private void toggleAdaptiveBatch() {
+        if (isServerSide() && host instanceof OverloadedPatternProviderBlockEntity be) {
+            be.setAdaptiveBatchEnabled(!be.isAdaptiveBatchEnabled());
+        }
+    }
+
+    private void cycleBlockingMode() {
+        if (isServerSide() && host instanceof OverloadedPatternProviderBlockEntity be) {
+            if (!isBlockingModeVisible(be)) return;
+            int next = (getBlockingState(be) + 1) % 3;
+            var logic = be.getLogic();
+            logic.getConfigManager().putSetting(
+                    Settings.BLOCKING_MODE,
+                    next == 0 ? YesNo.NO : YesNo.YES);
+            be.setBlockingMode(next == 2 ? BlockingMode.SAME_PATTERN : BlockingMode.NORMAL);
+        }
+    }
+
+    private static int getBlockingState(OverloadedPatternProviderBlockEntity be) {
+        if (!be.getLogic().isBlocking()) {
+            return 0;
+        }
+        return be.getBlockingMode() == BlockingMode.SAME_PATTERN ? 2 : 1;
+    }
+
     private void syncUiProfile(OverloadedPatternProviderBlockEntity be) {
         var profile = be instanceof PatternProviderUiProfile uiProfile ? uiProfile : null;
         int flags = 0;
@@ -201,6 +242,10 @@ public class OverloadedPatternProviderMenu extends PatternProviderMenu implement
 
     private static boolean isWirelessTuningVisible(OverloadedPatternProviderBlockEntity be) {
         return !(be instanceof PatternProviderUiProfile profile) || profile.ae2lt$isWirelessTuningVisible();
+    }
+
+    private static boolean isBlockingModeVisible(OverloadedPatternProviderBlockEntity be) {
+        return !(be instanceof PatternProviderUiProfile profile) || profile.ae2lt$isBlockingModeVisible();
     }
 
     private void nextPage() {
@@ -239,6 +284,14 @@ public class OverloadedPatternProviderMenu extends PatternProviderMenu implement
         sendClientAction("toggleFilteredImport");
     }
 
+    public void clientToggleAdaptiveBatch() {
+        sendClientAction("toggleAdaptiveBatch");
+    }
+
+    public void clientCycleBlockingMode() {
+        sendClientAction("cycleBlockingMode");
+    }
+
     // -- Client helpers --
 
     public boolean isWirelessMode() {
@@ -265,6 +318,10 @@ public class OverloadedPatternProviderMenu extends PatternProviderMenu implement
         return isWirelessTuningVisible() && wirelessSpeedMode == WirelessSpeedMode.FAST.ordinal();
     }
 
+    public boolean isAdaptiveBatchEnabled() {
+        return adaptiveBatchEnabled != 0;
+    }
+
     public boolean isPackagedProviderUi() {
         return (uiProfileFlags & PROFILE_PACKAGED) != 0;
     }
@@ -283,6 +340,10 @@ public class OverloadedPatternProviderMenu extends PatternProviderMenu implement
 
     public boolean isBlockingModeVisible() {
         return (uiProfileFlags & PROFILE_BLOCKING_MODE) != 0;
+    }
+
+    public int getBlockingModeOrdinal() {
+        return blockingMode;
     }
 
     public String getTitleTranslationKey() {
