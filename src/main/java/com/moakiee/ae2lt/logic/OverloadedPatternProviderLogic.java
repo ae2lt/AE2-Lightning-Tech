@@ -1076,16 +1076,26 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
             BlockEntity targetBlockEntity,
             @Nullable PatternProviderTarget cachedTarget,
             IPatternDetails pattern) {
+        boolean craftingLocked = getCraftingLockedReason() != LockCraftingMode.NONE;
+        boolean blockingEnabled = isBlocking();
+
+        // containsPatternInput may rebuild AE2's external-storage cache and scan
+        // every exposed slot. The policy cannot use this result when crafting is
+        // already locked or blocking is disabled, so avoid the scan in both cases.
         var patternInputs = ((PatternProviderLogicAccessor) this).getPatternInputs();
-        boolean targetContainsPatternInput = cachedTarget != null
+        boolean targetContainsPatternInput = !craftingLocked
+                && blockingEnabled
+                && cachedTarget != null
                 && cachedTarget.containsPatternInput(patternInputs);
+        boolean samePatternBlockingEnabled =
+                overloadedHost.getBlockingMode() == BlockingMode.SAME_PATTERN;
         var previous = getLastSuccessfulPattern(
                 level, pos, face, targetBlockEntity);
         return BatchBlockingPolicy.isBlocked(
-                getCraftingLockedReason() != LockCraftingMode.NONE,
-                isBlocking(),
+                craftingLocked,
+                blockingEnabled,
                 targetContainsPatternInput,
-                overloadedHost.getBlockingMode() == BlockingMode.SAME_PATTERN,
+                samePatternBlockingEnabled,
                 previous,
                 pattern);
     }
