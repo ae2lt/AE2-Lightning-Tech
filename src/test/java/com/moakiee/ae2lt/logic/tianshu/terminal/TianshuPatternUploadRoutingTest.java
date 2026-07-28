@@ -92,7 +92,7 @@ class TianshuPatternUploadRoutingTest {
                 "src/main/java/com/moakiee/ae2lt/blockentity/MatrixPatternStorageBlockEntity.java"));
 
         assertTrue(screen.contains(
-                "case PROCESSING_PROVIDER -> switchToScreen(new TianshuUploadTargetScreen<>(this))"));
+                "new TianshuUploadTargetScreen<>(this, directUploadRequested)"));
         assertTrue(menu.contains(
                 "!= TianshuPatternUploadRouting.Route.PROCESSING_PROVIDER"));
         assertTrue(matrixStorage.contains(

@@ -2,8 +2,11 @@ package com.moakiee.ae2lt.client;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 
@@ -73,4 +76,46 @@ class TianshuUploadTargetMatcherTest {
         assertEquals("Remote Provider", TianshuUploadTargetMatcher.preferredAlias(
                 "", "", "Remote Provider"));
     }
+
+    @Test
+    void directUploadUsesTheSameUniqueCandidateSetAsTheVisibleFilter() {
+        var provider = target("Advanced Provider", 4);
+        var unrelated = target("Basic Provider", 4);
+
+        assertSame(provider, TianshuUploadTargetMatcher.findUniqueCandidate(
+                List.of(provider, unrelated),
+                target -> target.name().contains("Advanced"),
+                target -> target.availableSlots() > 0));
+        assertSame(provider, TianshuUploadTargetMatcher.findUniqueCandidate(
+                List.of(provider),
+                target -> true,
+                target -> target.availableSlots() > 0));
+        assertNull(TianshuUploadTargetMatcher.findUniqueCandidate(
+                List.of(provider, unrelated),
+                target -> target.name().contains("Provider"),
+                target -> target.availableSlots() > 0));
+    }
+
+    @Test
+    void fullTargetsStillCountAsCandidatesButCannotReceiveDirectUploads() {
+        var writable = target("Advanced Provider", 4);
+        var full = target("Advanced Provider Backup", 0);
+
+        assertNull(TianshuUploadTargetMatcher.findUniqueCandidate(
+                List.of(writable, full),
+                target -> target.name().contains("Advanced"),
+                target -> target.availableSlots() > 0));
+        assertNull(TianshuUploadTargetMatcher.findUniqueCandidate(
+                List.of(full),
+                target -> target.name().contains("Advanced"),
+                target -> target.availableSlots() > 0));
+    }
+
+    private static Candidate target(String name, int availableSlots) {
+        return new Candidate(name, availableSlots);
+    }
+
+    private record Candidate(String name, int availableSlots) {
+    }
+
 }

@@ -63,6 +63,7 @@ import com.moakiee.ae2lt.item.OverloadPatternItem;
 import com.moakiee.thunderbolt.ae2.overload.model.EncodedOverloadPattern;
 import com.moakiee.thunderbolt.ae2.overload.model.MatchMode;
 import com.moakiee.thunderbolt.ae2.overload.pattern.Ae2PlainPatternResolver;
+import com.moakiee.thunderbolt.ae2.overload.pattern.ParsedPatternDefinition;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.PacketDistributor;
 import appeng.helpers.patternprovider.PatternProviderLogicHost;
@@ -183,8 +184,12 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     private boolean maintenanceSummaryOverflow;
     private List<MaintenanceSummarySyncPacket.Entry> maintenanceSummary = List.of();
     private boolean pendingTriggeredUpload;
+    private boolean pendingDirectUpload;
+    private boolean pendingEncodedSourceChange;
     private int pendingTriggeredUploadUntil;
+    private int pendingEncodedSourceChangeUntil;
     private int expectedTriggeredUploadAck;
+    private int expectedDirectUploadTargetRevision;
 
     public TianshuPatternEncodingTermMenu(
             int id, Inventory inventory, TianshuPatternTerminalHost host) {
@@ -299,13 +304,13 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         if (isServerSide()) {
             returnLegacyBlankPatternsToNetwork();
             tianshuMode = tianshuHost.getTianshuEncodingMode();
-            refreshProcessingDraftBinding();
             var selected = resolveOrBindTianshu();
             maintenanceAvailable = selected != null
                     && selected.getFunctionProfile().supportsInventoryMaintenance();
             seedRefillAvailable = selected != null && selected.isFormed()
                     && selected.getFunctionProfile().supportsClosedLoopSeeds();
             refreshDerivedConfiguration();
+            refreshProcessingDraftBinding();
             if (closedLoopDraftDirty) rebuildClosedLoopDraft();
             closedLoopSeedMultiplier = closedLoopExecutionSeedMultiplier;
             refreshClosedLoopDraftSync();
@@ -366,13 +371,69 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
 
     public boolean consumeTriggeredUpload() {
         if (!isClientSide() || !pendingTriggeredUpload) return false;
-        if (pendingTriggeredUpload && getPlayer().tickCount > pendingTriggeredUploadUntil) {
-            pendingTriggeredUpload = false;
-            return false;
-        }
+        expirePendingTriggeredUpload();
         if (triggeredUploadAck == expectedTriggeredUploadAck) return false;
         pendingTriggeredUpload = false;
         return true;
+    }
+
+    public boolean hasPendingDirectUpload() {
+        if (!isClientSide()) return false;
+        expirePendingTriggeredUpload();
+        return pendingTriggeredUpload && pendingDirectUpload;
+    }
+
+    public boolean hasTriggeredUploadAck() {
+        if (!isClientSide() || !pendingTriggeredUpload) return false;
+        expirePendingTriggeredUpload();
+        return pendingTriggeredUpload && triggeredUploadAck != expectedTriggeredUploadAck;
+    }
+
+    public boolean hasFreshDirectUploadTargets() {
+        return isClientSide() && uploadTargetsRevision != expectedDirectUploadTargetRevision;
+    }
+
+    public boolean consumeDirectUploadRequest() {
+        boolean direct = pendingDirectUpload;
+        pendingDirectUpload = false;
+        if (direct) pendingEncodedSourceChange = false;
+        return direct;
+    }
+
+    /**
+     * Consumes the one encoded-slot change expected from the most recent encode action. A source
+     * change without this marker came from manual slot interaction and must not inherit upload
+     * selection state from an older recipe-viewer transfer.
+     */
+    public boolean consumeExpectedEncodedSourceChange() {
+        if (!isClientSide()) return false;
+        expirePendingEncodedSourceChange();
+        boolean expected = pendingEncodedSourceChange;
+        pendingEncodedSourceChange = false;
+        return expected;
+    }
+
+    public void clearClientUploadSelectionState() {
+        if (!isClientSide()) return;
+        pendingTriggeredUpload = false;
+        pendingDirectUpload = false;
+        pendingEncodedSourceChange = false;
+        uploadTargetGroups = List.of();
+        uploadTargetsRevision++;
+    }
+
+    private void expirePendingTriggeredUpload() {
+        if (pendingTriggeredUpload && getPlayer().tickCount > pendingTriggeredUploadUntil) {
+            pendingTriggeredUpload = false;
+            pendingDirectUpload = false;
+        }
+    }
+
+    private void expirePendingEncodedSourceChange() {
+        if (pendingEncodedSourceChange
+                && getPlayer().tickCount > pendingEncodedSourceChangeUntil) {
+            pendingEncodedSourceChange = false;
+        }
     }
 
     public void setTianshuMode(TianshuEncodingMode mode) {
@@ -1156,15 +1217,20 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         if (!source.isEmpty()) {
             uploadState = 0;
             seedRefillSync = SeedRefillSync.none();
+            // The encoded item is authoritative. Never retain advanced/overload flags merely
+            // because the newly loaded pattern happens to have the same fake-slot contents.
+            resetProcessingEncodingType();
         }
         if (source.isEmpty() || !(source.getItem() instanceof ClosedLoopPatternItem)) {
             if (wasEncodedClosedLoop) {
                 closedLoopDraftRepresentsEncoded = false;
                 closedLoopDraftDirty = true;
             }
+            if (!source.isEmpty()) restoreInsertedProcessingPattern(source);
             return;
         }
         if (source.getItem() instanceof ClosedLoopPatternItem closedLoopItem) {
+            selectInsertedPatternMode(TianshuEncodingMode.CLOSED_LOOP);
             resetClosedLoopDraft();
             var payload = closedLoopItem.readPayload(source, getPlayer().level()).orElse(null);
             if (payload != null) {
@@ -1177,6 +1243,121 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
                 closedLoopDraftStatus = ClosedLoopDraftStatus.MEMBER_UNDECODABLE;
                 closedLoopEncodeState = 1;
             }
+        }
+    }
+
+    private void restoreInsertedProcessingPattern(ItemStack source) {
+        try {
+            var details = PatternDetailsHelper.decodePattern(source, getPlayer().level());
+            if (details == null) return;
+            var advanced = AdvancedAECompat.restoreForEditing(
+                    details, getProcessingInputSlots().length, getProcessingOutputSlots().length);
+            if (source.getItem() instanceof OverloadPatternItem overloadItem) {
+                var restored = conversionService.restoreEditableState(
+                        overloadItem,
+                        source,
+                        new Ae2PlainPatternResolver(getPlayer().level()),
+                        registryAccess()).orElse(null);
+                if (restored == null
+                        || !replaceProcessingInventories(restored.parsedPattern())) {
+                    return;
+                }
+                var advancedConfig = advanced == null ? null
+                        : new ProcessingPatternEncodingType.AdvancedConfig(advanced.directions());
+                var overloadConfig = restoreOverloadConfig(
+                        restored.encodedPattern(),
+                        getProcessingInputSlots().length,
+                        getProcessingOutputSlots().length);
+                selectInsertedPatternMode(TianshuEncodingMode.PROCESSING);
+                setProcessingDraft(
+                        snapshotProcessingInputs(), snapshotProcessingOutputs(),
+                        advancedConfig, overloadConfig);
+                persistProcessingDraft();
+                return;
+            }
+            if (advanced != null
+                    && replaceProcessingInventories(advanced.inputs(), advanced.outputs())) {
+                selectInsertedPatternMode(TianshuEncodingMode.PROCESSING);
+                setProcessingDraft(
+                        snapshotProcessingInputs(), snapshotProcessingOutputs(),
+                        new ProcessingPatternEncodingType.AdvancedConfig(advanced.directions()),
+                        null);
+                persistProcessingDraft();
+            }
+        } catch (RuntimeException ignored) {
+            // A malformed or unsupported third-party pattern must not poison the terminal draft.
+        }
+    }
+
+    private boolean replaceProcessingInventories(ParsedPatternDefinition pattern) {
+        var inputs = nullableStackList(tianshuHost.getLogic().getEncodedInputInv().size());
+        var outputs = nullableStackList(tianshuHost.getLogic().getEncodedOutputInv().size());
+        for (var input : pattern.inputs()) {
+            if (input.slotIndex() >= inputs.size()) return false;
+            var stack = GenericStack.fromItemStack(input.stack());
+            if (stack == null) return false;
+            inputs.set(input.slotIndex(), stack);
+        }
+        for (var output : pattern.outputs()) {
+            if (output.slotIndex() >= outputs.size()) return false;
+            var stack = GenericStack.fromItemStack(output.stack());
+            if (stack == null) return false;
+            outputs.set(output.slotIndex(), stack);
+        }
+        return replaceProcessingInventories(inputs, outputs);
+    }
+
+    private boolean replaceProcessingInventories(
+            List<GenericStack> inputs, List<GenericStack> outputs) {
+        var inputInventory = tianshuHost.getLogic().getEncodedInputInv();
+        var outputInventory = tianshuHost.getLogic().getEncodedOutputInv();
+        if (inputs.size() > inputInventory.size() || outputs.size() > outputInventory.size()) {
+            return false;
+        }
+        inputInventory.clear();
+        outputInventory.clear();
+        for (int i = 0; i < inputs.size(); i++) inputInventory.setStack(i, inputs.get(i));
+        for (int i = 0; i < outputs.size(); i++) outputInventory.setStack(i, outputs.get(i));
+        return true;
+    }
+
+    private static List<GenericStack> nullableStackList(int size) {
+        return new ArrayList<>(java.util.Collections.nCopies(Math.max(0, size), null));
+    }
+
+    private static ProcessingPatternEncodingType.OverloadConfig restoreOverloadConfig(
+            EncodedOverloadPattern pattern, int inputSlots, int outputSlots) {
+        for (var slot : pattern.inputSlots()) {
+            checkedPatternSlot(slot.slotIndex(), inputSlots);
+        }
+        for (var slot : pattern.outputSlots()) {
+            checkedPatternSlot(slot.slotIndex(), outputSlots);
+        }
+        var idOnlyInputs = pattern.inputSlots().stream()
+                .filter(slot -> slot.matchMode() == MatchMode.ID_ONLY)
+                .mapToInt(slot -> checkedPatternSlot(slot.slotIndex(), inputSlots))
+                .toArray();
+        var idOnlyOutputs = pattern.outputSlots().stream()
+                .filter(slot -> slot.matchMode() == MatchMode.ID_ONLY)
+                .mapToInt(slot -> checkedPatternSlot(slot.slotIndex(), outputSlots))
+                .toArray();
+        return new ProcessingPatternEncodingType.OverloadConfig(
+                idOnlyInputs, idOnlyOutputs);
+    }
+
+    private static int checkedPatternSlot(int slot, int slotCount) {
+        if (slot < 0 || slot >= slotCount) {
+            throw new IllegalArgumentException("overload slot is outside the terminal draft");
+        }
+        return slot;
+    }
+
+    private void selectInsertedPatternMode(TianshuEncodingMode mode) {
+        tianshuMode = mode;
+        tianshuHost.setTianshuEncodingMode(mode);
+        if (mode.ae2Mode() != null) {
+            tianshuHost.getLogic().setMode(mode.ae2Mode());
+            super.setMode(mode.ae2Mode());
         }
     }
 
@@ -2019,15 +2200,32 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     @Override
     public void encode() {
         if (isClientSide()) {
-            pendingTriggeredUpload = com.moakiee.ae2lt.client.TianshuUploadTriggerClient.shouldTrigger();
-            pendingTriggeredUploadUntil = getPlayer().tickCount + 200;
-            expectedTriggeredUploadAck = triggeredUploadAck;
-            sendClientAction("encodeTianshu",
-                    com.moakiee.ae2lt.config.AE2LTClientConfig
-                            .interceptDuplicatePatternEncoding());
+            beginClientEncoding(
+                    com.moakiee.ae2lt.client.TianshuUploadTriggerClient.shouldTrigger(), false);
             return;
         }
         encodeServerWithOptions(true);
+    }
+
+    /** Used only after a recipe viewer confirms that its slot transfer succeeded. */
+    public void encodeAndUploadDirectly() {
+        if (!isClientSide()) return;
+        beginClientEncoding(true, true);
+    }
+
+    private void beginClientEncoding(boolean triggerUpload, boolean directUpload) {
+        pendingEncodedSourceChange = true;
+        pendingEncodedSourceChangeUntil = getPlayer().tickCount + 40;
+        pendingTriggeredUpload = triggerUpload;
+        pendingDirectUpload = triggerUpload && directUpload;
+        pendingTriggeredUploadUntil = getPlayer().tickCount + 200;
+        expectedTriggeredUploadAck = triggeredUploadAck;
+        if (pendingDirectUpload) {
+            expectedDirectUploadTargetRevision = uploadTargetsRevision;
+            requestUploadTargets();
+        }
+        sendClientAction("encodeTianshu",
+                com.moakiee.ae2lt.config.AE2LTClientConfig.interceptDuplicatePatternEncoding());
     }
 
     private void encodeServerWithOptions(Boolean interceptDuplicateEncoding) {

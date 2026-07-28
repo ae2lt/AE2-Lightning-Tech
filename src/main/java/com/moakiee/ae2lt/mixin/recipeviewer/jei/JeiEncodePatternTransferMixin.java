@@ -12,6 +12,7 @@ import mezz.jei.api.constants.VanillaTypes;
 import mezz.jei.api.gui.ingredient.IRecipeSlotsView;
 import mezz.jei.api.recipe.RecipeIngredientRole;
 import mezz.jei.api.recipe.transfer.IRecipeTransferError;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.ItemStack;
@@ -42,22 +43,49 @@ public abstract class JeiEncodePatternTransferMixin {
             boolean doTransfer,
             CallbackInfoReturnable<IRecipeTransferError> cir) {
         if (!doTransfer || !(menu instanceof TianshuPatternEncodingTermMenu tianshuMenu)) return;
+        // An actual transfer starts a new metadata generation. Clear before every early return so
+        // recipes without a discoverable type/ID can never inherit the previous recipe's ID.
+        TianshuRecipeTransferContext.clear(tianshuMenu);
         // Match ClientPlus' JEMI ownership rule so one transfer cannot be recorded twice.
         if (ModList.get().isLoaded("emi")) return;
         if (tianshuMenu.tianshuMode == TianshuEncodingMode.CLOSED_LOOP) {
             var output = firstDisplayedItemOutput(slotsView);
             if (tianshuMenu.markClosedLoopPrimaryOutput(output)) {
                 tianshuMenu.autoFillClosedLoop();
-                TianshuRecipeTransferContext.clear(tianshuMenu);
                 cir.setReturnValue(null);
             }
             return;
         }
         tianshuMenu.resetProcessingEncoding();
-        TianshuRecipeTransferContext.clear(tianshuMenu);
         if (!TianshuRecipeTransferContext.isSupportedCraftingRecipe(recipeBase)) {
             TianshuRecipeTransferContext.captureVanillaRecipe(tianshuMenu, recipeBase);
         }
+    }
+
+    @Inject(
+            method = "transferRecipe(Lnet/minecraft/world/inventory/AbstractContainerMenu;"
+                    + "Ljava/lang/Object;Lmezz/jei/api/gui/ingredient/IRecipeSlotsView;"
+                    + "Lnet/minecraft/world/entity/player/Player;ZZ)"
+                    + "Lmezz/jei/api/recipe/transfer/IRecipeTransferError;",
+            at = @At("RETURN"),
+            require = 0)
+    private void ae2lt$encodeAndUploadAfterSuccessfulAltTransfer(
+            AbstractContainerMenu menu,
+            Object recipeBase,
+            IRecipeSlotsView slotsView,
+            Player player,
+            boolean maxTransfer,
+            boolean doTransfer,
+            CallbackInfoReturnable<IRecipeTransferError> cir) {
+        if (!doTransfer
+                || cir.getReturnValue() != null
+                || ModList.get().isLoaded("emi")
+                || !Screen.hasAltDown()
+                || !(menu instanceof TianshuPatternEncodingTermMenu tianshuMenu)
+                || tianshuMenu.tianshuMode == TianshuEncodingMode.CLOSED_LOOP) {
+            return;
+        }
+        tianshuMenu.encodeAndUploadDirectly();
     }
 
     private static ItemStack firstDisplayedItemOutput(IRecipeSlotsView slotsView) {
