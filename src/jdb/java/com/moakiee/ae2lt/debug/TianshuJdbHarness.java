@@ -521,10 +521,11 @@ public final class TianshuJdbHarness {
                         direction + " functional restore incomplete cycle " + cycle);
             }
 
-            BlockPos requiredAir = firstIgnored(controllerPos, direction);
-            level.setBlock(requiredAir, Blocks.STONE.defaultBlockState(), Block.UPDATE_ALL);
-            assertIssue(controller, TianshuMultiblockScanIssue.UNEXPECTED_BLOCK, direction + " required-air");
-            level.setBlock(requiredAir, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
+            BlockPos ignoredPosition = firstIgnored(controllerPos, direction);
+            level.setBlock(ignoredPosition, Blocks.STONE.defaultBlockState(), Block.UPDATE_ALL);
+            controller.scanNow();
+            require(controller.isFormed(), direction + " ignored position deformed the structure");
+            level.setBlock(ignoredPosition, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
 
             BlockPos upperPort = TianshuMultiblockScanner.worldPos(
                     controllerPos, TianshuMultiblockTemplate.UPPER_PORT, direction);
@@ -545,7 +546,7 @@ public final class TianshuJdbHarness {
             level.setBlock(invalidPeripheral, ModBlocks.STORAGE_SUPERCOMPUTING_UNIT.get().defaultBlockState(), Block.UPDATE_ALL);
             controller.scanNow();
             require(controller.isFormed(), direction + " did not recover after invalid-core checks");
-            checks.add(direction + "=lifecycle/functions/data/ports/air/cores");
+            checks.add(direction + "=lifecycle/functions/data/ports/ignored/cores");
         } finally {
             clearTemplateVolume(level, controllerPos, direction);
         }
@@ -609,7 +610,7 @@ public final class TianshuJdbHarness {
                 if (TianshuMultiblockTemplate.roleAt(local) == TianshuMultiblockRole.IGNORED)
                     return TianshuMultiblockScanner.worldPos(controllerPos, local, direction);
             }
-        throw new IllegalStateException("template has no required-air position");
+        throw new IllegalStateException("template has no ignored position");
     }
 
     private static BlockPos peripheral(BlockPos controllerPos, Direction direction, int index) {

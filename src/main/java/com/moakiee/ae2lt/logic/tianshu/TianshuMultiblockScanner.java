@@ -137,9 +137,6 @@ public final class TianshuMultiblockScanner {
                             }
                         }
                         case IGNORED -> {
-                            if (component != TianshuMultiblockComponent.AIR) {
-                                addOnce(issues, TianshuMultiblockScanIssue.UNEXPECTED_BLOCK);
-                            }
                         }
                     }
                 }

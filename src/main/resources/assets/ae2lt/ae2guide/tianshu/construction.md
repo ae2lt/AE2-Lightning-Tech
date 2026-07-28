@@ -84,6 +84,5 @@ If any casing, cooling-compatible, glass, or port position handled by auto-build
 * Baseline rejects Amplifier Units; Quantum and Overload accept at most 15
 * Multidimensional accepts only Blank Units in the core chamber
 * All 16 fixed cooling positions and the unused port candidate require a Phase-Change Cooling Unit or one of the two closed-loop storage blocks
-* The 100 omitted positions in the displayed structure are required air; decorations, cables, and other devices cannot occupy them
 
 The structure rescans and forms automatically after the final required block is placed.

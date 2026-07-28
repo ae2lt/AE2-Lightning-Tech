@@ -1065,7 +1065,6 @@
   "ae2lt.tianshu.issue.missing_parallel_unit": "At least one parallel unit is required",
   "ae2lt.tianshu.issue.too_many_amplifier_units": "At most 15 amplifier units are allowed",
   "ae2lt.tianshu.issue.amplifier_unit_not_supported": "This main core does not support amplifier units",
-  "ae2lt.tianshu.issue.unexpected_block": "A required-air position contains an unexpected block",
   "ae2lt.tianshu.issue.unknown": "Structure is incomplete",
   "item.ae2lt.tianshu_pattern_encoding_terminal": "Tianshu Pattern Encoding Terminal",
   "item.ae2lt.wireless_tianshu_pattern_encoding_terminal": "Wireless Tianshu Pattern Encoding Terminal",

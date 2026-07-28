@@ -200,7 +200,7 @@ public final class MultiblockStructureRecipes {
                     TianshuMultiblockRole role = TianshuMultiblockTemplate.roleAt(pos);
                     switch (role) {
                         case IGNORED -> {
-                            // Required air is omitted from the rendered model and material list.
+                            // Ignored positions are omitted from the rendered model and material list.
                         }
                         case CASING -> cells.add(cell(pos, casing, casingRole, List.of(casing), true));
                         case COOLING -> {

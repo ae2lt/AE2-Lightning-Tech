@@ -1065,7 +1065,6 @@
   "ae2lt.tianshu.issue.missing_parallel_unit": "至少需要一个天枢并行单元",
   "ae2lt.tianshu.issue.too_many_amplifier_units": "天枢增幅单元最多允许 15 个",
   "ae2lt.tianshu.issue.amplifier_unit_not_supported": "当前主核心不支持天枢增幅单元",
-  "ae2lt.tianshu.issue.unexpected_block": "模板空气区域中存在无关方块",
   "ae2lt.tianshu.issue.unknown": "结构不完整",
   "item.ae2lt.tianshu_pattern_encoding_terminal": "天枢样板编码终端",
   "item.ae2lt.wireless_tianshu_pattern_encoding_terminal": "无线天枢样板编码终端",

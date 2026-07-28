@@ -64,7 +64,6 @@ While the structure is unformed, the controller screen shows the first detected 
 **Structure and building**
 
 * **The structure will not form:** Check each point of the [manual construction rules](construction.md#manual-construction-rules) — complete casing and glass, exactly one port, all 17 non-port cooling-compatible positions filled with Phase-Change Cooling Units or closed-loop storage, the Tianshu Main Core centered in the core chamber, and all 26 peripheral cells filled with units supported by that Main Core
-* **All visible structure blocks are present:** Clear the required-air positions omitted from the displayed structure; cables, lights, and decorations are not permitted there
 * **Auto-build does not start:** Clear the coordinates reported by the controller and ensure all materials are in the player inventory
 
 **Network and jobs**

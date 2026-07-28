@@ -157,15 +157,18 @@ class TianshuMultiblockScannerTest {
     }
 
     @Test
-    void requiredAirRejectsUnexpectedBlocks() {
-        var blocks = completeStructure(Direction.NORTH);
-        var airLocal = new BlockPos(0, 1, 1);
-        assertEquals(TianshuMultiblockRole.IGNORED, TianshuMultiblockTemplate.roleAt(airLocal));
-        blocks.put(TianshuMultiblockScanner.worldPos(CONTROLLER, airLocal, Direction.NORTH),
-                TianshuMultiblockComponent.CASING);
-        var result = TianshuMultiblockScanner.scan(CONTROLLER, Direction.NORTH, blocks::get);
-        assertFalse(result.formed());
-        assertTrue(result.issues().contains(TianshuMultiblockScanIssue.UNEXPECTED_BLOCK));
+    void ignoredPositionsDoNotAffectFormation() {
+        var ignoredLocal = new BlockPos(0, 1, 1);
+        assertEquals(TianshuMultiblockRole.IGNORED, TianshuMultiblockTemplate.roleAt(ignoredLocal));
+        for (Direction direction : Direction.Plane.HORIZONTAL) {
+            var blocks = completeStructure(direction);
+            blocks.put(TianshuMultiblockScanner.worldPos(CONTROLLER, ignoredLocal, direction),
+                    TianshuMultiblockComponent.CASING);
+
+            var result = TianshuMultiblockScanner.scan(CONTROLLER, direction, blocks::get);
+
+            assertTrue(result.formed(), direction + ": " + result.issues());
+        }
     }
 
     @Test
