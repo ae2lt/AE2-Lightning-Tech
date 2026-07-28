@@ -214,7 +214,7 @@ final class AE2NativeMachineAdapter implements MachineAdapter {
             return PushResult.REJECTED;
         }
 
-        if (!adapterAcceptsAll(target, plannedInputs)) {
+        if (!adapterAcceptsCompleteBatch(target, plannedInputs)) {
             return PushResult.REJECTED;
         }
 
@@ -329,10 +329,13 @@ final class AE2NativeMachineAdapter implements MachineAdapter {
         return planned;
     }
 
-    private static boolean adapterAcceptsAll(
+    private static boolean adapterAcceptsCompleteBatch(
             PatternProviderTarget target, List<GenericStack> plannedInputs) {
         for (var input : plannedInputs) {
-            if (target.insert(input.what(), input.amount(), Actionable.SIMULATE) == 0) {
+            long simulated = target.insert(
+                    input.what(), input.amount(), Actionable.SIMULATE);
+            if (!ProviderDispatchPolicy.acceptsCompleteAmount(
+                    input.amount(), simulated)) {
                 return false;
             }
         }

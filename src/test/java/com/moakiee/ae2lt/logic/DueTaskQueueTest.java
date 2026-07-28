@@ -52,4 +52,27 @@ class DueTaskQueueTest {
         assertEquals("keep", queue.pollDue(3));
         assertEquals(0, queue.size());
     }
+
+    @Test
+    void providerOverflowRetryUsesExactFiveToTwentyTickDeadlines() {
+        var queue = new DueTaskQueue<String>();
+        long now = 100;
+        int delay = ProviderDispatchPolicy.initialOverflowRetryDelay();
+
+        queue.schedule("target", now + delay);
+        assertNull(queue.pollDue(104));
+        assertEquals("target", queue.pollDue(105));
+
+        delay = ProviderDispatchPolicy.nextOverflowRetryDelay(
+                delay, ProviderDispatchPolicy.OverflowAttemptResult.BLOCKED);
+        queue.schedule("target", 105 + delay);
+        assertNull(queue.pollDue(114));
+        assertEquals("target", queue.pollDue(115));
+
+        delay = ProviderDispatchPolicy.nextOverflowRetryDelay(
+                delay, ProviderDispatchPolicy.OverflowAttemptResult.PROGRESSED);
+        queue.schedule("target", 115 + delay);
+        assertNull(queue.pollDue(119));
+        assertEquals("target", queue.pollDue(120));
+    }
 }
