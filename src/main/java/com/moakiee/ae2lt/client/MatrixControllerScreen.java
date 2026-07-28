@@ -5,10 +5,10 @@ import com.moakiee.ae2lt.logic.craft.MatrixMultiblockScanIssue;
 import com.moakiee.ae2lt.menu.MatrixControllerMenu;
 import com.moakiee.ae2lt.network.MatrixControllerActionPacket;
 
-import java.util.List;
 import java.util.Locale;
 
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.resources.language.I18n;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
@@ -29,14 +29,14 @@ public class MatrixControllerScreen extends MultiblockControllerScreen<MatrixCon
         var build = new TextureToggleButton(
                 TextureToggleButton.ButtonType.QUICK_BUILD,
                 state -> sendAction(MatrixControllerActionPacket.Action.AUTO_BUILD));
-        build.setTooltipAt(0, List.of(Component.translatable("ae2lt.matrix.gui.build")));
+        build.setTooltip(Tooltip.create(Component.translatable("ae2lt.matrix.gui.build")));
         build.setPosition(x, y);
         addRenderableWidget(build);
 
         var upgrade = new TextureToggleButton(
                 TextureToggleButton.ButtonType.PATTERN_STORAGE_UPGRADE,
                 state -> sendAction(MatrixControllerActionPacket.Action.UPGRADE_PATTERN_STORAGE));
-        upgrade.setTooltipAt(0, List.of(Component.translatable("ae2lt.matrix.gui.upgrade")));
+        upgrade.setTooltip(Tooltip.create(Component.translatable("ae2lt.matrix.gui.upgrade")));
         upgrade.setPosition(x, y + 22);
         addRenderableWidget(upgrade);
     }

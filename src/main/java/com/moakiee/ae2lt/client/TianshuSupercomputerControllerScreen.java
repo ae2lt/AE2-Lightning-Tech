@@ -4,10 +4,10 @@ import com.moakiee.ae2lt.logic.tianshu.TianshuMultiblockScanIssue;
 import com.moakiee.ae2lt.menu.TianshuSupercomputerControllerMenu;
 import com.moakiee.ae2lt.network.TianshuControllerActionPacket;
 
-import java.util.List;
 import java.util.Locale;
 
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.resources.language.I18n;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
@@ -32,17 +32,13 @@ public class TianshuSupercomputerControllerScreen
         var build = new TextureToggleButton(
                 TextureToggleButton.ButtonType.QUICK_BUILD,
                 state -> sendAction(TianshuControllerActionPacket.Action.AUTO_BUILD));
-        build.setTooltipAt(0, List.of(Component.translatable("ae2lt.tianshu.gui.build")));
+        build.setTooltip(Tooltip.create(Component.translatable("ae2lt.tianshu.gui.build")));
         build.setPosition(x, y);
         addRenderableWidget(build);
 
         fastPlanningButton = new TextureToggleButton(
                 TextureToggleButton.ButtonType.QUICK_COMPUTE,
                 state -> sendAction(TianshuControllerActionPacket.Action.TOGGLE_FAST_PLANNING));
-        fastPlanningButton.setTooltipOff(List.of(
-                Component.translatable("ae2lt.tianshu.gui.fast_planning.off")));
-        fastPlanningButton.setTooltipOn(List.of(
-                Component.translatable("ae2lt.tianshu.gui.fast_planning.on")));
         fastPlanningButton.setPosition(x, y + 22);
         refreshFastPlanningButton();
         addRenderableWidget(fastPlanningButton);
@@ -62,7 +58,11 @@ public class TianshuSupercomputerControllerScreen
     }
 
     private void refreshFastPlanningButton() {
-        fastPlanningButton.setState(menu.isFastPlanningEnabled());
+        boolean enabled = menu.isFastPlanningEnabled();
+        fastPlanningButton.setState(enabled);
+        fastPlanningButton.setTooltip(Tooltip.create(Component.translatable(enabled
+                ? "ae2lt.tianshu.gui.fast_planning.on"
+                : "ae2lt.tianshu.gui.fast_planning.off")));
     }
 
     @Override
