@@ -25,6 +25,7 @@ The **Overloaded Pattern Provider** is the upgraded version of the vanilla <Item
 * **Overload Pattern support**: works with vanilla patterns, plus this mod's Overload Patterns
 * **Auto return**: automatically pulls processed outputs back from remote machines
 * **Import filter**: only allows results defined by the pattern back into the ME network
+* **Adaptive doubling**: dispatches multiple recipe copies from one crafting request
 
 ## Operating Modes
 
@@ -56,6 +57,34 @@ The provider treats all linked machines as the same kind of processing machine. 
 | Round Robin | Dispatches to one remote machine at a time, in order |
 | Balanced Distribution | Distributes materials evenly across all connected remote machines |
 
+## Interface and Advanced Settings
+
+The left toolbar on the main screen contains controls for operating mode, return mode, adaptive doubling, and blocking mode. Select the cog button to open **Advanced Settings**, which contains:
+
+* Wireless dispatch strategy: Round Robin / Balanced Distribution
+* Wireless probe speed: Normal / Fast
+* Input filtering: OFF / ON
+
+Wireless dispatch and probe settings only take effect in Wireless Mode.
+
+## Adaptive Doubling
+
+Adaptive Doubling is disabled by default. When enabled and a crafting request contains several copies of the same pattern, the provider starts with a small transfer and gradually increases the number of copies sent at once. It does not rely on a possibly stale capacity estimate from an earlier request.
+
+Before enabling it, make sure the target can hold and correctly process several recipe copies at once. Some machines or input layouts do not support batched ingredients and may mix recipes or stall the craft; disable Adaptive Doubling in those cases.
+
+When disabled, each push sends only one recipe copy. Directional patterns and patterns that cannot push inputs to an external inventory do not use Adaptive Doubling.
+
+## Blocking Mode
+
+| Mode | Description |
+|------|-------------|
+| OFF | Does not inspect the target for pattern inputs |
+| Normal | Pauses dispatch while the target still contains an input used by any loaded pattern |
+| Continue Same Pattern | Allows another dispatch when the same pattern was the last one successfully sent to that target; other patterns remain blocked |
+
+Use Continue Same Pattern when a machine can safely hold several copies of one recipe. If it must finish one copy before receiving the next, use Normal blocking.
+
 ## Return Mode
 
 The return mode determines how processed output is recovered from remote machines:
@@ -73,9 +102,13 @@ The return mode determines how processed output is recovered from remote machine
 | Normal | Standard cooldown (5 ~ 80 ticks) |
 | Fast (Probe) | Adaptive cooldown; uses a probe mechanic to detect readiness early (1 ~ 40 ticks) |
 
+Fast Mode also accelerates wireless auto return: the polling interval is 10 to 100 ticks in Normal Mode and 1 to 20 ticks in Fast Mode.
+
 ## ME Power Cost
 
 Dispatching materials and returning products consumes ME network power. For large crafting batches, make sure the network has a large enough AE energy buffer; if power is insufficient, the provider waits until more power is available.
+
+Wireless Mode, wireless links, and Fast probing also increase idle power usage.
 
 ## Import Filter
 
@@ -102,3 +135,5 @@ The Overload Pattern Encoder supports:
 * Combined with the Balanced Distribution strategy and multiple processing machines, it enables parallel crafting without extra item pipes
 * Enable the Fast speed tier for better responsiveness
 * Pick the return mode that matches the specific automation scenario
+* Combine Adaptive Doubling with multiple equivalent machines to process large requests
+* Disable Adaptive Doubling when a target has little input space or cannot accept batched ingredients

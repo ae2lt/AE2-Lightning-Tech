@@ -95,7 +95,7 @@ public class OverloadedPatternProviderBlockEntity extends PatternProviderBlockEn
     private WirelessSpeedMode wirelessSpeedMode = WirelessSpeedMode.NORMAL;
     private BlockingMode blockingMode = BlockingMode.NORMAL;
     private boolean filteredImport = false;
-    private boolean adaptiveBatchEnabled = true;
+    private boolean adaptiveBatchEnabled = false;
 
     /** Active wireless connection records. */
     private final List<WirelessConnection> connections = new ArrayList<>();
@@ -623,8 +623,7 @@ public class OverloadedPatternProviderBlockEntity extends PatternProviderBlockEn
             }
         }
         filteredImport = data.getBoolean(TAG_FILTERED_IMPORT);
-        adaptiveBatchEnabled = !data.contains(TAG_ADAPTIVE_BATCH_ENABLED)
-                || data.getBoolean(TAG_ADAPTIVE_BATCH_ENABLED);
+        adaptiveBatchEnabled = data.getBoolean(TAG_ADAPTIVE_BATCH_ENABLED);
         WirelessConnectionLists.readTagList(
                 data, TAG_CONNECTIONS, connections, MAX_WIRELESS_CONNECTIONS, WirelessConnection::fromTag);
         invalidConnectionScanCursor = 0;
