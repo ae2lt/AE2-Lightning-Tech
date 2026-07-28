@@ -2,7 +2,6 @@ package com.moakiee.ae2lt.client;
 
 import appeng.api.config.Settings;
 import appeng.api.config.TerminalStyle;
-import appeng.api.crafting.PatternDetailsHelper;
 import appeng.client.gui.AESubScreen;
 import appeng.client.gui.Icon;
 import appeng.client.gui.style.PaletteColor;
@@ -12,7 +11,6 @@ import appeng.client.gui.widgets.Scrollbar;
 import appeng.client.gui.widgets.SettingToggleButton;
 import appeng.client.gui.widgets.TabButton;
 import appeng.core.AEConfig;
-import appeng.menu.SlotSemantics;
 import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.config.AE2LTClientConfig;
 import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuUploadTargetData;
@@ -30,7 +28,6 @@ import net.minecraft.locale.Language;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
-import net.minecraft.world.item.ItemStack;
 import org.lwjgl.glfw.GLFW;
 
 /** EA2-native provider picker modelled after EAEP ClientPlus' provider-list sub-screen. */
@@ -63,6 +60,7 @@ public final class TianshuUploadTargetScreen<M extends TianshuPatternEncodingTer
     private final Scrollbar scrollbar;
     private final List<String> defaultAliases = new ArrayList<>();
     private final List<IndexedTarget> filtered = new ArrayList<>();
+    private final boolean directUploadRequested;
 
     private int visibleRows;
     private int defaultAliasIndex = -1;
@@ -74,10 +72,17 @@ public final class TianshuUploadTargetScreen<M extends TianshuPatternEncodingTer
     private boolean uploadFailed;
     private boolean updatingAliasField;
     private boolean configuredAliasInserted;
+    private boolean directUploadAttempted;
     private String configuredAlias = "";
 
     public TianshuUploadTargetScreen(TianshuPatternEncodingTermScreen<M> parent) {
+        this(parent, false);
+    }
+
+    public TianshuUploadTargetScreen(
+            TianshuPatternEncodingTermScreen<M> parent, boolean directUploadRequested) {
         super(parent, STYLE);
+        this.directUploadRequested = directUploadRequested;
         imageWidth = GUI_WIDTH;
 
         addToLeftToolbar(new SettingToggleButton<>(Settings.TERMINAL_STYLE,
@@ -97,18 +102,18 @@ public final class TianshuUploadTargetScreen<M extends TianshuPatternEncodingTer
         aliasField.setMaxLength(256);
         aliasField.setPlaceholder(Component.translatable("ae2lt.tianshu.upload.alias"));
 
-        SourceSelection selection = collectSourceSelection();
+        var selection = TianshuUploadSourceSelection.collect(menu);
         String sourceKey = selection.sourceKey();
         defaultAliases.addAll(selection.defaultAliases());
         sourceField.setValue(sourceKey);
-        String storedAlias = AE2LTClientConfig.findUploadAlias(sourceKey);
+        String storedAlias = selection.savedAlias();
         if (storedAlias != null && !storedAlias.isBlank()) {
             setConfiguredAlias(storedAlias);
             defaultAliasIndex = indexOfDefaultAlias(storedAlias);
             aliasField.setValue(storedAlias);
-        } else if (selection.selectFirstDefault() && !defaultAliases.isEmpty()) {
+        } else if (!selection.initialQuery().isBlank()) {
             defaultAliasIndex = 0;
-            aliasField.setValue(defaultAliases.getFirst());
+            aliasField.setValue(selection.initialQuery());
         }
         aliasField.setResponder(value -> {
             if (!updatingAliasField) defaultAliasIndex = indexOfDefaultAlias(value);
@@ -118,27 +123,6 @@ public final class TianshuUploadTargetScreen<M extends TianshuPatternEncodingTer
 
         requestedRevision = menu.getUploadTargetsRevision();
         menu.requestUploadTargets();
-    }
-
-    private SourceSelection collectSourceSelection() {
-        var recipeContext = TianshuRecipeTransferContext.snapshotFor(menu);
-        if (!recipeContext.sourceKey().isBlank()) {
-            return new SourceSelection(
-                    recipeContext.sourceKey(), recipeContext.defaultAliases(), true);
-        }
-        ItemStack stack = menu.getSlots(SlotSemantics.ENCODED_PATTERN).stream()
-                .map(slot -> slot.getItem()).filter(item -> !item.isEmpty())
-                .findFirst().orElse(ItemStack.EMPTY);
-        var player = Minecraft.getInstance().player;
-        if (stack.isEmpty() || player == null) return SourceSelection.EMPTY;
-        var details = PatternDetailsHelper.decodePattern(stack, player.level());
-        var output = details == null ? null : details.getPrimaryOutput();
-        if (output == null || output.what() == null) return SourceSelection.EMPTY;
-        var key = output.what();
-        return new SourceSelection(
-                key.getId().toString(),
-                List.of(key.getDisplayName().getString(), key.getModId()),
-                false);
     }
 
     private void setConfiguredAlias(String alias) {
@@ -234,6 +218,7 @@ public final class TianshuUploadTargetScreen<M extends TianshuPatternEncodingTer
             queryRefresh = false;
             rebuildDefaultAliasTooltip();
             rebuildFilteredTargets();
+            tryDirectUpload();
         }
     }
 
@@ -251,6 +236,16 @@ public final class TianshuUploadTargetScreen<M extends TianshuPatternEncodingTer
 
     private static boolean matches(TianshuUploadTargetData target, String query) {
         return TianshuUploadTargetMatcher.matches(target, query);
+    }
+
+    private void tryDirectUpload() {
+        if (!directUploadRequested || directUploadAttempted || awaitingTargets || awaitingUpload) {
+            return;
+        }
+        directUploadAttempted = true;
+        var selected = TianshuUploadTargetMatcher.findUniqueCandidate(
+                menu.getUploadTargets(), aliasField.getValue());
+        if (selected != null) select(new IndexedTarget(-1, selected));
     }
 
     @Override
@@ -523,16 +518,6 @@ public final class TianshuUploadTargetScreen<M extends TianshuPatternEncodingTer
     }
 
     private record IndexedTarget(int sourceIndex, TianshuUploadTargetData target) { }
-
-    private record SourceSelection(
-            String sourceKey, List<String> defaultAliases, boolean selectFirstDefault) {
-        private static final SourceSelection EMPTY = new SourceSelection("", List.of(), false);
-
-        private SourceSelection {
-            sourceKey = sourceKey == null ? "" : sourceKey;
-            defaultAliases = defaultAliases == null ? List.of() : List.copyOf(defaultAliases);
-        }
-    }
 
     private static final class AliasActionButton extends IconButton {
         private final Icon icon;

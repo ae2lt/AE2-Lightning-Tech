@@ -10,6 +10,7 @@ public final class AE2LTClientConfig {
     private static final ModConfigSpec.EnumValue<TianshuUploadTrigger> TIANSHU_UPLOAD_TRIGGER;
     private static final ModConfigSpec.BooleanValue TIANSHU_INTERCEPT_DUPLICATE_ENCODING;
     private static final ModConfigSpec.ConfigValue<List<? extends String>> TIANSHU_UPLOAD_ALIASES;
+    private static final ModConfigSpec.BooleanValue DISABLE_VEIL_RENDERING;
     private static final ModConfigSpec.BooleanValue RENDER_MULTIBLOCK_CORE_EFFECTS;
 
     static {
@@ -22,11 +23,18 @@ public final class AE2LTClientConfig {
                 .comment("Cancel encoding when the same pattern already exists on the ME network")
                 .define("interceptDuplicatePatternEncoding", true);
         TIANSHU_UPLOAD_ALIASES = builder
-                .comment("Pattern output id to pattern-provider alias mappings (output=alias)")
+                .comment("Recipe type/category id to pattern-provider alias mappings (source=alias)")
                 .defineListAllowEmpty("uploadAliases", List.of(),
                         value -> value instanceof String text
                                 && text.length() <= 512
                                 && text.indexOf('=') > 0);
+        builder.pop();
+        builder.push("compatibility");
+        DISABLE_VEIL_RENDERING = builder
+                .comment(
+                        "Compatibility switch: disable all Veil-backed rendering provided by AE2 Lightning Tech.",
+                        "Enable only when a graphics driver or another rendering mod is incompatible with Veil.")
+                .define("disableVeilRendering", false);
         builder.pop();
         builder.push("rendering");
         RENDER_MULTIBLOCK_CORE_EFFECTS = builder
@@ -55,6 +63,10 @@ public final class AE2LTClientConfig {
 
     public static boolean renderMultiblockCoreEffects() {
         return RENDER_MULTIBLOCK_CORE_EFFECTS.get();
+    }
+
+    public static boolean useVeilRendering() {
+        return !DISABLE_VEIL_RENDERING.get();
     }
 
     public static void setInterceptDuplicatePatternEncoding(boolean enabled) {

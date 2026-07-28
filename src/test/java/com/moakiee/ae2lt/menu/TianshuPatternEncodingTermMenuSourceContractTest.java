@@ -59,6 +59,35 @@ class TianshuPatternEncodingTermMenuSourceContractTest {
     }
 
     @Test
+    void insertedCustomPatternsRestoreTheirOwnEditingStateInsteadOfReusingTheOldDraft()
+            throws Exception {
+        String menu = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/menu/TianshuPatternEncodingTermMenu.java"));
+        String advanced = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/logic/AdvancedAECompat.java"));
+        String screen = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/client/TianshuPatternEncodingTermScreen.java"));
+
+        int refresh = menu.indexOf("private void refreshDerivedConfiguration()");
+        int reset = menu.indexOf("resetProcessingEncodingType();", refresh);
+        int restore = menu.indexOf("restoreInsertedProcessingPattern(source)", refresh);
+        assertTrue(refresh >= 0);
+        assertTrue(reset > refresh);
+        assertTrue(restore > reset);
+        assertTrue(menu.contains("conversionService.restoreEditableState("));
+        assertTrue(menu.contains("restoreOverloadConfig("));
+        assertTrue(menu.contains("selectInsertedPatternMode(TianshuEncodingMode.PROCESSING)"));
+        assertTrue(menu.contains("selectInsertedPatternMode(TianshuEncodingMode.CLOSED_LOOP)"));
+        assertTrue(advanced.contains("restoreForEditing("));
+        assertTrue(advanced.contains("current instanceof WrappedPatternDetails"));
+        assertTrue(advanced.contains("advanced.getSparseInputs()"));
+        assertTrue(advanced.contains("direction.ordinal() + 1"));
+        assertTrue(screen.contains("observeEncodedPatternSource()"));
+        assertTrue(screen.contains("TianshuRecipeTransferContext.clear(menu)"));
+        assertTrue(screen.contains("menu.clearClientUploadSelectionState()"));
+    }
+
+    @Test
     void closedLoopAuthoringFixesTheFirstRightSlotAsPrimaryAndDisplaysByproducts() throws Exception {
         String menu = Files.readString(Path.of(
                 "src/main/java/com/moakiee/ae2lt/menu/TianshuPatternEncodingTermMenu.java"));
@@ -92,7 +121,12 @@ class TianshuPatternEncodingTermMenuSourceContractTest {
         assertTrue(layout.contains(
                 "\"closedLoopCycleOutput\": { \"left\": 133, \"bottom\": 176"));
         assertFalse(menu.contains("refreshClosedLoops(source)"));
-        assertFalse(menu.contains("PatternDetailsHelper.decodePattern(source"));
+        int refreshClosedLoops = menu.indexOf("private void refreshClosedLoops(");
+        int fillSelected = menu.indexOf(
+                "private void fillClosedLoopDraftFromSelectedCandidate()", refreshClosedLoops);
+        assertTrue(refreshClosedLoops >= 0 && fillSelected > refreshClosedLoops);
+        assertFalse(menu.substring(refreshClosedLoops, fillSelected)
+                .contains("PatternDetailsHelper.decodePattern(source"));
     }
 
     @Test

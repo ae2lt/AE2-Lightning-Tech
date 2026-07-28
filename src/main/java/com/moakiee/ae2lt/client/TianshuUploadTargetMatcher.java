@@ -1,8 +1,10 @@
 package com.moakiee.ae2lt.client;
 
 import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuUploadTargetData;
+import java.util.List;
 import java.util.Locale;
 import java.util.function.BiPredicate;
+import java.util.function.Predicate;
 
 /** Matching rules for recipe aliases against Tianshu pattern-provider groups. */
 final class TianshuUploadTargetMatcher {
@@ -22,6 +24,31 @@ final class TianshuUploadTargetMatcher {
             if (nameMatches(line.getString(), normalizedQuery)) return true;
         }
         return false;
+    }
+
+    /**
+     * Returns the only candidate produced by the visible picker's filter when it is writable.
+     * A full candidate still counts toward ambiguity, so direct upload never silently skips a
+     * visible target in favor of another one.
+     */
+    static TianshuUploadTargetData findUniqueCandidate(
+            List<TianshuUploadTargetData> targets, String query) {
+        return findUniqueCandidate(
+                targets,
+                target -> matches(target, query),
+                target -> target.availableSlots() > 0);
+    }
+
+    static <T> T findUniqueCandidate(
+            List<T> candidates, Predicate<T> matches, Predicate<T> writable) {
+        if (candidates == null) return null;
+        T selected = null;
+        for (var target : candidates) {
+            if (!matches.test(target)) continue;
+            if (selected != null) return null;
+            selected = target;
+        }
+        return selected != null && writable.test(selected) ? selected : null;
     }
 
     /** Machine IDs use a left-anchored glob and may omit an arbitrary suffix. */

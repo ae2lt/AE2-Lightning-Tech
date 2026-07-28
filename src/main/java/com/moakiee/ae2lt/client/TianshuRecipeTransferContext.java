@@ -12,8 +12,8 @@ import net.minecraft.world.item.crafting.RecipeHolder;
 
 /**
  * One-screen recipe-viewer context carrying recipe/category identity into the provider picker.
- * Recipe transfer deliberately does not start encoding; callers keep the normal AE2 encode
- * lifecycle and this class remains a small metadata bridge that other integrations can reuse.
+ * This class does not start encoding itself; the optional Alt shortcut starts it only after the
+ * viewer confirms a successful transfer, while this remains a reusable metadata bridge.
  *
  * <p>The JEI/EMI capture behavior is adapted from ExtendedAE Plus [ClientPlus], revision
  * 07f8373c590c0c6d845f794e7c25090e5ef5703e (GNU LGPL 3.0). Unlike ClientPlus, this bridge does
