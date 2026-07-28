@@ -1,3 +1,8 @@
 {
-  "parent": "ae2lt:item/pigmee_fumo"
+  "parent": "ae2lt:block/creative_pigmee_fumo",
+  "display": {
+    "head": {
+      "translation": [0, 14, 0]
+    }
+  }
 }

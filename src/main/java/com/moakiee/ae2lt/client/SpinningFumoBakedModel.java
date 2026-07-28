@@ -9,7 +9,7 @@ import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.neoforged.neoforge.client.model.BakedModelWrapper;
 
-final class SpinningFumoBakedModel extends BakedModelWrapper<BakedModel> {
+class SpinningFumoBakedModel extends BakedModelWrapper<BakedModel> {
 
     SpinningFumoBakedModel(BakedModel originalModel) {
         super(originalModel);

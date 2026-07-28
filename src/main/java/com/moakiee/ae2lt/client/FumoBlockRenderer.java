@@ -25,6 +25,7 @@ import java.util.List;
 
 import com.moakiee.ae2lt.block.FumoBlock;
 import com.moakiee.ae2lt.blockentity.FumoBlockEntity;
+import com.moakiee.ae2lt.registry.ModFumos;
 
 public class FumoBlockRenderer implements BlockEntityRenderer<FumoBlockEntity> {
 
@@ -73,6 +74,12 @@ public class FumoBlockRenderer implements BlockEntityRenderer<FumoBlockEntity> {
                         modelData,
                         renderType);
             }
+            if (state.is(ModFumos.HYPERDIMENSIONAL_PIGMEE_FUMO.get())) {
+                HyperdimensionalPigmeePortalLayer.renderBlock(
+                        model, renderState, modelData, poseStack, buffer);
+                HyperdimensionalPigmeeTextureLayer.renderBlock(
+                        renderState, poseStack, buffer, packedOverlay);
+            }
         } else {
             int color = Minecraft.getInstance().getBlockColors().getColor(renderState, null, null, 0);
             float r = (color >> 16 & 0xFF) / 255.0F;
@@ -90,6 +97,12 @@ public class FumoBlockRenderer implements BlockEntityRenderer<FumoBlockEntity> {
                 RAND.setSeed(42L);
                 renderQuads(pose, consumer, model.getQuads(renderState, null, RAND, modelData, renderType),
                         r, g, b, packedLight, packedOverlay);
+            }
+            if (state.is(ModFumos.HYPERDIMENSIONAL_PIGMEE_FUMO.get())) {
+                HyperdimensionalPigmeePortalLayer.renderBlock(
+                        model, renderState, modelData, poseStack, buffer);
+                HyperdimensionalPigmeeTextureLayer.renderBlock(
+                        renderState, poseStack, buffer, packedOverlay);
             }
         }
 
