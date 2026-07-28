@@ -2,11 +2,16 @@ package com.moakiee.ae2lt.client;
 
 import java.util.List;
 
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 
 import appeng.client.gui.Icon;
+import appeng.client.gui.style.Blitter;
 import appeng.client.gui.widgets.IconButton;
+
+import com.moakiee.ae2lt.AE2LightningTech;
 
 /**
  * Three-state replacement for AE2's two-state blocking button.
@@ -15,6 +20,10 @@ final class ProviderBlockingModeButton extends IconButton {
     private static final int STATE_OFF = 0;
     private static final int STATE_NORMAL = 1;
     private static final int STATE_SAME_PATTERN = 2;
+    private static final ResourceLocation SAME_PATTERN_TEXTURE =
+            ResourceLocation.fromNamespaceAndPath(
+                    AE2LightningTech.MODID,
+                    "textures/gui/buttons/same_pattern_blocking_on.png");
 
     private int state;
 
@@ -30,9 +39,26 @@ final class ProviderBlockingModeButton extends IconButton {
     protected Icon getIcon() {
         return switch (state) {
             case STATE_NORMAL -> Icon.BLOCKING_MODE_YES;
-            case STATE_SAME_PATTERN -> Icon.SCHEDULING_ROUND_ROBIN;
+            case STATE_SAME_PATTERN -> null;
             default -> Icon.BLOCKING_MODE_NO;
         };
+    }
+
+    @Override
+    public void renderWidget(
+            GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+        super.renderWidget(guiGraphics, mouseX, mouseY, partialTick);
+        if (state == STATE_SAME_PATTERN) {
+            int yOffset = isHovered() ? 1 : 0;
+            var blitter = Blitter.texture(SAME_PATTERN_TEXTURE, 16, 16)
+                    .src(0, 0, 16, 16);
+            if (!active) {
+                blitter.opacity(0.5F);
+            }
+            blitter.dest(getX(), getY() + 1 + yOffset)
+                    .zOffset(3)
+                    .blit(guiGraphics);
+        }
     }
 
     @Override

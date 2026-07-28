@@ -7,11 +7,9 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 
 import appeng.api.config.ActionItems;
-import appeng.client.gui.Icon;
 import appeng.client.gui.implementations.PatternProviderScreen;
 import appeng.client.gui.style.ScreenStyle;
 import appeng.client.gui.widgets.ActionButton;
-import appeng.client.gui.widgets.ToggleButton;
 import appeng.menu.SlotSemantics;
 
 import com.moakiee.ae2lt.api.client.PatternProviderToolbarButtonHider;
@@ -37,7 +35,7 @@ public class OverloadedPatternProviderScreen<M extends OverloadedPatternProvider
     private final TextureToggleButton modeButton;
     private final TextureToggleButton autoReturnButton;
     private final ProviderBlockingModeButton blockingModeButton;
-    private final ToggleButton adaptiveBatchButton;
+    private final TextureToggleButton adaptiveBatchButton;
     private final ActionButton advancedSettingsButton;
 
     private static final int SLOTS_PER_PAGE = 36;
@@ -67,9 +65,8 @@ public class OverloadedPatternProviderScreen<M extends OverloadedPatternProvider
         this.modeButton.setTooltipOff(List.of(Component.translatable("ae2lt.gui.provider_mode.normal")));
         addToLeftToolbar(this.modeButton);
 
-        this.adaptiveBatchButton = new ToggleButton(
-                Icon.COPY_MODE_ON,
-                Icon.COPY_MODE_OFF,
+        this.adaptiveBatchButton = new TextureToggleButton(
+                TextureToggleButton.ButtonType.ADAPTIVE_BATCH,
                 state -> menu.clientToggleAdaptiveBatch());
         this.adaptiveBatchButton.setTooltipOn(ADAPTIVE_BATCH_TIP_ON);
         this.adaptiveBatchButton.setTooltipOff(ADAPTIVE_BATCH_TIP_OFF);

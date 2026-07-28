@@ -4,9 +4,8 @@ import com.moakiee.ae2lt.logic.craft.MatrixCoreMode;
 import com.moakiee.ae2lt.logic.craft.MatrixMultiblockScanIssue;
 import com.moakiee.ae2lt.menu.MatrixControllerMenu;
 import com.moakiee.ae2lt.network.MatrixControllerActionPacket;
-import com.moakiee.ae2lt.registry.ModBlocks;
-import com.moakiee.ae2lt.registry.ModItems;
 
+import java.util.List;
 import java.util.Locale;
 
 import net.minecraft.client.gui.GuiGraphics;
@@ -27,17 +26,17 @@ public class MatrixControllerScreen extends MultiblockControllerScreen<MatrixCon
         int x = leftPos - 18;
         int y = topPos;
 
-        var build = new ItemIconButton(
-                ModBlocks.MATTER_WARPING_MATRIX_CASING.get().asItem(),
-                Component.translatable("ae2lt.matrix.gui.build"),
-                btn -> sendAction(MatrixControllerActionPacket.Action.AUTO_BUILD));
+        var build = new TextureToggleButton(
+                TextureToggleButton.ButtonType.QUICK_BUILD,
+                state -> sendAction(MatrixControllerActionPacket.Action.AUTO_BUILD));
+        build.setTooltipAt(0, List.of(Component.translatable("ae2lt.matrix.gui.build")));
         build.setPosition(x, y);
         addRenderableWidget(build);
 
-        var upgrade = new ItemIconButton(
-                ModItems.MATTER_WARPING_MATRIX_PATTERN_STORAGE_UPGRADE.get(),
-                Component.translatable("ae2lt.matrix.gui.upgrade"),
-                btn -> sendAction(MatrixControllerActionPacket.Action.UPGRADE_PATTERN_STORAGE));
+        var upgrade = new TextureToggleButton(
+                TextureToggleButton.ButtonType.PATTERN_STORAGE_UPGRADE,
+                state -> sendAction(MatrixControllerActionPacket.Action.UPGRADE_PATTERN_STORAGE));
+        upgrade.setTooltipAt(0, List.of(Component.translatable("ae2lt.matrix.gui.upgrade")));
         upgrade.setPosition(x, y + 22);
         addRenderableWidget(upgrade);
     }

@@ -186,7 +186,12 @@ public class TextureToggleButton extends Button implements ITooltip {
         // 频率配置入口。机器与无线终端共用同一图标和工具栏样式。
         FREQUENCY_BIND(texture("frequency_select")),
         // 天枢有线与无线样板编码终端共用的库存维持入口。
-        INVENTORY_MAINTENANCE(texture("inventory_maintenance"));
+        INVENTORY_MAINTENANCE(texture("inventory_maintenance")),
+        // 多方块控制器左侧操作栏。
+        QUICK_BUILD(texture("quick_build")),
+        QUICK_COMPUTE(texture("quick_compute_off"), texture("quick_compute_on")),
+        PATTERN_STORAGE_UPGRADE(texture("pattern_storage_upgrade")),
+        ADAPTIVE_BATCH(texture("adaptive_batch_off"), texture("adaptive_batch_on"));
 
         private final List<ResourceLocation> textures;
 

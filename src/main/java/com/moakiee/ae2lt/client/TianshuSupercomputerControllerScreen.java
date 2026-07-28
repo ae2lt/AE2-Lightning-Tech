@@ -3,24 +3,20 @@ package com.moakiee.ae2lt.client;
 import com.moakiee.ae2lt.logic.tianshu.TianshuMultiblockScanIssue;
 import com.moakiee.ae2lt.menu.TianshuSupercomputerControllerMenu;
 import com.moakiee.ae2lt.network.TianshuControllerActionPacket;
-import com.moakiee.ae2lt.registry.ModBlocks;
 
+import java.util.List;
 import java.util.Locale;
 
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.resources.language.I18n;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 import net.neoforged.neoforge.network.PacketDistributor;
 
-import appeng.client.gui.Icon;
-import appeng.client.gui.widgets.IconButton;
-
 public class TianshuSupercomputerControllerScreen
         extends MultiblockControllerScreen<TianshuSupercomputerControllerMenu> {
 
-    private FastPlanningButton fastPlanningButton;
+    private TextureToggleButton fastPlanningButton;
 
     public TianshuSupercomputerControllerScreen(
             TianshuSupercomputerControllerMenu menu, Inventory inventory, Component title) {
@@ -33,17 +29,22 @@ public class TianshuSupercomputerControllerScreen
         int x = leftPos - 18;
         int y = topPos;
 
-        var build = new ItemIconButton(
-                ModBlocks.TIANSHU_SUPERCOMPUTER_CASING.get().asItem(),
-                Component.translatable("ae2lt.tianshu.gui.build"),
-                btn -> sendAction(TianshuControllerActionPacket.Action.AUTO_BUILD));
+        var build = new TextureToggleButton(
+                TextureToggleButton.ButtonType.QUICK_BUILD,
+                state -> sendAction(TianshuControllerActionPacket.Action.AUTO_BUILD));
+        build.setTooltipAt(0, List.of(Component.translatable("ae2lt.tianshu.gui.build")));
         build.setPosition(x, y);
         addRenderableWidget(build);
 
-        fastPlanningButton = new FastPlanningButton(
-                btn -> sendAction(TianshuControllerActionPacket.Action.TOGGLE_FAST_PLANNING));
+        fastPlanningButton = new TextureToggleButton(
+                TextureToggleButton.ButtonType.QUICK_COMPUTE,
+                state -> sendAction(TianshuControllerActionPacket.Action.TOGGLE_FAST_PLANNING));
+        fastPlanningButton.setTooltipOff(List.of(
+                Component.translatable("ae2lt.tianshu.gui.fast_planning.off")));
+        fastPlanningButton.setTooltipOn(List.of(
+                Component.translatable("ae2lt.tianshu.gui.fast_planning.on")));
         fastPlanningButton.setPosition(x, y + 22);
-        fastPlanningButton.refresh();
+        refreshFastPlanningButton();
         addRenderableWidget(fastPlanningButton);
     }
 
@@ -56,8 +57,12 @@ public class TianshuSupercomputerControllerScreen
     protected void containerTick() {
         super.containerTick();
         if (fastPlanningButton != null) {
-            fastPlanningButton.refresh();
+            refreshFastPlanningButton();
         }
+    }
+
+    private void refreshFastPlanningButton() {
+        fastPlanningButton.setState(menu.isFastPlanningEnabled());
     }
 
     @Override
@@ -115,23 +120,4 @@ public class TianshuSupercomputerControllerScreen
         return String.format(Locale.ROOT, "%.0f MiB", bytes / (1024.0 * 1024));
     }
 
-    /** Toggle button mirroring the fast-planning state with AE2 icons. */
-    private class FastPlanningButton extends IconButton {
-        FastPlanningButton(OnPress onPress) {
-            super(onPress);
-        }
-
-        void refresh() {
-            var text = Component.translatable(menu.isFastPlanningEnabled()
-                    ? "ae2lt.tianshu.gui.fast_planning.on"
-                    : "ae2lt.tianshu.gui.fast_planning.off");
-            setMessage(text);
-            setTooltip(Tooltip.create(text));
-        }
-
-        @Override
-        protected Icon getIcon() {
-            return menu.isFastPlanningEnabled() ? Icon.REDSTONE_ON : Icon.REDSTONE_OFF;
-        }
-    }
 }
