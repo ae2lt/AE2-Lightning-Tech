@@ -45,9 +45,23 @@ With a pattern in the encoded-pattern slot, the **Upload** button sends it to it
 * **Processing patterns** open the provider-selection screen: all visible Pattern Providers on the network are listed grouped by name, showing provider counts and free slots per group, with search by name, item, or tooltip.
 * **Closed-loop patterns** upload to the bound Tianshu's Closed-Loop Pattern Storage.
 
-The provider-selection screen also supports **alias mappings**: map a recipe-source keyword to a provider alias so similar recipes locate their target provider faster. Shift + right-click a list entry to bind that machine's name as an alias directly.
+The provider-selection screen also supports **alias mappings**. A JEI/EMI transfer uses the recipe type or viewer category as its source key; without viewer context, the pattern's primary output is used instead. The saved alias becomes the provider filter so similar recipes can locate their target faster. Filtering supports left-anchored item-ID matching, plus contains and wildcard matching for names and tooltips; pinyin matching is also available when Just Enough Characters is installed. Shift + right-click a list entry to bind that machine's name as an alias directly.
 
 The terminal settings configure an **upload trigger**: holding a chosen key (or no key) while encoding automatically enters the matching upload flow; it can also be set to manual upload only. The manual upload button always remains available.
+
+### Direct Encoding and Upload from JEI / EMI
+
+Prepare a blank pattern in the Tianshu Pattern Encoding Terminal and use any non-closed-loop encoding mode. On a JEI or EMI recipe page, **hold `Alt` while transferring the recipe**. After the viewer confirms that the transfer succeeded, the terminal encodes the pattern and immediately attempts to upload it according to its type. A failed transfer starts neither encoding nor upload.
+
+> This `Alt` shortcut belongs to the recipe viewer and is independent of the terminal's configured **upload trigger**. The upload trigger does not need to be set to `Alt`.
+
+The direct-upload result depends on the pattern type:
+
+* **Crafting, stonecutting, and smithing patterns** follow their normal automatic routing. When no selection is needed, the JEI recipe page remains open and the upload result appears in the action bar, making consecutive transfers easier.
+* **Processing, advanced, and overload patterns** use the same initial filter as the provider-selection screen: a saved alias for the current recipe type or category takes priority; otherwise the first default alias supplied by the viewer is used. If the filter produces exactly one candidate group with a free slot, the pattern uploads in the background and JEI remains open. No candidate, multiple candidates, or a sole full candidate returns to the terminal and opens the provider-selection screen.
+* **Closed-loop mode** does not use this direct-upload shortcut. A JEI/EMI transfer only marks the primary output and starts closed-loop discovery; finish configuring, encoding, and uploading the closed-loop pattern normally.
+
+When JEI and EMI are both installed, the EMI integration owns recipe transfer to prevent the same action from being handled twice.
 
 ## Closed-Loop Patterns
 
