@@ -27,9 +27,7 @@ import net.neoforged.neoforge.items.IItemHandlerModifiable;
 import appeng.api.config.Actionable;
 import appeng.api.networking.IGridNode;
 import appeng.api.networking.IGridNodeListener;
-import appeng.api.networking.IStackWatcher;
 import appeng.api.networking.security.IActionSource;
-import appeng.api.networking.storage.IStorageWatcherNode;
 import appeng.api.stacks.AEKey;
 import appeng.api.networking.ticking.IGridTickable;
 import appeng.api.orientation.BlockOrientation;
@@ -115,18 +113,7 @@ public class OverloadProcessingFactoryBlockEntity extends AENetworkedBlockEntity
         this.logic = new OverloadProcessingFactoryLogic(this);
         getMainNode()
                 .setIdlePowerUsage(0)
-                .addService(IGridTickable.class, logic)
-                .addService(IStorageWatcherNode.class, new IStorageWatcherNode() {
-                    @Override
-                    public void updateWatcher(IStackWatcher newWatcher) {
-                        configureLightningWatcher(newWatcher);
-                    }
-
-                    @Override
-                    public void onStackChange(AEKey what, long amount) {
-                        onLightningStackChanged(what);
-                    }
-                });
+                .addService(IGridTickable.class, logic);
     }
 
     public static void serverTick(Level level, BlockPos pos, BlockState state, OverloadProcessingFactoryBlockEntity be) {
@@ -912,18 +899,6 @@ public class OverloadProcessingFactoryBlockEntity extends AENetworkedBlockEntity
         logic.onStateChanged();
     }
 
-    private void configureLightningWatcher(IStackWatcher watcher) {
-        watcher.reset();
-        watcher.add(LightningKey.HIGH_VOLTAGE);
-        watcher.add(LightningKey.EXTREME_HIGH_VOLTAGE);
-    }
-
-    private void onLightningStackChanged(AEKey what) {
-        if (LightningKey.HIGH_VOLTAGE.equals(what) || LightningKey.EXTREME_HIGH_VOLTAGE.equals(what)) {
-            logic.onStateChanged();
-        }
-    }
-
     private void requestClientUpdate() {
         if (level == null) {
             markForClientUpdate();
@@ -939,4 +914,3 @@ public class OverloadProcessingFactoryBlockEntity extends AENetworkedBlockEntity
         markForClientUpdate();
     }
 }
-

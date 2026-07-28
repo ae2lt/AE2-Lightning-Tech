@@ -26,9 +26,7 @@ import appeng.api.config.Actionable;
 import appeng.api.config.PowerMultiplier;
 import appeng.api.networking.IGridNode;
 import appeng.api.networking.IGridNodeListener;
-import appeng.api.networking.IStackWatcher;
 import appeng.api.networking.security.IActionSource;
-import appeng.api.networking.storage.IStorageWatcherNode;
 import appeng.api.orientation.RelativeSide;
 import appeng.api.stacks.AEKey;
 import appeng.api.networking.ticking.IGridTickable;
@@ -103,18 +101,7 @@ public class LightningAssemblyChamberBlockEntity extends AENetworkedBlockEntity
         this.logic = new LightningAssemblyChamberLogic(this);
         this.getMainNode()
                 .setIdlePowerUsage(0)
-                .addService(IGridTickable.class, logic)
-                .addService(IStorageWatcherNode.class, new IStorageWatcherNode() {
-                    @Override
-                    public void updateWatcher(IStackWatcher newWatcher) {
-                        configureLightningWatcher(newWatcher);
-                    }
-
-                    @Override
-                    public void onStackChange(AEKey what, long amount) {
-                        onLightningStackChanged(what);
-                    }
-                });
+                .addService(IGridTickable.class, logic);
     }
 
     public static void serverTick(Level level, BlockPos pos, BlockState state, LightningAssemblyChamberBlockEntity be) {
@@ -494,18 +481,6 @@ public class LightningAssemblyChamberBlockEntity extends AENetworkedBlockEntity
         logic.onStateChanged();
     }
 
-    private void configureLightningWatcher(IStackWatcher watcher) {
-        watcher.reset();
-        watcher.add(LightningKey.HIGH_VOLTAGE);
-        watcher.add(LightningKey.EXTREME_HIGH_VOLTAGE);
-    }
-
-    private void onLightningStackChanged(AEKey what) {
-        if (LightningKey.HIGH_VOLTAGE.equals(what) || LightningKey.EXTREME_HIGH_VOLTAGE.equals(what)) {
-            logic.onStateChanged();
-        }
-    }
-
     private appeng.me.storage.CompositeStorage getExportTarget(ServerLevel level, Direction direction) {
         return exportTargetCache.resolve(level, worldPosition, direction);
     }
@@ -751,5 +726,4 @@ public class LightningAssemblyChamberBlockEntity extends AENetworkedBlockEntity
                 .insert(key, amount, Actionable.MODULATE, IActionSource.ofMachine(this));
     }
 }
-
 

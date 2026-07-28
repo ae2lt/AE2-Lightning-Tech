@@ -50,7 +50,11 @@ public abstract class AbstractGridRecipeMachineLogic<
             if (host.pushOutResult()) {
                 return TickRateModulation.URGENT;
             }
-            return host.hasAutoExportWork() ? TickRateModulation.SLOWER : TickRateModulation.SLEEP;
+            // Lightning availability is intentionally polled through narrow
+            // SIMULATE-extract queries. Registering even a two-key
+            // IStorageWatcherNode makes AE2 rebuild the full network inventory
+            // every server tick.
+            return TickRateModulation.SLOWER;
         }
 
         host.setWorking(true);
@@ -59,7 +63,9 @@ public abstract class AbstractGridRecipeMachineLogic<
             if (host.pushOutResult()) {
                 return TickRateModulation.URGENT;
             }
-            return host.hasAutoExportWork() ? TickRateModulation.SLOWER : TickRateModulation.SLEEP;
+            // Output space and reusable lightning can both change without a
+            // reliable alert callback. Retain the bounded 1-20 tick poll.
+            return TickRateModulation.SLOWER;
         }
 
         Optional<C> lockedCandidate = validateLockedRecipe(lockedRecipe.get());
@@ -68,7 +74,7 @@ public abstract class AbstractGridRecipeMachineLogic<
             if (host.pushOutResult()) {
                 return TickRateModulation.URGENT;
             }
-            return host.hasAutoExportWork() ? TickRateModulation.SLOWER : TickRateModulation.SLEEP;
+            return TickRateModulation.SLOWER;
         }
 
         return tickActiveRecipe(lockedRecipe.get(), lockedCandidate.get());
@@ -132,7 +138,7 @@ public abstract class AbstractGridRecipeMachineLogic<
             if (host.pushOutResult()) {
                 return TickRateModulation.URGENT;
             }
-            return TickRateModulation.SLEEP;
+            return TickRateModulation.SLOWER;
         }
 
         long toConsume = computeEnergyToConsumeThisTick(lockedRecipe);
