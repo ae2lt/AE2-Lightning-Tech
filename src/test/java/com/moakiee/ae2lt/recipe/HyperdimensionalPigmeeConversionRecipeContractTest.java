@@ -64,7 +64,7 @@ class HyperdimensionalPigmeeConversionRecipeContractTest {
                 "\"block.ae2lt.hyperdimensional_pigmee_fumo\": \"超维猪咪\""));
         assertTrue(translations.contains("一只猪咪在时空中走了一遭"));
         assertTrue(translations.contains("把复制万物的能力遗落在了彼端"));
-        assertTrue(translations.contains("只余最后一次跨越界限的力量"));
-        assertTrue(translations.contains("它会变回最初的普通猪咪"));
+        assertTrue(translations.contains("仅残余最后一次跨越界限的力量"));
+        assertTrue(translations.contains("它会变回最初的猪咪"));
     }
 }
