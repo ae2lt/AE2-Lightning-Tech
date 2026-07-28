@@ -25,21 +25,29 @@ final class CoreEffectGeometry {
 
     static void renderMatrix(PoseStack stack, MultiBufferSource buffers,
                              CoreEffectPalette palette, float time, boolean working) {
-        var consumer = buffers.getBuffer(CoreEffectRenderTypes.matrix());
+        var coreConsumer = buffers.getBuffer(CoreEffectRenderTypes.matrixCore());
         float activity = working ? 1.0F : 0.0F;
-        float speed = working ? 48.0F : 8.0F;
+        float coreSpeed = working ? 48.0F : 8.0F;
+        float ringSpeed = working ? 84.0F : 22.0F;
         float contraction = 1.0F - activity * (0.07F + 0.02F * (float) Math.sin(time * 4.5F));
         float pulse = 1.0F + activity * 0.035F * (float) Math.sin(time * 6.0F);
+        float glowPulse = 0.94F + 0.06F * (float) Math.sin(time * (working ? 4.2F : 1.2F));
+        float primaryR = brighten(palette.primaryR(), 0.34F);
+        float primaryG = brighten(palette.primaryG(), 0.34F);
+        float primaryB = brighten(palette.primaryB(), 0.34F);
+        float accentR = brighten(palette.accentR(), 0.22F);
+        float accentG = brighten(palette.accentG(), 0.22F);
+        float accentB = brighten(palette.accentB(), 0.22F);
 
         stack.pushPose();
         stack.scale(1.50F, 1.50F, 1.50F);
 
         stack.pushPose();
-        stack.mulPose(Axis.YP.rotationDegrees(time * speed * 0.42F));
-        stack.mulPose(Axis.XP.rotationDegrees(time * -speed * 0.27F));
+        stack.mulPose(Axis.YP.rotationDegrees(time * coreSpeed * 0.42F));
+        stack.mulPose(Axis.XP.rotationDegrees(time * -coreSpeed * 0.27F));
         CoreEffectMesh.sphere(
                 stack,
-                consumer,
+                coreConsumer,
                 0.72F * pulse,
                 palette.primaryR() * 0.18F,
                 palette.primaryG() * 0.18F,
@@ -47,15 +55,39 @@ final class CoreEffectGeometry {
                 0.98F);
         stack.popPose();
 
-        renderMatrixRing(stack, consumer, 1.02F * contraction, 0.105F, 0.028F,
-                time * speed, 18.0F, 0.0F,
-                1.00F, 0.97F, 0.99F);
-        renderMatrixRing(stack, consumer, 1.22F * contraction, 0.092F, 0.024F,
-                -time * speed * 0.78F, 68.0F, 28.0F,
-                0.96F, 0.75F, 0.85F);
-        renderMatrixRing(stack, consumer, 1.42F * contraction, 0.080F, 0.021F,
-                time * speed * 0.56F, 112.0F, -24.0F,
-                1.00F, 0.90F, 0.95F);
+        var glowConsumer = buffers.getBuffer(CoreEffectRenderTypes.matrixGlow());
+        float ringRadius = 1.22F * contraction;
+        float constraintRadius = 1.12F * contraction;
+        float diskAlpha = (working ? 0.34F : 0.22F) * glowPulse;
+        float innerYaw = time * ringSpeed * 0.55F;
+        renderMatrixRing(stack, glowConsumer, ringRadius, 0.055F, 0.006F,
+                innerYaw, 10.0F, -6.0F,
+                primaryR, primaryG, primaryB, diskAlpha);
+        renderMatrixRing(stack, glowConsumer, ringRadius, 0.008F, 0.011F,
+                innerYaw, 10.0F, -6.0F,
+                accentR, accentG, accentB, diskAlpha * 1.65F);
+
+        float ringAlpha = (working ? 0.66F : 0.42F) * glowPulse;
+        float middleYaw = -time * ringSpeed * 0.82F;
+        float outerYaw = time * ringSpeed * 0.68F;
+        renderMatrixRing(stack, glowConsumer, constraintRadius, 0.018F, 0.014F,
+                middleYaw, 61.0F, 24.0F,
+                accentR, accentG, accentB, ringAlpha);
+        renderMatrixRing(stack, glowConsumer, constraintRadius, 0.016F, 0.011F,
+                outerYaw, 118.0F, -20.0F,
+                primaryR, primaryG, primaryB, ringAlpha * 0.82F);
+
+        float nodePulse = 1.0F + (working ? 0.16F : 0.06F) * (float) Math.sin(time * 5.5F);
+        renderOrbitNodes(stack, glowConsumer,
+                constraintRadius, middleYaw, 61.0F, 24.0F,
+                time * ringSpeed * 1.65F,
+                2, 0.074F * nodePulse,
+                1.00F, 0.64F, 0.16F, ringAlpha * 1.18F);
+        renderOrbitNodes(stack, glowConsumer,
+                constraintRadius, outerYaw, 118.0F, -20.0F,
+                35.0F - time * ringSpeed * 1.25F,
+                3, 0.064F * nodePulse,
+                1.00F, 0.64F, 0.16F, ringAlpha * 1.02F);
         stack.popPose();
     }
 
@@ -63,7 +95,7 @@ final class CoreEffectGeometry {
                                          com.mojang.blaze3d.vertex.VertexConsumer consumer,
                                          float radius, float halfWidth, float halfThickness,
                                          float yaw, float pitch, float roll,
-                                         float red, float green, float blue) {
+                                         float red, float green, float blue, float alpha) {
         stack.pushPose();
         stack.mulPose(Axis.YP.rotationDegrees(yaw));
         stack.mulPose(Axis.XP.rotationDegrees(pitch));
@@ -77,8 +109,50 @@ final class CoreEffectGeometry {
                 red,
                 green,
                 blue,
-                0.94F);
+                alpha);
         stack.popPose();
+    }
+
+    private static void renderOrbitNodes(PoseStack stack,
+                                         com.mojang.blaze3d.vertex.VertexConsumer consumer,
+                                         float radius, float yaw, float pitch, float roll,
+                                         float orbitDegrees,
+                                         int count, float nodeRadius,
+                                         float red, float green, float blue, float alpha) {
+        stack.pushPose();
+        stack.mulPose(Axis.YP.rotationDegrees(yaw));
+        stack.mulPose(Axis.XP.rotationDegrees(pitch));
+        stack.mulPose(Axis.ZP.rotationDegrees(roll));
+        for (int index = 0; index < count; index++) {
+            stack.pushPose();
+            stack.mulPose(Axis.YP.rotationDegrees(
+                    orbitDegrees + index * 360.0F / count));
+            stack.translate(radius, 0.0F, 0.0F);
+            stack.mulPose(Axis.YP.rotationDegrees(45.0F));
+            stack.mulPose(Axis.ZP.rotationDegrees(45.0F));
+            CoreEffectMesh.octahedron(
+                    stack,
+                    consumer,
+                    nodeRadius,
+                    red,
+                    green,
+                    blue,
+                    alpha);
+            CoreEffectMesh.octahedron(
+                    stack,
+                    consumer,
+                    nodeRadius * 0.52F,
+                    1.00F,
+                    0.94F,
+                    0.72F,
+                    Math.min(1.0F, alpha * 1.18F));
+            stack.popPose();
+        }
+        stack.popPose();
+    }
+
+    private static float brighten(float color, float amount) {
+        return color + (1.0F - color) * amount;
     }
 
     private static void renderCubeCore(PoseStack stack,

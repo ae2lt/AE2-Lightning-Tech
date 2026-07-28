@@ -14,7 +14,8 @@ final class CoreEffectRenderTypes extends RenderType {
             ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "multiblock/matrix_core");
 
     private static final RenderType TIANSHU = createEffectType("tianshu", TIANSHU_SHADER);
-    private static final RenderType MATRIX = createEffectType("matrix", MATRIX_SHADER);
+    private static final RenderType MATRIX_CORE = createEffectType("matrix_core", MATRIX_SHADER);
+    private static final RenderType MATRIX_GLOW = createGlowEffectType("matrix_glow", MATRIX_SHADER);
 
     private CoreEffectRenderTypes(String name, VertexFormat format, VertexFormat.Mode mode,
                                   int bufferSize, boolean affectsCrumbling, boolean sortOnUpload,
@@ -26,8 +27,12 @@ final class CoreEffectRenderTypes extends RenderType {
         return TIANSHU;
     }
 
-    static RenderType matrix() {
-        return MATRIX;
+    static RenderType matrixCore() {
+        return MATRIX_CORE;
+    }
+
+    static RenderType matrixGlow() {
+        return MATRIX_GLOW;
     }
 
     private static RenderType createEffectType(String name, ResourceLocation shader) {
@@ -47,6 +52,26 @@ final class CoreEffectRenderTypes extends RenderType {
                 262144,
                 false,
                 true,
+                state);
+    }
+
+    private static RenderType createGlowEffectType(String name, ResourceLocation shader) {
+        var state = CompositeState.builder()
+                .setShaderState(VeilRenderBridge.shaderState(shader))
+                .setTextureState(NO_TEXTURE)
+                .setTransparencyState(ADDITIVE_TRANSPARENCY)
+                .setDepthTestState(LEQUAL_DEPTH_TEST)
+                .setWriteMaskState(COLOR_WRITE)
+                .setCullState(NO_CULL)
+                .setLightmapState(NO_LIGHTMAP)
+                .createCompositeState(false);
+        return create(
+                AE2LightningTech.MODID + "_core_effect_" + name,
+                DefaultVertexFormat.POSITION_COLOR_NORMAL,
+                VertexFormat.Mode.TRIANGLES,
+                262144,
+                false,
+                false,
                 state);
     }
 }

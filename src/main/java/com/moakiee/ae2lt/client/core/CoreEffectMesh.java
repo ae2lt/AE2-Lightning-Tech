@@ -68,6 +68,25 @@ final class CoreEffectMesh {
         }
     }
 
+    static void octahedron(PoseStack stack, VertexConsumer consumer, float radius,
+                           float r, float g, float b, float alpha) {
+        Vertex top = new Vertex(0.0F, radius, 0.0F, 0.0F, 1.0F, 0.0F);
+        Vertex bottom = new Vertex(0.0F, -radius, 0.0F, 0.0F, -1.0F, 0.0F);
+        Vertex east = new Vertex(radius, 0.0F, 0.0F, 1.0F, 0.0F, 0.0F);
+        Vertex west = new Vertex(-radius, 0.0F, 0.0F, -1.0F, 0.0F, 0.0F);
+        Vertex south = new Vertex(0.0F, 0.0F, radius, 0.0F, 0.0F, 1.0F);
+        Vertex north = new Vertex(0.0F, 0.0F, -radius, 0.0F, 0.0F, -1.0F);
+
+        triangle(stack, consumer, top, south, east, r, g, b, alpha);
+        triangle(stack, consumer, top, west, south, r, g, b, alpha);
+        triangle(stack, consumer, top, north, west, r, g, b, alpha);
+        triangle(stack, consumer, top, east, north, r, g, b, alpha);
+        triangle(stack, consumer, bottom, east, south, r, g, b, alpha);
+        triangle(stack, consumer, bottom, south, west, r, g, b, alpha);
+        triangle(stack, consumer, bottom, west, north, r, g, b, alpha);
+        triangle(stack, consumer, bottom, north, east, r, g, b, alpha);
+    }
+
     static void cube(PoseStack stack, VertexConsumer consumer, float halfSize,
                      float r, float g, float b, float alpha) {
         float low = -halfSize;
