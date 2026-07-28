@@ -44,35 +44,40 @@ public class OverloadedPatternProviderMenu extends PatternProviderMenu implement
             | PROFILE_WIRELESS_TUNING
             | PROFILE_BLOCKING_MODE;
 
-    @GuiSync(10)
+    // Keep AE2LT fields in a dedicated high range. Pattern-provider addons commonly
+    // inject low IDs into PatternProviderMenu (ExtendedAE Plus uses 20 and 21).
+    @GuiSync(22000)
     public int providerMode;
 
-    @GuiSync(11)
+    @GuiSync(22001)
     public int returnMode;
 
-    @GuiSync(12)
+    @GuiSync(22002)
     public int filteredImport;
 
-    @GuiSync(13)
+    @GuiSync(22003)
     public int wirelessDispatchMode;
 
-    @GuiSync(16)
+    @GuiSync(22006)
     public int wirelessSpeedMode;
 
-    @GuiSync(17)
+    @GuiSync(22007)
     public int uiProfileFlags = DEFAULT_PROFILE_FLAGS;
 
-    @GuiSync(18)
+    @GuiSync(22008)
     public String titleTranslationKey = PatternProviderUiProfile.DEFAULT_TITLE_TRANSLATION_KEY;
 
     /** 0 = off, 1 = normal blocking, 2 = allow the same pattern. */
-    @GuiSync(19)
+    @GuiSync(22009)
     public int blockingMode;
 
-    @GuiSync(14)
+    @GuiSync(22010)
+    public int adaptiveBatchEnabled;
+
+    @GuiSync(22004)
     public int currentPage;
 
-    @GuiSync(15)
+    @GuiSync(22005)
     public int totalPages;
 
     private final PatternProviderLogicHost host;
@@ -94,6 +99,7 @@ public class OverloadedPatternProviderMenu extends PatternProviderMenu implement
         registerClientAction("toggleWirelessDispatchMode", this::toggleWirelessDispatchMode);
         registerClientAction("toggleWirelessSpeedMode", this::toggleWirelessSpeedMode);
         registerClientAction("toggleFilteredImport", this::toggleFilteredImport);
+        registerClientAction("toggleAdaptiveBatch", this::toggleAdaptiveBatch);
         registerClientAction("cycleBlockingMode", this::cycleBlockingMode);
         registerClientAction("nextPage", this::nextPage);
         registerClientAction("prevPage", this::prevPage);
@@ -130,6 +136,7 @@ public class OverloadedPatternProviderMenu extends PatternProviderMenu implement
             wirelessDispatchMode = be.getWirelessDispatchMode().ordinal();
             wirelessSpeedMode = be.getWirelessSpeedMode().ordinal();
             blockingMode = getBlockingState(be);
+            adaptiveBatchEnabled = be.isAdaptiveBatchEnabled() ? 1 : 0;
             syncUiProfile(be);
             var logic = (OverloadedPatternProviderLogic) be.getLogic();
             currentPage = logic.getCurrentPage();
@@ -180,6 +187,12 @@ public class OverloadedPatternProviderMenu extends PatternProviderMenu implement
         if (isServerSide() && host instanceof OverloadedPatternProviderBlockEntity be) {
             if (!isFilteredImportVisible(be)) return;
             be.setFilteredImport(!be.isFilteredImport());
+        }
+    }
+
+    private void toggleAdaptiveBatch() {
+        if (isServerSide() && host instanceof OverloadedPatternProviderBlockEntity be) {
+            be.setAdaptiveBatchEnabled(!be.isAdaptiveBatchEnabled());
         }
     }
 
@@ -271,6 +284,10 @@ public class OverloadedPatternProviderMenu extends PatternProviderMenu implement
         sendClientAction("toggleFilteredImport");
     }
 
+    public void clientToggleAdaptiveBatch() {
+        sendClientAction("toggleAdaptiveBatch");
+    }
+
     public void clientCycleBlockingMode() {
         sendClientAction("cycleBlockingMode");
     }
@@ -299,6 +316,10 @@ public class OverloadedPatternProviderMenu extends PatternProviderMenu implement
 
     public boolean isFastSpeedMode() {
         return isWirelessTuningVisible() && wirelessSpeedMode == WirelessSpeedMode.FAST.ordinal();
+    }
+
+    public boolean isAdaptiveBatchEnabled() {
+        return adaptiveBatchEnabled != 0;
     }
 
     public boolean isPackagedProviderUi() {

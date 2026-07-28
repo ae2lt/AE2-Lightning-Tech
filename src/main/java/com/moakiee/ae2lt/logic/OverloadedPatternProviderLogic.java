@@ -755,7 +755,8 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
     }
 
     private boolean canUseAdaptiveBatch(IPatternDetails details) {
-        return details != null
+        return overloadedHost.isAdaptiveBatchEnabled()
+                && details != null
                 && details.supportsPushInputsToExternalInventory()
                 && !AdvancedAECompat.isDirectional(details);
     }
