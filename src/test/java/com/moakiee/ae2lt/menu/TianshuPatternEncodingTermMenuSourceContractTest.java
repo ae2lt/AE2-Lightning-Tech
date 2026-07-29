@@ -83,8 +83,15 @@ class TianshuPatternEncodingTermMenuSourceContractTest {
         assertTrue(advanced.contains("advanced.getSparseInputs()"));
         assertTrue(advanced.contains("direction.ordinal() + 1"));
         assertTrue(screen.contains("observeEncodedPatternSource()"));
+        assertTrue(screen.contains("observedEncodingAck != menu.triggeredUploadAck"));
+        assertTrue(screen.contains("TianshuRecipeTransferContext.acceptEncodedPattern(menu, current)"));
+        assertTrue(screen.contains("TianshuRecipeTransferContext.retainAfterEncodedSlotChange("));
         assertTrue(screen.contains("TianshuRecipeTransferContext.clear(menu)"));
         assertTrue(screen.contains("menu.clearClientUploadSelectionState()"));
+        assertTrue(menu.contains("public void clear()"));
+        assertTrue(menu.contains("TianshuRecipeTransferContext.clear(this)"));
+        assertFalse(menu.contains("pendingEncodedSourceChange"));
+        assertFalse(menu.contains("expectedUploadedPattern"));
     }
 
     @Test

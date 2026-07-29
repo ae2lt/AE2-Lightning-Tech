@@ -185,9 +185,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     private List<MaintenanceSummarySyncPacket.Entry> maintenanceSummary = List.of();
     private boolean pendingTriggeredUpload;
     private boolean pendingDirectUpload;
-    private boolean pendingEncodedSourceChange;
     private int pendingTriggeredUploadUntil;
-    private int pendingEncodedSourceChangeUntil;
     private int expectedTriggeredUploadAck;
     private int expectedDirectUploadTargetRevision;
 
@@ -396,28 +394,13 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     public boolean consumeDirectUploadRequest() {
         boolean direct = pendingDirectUpload;
         pendingDirectUpload = false;
-        if (direct) pendingEncodedSourceChange = false;
         return direct;
-    }
-
-    /**
-     * Consumes the one encoded-slot change expected from the most recent encode action. A source
-     * change without this marker came from manual slot interaction and must not inherit upload
-     * selection state from an older recipe-viewer transfer.
-     */
-    public boolean consumeExpectedEncodedSourceChange() {
-        if (!isClientSide()) return false;
-        expirePendingEncodedSourceChange();
-        boolean expected = pendingEncodedSourceChange;
-        pendingEncodedSourceChange = false;
-        return expected;
     }
 
     public void clearClientUploadSelectionState() {
         if (!isClientSide()) return;
         pendingTriggeredUpload = false;
         pendingDirectUpload = false;
-        pendingEncodedSourceChange = false;
         uploadTargetGroups = List.of();
         uploadTargetsRevision++;
     }
@@ -426,13 +409,6 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         if (pendingTriggeredUpload && getPlayer().tickCount > pendingTriggeredUploadUntil) {
             pendingTriggeredUpload = false;
             pendingDirectUpload = false;
-        }
-    }
-
-    private void expirePendingEncodedSourceChange() {
-        if (pendingEncodedSourceChange
-                && getPlayer().tickCount > pendingEncodedSourceChangeUntil) {
-            pendingEncodedSourceChange = false;
         }
     }
 
@@ -641,6 +617,10 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
 
     @Override
     public void clear() {
+        if (isClientSide()) {
+            com.moakiee.ae2lt.client.TianshuRecipeTransferContext.clear(this);
+            clearClientUploadSelectionState();
+        }
         resetProcessingEncodingType();
         super.clear();
     }
@@ -2214,8 +2194,6 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     }
 
     private void beginClientEncoding(boolean triggerUpload, boolean directUpload) {
-        pendingEncodedSourceChange = true;
-        pendingEncodedSourceChangeUntil = getPlayer().tickCount + 40;
         pendingTriggeredUpload = triggerUpload;
         pendingDirectUpload = triggerUpload && directUpload;
         pendingTriggeredUploadUntil = getPlayer().tickCount + 200;

@@ -1,5 +1,6 @@
 package com.moakiee.ae2lt.client;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Files;
@@ -41,6 +42,8 @@ class TianshuRecipeViewerIntegrationSourceContractTest {
         assertTrue(jei.contains("resetProcessingEncoding()"));
         assertTrue(jei.contains("TianshuRecipeTransferContext.clear"));
         assertTrue(jei.contains("captureVanillaRecipe"));
+        assertFalse(jei.contains(
+                "!TianshuRecipeTransferContext.isSupportedCraftingRecipe(recipeBase)"));
         assertTrue(emi.contains("!doTransfer"));
         assertTrue(emi.contains("resetProcessingEncoding()"));
         assertTrue(emi.contains("TianshuRecipeTransferContext.clear"));
@@ -48,10 +51,19 @@ class TianshuRecipeViewerIntegrationSourceContractTest {
         assertTrue(emi.contains("emiRecipe.getId().toString()"));
         assertTrue(emi.contains("getWorkstations"));
         assertTrue(emi.contains("addDefaultAlias"));
+        assertTrue(emi.contains("captureVanillaRecipe("));
+        assertFalse(emi.contains(
+                "isSupportedCraftingRecipe(holder)) return"));
         assertTrue(context.contains("BuiltInRegistries.RECIPE_TYPE"));
         assertTrue(context.contains("WeakReference<TianshuPatternEncodingTermMenu>"));
         assertTrue(context.contains("String recipeId"));
-        org.junit.jupiter.api.Assertions.assertFalse(context.contains("Map<Integer, Component>"));
+        assertTrue(context.contains("ItemStack.matches(boundEncodedPattern, encodedPattern)"));
+        assertTrue(context.contains("boundEncodedPattern = encodedPattern.copy()"));
+        assertTrue(context.contains("retainAfterEncodedSlotChange("));
+        assertTrue(context.contains("current == null || current.isEmpty()) return true"));
+        assertTrue(context.contains("ItemStack.matches(boundEncodedPattern, current)"));
+        assertFalse(context.contains("hashItemAndComponents"));
+        assertFalse(context.contains("Map<Integer, Component>"));
 
         int jeiClear = jei.indexOf("TianshuRecipeTransferContext.clear(tianshuMenu)");
         assertTrue(jeiClear >= 0);
@@ -74,6 +86,11 @@ class TianshuRecipeViewerIntegrationSourceContractTest {
         assertTrue(picker.contains("TianshuUploadSourceSelection.collect(menu)"));
         assertTrue(selection.contains("TianshuRecipeTransferContext.snapshotFor(menu)"));
         assertTrue(selection.contains("recipeContext.sourceKey()"));
+        assertTrue(selection.contains("return Selection.EMPTY;"));
+        assertFalse(selection.contains("PatternDetailsHelper.decodePattern"));
+        assertFalse(selection.contains("getPrimaryOutput()"));
+        assertFalse(selection.contains("key.getId().toString()"));
+        assertFalse(context.contains("recipe.getType().toString()"));
         assertTrue(context.contains("does not start encoding itself"));
     }
 
@@ -162,11 +179,11 @@ class TianshuRecipeViewerIntegrationSourceContractTest {
         assertTrue(picker.contains("defaultAliases.get(defaultAliasIndex)"));
         assertTrue(picker.contains("public boolean mouseScrolled"));
         assertTrue(picker.contains("aliasField.setValue(\"\")"));
-        org.junit.jupiter.api.Assertions.assertFalse(picker.contains("sourceField.setResponder"));
-        org.junit.jupiter.api.Assertions.assertFalse(picker.contains("recipeContext.queries()"));
-        org.junit.jupiter.api.Assertions.assertFalse(picker.contains("selectedQueryIndex"));
-        org.junit.jupiter.api.Assertions.assertFalse(picker.contains("selectedQuery()"));
-        org.junit.jupiter.api.Assertions.assertFalse(picker.contains("rebuildCandidateTooltip"));
+        assertFalse(picker.contains("sourceField.setResponder"));
+        assertFalse(picker.contains("recipeContext.queries()"));
+        assertFalse(picker.contains("selectedQueryIndex"));
+        assertFalse(picker.contains("selectedQuery()"));
+        assertFalse(picker.contains("rebuildCandidateTooltip"));
     }
 
     @Test

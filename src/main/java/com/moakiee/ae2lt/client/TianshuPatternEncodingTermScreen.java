@@ -83,6 +83,7 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
     private boolean observedMaintainableView;
     private long observedMaintenanceFilterRevision = Long.MIN_VALUE;
     private ItemStack observedEncodedPattern = ItemStack.EMPTY;
+    private int observedEncodingAck;
     private final Map<appeng.api.stacks.AEKey, Long> syntheticMaintenanceEntries = new HashMap<>();
     private long nextSyntheticMaintenanceSerial = -10_000_000L;
 
@@ -135,6 +136,7 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
         blankPatternItem = AEItems.BLANK_PATTERN.asItem();
         networkBlankPatternSlot = new NetworkBlankPatternSlot(repo);
         observedEncodedPattern = firstEncodedPattern().copy();
+        observedEncodingAck = menu.triggeredUploadAck;
         replaceViewModeButton();
         addToLeftToolbar(new MaintenanceOverviewButton());
     }
@@ -227,9 +229,18 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
 
     private void observeEncodedPatternSource() {
         var current = firstEncodedPattern();
+        if (observedEncodingAck != menu.triggeredUploadAck) {
+            observedEncodingAck = menu.triggeredUploadAck;
+            observedEncodedPattern = current.copy();
+            TianshuRecipeTransferContext.acceptEncodedPattern(menu, current);
+            return;
+        }
         if (ItemStack.matches(observedEncodedPattern, current)) return;
         observedEncodedPattern = current.copy();
-        if (menu.consumeExpectedEncodedSourceChange()) return;
+        if (TianshuRecipeTransferContext.retainAfterEncodedSlotChange(
+                menu, current)) {
+            return;
+        }
         TianshuRecipeTransferContext.clear(menu);
         menu.clearClientUploadSelectionState();
     }

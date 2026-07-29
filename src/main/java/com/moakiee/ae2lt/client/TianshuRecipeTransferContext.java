@@ -1,12 +1,12 @@
 package com.moakiee.ae2lt.client;
 
-import appeng.integration.modules.itemlists.EncodingHelper;
 import com.moakiee.ae2lt.menu.TianshuPatternEncodingTermMenu;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
 
@@ -24,18 +24,25 @@ import net.minecraft.world.item.crafting.RecipeHolder;
 public final class TianshuRecipeTransferContext {
     private static WeakReference<TianshuPatternEncodingTermMenu> owner = new WeakReference<>(null);
     private static Snapshot snapshot = Snapshot.EMPTY;
+    private static ItemStack boundEncodedPattern = ItemStack.EMPTY;
 
     private TianshuRecipeTransferContext() {
     }
 
-    public static boolean isSupportedCraftingRecipe(Object recipeBase) {
-        return recipeBase instanceof RecipeHolder<?> holder
-                && EncodingHelper.isSupportedCraftingRecipe(holder.value());
-    }
-
-    /** Captures the stable recipe type and exact recipe ID available to the JEI integration. */
+    /** Captures the stable recipe type and exact recipe ID available to recipe viewers. */
     public static void captureVanillaRecipe(
             TianshuPatternEncodingTermMenu menu, Object recipeBase) {
+        captureVanillaRecipe(menu, recipeBase, List.of());
+    }
+
+    /**
+     * Captures the stable vanilla recipe identity while retaining viewer-specific aliases.
+     * The vanilla recipe type remains authoritative whenever a real recipe is available.
+     */
+    public static void captureVanillaRecipe(
+            TianshuPatternEncodingTermMenu menu,
+            Object recipeBase,
+            Iterable<String> additionalAliases) {
         Recipe<?> recipe = switch (recipeBase) {
             case RecipeHolder<?> holder -> holder.value();
             case Recipe<?> direct -> direct;
@@ -46,12 +53,15 @@ public final class TianshuRecipeTransferContext {
         var defaultAliases = new ArrayList<String>();
         if (recipe != null) {
             var typeId = BuiltInRegistries.RECIPE_TYPE.getKey(recipe.getType());
-            sourceKey = typeId != null ? typeId.toString() : recipe.getType().toString();
+            sourceKey = typeId == null ? "" : typeId.toString();
             addDefaultAlias(defaultAliases, sourceKey);
         }
         if (recipeBase instanceof RecipeHolder<?> holder) {
             recipeId = holder.id().toString();
             addDefaultAlias(defaultAliases, firstPathSegment(holder.id().getPath()));
+        }
+        if (additionalAliases != null) {
+            additionalAliases.forEach(value -> addDefaultAlias(defaultAliases, value));
         }
         publish(menu, sourceKey, recipeId, defaultAliases);
     }
@@ -74,6 +84,7 @@ public final class TianshuRecipeTransferContext {
                 sourceKey == null ? "" : sourceKey,
                 recipeId == null ? "" : recipeId,
                 List.copyOf(aliases));
+        boundEncodedPattern = ItemStack.EMPTY;
     }
 
     public static synchronized Snapshot snapshotFor(TianshuPatternEncodingTermMenu menu) {
@@ -84,6 +95,50 @@ public final class TianshuRecipeTransferContext {
         if (menu == null) return;
         owner = new WeakReference<>(menu);
         snapshot = Snapshot.EMPTY;
+        boundEncodedPattern = ItemStack.EMPTY;
+    }
+
+    /**
+     * Binds newly transferred viewer metadata to its first encoded pattern. Re-encoding may retain
+     * that metadata only for the exact same stack; changing the draft must not carry an old recipe
+     * ID into a different pattern.
+     */
+    public static synchronized void acceptEncodedPattern(
+            TianshuPatternEncodingTermMenu menu, ItemStack encodedPattern) {
+        if (owner.get() != menu || snapshot.sourceKey().isBlank()) return;
+        if (encodedPattern == null || encodedPattern.isEmpty()) {
+            snapshot = Snapshot.EMPTY;
+            boundEncodedPattern = ItemStack.EMPTY;
+            return;
+        }
+        if (boundEncodedPattern.isEmpty()) {
+            boundEncodedPattern = encodedPattern.copy();
+            return;
+        }
+        // Compare the complete stack instead of a hash: data-component or count differences are
+        // meaningful for encoded patterns, and a collision must never revive stale recipe data.
+        if (!ItemStack.matches(boundEncodedPattern, encodedPattern)) {
+            snapshot = Snapshot.EMPTY;
+            boundEncodedPattern = ItemStack.EMPTY;
+        }
+    }
+
+    /**
+     * Keeps an already bound context while its exact pattern is temporarily removed or reinserted.
+     * An empty slot is only a dormant state; inserting any different pattern invalidates the
+     * context.
+     */
+    public static synchronized boolean retainAfterEncodedSlotChange(
+            TianshuPatternEncodingTermMenu menu, ItemStack current) {
+        // Removing a pattern never proves that its recipe metadata is stale. Keep the context
+        // dormant until another non-empty pattern provides something meaningful to compare.
+        if (current == null || current.isEmpty()) return true;
+        if (owner.get() != menu
+                || snapshot.sourceKey().isBlank()
+                || boundEncodedPattern.isEmpty()) {
+            return false;
+        }
+        return ItemStack.matches(boundEncodedPattern, current);
     }
 
     public static void addDefaultAlias(List<String> aliases, String value) {
