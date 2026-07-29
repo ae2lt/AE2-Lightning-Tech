@@ -2195,6 +2195,8 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     }
 
     private void beginClientEncoding(boolean triggerUpload, boolean directUpload) {
+        com.moakiee.ae2lt.client.TianshuRecipeTransferContext.beginEncoding(
+                this, tianshuHost.getLogic().getEncodedPatternInv().getStackInSlot(0));
         pendingTriggeredUpload = triggerUpload;
         pendingDirectUpload = triggerUpload && directUpload;
         pendingTriggeredUploadUntil = getPlayer().tickCount + 200;

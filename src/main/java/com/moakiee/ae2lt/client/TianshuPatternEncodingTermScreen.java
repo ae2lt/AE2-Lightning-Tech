@@ -197,7 +197,10 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
         }
         syncSyntheticMaintenanceEntries();
         refreshMaintenancePartitionIfNeeded();
-        if (menu.consumeTriggeredUpload()) {
+        if (menu.hasTriggeredUploadAck()
+                && TianshuRecipeTransferContext.isEncodingResultReady(
+                        menu, firstEncodedPattern())
+                && menu.consumeTriggeredUpload()) {
             openUploadScreen(menu.consumeDirectUploadRequest());
             return;
         }

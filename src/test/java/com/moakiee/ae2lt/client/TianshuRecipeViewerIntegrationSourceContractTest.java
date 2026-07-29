@@ -62,6 +62,10 @@ class TianshuRecipeViewerIntegrationSourceContractTest {
         assertTrue(context.contains("retainAfterEncodedSlotChange("));
         assertTrue(context.contains("current == null || current.isEmpty()) return true"));
         assertTrue(context.contains("ItemStack.matches(boundEncodedPattern, current)"));
+        assertTrue(context.contains("beginEncoding("));
+        assertTrue(context.contains("encodingAckReceived"));
+        assertTrue(context.contains("isEncodingResultReady("));
+        assertTrue(context.contains("ENCODING_RESULT_GRACE_TICKS"));
         assertFalse(context.contains("hashItemAndComponents"));
         assertFalse(context.contains("Map<Integer, Component>"));
 
@@ -128,6 +132,7 @@ class TianshuRecipeViewerIntegrationSourceContractTest {
         assertTrue(transferButton.contains("TianshuDirectUploadClient.holdRecipeScreen"));
         assertTrue(transferButton.contains("recipesGui.onClose()"));
         assertTrue(coordinator.contains("hasTriggeredUploadAck()"));
+        assertTrue(coordinator.contains("isEncodingResultReady(menu, stack)"));
         assertTrue(coordinator.contains("hasFreshDirectUploadTargets()"));
         assertTrue(coordinator.contains("recipeScreen.onClose()"));
         assertTrue(coordinator.contains("menu.uploadTianshuPatternToTarget(target.group())"));

@@ -5,6 +5,7 @@ import appeng.api.networking.IGrid;
 import appeng.api.networking.IGridConnection;
 import appeng.api.networking.IGridNode;
 import appeng.api.networking.IInWorldGridNodeHost;
+import appeng.api.networking.pathing.ChannelMode;
 import appeng.api.parts.IPart;
 import appeng.api.parts.IPartHost;
 import appeng.api.parts.IPartItem;
@@ -17,6 +18,7 @@ import com.moakiee.ae2lt.config.AE2LTCommonConfig;
 import com.moakiee.ae2lt.grid.FrequencyAccessLevel;
 import com.moakiee.ae2lt.grid.WirelessFrequencyManager;
 import com.moakiee.ae2lt.item.OverloadedFrequencyCardItem;
+import com.moakiee.thunderbolt.ae2.channel.ChannelProviderRegistry;
 import com.moakiee.thunderbolt.ae2.channel.OverloadedChannelOwnerHelper;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -58,13 +60,15 @@ public final class WirelessLinkRegistry extends SavedData {
     private static final int RESTORE_BATCH_SIZE = 64;
     private static final int RESTORE_INTERVAL_TICKS = 20;
     private static final int TOPOLOGY_RECONCILE_DELAY_TICKS = 2;
+    private static final int CHANNEL_EXPANSION_BATCH_SIZE = 16;
     private static final Comparator<WirelessLink> LINK_PREFERENCE =
             Comparator.comparingLong(WirelessLink::createdTime)
                     .thenComparing(link -> link.linkId().toString());
 
     private final WirelessLinkIndex links = new WirelessLinkIndex();
-    private final Map<UUID, IGridConnection> runtimeConnections = new HashMap<>();
+    private final Map<UUID, RuntimeEntrances> runtimeConnections = new HashMap<>();
     private final Map<IGridNode, LinkedHashSet<UUID>> runtimeLinksByAnchor = new IdentityHashMap<>();
+    private final LinkedHashSet<UUID> pendingChannelExpansion = new LinkedHashSet<>();
     private final List<PendingAutoConnect> pendingAutoConnect = new ArrayList<>();
     private final Map<TopologyChangeKey, PendingClusterReconcile> pendingClusterReconciles =
             new LinkedHashMap<>();
@@ -177,6 +181,45 @@ public final class WirelessLinkRegistry extends SavedData {
         }
     }
 
+    private static final class RuntimeEntrances {
+        private final IdentityHashMap<IGridNode, IGridConnection> byAnchor = new IdentityHashMap<>();
+        private long nextChannelCheckGameTime;
+
+        @Nullable
+        IGridConnection get(IGridNode anchor) {
+            return byAnchor.get(anchor);
+        }
+
+        void put(IGridNode anchor, IGridConnection connection) {
+            byAnchor.put(anchor, connection);
+        }
+
+        @Nullable
+        IGridConnection remove(IGridNode anchor) {
+            return byAnchor.remove(anchor);
+        }
+
+        boolean isEmpty() {
+            return byAnchor.isEmpty();
+        }
+
+        Set<IGridNode> anchors() {
+            return byAnchor.keySet();
+        }
+
+        Set<Map.Entry<IGridNode, IGridConnection>> entries() {
+            return byAnchor.entrySet();
+        }
+
+        void deferChannelCheck(long gameTime) {
+            nextChannelCheckGameTime = Math.max(nextChannelCheckGameTime, gameTime);
+        }
+
+        boolean canCheckChannels(long gameTime) {
+            return gameTime >= nextChannelCheckGameTime;
+        }
+    }
+
     private record PendingAutoConnect(UUID playerId, String dimensionId, long posLong, String sideName, int delayTicks) {
         PendingAutoConnect tickDown() {
             return new PendingAutoConnect(playerId, dimensionId, posLong, sideName, delayTicks - 1);
@@ -203,6 +246,7 @@ public final class WirelessLinkRegistry extends SavedData {
         if (instance != null) {
             instance.runtimeConnections.clear();
             instance.runtimeLinksByAnchor.clear();
+            instance.pendingChannelExpansion.clear();
             instance.pendingAutoConnect.clear();
             instance.pendingClusterReconciles.clear();
         }
@@ -234,7 +278,8 @@ public final class WirelessLinkRegistry extends SavedData {
     /**
      * Schedules a post-change pass for placements and part additions. Once AE2
      * has rebuilt its node connections, links that now land in the same physical
-     * cluster are collapsed to a single wireless entrance.
+     * cluster are collapsed to one managed cluster link. That link may still
+     * maintain several transient channel entrances at runtime.
      */
     public void queueClusterTopologyChange(ServerLevel level, BlockPos changedPos) {
         var pending = pendingClusterChange(level.dimension(), changedPos);
@@ -331,6 +376,7 @@ public final class WirelessLinkRegistry extends SavedData {
     public void tick(MinecraftServer server) {
         processPendingClusterReconciles(server);
         processPendingAutoConnect(server);
+        processPendingChannelExpansion(server);
 
         if (++restoreCooldown < RESTORE_INTERVAL_TICKS) {
             return;
@@ -620,6 +666,22 @@ public final class WirelessLinkRegistry extends SavedData {
             }
         }
 
+        // A harmless left click also schedules this delayed check, so do not
+        // reboot a linked cluster merely because removal was attempted. Only
+        // tear down the transient entrances when the captured physical seeds
+        // now resolve into different components (or the persisted anchor is
+        // actually gone). PhysicalGridCluster excludes wireless bridges, which
+        // lets us detect the split even while those entrances are still live.
+        for (var sourceId : sourceIds) {
+            var source = links.get(sourceId);
+            if (source != null
+                    && runtimeConnections.containsKey(sourceId)
+                    && runtimeEntrancesSpanChangedComponents(
+                            source, server, components, componentByNode)) {
+                destroyRuntimeConnection(source, resolveRuntimeTargetNode(source));
+            }
+        }
+
         for (var component : components) {
             reconcileClusterComponent(component, server);
         }
@@ -638,6 +700,187 @@ public final class WirelessLinkRegistry extends SavedData {
                 setDirty();
             }
         }
+    }
+
+    private boolean runtimeEntrancesSpanChangedComponents(
+            WirelessLink source,
+            MinecraftServer server,
+            List<ClusterComponent> components,
+            IdentityHashMap<IGridNode, ClusterComponent> componentByNode) {
+        var persisted = resolvePersistedTarget(source, server);
+        if (persisted.target() == null) {
+            return true;
+        }
+        var sourceComponent = componentByNode.get(persisted.target().node());
+        if (sourceComponent == null) {
+            return true;
+        }
+
+        for (var component : components) {
+            if (component != sourceComponent && component.inheritedLinks.stream()
+                    .anyMatch(inheritance -> inheritance.sourceLinkId().equals(source.linkId()))) {
+                return true;
+            }
+        }
+
+        var runtime = runtimeConnections.get(source.linkId());
+        if (runtime != null) {
+            for (var anchor : runtime.anchors()) {
+                var component = componentByNode.get(anchor);
+                if (component != null && component != sourceComponent) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private void processPendingChannelExpansion(MinecraftServer server) {
+        if (pendingChannelExpansion.isEmpty()) {
+            return;
+        }
+
+        var ready = new ArrayList<UUID>(Math.min(CHANNEL_EXPANSION_BATCH_SIZE, pendingChannelExpansion.size()));
+        var iterator = pendingChannelExpansion.iterator();
+        while (iterator.hasNext() && ready.size() < CHANNEL_EXPANSION_BATCH_SIZE) {
+            ready.add(iterator.next());
+            iterator.remove();
+        }
+
+        for (var linkId : ready) {
+            var link = links.get(linkId);
+            if (link != null && expandRuntimeEntrances(link, server)) {
+                pendingChannelExpansion.add(linkId);
+            }
+        }
+    }
+
+    /**
+     * Adds at most one entrance after AE2 has finished the previous pathing pass.
+     * Returning {@code true} keeps the cluster queued for the next stable pass.
+     */
+    private boolean expandRuntimeEntrances(WirelessLink link, MinecraftServer server) {
+        var target = resolvePersistedTarget(link, server);
+        if (target.target() == null) {
+            return false;
+        }
+
+        var manager = WirelessFrequencyManager.get();
+        var transmitterNode = manager == null ? null : manager.resolveNode(link.frequencyId(), server);
+        if (transmitterNode == null) {
+            return false;
+        }
+
+        IGridNode primaryAnchor = target.target().node();
+        var runtime = runtimeConnections.get(link.linkId());
+        if (runtime == null
+                || !WirelessLinkOps.isConnectedTo(runtime.get(primaryAnchor), primaryAnchor, transmitterNode)) {
+            return false;
+        }
+        long now = currentGameTime(server);
+        if (!runtime.canCheckChannels(now)) {
+            return true;
+        }
+
+        var cluster = PhysicalGridCluster.collect(primaryAnchor);
+        boolean pruned = pruneRuntimeEntrances(link.linkId(), runtime, cluster, transmitterNode);
+        if (!runtimeConnections.containsKey(link.linkId())) {
+            return false;
+        }
+        if (pruned) {
+            runtime.deferChannelCheck(now + 1);
+            return true;
+        }
+
+        var grid = transmitterNode.getGrid();
+        if (grid == null || grid.getPathingService().isNetworkBooting()) {
+            return true;
+        }
+        if (!hasAvailableChannelSupply(grid)) {
+            return false;
+        }
+
+        var excluded = PhysicalGridCluster.newIdentityNodeSet();
+        excluded.addAll(runtime.anchors());
+        IGridNode candidate;
+        while ((candidate = WirelessClusterEntrancePlanner.findSupplementalEntrance(cluster, excluded)) != null) {
+            if (MultiblockLinkReadiness.canKeepVirtualConnection(candidate)) {
+                break;
+            }
+            excluded.add(candidate);
+        }
+        if (candidate == null) {
+            return false;
+        }
+
+        try {
+            var connection = WirelessLinkOps.createVirtualConnection(candidate, transmitterNode);
+            runtime.put(candidate, connection);
+            runtime.deferChannelCheck(now + 1);
+            registerRuntimeAnchor(link.linkId(), candidate);
+            LOG.debug(
+                    "Added supplemental overloaded-frequency entrance for cluster link {} (entrances={})",
+                    link.linkId(),
+                    runtime.anchors().size());
+            return true;
+        } catch (IllegalStateException ignored) {
+            return false;
+        }
+    }
+
+    private boolean pruneRuntimeEntrances(
+            UUID linkId,
+            RuntimeEntrances runtime,
+            Set<IGridNode> physicalCluster,
+            IGridNode transmitterNode) {
+        boolean pruned = false;
+        for (var entry : new ArrayList<>(runtime.entries())) {
+            var anchor = entry.getKey();
+            var connection = entry.getValue();
+            if (physicalCluster.contains(anchor)
+                    && WirelessLinkOps.isConnectedTo(connection, anchor, transmitterNode)) {
+                continue;
+            }
+            runtime.remove(anchor);
+            unregisterRuntimeAnchor(linkId, anchor);
+            WirelessLinkOps.destroy(connection, anchor);
+            MultiblockLinkReadiness.refreshAfterVirtualConnectionRemoved(anchor);
+            pruned = true;
+        }
+        if (runtime.isEmpty()) {
+            runtimeConnections.remove(linkId);
+        }
+        return pruned;
+    }
+
+    private boolean hasAvailableChannelSupply(IGrid grid) {
+        var mode = grid.getPathingService().getChannelMode();
+        if (mode == ChannelMode.INFINITE) {
+            return false;
+        }
+
+        long capacity = 0;
+        int factor = Math.max(1, mode.getCableCapacityFactor());
+        for (var node : OverloadedChannelOwnerHelper.getAllControllerNodes(grid)) {
+            if (ChannelProviderRegistry.isChannelProvider(node.getOwner())) {
+                capacity += (long) OverloadedChannelOwnerHelper.channelsPerController() * factor;
+            } else {
+                // Match BorrowedCapacityCalculator: every vanilla controller
+                // face leading out of the controller multiblock is an
+                // independent 32-channel source.
+                for (var connection : node.getConnections()) {
+                    var other = connection.getOtherSide(node);
+                    if (!(other.getOwner() instanceof ControllerBlockEntity)) {
+                        capacity += 32L * factor;
+                    }
+                }
+            }
+            if (capacity >= Integer.MAX_VALUE) {
+                capacity = Integer.MAX_VALUE;
+                break;
+            }
+        }
+        return OverloadedChannelOwnerHelper.countUsedChannels(grid) < capacity;
     }
 
     private ClusterComponent addTargetToComponent(
@@ -979,16 +1222,20 @@ public final class WirelessLinkRegistry extends SavedData {
 
         IGridNode targetNode = target.target().node();
         var runtime = runtimeConnections.get(link.linkId());
-        if (WirelessLinkOps.isConnectedTo(runtime, targetNode, transmitterNode)) {
+        if (runtime != null && WirelessLinkOps.isConnectedTo(runtime.get(targetNode), targetNode, transmitterNode)) {
             registerRuntimeAnchor(link.linkId(), targetNode);
             if (!MultiblockLinkReadiness.canKeepVirtualConnection(targetNode)) {
                 destroyRuntimeConnection(link, targetNode);
                 return markState(link, WirelessLinkState.TARGET_NOT_READY, server, cleanupPass);
             }
+            pendingChannelExpansion.add(link.linkId());
             return link.withState(WirelessLinkState.CONNECTED, currentGameTime(server)).clearInvalidTracking(currentGameTime(server));
         }
-        runtimeConnections.remove(link.linkId());
-        unregisterRuntimeAnchor(link.linkId(), targetNode);
+        if (runtime != null) {
+            destroyRuntimeConnection(link, targetNode);
+        } else {
+            unregisterRuntimeAnchor(link.linkId(), targetNode);
+        }
 
         if (!MultiblockLinkReadiness.canKeepVirtualConnection(targetNode)) {
             destroyRuntimeConnection(link, targetNode);
@@ -1005,8 +1252,12 @@ public final class WirelessLinkRegistry extends SavedData {
 
         try {
             var connection = WirelessLinkOps.createVirtualConnection(targetNode, transmitterNode);
-            runtimeConnections.put(link.linkId(), connection);
+            var entrances = new RuntimeEntrances();
+            entrances.put(targetNode, connection);
+            entrances.deferChannelCheck(currentGameTime(server) + 1);
+            runtimeConnections.put(link.linkId(), entrances);
             registerRuntimeAnchor(link.linkId(), targetNode);
+            pendingChannelExpansion.add(link.linkId());
             return link.withState(WirelessLinkState.CONNECTED, currentGameTime(server)).clearInvalidTracking(currentGameTime(server));
         } catch (IllegalStateException e) {
             return markState(link, WirelessLinkState.PENDING_TRANSMITTER, server, cleanupPass);
@@ -1136,11 +1387,19 @@ public final class WirelessLinkRegistry extends SavedData {
 
     private void destroyRuntimeConnection(WirelessLink link, @Nullable IGridNode targetNode) {
         var runtime = runtimeConnections.remove(link.linkId());
-        unregisterRuntimeAnchor(link.linkId(), targetNode);
-        WirelessLinkOps.destroy(runtime, targetNode);
-        if (targetNode != null) {
-            MultiblockLinkReadiness.refreshAfterVirtualConnectionRemoved(targetNode);
+        pendingChannelExpansion.remove(link.linkId());
+        if (runtime == null) {
+            unregisterRuntimeAnchor(link.linkId(), targetNode);
+            return;
         }
+
+        for (var entry : new ArrayList<>(runtime.entries())) {
+            var anchor = entry.getKey();
+            unregisterRuntimeAnchor(link.linkId(), anchor);
+            WirelessLinkOps.destroy(entry.getValue(), anchor);
+            MultiblockLinkReadiness.refreshAfterVirtualConnectionRemoved(anchor);
+        }
+        unregisterRuntimeAnchor(link.linkId(), null);
     }
 
     private void registerRuntimeAnchor(UUID linkId, IGridNode targetNode) {
