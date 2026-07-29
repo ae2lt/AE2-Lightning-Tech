@@ -3,7 +3,8 @@ package com.moakiee.ae2lt.machine.lightningchamber;
 import java.util.Objects;
 
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.items.IItemHandlerModifiable;
+
+import com.moakiee.ae2lt.machine.common.MatrixHidingAutomationInventory;
 
 /**
  * Capability-facing inventory wrapper.
@@ -11,26 +12,10 @@ import net.neoforged.neoforge.items.IItemHandlerModifiable;
  * <p>External automation only inserts into recipe input slots. The dedicated
  * catalyst matrix slot is reserved for manual GUI placement.</p>
  */
-public class LightningSimulationChamberAutomationInventory implements IItemHandlerModifiable {
-    private final LightningSimulationChamberInventory inventory;
-
+public class LightningSimulationChamberAutomationInventory
+        extends MatrixHidingAutomationInventory<LightningSimulationChamberInventory> {
     public LightningSimulationChamberAutomationInventory(LightningSimulationChamberInventory inventory) {
-        this.inventory = Objects.requireNonNull(inventory, "inventory");
-    }
-
-    @Override
-    public int getSlots() {
-        return inventory.getSlots();
-    }
-
-    @Override
-    public ItemStack getStackInSlot(int slot) {
-        return inventory.getStackInSlot(slot);
-    }
-
-    @Override
-    public void setStackInSlot(int slot, ItemStack stack) {
-        inventory.setStackInSlot(slot, stack);
+        super(inventory, LightningSimulationChamberInventory.SLOT_CATALYST);
     }
 
     @Override
@@ -83,11 +68,6 @@ public class LightningSimulationChamberAutomationInventory implements IItemHandl
             return ItemStack.EMPTY;
         }
         return inventory.extractItem(slot, amount, simulate);
-    }
-
-    @Override
-    public int getSlotLimit(int slot) {
-        return inventory.getSlotLimit(slot);
     }
 
     @Override

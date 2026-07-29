@@ -3,28 +3,13 @@ package com.moakiee.ae2lt.machine.overloadfactory;
 import java.util.Objects;
 
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.items.IItemHandlerModifiable;
 
-public class OverloadProcessingFactoryAutomationInventory implements IItemHandlerModifiable {
-    private final OverloadProcessingFactoryInventory inventory;
+import com.moakiee.ae2lt.machine.common.MatrixHidingAutomationInventory;
 
+public class OverloadProcessingFactoryAutomationInventory
+        extends MatrixHidingAutomationInventory<OverloadProcessingFactoryInventory> {
     public OverloadProcessingFactoryAutomationInventory(OverloadProcessingFactoryInventory inventory) {
-        this.inventory = Objects.requireNonNull(inventory, "inventory");
-    }
-
-    @Override
-    public int getSlots() {
-        return inventory.getSlots();
-    }
-
-    @Override
-    public ItemStack getStackInSlot(int slot) {
-        return inventory.getStackInSlot(slot);
-    }
-
-    @Override
-    public void setStackInSlot(int slot, ItemStack stack) {
-        inventory.setStackInSlot(slot, stack);
+        super(inventory, OverloadProcessingFactoryInventory.SLOT_MATRIX);
     }
 
     @Override
@@ -76,11 +61,6 @@ public class OverloadProcessingFactoryAutomationInventory implements IItemHandle
             return ItemStack.EMPTY;
         }
         return inventory.extractItem(slot, amount, simulate);
-    }
-
-    @Override
-    public int getSlotLimit(int slot) {
-        return inventory.getSlotLimit(slot);
     }
 
     @Override

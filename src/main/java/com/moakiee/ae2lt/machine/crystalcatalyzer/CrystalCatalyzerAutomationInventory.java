@@ -3,7 +3,8 @@ package com.moakiee.ae2lt.machine.crystalcatalyzer;
 import java.util.Objects;
 
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.items.IItemHandlerModifiable;
+
+import com.moakiee.ae2lt.machine.common.MatrixHidingAutomationInventory;
 
 /**
  * Capability-facing inventory wrapper.
@@ -11,26 +12,10 @@ import net.neoforged.neoforge.items.IItemHandlerModifiable;
  * <p>Automation may insert catalysts into slot 0. The dedicated matrix slot is
  * reserved for manual GUI placement, and extraction is restricted to output.</p>
  */
-public class CrystalCatalyzerAutomationInventory implements IItemHandlerModifiable {
-    private final CrystalCatalyzerInventory inventory;
-
+public class CrystalCatalyzerAutomationInventory
+        extends MatrixHidingAutomationInventory<CrystalCatalyzerInventory> {
     public CrystalCatalyzerAutomationInventory(CrystalCatalyzerInventory inventory) {
-        this.inventory = Objects.requireNonNull(inventory, "inventory");
-    }
-
-    @Override
-    public int getSlots() {
-        return inventory.getSlots();
-    }
-
-    @Override
-    public ItemStack getStackInSlot(int slot) {
-        return inventory.getStackInSlot(slot);
-    }
-
-    @Override
-    public void setStackInSlot(int slot, ItemStack stack) {
-        inventory.setStackInSlot(slot, stack);
+        super(inventory, CrystalCatalyzerInventory.SLOT_MATRIX);
     }
 
     @Override
@@ -62,11 +47,6 @@ public class CrystalCatalyzerAutomationInventory implements IItemHandlerModifiab
             return ItemStack.EMPTY;
         }
         return inventory.extractItem(slot, amount, simulate);
-    }
-
-    @Override
-    public int getSlotLimit(int slot) {
-        return inventory.getSlotLimit(slot);
     }
 
     @Override
