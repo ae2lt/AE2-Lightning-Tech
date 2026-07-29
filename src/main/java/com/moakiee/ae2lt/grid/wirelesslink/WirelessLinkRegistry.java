@@ -9,18 +9,25 @@ import appeng.api.parts.IPart;
 import appeng.api.parts.IPartHost;
 import appeng.api.parts.IPartItem;
 import appeng.blockentity.networking.ControllerBlockEntity;
+import appeng.parts.AEBasePart;
+import com.mojang.logging.LogUtils;
 import com.moakiee.ae2lt.blockentity.OverloadedControllerBlockEntity;
 import com.moakiee.ae2lt.blockentity.WirelessOverloadedControllerBlockEntity;
 import com.moakiee.ae2lt.config.AE2LTCommonConfig;
 import com.moakiee.ae2lt.grid.FrequencyAccessLevel;
-import com.moakiee.thunderbolt.ae2.channel.OverloadedChannelOwnerHelper;
 import com.moakiee.ae2lt.grid.WirelessFrequencyManager;
 import com.moakiee.ae2lt.item.OverloadedFrequencyCardItem;
+import com.moakiee.thunderbolt.ae2.channel.OverloadedChannelOwnerHelper;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
@@ -43,15 +50,24 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
 
 public final class WirelessLinkRegistry extends SavedData {
+    private static final Logger LOG = LogUtils.getLogger();
     private static final String DATA_NAME = "ae2lt_wireless_links";
     private static final int RESTORE_BATCH_SIZE = 64;
     private static final int RESTORE_INTERVAL_TICKS = 20;
+    private static final int TOPOLOGY_RECONCILE_DELAY_TICKS = 2;
+    private static final Comparator<WirelessLink> LINK_PREFERENCE =
+            Comparator.comparingLong(WirelessLink::createdTime)
+                    .thenComparing(link -> link.linkId().toString());
 
     private final WirelessLinkIndex links = new WirelessLinkIndex();
     private final Map<UUID, IGridConnection> runtimeConnections = new HashMap<>();
+    private final Map<IGridNode, LinkedHashSet<UUID>> runtimeLinksByAnchor = new IdentityHashMap<>();
     private final List<PendingAutoConnect> pendingAutoConnect = new ArrayList<>();
+    private final Map<TopologyChangeKey, PendingClusterReconcile> pendingClusterReconciles =
+            new LinkedHashMap<>();
 
     private int restoreCooldown;
     private long nextCleanupGameTime;
@@ -94,6 +110,73 @@ public final class WirelessLinkRegistry extends SavedData {
         }
     }
 
+    private record LocatedTarget(String dimensionId, long posLong, LinkTarget target) {
+        TargetLocator locator() {
+            return new TargetLocator(dimensionId, posLong, target.mode(), target.sideName());
+        }
+    }
+
+    private record TargetLocator(
+            String dimensionId,
+            long posLong,
+            WirelessLinkMode mode,
+            String sideName
+    ) {
+        TargetLocator {
+            sideName = sideName == null ? "" : sideName;
+        }
+    }
+
+    private record LinkInheritance(
+            UUID sourceLinkId,
+            int frequencyId,
+            UUID ownerUuid,
+            long createdTime
+    ) {
+        static LinkInheritance from(WirelessLink link) {
+            return new LinkInheritance(
+                    link.linkId(),
+                    link.frequencyId(),
+                    link.ownerUuid(),
+                    link.createdTime());
+        }
+    }
+
+    private record InheritedClusterSeed(TargetLocator locator, @Nullable LinkInheritance inheritance) {
+    }
+
+    private record TopologyChangeKey(String dimensionId, long posLong) {
+    }
+
+    private static final class PendingClusterReconcile {
+        private final String dimensionId;
+        private final long changedPosLong;
+        private final Set<InheritedClusterSeed> inheritedSeeds = new LinkedHashSet<>();
+        private final Set<UUID> sourceLinkIds = new LinkedHashSet<>();
+        private boolean inspectChangedPosition;
+        private int delayTicks;
+
+        private PendingClusterReconcile(String dimensionId, long changedPosLong) {
+            this.dimensionId = dimensionId;
+            this.changedPosLong = changedPosLong;
+            this.delayTicks = TOPOLOGY_RECONCILE_DELAY_TICKS;
+        }
+
+        private void postpone() {
+            delayTicks = TOPOLOGY_RECONCILE_DELAY_TICKS;
+        }
+    }
+
+    private static final class ClusterComponent {
+        private final Set<IGridNode> nodes;
+        private final List<LocatedTarget> anchorCandidates = new ArrayList<>();
+        private final Set<LinkInheritance> inheritedLinks = new LinkedHashSet<>();
+
+        private ClusterComponent(Set<IGridNode> nodes) {
+            this.nodes = nodes;
+        }
+    }
+
     private record PendingAutoConnect(UUID playerId, String dimensionId, long posLong, String sideName, int delayTicks) {
         PendingAutoConnect tickDown() {
             return new PendingAutoConnect(playerId, dimensionId, posLong, sideName, delayTicks - 1);
@@ -119,8 +202,11 @@ public final class WirelessLinkRegistry extends SavedData {
     public static void onServerStop() {
         if (instance != null) {
             instance.runtimeConnections.clear();
+            instance.runtimeLinksByAnchor.clear();
             instance.pendingAutoConnect.clear();
+            instance.pendingClusterReconciles.clear();
         }
+        WirelessLinkOps.clearWirelessBridgeTracking();
         instance = null;
     }
 
@@ -145,7 +231,105 @@ public final class WirelessLinkRegistry extends SavedData {
                 Math.max(1, delayTicks)));
     }
 
+    /**
+     * Schedules a post-change pass for placements and part additions. Once AE2
+     * has rebuilt its node connections, links that now land in the same physical
+     * cluster are collapsed to a single wireless entrance.
+     */
+    public void queueClusterTopologyChange(ServerLevel level, BlockPos changedPos) {
+        var pending = pendingClusterChange(level.dimension(), changedPos);
+        pending.inspectChangedPosition = true;
+        pending.postpone();
+    }
+
+    /**
+     * Captures the physical neighbours of a linked cluster before a block or
+     * cable-bus part is removed. Each surviving connected component inherits the
+     * original frequency, so A-B-C becoming A C keeps both A and C linked.
+     */
+    public void prepareClusterTopologyChange(ServerLevel level, BlockPos changedPos) {
+        var changedTargets = resolveAllTargetsAt(level, changedPos);
+        if (changedTargets.isEmpty()) {
+            return;
+        }
+
+        var alreadyHandled = PhysicalGridCluster.newIdentityNodeSet();
+        PendingClusterReconcile pending = null;
+        for (var changedTarget : changedTargets) {
+            if (alreadyHandled.contains(changedTarget.target().node())) {
+                continue;
+            }
+
+            var cluster = PhysicalGridCluster.collect(changedTarget.target().node());
+            alreadyHandled.addAll(cluster);
+            var clusterLinks = findLinksInCluster(cluster, level.getServer());
+            var frequencies = clusterLinks.stream()
+                    .map(WirelessLink::frequencyId)
+                    .distinct()
+                    .limit(2)
+                    .toList();
+            // A homogeneous cluster can safely clone its entrance onto every
+            // component produced by this removal. In a conflicted cluster there
+            // is no defensible way to guess which frequency a newly orphaned
+            // component should inherit; surviving anchors remain authoritative.
+            var inheritance = frequencies.size() == 1
+                    ? clusterLinks.stream()
+                            .min(LINK_PREFERENCE)
+                            .map(LinkInheritance::from)
+                            .orElse(null)
+                    : null;
+            if (clusterLinks.isEmpty()) {
+                continue;
+            }
+
+            if (pending == null) {
+                pending = pendingClusterChange(level.dimension(), changedPos);
+                pending.inspectChangedPosition = true;
+            }
+            for (var link : clusterLinks) {
+                pending.sourceLinkIds.add(link.linkId());
+            }
+
+            var changedNodes = changedTargets.stream()
+                    .map(candidate -> candidate.target().node())
+                    .filter(cluster::contains)
+                    .toList();
+            for (var neighbourNode : PhysicalGridCluster.directNeighbours(changedNodes)) {
+                var neighbour = locateNode(neighbourNode);
+                if (neighbour != null) {
+                    pending.inheritedSeeds.add(new InheritedClusterSeed(
+                            neighbour.locator(),
+                            inheritance));
+                }
+            }
+
+            // If the original entrance is not the block being removed, retain
+            // it as another reconciliation seed. This also covers unusual nodes
+            // whose physical neighbour cannot be converted back into a locator.
+            if (inheritance != null) {
+                var source = links.get(inheritance.sourceLinkId());
+                if (source != null && source.posLong() != changedPos.asLong()) {
+                    pending.inheritedSeeds.add(new InheritedClusterSeed(
+                            locatorOf(source),
+                            inheritance));
+                }
+            }
+        }
+
+        if (pending != null) {
+            pending.postpone();
+        }
+    }
+
+    private PendingClusterReconcile pendingClusterChange(ResourceKey<Level> dimension, BlockPos changedPos) {
+        var key = new TopologyChangeKey(dimension.location().toString(), changedPos.asLong());
+        return pendingClusterReconciles.computeIfAbsent(
+                key,
+                ignored -> new PendingClusterReconcile(key.dimensionId(), key.posLong()));
+    }
+
     public void tick(MinecraftServer server) {
+        processPendingClusterReconciles(server);
         processPendingAutoConnect(server);
 
         if (++restoreCooldown < RESTORE_INTERVAL_TICKS) {
@@ -163,6 +347,8 @@ public final class WirelessLinkRegistry extends SavedData {
     }
 
     public void onBlockChanged(ServerLevel level, BlockPos changedPos) {
+        prepareClusterTopologyChange(level, changedPos);
+
         var candidates = links.findAllInDimension(level.dimension().location().toString());
         if (candidates.isEmpty()) {
             return;
@@ -300,19 +486,55 @@ public final class WirelessLinkRegistry extends SavedData {
                 ? FrequencyAccessLevel.BLOCKED
                 : frequency.getPlayerAccess(player);
 
-        var existing = findLink(frequencyId, level.dimension(), pos, target.mode(), target.sideName());
-        if (existing != null) {
-            if (player == null || !existing.canBeRemovedBy(player.getUUID(), actorAccess.isManager())) {
+        var physicalCluster = PhysicalGridCluster.collect(target.node());
+        var clusterLinks = findLinksInCluster(physicalCluster, level.getServer());
+        var sameFrequencyLinks = clusterLinks.stream()
+                .filter(link -> link.frequencyId() == frequencyId)
+                .toList();
+        boolean hasOtherFrequency = clusterLinks.stream()
+                .anyMatch(link -> link.frequencyId() != frequencyId);
+
+        if (hasOtherFrequency) {
+            if (automatic || sameFrequencyLinks.isEmpty()) {
+                return ActionFeedback.red("ae2lt.frequency_card.cluster_frequency_conflict");
+            }
+            if (player == null || sameFrequencyLinks.stream()
+                    .anyMatch(link -> !link.canBeRemovedBy(player.getUUID(), actorAccess.isManager()))) {
                 return ActionFeedback.red("ae2lt.frequency_card.no_frequency_permission");
             }
-            removeLink(existing);
-            return ActionFeedback.green("ae2lt.frequency_card.disconnected");
+
+            // A card only owns its bound frequency. Removing every entrance in
+            // the conflicted cluster would let one frequency's manager delete
+            // another owner's link. Remove the matching frequency, then let the
+            // sole remaining frequency recover immediately.
+            for (var link : sameFrequencyLinks) {
+                if (links.contains(link.linkId())) {
+                    removeLink(link);
+                }
+            }
+            var component = new ClusterComponent(physicalCluster);
+            component.anchorCandidates.add(new LocatedTarget(
+                    level.dimension().location().toString(),
+                    pos.asLong(),
+                    target));
+            reconcileClusterComponent(component, level.getServer());
+            return ActionFeedback.green("ae2lt.frequency_card.disconnected_conflicting_frequency", frequencyId);
         }
 
-        if (findAnyLink(level.dimension(), pos, target.mode(), target.sideName()) != null) {
-            return ActionFeedback.red(target.mode() == WirelessLinkMode.PART
-                    ? "ae2lt.frequency_card.part_other_frequency"
-                    : "ae2lt.frequency_card.other_frequency");
+        if (!sameFrequencyLinks.isEmpty()) {
+            if (automatic) {
+                return ActionFeedback.green("ae2lt.frequency_card.auto_silent_skip");
+            }
+            if (player == null || sameFrequencyLinks.stream()
+                    .anyMatch(link -> !link.canBeRemovedBy(player.getUUID(), actorAccess.isManager()))) {
+                return ActionFeedback.red("ae2lt.frequency_card.no_frequency_permission");
+            }
+            for (var link : sameFrequencyLinks) {
+                if (links.contains(link.linkId())) {
+                    removeLink(link);
+                }
+            }
+            return ActionFeedback.green("ae2lt.frequency_card.disconnected");
         }
 
         // Frequency-card links require an advanced transmitter. Reject creation
@@ -333,41 +555,191 @@ public final class WirelessLinkRegistry extends SavedData {
         }
 
         UUID owner = player == null ? new UUID(0L, 0L) : player.getUUID();
-        long now = level.getGameTime();
-        var link = target.mode() == WirelessLinkMode.PART
-                ? WirelessLink.createPart(
-                        UUID.randomUUID(),
-                        frequencyId,
-                        level.dimension().location().toString(),
-                        pos.asLong(),
-                        target.sideName(),
-                        target.blockId(),
-                        target.blockEntityTypeId(),
-                        target.partId(),
-                        target.partClassName(),
-                        owner,
-                        now)
-                : WirelessLink.createDevice(
-                        UUID.randomUUID(),
-                        frequencyId,
-                        level.dimension().location().toString(),
-                        pos.asLong(),
-                        target.blockId(),
-                        target.blockEntityTypeId(),
-                        owner,
-                        now);
-        links.put(link);
-        registerDevice(link);
-        setDirty();
-
-        var updated = establishOrUpdate(link, level.getServer(), false);
-        links.put(updated);
-        setDirty();
+        var updated = createAndEstablishLink(
+                frequencyId,
+                owner,
+                new LocatedTarget(level.dimension().location().toString(), pos.asLong(), target),
+                level.getServer());
 
         if (updated.state() == WirelessLinkState.CONNECTED) {
             return ActionFeedback.green("ae2lt.frequency_card.connected", frequencyId);
         }
         return ActionFeedback.yellow("ae2lt.frequency_card.pending");
+    }
+
+    private void processPendingClusterReconciles(MinecraftServer server) {
+        if (pendingClusterReconciles.isEmpty()) {
+            return;
+        }
+
+        var ready = new ArrayList<PendingClusterReconcile>();
+        var iterator = pendingClusterReconciles.entrySet().iterator();
+        while (iterator.hasNext()) {
+            var pending = iterator.next().getValue();
+            if (--pending.delayTicks <= 0) {
+                ready.add(pending);
+                iterator.remove();
+            }
+        }
+
+        if (!ready.isEmpty()) {
+            reconcileClusterTopologies(server, ready);
+        }
+    }
+
+    private void reconcileClusterTopologies(
+            MinecraftServer server,
+            List<PendingClusterReconcile> pendingChanges) {
+        var components = new ArrayList<ClusterComponent>();
+        var componentByNode = new IdentityHashMap<IGridNode, ClusterComponent>();
+        var sourceIds = new LinkedHashSet<UUID>();
+
+        for (var pending : pendingChanges) {
+            var dim = ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(pending.dimensionId));
+            var level = server.getLevel(dim);
+            if (level == null) {
+                continue;
+            }
+
+            if (pending.inspectChangedPosition) {
+                for (var target : resolveAllTargetsAt(level, BlockPos.of(pending.changedPosLong))) {
+                    addTargetToComponent(target, components, componentByNode);
+                }
+            }
+
+            sourceIds.addAll(pending.sourceLinkIds);
+            for (var seed : pending.inheritedSeeds) {
+                var target = resolveLocator(seed.locator(), server);
+                if (target == null) {
+                    continue;
+                }
+                var component = addTargetToComponent(target, components, componentByNode);
+                if (seed.inheritance() != null) {
+                    component.inheritedLinks.add(seed.inheritance());
+                }
+            }
+        }
+
+        for (var component : components) {
+            reconcileClusterComponent(component, server);
+        }
+
+        // Part removal does not necessarily fire a block-break event. Recheck
+        // the original anchors immediately so a removed cable-bus part does not
+        // linger in SavedData or the frequency UI until the 20-tick restore pass.
+        for (var sourceId : sourceIds) {
+            var source = links.get(sourceId);
+            if (source == null) {
+                continue;
+            }
+            var updated = establishOrUpdate(source, server, false);
+            if (links.contains(updated.linkId())) {
+                links.put(updated);
+                setDirty();
+            }
+        }
+    }
+
+    private ClusterComponent addTargetToComponent(
+            LocatedTarget target,
+            List<ClusterComponent> components,
+            IdentityHashMap<IGridNode, ClusterComponent> componentByNode) {
+        IGridNode node = target.target().node();
+        var component = componentByNode.get(node);
+        if (component == null) {
+            var nodes = PhysicalGridCluster.collect(node);
+            component = new ClusterComponent(nodes);
+            components.add(component);
+            for (var member : nodes) {
+                componentByNode.put(member, component);
+            }
+        }
+        boolean alreadyCandidate = component.anchorCandidates.stream()
+                .anyMatch(candidate -> candidate.target().node() == node);
+        if (!alreadyCandidate) {
+            component.anchorCandidates.add(target);
+        }
+        return component;
+    }
+
+    private void reconcileClusterComponent(ClusterComponent component, MinecraftServer server) {
+        var existing = findLinksInCluster(component.nodes, server);
+        if (existing.isEmpty() && component.inheritedLinks.isEmpty()) {
+            return;
+        }
+
+        var allInheritance = new ArrayList<LinkInheritance>(component.inheritedLinks);
+        for (var link : existing) {
+            allInheritance.add(LinkInheritance.from(link));
+        }
+        long distinctFrequencies = allInheritance.stream()
+                .map(LinkInheritance::frequencyId)
+                .distinct()
+                .count();
+        if (distinctFrequencies > 1) {
+            LOG.warn(
+                    "Physical ME clusters carrying different overloaded frequencies were merged; "
+                            + "suspending all frequency entrances until the physical cluster is split "
+                            + "or one frequency is explicitly disconnected");
+            long now = currentGameTime(server);
+            for (var link : existing) {
+                destroyRuntimeConnection(link, resolveRuntimeTargetNode(link));
+                if (links.contains(link.linkId())) {
+                    links.put(link.withState(WirelessLinkState.CLUSTER_FREQUENCY_CONFLICT, now));
+                }
+            }
+            if (!existing.isEmpty()) {
+                setDirty();
+            }
+            return;
+        }
+
+        var winner = allInheritance.stream()
+                .min(Comparator.comparingLong(LinkInheritance::createdTime)
+                        .thenComparing(inheritance -> inheritance.sourceLinkId().toString()))
+                .orElse(null);
+        if (winner == null) {
+            return;
+        }
+
+        var keep = existing.stream()
+                .filter(link -> link.frequencyId() == winner.frequencyId())
+                .min(LINK_PREFERENCE)
+                .orElse(null);
+        for (var link : existing) {
+            if (keep == null || !link.linkId().equals(keep.linkId())) {
+                if (links.contains(link.linkId())) {
+                    removeLink(link);
+                }
+            }
+        }
+
+        if (keep == null) {
+            var anchor = component.anchorCandidates.stream()
+                    .filter(candidate -> component.nodes.contains(candidate.target().node()))
+                    .findFirst()
+                    .orElse(null);
+            if (anchor != null) {
+                createAndEstablishLink(winner.frequencyId(), winner.ownerUuid(), anchor, server);
+            }
+            return;
+        }
+
+        var current = links.get(keep.linkId());
+        if (current != null) {
+            // A removed duplicate may have shared the same block position in
+            // the frequency UI index (for example two cable-bus parts). Restore
+            // the surviving cluster entry before updating its runtime state.
+            registerDevice(current);
+            if (current.state() == WirelessLinkState.CLUSTER_FREQUENCY_CONFLICT) {
+                current = current.withState(WirelessLinkState.DISCONNECTED, currentGameTime(server));
+            }
+            var updated = establishOrUpdate(current, server, false);
+            if (links.contains(updated.linkId())) {
+                links.put(updated);
+                setDirty();
+            }
+        }
     }
 
     private void processPendingAutoConnect(MinecraftServer server) {
@@ -523,10 +895,58 @@ public final class WirelessLinkRegistry extends SavedData {
         }
     }
 
+    private WirelessLink createAndEstablishLink(
+            int frequencyId,
+            UUID ownerUuid,
+            LocatedTarget anchor,
+            MinecraftServer server) {
+        long now = currentGameTime(server);
+        LinkTarget target = anchor.target();
+        var link = target.mode() == WirelessLinkMode.PART
+                ? WirelessLink.createPart(
+                        UUID.randomUUID(),
+                        frequencyId,
+                        anchor.dimensionId(),
+                        anchor.posLong(),
+                        target.sideName(),
+                        target.blockId(),
+                        target.blockEntityTypeId(),
+                        target.partId(),
+                        target.partClassName(),
+                        ownerUuid,
+                        now)
+                : WirelessLink.createDevice(
+                        UUID.randomUUID(),
+                        frequencyId,
+                        anchor.dimensionId(),
+                        anchor.posLong(),
+                        target.blockId(),
+                        target.blockEntityTypeId(),
+                        ownerUuid,
+                        now);
+        links.put(link);
+        registerDevice(link);
+        setDirty();
+
+        var updated = establishOrUpdate(link, server, false);
+        if (links.contains(updated.linkId())) {
+            links.put(updated);
+            setDirty();
+        }
+        return updated;
+    }
+
     private WirelessLink establishOrUpdate(WirelessLink link, MinecraftServer server, boolean cleanupPass) {
         var target = resolvePersistedTarget(link, server);
         if (target.state() != null) {
             return markState(link, target.state(), server, cleanupPass);
+        }
+
+        // A topology reconciliation, not the periodic restore pass, owns
+        // conflict recovery. Otherwise the first record visited would silently
+        // win and reconnect before the other conflicting entrance is examined.
+        if (link.state() == WirelessLinkState.CLUSTER_FREQUENCY_CONFLICT) {
+            return link;
         }
 
         var manager = WirelessFrequencyManager.get();
@@ -560,6 +980,7 @@ public final class WirelessLinkRegistry extends SavedData {
         IGridNode targetNode = target.target().node();
         var runtime = runtimeConnections.get(link.linkId());
         if (WirelessLinkOps.isConnectedTo(runtime, targetNode, transmitterNode)) {
+            registerRuntimeAnchor(link.linkId(), targetNode);
             if (!MultiblockLinkReadiness.canKeepVirtualConnection(targetNode)) {
                 destroyRuntimeConnection(link, targetNode);
                 return markState(link, WirelessLinkState.TARGET_NOT_READY, server, cleanupPass);
@@ -567,6 +988,7 @@ public final class WirelessLinkRegistry extends SavedData {
             return link.withState(WirelessLinkState.CONNECTED, currentGameTime(server)).clearInvalidTracking(currentGameTime(server));
         }
         runtimeConnections.remove(link.linkId());
+        unregisterRuntimeAnchor(link.linkId(), targetNode);
 
         if (!MultiblockLinkReadiness.canKeepVirtualConnection(targetNode)) {
             destroyRuntimeConnection(link, targetNode);
@@ -584,6 +1006,7 @@ public final class WirelessLinkRegistry extends SavedData {
         try {
             var connection = WirelessLinkOps.createVirtualConnection(targetNode, transmitterNode);
             runtimeConnections.put(link.linkId(), connection);
+            registerRuntimeAnchor(link.linkId(), targetNode);
             return link.withState(WirelessLinkState.CONNECTED, currentGameTime(server)).clearInvalidTracking(currentGameTime(server));
         } catch (IllegalStateException e) {
             return markState(link, WirelessLinkState.PENDING_TRANSMITTER, server, cleanupPass);
@@ -630,7 +1053,7 @@ public final class WirelessLinkRegistry extends SavedData {
                 return PersistedTarget.state(WirelessLinkState.PART_MISSING);
             }
             var side = parseDirection(link.sideName());
-            var part = side == null ? null : host.getPart(side);
+            var part = host.getPart(side);
             if (part == null) {
                 return PersistedTarget.state(WirelessLinkState.PART_MISSING);
             }
@@ -713,10 +1136,82 @@ public final class WirelessLinkRegistry extends SavedData {
 
     private void destroyRuntimeConnection(WirelessLink link, @Nullable IGridNode targetNode) {
         var runtime = runtimeConnections.remove(link.linkId());
+        unregisterRuntimeAnchor(link.linkId(), targetNode);
         WirelessLinkOps.destroy(runtime, targetNode);
         if (targetNode != null) {
             MultiblockLinkReadiness.refreshAfterVirtualConnectionRemoved(targetNode);
         }
+    }
+
+    private void registerRuntimeAnchor(UUID linkId, IGridNode targetNode) {
+        runtimeLinksByAnchor
+                .computeIfAbsent(targetNode, ignored -> new LinkedHashSet<>())
+                .add(linkId);
+    }
+
+    private void unregisterRuntimeAnchor(UUID linkId, @Nullable IGridNode targetNode) {
+        if (targetNode != null) {
+            var ids = runtimeLinksByAnchor.get(targetNode);
+            if (ids != null) {
+                ids.remove(linkId);
+                if (ids.isEmpty()) {
+                    runtimeLinksByAnchor.remove(targetNode);
+                }
+            }
+            return;
+        }
+
+        var iterator = runtimeLinksByAnchor.entrySet().iterator();
+        while (iterator.hasNext()) {
+            var entry = iterator.next();
+            entry.getValue().remove(linkId);
+            if (entry.getValue().isEmpty()) {
+                iterator.remove();
+            }
+        }
+    }
+
+    private List<WirelessLink> findLinksInCluster(Set<IGridNode> cluster, MinecraftServer server) {
+        var ids = new LinkedHashSet<UUID>();
+        var dimensions = new LinkedHashSet<String>();
+        for (var node : cluster) {
+            var runtimeIds = runtimeLinksByAnchor.get(node);
+            if (runtimeIds != null) {
+                ids.addAll(runtimeIds);
+            }
+            try {
+                var level = node.getLevel();
+                if (level != null) {
+                    dimensions.add(level.dimension().location().toString());
+                }
+            } catch (RuntimeException ignored) {
+            }
+        }
+
+        // Pending and redundant links have no live GridConnection, but their
+        // loaded anchor may still belong to this cluster and must participate in
+        // toggle/de-duplication decisions.
+        for (var link : links.values()) {
+            if (ids.contains(link.linkId())
+                    || runtimeConnections.containsKey(link.linkId())
+                    || !dimensions.contains(link.dimensionId())) {
+                continue;
+            }
+            var target = resolvePersistedTarget(link, server);
+            if (target.target() != null && cluster.contains(target.target().node())) {
+                ids.add(link.linkId());
+            }
+        }
+
+        var result = new ArrayList<WirelessLink>(ids.size());
+        for (var id : ids) {
+            var link = links.get(id);
+            if (link != null) {
+                result.add(link);
+            }
+        }
+        result.sort(LINK_PREFERENCE);
+        return result;
     }
 
     @Nullable
@@ -725,16 +1220,6 @@ public final class WirelessLinkRegistry extends SavedData {
         if (server == null) return null;
         var target = resolvePersistedTarget(link, server);
         return target.target() == null ? null : target.target().node();
-    }
-
-    @Nullable
-    private WirelessLink findLink(int frequencyId, ResourceKey<Level> dimension, BlockPos pos, WirelessLinkMode mode, String sideName) {
-        return links.find(frequencyId, dimension.location().toString(), pos.asLong(), mode, sideName);
-    }
-
-    @Nullable
-    private WirelessLink findAnyLink(ResourceKey<Level> dimension, BlockPos pos, WirelessLinkMode mode, String sideName) {
-        return links.findAny(dimension.location().toString(), pos.asLong(), mode, sideName);
     }
 
     private TargetResolution resolveTarget(ServerLevel level, BlockPos pos, @Nullable Direction face, @Nullable Vec3 hitVec) {
@@ -747,7 +1232,7 @@ public final class WirelessLinkRegistry extends SavedData {
 
         if (be instanceof IPartHost partHost) {
             var partTarget = resolvePartTarget(level, pos, partHost, face, hitVec);
-            return partTarget.orElseGet(() -> TargetResolution.fail("ae2lt.frequency_card.target_is_cable"));
+            return partTarget.orElseGet(() -> TargetResolution.fail("ae2lt.frequency_card.unsupported_target"));
         }
 
         return resolveDeviceTarget(level, pos, face);
@@ -772,7 +1257,11 @@ public final class WirelessLinkRegistry extends SavedData {
             part = partHost.getPart(face);
             side = face;
         }
-        if (part == null || side == null) {
+        if (part == null) {
+            part = partHost.getPart(null);
+            side = null;
+        }
+        if (part == null) {
             return Optional.empty();
         }
 
@@ -781,27 +1270,14 @@ public final class WirelessLinkRegistry extends SavedData {
             return Optional.of(TargetResolution.fail("ae2lt.frequency_card.unsupported_target"));
         }
 
-        var be = level.getBlockEntity(pos);
-        String beType = be == null
-                ? "minecraft:empty"
-                : BuiltInRegistries.BLOCK_ENTITY_TYPE.getKey(be.getType()).toString();
-        return Optional.of(TargetResolution.target(new LinkTarget(
-                WirelessLinkMode.PART,
-                node,
-                side.getName(),
-                BuiltInRegistries.BLOCK.getKey(level.getBlockState(pos).getBlock()).toString(),
-                beType,
-                partId(part),
-                part.getClass().getName())));
+        return Optional.of(TargetResolution.target(
+                linkTargetForPart(level, pos, part, side, node)));
     }
 
     private TargetResolution resolveDeviceTarget(ServerLevel level, BlockPos pos, @Nullable Direction face) {
         IInWorldGridNodeHost host = GridHelper.getNodeHost(level, pos);
         IGridNode node = null;
         if (host != null) {
-            if (host instanceof IPartHost) {
-                return TargetResolution.fail("ae2lt.frequency_card.target_is_cable");
-            }
             for (var sideName : WirelessLinkSideProbeOrder.forPreferredSide(face == null ? "" : face.getName())) {
                 var side = parseDirection(sideName);
                 if (side != null) {
@@ -842,6 +1318,209 @@ public final class WirelessLinkRegistry extends SavedData {
                 ""));
     }
 
+    private List<LocatedTarget> resolveAllTargetsAt(ServerLevel level, BlockPos pos) {
+        var be = level.getBlockEntity(pos);
+        if (be == null
+                || be instanceof OverloadedControllerBlockEntity
+                || be instanceof WirelessOverloadedControllerBlockEntity
+                || be instanceof ControllerBlockEntity) {
+            return List.of();
+        }
+
+        var result = new ArrayList<LocatedTarget>();
+        var seen = PhysicalGridCluster.newIdentityNodeSet();
+        String dimensionId = level.dimension().location().toString();
+
+        if (be instanceof IPartHost partHost) {
+            addPartTarget(level, pos, partHost.getPart(null), null, dimensionId, seen, result);
+            for (var side : Direction.values()) {
+                addPartTarget(level, pos, partHost.getPart(side), side, dimensionId, seen, result);
+            }
+        }
+
+        IInWorldGridNodeHost host = GridHelper.getNodeHost(level, pos);
+        if (host != null && !(host instanceof IPartHost)) {
+            for (var side : Direction.values()) {
+                var node = host.getGridNode(side);
+                if (node != null && seen.add(node)) {
+                    result.add(new LocatedTarget(
+                            dimensionId,
+                            pos.asLong(),
+                            linkTargetForDevice(level, pos, node)));
+                }
+            }
+        }
+
+        if (result.isEmpty()) {
+            for (var side : Direction.values()) {
+                var node = GridHelper.getExposedNode(level, pos, side);
+                if (node != null && seen.add(node)) {
+                    result.add(new LocatedTarget(
+                            dimensionId,
+                            pos.asLong(),
+                            linkTargetForDevice(level, pos, node)));
+                }
+            }
+        }
+        return result;
+    }
+
+    private void addPartTarget(
+            ServerLevel level,
+            BlockPos pos,
+            @Nullable IPart part,
+            @Nullable Direction side,
+            String dimensionId,
+            Set<IGridNode> seen,
+            List<LocatedTarget> result) {
+        if (part == null) {
+            return;
+        }
+        var node = part.getGridNode();
+        if (node != null && seen.add(node)) {
+            result.add(new LocatedTarget(
+                    dimensionId,
+                    pos.asLong(),
+                    linkTargetForPart(level, pos, part, side, node)));
+        }
+    }
+
+    @Nullable
+    private LocatedTarget locateNode(IGridNode node) {
+        Object owner;
+        try {
+            owner = node.getOwner();
+        } catch (RuntimeException ignored) {
+            return null;
+        }
+
+        if (owner instanceof AEBasePart part) {
+            var be = part.getBlockEntity();
+            if (be != null && be.getLevel() instanceof ServerLevel level) {
+                return new LocatedTarget(
+                        level.dimension().location().toString(),
+                        be.getBlockPos().asLong(),
+                        linkTargetForPart(level, be.getBlockPos(), part, part.getSide(), node));
+            }
+        }
+
+        if (owner instanceof BlockEntity be && be.getLevel() instanceof ServerLevel level) {
+            if (be instanceof IPartHost partHost) {
+                var locatedPart = locatePartNode(level, be.getBlockPos(), partHost, node);
+                if (locatedPart != null) {
+                    return locatedPart;
+                }
+            }
+            return new LocatedTarget(
+                    level.dimension().location().toString(),
+                    be.getBlockPos().asLong(),
+                    linkTargetForDevice(level, be.getBlockPos(), node));
+        }
+        return null;
+    }
+
+    @Nullable
+    private LocatedTarget locatePartNode(
+            ServerLevel level,
+            BlockPos pos,
+            IPartHost host,
+            IGridNode expectedNode) {
+        var center = host.getPart(null);
+        if (center != null && center.getGridNode() == expectedNode) {
+            return new LocatedTarget(
+                    level.dimension().location().toString(),
+                    pos.asLong(),
+                    linkTargetForPart(level, pos, center, null, expectedNode));
+        }
+        for (var side : Direction.values()) {
+            var part = host.getPart(side);
+            if (part != null && part.getGridNode() == expectedNode) {
+                return new LocatedTarget(
+                        level.dimension().location().toString(),
+                        pos.asLong(),
+                        linkTargetForPart(level, pos, part, side, expectedNode));
+            }
+        }
+        return null;
+    }
+
+    @Nullable
+    private LocatedTarget resolveLocator(TargetLocator locator, MinecraftServer server) {
+        var dim = ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(locator.dimensionId()));
+        var level = server.getLevel(dim);
+        if (level == null) {
+            return null;
+        }
+        var pos = BlockPos.of(locator.posLong());
+        if (level.getChunkSource().getChunkNow(pos.getX() >> 4, pos.getZ() >> 4) == null) {
+            return null;
+        }
+
+        if (locator.mode() == WirelessLinkMode.PART) {
+            var be = level.getBlockEntity(pos);
+            if (!(be instanceof IPartHost host)) {
+                return null;
+            }
+            var side = parseDirection(locator.sideName());
+            var part = host.getPart(side);
+            if (part == null || part.getGridNode() == null) {
+                return null;
+            }
+            return new LocatedTarget(
+                    locator.dimensionId(),
+                    locator.posLong(),
+                    linkTargetForPart(level, pos, part, side, part.getGridNode()));
+        }
+
+        var resolution = resolveDeviceTarget(level, pos, null);
+        if (resolution.target() == null) {
+            return null;
+        }
+        return new LocatedTarget(locator.dimensionId(), locator.posLong(), resolution.target());
+    }
+
+    private static TargetLocator locatorOf(WirelessLink link) {
+        return new TargetLocator(
+                link.dimensionId(),
+                link.posLong(),
+                link.mode(),
+                link.sideName());
+    }
+
+    private LinkTarget linkTargetForPart(
+            ServerLevel level,
+            BlockPos pos,
+            IPart part,
+            @Nullable Direction side,
+            IGridNode node) {
+        var be = level.getBlockEntity(pos);
+        String beType = be == null
+                ? "minecraft:empty"
+                : BuiltInRegistries.BLOCK_ENTITY_TYPE.getKey(be.getType()).toString();
+        return new LinkTarget(
+                WirelessLinkMode.PART,
+                node,
+                side == null ? "" : side.getName(),
+                BuiltInRegistries.BLOCK.getKey(level.getBlockState(pos).getBlock()).toString(),
+                beType,
+                partId(part),
+                part.getClass().getName());
+    }
+
+    private LinkTarget linkTargetForDevice(ServerLevel level, BlockPos pos, IGridNode node) {
+        var be = level.getBlockEntity(pos);
+        return new LinkTarget(
+                WirelessLinkMode.DEVICE,
+                node,
+                "",
+                BuiltInRegistries.BLOCK.getKey(level.getBlockState(pos).getBlock()).toString(),
+                be == null
+                        ? "minecraft:empty"
+                        : BuiltInRegistries.BLOCK_ENTITY_TYPE.getKey(be.getType()).toString(),
+                "",
+                "");
+    }
+
     private static String partId(IPart part) {
         var item = part.getPartItem();
         var id = item == null ? null : IPartItem.getId(item);
@@ -875,9 +1554,7 @@ public final class WirelessLinkRegistry extends SavedData {
                 BlockPos.of(link.posLong()),
                 false,
                 false,
-                link.mode() == WirelessLinkMode.PART
-                        ? "ae2lt.frequency_card.device.part"
-                        : "block." + link.blockId().replace(':', '.')));
+                "ae2lt.frequency_card.device.cluster"));
     }
 
     private void unregisterDevice(WirelessLink link) {
