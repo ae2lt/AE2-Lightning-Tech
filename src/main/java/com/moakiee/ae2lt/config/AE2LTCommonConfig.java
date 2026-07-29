@@ -650,7 +650,7 @@ public final class AE2LTCommonConfig {
 
             builder.push("penalty");
             overloadArmorShieldComboWindowTicks = builder
-                    .comment("Ticks in the linear combo window for matrix and phase shield lightning cost scaling.")
+                    .comment("Ticks in the linear combo window for matrix shield lightning cost scaling.")
                     .defineInRange("shieldComboWindowTicks", 200, 1, 20 * 60 * 60);
             overloadArmorUndyingComboWindowTicks = builder
                     .comment("Ticks in the linear combo window for undying FE and EHV cost scaling.")

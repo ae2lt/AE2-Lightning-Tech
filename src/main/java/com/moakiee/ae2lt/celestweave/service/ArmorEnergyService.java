@@ -15,6 +15,11 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 
+import appeng.api.config.Actionable;
+import appeng.api.networking.IGrid;
+import appeng.api.networking.security.IActionSource;
+import appeng.api.storage.MEStorage;
+
 import com.moakiee.ae2lt.device.capability.DeviceCapability;
 import com.moakiee.ae2lt.device.module.OverloadDeviceModuleItem;
 import com.moakiee.ae2lt.config.AE2LTCommonConfig;
@@ -27,6 +32,8 @@ import com.moakiee.ae2lt.celestweave.PhaseFlightPlayerState;
 import com.moakiee.ae2lt.celestweave.module.PhaseFlightSubmodule;
 import com.moakiee.ae2lt.celestweave.service.ArmorLightningService.LightningCost;
 import com.moakiee.ae2lt.celestweave.phase.CelestweaveEquipmentAccess;
+import com.moakiee.ae2lt.device.network.ArmorNetworkBinding;
+import com.moakiee.ae2lt.logic.energy.AppFluxBridge;
 
 public final class ArmorEnergyService {
     private static final ConcurrentHashMap<UUID, Long> NEXT_NETWORK_RETRY_TICK = new ConcurrentHashMap<>();
@@ -87,17 +94,27 @@ public final class ArmorEnergyService {
         return consumeActiveCostPayment(player, armor, amount).paid();
     }
 
+    /**
+     * Pays an active ability cost from equipped armor buffers and then directly from their bound
+     * networks. Active abilities must not fail merely because one armor buffer cannot hold their
+     * complete atomic cost.
+     */
     public static EnergyPayment consumeActiveCostPayment(Player player, ItemStack armor, long amount) {
-        return consumeCost(player, armor, amount, true);
+        return consumeCost(player, armor, amount, true, true);
     }
 
     private static EnergyPayment consumeBufferedCost(Player player, ItemStack armor, long amount) {
-        return consumeCost(player, armor, amount, false);
+        return consumeCost(player, armor, amount, false, false);
     }
 
-    private static EnergyPayment consumeCost(Player player, ItemStack armor, long amount, boolean activeRecharge) {
+    private static EnergyPayment consumeCost(
+            Player player,
+            ItemStack armor,
+            long amount,
+            boolean activeRecharge,
+            boolean includeBoundNetworks) {
         if (amount <= 0L) {
-            return EnergyPayment.paid(player, List.of());
+            return EnergyPayment.paid(player, List.of(), List.of());
         }
         if (!(player instanceof ServerPlayer serverPlayer)) {
             return EnergyPayment.unpaid(player);
@@ -106,7 +123,7 @@ public final class ArmorEnergyService {
         if (activeRecharge) {
             rechargeCandidatesForCost(serverPlayer, candidates, amount);
         }
-        return consumePlannedCost(serverPlayer, candidates, amount);
+        return consumePlannedCost(serverPlayer, candidates, amount, includeBoundNetworks);
     }
 
     private static long rechargeFromNetwork(ServerPlayer player, ItemStack armor, long request, boolean ignoreCooldown) {
@@ -159,25 +176,106 @@ public final class ArmorEnergyService {
         }
     }
 
-    private static EnergyPayment consumePlannedCost(ServerPlayer player, List<ItemStack> candidates, long amount) {
+    private static EnergyPayment consumePlannedCost(
+            ServerPlayer player,
+            List<ItemStack> candidates,
+            long amount,
+            boolean includeBoundNetworks) {
         var sources = new ArrayList<ArmorEnergySpendPlan.Source>();
         for (int i = 0; i < candidates.size(); i++) {
             sources.add(new ArmorEnergySpendPlan.Source(
                     i,
                     ArmorEnergyBuffer.read(candidates.get(i), player.registryAccess())));
         }
+        List<NetworkEnergySource> networkSources = includeBoundNetworks
+                ? collectNetworkEnergySources(player, candidates, amount)
+                : List.of();
+        int networkSourceOffset = sources.size();
+        for (int i = 0; i < networkSources.size(); i++) {
+            sources.add(new ArmorEnergySpendPlan.Source(
+                    networkSourceOffset + i,
+                    networkSources.get(i).available()));
+        }
         ArmorEnergySpendPlan plan = ArmorEnergySpendPlan.create(amount, sources);
         if (!plan.canPay()) {
             return EnergyPayment.unpaid(player);
         }
         var debits = new ArrayList<EnergyDebit>();
+        var networkDebits = new ArrayList<NetworkEnergyDebit>();
         for (ArmorEnergySpendPlan.Debit debit : plan.debits()) {
-            ItemStack stack = candidates.get(debit.sourceIndex());
-            long current = ArmorEnergyBuffer.read(stack, player.registryAccess());
-            ArmorEnergyBuffer.write(stack, player.registryAccess(), current - debit.amount());
-            debits.add(new EnergyDebit(stack, debit.amount()));
+            if (debit.sourceIndex() < networkSourceOffset) {
+                ItemStack stack = candidates.get(debit.sourceIndex());
+                long current = ArmorEnergyBuffer.read(stack, player.registryAccess());
+                ArmorEnergyBuffer.write(stack, player.registryAccess(), current - debit.amount());
+                debits.add(new EnergyDebit(stack, debit.amount()));
+                continue;
+            }
+            NetworkEnergySource source = networkSources.get(debit.sourceIndex() - networkSourceOffset);
+            long extracted = source.storage().extract(
+                    AppFluxBridge.FE_KEY,
+                    debit.amount(),
+                    Actionable.MODULATE,
+                    source.actionSource());
+            if (extracted > 0L) {
+                networkDebits.add(new NetworkEnergyDebit(source.storage(), source.actionSource(), extracted));
+            }
+            if (extracted < debit.amount()) {
+                refundNetworkDebits(networkDebits);
+                refundEnergyDebits(player, debits);
+                return EnergyPayment.unpaid(player);
+            }
         }
-        return EnergyPayment.paid(player, debits);
+        return EnergyPayment.paid(player, debits, networkDebits);
+    }
+
+    private static List<NetworkEnergySource> collectNetworkEnergySources(
+            ServerPlayer player,
+            List<ItemStack> candidates,
+            long maximumRequest) {
+        if (maximumRequest <= 0L || !AppFluxBridge.isAvailable() || AppFluxBridge.FE_KEY == null) {
+            return List.of();
+        }
+        Set<IGrid> seenGrids = Collections.newSetFromMap(new IdentityHashMap<>());
+        IActionSource actionSource = IActionSource.ofPlayer(player);
+        var sources = new ArrayList<NetworkEnergySource>();
+        for (ItemStack candidate : candidates) {
+            var bound = ArmorNetworkBinding.INSTANCE.resolve(candidate, player);
+            IGrid grid = bound.success() ? bound.grid() : null;
+            if (grid == null || !seenGrids.add(grid)) {
+                continue;
+            }
+            MEStorage storage = grid.getStorageService().getInventory();
+            long available = storage.extract(
+                    AppFluxBridge.FE_KEY,
+                    maximumRequest,
+                    Actionable.SIMULATE,
+                    actionSource);
+            if (available > 0L) {
+                sources.add(new NetworkEnergySource(storage, actionSource, available));
+            }
+        }
+        return List.copyOf(sources);
+    }
+
+    private static void refundEnergyDebits(ServerPlayer player, List<EnergyDebit> debits) {
+        for (int i = debits.size() - 1; i >= 0; i--) {
+            EnergyDebit debit = debits.get(i);
+            refundCost(player, debit.armor(), debit.amount());
+        }
+    }
+
+    private static void refundNetworkDebits(List<NetworkEnergyDebit> debits) {
+        if (AppFluxBridge.FE_KEY == null) {
+            return;
+        }
+        for (int i = debits.size() - 1; i >= 0; i--) {
+            NetworkEnergyDebit debit = debits.get(i);
+            debit.storage().insert(
+                    AppFluxBridge.FE_KEY,
+                    debit.amount(),
+                    Actionable.MODULATE,
+                    debit.actionSource());
+        }
     }
 
     private static List<ItemStack> collectEnergyCandidates(ServerPlayer player, ItemStack preferredArmor) {
@@ -302,23 +400,38 @@ public final class ArmorEnergyService {
     private record EnergyDebit(ItemStack armor, long amount) {
     }
 
+    private record NetworkEnergySource(MEStorage storage, IActionSource actionSource, long available) {
+    }
+
+    private record NetworkEnergyDebit(MEStorage storage, IActionSource actionSource, long amount) {
+    }
+
     public static final class EnergyPayment {
         private final Player player;
         private final boolean paid;
         private final List<EnergyDebit> debits;
+        private final List<NetworkEnergyDebit> networkDebits;
 
-        private EnergyPayment(Player player, boolean paid, List<EnergyDebit> debits) {
+        private EnergyPayment(
+                Player player,
+                boolean paid,
+                List<EnergyDebit> debits,
+                List<NetworkEnergyDebit> networkDebits) {
             this.player = player;
             this.paid = paid;
             this.debits = List.copyOf(debits);
+            this.networkDebits = List.copyOf(networkDebits);
         }
 
-        private static EnergyPayment paid(Player player, List<EnergyDebit> debits) {
-            return new EnergyPayment(player, true, debits);
+        private static EnergyPayment paid(
+                Player player,
+                List<EnergyDebit> debits,
+                List<NetworkEnergyDebit> networkDebits) {
+            return new EnergyPayment(player, true, debits, networkDebits);
         }
 
         private static EnergyPayment unpaid(Player player) {
-            return new EnergyPayment(player, false, List.of());
+            return new EnergyPayment(player, false, List.of(), List.of());
         }
 
         public boolean paid() {
@@ -329,10 +442,8 @@ public final class ArmorEnergyService {
             if (!(player instanceof ServerPlayer serverPlayer)) {
                 return;
             }
-            for (int i = debits.size() - 1; i >= 0; i--) {
-                EnergyDebit debit = debits.get(i);
-                refundCost(serverPlayer, debit.armor(), debit.amount());
-            }
+            refundNetworkDebits(networkDebits);
+            refundEnergyDebits(serverPlayer, debits);
         }
     }
 }
