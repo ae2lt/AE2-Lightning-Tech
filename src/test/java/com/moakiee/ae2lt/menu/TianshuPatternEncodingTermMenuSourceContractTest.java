@@ -26,6 +26,20 @@ class TianshuPatternEncodingTermMenuSourceContractTest {
     }
 
     @Test
+    void blankStagingReportsMissingPatternsAndInsufficientPower()
+            throws Exception {
+        String menu = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/menu/TianshuPatternEncodingTermMenu.java"));
+
+        assertTrue(menu.contains("storage.extract("));
+        assertTrue(menu.contains(
+                "actionSource, Actionable.SIMULATE"));
+        assertTrue(menu.contains("ae2lt.tianshu.encode.missing_blank"));
+        assertTrue(menu.contains("ae2lt.tianshu.encode.insufficient_power"));
+        assertTrue(menu.contains("ae2lt.tianshu.encode.extraction_failed"));
+    }
+
+    @Test
     void terminalUsesTheInheritedNetworkInventoryDuringAe2Synchronization() throws Exception {
         String menu = Files.readString(Path.of(
                 "src/main/java/com/moakiee/ae2lt/menu/TianshuPatternEncodingTermMenu.java"));

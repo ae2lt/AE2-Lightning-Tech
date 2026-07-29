@@ -4,6 +4,7 @@ import appeng.menu.guisync.GuiSync;
 import appeng.menu.implementations.MenuTypeBuilder;
 import appeng.menu.me.items.PatternEncodingTermMenu;
 import appeng.parts.encoding.EncodingMode;
+import appeng.api.config.Actionable;
 import appeng.api.crafting.PatternDetailsHelper;
 import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.AEKey;
@@ -2308,11 +2309,34 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         var encodedInventory = tianshuHost.getLogic().getEncodedPatternInv();
         if (!encodedInventory.getStackInSlot(0).isEmpty() || !getLinkStatus().connected()) return false;
         var blankPatternKey = AEItemKey.of(AEItems.BLANK_PATTERN.asItem());
+        var actionSource = getActionSource();
+        long available = storage.extract(
+                blankPatternKey, 1, Actionable.SIMULATE, actionSource);
+        if (available <= 0) {
+            notifyEncodingFailure("ae2lt.tianshu.encode.missing_blank");
+            return false;
+        }
+        long poweredAvailable = StorageHelper.poweredExtraction(
+                energySource, storage, blankPatternKey, 1, actionSource, Actionable.SIMULATE);
+        if (poweredAvailable <= 0) {
+            notifyEncodingFailure("ae2lt.tianshu.encode.insufficient_power");
+            return false;
+        }
         long extracted = StorageHelper.poweredExtraction(
-                energySource, storage, blankPatternKey, 1, getActionSource());
-        if (extracted <= 0) return false;
+                energySource, storage, blankPatternKey, 1, actionSource);
+        if (extracted <= 0) {
+            notifyEncodingFailure("ae2lt.tianshu.encode.extraction_failed");
+            return false;
+        }
         encodedInventory.setItemDirect(0, AEItems.BLANK_PATTERN.stack((int) extracted));
         return true;
+    }
+
+    private void notifyEncodingFailure(String translationKey) {
+        if (getPlayer() instanceof ServerPlayer player) {
+            player.displayClientMessage(
+                    net.minecraft.network.chat.Component.translatable(translationKey), false);
+        }
     }
 
     private void returnStagedBlankPatternToNetwork() {
