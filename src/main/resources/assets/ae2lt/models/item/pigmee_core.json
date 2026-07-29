@@ -1,3 +1,6 @@
 {
-  "parent": "ae2lt:item/pigmee_storage_component"
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "ae2lt:item/pigmee_core"
+  }
 }
