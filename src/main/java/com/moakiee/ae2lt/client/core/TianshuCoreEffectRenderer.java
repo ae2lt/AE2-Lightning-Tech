@@ -35,7 +35,8 @@ public final class TianshuCoreEffectRenderer
     public void render(TianshuSupercomputerControllerBlockEntity controller, float partialTick,
                        PoseStack stack, MultiBufferSource buffers, int packedLight, int packedOverlay) {
         var state = controller.getBlockState();
-        if (!AE2LTClientConfig.renderMultiblockCoreEffects()
+        if (!AE2LTClientConfig.useVeilRendering()
+                || !AE2LTClientConfig.renderMultiblockCoreEffects()
                 || !state.hasProperty(TianshuSupercomputerControllerBlock.FORMED)
                 || !state.getValue(TianshuSupercomputerControllerBlock.FORMED)
                 || controller.getLevel() == null) {
