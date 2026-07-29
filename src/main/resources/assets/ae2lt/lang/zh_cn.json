@@ -1263,7 +1263,5 @@
   "ae2lt.tianshu.reserve.empty": "尚未配置全局保留项",
   "ae2lt.tianshu.issue.chunks_unloaded": "结构覆盖的区块未完整加载",
   "ae2lt.gui.matrix_port.search": "搜索矩阵样板",
-  "ae2lt.gui.matrix_port.title": "样板管理",
-  "ae2lt.compat.data_energistics.unsupported": "[AE2LT] 检测到数据能源学 %s：该组合明确不兼容。",
-  "ae2lt.compat.data_energistics.feedback_rejected": "AE2LT 不接受任何同时加载数据能源学时产生的问题反馈；请移除数据能源学并确认问题仍可复现后再提交。"
+  "ae2lt.gui.matrix_port.title": "样板管理"
 }
