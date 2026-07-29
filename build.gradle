@@ -189,6 +189,9 @@ def jdbProbeModPaths = providers.gradleProperty('ae2ltJdbProbeMods')
         .getOrElse('')
         .split(java.io.File.pathSeparator)
         .findAll { !it.isBlank() }
+def enableVeilDevRuntime = providers.gradleProperty('ae2ltEnableVeilDevRuntime')
+        .getOrElse('false')
+        .toBoolean()
 
 dependencies {
     // Thunderbolt Core — the extracted AE2 infrastructure layer (fast crafting planner,
@@ -200,9 +203,17 @@ dependencies {
     jdbProbeModPaths.each { runtimeOnly files(it) }
 
     implementation "curse.maven:applied-energistics-2-223794:7027323"
-    implementation("foundry.veil:veil-neoforge-${minecraft_version}:${veil_version}") {
+    compileOnly("foundry.veil:veil-neoforge-${minecraft_version}:${veil_version}") {
         exclude group: "maven.modrinth"
         exclude group: "me.fallenbreath"
+    }
+    // Veil is optional in published builds. This opt-in runtime switch exists only so both
+    // rendering backends can be exercised from the development client.
+    if (enableVeilDevRuntime) {
+        runtimeOnly("foundry.veil:veil-neoforge-${minecraft_version}:${veil_version}") {
+            exclude group: "maven.modrinth"
+            exclude group: "me.fallenbreath"
+        }
     }
     // The API is embedded so the wireless terminal item remains loadable when the optional
     // AE2WTLib implementation is not installed. This is the integration pattern used by

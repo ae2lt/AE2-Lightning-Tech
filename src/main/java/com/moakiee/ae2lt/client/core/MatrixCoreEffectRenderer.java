@@ -34,7 +34,7 @@ public final class MatrixCoreEffectRenderer implements BlockEntityRenderer<Matri
     public void render(MatrixControllerBlockEntity controller, float partialTick,
                        PoseStack stack, MultiBufferSource buffers, int packedLight, int packedOverlay) {
         var state = controller.getBlockState();
-        if (!AE2LTClientConfig.useVeilRendering()
+        if (!AE2LTClientConfig.useCoreShaderRendering()
                 || !AE2LTClientConfig.renderMultiblockCoreEffects()
                 || !state.hasProperty(MatrixControllerBlock.FORMED)
                 || !state.getValue(MatrixControllerBlock.FORMED)

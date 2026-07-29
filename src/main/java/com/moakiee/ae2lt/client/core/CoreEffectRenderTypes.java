@@ -1,21 +1,19 @@
 package com.moakiee.ae2lt.client.core;
 
 import com.moakiee.ae2lt.AE2LightningTech;
+import com.moakiee.ae2lt.client.core.veil.VeilCoreEffectShaders;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.VertexFormat;
-import foundry.veil.api.client.render.VeilRenderBridge;
+import net.minecraft.client.renderer.RenderStateShard;
 import net.minecraft.client.renderer.RenderType;
-import net.minecraft.resources.ResourceLocation;
 
 final class CoreEffectRenderTypes extends RenderType {
-    private static final ResourceLocation TIANSHU_SHADER =
-            ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "multiblock/tianshu_core");
-    private static final ResourceLocation MATRIX_SHADER =
-            ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "multiblock/matrix_core");
-
-    private static final RenderType TIANSHU = createEffectType("tianshu", TIANSHU_SHADER);
-    private static final RenderType MATRIX_CORE = createEffectType("matrix_core", MATRIX_SHADER);
-    private static final RenderType MATRIX_GLOW = createGlowEffectType("matrix_glow", MATRIX_SHADER);
+    private static final RenderType TIANSHU =
+            createEffectType("tianshu", tianshuShader());
+    private static final RenderType MATRIX_CORE =
+            createEffectType("matrix_core", matrixShader());
+    private static final RenderType MATRIX_GLOW =
+            createGlowEffectType("matrix_glow", matrixShader());
 
     private CoreEffectRenderTypes(String name, VertexFormat format, VertexFormat.Mode mode,
                                   int bufferSize, boolean affectsCrumbling, boolean sortOnUpload,
@@ -35,9 +33,24 @@ final class CoreEffectRenderTypes extends RenderType {
         return MATRIX_GLOW;
     }
 
-    private static RenderType createEffectType(String name, ResourceLocation shader) {
+    private static RenderStateShard.ShaderStateShard tianshuShader() {
+        if (CoreEffectBackend.useVeil()) {
+            return VeilCoreEffectShaders.tianshu();
+        }
+        return CoreEffectShaders.tianshu();
+    }
+
+    private static RenderStateShard.ShaderStateShard matrixShader() {
+        if (CoreEffectBackend.useVeil()) {
+            return VeilCoreEffectShaders.matrix();
+        }
+        return CoreEffectShaders.matrix();
+    }
+
+    private static RenderType createEffectType(
+            String name, RenderStateShard.ShaderStateShard shader) {
         var state = CompositeState.builder()
-                .setShaderState(VeilRenderBridge.shaderState(shader))
+                .setShaderState(shader)
                 .setTextureState(NO_TEXTURE)
                 .setTransparencyState(TRANSLUCENT_TRANSPARENCY)
                 .setDepthTestState(LEQUAL_DEPTH_TEST)
@@ -55,9 +68,10 @@ final class CoreEffectRenderTypes extends RenderType {
                 state);
     }
 
-    private static RenderType createGlowEffectType(String name, ResourceLocation shader) {
+    private static RenderType createGlowEffectType(
+            String name, RenderStateShard.ShaderStateShard shader) {
         var state = CompositeState.builder()
-                .setShaderState(VeilRenderBridge.shaderState(shader))
+                .setShaderState(shader)
                 .setTextureState(NO_TEXTURE)
                 .setTransparencyState(ADDITIVE_TRANSPARENCY)
                 .setDepthTestState(LEQUAL_DEPTH_TEST)

@@ -10,7 +10,7 @@ public final class AE2LTClientConfig {
     private static final ModConfigSpec.EnumValue<TianshuUploadTrigger> TIANSHU_UPLOAD_TRIGGER;
     private static final ModConfigSpec.BooleanValue TIANSHU_INTERCEPT_DUPLICATE_ENCODING;
     private static final ModConfigSpec.ConfigValue<List<? extends String>> TIANSHU_UPLOAD_ALIASES;
-    private static final ModConfigSpec.BooleanValue DISABLE_VEIL_RENDERING;
+    private static final ModConfigSpec.BooleanValue DISABLE_CORE_SHADER_RENDERING;
     private static final ModConfigSpec.BooleanValue RENDER_MULTIBLOCK_CORE_EFFECTS;
 
     static {
@@ -30,11 +30,11 @@ public final class AE2LTClientConfig {
                                 && text.indexOf('=') > 0);
         builder.pop();
         builder.push("compatibility");
-        DISABLE_VEIL_RENDERING = builder
+        DISABLE_CORE_SHADER_RENDERING = builder
                 .comment(
-                        "Compatibility switch: disable all Veil-backed rendering provided by AE2 Lightning Tech.",
-                        "Enable only when a graphics driver or another rendering mod is incompatible with Veil.")
-                .define("disableVeilRendering", false);
+                        "Compatibility switch: disable custom core shaders provided by AE2 Lightning Tech.",
+                        "Enable only when a graphics driver or another rendering mod is incompatible with them.")
+                .define("disableCoreShaderRendering", false);
         builder.pop();
         builder.push("rendering");
         RENDER_MULTIBLOCK_CORE_EFFECTS = builder
@@ -65,8 +65,8 @@ public final class AE2LTClientConfig {
         return RENDER_MULTIBLOCK_CORE_EFFECTS.get();
     }
 
-    public static boolean useVeilRendering() {
-        return !DISABLE_VEIL_RENDERING.get();
+    public static boolean useCoreShaderRendering() {
+        return !DISABLE_CORE_SHADER_RENDERING.get();
     }
 
     public static void setInterceptDuplicatePatternEncoding(boolean enabled) {

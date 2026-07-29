@@ -101,7 +101,7 @@ side = "BOTH"
 
 [[dependencies."${mod_id}"]]
 modId = "veil"
-type = "required"
+type = "optional"
 versionRange = "[4.3.0,5.0.0)"
 ordering = "AFTER"
 side = "CLIENT"
