@@ -57,15 +57,12 @@ class TianshuRecipeViewerIntegrationSourceContractTest {
         assertTrue(context.contains("BuiltInRegistries.RECIPE_TYPE"));
         assertTrue(context.contains("WeakReference<TianshuPatternEncodingTermMenu>"));
         assertTrue(context.contains("String recipeId"));
-        assertTrue(context.contains("ItemStack.matches(boundEncodedPattern, encodedPattern)"));
-        assertTrue(context.contains("boundEncodedPattern = encodedPattern.copy()"));
-        assertTrue(context.contains("retainAfterEncodedSlotChange("));
-        assertTrue(context.contains("current == null || current.isEmpty()) return true"));
-        assertTrue(context.contains("ItemStack.matches(boundEncodedPattern, current)"));
         assertTrue(context.contains("beginEncoding("));
         assertTrue(context.contains("encodingAckReceived"));
         assertTrue(context.contains("isEncodingResultReady("));
         assertTrue(context.contains("ENCODING_RESULT_GRACE_TICKS"));
+        assertFalse(context.contains("boundEncodedPattern"));
+        assertFalse(context.contains("retainAfterEncodedSlotChange("));
         assertFalse(context.contains("hashItemAndComponents"));
         assertFalse(context.contains("Map<Integer, Component>"));
 

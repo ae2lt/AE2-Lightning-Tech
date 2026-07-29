@@ -82,7 +82,6 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
     private int observedTianshuSelectionRevision = Integer.MIN_VALUE;
     private boolean observedMaintainableView;
     private long observedMaintenanceFilterRevision = Long.MIN_VALUE;
-    private ItemStack observedEncodedPattern = ItemStack.EMPTY;
     private int observedEncodingAck;
     private final Map<appeng.api.stacks.AEKey, Long> syntheticMaintenanceEntries = new HashMap<>();
     private long nextSyntheticMaintenanceSerial = -10_000_000L;
@@ -135,7 +134,6 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
                 () -> switchToScreen(new TianshuOverloadPatternConfigScreen<>(this)));
         blankPatternItem = AEItems.BLANK_PATTERN.asItem();
         networkBlankPatternSlot = new NetworkBlankPatternSlot(repo);
-        observedEncodedPattern = firstEncodedPattern().copy();
         observedEncodingAck = menu.triggeredUploadAck;
         replaceViewModeButton();
         addToLeftToolbar(new MaintenanceOverviewButton());
@@ -182,7 +180,7 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
     @Override
     protected void updateBeforeRender() {
         super.updateBeforeRender();
-        observeEncodedPatternSource();
+        observeEncodingAck();
         var selected = menu.tianshuMode;
         for (var mode : EncodingMode.values()) {
             var modeSelected = selected.ae2Mode() == mode;
@@ -230,22 +228,12 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
         setSlotsHidden(Ae2ltSlotSemantics.TIANSHU_GLOBAL_RESERVE_MARK, true);
     }
 
-    private void observeEncodedPatternSource() {
+    private void observeEncodingAck() {
         var current = firstEncodedPattern();
         if (observedEncodingAck != menu.triggeredUploadAck) {
             observedEncodingAck = menu.triggeredUploadAck;
-            observedEncodedPattern = current.copy();
             TianshuRecipeTransferContext.acceptEncodedPattern(menu, current);
-            return;
         }
-        if (ItemStack.matches(observedEncodedPattern, current)) return;
-        observedEncodedPattern = current.copy();
-        if (TianshuRecipeTransferContext.retainAfterEncodedSlotChange(
-                menu, current)) {
-            return;
-        }
-        TianshuRecipeTransferContext.clear(menu);
-        menu.clearClientUploadSelectionState();
     }
 
     private void updateEncodingButton(AE2Button button, ProcessingPatternEncodingType type,
