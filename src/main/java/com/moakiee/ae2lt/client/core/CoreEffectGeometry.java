@@ -207,15 +207,36 @@ final class CoreEffectGeometry {
 
         float spacing = 0.56F;
         stack.translate(x * spacing, y * spacing, z * spacing);
-        boolean corner = x != 0 && y != 0 && z != 0;
+        // shell: 3=corner (energy node), 2=edge (dark body), 1=face center (lit window)
+        int shell = Math.abs(x) + Math.abs(y) + Math.abs(z);
+        float red;
+        float green;
+        float blue;
+        float alpha;
+        if (shell == 3) {
+            red = palette.accentR();
+            green = palette.accentG();
+            blue = palette.accentB();
+            alpha = 0.92F;
+        } else if (shell == 1) {
+            red = lerp(palette.primaryR(), palette.accentR(), 0.55F);
+            green = lerp(palette.primaryG(), palette.accentG(), 0.55F);
+            blue = lerp(palette.primaryB(), palette.accentB(), 0.55F);
+            alpha = 0.90F;
+        } else {
+            red = palette.primaryR();
+            green = palette.primaryG();
+            blue = palette.primaryB();
+            alpha = 0.86F;
+        }
         CoreEffectMesh.cube(
                 stack,
                 consumer,
                 0.245F,
-                corner ? palette.accentR() : palette.primaryR(),
-                corner ? palette.accentG() : palette.primaryG(),
-                corner ? palette.accentB() : palette.primaryB(),
-                corner ? 0.92F : 0.86F);
+                red,
+                green,
+                blue,
+                alpha);
         stack.popPose();
     }
 

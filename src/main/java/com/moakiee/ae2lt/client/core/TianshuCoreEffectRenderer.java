@@ -70,11 +70,12 @@ public final class TianshuCoreEffectRenderer
     }
 
     private static CoreEffectPalette palette(TianshuMultiblockComponent component) {
+        // Dark body (primary) + bright glowing corners (accent), one hue per tier
         return switch (component) {
-            case MAIN_QUANTUM -> new CoreEffectPalette(0.38F, 0.72F, 0.86F, 0.80F, 0.92F, 0.96F);
-            case MAIN_OVERLOAD -> new CoreEffectPalette(0.78F, 0.46F, 0.24F, 0.96F, 0.78F, 0.42F);
-            case MAIN_MULTIDIMENSIONAL -> new CoreEffectPalette(0.56F, 0.46F, 0.78F, 0.84F, 0.74F, 0.92F);
-            default -> new CoreEffectPalette(0.42F, 0.64F, 0.74F, 0.80F, 0.88F, 0.90F);
+            case MAIN_QUANTUM -> new CoreEffectPalette(0.12F, 0.22F, 0.52F, 0.46F, 0.72F, 1.00F);
+            case MAIN_OVERLOAD -> new CoreEffectPalette(0.52F, 0.14F, 0.06F, 1.00F, 0.62F, 0.20F);
+            case MAIN_MULTIDIMENSIONAL -> new CoreEffectPalette(0.30F, 0.12F, 0.50F, 0.80F, 0.48F, 1.00F);
+            default -> new CoreEffectPalette(0.10F, 0.34F, 0.40F, 0.42F, 0.96F, 1.00F);
         };
     }
 }
