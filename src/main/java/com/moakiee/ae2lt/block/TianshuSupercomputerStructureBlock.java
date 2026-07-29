@@ -8,7 +8,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
 
-public class TianshuSupercomputerStructureBlock extends Block {
+public class TianshuSupercomputerStructureBlock extends Block implements WrenchDisassemblableBlock {
     public static final BooleanProperty FORMED = MultiblockStateProperties.FORMED;
 
     public TianshuSupercomputerStructureBlock(Properties properties) {

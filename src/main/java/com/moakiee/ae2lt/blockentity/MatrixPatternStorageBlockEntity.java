@@ -88,10 +88,13 @@ public class MatrixPatternStorageBlockEntity extends BlockEntity
     }
 
     public void dropStoredPatterns(Level level, BlockPos pos) {
-        for (int slot = 0; slot < capacity(); slot++) {
-            var stack = inventory.getStackInSlot(slot);
+        var drops = copyContents();
+        inventory.clear();
+        patternsDirty = true;
+        setChangedAndUpdate();
+        for (var stack : drops) {
             if (!stack.isEmpty()) {
-                Block.popResource(level, pos, stack.copy());
+                Block.popResource(level, pos, stack);
             }
         }
     }

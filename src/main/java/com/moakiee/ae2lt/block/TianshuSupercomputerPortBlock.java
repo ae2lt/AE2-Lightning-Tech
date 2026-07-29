@@ -13,7 +13,8 @@ import net.minecraft.world.level.block.state.StateDefinition;
 import appeng.block.AEBaseEntityBlock;
 import org.jetbrains.annotations.Nullable;
 
-public class TianshuSupercomputerPortBlock extends AEBaseEntityBlock<TianshuSupercomputerPortBlockEntity> {
+public class TianshuSupercomputerPortBlock extends AEBaseEntityBlock<TianshuSupercomputerPortBlockEntity>
+        implements WrenchDisassemblableBlock {
     public static final net.minecraft.world.level.block.state.properties.BooleanProperty FORMED =
             TianshuSupercomputerStructureBlock.FORMED;
 

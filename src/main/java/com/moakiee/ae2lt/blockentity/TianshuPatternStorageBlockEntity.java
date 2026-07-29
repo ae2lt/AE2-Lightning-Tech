@@ -111,11 +111,12 @@ public final class TianshuPatternStorageBlockEntity extends BlockEntity implemen
 
     public void dropStoredPatterns(Level level, BlockPos pos) {
         var item = (ClosedLoopPatternItem) ModItems.CLOSED_LOOP_PATTERN.get();
-        for (var payload : patterns.patterns()) {
-            Block.popResource(level, pos, item.createStack(payload, level.registryAccess()));
-        }
+        var storedPatterns = List.copyOf(patterns.patterns());
         patterns.clear();
         setChanged();
+        for (var payload : storedPatterns) {
+            Block.popResource(level, pos, item.createStack(payload, level.registryAccess()));
+        }
     }
 
     @Override

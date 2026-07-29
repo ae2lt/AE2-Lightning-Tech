@@ -34,7 +34,8 @@ import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import com.moakiee.ae2lt.menu.TianshuSupercomputerControllerMenu;
 import org.jetbrains.annotations.Nullable;
 
-public class TianshuSupercomputerControllerBlock extends Block implements EntityBlock {
+public class TianshuSupercomputerControllerBlock extends Block
+        implements EntityBlock, WrenchDisassemblableBlock {
     public static final net.minecraft.world.level.block.state.properties.DirectionProperty FACING =
             HorizontalDirectionalBlock.FACING;
     public static final BooleanProperty FORMED = BooleanProperty.create("formed");
