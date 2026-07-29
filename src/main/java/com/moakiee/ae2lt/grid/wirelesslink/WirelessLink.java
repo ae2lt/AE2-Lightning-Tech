@@ -7,8 +7,9 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Persisted description of one external wireless entrance. Runtime
- * GridConnection objects are intentionally not part of this value.
+ * Persisted description of one frequency-linked physical cluster. The cluster
+ * may use several transient GridConnection entrances to satisfy channel demand;
+ * those runtime paths are intentionally not part of this value.
  */
 public record WirelessLink(
         UUID linkId,
