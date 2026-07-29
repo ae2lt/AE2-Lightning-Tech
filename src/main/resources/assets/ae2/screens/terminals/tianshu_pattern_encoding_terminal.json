@@ -4,7 +4,16 @@
     "pattern_encoding_terminal.json"
   ],
   "helpTopic": "ae2lt:tianshu/pattern-encoding-terminal.md",
+  "slots": {
+    "TOOLBOX": {
+      "$comment": "The network-tool toolbox is intentionally hidden on the Tianshu terminal.",
+      "left": -9999,
+      "top": -9999,
+      "grid": "BREAK_AFTER_3COLS"
+    }
+  },
   "widgets": {
+    "toolbox": { "left": -9999, "top": -9999, "width": 59, "height": 66 },
     "modeTabButton3": { "left": 173, "bottom": 132, "width": 22, "height": 22 },
     "modeTabButton2": { "left": 173, "bottom": 111, "width": 22, "height": 22 },
     "modeTabButton4": { "left": 173, "bottom": 90, "width": 22, "height": 22 },
