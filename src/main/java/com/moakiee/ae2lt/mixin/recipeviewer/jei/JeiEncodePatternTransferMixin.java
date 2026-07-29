@@ -57,9 +57,7 @@ public abstract class JeiEncodePatternTransferMixin {
             return;
         }
         tianshuMenu.resetProcessingEncoding();
-        if (!TianshuRecipeTransferContext.isSupportedCraftingRecipe(recipeBase)) {
-            TianshuRecipeTransferContext.captureVanillaRecipe(tianshuMenu, recipeBase);
-        }
+        TianshuRecipeTransferContext.captureVanillaRecipe(tianshuMenu, recipeBase);
     }
 
     @Inject(

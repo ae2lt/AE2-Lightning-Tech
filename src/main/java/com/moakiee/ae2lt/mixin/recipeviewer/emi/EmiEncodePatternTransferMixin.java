@@ -57,7 +57,6 @@ public abstract class EmiEncodePatternTransferMixin {
             return;
         }
         tianshuMenu.resetProcessingEncoding();
-        if (holder != null && TianshuRecipeTransferContext.isSupportedCraftingRecipe(holder)) return;
 
         String sourceKey = "";
         String recipeId = "";
@@ -90,8 +89,11 @@ public abstract class EmiEncodePatternTransferMixin {
             workstationAliases.forEach(alias ->
                     TianshuRecipeTransferContext.addDefaultAlias(defaultAliases, alias));
         }
-        if (sourceKey.isBlank() && recipeId.isBlank() && holder != null) {
-            TianshuRecipeTransferContext.captureVanillaRecipe(tianshuMenu, holder);
+        if (holder != null) {
+            // A real recipe type is more stable and semantically precise than an EMI category.
+            // Preserve category/workstation strings only as aliases for the right-hand field.
+            TianshuRecipeTransferContext.captureVanillaRecipe(
+                    tianshuMenu, holder, defaultAliases);
         } else {
             TianshuRecipeTransferContext.publish(
                     tianshuMenu, sourceKey, recipeId, defaultAliases);

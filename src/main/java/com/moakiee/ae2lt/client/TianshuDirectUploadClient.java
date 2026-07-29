@@ -60,6 +60,7 @@ public final class TianshuDirectUploadClient {
         if (!menu.hasTriggeredUploadAck()) return;
 
         var stack = firstEncodedPattern(menu);
+        TianshuRecipeTransferContext.acceptEncodedPattern(menu, stack);
         var route = minecraft.level == null
                 ? TianshuPatternUploadRouting.Route.INVALID
                 : TianshuPatternUploadRouting.classify(stack, minecraft.level);

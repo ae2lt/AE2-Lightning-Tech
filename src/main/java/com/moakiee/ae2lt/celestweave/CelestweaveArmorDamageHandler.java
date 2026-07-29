@@ -124,15 +124,20 @@ public final class CelestweaveArmorDamageHandler {
         if (!(player instanceof ServerPlayer serverPlayer) || preventedDamage <= 0.0F) {
             return true;
         }
-        long amount = (long) Math.ceil(preventedDamage * mitigationLightningPerDamage(staged.stage()));
-        long feCost = (long) Math.ceil(preventedDamage * mitigationFePerDamage(staged.stage()));
+        if ("phase_shield".equals(staged.stage())) {
+            return payPhaseShield(serverPlayer, mitigation, preventedDamage);
+        }
+        long amount = (long) Math.ceil(preventedDamage
+                * ArmorModuleLightningPolicy.triggeredCost(ArmorModuleLightningPolicy.Trigger.MATRIX_SHIELD)
+                        .highVoltage());
+        long feCost = (long) Math.ceil(
+                preventedDamage * ArmorOverloadRules.MATRIX_SHIELD_ACTIVE_COST_FE_PER_DAMAGE);
         if (amount <= 0L && feCost <= 0L) {
             return true;
         }
-        var submodule = mitigationSubmoduleForStage(staged.stage());
         int comboIndex = ArmorOverloadCombo.nextComboIndex(
                 mitigation.armor(),
-                submodule,
+                ResistanceSubmodule.T1,
                 serverPlayer.level().getGameTime());
         long finalAmount = ArmorOverloadCombo.scaledCost(amount, comboIndex);
         ArmorEnergyService.EnergyPayment payment = ArmorEnergyService.consumeActiveCostPayment(
@@ -143,7 +148,9 @@ public final class CelestweaveArmorDamageHandler {
             ArmorResourceFeedback.noFe(serverPlayer);
             return false;
         }
-        var lightningCost = shieldLightningCost(staged.stage()).times(finalAmount);
+        var lightningCost = ArmorModuleLightningPolicy
+                .triggeredCost(ArmorModuleLightningPolicy.Trigger.MATRIX_SHIELD)
+                .times(finalAmount);
         if (!ArmorLightningService.consume(serverPlayer, mitigation.armor(), lightningCost)) {
             payment.refund();
             if (lightningCost.extremeHighVoltage() > 0L) {
@@ -155,35 +162,41 @@ public final class CelestweaveArmorDamageHandler {
         }
         ArmorOverloadCombo.recordTrigger(
                 mitigation.armor(),
-                submodule,
+                ResistanceSubmodule.T1,
                 serverPlayer.level().getGameTime(),
                 AE2LTCommonConfig.overloadArmorShieldComboWindowTicks(),
                 comboIndex);
         return true;
     }
 
-    private static long mitigationLightningPerDamage(String stage) {
-        return "phase_shield".equals(stage)
-                ? ArmorModuleLightningPolicy.triggeredCost(ArmorModuleLightningPolicy.Trigger.PHASE_SHIELD)
-                        .extremeHighVoltage()
-                : ArmorModuleLightningPolicy.triggeredCost(ArmorModuleLightningPolicy.Trigger.MATRIX_SHIELD)
-                        .highVoltage();
-    }
-
-    private static long mitigationFePerDamage(String stage) {
-        return "phase_shield".equals(stage)
-                ? ArmorOverloadRules.PHASE_SHIELD_ACTIVE_COST_FE_PER_DAMAGE
-                : ArmorOverloadRules.MATRIX_SHIELD_ACTIVE_COST_FE_PER_DAMAGE;
-    }
-
-    private static ArmorLightningService.LightningCost shieldLightningCost(String stage) {
-        return "phase_shield".equals(stage)
-                ? ArmorModuleLightningPolicy.triggeredCost(ArmorModuleLightningPolicy.Trigger.PHASE_SHIELD)
-                : ArmorModuleLightningPolicy.triggeredCost(ArmorModuleLightningPolicy.Trigger.MATRIX_SHIELD);
-    }
-
-    private static ResistanceSubmodule mitigationSubmoduleForStage(String stage) {
-        return "phase_shield".equals(stage) ? ResistanceSubmodule.T2 : ResistanceSubmodule.T1;
+    private static boolean payPhaseShield(
+            ServerPlayer player,
+            ActiveCapability mitigation,
+            float preventedDamage) {
+        PhaseShieldChargeWindow.Quote quote = PhaseShieldChargeWindow.quote(
+                mitigation.armor(),
+                player.level().getGameTime(),
+                preventedDamage);
+        var lightningCost = ArmorLightningService.LightningCost.ehv(quote.ehvCost());
+        if (!ArmorLightningService.hasCost(player, mitigation.armor(), lightningCost)) {
+            ArmorResourceFeedback.noExtremeHighVoltage(player);
+            return false;
+        }
+        ArmorEnergyService.EnergyPayment payment = ArmorEnergyService.consumeActiveCostPayment(
+                player,
+                mitigation.armor(),
+                quote.feCost());
+        if (!payment.paid()) {
+            ArmorResourceFeedback.noFe(player);
+            return false;
+        }
+        if (!ArmorLightningService.consume(player, mitigation.armor(), lightningCost)) {
+            payment.refund();
+            ArmorResourceFeedback.noExtremeHighVoltage(player);
+            return false;
+        }
+        PhaseShieldChargeWindow.record(mitigation.armor(), quote);
+        return true;
     }
 
     public static boolean shouldSuppressShieldHitFeedback(LivingEntity entity) {

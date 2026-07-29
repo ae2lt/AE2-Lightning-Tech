@@ -161,6 +161,13 @@ public final class CelestweaveArmorUndyingHandler {
         for (var active : collectActiveLastStand(player)) {
             int comboIndex = ArmorOverloadCombo.nextComboIndex(active.armor(), UndyingSubmodule.INSTANCE, now);
             long cost = ArmorOverloadCombo.scaledCost(active.tuning().feCost(), comboIndex);
+            var lightningCost = ArmorModuleLightningPolicy
+                    .triggeredCost(ArmorModuleLightningPolicy.Trigger.UNDYING)
+                    .times(comboIndex);
+            if (!ArmorLightningService.hasCost(player, active.armor(), lightningCost)) {
+                ArmorResourceFeedback.noExtremeHighVoltage(player);
+                continue;
+            }
             ArmorEnergyService.EnergyPayment payment = ArmorEnergyService.consumeActiveCostPayment(
                     player,
                     active.armor(),
@@ -169,15 +176,7 @@ public final class CelestweaveArmorUndyingHandler {
                 ArmorResourceFeedback.noFe(player);
                 continue;
             }
-            long lightningCost = ArmorOverloadCombo.scaledCost(
-                    ArmorModuleLightningPolicy.triggeredCost(ArmorModuleLightningPolicy.Trigger.UNDYING)
-                            .extremeHighVoltage(),
-                    comboIndex);
-            if (!ArmorLightningService.consume(
-                    player,
-                    active.armor(),
-                    com.moakiee.ae2lt.me.key.LightningKey.EXTREME_HIGH_VOLTAGE,
-                    lightningCost)) {
+            if (!ArmorLightningService.consume(player, active.armor(), lightningCost)) {
                 payment.refund();
                 ArmorResourceFeedback.noExtremeHighVoltage(player);
                 continue;

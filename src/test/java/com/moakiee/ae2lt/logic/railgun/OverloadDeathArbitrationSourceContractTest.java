@@ -56,6 +56,7 @@ class OverloadDeathArbitrationSourceContractTest {
 
         assertTrue(armorHandler.contains("data.contains(TAG_PROTECTED_TICK)"));
         assertTrue(armorHandler.contains("protectBeforeDeathSideEffect(ServerPlayer player)"));
+        assertTrue(armorHandler.contains("ArmorEnergyService.consumeActiveCostPayment("));
 
         assertTrue(entityMixin.contains(
                 "gameEvent(Lnet/minecraft/core/Holder;Lnet/minecraft/world/entity/Entity;)V"));
