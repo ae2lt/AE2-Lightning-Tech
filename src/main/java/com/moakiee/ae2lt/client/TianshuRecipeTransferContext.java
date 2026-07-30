@@ -25,9 +25,7 @@ public final class TianshuRecipeTransferContext {
     private static final int ENCODING_RESULT_GRACE_TICKS = 5;
     private static WeakReference<TianshuPatternEncodingTermMenu> owner = new WeakReference<>(null);
     private static Snapshot snapshot = Snapshot.EMPTY;
-    private static ItemStack boundEncodedPattern = ItemStack.EMPTY;
     private static ItemStack encodingSourcePattern = ItemStack.EMPTY;
-    private static ItemStack pendingEncodedPattern = ItemStack.EMPTY;
     private static boolean encodingPending;
     private static boolean encodingAckReceived;
     private static int encodingBindingDeadline;
@@ -90,7 +88,6 @@ public final class TianshuRecipeTransferContext {
                 sourceKey == null ? "" : sourceKey,
                 recipeId == null ? "" : recipeId,
                 List.copyOf(aliases));
-        boundEncodedPattern = ItemStack.EMPTY;
         resetPendingEncoding();
     }
 
@@ -102,7 +99,6 @@ public final class TianshuRecipeTransferContext {
         if (menu == null) return;
         owner = new WeakReference<>(menu);
         snapshot = Snapshot.EMPTY;
-        boundEncodedPattern = ItemStack.EMPTY;
         resetPendingEncoding();
     }
 
@@ -117,74 +113,21 @@ public final class TianshuRecipeTransferContext {
             return;
         }
         encodingSourcePattern = copyOrEmpty(currentPattern);
-        pendingEncodedPattern = ItemStack.EMPTY;
         encodingPending = true;
         encodingAckReceived = false;
         encodingBindingDeadline = menu.getPlayer().tickCount + 40;
     }
 
-    /**
-     * Binds newly transferred viewer metadata to its first encoded pattern. Re-encoding may retain
-     * that metadata only for the exact same stack; changing the draft must not carry an old recipe
-     * ID into a different pattern.
-     */
+    /** Observes the server acknowledgement without tying recipe metadata to the slot contents. */
     public static synchronized void acceptEncodedPattern(
             TianshuPatternEncodingTermMenu menu, ItemStack encodedPattern) {
-        if (owner.get() != menu || snapshot.sourceKey().isBlank()) return;
-        if (encodingPending) {
-            if (!encodingAckReceived) {
-                encodingAckReceived = true;
-                encodingBindingDeadline =
-                        menu.getPlayer().tickCount + ENCODING_RESULT_GRACE_TICKS;
-            }
-            if (isNewEncodingResult(encodedPattern)) {
-                bindEncodedPattern(encodedPattern);
-            } else if (!pendingEncodedPattern.isEmpty()) {
-                bindEncodedPattern(pendingEncodedPattern);
-            }
-            return;
+        if (!encodingPending || owner.get() != menu || snapshot.sourceKey().isBlank()) return;
+        if (!encodingAckReceived) {
+            encodingAckReceived = true;
+            encodingBindingDeadline =
+                    menu.getPlayer().tickCount + ENCODING_RESULT_GRACE_TICKS;
         }
-        if (encodedPattern == null || encodedPattern.isEmpty()) {
-            snapshot = Snapshot.EMPTY;
-            boundEncodedPattern = ItemStack.EMPTY;
-            return;
-        }
-        if (boundEncodedPattern.isEmpty()) {
-            boundEncodedPattern = encodedPattern.copy();
-            return;
-        }
-        // Compare the complete stack instead of a hash: data-component or count differences are
-        // meaningful for encoded patterns, and a collision must never revive stale recipe data.
-        if (!ItemStack.matches(boundEncodedPattern, encodedPattern)) {
-            snapshot = Snapshot.EMPTY;
-            boundEncodedPattern = ItemStack.EMPTY;
-        }
-    }
-
-    /**
-     * Keeps an already bound context while its exact pattern is temporarily removed or reinserted.
-     * An empty slot is only a dormant state; inserting any different pattern invalidates the
-     * context.
-     */
-    public static synchronized boolean retainAfterEncodedSlotChange(
-            TianshuPatternEncodingTermMenu menu, ItemStack current) {
-        // Removing a pattern never proves that its recipe metadata is stale. Keep the context
-        // dormant until another non-empty pattern provides something meaningful to compare.
-        if (current == null || current.isEmpty()) return true;
-        finishExpiredEncoding(menu, current);
-        if (encodingPending && owner.get() == menu && !snapshot.sourceKey().isBlank()) {
-            if (isNewEncodingResult(current)) {
-                pendingEncodedPattern = current.copy();
-                if (encodingAckReceived) bindEncodedPattern(current);
-            }
-            return true;
-        }
-        if (owner.get() != menu
-                || snapshot.sourceKey().isBlank()
-                || boundEncodedPattern.isEmpty()) {
-            return false;
-        }
-        return ItemStack.matches(boundEncodedPattern, current);
+        if (isNewEncodingResult(encodedPattern)) resetPendingEncoding();
     }
 
     /**
@@ -193,38 +136,22 @@ public final class TianshuRecipeTransferContext {
      */
     public static synchronized boolean isEncodingResultReady(
             TianshuPatternEncodingTermMenu menu, ItemStack current) {
-        finishExpiredEncoding(menu, current);
+        finishExpiredEncoding(menu);
         if (!encodingPending || owner.get() != menu || snapshot.sourceKey().isBlank()) {
             return true;
         }
-        if (isNewEncodingResult(current)) {
-            pendingEncodedPattern = current.copy();
-            if (encodingAckReceived) bindEncodedPattern(current);
-        }
+        if (encodingAckReceived && isNewEncodingResult(current)) resetPendingEncoding();
         return !encodingPending;
     }
 
-    private static void finishExpiredEncoding(
-            TianshuPatternEncodingTermMenu menu, ItemStack current) {
+    private static void finishExpiredEncoding(TianshuPatternEncodingTermMenu menu) {
         if (!encodingPending || owner.get() != menu
                 || menu.getPlayer().tickCount <= encodingBindingDeadline) {
             return;
         }
-        if (encodingAckReceived) {
-            if (!pendingEncodedPattern.isEmpty()) {
-                bindEncodedPattern(pendingEncodedPattern);
-            } else if (current != null && !current.isEmpty()) {
-                bindEncodedPattern(current);
-            } else if (!encodingSourcePattern.isEmpty()) {
-                bindEncodedPattern(encodingSourcePattern);
-            } else {
-                resetPendingEncoding();
-            }
-        } else {
-            // The server did not acknowledge a valid encoding result. Preserve the captured
-            // recipe metadata for a retry, but do not bind it to an unconfirmed slot change.
-            resetPendingEncoding();
-        }
+        // A missing acknowledgement means encoding failed; an acknowledged but unchanged stack
+        // means the new encoding is byte-for-byte identical. Neither case invalidates metadata.
+        resetPendingEncoding();
     }
 
     private static boolean isNewEncodingResult(ItemStack pattern) {
@@ -234,18 +161,12 @@ public final class TianshuRecipeTransferContext {
                         || !ItemStack.matches(encodingSourcePattern, pattern));
     }
 
-    private static void bindEncodedPattern(ItemStack pattern) {
-        boundEncodedPattern = pattern.copy();
-        resetPendingEncoding();
-    }
-
     private static ItemStack copyOrEmpty(ItemStack stack) {
         return stack == null || stack.isEmpty() ? ItemStack.EMPTY : stack.copy();
     }
 
     private static void resetPendingEncoding() {
         encodingSourcePattern = ItemStack.EMPTY;
-        pendingEncodedPattern = ItemStack.EMPTY;
         encodingPending = false;
         encodingAckReceived = false;
         encodingBindingDeadline = 0;
