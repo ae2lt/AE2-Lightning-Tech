@@ -74,6 +74,7 @@ public final class TianshuDirectUploadClient {
                 clearHeldRecipe();
             }
             case PROCESSING_PROVIDER -> {
+                if (!menu.requestDirectUploadTargetsAfterEncoding()) return;
                 if (!menu.hasFreshDirectUploadTargets()) return;
                 var selection = TianshuUploadSourceSelection.collect(menu);
                 var target = TianshuUploadTargetMatcher.findUniqueCandidate(
@@ -123,7 +124,7 @@ public final class TianshuDirectUploadClient {
         minecraft.player.displayClientMessage(Component.translatable(
                 menu.uploadState == 1
                         ? "ae2lt.tianshu.upload.success"
-                        : "ae2lt.tianshu.upload.failed"), true);
+                        : "ae2lt.tianshu.upload.failed"), false);
         awaitingResult = new WeakReference<>(null);
     }
 

@@ -188,6 +188,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     private boolean pendingDirectUpload;
     private int pendingTriggeredUploadUntil;
     private int expectedTriggeredUploadAck;
+    private boolean directUploadTargetsRequested;
     private int expectedDirectUploadTargetRevision;
 
     public TianshuPatternEncodingTermMenu(
@@ -389,12 +390,30 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     }
 
     public boolean hasFreshDirectUploadTargets() {
-        return isClientSide() && uploadTargetsRevision != expectedDirectUploadTargetRevision;
+        return isClientSide()
+                && directUploadTargetsRequested
+                && uploadTargetsRevision != expectedDirectUploadTargetRevision;
+    }
+
+    /**
+     * Requests provider availability only after the newly encoded pattern has reached the client.
+     * Availability depends on the encoded stack, so a request sent before encoding would report
+     * every provider as unwritable when the result slot was initially empty.
+     */
+    public boolean requestDirectUploadTargetsAfterEncoding() {
+        if (!isClientSide() || !hasPendingDirectUpload() || !hasTriggeredUploadAck()) return false;
+        if (!directUploadTargetsRequested) {
+            expectedDirectUploadTargetRevision = uploadTargetsRevision;
+            directUploadTargetsRequested = true;
+            requestUploadTargets();
+        }
+        return true;
     }
 
     public boolean consumeDirectUploadRequest() {
         boolean direct = pendingDirectUpload;
         pendingDirectUpload = false;
+        directUploadTargetsRequested = false;
         return direct;
     }
 
@@ -402,6 +421,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         if (!isClientSide()) return;
         pendingTriggeredUpload = false;
         pendingDirectUpload = false;
+        directUploadTargetsRequested = false;
         uploadTargetGroups = List.of();
         uploadTargetsRevision++;
     }
@@ -410,6 +430,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         if (pendingTriggeredUpload && getPlayer().tickCount > pendingTriggeredUploadUntil) {
             pendingTriggeredUpload = false;
             pendingDirectUpload = false;
+            directUploadTargetsRequested = false;
         }
     }
 
@@ -2201,10 +2222,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         pendingDirectUpload = triggerUpload && directUpload;
         pendingTriggeredUploadUntil = getPlayer().tickCount + 200;
         expectedTriggeredUploadAck = triggeredUploadAck;
-        if (pendingDirectUpload) {
-            expectedDirectUploadTargetRevision = uploadTargetsRevision;
-            requestUploadTargets();
-        }
+        directUploadTargetsRequested = false;
         sendClientAction("encodeTianshu",
                 com.moakiee.ae2lt.config.AE2LTClientConfig.interceptDuplicatePatternEncoding());
     }

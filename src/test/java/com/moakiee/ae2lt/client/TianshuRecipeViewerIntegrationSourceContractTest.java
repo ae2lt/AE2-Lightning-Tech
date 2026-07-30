@@ -130,6 +130,8 @@ class TianshuRecipeViewerIntegrationSourceContractTest {
                 "src/main/java/com/moakiee/ae2lt/client/TianshuUploadTargetMatcher.java"));
         String coordinator = Files.readString(Path.of(
                 "src/main/java/com/moakiee/ae2lt/client/TianshuDirectUploadClient.java"));
+        String menu = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/menu/TianshuPatternEncodingTermMenu.java"));
         String transferButton = Files.readString(Path.of(
                 "src/main/java/com/moakiee/ae2lt/mixin/recipeviewer/jei/"
                         + "JeiRecipeTransferButtonControllerMixin.java"));
@@ -152,9 +154,22 @@ class TianshuRecipeViewerIntegrationSourceContractTest {
         assertTrue(transferButton.contains("recipesGui.onClose()"));
         assertTrue(coordinator.contains("hasTriggeredUploadAck()"));
         assertTrue(coordinator.contains("isEncodingResultReady(menu, stack)"));
+        assertTrue(coordinator.contains("requestDirectUploadTargetsAfterEncoding()"));
         assertTrue(coordinator.contains("hasFreshDirectUploadTargets()"));
         assertTrue(coordinator.contains("recipeScreen.onClose()"));
         assertTrue(coordinator.contains("menu.uploadTianshuPatternToTarget(target.group())"));
+        assertTrue(picker.contains(
+                "Component.translatable(\"ae2lt.tianshu.upload.success\"), false"));
+        assertTrue(coordinator.contains(
+                ": \"ae2lt.tianshu.upload.failed\"), false"));
+
+        int resultReady = coordinator.indexOf("isEncodingResultReady(menu, stack)");
+        int targetRefresh = coordinator.indexOf("requestDirectUploadTargetsAfterEncoding()");
+        assertTrue(resultReady >= 0 && targetRefresh > resultReady);
+        int beginEncoding = menu.indexOf("private void beginClientEncoding(");
+        int encodeServer = menu.indexOf("private void encodeServerWithOptions(", beginEncoding);
+        assertTrue(beginEncoding >= 0 && encodeServer > beginEncoding);
+        assertFalse(menu.substring(beginEncoding, encodeServer).contains("requestUploadTargets()"));
     }
 
     @Test

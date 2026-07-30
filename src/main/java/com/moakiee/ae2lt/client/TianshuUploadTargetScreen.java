@@ -212,7 +212,7 @@ public final class TianshuUploadTargetScreen<M extends TianshuPatternEncodingTer
             awaitingUpload = false;
             if (minecraft.player != null) {
                 minecraft.player.displayClientMessage(
-                        Component.translatable("ae2lt.tianshu.upload.success"), true);
+                        Component.translatable("ae2lt.tianshu.upload.success"), false);
             }
             returnToParent();
             return;
