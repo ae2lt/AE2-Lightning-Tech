@@ -184,6 +184,8 @@ class TianshuRecipeViewerIntegrationSourceContractTest {
         assertTrue(picker.contains("findFirstPopulatedAlias"));
         assertTrue(picker.contains("initialAliasSelectionPending"));
         assertTrue(picker.contains("storedAlias.isBlank()"));
+        assertTrue(picker.contains("focusedIndex = -1;"));
+        assertFalse(picker.contains("focusedIndex = filtered.isEmpty() ? -1 : 0;"));
         assertTrue(picker.contains("public boolean mouseScrolled"));
         assertTrue(picker.contains("aliasField.setValue(\"\")"));
         assertFalse(picker.contains("sourceField.setResponder"));

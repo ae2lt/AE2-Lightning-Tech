@@ -252,7 +252,7 @@ public final class TianshuUploadTargetScreen<M extends TianshuPatternEncodingTer
             var target = targets.get(i);
             if (query.isEmpty() || matches(target, query)) filtered.add(new IndexedTarget(i, target));
         }
-        focusedIndex = filtered.isEmpty() ? -1 : 0;
+        focusedIndex = -1;
         scrollbar.setRange(0, Math.max(0, filtered.size() - visibleRows), 2);
     }
 
