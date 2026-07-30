@@ -72,6 +72,28 @@ class ControllerOwnedRuntimeArchitectureTest {
     }
 
     @Test
+    void matrixCoalescesSameTickPatternChangesBeforeRefreshingAe2() throws Exception {
+        String port = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/blockentity/MatrixPortBlockEntity.java"));
+        String portBlock = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/block/MatrixPortBlock.java"));
+
+        int serverTick = port.indexOf("public static void serverTick(");
+        int flushUpdate = port.indexOf("port.flushPatternUpdate();", serverTick);
+        int bindingIntervalCheck = port.indexOf(
+                "level.getGameTime() < port.nextBindingCheckTick", serverTick);
+
+        assertTrue(port.contains("patternUpdatePending = true;"));
+        assertFalse(port.contains("lastPatternUpdateTick"));
+        assertTrue(flushUpdate > serverTick);
+        assertTrue(bindingIntervalCheck > flushUpdate,
+                "Pending pattern changes must flush every tick, not at the 20-tick binding interval");
+        assertTrue(portBlock.contains(
+                "MatrixPortBlockEntity.serverTick(tickLevel, pos, tickState, port);"),
+                "The matrix port block must actually install its block-entity ticker");
+    }
+
+    @Test
     void fastPlanningToggleIsOwnedByControllerAndAppliedToItsPool() throws Exception {
         assertEquals(boolean.class, TianshuSupercomputerControllerBlockEntity.class
                 .getDeclaredField("fastPlanningEnabled").getType());

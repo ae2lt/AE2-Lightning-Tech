@@ -57,7 +57,7 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
     private UUID boundMachineId;
     private CompoundTag legacyClusterState;
     private boolean formed;
-    private long lastPatternUpdateTick = Long.MIN_VALUE;
+    private boolean patternUpdatePending;
     private MatrixPatternStorageBlockEntity exposedPatternStorage;
     private boolean exposedPatternStorageDirty = true;
     private long nextBindingCheckTick;
@@ -70,7 +70,11 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
                                   BlockPos pos,
                                   BlockState state,
                                   MatrixPortBlockEntity port) {
-        if (level.isClientSide || level.getGameTime() < port.nextBindingCheckTick) {
+        if (level.isClientSide) {
+            return;
+        }
+        port.flushPatternUpdate();
+        if (level.getGameTime() < port.nextBindingCheckTick) {
             return;
         }
         port.nextBindingCheckTick = level.getGameTime() + BINDING_CHECK_INTERVAL_TICKS;
@@ -212,11 +216,10 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
 
     public void patternsChanged() {
         invalidateExposedPatternStorage();
-        long now = level != null ? level.getGameTime() : Long.MIN_VALUE;
-        if (now == Long.MIN_VALUE || lastPatternUpdateTick != now) {
-            lastPatternUpdateTick = now;
-            requestCraftingUpdate();
-        }
+        // Several slots can change in one server tick (pattern-terminal transfers and storage
+        // upgrades do this). Publish once on the next block-entity tick, after every mutation,
+        // instead of refreshing on the first mutation and dropping the remaining changes.
+        patternUpdatePending = true;
     }
 
     public IGrid getGrid() {
@@ -406,6 +409,13 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
     private void requestCraftingUpdate() {
         if (getMainNode().isReady()) {
             ICraftingProvider.requestUpdate(getMainNode());
+            patternUpdatePending = false;
+        }
+    }
+
+    private void flushPatternUpdate() {
+        if (patternUpdatePending) {
+            requestCraftingUpdate();
         }
     }
 
