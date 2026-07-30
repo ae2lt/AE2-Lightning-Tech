@@ -112,24 +112,30 @@ class TianshuUploadTargetMatcherTest {
     }
 
     @Test
-    void initialAliasSelectionUsesFirstPopulatedDefaultOrKeepsTheOriginal() {
-        var providers = List.of("create", "minecraft");
-        var matches = (java.util.function.BiPredicate<String, String>) String::equalsIgnoreCase;
+    void initialAliasSelectionPrefersThePositiveMatchCountClosestToOne() {
+        var providers = List.of("mod:a", "mod:b", "type:a", "machine");
+        var matches = (java.util.function.BiPredicate<String, String>)
+                (target, alias) -> target.startsWith(alias);
 
-        assertEquals("saved", TianshuUploadTargetMatcher.findFirstPopulatedAlias(
-                List.of("saved", "create"),
-                "saved",
-                List.of("minecraft:crafting", "create"),
-                matches));
-        assertEquals("create", TianshuUploadTargetMatcher.findFirstPopulatedAlias(
+        assertEquals("type:", TianshuUploadTargetMatcher.findClosestUniqueAlias(
                 providers,
-                "saved",
-                List.of("minecraft:crafting", "create", "minecraft"),
+                "mod:",
+                List.of("type:", "machine"),
                 matches));
-        assertEquals("saved", TianshuUploadTargetMatcher.findFirstPopulatedAlias(
+        assertEquals("type:", TianshuUploadTargetMatcher.findClosestUniqueAlias(
+                List.of("mod:a", "mod:b", "mod:c", "type:a", "type:b"),
+                "mod:",
+                List.of("missing", "type:"),
+                matches));
+        assertEquals("mod:", TianshuUploadTargetMatcher.findClosestUniqueAlias(
+                List.of("mod:a", "mod:b"),
+                "mod:",
+                List.of("missing"),
+                matches));
+        assertEquals("saved", TianshuUploadTargetMatcher.findClosestUniqueAlias(
                 List.of(),
                 "saved",
-                List.of("minecraft:crafting", "create"),
+                List.of("missing"),
                 matches));
     }
 

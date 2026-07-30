@@ -235,7 +235,7 @@ public final class TianshuUploadTargetScreen<M extends TianshuPatternEncodingTer
     private void selectInitialPopulatedAlias() {
         if (!initialAliasSelectionPending || awaitingTargets) return;
         initialAliasSelectionPending = false;
-        String selectedAlias = TianshuUploadTargetMatcher.findFirstPopulatedAlias(
+        String selectedAlias = TianshuUploadTargetMatcher.findClosestUniqueAlias(
                 menu.getUploadTargets(), initialAlias, defaultAliases);
         if (selectedAlias.equals(aliasField.getValue())) return;
         defaultAliasIndex = indexOfDefaultAlias(selectedAlias);

@@ -37,11 +37,19 @@ class TianshuRecipeViewerIntegrationSourceContractTest {
                 "src/main/java/com/moakiee/ae2lt/mixin/recipeviewer/emi/EmiEncodePatternTransferMixin.java"));
         String context = Files.readString(Path.of(
                 "src/main/java/com/moakiee/ae2lt/client/TianshuRecipeTransferContext.java"));
+        String transferButton = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/mixin/recipeviewer/jei/"
+                        + "JeiRecipeTransferButtonControllerMixin.java"));
+        String jeiMetadata = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/mixin/recipeviewer/jei/"
+                        + "JeiRecipeTransferMetadata.java"));
 
         assertTrue(jei.contains("!doTransfer"));
         assertTrue(jei.contains("resetProcessingEncoding()"));
         assertTrue(jei.contains("TianshuRecipeTransferContext.clear"));
         assertTrue(jei.contains("captureVanillaRecipe"));
+        assertTrue(jei.contains("fallback.sourceKey()"));
+        assertFalse(jei.contains("if (ModList.get().isLoaded(\"emi\")) return;"));
         assertFalse(jei.contains(
                 "!TianshuRecipeTransferContext.isSupportedCraftingRecipe(recipeBase)"));
         assertTrue(emi.contains("!doTransfer"));
@@ -52,9 +60,13 @@ class TianshuRecipeViewerIntegrationSourceContractTest {
         assertTrue(emi.contains("getWorkstations"));
         assertTrue(emi.contains("addDefaultAlias"));
         assertTrue(emi.contains("captureVanillaRecipe("));
+        assertTrue(emi.contains("tianshuMenu, holder, sourceKey, defaultAliases"));
         assertFalse(emi.contains(
                 "isSupportedCraftingRecipe(holder)) return"));
         assertTrue(context.contains("BuiltInRegistries.RECIPE_TYPE"));
+        assertTrue(context.contains("fallbackSourceKey"));
+        assertTrue(context.contains("ResourceLocation.tryParse(sourceKey)"));
+        assertTrue(context.contains("sourceId.getNamespace()"));
         assertTrue(context.contains("holder.id().getNamespace()"));
         assertTrue(emi.contains("emiRecipe.getId().getNamespace()"));
         assertTrue(context.contains("WeakReference<TianshuPatternEncodingTermMenu>"));
@@ -67,6 +79,12 @@ class TianshuRecipeViewerIntegrationSourceContractTest {
         assertFalse(context.contains("retainAfterEncodedSlotChange("));
         assertFalse(context.contains("hashItemAndComponents"));
         assertFalse(context.contains("Map<Integer, Component>"));
+        assertTrue(transferButton.contains("ae2lt$getRecipeLayout()"));
+        assertTrue(transferButton.contains("JeiRecipeTransferMetadata.begin("));
+        assertTrue(transferButton.contains("JeiRecipeTransferMetadata.clear()"));
+        assertTrue(jeiMetadata.contains("getRecipeCategory()"));
+        assertTrue(jeiMetadata.contains("getRecipeType()"));
+        assertTrue(jeiMetadata.contains("getUid().toString()"));
 
         int jeiClear = jei.indexOf("TianshuRecipeTransferContext.clear(tianshuMenu)");
         assertTrue(jeiClear >= 0);
@@ -181,7 +199,7 @@ class TianshuRecipeViewerIntegrationSourceContractTest {
         assertTrue(picker.contains("String source = sourceField.getValue().strip()"));
         assertTrue(picker.contains("String query = aliasField.getValue().strip()"));
         assertTrue(picker.contains("defaultAliases.get(defaultAliasIndex)"));
-        assertTrue(picker.contains("findFirstPopulatedAlias"));
+        assertTrue(picker.contains("findClosestUniqueAlias"));
         assertTrue(picker.contains("initialAliasSelectionPending"));
         assertTrue(picker.contains("storedAlias.isBlank()"));
         assertTrue(picker.contains("focusedIndex = -1;"));

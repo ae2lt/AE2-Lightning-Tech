@@ -51,41 +51,52 @@ final class TianshuUploadTargetMatcher {
         return selected != null && writable.test(selected) ? selected : null;
     }
 
-    static String findFirstPopulatedAlias(
+    static String findClosestUniqueAlias(
             List<TianshuUploadTargetData> targets,
             String preferredAlias,
             List<String> defaultAliases) {
-        return findFirstPopulatedAlias(
+        return findClosestUniqueAlias(
                 targets, preferredAlias, defaultAliases, TianshuUploadTargetMatcher::matches);
     }
 
     /**
-     * Checks the viewer's aliases in display order. If none match, the original alias remains
-     * unchanged. Callers suppress this selection entirely when the original alias was saved.
+     * Selects the alias whose positive match count is closest to one. Ties retain display order,
+     * and no matches retain the original alias. Callers suppress this selection entirely when the
+     * original alias was saved.
      */
-    static <T> String findFirstPopulatedAlias(
+    static <T> String findClosestUniqueAlias(
             List<T> targets,
             String preferredAlias,
             List<String> defaultAliases,
             BiPredicate<T, String> matches) {
         String fallback = preferredAlias == null ? "" : preferredAlias;
-        if (hasMatches(targets, fallback, matches)) return fallback;
+        String selected = fallback;
+        int selectedMatches = countMatches(targets, fallback, matches);
+        if (selectedMatches == 1) return selected;
         if (defaultAliases != null) {
             for (String alias : defaultAliases) {
                 if (alias == null || alias.isBlank() || alias.equalsIgnoreCase(fallback)) continue;
-                if (hasMatches(targets, alias, matches)) return alias;
+                int aliasMatches = countMatches(targets, alias, matches);
+                if (aliasMatches <= 0
+                        || (selectedMatches > 0 && aliasMatches >= selectedMatches)) {
+                    continue;
+                }
+                selected = alias;
+                selectedMatches = aliasMatches;
+                if (selectedMatches == 1) return selected;
             }
         }
-        return fallback;
+        return selectedMatches > 0 ? selected : fallback;
     }
 
-    private static <T> boolean hasMatches(
+    private static <T> int countMatches(
             List<T> targets, String alias, BiPredicate<T, String> matches) {
-        if (targets == null || alias == null || alias.isBlank() || matches == null) return false;
+        if (targets == null || alias == null || alias.isBlank() || matches == null) return 0;
+        int count = 0;
         for (var target : targets) {
-            if (matches.test(target, alias)) return true;
+            if (matches.test(target, alias)) count++;
         }
-        return false;
+        return count;
     }
 
     /** Machine IDs use a left-anchored glob and may omit an arbitrary suffix. */

@@ -46,8 +46,6 @@ public abstract class JeiEncodePatternTransferMixin {
         // An actual transfer starts a new metadata generation. Clear before every early return so
         // recipes without a discoverable type/ID can never inherit the previous recipe's ID.
         TianshuRecipeTransferContext.clear(tianshuMenu);
-        // Match ClientPlus' JEMI ownership rule so one transfer cannot be recorded twice.
-        if (ModList.get().isLoaded("emi")) return;
         if (tianshuMenu.tianshuMode == TianshuEncodingMode.CLOSED_LOOP) {
             var output = firstDisplayedItemOutput(slotsView);
             if (tianshuMenu.markClosedLoopPrimaryOutput(output)) {
@@ -57,7 +55,12 @@ public abstract class JeiEncodePatternTransferMixin {
             return;
         }
         tianshuMenu.resetProcessingEncoding();
-        TianshuRecipeTransferContext.captureVanillaRecipe(tianshuMenu, recipeBase);
+        var fallback = JeiRecipeTransferMetadata.snapshotFor(tianshuMenu);
+        TianshuRecipeTransferContext.captureVanillaRecipe(
+                tianshuMenu,
+                recipeBase,
+                fallback.sourceKey(),
+                fallback.defaultAliases());
     }
 
     @Inject(

@@ -95,7 +95,7 @@ public abstract class EmiEncodePatternTransferMixin {
             // A real recipe type is more stable and semantically precise than an EMI category.
             // Preserve category/workstation strings only as aliases for the right-hand field.
             TianshuRecipeTransferContext.captureVanillaRecipe(
-                    tianshuMenu, holder, defaultAliases);
+                    tianshuMenu, holder, sourceKey, defaultAliases);
         } else {
             TianshuRecipeTransferContext.publish(
                     tianshuMenu, sourceKey, recipeId, defaultAliases);

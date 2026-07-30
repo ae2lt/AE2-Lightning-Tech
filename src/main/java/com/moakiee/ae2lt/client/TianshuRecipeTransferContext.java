@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
@@ -47,6 +48,18 @@ public final class TianshuRecipeTransferContext {
             TianshuPatternEncodingTermMenu menu,
             Object recipeBase,
             Iterable<String> additionalAliases) {
+        captureVanillaRecipe(menu, recipeBase, "", additionalAliases);
+    }
+
+    /**
+     * Captures a registered Minecraft recipe type, falling back to the viewer category only for
+     * display models that are not backed by {@link Recipe}.
+     */
+    public static void captureVanillaRecipe(
+            TianshuPatternEncodingTermMenu menu,
+            Object recipeBase,
+            String fallbackSourceKey,
+            Iterable<String> additionalAliases) {
         Recipe<?> recipe = switch (recipeBase) {
             case RecipeHolder<?> holder -> holder.value();
             case Recipe<?> direct -> direct;
@@ -58,8 +71,8 @@ public final class TianshuRecipeTransferContext {
         if (recipe != null) {
             var typeId = BuiltInRegistries.RECIPE_TYPE.getKey(recipe.getType());
             sourceKey = typeId == null ? "" : typeId.toString();
-            addDefaultAlias(defaultAliases, sourceKey);
         }
+        if (sourceKey.isBlank() && fallbackSourceKey != null) sourceKey = fallbackSourceKey;
         if (recipeBase instanceof RecipeHolder<?> holder) {
             recipeId = holder.id().toString();
             addDefaultAlias(defaultAliases, firstPathSegment(holder.id().getPath()));
@@ -79,6 +92,7 @@ public final class TianshuRecipeTransferContext {
             Iterable<String> defaultAliases) {
         if (menu == null) return;
         var aliases = new LinkedHashSet<String>();
+        addSourceAliases(aliases, sourceKey);
         if (defaultAliases != null) {
             defaultAliases.forEach(value -> {
                 if (value != null && !value.isBlank()) aliases.add(value);
@@ -90,6 +104,13 @@ public final class TianshuRecipeTransferContext {
                 recipeId == null ? "" : recipeId,
                 List.copyOf(aliases));
         resetPendingEncoding();
+    }
+
+    private static void addSourceAliases(LinkedHashSet<String> aliases, String sourceKey) {
+        if (sourceKey == null || sourceKey.isBlank()) return;
+        aliases.add(sourceKey);
+        var sourceId = ResourceLocation.tryParse(sourceKey);
+        if (sourceId != null) aliases.add(sourceId.getNamespace());
     }
 
     public static synchronized Snapshot snapshotFor(TianshuPatternEncodingTermMenu menu) {
