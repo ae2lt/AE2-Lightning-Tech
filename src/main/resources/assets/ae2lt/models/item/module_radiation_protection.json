@@ -1,6 +1,6 @@
 {
   "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "mekanism:item/module_radiation_shielding_unit"
+    "layer0": "ae2lt:item/module_radiation_protection"
   }
 }
