@@ -158,10 +158,11 @@ class TianshuRecipeViewerIntegrationSourceContractTest {
         assertTrue(coordinator.contains("hasFreshDirectUploadTargets()"));
         assertTrue(coordinator.contains("recipeScreen.onClose()"));
         assertTrue(coordinator.contains("menu.uploadTianshuPatternToTarget(target.group())"));
-        assertTrue(picker.contains(
-                "Component.translatable(\"ae2lt.tianshu.upload.success\"), false"));
+        assertTrue(picker.contains("\"ae2lt.tianshu.upload.success_target\""));
+        assertTrue(coordinator.contains("\"ae2lt.tianshu.upload.success_target\""));
         assertTrue(coordinator.contains(
-                ": \"ae2lt.tianshu.upload.failed\"), false"));
+                "Component.translatable(\"ae2lt.tianshu.upload.failed\")"));
+        assertTrue(coordinator.contains("displayClientMessage(result, false)"));
 
         int resultReady = coordinator.indexOf("isEncodingResultReady(menu, stack)");
         int targetRefresh = coordinator.indexOf("requestDirectUploadTargetsAfterEncoding()");

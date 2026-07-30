@@ -1226,6 +1226,7 @@
   "ae2lt.tianshu.upload.hint": "选择一个有空槽的供应器",
   "ae2lt.tianshu.upload.pending": "正在上传样板…",
   "ae2lt.tianshu.upload.success": "样板已上传",
+  "ae2lt.tianshu.upload.success_target": "样板已上传至 %s",
   "ae2lt.tianshu.upload.failed": "目标不可用、已满或拒绝该样板",
   "ae2lt.tianshu.upload.providers": "供应器：%s",
   "ae2lt.tianshu.upload.slots": "可用槽：%s",

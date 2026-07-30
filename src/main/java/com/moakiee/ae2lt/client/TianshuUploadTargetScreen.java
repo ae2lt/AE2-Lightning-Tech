@@ -76,6 +76,7 @@ public final class TianshuUploadTargetScreen<M extends TianshuPatternEncodingTer
     private boolean initialAliasSelectionPending;
     private String configuredAlias = "";
     private String initialAlias = "";
+    private Component uploadTargetName = Component.empty();
 
     public TianshuUploadTargetScreen(TianshuPatternEncodingTermScreen<M> parent) {
         this(parent, false);
@@ -212,7 +213,9 @@ public final class TianshuUploadTargetScreen<M extends TianshuPatternEncodingTer
             awaitingUpload = false;
             if (minecraft.player != null) {
                 minecraft.player.displayClientMessage(
-                        Component.translatable("ae2lt.tianshu.upload.success"), false);
+                        Component.translatable(
+                                "ae2lt.tianshu.upload.success_target", uploadTargetName),
+                        false);
             }
             returnToParent();
             return;
@@ -475,6 +478,7 @@ public final class TianshuUploadTargetScreen<M extends TianshuPatternEncodingTer
         }
         awaitingUpload = true;
         uploadFailed = false;
+        uploadTargetName = selected.target().group().name().copy();
         menu.uploadTianshuPatternToTarget(selected.target().group());
     }
 

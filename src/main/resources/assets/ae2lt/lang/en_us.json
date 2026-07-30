@@ -1226,6 +1226,7 @@
   "ae2lt.tianshu.upload.hint": "Select a provider with an available slot",
   "ae2lt.tianshu.upload.pending": "Uploading pattern…",
   "ae2lt.tianshu.upload.success": "Pattern uploaded",
+  "ae2lt.tianshu.upload.success_target": "Pattern uploaded to %s",
   "ae2lt.tianshu.upload.failed": "Target is unavailable, full, or rejected the pattern",
   "ae2lt.tianshu.upload.providers": "Providers: %s",
   "ae2lt.tianshu.upload.slots": "Available slots: %s",

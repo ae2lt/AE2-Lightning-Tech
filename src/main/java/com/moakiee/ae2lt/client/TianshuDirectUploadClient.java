@@ -25,6 +25,7 @@ public final class TianshuDirectUploadClient {
     private static WeakReference<Screen> heldRecipeScreen = new WeakReference<>(null);
     private static WeakReference<TianshuPatternEncodingTermMenu> awaitingResult =
             new WeakReference<>(null);
+    private static Component awaitingTargetName;
 
     private TianshuDirectUploadClient() {
     }
@@ -69,7 +70,7 @@ public final class TianshuDirectUploadClient {
             case CLOSED_LOOP_STORAGE, CRAFTING_ASSEMBLER -> {
                 if (consumeDirectRequest(menu)) {
                     menu.uploadEncodedPattern();
-                    awaitResult(menu);
+                    awaitResult(menu, null);
                 }
                 clearHeldRecipe();
             }
@@ -81,7 +82,7 @@ public final class TianshuDirectUploadClient {
                         menu.getUploadTargets(), selection.initialQuery());
                 if (target != null && consumeDirectRequest(menu)) {
                     menu.uploadTianshuPatternToTarget(target.group());
-                    awaitResult(menu);
+                    awaitResult(menu, target.group().name());
                     clearHeldRecipe();
                 } else {
                     // No safe unique target: return to the terminal without consuming the request.
@@ -109,23 +110,36 @@ public final class TianshuDirectUploadClient {
                 .orElse(ItemStack.EMPTY);
     }
 
-    private static void awaitResult(TianshuPatternEncodingTermMenu menu) {
+    private static void awaitResult(
+            TianshuPatternEncodingTermMenu menu, Component targetName) {
         awaitingResult = new WeakReference<>(menu);
+        awaitingTargetName = targetName == null ? null : targetName.copy();
     }
 
     private static void handleUploadResult(Minecraft minecraft) {
         var menu = awaitingResult.get();
-        if (menu == null) return;
+        if (menu == null) {
+            clearAwaitingResult();
+            return;
+        }
         if (minecraft.player == null || minecraft.player.containerMenu != menu) {
-            awaitingResult = new WeakReference<>(null);
+            clearAwaitingResult();
             return;
         }
         if (menu.uploadState != 1 && menu.uploadState != 3) return;
-        minecraft.player.displayClientMessage(Component.translatable(
-                menu.uploadState == 1
-                        ? "ae2lt.tianshu.upload.success"
-                        : "ae2lt.tianshu.upload.failed"), false);
+        Component result = menu.uploadState == 1
+                ? awaitingTargetName == null
+                        ? Component.translatable("ae2lt.tianshu.upload.success")
+                        : Component.translatable(
+                                "ae2lt.tianshu.upload.success_target", awaitingTargetName)
+                : Component.translatable("ae2lt.tianshu.upload.failed");
+        minecraft.player.displayClientMessage(result, false);
+        clearAwaitingResult();
+    }
+
+    private static void clearAwaitingResult() {
         awaitingResult = new WeakReference<>(null);
+        awaitingTargetName = null;
     }
 
     private static void clearHeldRecipe() {
