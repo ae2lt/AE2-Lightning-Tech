@@ -91,11 +91,11 @@ class HyperdimensionalPigmeeResearchContractTest {
         String chinese = Files.readString(Path.of(
                 "src/main/resources/assets/ae2lt/lang/zh_cn.json"));
 
-        assertTrue(advancement.contains("\"parent\": \"ae2lt:main/lightning_collapse_matrix\""));
+        assertTrue(advancement.contains("\"parent\": \"ae2lt:main/pig_zip\""));
         assertTrue(advancement.contains("\"trigger\": \"minecraft:impossible\""));
         assertTrue(advancement.contains("\"hidden\": true"));
         assertTrue(advancement.contains("\"claim_ritual_pigmee\""));
-        assertTrue(chinese.contains("\"advancements.ae2lt.hyperdimensional_pigmee.title\": \"这是……猪咪？？？\""));
+        assertTrue(chinese.contains("\"advancements.ae2lt.hyperdimensional_pigmee.title\": \"这是……猪咪？！\""));
     }
 
     @Test

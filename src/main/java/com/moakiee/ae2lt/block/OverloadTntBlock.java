@@ -4,6 +4,8 @@ import com.moakiee.ae2lt.entity.OverloadTntEntity;
 import javax.annotation.Nullable;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.InteractionHand;
@@ -20,6 +22,10 @@ import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.world.phys.BlockHitResult;
 
 public class OverloadTntBlock extends TntBlock {
+    private static final ResourceLocation ANNIHILATION_ADVANCEMENT =
+            ResourceLocation.fromNamespaceAndPath("ae2lt", "main/overload_tnt_annihilation");
+    private static final String IGNITE_CRITERION = "ignite_overload_tnt";
+
     public OverloadTntBlock(Properties properties) {
         super(properties);
     }
@@ -127,5 +133,15 @@ public class OverloadTntBlock extends TntBlock {
         level.addFreshEntity(tnt);
         level.playSound(null, tnt.getX(), tnt.getY(), tnt.getZ(), SoundEvents.TNT_PRIMED, SoundSource.BLOCKS, 1.0F, 1.0F);
         level.gameEvent(igniter, GameEvent.PRIME_FUSE, pos);
+        if (igniter instanceof ServerPlayer serverPlayer) {
+            awardIgnitionAdvancement(serverPlayer);
+        }
+    }
+
+    private static void awardIgnitionAdvancement(ServerPlayer player) {
+        var advancement = player.server.getAdvancements().get(ANNIHILATION_ADVANCEMENT);
+        if (advancement != null) {
+            player.getAdvancements().award(advancement, IGNITE_CRITERION);
+        }
     }
 }

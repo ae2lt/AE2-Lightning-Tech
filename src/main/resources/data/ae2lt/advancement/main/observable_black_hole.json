@@ -1,0 +1,29 @@
+{
+  "parent": "ae2lt:main/hyperdimensional_pigmee",
+  "display": {
+    "icon": { "id": "ae2lt:mysterious_cell" },
+    "title": { "translate": "advancements.ae2lt.observable_black_hole.title" },
+    "description": { "translate": "advancements.ae2lt.observable_black_hole.description" },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": false
+  },
+  "criteria": {
+    "get_infinite_collapse_matrix_cell": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "ae2lt:mysterious_cell",
+            "predicates": {
+              "minecraft:custom_data": "{CellType:3b}"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [ [ "get_infinite_collapse_matrix_cell" ] ],
+  "sends_telemetry_event": false
+}

@@ -1,0 +1,24 @@
+{
+  "parent": "ae2lt:main/lightning_collapse_matrix",
+  "display": {
+    "icon": { "id": "ae2lt:mysterious_cell" },
+    "title": { "translate": "advancements.ae2lt.neutralization.title" },
+    "description": { "translate": "advancements.ae2lt.neutralization.description" },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": true
+  },
+  "criteria": {
+    "get_mysterious_cell": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          { "items": "ae2lt:mysterious_cell" }
+        ]
+      }
+    }
+  },
+  "requirements": [ [ "get_mysterious_cell" ] ],
+  "sends_telemetry_event": false
+}

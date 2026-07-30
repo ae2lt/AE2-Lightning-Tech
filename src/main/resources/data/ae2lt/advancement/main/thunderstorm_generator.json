@@ -1,0 +1,45 @@
+{
+  "parent": "ae2lt:main/hyperdimensional_pigmee",
+  "display": {
+    "icon": { "id": "ae2lt:mysterious_cell" },
+    "title": { "translate": "advancements.ae2lt.thunderstorm_generator.title" },
+    "description": { "translate": "advancements.ae2lt.thunderstorm_generator.description" },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": true
+  },
+  "criteria": {
+    "get_infinite_high_voltage_cell": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "ae2lt:mysterious_cell",
+            "predicates": {
+              "minecraft:custom_data": "{CellType:1b}"
+            }
+          }
+        ]
+      }
+    },
+    "get_infinite_extreme_high_voltage_cell": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "ae2lt:mysterious_cell",
+            "predicates": {
+              "minecraft:custom_data": "{CellType:2b}"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [ "get_infinite_high_voltage_cell" ],
+    [ "get_infinite_extreme_high_voltage_cell" ]
+  ],
+  "sends_telemetry_event": false
+}
