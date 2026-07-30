@@ -68,3 +68,34 @@ Thermal Control Units scale their effective power by Manhattan distance from the
 | 3 blocks | 50% |
 | 4 blocks | 25% |
 | 5 or more blocks | 0% |
+
+## Heat and Cooling Formulas
+
+First calculate the effective cooling points of all Thermal Control Units:
+
+`C = Σ(unit cooling points × distance factor)`
+
+A T1 unit provides 1 point and a T2 unit provides 2 points; use the distance factors in the table above. For example, a T2 unit two blocks from the Main Core provides `2 × 75% = 1.5` effective cooling points.
+
+Effective cooling points determine both heat capacity and dissipation per tick:
+
+* **Heat capacity:** `K = 2048 + 150 × C`
+* **Dissipation rate:** `r = 0.00008 + 0.000025 × C`
+* **Displayed heat:** `h = clamp(H ÷ K, 0, 1)`
+
+Here, `H` is the matrix's stored heat and `h` is the 0%–100% heat shown by the Controller. Dissipation is proportional rather than a fixed subtraction: while idle, heat after each tick is `Hnext = Hcurrent × (1 - r)`. For example, at `C = 20`, heat capacity is `5,048` and the matrix dissipates `0.058%` of its current heat each tick.
+
+While working, the matrix generates heat from its actual load before applying that tick's dissipation:
+
+`Hnext = (Hcurrent + P × g × L) × (1 - r)`
+
+* `P` is the total thread points: 1 for each T1 Thread Unit and 2 for each T2
+* `L` is the executions accepted by the matrix this tick divided by the executions available, clamped to 0–1; it is 0 when there is no work
+* Stable and Quantum Main Cores use the heat coefficient `g = 0.256`
+* The Overload Main Core uses the heat coefficient `g = 1.2032`
+
+Heat then affects actual throughput through thermal efficiency:
+
+* **Stable and Quantum:** `efficiency = clamp(1 - h, 0.45, 1)`, so efficiency never falls below 45%
+* **Overload:** `efficiency = 0.05 + 0.95 × [4h(1 - h)]⁵`, peaking at `h = 50%`
+* **Multidimensional:** Fixed at 100%; it neither reads nor accumulates heat
