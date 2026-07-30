@@ -1,7 +1,7 @@
 {
   "parent": "ae2lt:main/neutralization",
   "display": {
-    "icon": { "id": "ae2lt:mysterious_cell" },
+    "icon": { "id": "minecraft:lightning_rod" },
     "title": { "translate": "advancements.ae2lt.construct_fragment.title" },
     "description": { "translate": "advancements.ae2lt.construct_fragment.description" },
     "frame": "goal",
@@ -10,20 +10,10 @@
     "hidden": false
   },
   "criteria": {
-    "get_infinite_lightning_rod_cell": {
-      "trigger": "minecraft:inventory_changed",
-      "conditions": {
-        "items": [
-          {
-            "items": "ae2lt:mysterious_cell",
-            "predicates": {
-              "minecraft:custom_data": "{CellType:0b}"
-            }
-          }
-        ]
-      }
+    "obtain_infinite_lightning_rod": {
+      "trigger": "minecraft:impossible"
     }
   },
-  "requirements": [ [ "get_infinite_lightning_rod_cell" ] ],
+  "requirements": [ [ "obtain_infinite_lightning_rod" ] ],
   "sends_telemetry_event": false
 }

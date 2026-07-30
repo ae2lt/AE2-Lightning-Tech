@@ -2,8 +2,8 @@
   "parent": "ae2lt:main/overload_singularity",
   "display": {
     "icon": { "id": "ae2lt:overload_tnt" },
-    "title": { "translate": "advancements.ae2lt.overload_tnt_annihilation.title" },
-    "description": { "translate": "advancements.ae2lt.overload_tnt_annihilation.description" },
+    "title": { "translate": "advancements.ae2lt.annihilation.title" },
+    "description": { "translate": "advancements.ae2lt.annihilation.description" },
     "frame": "task",
     "show_toast": true,
     "announce_to_chat": false,

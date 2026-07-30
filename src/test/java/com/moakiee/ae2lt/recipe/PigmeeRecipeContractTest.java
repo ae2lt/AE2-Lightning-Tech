@@ -79,27 +79,25 @@ class PigmeeRecipeContractTest {
     }
 
     @Test
-    void pigmeeCoreAndPigmeeTechnologyHaveSeparateAdvancements() throws Exception {
-        String pigmeeTechnology = Files.readString(Path.of(
-                "src/main/resources/data/ae2lt/advancement/main/pigmee_technology.json"));
+    void pigmeeCoreAndMentalmathUnitHaveSeparateAdvancements() throws Exception {
+        String pigBrainOverload = Files.readString(Path.of(
+                "src/main/resources/data/ae2lt/advancement/main/pig_brain_overload.json"));
         String pigZip = Files.readString(Path.of(
                 "src/main/resources/data/ae2lt/advancement/main/pig_zip.json"));
         String translations = Files.readString(Path.of(
                 "src/main/resources/assets/ae2lt/lang/zh_cn.json"));
 
-        assertTrue(pigmeeTechnology.contains("\"parent\": \"ae2lt:main/pig_zip\""));
-        assertTrue(pigmeeTechnology.contains("\"trigger\": \"minecraft:recipe_crafted\""));
-        for (String filename : PIGMEE_TECH_RECIPES) {
-            String recipeId = filename.substring(0, filename.length() - ".json".length());
-            assertTrue(pigmeeTechnology.contains("\"recipe_id\": \"ae2lt:" + recipeId + "\""), filename);
-        }
-        assertTrue(pigmeeTechnology.contains("\"hidden\": false"));
+        assertTrue(pigBrainOverload.contains("\"parent\": \"ae2lt:main/pig_zip\""));
+        assertTrue(pigBrainOverload.contains("\"trigger\": \"minecraft:recipe_crafted\""));
+        assertTrue(pigBrainOverload.contains("\"recipe_id\": \"ae2lt:pigmee_mentalmath_unit\""));
+        assertTrue(pigBrainOverload.contains("\"hidden\": false"));
 
         assertTrue(pigZip.contains("\"id\": \"ae2lt:pigmee_core\""));
         assertTrue(pigZip.contains("\"trigger\": \"minecraft:inventory_changed\""));
         assertTrue(pigZip.contains("\"items\": \"ae2lt:pigmee_core\""));
         assertTrue(translations.contains("\"advancements.ae2lt.pig_zip.title\": \"猪.zip\""));
         assertTrue(translations.contains("这只可爱的小猪被你的铁砧砸成了饼，你为什么要这样做?"));
+        assertTrue(translations.contains("\"advancements.ae2lt.pig_brain_overload.title\": \"猪脑过载\""));
     }
 
     @Test

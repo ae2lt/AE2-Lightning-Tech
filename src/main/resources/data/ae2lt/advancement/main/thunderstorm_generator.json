@@ -10,36 +10,16 @@
     "hidden": true
   },
   "criteria": {
-    "get_infinite_high_voltage_cell": {
-      "trigger": "minecraft:inventory_changed",
-      "conditions": {
-        "items": [
-          {
-            "items": "ae2lt:mysterious_cell",
-            "predicates": {
-              "minecraft:custom_data": "{CellType:1b}"
-            }
-          }
-        ]
-      }
+    "obtain_infinite_high_voltage": {
+      "trigger": "minecraft:impossible"
     },
-    "get_infinite_extreme_high_voltage_cell": {
-      "trigger": "minecraft:inventory_changed",
-      "conditions": {
-        "items": [
-          {
-            "items": "ae2lt:mysterious_cell",
-            "predicates": {
-              "minecraft:custom_data": "{CellType:2b}"
-            }
-          }
-        ]
-      }
+    "obtain_infinite_extreme_high_voltage": {
+      "trigger": "minecraft:impossible"
     }
   },
   "requirements": [
-    [ "get_infinite_high_voltage_cell" ],
-    [ "get_infinite_extreme_high_voltage_cell" ]
+    [ "obtain_infinite_high_voltage" ],
+    [ "obtain_infinite_extreme_high_voltage" ]
   ],
   "sends_telemetry_event": false
 }

@@ -71,7 +71,8 @@ final class MekanismProtectionContractTest {
         assertTrue(integration.contains("player.getHealth() > healthBefore"));
         assertTrue(integration.contains("CelestweaveAdvancementService.awardRadiationAssimilation(player)"));
         assertTrue(advancement.contains("\"trigger\": \"minecraft:impossible\""));
-        assertTrue(advancement.contains("\"hidden\": true"));
+        assertTrue(advancement.contains("\"frame\": \"goal\""));
+        assertTrue(advancement.contains("\"hidden\": false"));
         assertTrue(advancement.contains("\"radiation_healing\""));
     }
 
