@@ -4,10 +4,10 @@
     "icon": { "id": "ae2lt:module_radiation_protection" },
     "title": { "translate": "advancements.ae2lt.radiation_assimilation.title" },
     "description": { "translate": "advancements.ae2lt.radiation_assimilation.description" },
-    "frame": "goal",
+    "frame": "challenge",
     "show_toast": true,
     "announce_to_chat": false,
-    "hidden": false
+    "hidden": true
   },
   "criteria": {
     "radiation_healing": {

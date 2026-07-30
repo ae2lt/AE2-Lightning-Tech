@@ -73,7 +73,7 @@ class HyperdimensionalPigmeeConversionRecipeContractTest {
         String advancement = Files.readString(Path.of(
                 "src/main/resources/data/ae2lt/advancement/main/true_pigmee_technology.json"));
 
-        assertTrue(advancement.contains("\"parent\": \"ae2lt:main/hyperdimensional_pigmee\""));
+        assertTrue(advancement.contains("\"parent\": \"ae2lt:main/pigmee_technology\""));
         assertTrue(advancement.contains("\"trigger\": \"minecraft:recipe_crafted\""));
         assertTrue(advancement.contains(
                 "\"recipe_id\": \"ae2lt:hyperdimensional_pigmee_conversion\""));

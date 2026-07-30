@@ -1,5 +1,5 @@
 {
-  "parent": "ae2lt:main/hyperdimensional_pigmee",
+  "parent": "ae2lt:main/pigmee_technology",
   "display": {
     "icon": { "id": "ae2lt:hyperdimensional_pigmee_fumo" },
     "title": { "translate": "advancements.ae2lt.true_pigmee_technology.title" },

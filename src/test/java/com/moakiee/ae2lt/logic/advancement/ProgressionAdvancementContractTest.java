@@ -1,7 +1,6 @@
 package com.moakiee.ae2lt.logic.advancement;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.google.gson.JsonObject;
@@ -16,7 +15,7 @@ final class ProgressionAdvancementContractTest {
 
     @Test
     void documentProgressionUsesTheRequestedParentsFramesAndVisibility() throws Exception {
-        assertDisplay("radiation_assimilation", "ae2lt:main/root", "goal", false);
+        assertDisplay("radiation_assimilation", "ae2lt:main/root", "challenge", true);
         assertDisplay("annihilation", "ae2lt:main/overload_singularity", "task", false);
 
         assertDisplay("neutralization", "ae2lt:main/lightning_collapse_matrix", "goal", true);
@@ -26,10 +25,15 @@ final class ProgressionAdvancementContractTest {
 
         assertDisplay("pig_zip", "ae2lt:main/root", "task", false);
         assertDisplay("pig_brain_overload", "ae2lt:main/pig_zip", "task", false);
-        assertDisplay("hyperdimensional_pigmee", "ae2lt:main/pig_zip", "challenge", true);
+        assertDisplay("pigmee_technology", "ae2lt:main/pig_zip", "task", false);
+        assertDisplay(
+                "hyperdimensional_pigmee",
+                "ae2lt:main/lightning_collapse_matrix",
+                "challenge",
+                true);
         assertDisplay(
                 "true_pigmee_technology",
-                "ae2lt:main/hyperdimensional_pigmee",
+                "ae2lt:main/pigmee_technology",
                 "challenge",
                 true);
         assertDisplay(
@@ -47,8 +51,7 @@ final class ProgressionAdvancementContractTest {
                 "ae2lt:main/hyperdimensional_pigmee",
                 "challenge",
                 false);
-
-        assertFalse(Files.exists(ADVANCEMENT_ROOT.resolve("pigmee_technology.json")));
+        assertTrue(Files.exists(ADVANCEMENT_ROOT.resolve("pigmee_technology.json")));
     }
 
     @Test
@@ -106,12 +109,12 @@ final class ProgressionAdvancementContractTest {
     }
 
     @Test
-    void chineseTextMatchesTheSuppliedAchievementDocument() throws Exception {
+    void chineseTextMatchesTheSelectedAchievementSet() throws Exception {
         String chinese = Files.readString(
                 Path.of("src/main/resources/assets/ae2lt/lang/zh_cn.json"));
 
         for (String title : new String[]{
-                "有辐共享",
+                "身在辐中不知福",
                 "湮灭",
                 "中和",
                 "构像残片",
@@ -119,7 +122,8 @@ final class ProgressionAdvancementContractTest {
                 "构析真理",
                 "猪.zip",
                 "猪脑过载",
-                "这是……猪咪？！",
+                "猪咪科技",
+                "这是……猪咪？？？",
                 "真·猪咪科技",
                 "多维展开",
                 "雷暴发生器",
