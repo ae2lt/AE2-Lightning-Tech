@@ -1,4 +1,4 @@
-package com.moakiee.ae2lt.mixin.recipeviewer.jei;
+package com.moakiee.ae2lt.client;
 
 import com.moakiee.ae2lt.menu.TianshuPatternEncodingTermMenu;
 import java.util.LinkedHashSet;
@@ -8,14 +8,17 @@ import mezz.jei.api.gui.IRecipeLayoutDrawable;
 /**
  * Carries the JEI category through its universal transfer call. JEI passes only the recipe display
  * object to transfer handlers, which is not necessarily a Minecraft {@code Recipe}.
+ *
+ * <p>This helper must remain outside every package declared as a Mixin package. Mixin package
+ * classes are reserved for transformation and cannot be loaded directly at runtime.
  */
-final class JeiRecipeTransferMetadata {
+public final class JeiRecipeTransferMetadata {
     private static final ThreadLocal<Snapshot> CURRENT = new ThreadLocal<>();
 
     private JeiRecipeTransferMetadata() {
     }
 
-    static void begin(
+    public static void begin(
             TianshuPatternEncodingTermMenu menu, IRecipeLayoutDrawable<?> recipeLayout) {
         clear();
         if (menu == null || recipeLayout == null || recipeLayout.getRecipeCategory() == null) return;
@@ -30,16 +33,16 @@ final class JeiRecipeTransferMetadata {
         CURRENT.set(new Snapshot(menu, sourceKey, List.copyOf(aliases)));
     }
 
-    static Snapshot snapshotFor(TianshuPatternEncodingTermMenu menu) {
+    public static Snapshot snapshotFor(TianshuPatternEncodingTermMenu menu) {
         var snapshot = CURRENT.get();
         return snapshot != null && snapshot.menu() == menu ? snapshot : Snapshot.EMPTY;
     }
 
-    static void clear() {
+    public static void clear() {
         CURRENT.remove();
     }
 
-    record Snapshot(
+    public record Snapshot(
             TianshuPatternEncodingTermMenu menu, String sourceKey, List<String> defaultAliases) {
         private static final Snapshot EMPTY = new Snapshot(null, "", List.of());
     }

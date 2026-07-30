@@ -41,7 +41,7 @@ class TianshuRecipeViewerIntegrationSourceContractTest {
                 "src/main/java/com/moakiee/ae2lt/mixin/recipeviewer/jei/"
                         + "JeiRecipeTransferButtonControllerMixin.java"));
         String jeiMetadata = Files.readString(Path.of(
-                "src/main/java/com/moakiee/ae2lt/mixin/recipeviewer/jei/"
+                "src/main/java/com/moakiee/ae2lt/client/"
                         + "JeiRecipeTransferMetadata.java"));
 
         assertTrue(jei.contains("!doTransfer"));
@@ -85,6 +85,8 @@ class TianshuRecipeViewerIntegrationSourceContractTest {
         assertTrue(jeiMetadata.contains("getRecipeCategory()"));
         assertTrue(jeiMetadata.contains("getRecipeType()"));
         assertTrue(jeiMetadata.contains("getUid().toString()"));
+        assertTrue(jeiMetadata.contains("package com.moakiee.ae2lt.client;"));
+        assertFalse(jeiMetadata.contains("package com.moakiee.ae2lt.mixin."));
 
         int jeiClear = jei.indexOf("TianshuRecipeTransferContext.clear(tianshuMenu)");
         assertTrue(jeiClear >= 0);

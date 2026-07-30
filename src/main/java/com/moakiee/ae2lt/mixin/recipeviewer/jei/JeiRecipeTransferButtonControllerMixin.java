@@ -1,5 +1,6 @@
 package com.moakiee.ae2lt.mixin.recipeviewer.jei;
 
+import com.moakiee.ae2lt.client.JeiRecipeTransferMetadata;
 import com.moakiee.ae2lt.client.TianshuDirectUploadClient;
 import com.moakiee.ae2lt.menu.TianshuPatternEncodingTermMenu;
 import mezz.jei.api.gui.IRecipeLayoutDrawable;

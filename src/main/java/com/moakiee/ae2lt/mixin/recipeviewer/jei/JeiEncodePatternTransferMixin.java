@@ -5,6 +5,7 @@ package com.moakiee.ae2lt.mixin.recipeviewer.jei;
  * 07f8373c590c0c6d845f794e7c25090e5ef5703e. SPDX-License-Identifier: LGPL-3.0-only
  */
 
+import com.moakiee.ae2lt.client.JeiRecipeTransferMetadata;
 import com.moakiee.ae2lt.client.TianshuRecipeTransferContext;
 import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuEncodingMode;
 import com.moakiee.ae2lt.menu.TianshuPatternEncodingTermMenu;
