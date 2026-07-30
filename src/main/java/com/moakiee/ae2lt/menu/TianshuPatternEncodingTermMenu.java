@@ -192,6 +192,12 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     private int expectedTriggeredUploadAck;
     private boolean directUploadTargetsRequested;
     private int expectedDirectUploadTargetRevision;
+    /**
+     * AE2 synchronously broadcasts the encoded slot while {@code super.encode()} still contains
+     * the temporary vanilla pattern. Do not treat that intermediate stack as a newly inserted
+     * pattern, or it will clear the advanced/overload draft before conversion runs.
+     */
+    private boolean ae2EncodingInProgress;
 
     public TianshuPatternEncodingTermMenu(
             int id, Inventory inventory, TianshuPatternTerminalHost host) {
@@ -311,7 +317,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
                     && selected.getFunctionProfile().supportsInventoryMaintenance();
             seedRefillAvailable = selected != null && selected.isFormed()
                     && selected.getFunctionProfile().supportsClosedLoopSeeds();
-            refreshDerivedConfiguration();
+            if (!ae2EncodingInProgress) refreshDerivedConfiguration();
             refreshProcessingDraftBinding();
             if (closedLoopDraftDirty) rebuildClosedLoopDraft();
             closedLoopSeedMultiplier = closedLoopExecutionSeedMultiplier;
@@ -2240,18 +2246,21 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
                     return;
                 }
             }
-            boolean stagedNetworkBlank = stageNetworkBlankPattern();
+            boolean stagedNetworkBlank = false;
+            ae2EncodingInProgress = true;
             try {
+                stagedNetworkBlank = stageNetworkBlankPattern();
                 super.encode();
                 applyConfiguredProcessingConversion();
-                var encoded = tianshuHost.getLogic().getEncodedPatternInv().getStackInSlot(0);
-                if (TianshuPatternUploadRouting.isValidEncodingResult(encoded, getPlayer().level())) {
-                    triggeredUploadAck++;
-                }
-                broadcastChanges();
             } finally {
+                ae2EncodingInProgress = false;
                 if (stagedNetworkBlank) returnStagedBlankPatternToNetwork();
             }
+            var encoded = tianshuHost.getLogic().getEncodedPatternInv().getStackInSlot(0);
+            if (TianshuPatternUploadRouting.isValidEncodingResult(encoded, getPlayer().level())) {
+                triggeredUploadAck++;
+            }
+            broadcastChanges();
             return;
         }
         var result = encodeDerivedPattern();

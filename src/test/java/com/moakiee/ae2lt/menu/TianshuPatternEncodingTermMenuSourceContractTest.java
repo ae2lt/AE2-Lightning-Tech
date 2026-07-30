@@ -73,6 +73,27 @@ class TianshuPatternEncodingTermMenuSourceContractTest {
     }
 
     @Test
+    void processingConversionIgnoresAe2sIntermediateVanillaPatternBroadcast() throws Exception {
+        String menu = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/menu/TianshuPatternEncodingTermMenu.java"));
+
+        assertTrue(menu.contains("if (!ae2EncodingInProgress) refreshDerivedConfiguration();"));
+        int encodeStart = menu.indexOf("private void encodeServerWithOptions(");
+        int guardOn = menu.indexOf("ae2EncodingInProgress = true;", encodeStart);
+        int nativeEncode = menu.indexOf("super.encode();", guardOn);
+        int conversion = menu.indexOf("applyConfiguredProcessingConversion();", nativeEncode);
+        int guardOff = menu.indexOf("ae2EncodingInProgress = false;", conversion);
+        int finalBroadcast = menu.indexOf("broadcastChanges();", guardOff);
+
+        assertTrue(encodeStart >= 0);
+        assertTrue(guardOn > encodeStart);
+        assertTrue(nativeEncode > guardOn);
+        assertTrue(conversion > nativeEncode);
+        assertTrue(guardOff > conversion);
+        assertTrue(finalBroadcast > guardOff);
+    }
+
+    @Test
     void insertedCustomPatternsRestoreTheirOwnEditingStateInsteadOfReusingTheOldDraft()
             throws Exception {
         String menu = Files.readString(Path.of(
