@@ -1,6 +1,7 @@
 package com.moakiee.ae2lt.block;
 
 import com.moakiee.ae2lt.entity.OverloadTntEntity;
+import com.moakiee.ae2lt.logic.advancement.ProgressionAdvancementService;
 import javax.annotation.Nullable;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -10,6 +11,7 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.ItemInteractionResult;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Explosion;
@@ -125,6 +127,9 @@ public class OverloadTntBlock extends TntBlock {
                 pos.getZ() + 0.5D,
                 igniter);
         level.addFreshEntity(tnt);
+        if (igniter instanceof ServerPlayer player) {
+            ProgressionAdvancementService.awardOverloadTntIgnited(player);
+        }
         level.playSound(null, tnt.getX(), tnt.getY(), tnt.getZ(), SoundEvents.TNT_PRIMED, SoundSource.BLOCKS, 1.0F, 1.0F);
         level.gameEvent(igniter, GameEvent.PRIME_FUSE, pos);
     }

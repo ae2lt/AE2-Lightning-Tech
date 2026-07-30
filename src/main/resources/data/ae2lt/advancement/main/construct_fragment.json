@@ -1,0 +1,19 @@
+{
+  "parent": "ae2lt:main/neutralization",
+  "display": {
+    "icon": { "id": "minecraft:lightning_rod" },
+    "title": { "translate": "advancements.ae2lt.construct_fragment.title" },
+    "description": { "translate": "advancements.ae2lt.construct_fragment.description" },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": false
+  },
+  "criteria": {
+    "obtain_infinite_lightning_rod": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "requirements": [ [ "obtain_infinite_lightning_rod" ] ],
+  "sends_telemetry_event": false
+}

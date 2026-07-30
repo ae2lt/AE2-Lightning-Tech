@@ -1,0 +1,28 @@
+{
+  "parent": "ae2lt:main/overload_singularity",
+  "display": {
+    "icon": { "id": "ae2lt:overload_tnt" },
+    "title": { "translate": "advancements.ae2lt.annihilation.title" },
+    "description": { "translate": "advancements.ae2lt.annihilation.description" },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": false
+  },
+  "criteria": {
+    "craft_overload_tnt": {
+      "trigger": "minecraft:recipe_crafted",
+      "conditions": {
+        "recipe_id": "ae2lt:overload_tnt_from_gunpowder"
+      }
+    },
+    "ignite_overload_tnt": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "requirements": [
+    [ "craft_overload_tnt" ],
+    [ "ignite_overload_tnt" ]
+  ],
+  "sends_telemetry_event": false
+}

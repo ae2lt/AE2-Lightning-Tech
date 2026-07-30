@@ -15,6 +15,8 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.inventory.tooltip.TooltipComponent;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -24,6 +26,7 @@ import net.minecraft.world.item.component.CustomData;
 import net.neoforged.neoforge.server.ServerLifecycleHooks;
 
 import com.moakiee.ae2lt.config.AE2LTCommonConfig;
+import com.moakiee.ae2lt.logic.advancement.ProgressionAdvancementService;
 import com.moakiee.ae2lt.me.key.LightningKey;
 import com.moakiee.ae2lt.registry.ModFumos;
 import com.moakiee.ae2lt.registry.ModItems;
@@ -87,6 +90,19 @@ public final class FixedInfiniteCellItem extends Item {
 
     public FixedInfiniteCellItem(Properties properties) {
         super(properties.stacksTo(1));
+    }
+
+    @Override
+    public void inventoryTick(
+            ItemStack stack,
+            net.minecraft.world.level.Level level,
+            Entity entity,
+            int slotId,
+            boolean isSelected) {
+        super.inventoryTick(stack, level, entity, slotId, isSelected);
+        if (!level.isClientSide && entity instanceof ServerPlayer player) {
+            ProgressionAdvancementService.inspectMysteriousCell(player, stack);
+        }
     }
 
     // ── Seed (outer cell only) ──

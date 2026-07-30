@@ -1,5 +1,5 @@
 {
-  "parent": "ae2lt:main/lightning_collapse_matrix",
+  "parent": "ae2lt:main/pig_zip",
   "display": {
     "icon": { "id": "ae2lt:hyperdimensional_pigmee_fumo" },
     "title": { "translate": "advancements.ae2lt.hyperdimensional_pigmee.title" },
