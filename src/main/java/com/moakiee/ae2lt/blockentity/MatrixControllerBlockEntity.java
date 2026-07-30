@@ -929,9 +929,24 @@ public class MatrixControllerBlockEntity extends BlockEntity
         MatrixPortBlockEntity linkedPort = null;
         if (level.isLoaded(result.portPos())
                 && level.getBlockEntity(result.portPos()) instanceof MatrixPortBlockEntity port) {
-            port.bindToController(worldPosition, machineId);
             linkedPort = port;
         }
+
+        // Publishing the port refreshes AE2's crafting provider synchronously. Restore every
+        // storage owner first so that the first getAvailablePatterns() call after a reload sees
+        // the persisted patterns instead of caching an empty provider.
+        for (MatrixMultiblockMember member : result.patternMembers()) {
+            if (level.isLoaded(member.worldPos())
+                    && level.getBlockEntity(member.worldPos()) instanceof MatrixPatternStorageBlockEntity storage) {
+                storage.setControllerPos(worldPosition);
+            }
+        }
+        if (linkedPort != null) {
+            linkedPort.bindToController(worldPosition, machineId);
+        }
+
+        // Once the sole channel-consuming port is published, expose every physical storage as
+        // an independent channel-free PatternContainer leaf.
         for (MatrixMultiblockMember member : result.patternMembers()) {
             if (level.isLoaded(member.worldPos())
                     && level.getBlockEntity(member.worldPos()) instanceof MatrixPatternStorageBlockEntity storage) {

@@ -49,6 +49,29 @@ class ControllerOwnedRuntimeArchitectureTest {
     }
 
     @Test
+    void matrixRestoresPatternStorageOwnersBeforePublishingCraftingProvider() throws Exception {
+        String controller = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/blockentity/"
+                        + "MatrixControllerBlockEntity.java"));
+
+        int bindMembers = controller.indexOf(
+                "private void bindMembers(MatrixMultiblockScanResult result)");
+        int restoreOwner = controller.indexOf(
+                "storage.setControllerPos(worldPosition);", bindMembers);
+        int publishPort = controller.indexOf(
+                "linkedPort.bindToController(worldPosition, machineId);", bindMembers);
+        int bindTerminalLink = controller.indexOf(
+                "storage.bindToController(worldPosition, linkedPort);", bindMembers);
+
+        assertTrue(bindMembers >= 0);
+        assertTrue(restoreOwner > bindMembers);
+        assertTrue(publishPort > restoreOwner,
+                "Every persisted pattern storage must be controller-owned before AE2 refreshes the provider");
+        assertTrue(bindTerminalLink > publishPort,
+                "Pattern terminal leaf nodes must be connected after the port is published");
+    }
+
+    @Test
     void fastPlanningToggleIsOwnedByControllerAndAppliedToItsPool() throws Exception {
         assertEquals(boolean.class, TianshuSupercomputerControllerBlockEntity.class
                 .getDeclaredField("fastPlanningEnabled").getType());
