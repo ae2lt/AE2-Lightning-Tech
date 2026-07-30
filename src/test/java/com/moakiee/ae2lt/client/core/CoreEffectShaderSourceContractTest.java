@@ -92,21 +92,24 @@ class CoreEffectShaderSourceContractTest {
 
         assertAll(
                 () -> assertEquals(
-                        Files.readString(nativeDirectory.resolve("core.vsh")).stripTrailing(),
+                        normalizeLineEndings(Files.readString(nativeDirectory.resolve("core.vsh"))),
                         normalizeVeilShader(veilDirectory.resolve("core.vsh"))),
                 () -> assertEquals(
-                        Files.readString(nativeDirectory.resolve("matrix_core.fsh")).stripTrailing(),
+                        normalizeLineEndings(Files.readString(nativeDirectory.resolve("matrix_core.fsh"))),
                         normalizeVeilShader(veilDirectory.resolve("matrix_core.fsh"))),
                 () -> assertEquals(
-                        Files.readString(nativeDirectory.resolve("tianshu_core.fsh")).stripTrailing(),
+                        normalizeLineEndings(Files.readString(nativeDirectory.resolve("tianshu_core.fsh"))),
                         normalizeVeilShader(veilDirectory.resolve("tianshu_core.fsh"))));
     }
 
     private static String normalizeVeilShader(Path path) throws IOException {
-        String shader = Files.readString(path)
+        String shader = normalizeLineEndings(Files.readString(path)
                 .replaceAll("layout\\(location = \\d+\\) in", "in")
-                .replace("VeilRenderTime", "EffectTime")
-                .stripTrailing();
+                .replace("VeilRenderTime", "EffectTime"));
         return "#version 150\n\n" + shader;
+    }
+
+    private static String normalizeLineEndings(String shader) {
+        return shader.replace("\r\n", "\n").replace('\r', '\n').stripTrailing();
     }
 }
