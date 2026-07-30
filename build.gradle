@@ -35,6 +35,13 @@ repositories {
         url = "https://maven.blamejared.com"
     }
     maven {
+        name = "InventoryProfilesNext"
+        url = "https://maven.ipn-mod.org/releases"
+        content {
+            includeGroup "org.anti_ad.mc"
+        }
+    }
+    maven {
         url = "https://raw.githubusercontent.com/Fuzss/modresources/main/maven/"
     }
     maven {
@@ -228,6 +235,9 @@ dependencies {
     }
     compileOnly "org.appliedenergistics:guideme:${guideme_version}"
     runtimeOnly "org.appliedenergistics:guideme:${guideme_version}"
+    compileOnly("org.anti_ad.mc:InventoryProfilesNext-neoforge-1.21.1:${ipn_version}") {
+        transitive = false
+    }
     compileOnly "curse.maven:jei-238222:7391682"
     runtimeOnly "curse.maven:jei-238222:7391682"
     compileOnly "dev.emi:emi-neoforge:1.1.10+1.21"

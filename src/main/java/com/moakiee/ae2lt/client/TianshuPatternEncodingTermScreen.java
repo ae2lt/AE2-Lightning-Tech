@@ -61,8 +61,10 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.PacketDistributor;
 import com.moakiee.ae2lt.logic.AdvancedAECompat;
+import org.anti_ad.mc.ipn.api.IPNIgnore;
 import org.jetbrains.annotations.Nullable;
 
+@IPNIgnore
 public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTermMenu>
         extends MEStorageScreen<M> {
     private final Map<EncodingMode, TianshuEncodingModePanel> modePanels =

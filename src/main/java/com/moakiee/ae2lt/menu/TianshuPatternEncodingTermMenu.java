@@ -85,7 +85,9 @@ import com.moakiee.ae2lt.network.tianshu.SaveGlobalReservePacket;
 import com.moakiee.ae2lt.network.tianshu.TianshuPacketLimits;
 import com.moakiee.thunderbolt.ae2.overload.pattern.SourcePatternSnapshot;
 import net.minecraft.world.entity.player.Player;
+import org.anti_ad.mc.ipn.api.IPNIgnore;
 
+@IPNIgnore
 public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     public static final int CLOSED_LOOP_MEMBER_SLOTS = ClosedLoopDraftSync.MEMBER_SLOTS;
     public static final int CLOSED_LOOP_OUTPUT_SLOTS = ClosedLoopDraftSync.OUTPUT_SLOTS;
