@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test;
 
 class TianshuUploadTargetMatcherTest {
     @Test
-    void machineIdIsLeftAnchoredAndMayOmitItsSuffix() {
+    void iconIdUsesWholeValueGlobMatching() {
         assertTrue(TianshuUploadTargetMatcher.idMatches(
                 "extendedae:ex_pattern_provider", "extendedae:ex_pattern_provider"));
         assertTrue(TianshuUploadTargetMatcher.idMatches(
@@ -20,14 +20,14 @@ class TianshuUploadTargetMatcherTest {
         assertTrue(TianshuUploadTargetMatcher.idMatches(
                 "EXTENDEDAE:EX_PATTERN_PROVIDER", "extendedae:ex_pattern_????ider"));
         assertTrue(TianshuUploadTargetMatcher.idMatches(
-                "extendedae:ex_pattern_provider", "extendedae:ex_pattern"));
+                "extendedae:ex_pattern_provider", "*:ex_pattern_provider"));
 
         assertFalse(TianshuUploadTargetMatcher.idMatches(
                 "extendedae:ex_pattern_provider", "pattern_provider"));
         assertFalse(TianshuUploadTargetMatcher.idMatches(
                 "extendedae:ex_pattern_provider", "extendedae:pattern"));
         assertFalse(TianshuUploadTargetMatcher.idMatches(
-                "extendedae:ex_pattern_provider", "*:provider"));
+                "extendedae:ex_pattern_provider", "extendedae:ex_pattern"));
     }
 
     @Test

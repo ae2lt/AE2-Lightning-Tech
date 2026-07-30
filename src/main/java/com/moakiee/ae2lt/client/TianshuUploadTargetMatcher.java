@@ -15,15 +15,11 @@ final class TianshuUploadTargetMatcher {
         if (target == null || query == null || query.isBlank()) return true;
         String normalizedQuery = normalize(query.strip());
         var group = target.group();
-        if (group.icon() != null) {
-            if (idMatches(group.icon().getId().toString(), normalizedQuery)) return true;
-            if (nameMatches(group.icon().getDisplayName().getString(), normalizedQuery)) return true;
+        if (group.icon() != null
+                && idMatches(group.icon().getId().toString(), normalizedQuery)) {
+            return true;
         }
-        if (nameMatches(group.name().getString(), normalizedQuery)) return true;
-        for (var line : group.tooltip()) {
-            if (nameMatches(line.getString(), normalizedQuery)) return true;
-        }
-        return false;
+        return nameMatches(group.name().getString(), normalizedQuery);
     }
 
     /**
@@ -99,13 +95,16 @@ final class TianshuUploadTargetMatcher {
         return count;
     }
 
-    /** Machine IDs use a left-anchored glob and may omit an arbitrary suffix. */
+    /** Icon IDs use a whole-value glob. A partial ID therefore needs an explicit wildcard. */
     static boolean idMatches(String machineId, String query) {
         if (machineId == null || query == null || query.isBlank()) return false;
-        return globMatches(normalize(machineId), normalize(query) + "*");
+        return globMatches(normalize(machineId), normalize(query));
     }
 
-    /** Machine names use case-insensitive contains matching, with optional glob and pinyin. */
+    /**
+     * Machine names use one-way, case-insensitive contains matching: the name must contain the
+     * alias expression. The alias may contain glob characters or pinyin fragments.
+     */
     static boolean nameMatches(String machineName, String query) {
         return nameMatches(machineName, query, JecSearchCompat::contains);
     }
