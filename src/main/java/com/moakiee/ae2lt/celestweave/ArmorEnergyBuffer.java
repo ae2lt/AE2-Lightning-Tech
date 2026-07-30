@@ -103,7 +103,17 @@ public final class ArmorEnergyBuffer {
     }
 
     public static int receiveFe(ItemStack stack, HolderLookup.Provider registries, int amount, boolean simulate) {
-        int accepted = ArmorEnergyRules.receivableFe(read(stack, registries), capacity(stack, registries), amount);
+        return (int) receiveFe(stack, registries, (long) amount, simulate);
+    }
+
+    public static long receiveFe(
+            ItemStack stack,
+            HolderLookup.Provider registries,
+            long amount,
+            boolean simulate) {
+        long accepted = Math.min(
+                Math.max(0L, amount),
+                Math.max(0L, capacity(stack, registries) - read(stack, registries)));
         if (!simulate && accepted > 0) {
             write(stack, registries, read(stack, registries) + accepted);
         }

@@ -8,6 +8,8 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -21,6 +23,9 @@ import net.minecraft.world.phys.Vec3;
  * apply after its five-second reveal ceremony.
  */
 public final class RitualHyperdimensionalPigmeeEntity extends ItemEntity {
+    private static final ResourceLocation PICKUP_ADVANCEMENT =
+            ResourceLocation.fromNamespaceAndPath("ae2lt", "main/hyperdimensional_pigmee");
+    private static final String PICKUP_CRITERION = "claim_ritual_pigmee";
     private static final String TAG_CEREMONY_END = "CeremonyEndGameTime";
     private static final EntityDataAccessor<Long> DATA_CEREMONY_END =
             SynchedEntityData.defineId(RitualHyperdimensionalPigmeeEntity.class, EntityDataSerializers.LONG);
@@ -94,7 +99,12 @@ public final class RitualHyperdimensionalPigmeeEntity extends ItemEntity {
         if (getCeremonyTicksRemaining(0.0F) > 0.0F) {
             return;
         }
+        int countBefore = getItem().getCount();
         super.playerTouch(player);
+        if (player instanceof ServerPlayer serverPlayer
+                && (isRemoved() || getItem().getCount() < countBefore)) {
+            awardPickupAdvancement(serverPlayer);
+        }
     }
 
     @Override
@@ -125,6 +135,13 @@ public final class RitualHyperdimensionalPigmeeEntity extends ItemEntity {
                     serverLevel,
                     chunkPosition(),
                     new RitualItemBurstPacket(getId(), stage));
+        }
+    }
+
+    private static void awardPickupAdvancement(ServerPlayer player) {
+        var advancement = player.server.getAdvancements().get(PICKUP_ADVANCEMENT);
+        if (advancement != null) {
+            player.getAdvancements().award(advancement, PICKUP_CRITERION);
         }
     }
 }

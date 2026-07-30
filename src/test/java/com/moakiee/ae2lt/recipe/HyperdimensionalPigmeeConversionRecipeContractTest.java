@@ -67,4 +67,16 @@ class HyperdimensionalPigmeeConversionRecipeContractTest {
         assertTrue(translations.contains("仅残余最后一次跨越界限的力量"));
         assertTrue(translations.contains("它会变回最初的猪咪"));
     }
+
+    @Test
+    void completingAConversionGrantsTheHiddenTruePigmeeTechnologyAdvancement() throws Exception {
+        String advancement = Files.readString(Path.of(
+                "src/main/resources/data/ae2lt/advancement/main/true_pigmee_technology.json"));
+
+        assertTrue(advancement.contains("\"parent\": \"ae2lt:main/pigmee_technology\""));
+        assertTrue(advancement.contains("\"trigger\": \"minecraft:recipe_crafted\""));
+        assertTrue(advancement.contains(
+                "\"recipe_id\": \"ae2lt:hyperdimensional_pigmee_conversion\""));
+        assertTrue(advancement.contains("\"hidden\": true"));
+    }
 }

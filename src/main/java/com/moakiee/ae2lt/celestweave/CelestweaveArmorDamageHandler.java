@@ -13,6 +13,7 @@ import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
+import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
 
 import com.moakiee.ae2lt.AE2LightningTech;
@@ -42,6 +43,21 @@ public final class CelestweaveArmorDamageHandler {
             ThreadLocal.withInitial(HashSet::new);
 
     private CelestweaveArmorDamageHandler() {}
+
+    @SubscribeEvent(priority = EventPriority.HIGHEST)
+    public static void onIncoming(LivingIncomingDamageEvent event) {
+        if (!(event.getEntity() instanceof Player player) || player.level().isClientSide()) {
+            return;
+        }
+        for (var active : ArmorCapabilityCollector.collectPerInstalledStack(player)) {
+            if (active.capability() instanceof DeviceCapability.DamageTypeImmunity immunity
+                    && event.getSource().is(immunity.damageType())) {
+                event.setAmount(0.0F);
+                event.setCanceled(true);
+                return;
+            }
+        }
+    }
 
     @SubscribeEvent(priority = EventPriority.HIGH)
     public static void onPre(LivingDamageEvent.Pre event) {

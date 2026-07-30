@@ -495,7 +495,7 @@ public final class CelestweaveArmorState {
     }
 
     public static long addStoredEnergy(ItemStack armor, HolderLookup.Provider registries, long amount) {
-        return ArmorEnergyBuffer.receiveFe(armor, registries, (int) Math.min(Integer.MAX_VALUE, amount), false);
+        return ArmorEnergyBuffer.receiveFe(armor, registries, amount, false);
     }
 
     /**

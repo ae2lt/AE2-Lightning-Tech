@@ -15,6 +15,7 @@ import com.moakiee.ae2lt.registry.ModSounds;
 import com.moakiee.ae2lt.registry.ModStructureTypes;
 import com.moakiee.ae2lt.registry.LegacyRegistryAliases;
 import com.moakiee.ae2lt.integration.ae2wtlib.Ae2wtlibIntegration;
+import com.moakiee.ae2lt.integration.mekanism.MekanismArmorIntegration;
 import com.moakiee.ae2lt.config.AE2LTCommonConfig;
 import com.moakiee.ae2lt.config.AE2LTConfigMigration;
 import com.moakiee.ae2lt.blockentity.AtmosphericIonizerBlockEntity;
@@ -298,6 +299,8 @@ public class AE2LightningTech {
                         output.accept(ModItems.CELESTWEAVE_SUBMODULE_REFLECT);
                         output.accept(ModItems.CELESTWEAVE_SUBMODULE_UNDYING);
                         output.accept(ModItems.CELESTWEAVE_SUBMODULE_PURIFICATION);
+                        output.accept(ModItems.CELESTWEAVE_SUBMODULE_RADIATION_PROTECTION);
+                        output.accept(ModItems.CELESTWEAVE_SUBMODULE_LASER_PROTECTION);
                         output.accept(ModItems.CELESTWEAVE_SUBMODULE_PHASE_LOCK);
 
                         // 苍穹织雷腿部模块
@@ -388,6 +391,10 @@ public class AE2LightningTech {
     };
 
     private void registerCapabilities(RegisterCapabilitiesEvent event) {
+        if (net.neoforged.fml.ModList.get().isLoaded("mekanism")) {
+            MekanismArmorIntegration.registerCapabilities(event);
+        }
+
         event.registerBlockEntity(
                 Capabilities.ItemHandler.BLOCK,
                 ModBlockEntities.LIGHTNING_COLLECTOR.get(),

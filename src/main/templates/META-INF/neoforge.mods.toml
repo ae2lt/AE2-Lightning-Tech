@@ -48,6 +48,10 @@ config = "${mod_id}.recipeviewer.mixins.json"
 [[mixins]]
 config = "${mod_id}.ae2wtlib.mixins.json"
 
+# Optional Mekanism armor conversion hook. The config plugin disables it when Mekanism is absent.
+[[mixins]]
+config = "${mod_id}.mekanism.mixins.json"
+
 # The [[accessTransformers]] block allows you to declare where your AT file is.
 # If this block is omitted, a fallback attempt will be made to load an AT from META-INF/accesstransformer.cfg
 #[[accessTransformers]]

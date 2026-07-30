@@ -1,7 +1,9 @@
 package com.moakiee.ae2lt.device.capability;
 
 import net.minecraft.core.Holder;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.damagesource.DamageType;
 import net.minecraft.world.effect.MobEffect;
 
 import com.moakiee.ae2lt.celestweave.ArmorPart;
@@ -64,6 +66,9 @@ public sealed interface DeviceCapability {
 
     /** Last-stand fatal damage interception. */
     record LastStandTuning(long feCost, int comboWindowTicks) implements DeviceCapability {}
+
+    /** Completely rejects one exact registered damage type while the providing module is active. */
+    record DamageTypeImmunity(ResourceKey<DamageType> damageType) implements DeviceCapability {}
 
     /** Periodic status-effect purification. */
     record PurificationTuning(int periodTicks, int strength) implements DeviceCapability {}

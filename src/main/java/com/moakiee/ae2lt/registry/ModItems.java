@@ -34,6 +34,7 @@ import com.moakiee.ae2lt.item.PurificationSubmoduleItem;
 import com.moakiee.ae2lt.item.SaturationSubmoduleItem;
 import com.moakiee.ae2lt.item.DigAffinitySubmoduleItem;
 import com.moakiee.ae2lt.item.MovementAssistSubmoduleItem;
+import com.moakiee.ae2lt.item.MekanismProtectionSubmoduleItem;
 import com.moakiee.ae2lt.item.ReachSubmoduleItem;
 import com.moakiee.ae2lt.item.PhaseFlightSubmoduleItem;
 import com.moakiee.ae2lt.item.PhaseLockProjectionItem;
@@ -49,6 +50,7 @@ import com.moakiee.ae2lt.item.railgun.RailgunModuleType;
 import com.moakiee.ae2lt.celestweave.ArmorEnergyModuleItem;
 import com.moakiee.ae2lt.celestweave.ArmorEnergyRules;
 import com.moakiee.ae2lt.celestweave.module.ResistanceSubmodule;
+import com.moakiee.ae2lt.celestweave.module.MekanismProtectionSubmodule;
 import com.moakiee.ae2lt.part.OverloadedCablePart;
 import com.moakiee.ae2lt.part.TianshuPatternEncodingTerminalPart;
 import com.moakiee.ae2lt.integration.ae2wtlib.Ae2wtlibIntegration;
@@ -375,6 +377,22 @@ public final class ModItems {
             "module_purification",
             PurificationSubmoduleItem::new,
             new Item.Properties());
+
+    public static final DeferredItem<MekanismProtectionSubmoduleItem> CELESTWEAVE_SUBMODULE_RADIATION_PROTECTION =
+            ITEMS.registerItem(
+                    "module_radiation_protection",
+                    properties -> new MekanismProtectionSubmoduleItem(
+                            properties,
+                            MekanismProtectionSubmodule.RADIATION),
+                    new Item.Properties());
+
+    public static final DeferredItem<MekanismProtectionSubmoduleItem> CELESTWEAVE_SUBMODULE_LASER_PROTECTION =
+            ITEMS.registerItem(
+                    "module_laser_protection",
+                    properties -> new MekanismProtectionSubmoduleItem(
+                            properties,
+                            MekanismProtectionSubmodule.LASER),
+                    new Item.Properties());
 
     public static final DeferredItem<SaturationSubmoduleItem> CELESTWEAVE_SUBMODULE_SATURATION = ITEMS.registerItem(
             "module_saturation",

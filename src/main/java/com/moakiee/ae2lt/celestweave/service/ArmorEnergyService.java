@@ -278,6 +278,31 @@ public final class ArmorEnergyService {
         }
     }
 
+    /** Fills the preferred piece first, then the remaining equipped/private Celestweave pieces. */
+    public static long receiveExternalEnergy(
+            ServerPlayer player,
+            ItemStack preferredArmor,
+            long amount) {
+        if (player == null || amount <= 0L) {
+            return 0L;
+        }
+        long remaining = amount;
+        long received = 0L;
+        for (ItemStack candidate : collectEnergyCandidates(player, preferredArmor)) {
+            long accepted = ArmorEnergyBuffer.receiveFe(
+                    candidate,
+                    player.registryAccess(),
+                    remaining,
+                    false);
+            received += accepted;
+            remaining -= accepted;
+            if (remaining <= 0L) {
+                break;
+            }
+        }
+        return received;
+    }
+
     private static List<ItemStack> collectEnergyCandidates(ServerPlayer player, ItemStack preferredArmor) {
         var candidates = new ArrayList<ItemStack>();
         if (isEnergyCandidate(preferredArmor)) {

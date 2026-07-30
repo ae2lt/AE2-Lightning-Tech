@@ -22,6 +22,8 @@ item_ids:
   - ae2lt:module_reflect
   - ae2lt:module_undying
   - ae2lt:module_purification
+  - ae2lt:module_radiation_protection
+  - ae2lt:module_laser_protection
   - ae2lt:module_creative_flight
   - ae2lt:module_phase_flight
   - ae2lt:module_phase_lock
@@ -83,6 +85,8 @@ If FE or required Lightning is missing, the affected effects cannot be maintaine
 | Reflect | Reflects up to 30% of attacker damage, spending FE and High Voltage Lightning |
 | Undying | Intercepts fatal damage, spending large amounts of FE and Extreme High Voltage Lightning |
 | Purification | Removes and blocks configured status effects; by default, harmful effects only |
+| Radiation Assimilation | Prevents new exposure and radiation damage; while ambient radiation is present, restores 1-5 hearts per second depending on radiation severity |
+| Laser Protection | Absorbs Mekanism lasers completely and converts the actually absorbed Joules to FE using Mekanism's configured conversion ratio, filling the chestplate and then the rest of the equipped set |
 | Phase Lock | Provides three independently toggled features: Armor Lock, Block External Forces and Block External Teleports; see below |
 | Overload Core Module | Unlocks Lightning compensation for the armor set. Existing Extreme High Voltage Lightning is consumed first, then any shortfall is paid at 16 High Voltage Lightning per Extreme High Voltage Lightning |
 

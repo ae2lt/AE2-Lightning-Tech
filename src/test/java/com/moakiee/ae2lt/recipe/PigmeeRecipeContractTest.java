@@ -78,6 +78,19 @@ class PigmeeRecipeContractTest {
         assertEquals("PPP", recipe.getAsJsonArray("pattern").get(2).getAsString());
     }
 
+    @Test
+    void craftingAnyPigmeeTechnologyRecipeGrantsTheAdvancement() throws Exception {
+        String advancement = Files.readString(Path.of(
+                "src/main/resources/data/ae2lt/advancement/main/pigmee_technology.json"));
+
+        assertTrue(advancement.contains("\"trigger\": \"minecraft:recipe_crafted\""));
+        for (String filename : PIGMEE_TECH_RECIPES) {
+            String recipeId = filename.substring(0, filename.length() - ".json".length());
+            assertTrue(advancement.contains("\"recipe_id\": \"ae2lt:" + recipeId + "\""), filename);
+        }
+        assertTrue(advancement.contains("\"hidden\": false"));
+    }
+
     private static JsonObject readRecipe(String filename) throws Exception {
         return JsonParser.parseString(Files.readString(RECIPE_ROOT.resolve(filename))).getAsJsonObject();
     }

@@ -74,12 +74,28 @@ class HyperdimensionalPigmeeResearchContractTest {
         assertTrue(rewardEntity.contains("setPickUpDelay(CEREMONY_TICKS)"));
         assertTrue(rewardEntity.contains("setNoPickUpDelay()"));
         assertTrue(rewardEntity.contains("public void playerTouch(Player player)"));
+        assertTrue(rewardEntity.contains("getItem().getCount() < countBefore"));
+        assertTrue(rewardEntity.contains("awardPickupAdvancement(serverPlayer)"));
         assertTrue(renderer.contains("getCeremonyScale(partialTick)"));
         assertFalse(bootstrap.contains("ResearchNoteModulationHandler"));
         assertFalse(Files.exists(Path.of(
                 "src/main/java/com/moakiee/ae2lt/logic/research/ResearchNoteModulationHandler.java")));
         assertFalse(Files.exists(Path.of(
                 "src/main/java/com/moakiee/ae2lt/logic/research/NoteModulationCatalysts.java")));
+    }
+
+    @Test
+    void claimingTheRitualRewardGrantsAHiddenAdvancement() throws Exception {
+        String advancement = Files.readString(Path.of(
+                "src/main/resources/data/ae2lt/advancement/main/hyperdimensional_pigmee.json"));
+        String chinese = Files.readString(Path.of(
+                "src/main/resources/assets/ae2lt/lang/zh_cn.json"));
+
+        assertTrue(advancement.contains("\"parent\": \"ae2lt:main/lightning_collapse_matrix\""));
+        assertTrue(advancement.contains("\"trigger\": \"minecraft:impossible\""));
+        assertTrue(advancement.contains("\"hidden\": true"));
+        assertTrue(advancement.contains("\"claim_ritual_pigmee\""));
+        assertTrue(chinese.contains("\"advancements.ae2lt.hyperdimensional_pigmee.title\": \"这是……猪咪？？？\""));
     }
 
     @Test
