@@ -79,16 +79,42 @@ class PigmeeRecipeContractTest {
     }
 
     @Test
-    void craftingAnyPigmeeTechnologyRecipeGrantsTheAdvancement() throws Exception {
-        String advancement = Files.readString(Path.of(
+    void pigmeeCoreAndPigmeeTechnologyHaveSeparateAdvancements() throws Exception {
+        String pigmeeTechnology = Files.readString(Path.of(
                 "src/main/resources/data/ae2lt/advancement/main/pigmee_technology.json"));
+        String pigZip = Files.readString(Path.of(
+                "src/main/resources/data/ae2lt/advancement/main/pig_zip.json"));
+        String translations = Files.readString(Path.of(
+                "src/main/resources/assets/ae2lt/lang/zh_cn.json"));
 
-        assertTrue(advancement.contains("\"trigger\": \"minecraft:recipe_crafted\""));
+        assertTrue(pigmeeTechnology.contains("\"parent\": \"ae2lt:main/pig_zip\""));
+        assertTrue(pigmeeTechnology.contains("\"trigger\": \"minecraft:recipe_crafted\""));
         for (String filename : PIGMEE_TECH_RECIPES) {
             String recipeId = filename.substring(0, filename.length() - ".json".length());
-            assertTrue(advancement.contains("\"recipe_id\": \"ae2lt:" + recipeId + "\""), filename);
+            assertTrue(pigmeeTechnology.contains("\"recipe_id\": \"ae2lt:" + recipeId + "\""), filename);
         }
-        assertTrue(advancement.contains("\"hidden\": false"));
+        assertTrue(pigmeeTechnology.contains("\"hidden\": false"));
+
+        assertTrue(pigZip.contains("\"id\": \"ae2lt:pigmee_core\""));
+        assertTrue(pigZip.contains("\"trigger\": \"minecraft:inventory_changed\""));
+        assertTrue(pigZip.contains("\"items\": \"ae2lt:pigmee_core\""));
+        assertTrue(translations.contains("\"advancements.ae2lt.pig_zip.title\": \"猪.zip\""));
+        assertTrue(translations.contains("这只可爱的小猪被你的铁砧砸成了饼，你为什么要这样做?"));
+    }
+
+    @Test
+    void jeiExplainsHowToObtainThePigmeeCore() throws Exception {
+        String jeiPlugin = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/integration/jei/JEIPlugin.java"));
+        String translations = Files.readString(Path.of(
+                "src/main/resources/assets/ae2lt/lang/zh_cn.json"));
+
+        assertTrue(jeiPlugin.contains("registration.addIngredientInfo("));
+        assertTrue(jeiPlugin.contains("ModItems.PIGMEE_CORE.get()"));
+        assertTrue(jeiPlugin.contains("\"jei.ae2lt.pigmee_core.info\""));
+        assertTrue(translations.contains("\"jei.ae2lt.pigmee_core.info\""));
+        assertTrue(translations.contains("过载水晶块"));
+        assertTrue(translations.contains("下落的铁砧"));
     }
 
     private static JsonObject readRecipe(String filename) throws Exception {

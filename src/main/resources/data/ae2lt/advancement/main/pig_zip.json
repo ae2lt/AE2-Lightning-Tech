@@ -1,0 +1,24 @@
+{
+  "parent": "ae2lt:main/root",
+  "display": {
+    "icon": { "id": "ae2lt:pigmee_core" },
+    "title": { "translate": "advancements.ae2lt.pig_zip.title" },
+    "description": { "translate": "advancements.ae2lt.pig_zip.description" },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": false
+  },
+  "criteria": {
+    "get_pigmee_core": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          { "items": "ae2lt:pigmee_core" }
+        ]
+      }
+    }
+  },
+  "requirements": [ [ "get_pigmee_core" ] ],
+  "sends_telemetry_event": false
+}

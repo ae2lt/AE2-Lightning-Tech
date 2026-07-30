@@ -24,6 +24,7 @@ import com.moakiee.ae2lt.menu.TianshuPatternEncodingTermMenu;
 import com.moakiee.ae2lt.menu.TianshuWirelessPatternEncodingTermMenu;
 import com.moakiee.ae2lt.integration.jei.multiblock.MultiblockStructureRecipes;
 import com.moakiee.ae2lt.registry.ModBlocks;
+import com.moakiee.ae2lt.registry.ModItems;
 import mezz.jei.api.IModPlugin;
 import mezz.jei.api.JeiPlugin;
 import mezz.jei.api.gui.handlers.IGuiClickableArea;
@@ -37,6 +38,7 @@ import mezz.jei.api.registration.IRecipeRegistration;
 import mezz.jei.api.registration.IRecipeTransferRegistration;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.neoforged.fml.ModList;
@@ -90,6 +92,9 @@ public class JEIPlugin implements IModPlugin {
         registration.addRecipes(OverloadGrowthCategory.TYPE, List.of(OverloadGrowthCategory.Page.values()));
         registration.addRecipes(TeslaCoilCategory.TYPE, List.of(TeslaCoilCategory.Page.values()));
         registration.addRecipes(MultiblockStructureCategory.TYPE, MultiblockStructureRecipes.all());
+        registration.addIngredientInfo(
+                ModItems.PIGMEE_CORE.get(),
+                Component.translatable("jei.ae2lt.pigmee_core.info"));
 
         var level = Minecraft.getInstance().level;
         if (level == null) {
