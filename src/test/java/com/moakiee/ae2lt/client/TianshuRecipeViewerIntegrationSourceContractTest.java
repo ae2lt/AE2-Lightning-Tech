@@ -55,6 +55,8 @@ class TianshuRecipeViewerIntegrationSourceContractTest {
         assertFalse(emi.contains(
                 "isSupportedCraftingRecipe(holder)) return"));
         assertTrue(context.contains("BuiltInRegistries.RECIPE_TYPE"));
+        assertTrue(context.contains("holder.id().getNamespace()"));
+        assertTrue(emi.contains("emiRecipe.getId().getNamespace()"));
         assertTrue(context.contains("WeakReference<TianshuPatternEncodingTermMenu>"));
         assertTrue(context.contains("String recipeId"));
         assertTrue(context.contains("beginEncoding("));
@@ -179,6 +181,9 @@ class TianshuRecipeViewerIntegrationSourceContractTest {
         assertTrue(picker.contains("String source = sourceField.getValue().strip()"));
         assertTrue(picker.contains("String query = aliasField.getValue().strip()"));
         assertTrue(picker.contains("defaultAliases.get(defaultAliasIndex)"));
+        assertTrue(picker.contains("findFirstPopulatedAlias"));
+        assertTrue(picker.contains("initialAliasSelectionPending"));
+        assertTrue(picker.contains("storedAlias.isBlank()"));
         assertTrue(picker.contains("public boolean mouseScrolled"));
         assertTrue(picker.contains("aliasField.setValue(\"\")"));
         assertFalse(picker.contains("sourceField.setResponder"));

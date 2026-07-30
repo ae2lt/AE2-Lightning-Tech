@@ -51,6 +51,43 @@ final class TianshuUploadTargetMatcher {
         return selected != null && writable.test(selected) ? selected : null;
     }
 
+    static String findFirstPopulatedAlias(
+            List<TianshuUploadTargetData> targets,
+            String preferredAlias,
+            List<String> defaultAliases) {
+        return findFirstPopulatedAlias(
+                targets, preferredAlias, defaultAliases, TianshuUploadTargetMatcher::matches);
+    }
+
+    /**
+     * Checks the viewer's aliases in display order. If none match, the original alias remains
+     * unchanged. Callers suppress this selection entirely when the original alias was saved.
+     */
+    static <T> String findFirstPopulatedAlias(
+            List<T> targets,
+            String preferredAlias,
+            List<String> defaultAliases,
+            BiPredicate<T, String> matches) {
+        String fallback = preferredAlias == null ? "" : preferredAlias;
+        if (hasMatches(targets, fallback, matches)) return fallback;
+        if (defaultAliases != null) {
+            for (String alias : defaultAliases) {
+                if (alias == null || alias.isBlank() || alias.equalsIgnoreCase(fallback)) continue;
+                if (hasMatches(targets, alias, matches)) return alias;
+            }
+        }
+        return fallback;
+    }
+
+    private static <T> boolean hasMatches(
+            List<T> targets, String alias, BiPredicate<T, String> matches) {
+        if (targets == null || alias == null || alias.isBlank() || matches == null) return false;
+        for (var target : targets) {
+            if (matches.test(target, alias)) return true;
+        }
+        return false;
+    }
+
     /** Machine IDs use a left-anchored glob and may omit an arbitrary suffix. */
     static boolean idMatches(String machineId, String query) {
         if (machineId == null || query == null || query.isBlank()) return false;

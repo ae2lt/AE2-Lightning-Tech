@@ -63,6 +63,7 @@ public final class TianshuRecipeTransferContext {
         if (recipeBase instanceof RecipeHolder<?> holder) {
             recipeId = holder.id().toString();
             addDefaultAlias(defaultAliases, firstPathSegment(holder.id().getPath()));
+            addDefaultAlias(defaultAliases, holder.id().getNamespace());
         }
         if (additionalAliases != null) {
             additionalAliases.forEach(value -> addDefaultAlias(defaultAliases, value));

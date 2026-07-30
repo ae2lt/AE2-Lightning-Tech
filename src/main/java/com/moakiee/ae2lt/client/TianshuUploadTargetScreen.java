@@ -73,7 +73,9 @@ public final class TianshuUploadTargetScreen<M extends TianshuPatternEncodingTer
     private boolean updatingAliasField;
     private boolean configuredAliasInserted;
     private boolean directUploadAttempted;
+    private boolean initialAliasSelectionPending;
     private String configuredAlias = "";
+    private String initialAlias = "";
 
     public TianshuUploadTargetScreen(TianshuPatternEncodingTermScreen<M> parent) {
         this(parent, false);
@@ -115,8 +117,15 @@ public final class TianshuUploadTargetScreen<M extends TianshuPatternEncodingTer
             defaultAliasIndex = 0;
             aliasField.setValue(selection.initialQuery());
         }
+        initialAlias = aliasField.getValue();
+        initialAliasSelectionPending = storedAlias.isBlank()
+                && !initialAlias.isBlank()
+                && !defaultAliases.isEmpty();
         aliasField.setResponder(value -> {
-            if (!updatingAliasField) defaultAliasIndex = indexOfDefaultAlias(value);
+            if (!updatingAliasField) {
+                defaultAliasIndex = indexOfDefaultAlias(value);
+                initialAliasSelectionPending = false;
+            }
             queryRefresh = true;
         });
         rebuildDefaultAliasTooltip();
@@ -215,11 +224,24 @@ public final class TianshuUploadTargetScreen<M extends TianshuPatternEncodingTer
             queryRefresh = true;
         }
         if (queryRefresh) {
+            selectInitialPopulatedAlias();
             queryRefresh = false;
             rebuildDefaultAliasTooltip();
             rebuildFilteredTargets();
             tryDirectUpload();
         }
+    }
+
+    private void selectInitialPopulatedAlias() {
+        if (!initialAliasSelectionPending || awaitingTargets) return;
+        initialAliasSelectionPending = false;
+        String selectedAlias = TianshuUploadTargetMatcher.findFirstPopulatedAlias(
+                menu.getUploadTargets(), initialAlias, defaultAliases);
+        if (selectedAlias.equals(aliasField.getValue())) return;
+        defaultAliasIndex = indexOfDefaultAlias(selectedAlias);
+        updatingAliasField = true;
+        aliasField.setValue(selectedAlias);
+        updatingAliasField = false;
     }
 
     private void rebuildFilteredTargets() {
@@ -392,6 +414,7 @@ public final class TianshuUploadTargetScreen<M extends TianshuPatternEncodingTer
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double deltaX, double deltaY) {
         if (defaultAliases.size() > 1 && aliasField.isMouseOver(mouseX, mouseY)) {
+            initialAliasSelectionPending = false;
             if (defaultAliasIndex < 0) {
                 defaultAliasIndex = deltaY > 0 ? defaultAliases.size() - 1 : 0;
             } else {

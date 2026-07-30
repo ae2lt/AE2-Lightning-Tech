@@ -111,6 +111,28 @@ class TianshuUploadTargetMatcherTest {
                 target -> target.availableSlots() > 0));
     }
 
+    @Test
+    void initialAliasSelectionUsesFirstPopulatedDefaultOrKeepsTheOriginal() {
+        var providers = List.of("create", "minecraft");
+        var matches = (java.util.function.BiPredicate<String, String>) String::equalsIgnoreCase;
+
+        assertEquals("saved", TianshuUploadTargetMatcher.findFirstPopulatedAlias(
+                List.of("saved", "create"),
+                "saved",
+                List.of("minecraft:crafting", "create"),
+                matches));
+        assertEquals("create", TianshuUploadTargetMatcher.findFirstPopulatedAlias(
+                providers,
+                "saved",
+                List.of("minecraft:crafting", "create", "minecraft"),
+                matches));
+        assertEquals("saved", TianshuUploadTargetMatcher.findFirstPopulatedAlias(
+                List.of(),
+                "saved",
+                List.of("minecraft:crafting", "create"),
+                matches));
+    }
+
     private static Candidate target(String name, int availableSlots) {
         return new Candidate(name, availableSlots);
     }

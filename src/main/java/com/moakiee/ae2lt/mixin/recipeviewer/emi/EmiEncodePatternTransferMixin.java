@@ -85,6 +85,8 @@ public abstract class EmiEncodePatternTransferMixin {
                 TianshuRecipeTransferContext.addDefaultAlias(
                         defaultAliases,
                         TianshuRecipeTransferContext.firstPathSegment(emiRecipe.getId().getPath()));
+                TianshuRecipeTransferContext.addDefaultAlias(
+                        defaultAliases, emiRecipe.getId().getNamespace());
             }
             workstationAliases.forEach(alias ->
                     TianshuRecipeTransferContext.addDefaultAlias(defaultAliases, alias));
