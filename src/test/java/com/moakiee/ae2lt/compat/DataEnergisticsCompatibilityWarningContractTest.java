@@ -8,15 +8,14 @@ import org.junit.jupiter.api.Test;
 
 final class DataEnergisticsCompatibilityWarningContractTest {
     @Test
-    void cancelsTheEntireDataEnergisticsMixinPackage() throws Exception {
+    void cancelsOnlyDataEnergisticsMixinsTargetingOwnedClasses() throws Exception {
         String canceller = Files.readString(Path.of(
                 "src/main/java/com/moakiee/ae2lt/mixin/compat/DataEnergisticsMixinCanceller.java"));
         String service = Files.readString(Path.of(
                 "src/main/resources/META-INF/services/com.bawnorton.mixinsquared.api.MixinCanceller"));
 
-        assertTrue(canceller.contains(
-                "com.fish_dan_.data_energistics.mixin."));
-        assertTrue(canceller.contains("mixinClassName.startsWith"));
+        assertTrue(canceller.contains("targetClassNames"));
+        assertTrue(canceller.contains("DataEnergisticsTargetPolicy.shouldCancel"));
         assertTrue(canceller.contains("dataEnergisticsMixinProtectionEnabled()"));
         assertTrue(service.contains(
                 "com.moakiee.ae2lt.mixin.compat.DataEnergisticsMixinCanceller"));
