@@ -35,6 +35,13 @@ repositories {
         url = "https://maven.blamejared.com"
     }
     maven {
+        name = "Bawnorton"
+        url = "https://maven.bawnorton.com/releases"
+        content {
+            includeGroup "com.github.bawnorton.mixinsquared"
+        }
+    }
+    maven {
         name = "InventoryProfilesNext"
         url = "https://maven.ipn-mod.org/releases"
         content {
@@ -201,6 +208,13 @@ def enableVeilDevRuntime = providers.gradleProperty('ae2ltEnableVeilDevRuntime')
         .toBoolean()
 
 dependencies {
+    // Data Energistics injects broadly into AE2 and AE2LT internals. MixinSquared lets AE2LT
+    // cancel those third-party mixins before application while leaving the mod itself loadable.
+    compileOnly(annotationProcessor(
+            "com.github.bawnorton.mixinsquared:mixinsquared-common:${mixinsquared_version}"))
+    jarJar implementation(
+            "com.github.bawnorton.mixinsquared:mixinsquared-neoforge:${mixinsquared_version}")
+
     // Thunderbolt Core — the extracted AE2 infrastructure layer (fast crafting planner,
     // channel/batch/cell/matrix algorithms). Provided at runtime as a separate mod jar in the modpack,
     // so compileOnly here. Published to mavenLocal via `./gradlew publishToMavenLocal` in Thunderbolt Core.

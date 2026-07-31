@@ -20,6 +20,7 @@ import com.moakiee.ae2lt.item.OverloadPatternItem;
 import com.moakiee.ae2lt.item.ClosedLoopPatternItem;
 import com.moakiee.ae2lt.item.OverloadedFilterComponentItem;
 import com.moakiee.ae2lt.item.OverloadedFrequencyCardItem;
+import com.moakiee.ae2lt.item.ExtendedOverloadedPatternProviderUpgradeItem;
 import com.moakiee.ae2lt.item.OverloadedPatternProviderUpgradeItem;
 import com.moakiee.ae2lt.item.OverloadedWirelessConnectorItem;
 import com.moakiee.ae2lt.item.TianshuWirelessPatternEncodingTerminalItem;
@@ -266,6 +267,11 @@ public final class ModItems {
     public static final DeferredItem<Item> OVERLOADED_PATTERN_PROVIDER_UPGRADE = ITEMS.registerItem(
             "overloaded_pattern_provider_upgrade",
             OverloadedPatternProviderUpgradeItem::new,
+            new Item.Properties());
+
+    public static final DeferredItem<Item> EXTENDED_OVERLOADED_PATTERN_PROVIDER_UPGRADE = ITEMS.registerItem(
+            "extended_overloaded_pattern_provider_upgrade",
+            ExtendedOverloadedPatternProviderUpgradeItem::new,
             new Item.Properties());
 
     public static final DeferredItem<Item> OVERLOAD_PATTERN = ITEMS.registerItem(

@@ -5,7 +5,7 @@ navigation:
   parent: overloaded-network/overloaded-network-index.md
 item_ids:
   - ae2lt:extended_overloaded_pattern_provider
-  - ae2lt:overloaded_pattern_provider_upgrade
+  - ae2lt:extended_overloaded_pattern_provider_upgrade
 ---
 
 # 扩展过载样板供应器
@@ -37,11 +37,11 @@ item_ids:
 
 ### 原地升级
 
-<ItemImage id="ae2lt:overloaded_pattern_provider_upgrade" scale="2" float="left" />
+<ItemImage id="ae2lt:extended_overloaded_pattern_provider_upgrade" scale="2" float="left" />
 
-如果基地里已经铺设并配置好了**过载样板供应器**，可以用**过载样板供应器升级**将它**原地升级**为扩展版，并**完整保留**其中的样板、无线连接、各项设置以及方块朝向，无需拆机重连。
+如果基地里已经铺设并配置好了**过载样板供应器**，可以用**扩展过载样板供应器升级**将它**原地升级**为扩展版，并**完整保留**其中的样板、无线连接、各项设置以及方块朝向，无需拆机重连。
 
-用法：手持过载样板供应器升级，**右键**一台已放置的过载样板供应器即可，每次升级消耗一个升级物品。
+用法：手持扩展过载样板供应器升级，**右键**一台已放置的过载样板供应器即可，每次升级消耗一个升级物品。
 
 注意事项：
 
@@ -50,4 +50,4 @@ item_ids:
 
 升级物品本身由一个扩展过载样板供应器与一个锭合成：
 
-<RecipeFor id="ae2lt:overloaded_pattern_provider_upgrade" />
+<RecipeFor id="ae2lt:extended_overloaded_pattern_provider_upgrade" />

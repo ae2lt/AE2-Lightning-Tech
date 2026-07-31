@@ -5,6 +5,7 @@ navigation:
   parent: overloaded-network/overloaded-network-index.md
 item_ids:
   - ae2lt:overloaded_pattern_provider
+  - ae2lt:overloaded_pattern_provider_upgrade
   - ae2lt:overload_pattern
   - ae2lt:overload_pattern_encoder
   - ae2lt:overloaded_wireless_connect_tool
@@ -26,6 +27,21 @@ The **Overloaded Pattern Provider** is the upgraded version of the vanilla <Item
 * **Auto return**: automatically pulls processed outputs back from remote machines
 * **Import filter**: only allows results defined by the pattern back into the ME network
 * **Adaptive doubling**: dispatches multiple recipe copies from one crafting request
+
+## In-Place Upgrade
+
+<ItemImage id="ae2lt:overloaded_pattern_provider_upgrade" scale="2" float="left" />
+
+Use an **Overloaded Pattern Provider Upgrade** on a placed and configured provider to convert it in place while preserving its patterns, priority, redstone/blocking settings, and orientation. The following blocks are supported:
+
+* AE2 Pattern Provider
+* ExtendedAE Extended Pattern Provider
+* AdvancedAE Advanced Pattern Provider
+* AdvancedAE Advanced Extended Pattern Provider
+
+Each conversion consumes one upgrade item. Craft the upgrade from an Overloaded Pattern Provider and an ingot:
+
+<RecipeFor id="ae2lt:overloaded_pattern_provider_upgrade" />
 
 ## Operating Modes
 

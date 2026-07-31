@@ -131,6 +131,7 @@
   "item.ae2lt.closed_loop_pattern": "Closed-Loop Pattern",
   "item.ae2lt.overload_pattern_encoder": "Overload Pattern Encoder",
   "item.ae2lt.overloaded_pattern_provider_upgrade": "Overloaded Pattern Provider Upgrade",
+  "item.ae2lt.extended_overloaded_pattern_provider_upgrade": "Extended Overloaded Pattern Provider Upgrade",
   "jei.ae2lt.overload_growth.title": "Overload Crystal Growth",
   "jei.ae2lt.lightning_assembly.title": "Lightning Assembly Chamber",
   "jei.ae2lt.lightning_assembly.energy": "Energy Cost: %s FE",
@@ -1299,5 +1300,7 @@
   "ae2lt.tianshu.reserve.empty": "No global reserves configured",
   "ae2lt.tianshu.issue.chunks_unloaded": "The structure's chunks are not fully loaded",
   "ae2lt.gui.matrix_port.search": "Search matrix patterns",
-  "ae2lt.gui.matrix_port.title": "Pattern Management"
+  "ae2lt.gui.matrix_port.title": "Pattern Management",
+  "ae2lt.compat.data_energistics.unsupported": "[AE2LT] Data Energistics %s was detected. AE2LT has taken the necessary measures to mitigate compatibility problems where possible, but this combination remains explicitly unsupported.",
+  "ae2lt.compat.data_energistics.feedback_scope": "Do not report crashes, broken features, compatibility failures, or performance problems from this combination to either the AE2 Lightning Tech or Data Energistics issue tracker. Report only issues that still reproduce after removing one of the two mods."
 }
