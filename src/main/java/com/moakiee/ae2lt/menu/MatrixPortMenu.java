@@ -55,6 +55,7 @@ public class MatrixPortMenu extends AbstractContainerMenu {
     private final MatrixPortBlockEntity host;
     private final List<MatrixPatternSlot> patternSlots = new ArrayList<>();
     private final int patternSlotCount;
+    private long patternContentRevision;
 
     public MatrixPortMenu(int containerId, Inventory playerInventory, MatrixPortBlockEntity host) {
         this(containerId,
@@ -173,6 +174,30 @@ public class MatrixPortMenu extends AbstractContainerMenu {
 
     public int getPatternSlotCount() {
         return patternSlotCount;
+    }
+
+    /**
+     * Monotonic client-side revision used by the search screen to avoid hashing every encoded
+     * pattern every tick. Vanilla calls these update methods when a synchronized slot changes.
+     */
+    public long getPatternContentRevision() {
+        return patternContentRevision;
+    }
+
+    @Override
+    public void setItem(int slotId, int stateId, ItemStack stack) {
+        super.setItem(slotId, stateId, stack);
+        if (slotId >= 0 && slotId < patternSlotCount) {
+            patternContentRevision++;
+        }
+    }
+
+    @Override
+    public void initializeContents(int stateId, List<ItemStack> items, ItemStack carried) {
+        super.initializeContents(stateId, items, carried);
+        if (patternSlotCount > 0) {
+            patternContentRevision++;
+        }
     }
 
     public List<MatrixPatternSlot> getPatternSlots() {

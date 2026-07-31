@@ -17,6 +17,7 @@ import net.minecraft.network.chat.TextColor;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 
 import appeng.api.crafting.IPatternDetails;
@@ -65,11 +66,17 @@ public class MatrixPortScreen extends AbstractContainerScreen<MatrixPortMenu> {
     private final List<Integer> filteredRows = new ArrayList<>();
     private final Set<Integer> matchingPatternSlots = new HashSet<>();
     private final Map<String, Boolean> nameMatchCache = new HashMap<>();
+    private final List<MatrixPortMenu.MatrixPatternSlot> visiblePatternSlots =
+            new ArrayList<>(MatrixPortMenu.COLUMNS * MatrixPortMenu.VISIBLE_ROWS);
+    private final List<Slot> allMenuSlots;
+    private final List<Slot> playerMenuSlots;
+    private final List<Slot> visibleMenuSlots =
+            new ArrayList<>(MatrixPortMenu.COLUMNS * MatrixPortMenu.VISIBLE_ROWS + 36);
 
     private EditBox searchField;
     private int scrollRow;
     private boolean draggingScrollbar;
-    private long lastContentFingerprint;
+    private long lastPatternContentRevision;
 
     public MatrixPortScreen(MatrixPortMenu menu, Inventory playerInventory, Component title) {
         super(menu, playerInventory, title);
@@ -77,6 +84,13 @@ public class MatrixPortScreen extends AbstractContainerScreen<MatrixPortMenu> {
         imageHeight = GUI_HEIGHT;
         titleLabelY = 10_000;
         inventoryLabelY = 10_000;
+        allMenuSlots = List.copyOf(menu.slots);
+        playerMenuSlots = List.copyOf(
+                allMenuSlots.subList(menu.getPatternSlotCount(), allMenuSlots.size()));
+        visibleMenuSlots.addAll(playerMenuSlots);
+        for (var slot : menu.getPatternSlots()) {
+            slot.setActive(false);
+        }
     }
 
     @Override
@@ -104,8 +118,8 @@ public class MatrixPortScreen extends AbstractContainerScreen<MatrixPortMenu> {
     protected void containerTick() {
         super.containerTick();
         if (searchField != null && !searchField.getValue().isBlank()) {
-            long fingerprint = contentFingerprint();
-            if (fingerprint != lastContentFingerprint) {
+            long revision = menu.getPatternContentRevision();
+            if (revision != lastPatternContentRevision) {
                 refreshList(false);
             }
         }
@@ -140,9 +154,26 @@ public class MatrixPortScreen extends AbstractContainerScreen<MatrixPortMenu> {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(graphics, mouseX, mouseY, partialTick);
-        super.render(graphics, mouseX, mouseY, partialTick);
+        renderVisibleBatch(graphics, mouseX, mouseY, partialTick);
         renderTooltip(graphics, mouseX, mouseY);
+    }
+
+    /**
+     * Vanilla walks every menu slot twice per frame even when most slots are inactive. Keep the
+     * authoritative full slot list outside rendering, but expose only this six-row window while
+     * the vanilla renderer and render events are running. Slot.index remains the physical server
+     * slot id, so normal container clicks and synchronization keep their existing contract.
+     */
+    private void renderVisibleBatch(
+            GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        menu.slots.clear();
+        menu.slots.addAll(visibleMenuSlots);
+        try {
+            super.render(graphics, mouseX, mouseY, partialTick);
+        } finally {
+            menu.slots.clear();
+            menu.slots.addAll(allMenuSlots);
+        }
     }
 
     @Override
@@ -209,7 +240,7 @@ public class MatrixPortScreen extends AbstractContainerScreen<MatrixPortMenu> {
             scrollRow = Mth.clamp(scrollRow, 0, maxScrollRow());
         }
         updateVisibleSlots();
-        lastContentFingerprint = contentFingerprint();
+        lastPatternContentRevision = menu.getPatternContentRevision();
     }
 
     private boolean rowMatches(int row, List<String> searchTokens) {
@@ -305,13 +336,15 @@ public class MatrixPortScreen extends AbstractContainerScreen<MatrixPortMenu> {
 
     private void updateVisibleSlots() {
         var slots = menu.getPatternSlots();
-        for (var slot : slots) {
+        for (var slot : visiblePatternSlots) {
             slot.setActive(false);
             slot.x = OFFSCREEN_SLOT;
             slot.y = OFFSCREEN_SLOT;
         }
+        visiblePatternSlots.clear();
 
-        int visibleRows = Math.min(MatrixPortMenu.VISIBLE_ROWS, filteredRows.size() - scrollRow);
+        int visibleRows = Math.min(
+                MatrixPortMenu.VISIBLE_ROWS, Math.max(0, filteredRows.size() - scrollRow));
         for (int visibleRow = 0; visibleRow < visibleRows; visibleRow++) {
             int patternRow = filteredRows.get(scrollRow + visibleRow);
             int firstSlot = patternRow * MatrixPortMenu.COLUMNS;
@@ -322,18 +355,20 @@ public class MatrixPortScreen extends AbstractContainerScreen<MatrixPortMenu> {
                 slot.x = MatrixPortMenu.PATTERN_X + column * SLOT_SPACING;
                 slot.y = MatrixPortMenu.PATTERN_Y + visibleRow * SLOT_SPACING;
                 slot.setActive(true);
+                visiblePatternSlots.add(slot);
             }
         }
+
+        visibleMenuSlots.clear();
+        visibleMenuSlots.addAll(visiblePatternSlots);
+        visibleMenuSlots.addAll(playerMenuSlots);
     }
 
     private void renderSearchHighlights(GuiGraphics graphics) {
         if (searchField == null || searchField.getValue().isBlank()) {
             return;
         }
-        for (var slot : menu.getPatternSlots()) {
-            if (!slot.isActive()) {
-                continue;
-            }
+        for (var slot : visiblePatternSlots) {
             int color = matchingPatternSlots.contains(slot.getPatternIndex())
                     ? 0x8A00FF00
                     : 0x6A000000;
@@ -415,11 +450,4 @@ public class MatrixPortScreen extends AbstractContainerScreen<MatrixPortMenu> {
                 && mouseY < topPos + PATTERN_AREA_Y + PATTERN_AREA_HEIGHT;
     }
 
-    private long contentFingerprint() {
-        long hash = 1L;
-        for (var slot : menu.getPatternSlots()) {
-            hash = 31L * hash + ItemStack.hashItemAndComponents(slot.getItem());
-        }
-        return hash;
-    }
 }
