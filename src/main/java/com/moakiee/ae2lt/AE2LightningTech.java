@@ -45,6 +45,7 @@ import com.moakiee.ae2lt.item.FixedInfiniteCellItem;
 import com.moakiee.ae2lt.item.FixedInfiniteCellItem.CellOutcome;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.CreativeModeTab;
@@ -109,6 +110,8 @@ import org.slf4j.Logger;
 @Mod(AE2LightningTech.MODID)
 public class AE2LightningTech {
     public static final String MODID = "ae2lt";
+    private static final String DATA_ENERGISTICS_COMPATIBILITY_ISSUE =
+            "https://github.com/fish1145/DataEnergistics/issues/144";
     private static final Logger LOG = LogUtils.getLogger();
     private static final CraftingCoreRegistry CRAFTING_CORE_REGISTRY = new CraftingCoreRegistry();
 
@@ -401,6 +404,15 @@ public class AE2LightningTech {
         event.getEntity().sendSystemMessage(Component.translatable(
                         "ae2lt.compat.data_energistics.feedback_scope")
                 .withStyle(ChatFormatting.YELLOW));
+        event.getEntity().sendSystemMessage(Component.translatable(
+                "ae2lt.compat.data_energistics.details",
+                Component.literal(DATA_ENERGISTICS_COMPATIBILITY_ISSUE)
+                        .withStyle(style -> style
+                                .withColor(ChatFormatting.AQUA)
+                                .withUnderlined(true)
+                                .withClickEvent(new ClickEvent(
+                                        ClickEvent.Action.OPEN_URL,
+                                        DATA_ENERGISTICS_COMPATIBILITY_ISSUE)))));
     }
 
     private static void warnAboutDataEnergistics() {
@@ -414,7 +426,8 @@ public class AE2LightningTech {
                 + "compatibility problems where possible, but this combination remains unsupported. "
                 + "Do not report crashes, broken features, compatibility failures, or performance "
                 + "problems from this combination to either the AE2 Lightning Tech or Data Energistics "
-                + "issue tracker.", version);
+                + "issue tracker. Compatibility details: {}", version,
+                DATA_ENERGISTICS_COMPATIBILITY_ISSUE);
     }
 
     // Prevents automation from accessing the workbench inventory
