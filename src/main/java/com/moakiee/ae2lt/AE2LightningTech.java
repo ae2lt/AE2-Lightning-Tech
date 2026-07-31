@@ -43,6 +43,7 @@ import com.moakiee.ae2lt.blockentity.WirelessOverloadedControllerBlockEntity;
 import com.moakiee.ae2lt.blockentity.WirelessReceiverBlockEntity;
 import com.moakiee.ae2lt.item.FixedInfiniteCellItem;
 import com.moakiee.ae2lt.item.FixedInfiniteCellItem.CellOutcome;
+import net.minecraft.ChatFormatting;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -53,6 +54,7 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
+import net.neoforged.fml.ModList;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
@@ -98,6 +100,7 @@ import com.moakiee.ae2lt.recipe.RecipeConflictScanner;
 import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternDecoder;
 
 import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.server.ServerStartingEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
@@ -375,9 +378,43 @@ public class AE2LightningTech {
         modContainer.registerConfig(ModConfig.Type.CLIENT,
                 com.moakiee.ae2lt.config.AE2LTClientConfig.SPEC, "ae2lt-client.toml");
 
+        warnAboutDataEnergistics();
+
         NeoForge.EVENT_BUS.addListener(this::onServerStarting);
         NeoForge.EVENT_BUS.addListener(this::onServerStopped);
         NeoForge.EVENT_BUS.addListener(this::onServerTickPost);
+        NeoForge.EVENT_BUS.addListener(this::onPlayerLoggedIn);
+    }
+
+    private void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
+        if (event.getEntity().level().isClientSide()
+                || !ModList.get().isLoaded("data_energistics")) {
+            return;
+        }
+
+        String version = ModList.get().getModContainerById("data_energistics")
+                .map(container -> container.getModInfo().getVersion().toString())
+                .orElse("unknown");
+        event.getEntity().sendSystemMessage(Component.translatable(
+                        "ae2lt.compat.data_energistics.unsupported", version)
+                .withStyle(ChatFormatting.RED, ChatFormatting.BOLD));
+        event.getEntity().sendSystemMessage(Component.translatable(
+                        "ae2lt.compat.data_energistics.feedback_scope")
+                .withStyle(ChatFormatting.YELLOW));
+    }
+
+    private static void warnAboutDataEnergistics() {
+        if (!ModList.get().isLoaded("data_energistics")) {
+            return;
+        }
+        String version = ModList.get().getModContainerById("data_energistics")
+                .map(container -> container.getModInfo().getVersion().toString())
+                .orElse("unknown");
+        LOG.error("Data Energistics {} detected. AE2LT has taken the necessary measures to mitigate "
+                + "compatibility problems where possible, but this combination remains unsupported. "
+                + "Do not report crashes, broken features, compatibility failures, or performance "
+                + "problems from this combination to either the AE2 Lightning Tech or Data Energistics "
+                + "issue tracker.", version);
     }
 
     // Prevents automation from accessing the workbench inventory
