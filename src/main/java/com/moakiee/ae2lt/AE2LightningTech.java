@@ -41,6 +41,7 @@ import com.moakiee.ae2lt.block.TeslaCoilBlock;
 import com.moakiee.ae2lt.blockentity.AdvancedWirelessOverloadedControllerBlockEntity;
 import com.moakiee.ae2lt.blockentity.WirelessOverloadedControllerBlockEntity;
 import com.moakiee.ae2lt.blockentity.WirelessReceiverBlockEntity;
+import com.moakiee.ae2lt.config.EarlyCompatibilityConfig;
 import com.moakiee.ae2lt.item.FixedInfiniteCellItem;
 import com.moakiee.ae2lt.item.FixedInfiniteCellItem.CellOutcome;
 import net.minecraft.ChatFormatting;
@@ -398,8 +399,11 @@ public class AE2LightningTech {
         String version = ModList.get().getModContainerById("data_energistics")
                 .map(container -> container.getModInfo().getVersion().toString())
                 .orElse("unknown");
+        String warningKey = EarlyCompatibilityConfig.dataEnergisticsMixinProtectionEnabled()
+                ? "ae2lt.compat.data_energistics.unsupported"
+                : "ae2lt.compat.data_energistics.protection_disabled";
         event.getEntity().sendSystemMessage(Component.translatable(
-                        "ae2lt.compat.data_energistics.unsupported", version)
+                        warningKey, version)
                 .withStyle(ChatFormatting.RED, ChatFormatting.BOLD));
         event.getEntity().sendSystemMessage(Component.translatable(
                         "ae2lt.compat.data_energistics.feedback_scope")
@@ -422,12 +426,21 @@ public class AE2LightningTech {
         String version = ModList.get().getModContainerById("data_energistics")
                 .map(container -> container.getModInfo().getVersion().toString())
                 .orElse("unknown");
-        LOG.error("Data Energistics {} detected. AE2LT has taken the necessary measures to mitigate "
-                + "compatibility problems where possible, but this combination remains unsupported. "
-                + "Do not report crashes, broken features, compatibility failures, or performance "
-                + "problems from this combination to either the AE2 Lightning Tech or Data Energistics "
-                + "issue tracker. Compatibility details: {}", version,
-                DATA_ENERGISTICS_COMPATIBILITY_ISSUE);
+        if (EarlyCompatibilityConfig.dataEnergisticsMixinProtectionEnabled()) {
+            LOG.error("Data Energistics {} detected. AE2LT has taken the necessary measures to mitigate "
+                    + "compatibility problems where possible, but this combination remains unsupported. "
+                    + "To disable this protection, set compatibility.dataEnergisticsMixinProtection=false "
+                    + "in ae2lt-common.toml and fully restart the client or server. "
+                    + "Do not report crashes, broken features, compatibility failures, or performance "
+                    + "problems from this combination to either the AE2 Lightning Tech or Data Energistics "
+                    + "issue tracker. Compatibility details: {}", version,
+                    DATA_ENERGISTICS_COMPATIBILITY_ISSUE);
+        } else {
+            LOG.error("Data Energistics {} detected. AE2LT compatibility protection is disabled by "
+                    + "configuration, so no startup safeguards are active. This combination remains "
+                    + "unsupported. Do not report resulting problems to either issue tracker. "
+                    + "Compatibility details: {}", version, DATA_ENERGISTICS_COMPATIBILITY_ISSUE);
+        }
     }
 
     // Prevents automation from accessing the workbench inventory

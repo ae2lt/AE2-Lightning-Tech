@@ -8,15 +8,15 @@ import org.junit.jupiter.api.Test;
 
 final class DataEnergisticsCompatibilityWarningContractTest {
     @Test
-    void cancelsTheEntireDataEnergisticsMixinPackage() throws Exception {
+    void cancelsOnlyDataEnergisticsMixinsTargetingOwnedClasses() throws Exception {
         String canceller = Files.readString(Path.of(
                 "src/main/java/com/moakiee/ae2lt/mixin/compat/DataEnergisticsMixinCanceller.java"));
         String service = Files.readString(Path.of(
                 "src/main/resources/META-INF/services/com.bawnorton.mixinsquared.api.MixinCanceller"));
 
-        assertTrue(canceller.contains(
-                "com.fish_dan_.data_energistics.mixin."));
-        assertTrue(canceller.contains("mixinClassName.startsWith"));
+        assertTrue(canceller.contains("targetClassNames"));
+        assertTrue(canceller.contains("DataEnergisticsTargetPolicy.shouldCancel"));
+        assertTrue(canceller.contains("dataEnergisticsMixinProtectionEnabled()"));
         assertTrue(service.contains(
                 "com.moakiee.ae2lt.mixin.compat.DataEnergisticsMixinCanceller"));
     }
@@ -43,16 +43,24 @@ final class DataEnergisticsCompatibilityWarningContractTest {
         assertTrue(bootstrap.contains("ChatFormatting.YELLOW"));
         assertTrue(bootstrap.contains("warnAboutDataEnergistics()"));
         assertTrue(bootstrap.contains("has taken the necessary measures to mitigate"));
+        assertTrue(bootstrap.contains("compatibility.dataEnergisticsMixinProtection=false"));
+        assertTrue(bootstrap.contains("ae2lt-common.toml"));
+        assertTrue(bootstrap.contains("ae2lt.compat.data_energistics.protection_disabled"));
 
         assertTrue(chinese.contains("\"ae2lt.compat.data_energistics.unsupported\""));
         assertTrue(chinese.contains("\"ae2lt.compat.data_energistics.feedback_scope\""));
         assertTrue(chinese.contains("\"ae2lt.compat.data_energistics.details\""));
         assertTrue(chinese.contains("已采取必要手段尽量修复兼容性"));
+        assertTrue(chinese.contains("compatibility.dataEnergisticsMixinProtection"));
+        assertTrue(chinese.contains("完整重启客户端或服务端"));
+        assertTrue(chinese.contains("兼容保护已被配置禁用"));
         assertTrue(chinese.contains("请勿向 AE2 Lightning Tech 或 Data Energistics"));
         assertTrue(english.contains("\"ae2lt.compat.data_energistics.unsupported\""));
         assertTrue(english.contains("\"ae2lt.compat.data_energistics.feedback_scope\""));
         assertTrue(english.contains("\"ae2lt.compat.data_energistics.details\""));
         assertTrue(english.contains("taken the necessary measures to mitigate"));
+        assertTrue(english.contains("set compatibility.dataEnergisticsMixinProtection to false"));
+        assertTrue(english.contains("Compatibility protection is disabled by configuration"));
         assertTrue(english.contains("either the AE2 Lightning Tech or Data Energistics issue tracker"));
     }
 }

@@ -3,23 +3,20 @@ package com.moakiee.ae2lt.mixin.compat;
 import java.util.List;
 
 import com.bawnorton.mixinsquared.api.MixinCanceller;
+import com.moakiee.ae2lt.compat.DataEnergisticsTargetPolicy;
+import com.moakiee.ae2lt.config.EarlyCompatibilityConfig;
 
 /**
- * Cancels every mixin shipped by Data Energistics while AE2LT is present.
+ * Prevents Data Energistics from mixing into classes owned by Moakiee projects.
  *
- * <p>Data Energistics mixes into AE2 and AE2LT implementation details that AE2LT cannot provide
- * as a stable compatibility surface. Partially cancelling only the currently known collision
- * would leave the rest of that cross-mod patch set active and make failures version-dependent,
- * so this boundary deliberately disables the entire Data Energistics mixin package. The mod
- * itself is still loaded; features that depend on its mixins are unsupported by definition.
+ * <p>Its injections into AE2, Minecraft and its other integrations remain its responsibility and
+ * are deliberately left untouched. This boundary only protects implementation classes under the
+ * {@code com.moakiee} namespace, which are not a supported third-party Mixin surface.
  */
 public final class DataEnergisticsMixinCanceller implements MixinCanceller {
-    static final String DATA_ENERGISTICS_MIXIN_PACKAGE =
-            "com.fish_dan_.data_energistics.mixin.";
-
     @Override
     public boolean shouldCancel(List<String> targetClassNames, String mixinClassName) {
-        return mixinClassName != null
-                && mixinClassName.startsWith(DATA_ENERGISTICS_MIXIN_PACKAGE);
+        return EarlyCompatibilityConfig.dataEnergisticsMixinProtectionEnabled()
+                && DataEnergisticsTargetPolicy.shouldCancel(targetClassNames, mixinClassName);
     }
 }
