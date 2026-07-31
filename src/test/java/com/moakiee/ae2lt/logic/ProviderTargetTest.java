@@ -9,12 +9,17 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.Test;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.Level;
+
+import appeng.api.crafting.IPatternDetails;
+import appeng.api.stacks.AEItemKey;
+import appeng.api.stacks.GenericStack;
 
 import com.moakiee.ae2lt.blockentity.OverloadedPatternProviderBlockEntity.WirelessConnection;
 
@@ -70,6 +75,24 @@ class ProviderTargetTest {
     }
 
     @Test
+    void patternInternDefersLiveBucketEnumerationUntilCompaction() {
+        var table = new WirelessOverflowPatternTable();
+        var pattern = new EmptyPattern();
+        var enumerations = new AtomicInteger();
+
+        table.intern(pattern, () -> {
+            enumerations.incrementAndGet();
+            return List.of();
+        });
+        table.intern(pattern, () -> {
+            enumerations.incrementAndGet();
+            return List.of();
+        });
+
+        assertEquals(0, enumerations.get());
+    }
+
+    @Test
     void fullAcceptanceUsesExponentialChunksWithoutExceedingRequest() {
         var chunks = new ArrayList<Integer>();
         var result = target.pushPattern(
@@ -117,5 +140,22 @@ class ProviderTargetTest {
 
         assertEquals(2L, result.ownedCopies());
         assertTrue(result.globalAbort());
+    }
+
+    private static final class EmptyPattern implements IPatternDetails {
+        @Override
+        public AEItemKey getDefinition() {
+            return null;
+        }
+
+        @Override
+        public IInput[] getInputs() {
+            return new IInput[0];
+        }
+
+        @Override
+        public List<GenericStack> getOutputs() {
+            return List.of();
+        }
     }
 }

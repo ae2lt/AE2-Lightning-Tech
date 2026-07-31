@@ -2,6 +2,7 @@ package com.moakiee.ae2lt.logic;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.function.Supplier;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
@@ -30,14 +31,16 @@ final class WirelessOverflowPatternTable {
         byPattern.defaultReturnValue(-1);
     }
 
-    short intern(IPatternDetails pattern, Iterable<? extends PatternReference> liveReferences) {
+    short intern(
+            IPatternDetails pattern,
+            Supplier<? extends Iterable<? extends PatternReference>> liveReferences) {
         int id = byPattern.getInt(pattern);
         if (id >= 0) {
             return (short) id;
         }
 
         if (byId.size() >= MAX_PATTERN_IDS) {
-            compact(liveReferences);
+            compact(liveReferences.get());
         }
 
         for (int attempts = 0; attempts <= MAX_PATTERN_IDS; attempts++) {
@@ -48,7 +51,7 @@ final class WirelessOverflowPatternTable {
             }
         }
 
-        compact(liveReferences);
+        compact(liveReferences.get());
         id = allocateId();
         put(id, pattern);
         return (short) id;

@@ -1,8 +1,9 @@
 package com.moakiee.ae2lt.logic;
 
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.jetbrains.annotations.Nullable;
@@ -52,7 +53,8 @@ final class WirelessOverflowQueue {
     }
 
     /** Strong owners, including removed orphan connections with pending work. */
-    private final Set<WirelessConnection> owners = new HashSet<>();
+    private final Map<WirelessConnection, WirelessConnection> ownersByAddress =
+            new HashMap<>();
     private final DueTaskQueue<WirelessConnection> retries = new DueTaskQueue<>();
     private final WirelessOverflowPatternTable patterns =
             new WirelessOverflowPatternTable();
@@ -60,24 +62,24 @@ final class WirelessOverflowQueue {
     private boolean backpressured;
 
     boolean isEmpty() {
-        return owners.isEmpty();
+        return ownersByAddress.isEmpty();
     }
 
     boolean contains(WirelessConnection connection) {
-        return owners.contains(connection);
+        return ownersByAddress.containsKey(connection);
     }
 
     int size() {
-        return owners.size();
+        return ownersByAddress.size();
     }
 
     Set<WirelessConnection> connections() {
-        return Set.copyOf(owners);
+        return Set.copyOf(ownersByAddress.values());
     }
 
     Iterable<Bucket> buckets() {
-        var result = new ArrayList<Bucket>(owners.size());
-        for (var owner : owners) {
+        var result = new ArrayList<Bucket>(ownersByAddress.size());
+        for (var owner : ownersByAddress.values()) {
             var bucket = owner.wirelessOverflow();
             if (bucket != null) {
                 result.add(bucket);
@@ -111,7 +113,7 @@ final class WirelessOverflowQueue {
             List<GenericStack> overflow,
             boolean forceFallback,
             long gameTick) {
-        short patternId = patterns.intern(pattern, buckets());
+        short patternId = patterns.intern(pattern, this::buckets);
         Bucket bucket;
         if (!forceFallback
                 && WirelessOverflowPatternTable.isCompactEligible(pattern)) {
@@ -140,7 +142,7 @@ final class WirelessOverflowQueue {
             List<RoutedPatternOverflow.Entry> overflow,
             long gameTick) {
         var bucket = Bucket.routedFallback(
-                patterns.intern(pattern, buckets()), overflow);
+                patterns.intern(pattern, this::buckets), overflow);
         put(connection, bucket, gameTick);
         return bucket;
     }
@@ -157,7 +159,7 @@ final class WirelessOverflowQueue {
             return null;
         }
         retries.remove(owner);
-        owners.remove(owner);
+        ownersByAddress.remove(owner);
         var removed = owner.wirelessOverflow();
         owner.setWirelessOverflow(null);
         refreshBackpressure();
@@ -165,7 +167,7 @@ final class WirelessOverflowQueue {
     }
 
     boolean beginFlush(long gameTick) {
-        if (owners.isEmpty() || lastFlushTick == gameTick) {
+        if (ownersByAddress.isEmpty() || lastFlushTick == gameTick) {
             return false;
         }
         lastFlushTick = gameTick;
@@ -208,10 +210,10 @@ final class WirelessOverflowQueue {
     }
 
     void clear() {
-        for (var owner : owners) {
+        for (var owner : ownersByAddress.values()) {
             owner.setWirelessOverflow(null);
         }
-        owners.clear();
+        ownersByAddress.clear();
         retries.clear();
         patterns.clear();
         lastFlushTick = Long.MIN_VALUE;
@@ -219,7 +221,7 @@ final class WirelessOverflowQueue {
     }
 
     void refreshBackpressure() {
-        int total = owners.size();
+        int total = ownersByAddress.size();
         if (backpressured) {
             if (total <= REARM_BUCKETS) {
                 backpressured = false;
@@ -233,7 +235,7 @@ final class WirelessOverflowQueue {
             WirelessConnection connection, Bucket bucket, long gameTick) {
         var owner = adopt(connection);
         owner.setWirelessOverflow(bucket);
-        owners.add(owner);
+        ownersByAddress.putIfAbsent(owner, owner);
         bucket.retryDelay = initialRetryDelay();
         schedule(connection, bucket, gameTick + bucket.retryDelay);
         refreshBackpressure();
@@ -249,12 +251,7 @@ final class WirelessOverflowQueue {
 
     @Nullable
     private WirelessConnection canonical(WirelessConnection connection) {
-        for (var owner : owners) {
-            if (owner.equals(connection)) {
-                return owner;
-            }
-        }
-        return null;
+        return ownersByAddress.get(connection);
     }
 
     static final class Bucket
