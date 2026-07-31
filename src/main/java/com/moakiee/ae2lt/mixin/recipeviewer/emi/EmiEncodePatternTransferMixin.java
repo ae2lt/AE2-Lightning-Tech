@@ -9,6 +9,7 @@ import appeng.integration.modules.emi.EmiEncodePatternHandler;
 import appeng.integration.modules.emi.EmiStackHelper;
 import appeng.menu.AEBaseMenu;
 import com.moakiee.ae2lt.client.TianshuRecipeTransferContext;
+import com.moakiee.ae2lt.client.TianshuUploadAliasRules;
 import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuEncodingMode;
 import com.moakiee.ae2lt.menu.TianshuPatternEncodingTermMenu;
 import dev.emi.emi.api.EmiApi;
@@ -86,7 +87,9 @@ public abstract class EmiEncodePatternTransferMixin {
                         defaultAliases,
                         TianshuRecipeTransferContext.firstPathSegment(emiRecipe.getId().getPath()));
                 TianshuRecipeTransferContext.addDefaultAlias(
-                        defaultAliases, emiRecipe.getId().getNamespace());
+                        defaultAliases,
+                        TianshuUploadAliasRules.namespaceGlob(
+                                emiRecipe.getId().getNamespace()));
             }
             workstationAliases.forEach(alias ->
                     TianshuRecipeTransferContext.addDefaultAlias(defaultAliases, alias));

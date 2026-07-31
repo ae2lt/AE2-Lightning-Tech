@@ -76,7 +76,8 @@ public final class TianshuRecipeTransferContext {
         if (recipeBase instanceof RecipeHolder<?> holder) {
             recipeId = holder.id().toString();
             addDefaultAlias(defaultAliases, firstPathSegment(holder.id().getPath()));
-            addDefaultAlias(defaultAliases, holder.id().getNamespace());
+            addDefaultAlias(defaultAliases,
+                    TianshuUploadAliasRules.namespaceGlob(holder.id().getNamespace()));
         }
         if (additionalAliases != null) {
             additionalAliases.forEach(value -> addDefaultAlias(defaultAliases, value));
@@ -110,7 +111,9 @@ public final class TianshuRecipeTransferContext {
         if (sourceKey == null || sourceKey.isBlank()) return;
         aliases.add(sourceKey);
         var sourceId = ResourceLocation.tryParse(sourceKey);
-        if (sourceId != null) aliases.add(sourceId.getNamespace());
+        if (sourceId != null) {
+            aliases.add(TianshuUploadAliasRules.namespaceGlob(sourceId.getNamespace()));
+        }
     }
 
     public static synchronized Snapshot snapshotFor(TianshuPatternEncodingTermMenu menu) {

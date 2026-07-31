@@ -12,13 +12,9 @@ import org.junit.jupiter.api.Test;
 
 class TianshuUploadTargetMatcherTest {
     @Test
-    void iconIdUsesSubstringMatchingForPlainQueriesAndWholeValueGlobs() {
+    void iconIdUsesWholeValueGlobMatching() {
         assertTrue(TianshuUploadTargetMatcher.idMatches(
                 "extendedae:ex_pattern_provider", "extendedae:ex_pattern_provider"));
-        assertTrue(TianshuUploadTargetMatcher.idMatches(
-                "mekanism:ultimate_enriching_factory", "mek"));
-        assertTrue(TianshuUploadTargetMatcher.idMatches(
-                "mekanism:ultimate_enriching_factory", "enriching"));
         assertTrue(TianshuUploadTargetMatcher.idMatches(
                 "extendedae:ex_pattern_provider", "extendedae:*_provider"));
         assertTrue(TianshuUploadTargetMatcher.idMatches(
@@ -26,16 +22,12 @@ class TianshuUploadTargetMatcherTest {
         assertTrue(TianshuUploadTargetMatcher.idMatches(
                 "extendedae:ex_pattern_provider", "*:ex_pattern_provider"));
 
-        assertTrue(TianshuUploadTargetMatcher.idMatches(
+        assertFalse(TianshuUploadTargetMatcher.idMatches(
                 "extendedae:ex_pattern_provider", "pattern_provider"));
         assertFalse(TianshuUploadTargetMatcher.idMatches(
                 "extendedae:ex_pattern_provider", "extendedae:pattern"));
-        assertTrue(TianshuUploadTargetMatcher.idMatches(
+        assertFalse(TianshuUploadTargetMatcher.idMatches(
                 "extendedae:ex_pattern_provider", "extendedae:ex_pattern"));
-        assertFalse(TianshuUploadTargetMatcher.idMatches(
-                "extendedae:ex_pattern_provider", "mekanism"));
-        assertFalse(TianshuUploadTargetMatcher.idMatches(
-                "extendedae:ex_pattern_provider", "extendedae:pattern*"));
     }
 
     @Test

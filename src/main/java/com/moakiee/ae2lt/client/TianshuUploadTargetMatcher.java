@@ -95,18 +95,10 @@ final class TianshuUploadTargetMatcher {
         return count;
     }
 
-    /**
-     * Plain icon-ID queries use case-insensitive substring matching, consistent with machine
-     * names. Queries containing '*' or '?' retain whole-value glob semantics so existing precise
-     * aliases keep behaving predictably.
-     */
+    /** Icon IDs use a whole-value glob. A partial ID therefore needs an explicit wildcard. */
     static boolean idMatches(String machineId, String query) {
         if (machineId == null || query == null || query.isBlank()) return false;
-        String normalizedId = normalize(machineId);
-        String normalizedQuery = normalize(query);
-        return containsWildcard(normalizedQuery)
-                ? globMatches(normalizedId, normalizedQuery)
-                : normalizedId.contains(normalizedQuery);
+        return globMatches(normalize(machineId), normalize(query));
     }
 
     /**
