@@ -322,6 +322,7 @@ public final class AE2LTCommonConfig {
 
     private static final class Values {
         private final ModConfigSpec.IntValue configVersion;
+        private final ModConfigSpec.BooleanValue dataEnergisticsMixinProtection;
         private final ModConfigSpec.IntValue lightningCollectorCooldownTicks;
         private final ModConfigSpec.IntValue electroChimeMaxCatalysis;
         private final ModConfigSpec.BooleanValue overloadTntEnableTerrainDamage;
@@ -418,6 +419,15 @@ public final class AE2LTCommonConfig {
             configVersion = builder
                     .comment("Internal config schema version. Do not edit; used by the mod for upgrade migrations.")
                     .defineInRange("configVersion", CURRENT_CONFIG_VERSION, 1, Integer.MAX_VALUE);
+
+            builder.push(EarlyCompatibilityConfig.SECTION);
+            dataEnergisticsMixinProtection = builder
+                    .comment(
+                            "Enable AE2LT's startup compatibility protection when Data Energistics is installed.",
+                            "Set this to false only for diagnostics or after upstream compatibility is restored.",
+                            "Changing this option requires a full client or server restart.")
+                    .define(EarlyCompatibilityConfig.DATA_ENERGISTICS_PROTECTION_KEY, true);
+            builder.pop();
 
             builder.push("lightningCollector");
             lightningCollectorCooldownTicks = builder

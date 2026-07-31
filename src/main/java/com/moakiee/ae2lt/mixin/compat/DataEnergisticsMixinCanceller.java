@@ -3,6 +3,7 @@ package com.moakiee.ae2lt.mixin.compat;
 import java.util.List;
 
 import com.bawnorton.mixinsquared.api.MixinCanceller;
+import com.moakiee.ae2lt.config.EarlyCompatibilityConfig;
 
 /**
  * Cancels every mixin shipped by Data Energistics while AE2LT is present.
@@ -19,7 +20,8 @@ public final class DataEnergisticsMixinCanceller implements MixinCanceller {
 
     @Override
     public boolean shouldCancel(List<String> targetClassNames, String mixinClassName) {
-        return mixinClassName != null
+        return EarlyCompatibilityConfig.dataEnergisticsMixinProtectionEnabled()
+                && mixinClassName != null
                 && mixinClassName.startsWith(DATA_ENERGISTICS_MIXIN_PACKAGE);
     }
 }

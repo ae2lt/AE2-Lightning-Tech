@@ -1299,6 +1299,7 @@
   "ae2lt.tianshu.issue.chunks_unloaded": "The structure's chunks are not fully loaded",
   "ae2lt.gui.matrix_port.search": "Search matrix patterns",
   "ae2lt.gui.matrix_port.title": "Pattern Management",
-  "ae2lt.compat.data_energistics.unsupported": "[AE2LT] Data Energistics %s was detected. AE2LT has taken the necessary measures to mitigate compatibility problems where possible, but this combination remains explicitly unsupported.",
+  "ae2lt.compat.data_energistics.unsupported": "[AE2LT] Data Energistics %s was detected. AE2LT has taken the necessary measures to mitigate compatibility problems where possible, but this combination remains explicitly unsupported. To disable this protection, set compatibility.dataEnergisticsMixinProtection to false in ae2lt-common.toml and fully restart the client or server.",
+  "ae2lt.compat.data_energistics.protection_disabled": "[AE2LT] Data Energistics %s was detected. Compatibility protection is disabled by configuration, so no safeguards are active for this launch; this combination remains explicitly unsupported.",
   "ae2lt.compat.data_energistics.feedback_scope": "Do not report crashes, broken features, compatibility failures, or performance problems from this combination to either the AE2 Lightning Tech or Data Energistics issue tracker. Report only issues that still reproduce after removing one of the two mods."
 }
