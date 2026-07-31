@@ -5,6 +5,7 @@ navigation:
   parent: overloaded-network/overloaded-network-index.md
 item_ids:
   - ae2lt:overloaded_pattern_provider
+  - ae2lt:overloaded_pattern_provider_upgrade
   - ae2lt:overload_pattern
   - ae2lt:overload_pattern_encoder
   - ae2lt:overloaded_wireless_connect_tool
@@ -26,6 +27,21 @@ item_ids:
 * **自动回收**：从远程机器自动取回加工产物
 * **输入过滤**：仅允许样板配方定义的产物返回 ME 网络
 * **自适应倍增**：一次合成请求可派发多份配方
+
+## 原地升级
+
+<ItemImage id="ae2lt:overloaded_pattern_provider_upgrade" scale="2" float="left" />
+
+使用**过载样板供应器升级**右击已经放置并配置好的供应器，可以将其原地转换为过载样板供应器，并保留样板、优先级、红石/阻挡设置及方块朝向。支持以下四种方块：
+
+* AE2：ME 样板供应器
+* ExtendedAE：ME 扩展样板供应器
+* AdvancedAE：ME 高级样板供应器
+* AdvancedAE：ME 高级扩展样板供应器
+
+每次升级消耗一个升级物品。升级物品由一个过载样板供应器与一个锭合成：
+
+<RecipeFor id="ae2lt:overloaded_pattern_provider_upgrade" />
 
 ## 工作模式
 

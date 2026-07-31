@@ -5,7 +5,7 @@ navigation:
   parent: overloaded-network/overloaded-network-index.md
 item_ids:
   - ae2lt:extended_overloaded_pattern_provider
-  - ae2lt:overloaded_pattern_provider_upgrade
+  - ae2lt:extended_overloaded_pattern_provider_upgrade
 ---
 
 # Extended Overloaded Pattern Provider
@@ -37,11 +37,11 @@ Craft one with an Overloaded Pattern Provider and an <ItemLink id="ae2lt:ultimat
 
 ### In-Place Upgrade
 
-<ItemImage id="ae2lt:overloaded_pattern_provider_upgrade" scale="2" float="left" />
+<ItemImage id="ae2lt:extended_overloaded_pattern_provider_upgrade" scale="2" float="left" />
 
-If you already have an **Overloaded Pattern Provider** placed and configured in your base, use the **Overloaded Pattern Provider Upgrade** to upgrade it **in place** to the extended version, **fully preserving** its patterns, wireless connections, settings, and block orientation — no need to break it and reconnect everything.
+If you already have an **Overloaded Pattern Provider** placed and configured in your base, use the **Extended Overloaded Pattern Provider Upgrade** to upgrade it **in place** to the extended version, **fully preserving** its patterns, wireless connections, settings, and block orientation — no need to break it and reconnect everything.
 
-Usage: hold the Overloaded Pattern Provider Upgrade and **right-click** a placed Overloaded Pattern Provider. Each upgrade consumes one upgrade item.
+Usage: hold the Extended Overloaded Pattern Provider Upgrade and **right-click** a placed Overloaded Pattern Provider. Each upgrade consumes one upgrade item.
 
 Notes:
 
@@ -50,4 +50,4 @@ Notes:
 
 The upgrade item itself is crafted from one Extended Overloaded Pattern Provider and an ingot:
 
-<RecipeFor id="ae2lt:overloaded_pattern_provider_upgrade" />
+<RecipeFor id="ae2lt:extended_overloaded_pattern_provider_upgrade" />

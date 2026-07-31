@@ -22,7 +22,6 @@ import appeng.block.crafting.PushDirection;
 import appeng.menu.locator.MenuLocators;
 import appeng.util.InteractionUtil;
 import appeng.util.Platform;
-import com.moakiee.ae2lt.item.OverloadedPatternProviderUpgradeItem;
 
 /**
  * Overloaded Pattern Provider block.
@@ -68,11 +67,6 @@ public class OverloadedPatternProviderBlock<T extends OverloadedPatternProviderB
     protected ItemInteractionResult useItemOn(ItemStack heldItem, BlockState state, Level level,
                                               BlockPos pos, Player player, InteractionHand hand,
                                               BlockHitResult hit) {
-        if (heldItem.getItem() instanceof OverloadedPatternProviderUpgradeItem
-                && OverloadedPatternProviderUpgradeItem.canUpgrade(level, pos)) {
-            OverloadedPatternProviderUpgradeItem.upgrade(level, pos, heldItem);
-            return ItemInteractionResult.sidedSuccess(level.isClientSide());
-        }
         if (InteractionUtil.canWrenchRotate(heldItem)) {
             setSide(level, pos, hit.getDirection());
             return ItemInteractionResult.sidedSuccess(level.isClientSide());

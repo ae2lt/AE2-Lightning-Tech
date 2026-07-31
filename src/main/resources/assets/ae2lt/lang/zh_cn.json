@@ -126,6 +126,7 @@
   "item.ae2lt.closed_loop_pattern": "闭环样板",
   "item.ae2lt.overload_pattern_encoder": "过载样板编码器",
   "item.ae2lt.overloaded_pattern_provider_upgrade": "过载样板供应器升级",
+  "item.ae2lt.extended_overloaded_pattern_provider_upgrade": "扩展过载样板供应器升级",
   "item.ae2lt.clear_condensate": "晴空凝核",
   "item.ae2lt.rain_condensate": "降雨凝核",
   "item.ae2lt.thunderstorm_condensate": "雷暴凝核",

@@ -131,6 +131,7 @@
   "item.ae2lt.closed_loop_pattern": "Closed-Loop Pattern",
   "item.ae2lt.overload_pattern_encoder": "Overload Pattern Encoder",
   "item.ae2lt.overloaded_pattern_provider_upgrade": "Overloaded Pattern Provider Upgrade",
+  "item.ae2lt.extended_overloaded_pattern_provider_upgrade": "Extended Overloaded Pattern Provider Upgrade",
   "jei.ae2lt.overload_growth.title": "Overload Crystal Growth",
   "jei.ae2lt.lightning_assembly.title": "Lightning Assembly Chamber",
   "jei.ae2lt.lightning_assembly.energy": "Energy Cost: %s FE",

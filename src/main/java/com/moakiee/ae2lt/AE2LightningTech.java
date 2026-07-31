@@ -63,7 +63,6 @@ import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
 import net.neoforged.neoforge.items.IItemHandler;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
-
 import appeng.api.AECapabilities;
 import appeng.api.crafting.PatternDetailsHelper;
 import appeng.api.networking.IInWorldGridNodeHost;
@@ -277,6 +276,7 @@ public class AE2LightningTech {
                         output.accept(ModItems.OVERLOADED_WIRELESS_CONNECT_TOOL);
                         output.accept(ModItems.OVERLOADED_FREQUENCY_CARD);
                         output.accept(ModItems.OVERLOADED_PATTERN_PROVIDER_UPGRADE);
+                        output.accept(ModItems.EXTENDED_OVERLOADED_PATTERN_PROVIDER_UPGRADE);
                         output.accept(ModItems.OVERLOADED_FILTER_COMPONENT);
 
                         // 苍穹织雷装备、能量模块

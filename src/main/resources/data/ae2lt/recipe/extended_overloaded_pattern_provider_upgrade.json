@@ -3,7 +3,7 @@
   "category": "misc",
   "ingredients": [
     {
-      "item": "ae2lt:overloaded_pattern_provider"
+      "item": "ae2lt:extended_overloaded_pattern_provider"
     },
     {
       "tag": "c:ingots"
@@ -11,6 +11,6 @@
   ],
   "result": {
     "count": 1,
-    "id": "ae2lt:overloaded_pattern_provider_upgrade"
+    "id": "ae2lt:extended_overloaded_pattern_provider_upgrade"
   }
 }
