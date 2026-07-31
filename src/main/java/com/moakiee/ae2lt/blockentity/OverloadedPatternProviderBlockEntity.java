@@ -37,6 +37,7 @@ import appeng.menu.locator.MenuHostLocator;
 import com.moakiee.ae2lt.grid.FrequencyBindingHelper;
 import com.moakiee.ae2lt.grid.FrequencyBindingHost;
 import com.moakiee.ae2lt.logic.OverloadedPatternProviderLogic;
+import com.moakiee.ae2lt.logic.ProviderTarget;
 import com.moakiee.ae2lt.logic.WirelessConnectionLists;
 import com.moakiee.ae2lt.logic.WirelessConnectionRef;
 import com.moakiee.ae2lt.logic.WirelessConnectionValidator;
@@ -103,26 +104,33 @@ public class OverloadedPatternProviderBlockEntity extends PatternProviderBlockEn
     private int invalidConnectionScanCursor;
     private final FrequencyBindingHelper frequencyBinding = new FrequencyBindingHelper(this);
 
-    // -- Wireless connection record --
+    // -- Wireless connection target --
 
     /**
      * A single wireless connection to a remote machine face.
-     * Identity is determined by (dimension, pos) — only one connection per machine.
+     * Full address equality includes the face; connection-list replacement still
+     * uses (dimension, pos), so only one configured connection exists per machine.
      */
-    public record WirelessConnection(
-            ResourceKey<Level> dimension,
-            BlockPos pos,
-            Direction boundFace
-    ) implements WirelessConnectionRef {
+    public static final class WirelessConnection
+            extends ProviderTarget
+            implements WirelessConnectionRef {
         private static final String TAG_DIM = "Dim";
         private static final String TAG_POS = "Pos";
         private static final String TAG_FACE = "Face";
 
+        public WirelessConnection(
+                ResourceKey<Level> dimension,
+                BlockPos pos,
+                Direction boundFace) {
+            super(dimension, pos, boundFace);
+        }
+
+        @Override
         public CompoundTag toTag() {
             var tag = new CompoundTag();
-            tag.putString(TAG_DIM, dimension.location().toString());
-            tag.putLong(TAG_POS, pos.asLong());
-            tag.putInt(TAG_FACE, boundFace.get3DDataValue());
+            tag.putString(TAG_DIM, dimension().location().toString());
+            tag.putLong(TAG_POS, pos().asLong());
+            tag.putInt(TAG_FACE, boundFace().get3DDataValue());
             return tag;
         }
 

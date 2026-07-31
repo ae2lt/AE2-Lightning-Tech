@@ -334,8 +334,7 @@ final class AE2NativeMachineAdapter implements MachineAdapter {
         for (var input : plannedInputs) {
             long simulated = target.insert(
                     input.what(), input.amount(), Actionable.SIMULATE);
-            if (!ProviderDispatchPolicy.acceptsCompleteAmount(
-                    input.amount(), simulated)) {
+            if (input.amount() <= 0L || simulated < input.amount()) {
                 return false;
             }
         }
