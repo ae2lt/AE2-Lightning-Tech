@@ -159,7 +159,9 @@ public final class CelestweaveArmorUndyingHandler {
 
     private static boolean tryTrigger(ServerPlayer player, long now) {
         for (var active : collectActiveLastStand(player)) {
-            int comboIndex = ArmorOverloadCombo.nextComboIndex(active.armor(), UndyingSubmodule.INSTANCE, now);
+            int comboIndex = capComboIndexForWindow(
+                    ArmorOverloadCombo.nextComboIndex(active.armor(), UndyingSubmodule.INSTANCE, now),
+                    active.tuning().comboWindowTicks());
             long cost = ArmorOverloadCombo.scaledCost(active.tuning().feCost(), comboIndex);
             var lightningCost = ArmorModuleLightningPolicy
                     .triggeredCost(ArmorModuleLightningPolicy.Trigger.UNDYING)
@@ -236,6 +238,18 @@ public final class CelestweaveArmorUndyingHandler {
             return Long.MAX_VALUE;
         }
         return left + right;
+    }
+
+    /**
+     * A paid undying trigger opens a protection window during which duplicate fatal paths are
+     * free. Consequently, no more than ceil(combo window / protection window) separately paid
+     * triggers belong to one combo. Clamp the rolling combo counter to that physical maximum so
+     * repeatedly extending ComboUntil cannot grow the price forever.
+     */
+    static int capComboIndexForWindow(int comboIndex, int comboWindowTicks) {
+        int safeWindow = Math.max(1, comboWindowTicks);
+        int maximum = Math.max(1, Math.ceilDiv(safeWindow, PROTECTION_WINDOW_TICKS));
+        return Math.min(Math.max(1, comboIndex), maximum);
     }
 
     private static void restoreSurvivalState(ServerPlayer player) {
