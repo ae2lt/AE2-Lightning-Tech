@@ -6,6 +6,7 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Set;
@@ -30,7 +31,7 @@ final class DispatchFairnessScheduler<T, P> {
 
     static final int WINDOW_TICKS = 100;
 
-    private final Map<P, PatternState<T>> patterns = new HashMap<>();
+    private final Map<P, PatternState<T>> patterns = new IdentityHashMap<>();
     private final Set<T> pausedTargets = new HashSet<>();
     private long sequence;
 

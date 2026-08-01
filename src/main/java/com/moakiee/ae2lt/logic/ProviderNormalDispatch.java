@@ -3,6 +3,7 @@ package com.moakiee.ae2lt.logic;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -11,6 +12,8 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 
+import appeng.api.crafting.IPatternDetails;
+
 /** Runtime scheduling owner for the provider's adjacent physical targets. */
 final class ProviderNormalDispatch {
     private static final int INITIAL_COOLDOWN = 5;
@@ -18,11 +21,11 @@ final class ProviderNormalDispatch {
 
     private final Map<Direction, ProviderTarget> targets =
             new EnumMap<>(Direction.class);
-    private final Map<ProviderTarget, Map<ProviderPatternKey, Penalty>> penalties =
+    private final Map<ProviderTarget, Map<IPatternDetails, Penalty>> penalties =
             new HashMap<>();
     private final DueTaskQueue<TargetPatternKey<ProviderTarget>> expirations =
             new DueTaskQueue<>();
-    private final DispatchFairnessScheduler<ProviderTarget, ProviderPatternKey> fairness =
+    private final DispatchFairnessScheduler<ProviderTarget, IPatternDetails> fairness =
             new DispatchFairnessScheduler<>();
     private final Map<ProviderTarget, Long> returnNextPoll = new HashMap<>();
     private final Map<ProviderTarget, Integer> returnBackoff = new HashMap<>();
@@ -69,8 +72,8 @@ final class ProviderNormalDispatch {
         return ordered;
     }
 
-    DispatchFairnessScheduler<ProviderTarget, ProviderPatternKey>.Pass beginPass(
-            ProviderPatternKey pattern,
+    DispatchFairnessScheduler<ProviderTarget, IPatternDetails>.Pass beginPass(
+            IPatternDetails pattern,
             java.util.Collection<ProviderTarget> currentTargets,
             long gameTick) {
         return fairness.beginPass(
@@ -78,7 +81,7 @@ final class ProviderNormalDispatch {
     }
 
     long dispatchBatch(
-            ProviderPatternKey pattern,
+            IPatternDetails pattern,
             java.util.Collection<ProviderTarget> currentTargets,
             long maxCopies,
             long gameTick,
@@ -132,7 +135,7 @@ final class ProviderNormalDispatch {
 
     long retryAfter(
             ProviderTarget target,
-            ProviderPatternKey pattern,
+            IPatternDetails pattern,
             long gameTick) {
         purgeExpired(gameTick);
         var byPattern = penalties.get(target);
@@ -145,11 +148,11 @@ final class ProviderNormalDispatch {
 
     long recordRejection(
             ProviderTarget target,
-            ProviderPatternKey pattern,
+            IPatternDetails pattern,
             long gameTick) {
         purgeExpired(gameTick);
         var byPattern = penalties.computeIfAbsent(
-                target, ignored -> new HashMap<>());
+                target, ignored -> new IdentityHashMap<>());
         var previous = byPattern.get(pattern);
         int cooldown = previous == null
                 ? INITIAL_COOLDOWN
@@ -161,7 +164,7 @@ final class ProviderNormalDispatch {
         return retryAfter;
     }
 
-    void recordSuccess(ProviderTarget target, ProviderPatternKey pattern) {
+    void recordSuccess(ProviderTarget target, IPatternDetails pattern) {
         var byPattern = penalties.get(target);
         if (byPattern == null) {
             return;

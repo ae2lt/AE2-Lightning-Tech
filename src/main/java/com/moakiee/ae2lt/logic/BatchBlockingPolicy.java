@@ -1,8 +1,8 @@
 package com.moakiee.ae2lt.logic;
 
-import java.util.Objects;
-
 import org.jetbrains.annotations.Nullable;
+
+import appeng.api.crafting.IPatternDetails;
 
 /**
  * Pure decision logic for the blocking checks between physical batch chunks.
@@ -14,8 +14,8 @@ final class BatchBlockingPolicy {
             boolean blockingEnabled,
             boolean targetContainsPatternInput,
             boolean samePatternBlockingEnabled,
-            @Nullable ProviderPatternKey lastSuccessfulPattern,
-            ProviderPatternKey currentPattern) {
+            @Nullable IPatternDetails lastSuccessfulPattern,
+            IPatternDetails currentPattern) {
         if (craftingLocked) {
             return true;
         }
@@ -26,11 +26,11 @@ final class BatchBlockingPolicy {
                 || !samePattern(lastSuccessfulPattern, currentPattern);
     }
 
-    /** Compare provider-owned keys without invoking third-party pattern equality. */
+    /** Compare catalog-canonical details by identity on the dispatch hot path. */
     static boolean samePattern(
-            @Nullable ProviderPatternKey previous,
-            ProviderPatternKey current) {
-        return Objects.equals(previous, current);
+            @Nullable IPatternDetails previous,
+            IPatternDetails current) {
+        return previous == current;
     }
 
     private BatchBlockingPolicy() {

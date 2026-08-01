@@ -105,8 +105,7 @@ class ProviderDispatchTest {
 
     @Test
     void dispatchBookkeepingDoesNotInvokePatternEquality() {
-        var pattern = ProviderPatternKey.forDetails(
-                new ExplosiveEqualityPattern());
+        var pattern = new ExplosiveEqualityPattern();
         var normal = new ProviderNormalDispatch();
         var target = target(4);
 

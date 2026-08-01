@@ -22,7 +22,7 @@ import com.moakiee.thunderbolt.ae2.api.crafting.CraftingPatternDelegates;
  * Current decoded-pattern catalog for one overloaded pattern provider.
  *
  * <p>The catalog deliberately has the same lifetime as the provider's visible
- * pattern list. It gives every registered recipe a safe internal identity while
+ * pattern list. It gives every registered recipe stable provider details while
  * retaining the caller's execution details for fuzzy inputs and loop accounting.
  * It is not a global interner: decoded details may depend on the current level
  * and recipe reload state.
@@ -30,9 +30,9 @@ import com.moakiee.thunderbolt.ae2.api.crafting.CraftingPatternDelegates;
 final class OverloadedProviderPatternCatalog {
 
     /** External details are indexed strictly by reference, never by mod-defined equality. */
-    private final Map<IPatternDetails, ProviderPatternKey> byDetails =
+    private final Map<IPatternDetails, IPatternDetails> byDetails =
             new IdentityHashMap<>();
-    private final Map<AEItemKey, ProviderPatternKey> byDefinition =
+    private final Map<AEItemKey, IPatternDetails> byDefinition =
             new HashMap<>();
 
     void rebuild(
@@ -40,6 +40,7 @@ final class OverloadedProviderPatternCatalog {
             Level level,
             List<IPatternDetails> visiblePatterns,
             Set<AEKey> patternInputs) {
+        var previousDefinitions = new HashMap<>(byDefinition);
         clear();
         visiblePatterns.clear();
         patternInputs.clear();
@@ -52,7 +53,7 @@ final class OverloadedProviderPatternCatalog {
             }
 
             visiblePatterns.add(details);
-            register(details);
+            register(details, previousDefinitions);
             for (var input : details.getInputs()) {
                 for (var possibleInput : input.getPossibleInputs()) {
                     patternInputs.add(possibleInput.what().dropSecondary());
@@ -62,7 +63,7 @@ final class OverloadedProviderPatternCatalog {
     }
 
     @Nullable
-    ProviderPatternKey resolve(IPatternDetails executionDetails) {
+    IPatternDetails resolve(IPatternDetails executionDetails) {
         if (executionDetails == null) {
             return null;
         }
@@ -90,12 +91,19 @@ final class OverloadedProviderPatternCatalog {
     }
 
     void register(IPatternDetails details) {
+        register(details, Map.of());
+    }
+
+    private void register(
+            IPatternDetails details,
+            Map<AEItemKey, IPatternDetails> previousDefinitions) {
         var definition = details.getDefinition();
-        var patternKey = definition == null
-                ? ProviderPatternKey.forDetails(details)
+        var canonicalDetails = definition == null
+                ? details
                 : byDefinition.computeIfAbsent(
                         definition,
-                        ProviderPatternKey::forDefinition);
-        byDetails.putIfAbsent(details, patternKey);
+                        key -> previousDefinitions.getOrDefault(
+                                key, details));
+        byDetails.putIfAbsent(details, canonicalDetails);
     }
 }

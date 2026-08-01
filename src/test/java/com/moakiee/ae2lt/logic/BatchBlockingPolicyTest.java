@@ -16,25 +16,22 @@ class BatchBlockingPolicyTest {
     @Test
     void vanillaBlockingStopsTheNextPhysicalChunk() {
         assertTrue(BatchBlockingPolicy.isBlocked(
-                false, true, true, false, null, key(new Pattern())));
+                false, true, true, false, null, new Pattern()));
     }
 
     @Test
-    void samePatternBlockingUsesProviderKeyWithoutPatternEquality() {
+    void samePatternBlockingUsesCanonicalIdentityWithoutPatternEquality() {
         var details = new Pattern();
-        var previous = key(details);
-        var sameDetails = key(details);
-        var otherDetails = key(new Pattern());
 
         assertFalse(BatchBlockingPolicy.isBlocked(
-                false, true, true, true, previous, sameDetails));
+                false, true, true, true, details, details));
         assertTrue(BatchBlockingPolicy.isBlocked(
-                false, true, true, true, previous, otherDetails));
+                false, true, true, true, details, new Pattern()));
     }
 
     @Test
     void craftingLockAlwaysStopsTheNextChunk() {
-        var pattern = key(new Pattern());
+        var pattern = new Pattern();
 
         assertTrue(BatchBlockingPolicy.isBlocked(
                 true, false, false, true, pattern, pattern));
@@ -43,11 +40,7 @@ class BatchBlockingPolicyTest {
     @Test
     void disabledBlockingDoesNotInspectPatternHistory() {
         assertFalse(BatchBlockingPolicy.isBlocked(
-                false, false, true, false, null, key(new Pattern())));
-    }
-
-    private static ProviderPatternKey key(IPatternDetails details) {
-        return ProviderPatternKey.forDetails(details);
+                false, false, true, false, null, new Pattern()));
     }
 
     private static final class Pattern implements IPatternDetails {

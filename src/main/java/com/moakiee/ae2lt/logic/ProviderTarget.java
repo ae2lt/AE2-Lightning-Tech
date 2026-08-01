@@ -113,7 +113,7 @@ public class ProviderTarget extends TargetAddress {
     private boolean isBlocked(
             ServerLevel level,
             @Nullable PatternProviderTarget target,
-            ProviderPatternKey pattern,
+            IPatternDetails pattern,
             boolean craftingLocked,
             boolean blockingEnabled,
             boolean samePatternMode,
@@ -156,7 +156,7 @@ public class ProviderTarget extends TargetAddress {
     public final boolean isBlocked(
             ServerLevel level,
             IActionSource source,
-            ProviderPatternKey pattern,
+            IPatternDetails pattern,
             boolean craftingLocked,
             boolean blockingEnabled,
             boolean samePatternMode,
@@ -210,7 +210,7 @@ public class ProviderTarget extends TargetAddress {
     }
 
     public final void markPatternDispatched(
-            ServerLevel level, ProviderPatternKey pattern) {
+            ServerLevel level, IPatternDetails pattern) {
         if (resolveBlockEntity(level) != null) {
             runtime.lastSuccessfulPattern = pattern;
         }
@@ -369,7 +369,7 @@ public class ProviderTarget extends TargetAddress {
                 Collections.newSetFromMap(new IdentityHashMap<>());
         private long blockedGameTick = Long.MIN_VALUE;
         @Nullable
-        private ProviderPatternKey lastSuccessfulPattern;
+        private IPatternDetails lastSuccessfulPattern;
         @Nullable
         private RoutedPatternOverflow directionalOverflow;
         @Nullable

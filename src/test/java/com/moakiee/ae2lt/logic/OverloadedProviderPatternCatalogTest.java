@@ -21,9 +21,8 @@ class OverloadedProviderPatternCatalogTest {
         var catalog = new OverloadedProviderPatternCatalog();
 
         catalog.register(canonical);
-        var canonicalKey = catalog.resolve(canonical);
 
-        assertSame(canonicalKey, catalog.resolve(canonical));
+        assertSame(canonical, catalog.resolve(canonical));
         assertNull(catalog.resolve(equivalentExecutionDetails));
     }
 

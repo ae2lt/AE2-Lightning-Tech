@@ -497,7 +497,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
 
     private long pushWirelessBatchTargets(
             IPatternDetails pattern,
-            ProviderPatternKey patternHandle,
+            IPatternDetails patternHandle,
             KeyCounter[] oneCopyTemplate,
             long maxCraft,
             net.minecraft.server.MinecraftServer server,
@@ -529,7 +529,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
 
     private BatchTargetDispatchResult tryPushBatchToConnection(
             IPatternDetails pattern,
-            ProviderPatternKey patternHandle,
+            IPatternDetails patternHandle,
             KeyCounter[] oneCopyTemplate,
             long maxCraft,
             double oneCopyCost,
@@ -573,7 +573,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
     }
 
     private boolean isBatchTargetBlocked(
-            BatchTargetContext context, ProviderPatternKey pattern) {
+            BatchTargetContext context, IPatternDetails pattern) {
         return isTargetBlocked(
                 context.target(),
                 context.level(),
@@ -583,7 +583,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
     private boolean isTargetBlocked(
             ProviderTarget target,
             ServerLevel level,
-            ProviderPatternKey pattern) {
+            IPatternDetails pattern) {
         return target.isBlocked(
                 level,
                 wirelessSource,
@@ -597,7 +597,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
     private ProviderTarget.BatchDispatchResult dispatchBatchRamp(
             BatchTargetContext context,
             IPatternDetails pattern,
-            ProviderPatternKey patternHandle,
+            IPatternDetails patternHandle,
             KeyCounter[] oneCopyTemplate,
             long maxCraft,
             double oneCopyCost) {
@@ -619,7 +619,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
     private ProviderTarget.BatchChunk pushBatchChunk(
             BatchTargetContext context,
             IPatternDetails pattern,
-            ProviderPatternKey patternHandle,
+            IPatternDetails patternHandle,
             KeyCounter[] oneCopyTemplate,
             int copies,
             double oneCopyCost) {
@@ -684,7 +684,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
     private void recordSuccessfulBatchChunk(
             BatchTargetContext context,
             IPatternDetails pattern,
-            ProviderPatternKey patternHandle) {
+            IPatternDetails patternHandle) {
         ((PatternProviderLogicAccessor) this).invokeOnPushPatternSuccess(pattern);
         syncPendingUnlockRule(pattern);
         context.target().markPatternDispatched(
@@ -750,7 +750,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
 
     private WirelessPushOutcome tryPushToConnection(
             IPatternDetails pattern,
-            ProviderPatternKey patternHandle,
+            IPatternDetails patternHandle,
             KeyCounter[] inputs,
             WirelessConnection conn,
             net.minecraft.server.MinecraftServer server) {
@@ -900,7 +900,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
      */
     private WirelessPushOutcome tryPushToConnectionDirectionally(
             IPatternDetails pattern,
-            ProviderPatternKey patternHandle,
+            IPatternDetails patternHandle,
             KeyCounter[] inputs,
             WirelessConnection conn,
             net.minecraft.server.MinecraftServer server) {
