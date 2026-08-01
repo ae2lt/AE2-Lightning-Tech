@@ -29,9 +29,7 @@ public final class MultiblockStructureRecipes {
             .filter(pos -> !pos.equals(MatrixMultiblockTemplate.CRAFTING_CENTER_LOCAL))
             .findFirst()
             .orElseThrow(() -> new IllegalStateException("Matrix template has no peripheral crafting slot"));
-    private static final int TIANSHU_DEFAULT_STORAGE_UNITS = 16;
-    private static final BlockPos TIANSHU_DEFAULT_PATTERN_STORAGE = new BlockPos(2, 6, 2);
-    private static final BlockPos TIANSHU_DEFAULT_SEED_STORAGE = new BlockPos(4, 6, 2);
+    private static final BlockPos TIANSHU_DEFAULT_PARALLEL = new BlockPos(2, 2, 2);
 
     public static List<MultiblockStructureRecipe> all() {
         return List.of(matrix(), tianshu());
@@ -192,7 +190,6 @@ public final class MultiblockStructureRecipes {
         Component peripheralRule = rule("tianshu_peripheral");
 
         var cells = new ArrayList<MultiblockStructureRecipe.Cell>();
-        int peripheralIndex = 0;
         for (int y = 0; y < TianshuMultiblockTemplate.SIZE; y++) {
             for (int z = 0; z < TianshuMultiblockTemplate.SIZE; z++) {
                 for (int x = 0; x < TianshuMultiblockTemplate.SIZE; x++) {
@@ -203,18 +200,13 @@ public final class MultiblockStructureRecipes {
                             // Ignored positions are omitted from the rendered model and material list.
                         }
                         case CASING -> cells.add(cell(pos, casing, casingRole, List.of(casing), true));
-                        case COOLING -> {
-                            Block displayed = pos.equals(TIANSHU_DEFAULT_PATTERN_STORAGE)
-                                    ? patternStorage
-                                    : pos.equals(TIANSHU_DEFAULT_SEED_STORAGE) ? seedStorage : cooling;
-                            cells.add(cell(
-                                    pos,
-                                    displayed,
-                                    coolingRole,
-                                    coolingPositionBlocks,
-                                    List.of(coolingRule),
-                                    true));
-                        }
+                        case COOLING -> cells.add(cell(
+                                pos,
+                                cooling,
+                                coolingRole,
+                                coolingPositionBlocks,
+                                List.of(coolingRule),
+                                true));
                         case GLASS -> cells.add(cell(pos, glass, glassRole, List.of(glass), true));
                         case CONTROLLER -> cells.add(cell(
                                 pos,
@@ -243,8 +235,7 @@ public final class MultiblockStructureRecipes {
                                         List.of(mainCoreRule),
                                         false));
                             } else {
-                                Block displayed = peripheralIndex < TIANSHU_DEFAULT_STORAGE_UNITS ? storage : parallel;
-                                peripheralIndex++;
+                                Block displayed = isDefaultTianshuParallelPosition(pos) ? parallel : blank;
                                 cells.add(cell(
                                         pos,
                                         displayed,
@@ -262,16 +253,12 @@ public final class MultiblockStructureRecipes {
         List<MultiblockStructureRecipe.MaterialSpec> materialOrder = List.of(
                 material(casing),
                 material(cooling, coolingRule),
-                material(patternStorage, coolingRule),
-                material(seedStorage, coolingRule),
                 material(glass),
                 material(controller),
                 material(port, portRule),
                 material(mainCores.getFirst(), mainCoreRule),
                 material(blank, peripheralRule),
-                material(storage, peripheralRule),
-                material(parallel, peripheralRule),
-                material(amplifier, peripheralRule));
+                material(parallel, peripheralRule));
 
         return MultiblockStructureRecipe.create(
                 id("tianshu_supercomputer"),
@@ -325,6 +312,10 @@ public final class MultiblockStructureRecipes {
 
     static boolean isDefaultMatrixThreadPosition(BlockPos pos) {
         return MATRIX_DEFAULT_THREAD.equals(pos);
+    }
+
+    static boolean isDefaultTianshuParallelPosition(BlockPos pos) {
+        return TIANSHU_DEFAULT_PARALLEL.equals(pos);
     }
 
     private static Component rule(String path) {
