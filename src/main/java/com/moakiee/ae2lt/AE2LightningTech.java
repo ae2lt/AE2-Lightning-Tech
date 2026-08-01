@@ -46,7 +46,6 @@ import com.moakiee.ae2lt.item.FixedInfiniteCellItem;
 import com.moakiee.ae2lt.item.FixedInfiniteCellItem.CellOutcome;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.CreativeModeTab;
@@ -408,15 +407,6 @@ public class AE2LightningTech {
         event.getEntity().sendSystemMessage(Component.translatable(
                         "ae2lt.compat.data_energistics.feedback_scope")
                 .withStyle(ChatFormatting.YELLOW));
-        event.getEntity().sendSystemMessage(Component.translatable(
-                "ae2lt.compat.data_energistics.details",
-                Component.literal(DATA_ENERGISTICS_COMPATIBILITY_ISSUE)
-                        .withStyle(style -> style
-                                .withColor(ChatFormatting.AQUA)
-                                .withUnderlined(true)
-                                .withClickEvent(new ClickEvent(
-                                        ClickEvent.Action.OPEN_URL,
-                                        DATA_ENERGISTICS_COMPATIBILITY_ISSUE)))));
     }
 
     private static void warnAboutDataEnergistics() {
