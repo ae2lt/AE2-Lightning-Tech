@@ -120,17 +120,31 @@ final class TianshuUploadTargetMatcher {
             return true;
         }
         if (!containsWildcard(normalizedQuery)) {
-            return pinyinContains.test(normalizedName, normalizedQuery);
+            return isPinyinFragment(normalizedQuery)
+                    && pinyinContains.test(normalizedName, normalizedQuery);
         }
         // JEC exposes contains rather than match positions. For a wildcard query, require every
         // fixed fragment to match the name's pinyin representation; '*'/'?' remain separators.
         boolean hasFragment = false;
         for (String fragment : normalizedQuery.split("[?*]+")) {
             if (fragment.isBlank()) continue;
+            // PinIn ignores punctuation, underscores and digits in a query. Passing a registry
+            // ID such as "ae2lt:overload_processing_factory" can therefore degenerate into an
+            // empty pinyin search that matches every Chinese provider name.
+            if (!isPinyinFragment(fragment)) return false;
             hasFragment = true;
             if (!pinyinContains.test(normalizedName, fragment)) return false;
         }
         return hasFragment;
+    }
+
+    private static boolean isPinyinFragment(String value) {
+        if (value == null || value.isEmpty()) return false;
+        for (int i = 0; i < value.length(); i++) {
+            char character = value.charAt(i);
+            if (character < 'a' || character > 'z') return false;
+        }
+        return true;
     }
 
     /** Uses a custom machine name when present; otherwise the stable registry ID is preferred. */

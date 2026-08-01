@@ -56,6 +56,19 @@ class TianshuUploadTargetMatcherTest {
     }
 
     @Test
+    void registryIdsNeverFallBackToPinyinMatching() {
+        var overlyPermissivePinyin = (java.util.function.BiPredicate<String, String>)
+                (name, query) -> true;
+
+        assertFalse(TianshuUploadTargetMatcher.nameMatches(
+                "净化无限粉碎工厂",
+                "ae2lt:overload_processing_factory",
+                overlyPermissivePinyin));
+        assertFalse(TianshuUploadTargetMatcher.nameMatches(
+                "精英富集工厂", "ae2lt*", overlyPermissivePinyin));
+    }
+
+    @Test
     void globMatcherHandlesEmptyAndBacktrackingEdges() {
         assertTrue(TianshuUploadTargetMatcher.globMatches("", "*"));
         assertTrue(TianshuUploadTargetMatcher.globMatches("abc", "a**?c"));
