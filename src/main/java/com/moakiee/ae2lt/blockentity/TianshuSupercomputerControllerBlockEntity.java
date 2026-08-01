@@ -45,7 +45,6 @@ import appeng.api.networking.security.IActionSource;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.KeyCounter;
-import appeng.hooks.ticking.TickHandler;
 import appeng.me.service.CraftingService;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
@@ -118,7 +117,7 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
     private int autoBuildPlacementIndex;
     private int autoBuildPlacedBlocks;
     private long nextAutoBuildTick;
-    private long lastCpuDirtyTick = Long.MIN_VALUE;
+    private boolean runtimeStateDirty;
     private long pendingStorage = -1L;
     private int pendingParallel = -1;
     private long pendingMaxCopiesPerTick = -1L;
@@ -752,11 +751,7 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
 
     @Override
     public void markCpuDirty() {
-        long now = TickHandler.instance().getCurrentTick();
-        if (lastCpuDirtyTick != now) {
-            lastCpuDirtyTick = now;
-            setChanged();
-        }
+        markRuntimeStateDirty();
     }
 
     @Override
@@ -766,7 +761,7 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
 
     @Override
     public void maintenanceStateChanged() {
-        setChanged();
+        markRuntimeStateDirty();
     }
 
     public ImmutableSet<ICraftingLink> getRequestedJobs() {
@@ -974,6 +969,13 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
     public void persistRuntimeStateIfChanged() {
         if (!persistentStateOwner || !machineId.equals(loadedRuntimeId)
                 || !(level instanceof ServerLevel serverLevel)) return;
+        var state = createRuntimeStateSnapshot(serverLevel);
+        ControllerMachineStateSavedData.get(serverLevel)
+                .setOwnedState(MachineType.TIANSHU, machineId, state);
+        runtimeStateDirty = false;
+    }
+
+    private CompoundTag createRuntimeStateSnapshot(ServerLevel serverLevel) {
         var state = new CompoundTag();
         var maintenanceTag = new CompoundTag();
         maintenance.writeTo(maintenanceTag, serverLevel.registryAccess());
@@ -983,8 +985,36 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
             cpuPool.writeToNBT(poolTag, serverLevel.registryAccess());
             if (!poolTag.isEmpty()) state.put(TAG_CPU_POOL, poolTag);
         }
-        ControllerMachineStateSavedData.get(serverLevel)
-                .setState(MachineType.TIANSHU, machineId, state);
+        return state;
+    }
+
+    private void markRuntimeStateDirty() {
+        if (runtimeStateDirty) return;
+        if (!persistentStateOwner || !machineId.equals(loadedRuntimeId)
+                || !(level instanceof ServerLevel serverLevel)) return;
+        runtimeStateDirty = true;
+        ControllerMachineStateSavedData.get(serverLevel).deferStateSnapshot(
+                MachineType.TIANSHU, machineId, this::takeDeferredRuntimeStateSnapshot);
+    }
+
+    private void flushRuntimeStateIfDirty() {
+        if (runtimeStateDirty) persistRuntimeStateIfChanged();
+    }
+
+    private CompoundTag takeDeferredRuntimeStateSnapshot() {
+        if (!runtimeStateDirty || !persistentStateOwner || !machineId.equals(loadedRuntimeId)
+                || !(level instanceof ServerLevel serverLevel)) return null;
+        var state = createRuntimeStateSnapshot(serverLevel);
+        runtimeStateDirty = false;
+        return state;
+    }
+
+    private void discardPendingRuntimeState() {
+        if (runtimeStateDirty && level instanceof ServerLevel serverLevel) {
+            ControllerMachineStateSavedData.get(serverLevel)
+                    .cancelDeferredStateSnapshot(MachineType.TIANSHU, machineId);
+        }
+        runtimeStateDirty = false;
     }
 
     /**
@@ -1008,16 +1038,17 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
         maintenance.readFrom(state.getCompound(TAG_MAINTENANCE), serverLevel.registryAccess());
         cpuPool.readFromNBT(state.getCompound(TAG_CPU_POOL), serverLevel.registryAccess());
         loadedRuntimeId = machineId;
-        if (!stored) setChanged();
+        if (!stored) markRuntimeStateDirty();
         if (legacy != null) port.consumeLegacyRuntimeState();
     }
 
     private void clearTransientRuntime() {
+        discardPendingRuntimeState();
+        loadedRuntimeId = null;
         if (level == null) return;
         maintenance.readFrom(new CompoundTag(), level.registryAccess());
         cpuPool.readFromNBT(new CompoundTag(), level.registryAccess());
         closedLoopPatterns.clear();
-        loadedRuntimeId = null;
         pendingStorage = -1L;
         pendingParallel = -1;
         pendingMaxCopiesPerTick = -1L;
@@ -1170,11 +1201,9 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
     @Override
     protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.saveAdditional(tag, registries);
-        // Runtime snapshots are expensive: the CPU pool serializes every active job.
-        // Normal CPU/maintenance changes only dirty this block entity; publish the
-        // UUID-owned snapshot when Minecraft actually writes the controller NBT.
-        // Lifecycle paths that clear the live runtime still flush explicitly first.
-        persistRuntimeStateIfChanged();
+        // SavedData normally materializes the deferred snapshot before its own write.
+        // Keep this fallback for standalone chunk saves and unloads between world saves.
+        flushRuntimeStateIfDirty();
         tag.putBoolean(TAG_FORMED, formed);
         if (portPos != null) tag.putLong(TAG_PORT_POS, portPos.asLong());
         if (minPos != null) tag.putLong(TAG_MIN_POS, minPos.asLong());

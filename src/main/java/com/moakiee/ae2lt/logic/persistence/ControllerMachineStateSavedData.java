@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.function.Supplier;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
@@ -30,6 +31,7 @@ public final class ControllerMachineStateSavedData extends SavedData {
             null);
 
     private final Map<MachineKey, CompoundTag> states = new HashMap<>();
+    private final Map<MachineKey, Supplier<CompoundTag>> deferredStateSnapshots = new HashMap<>();
     private final Map<MachineKey, Owner> owners = new HashMap<>();
 
     public enum MachineType {
@@ -64,11 +66,47 @@ public final class ControllerMachineStateSavedData extends SavedData {
 
     public void setState(MachineType type, UUID id, CompoundTag state) {
         if (type == null || id == null || state == null) return;
+        setOwnedState(type, id, state.copy());
+    }
+
+    /**
+     * Publishes a freshly-created state without a defensive deep copy. The caller must not mutate
+     * {@code state} after this call; ordinary callers should use {@link #setState} instead.
+     */
+    public void setOwnedState(MachineType type, UUID id, CompoundTag state) {
+        if (type == null || id == null || state == null) return;
         var key = new MachineKey(type, id);
-        var copy = state.copy();
-        if (!copy.equals(states.get(key))) {
-            states.put(key, copy);
+        deferredStateSnapshots.remove(key);
+        if (!state.equals(states.get(key))) {
+            states.put(key, state);
             setDirty();
+        }
+    }
+
+    /**
+     * Marks this data dirty now, but generates the expensive state snapshot only immediately before
+     * this SavedData is written. The supplier must return a fresh tag whose ownership is transferred.
+     */
+    public void deferStateSnapshot(
+            MachineType type, UUID id, Supplier<CompoundTag> snapshotSupplier) {
+        if (type == null || id == null || snapshotSupplier == null) return;
+        deferredStateSnapshots.put(new MachineKey(type, id), snapshotSupplier);
+        setDirty();
+    }
+
+    public void cancelDeferredStateSnapshot(MachineType type, UUID id) {
+        if (type == null || id == null) return;
+        deferredStateSnapshots.remove(new MachineKey(type, id));
+    }
+
+    private void materializeDeferredStateSnapshots() {
+        var pending = new HashMap<>(deferredStateSnapshots);
+        for (var entry : pending.entrySet()) {
+            var state = entry.getValue().get();
+            deferredStateSnapshots.remove(entry.getKey(), entry.getValue());
+            if (state != null && !state.equals(states.get(entry.getKey()))) {
+                states.put(entry.getKey(), state);
+            }
         }
     }
 
@@ -106,6 +144,7 @@ public final class ControllerMachineStateSavedData extends SavedData {
 
     @Override
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
+        materializeDeferredStateSnapshots();
         var entries = new ListTag();
         for (var entry : states.entrySet()) {
             var entryTag = new CompoundTag();

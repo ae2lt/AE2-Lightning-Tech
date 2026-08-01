@@ -2,10 +2,13 @@ package com.moakiee.ae2lt.logic.persistence;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.moakiee.ae2lt.logic.persistence.ControllerMachineStateSavedData.MachineType;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import net.minecraft.nbt.CompoundTag;
 import org.junit.jupiter.api.Test;
 
@@ -21,6 +24,7 @@ class ControllerMachineStateSavedDataTest {
 
         data.setState(MachineType.TIANSHU, id, tianshu);
         data.setState(MachineType.MATRIX, id, matrix);
+        tianshu.putLong("InFlight", 0L);
         var root = data.save(new CompoundTag(), null);
         var restored = ControllerMachineStateSavedData.load(root, null);
 
@@ -29,6 +33,63 @@ class ControllerMachineStateSavedDataTest {
         var externalCopy = restored.getState(MachineType.TIANSHU, id);
         externalCopy.putLong("InFlight", 0L);
         assertEquals(42L, restored.getState(MachineType.TIANSHU, id).getLong("InFlight"));
+    }
+
+    @Test
+    void ownedStateSetterAdoptsFreshTagWithoutDeepCopy() throws Exception {
+        var id = UUID.randomUUID();
+        var data = new ControllerMachineStateSavedData();
+        var state = new CompoundTag();
+        state.putLong("InFlight", 42L);
+
+        data.setOwnedState(MachineType.TIANSHU, id, state);
+
+        var statesField = ControllerMachineStateSavedData.class.getDeclaredField("states");
+        statesField.setAccessible(true);
+        var states = (Map<?, ?>) statesField.get(data);
+        assertSame(state, states.values().iterator().next());
+    }
+
+    @Test
+    void deferredSnapshotIsMaterializedOnceWhenSavedDataWrites() {
+        var id = UUID.randomUUID();
+        var data = new ControllerMachineStateSavedData();
+        var snapshots = new AtomicInteger();
+
+        data.deferStateSnapshot(MachineType.TIANSHU, id, () -> {
+            snapshots.incrementAndGet();
+            var state = new CompoundTag();
+            state.putLong("InFlight", 42L);
+            return state;
+        });
+
+        assertFalse(data.hasState(MachineType.TIANSHU, id));
+        var root = data.save(new CompoundTag(), null);
+        data.save(new CompoundTag(), null);
+        var restored = ControllerMachineStateSavedData.load(root, null);
+
+        assertEquals(1, snapshots.get());
+        assertEquals(42L, restored.getState(MachineType.TIANSHU, id).getLong("InFlight"));
+    }
+
+    @Test
+    void forcedSnapshotSupersedesDeferredSnapshotAtLifecycleBoundary() {
+        var id = UUID.randomUUID();
+        var data = new ControllerMachineStateSavedData();
+        var deferredCalls = new AtomicInteger();
+        data.deferStateSnapshot(MachineType.TIANSHU, id, () -> {
+            deferredCalls.incrementAndGet();
+            return new CompoundTag();
+        });
+        var forced = new CompoundTag();
+        forced.putLong("InFlight", 7L);
+
+        data.setOwnedState(MachineType.TIANSHU, id, forced);
+        var root = data.save(new CompoundTag(), null);
+        var restored = ControllerMachineStateSavedData.load(root, null);
+
+        assertEquals(0, deferredCalls.get());
+        assertEquals(7L, restored.getState(MachineType.TIANSHU, id).getLong("InFlight"));
     }
 
     @Test

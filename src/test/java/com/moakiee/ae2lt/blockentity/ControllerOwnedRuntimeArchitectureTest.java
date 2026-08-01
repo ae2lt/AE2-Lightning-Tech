@@ -113,7 +113,7 @@ class ControllerOwnedRuntimeArchitectureTest {
     }
 
     @Test
-    void tianshuDefersRoutineRuntimeSerializationUntilNbtWrite() throws Exception {
+    void tianshuDefersRoutineRuntimeSerializationUntilSavedDataWrite() throws Exception {
         String controller = Files.readString(Path.of(
                 "src/main/java/com/moakiee/ae2lt/blockentity/"
                         + "TianshuSupercomputerControllerBlockEntity.java"));
@@ -136,6 +136,9 @@ class ControllerOwnedRuntimeArchitectureTest {
         String saveAdditional = sourceBetween(controller,
                 "protected void saveAdditional(",
                 "protected void loadAdditional(");
+        String unload = sourceBetween(controller,
+                "public void onChunkUnloaded()",
+                "public void setRemoved()");
 
         assertFalse(serverTick.contains("persistRuntimeStateIfChanged()"),
                 "The server tick must not serialize every active CPU job");
@@ -143,15 +146,20 @@ class ControllerOwnedRuntimeArchitectureTest {
                 "Reforming must snapshot runtime state before rebinding members");
         assertTrue(deform.contains("persistRuntimeStateIfChanged()"),
                 "Deforming must snapshot runtime state before severing member bindings");
-        assertTrue(markCpuDirty.contains("setChanged()"));
+        assertTrue(markCpuDirty.contains("markRuntimeStateDirty()"));
         assertFalse(markCpuDirty.contains("persistRuntimeStateIfChanged()"));
-        assertTrue(maintenanceStateChanged.contains("setChanged()"));
+        assertTrue(maintenanceStateChanged.contains("markRuntimeStateDirty()"));
         assertFalse(maintenanceStateChanged.contains("persistRuntimeStateIfChanged()"));
-        assertTrue(saveAdditional.contains("persistRuntimeStateIfChanged()"),
-                "The UUID-owned runtime snapshot must be refreshed during controller NBT writes");
-        assertTrue(controller.contains(
-                "public void onChunkUnloaded() {\n        persistRuntimeStateIfChanged();"),
+        assertTrue(controller.contains(".deferStateSnapshot("),
+                "Dirty callbacks must defer expensive snapshots to the SavedData write");
+        assertTrue(saveAdditional.contains("flushRuntimeStateIfDirty()"),
+                "Controller NBT writes must retain a pre-flush persistence fallback");
+        int unloadFlush = unload.indexOf("persistRuntimeStateIfChanged()");
+        int unloadSuspend = unload.indexOf("suspendRuntime()");
+        assertTrue(unloadFlush >= 0 && unloadSuspend > unloadFlush,
                 "Unloading must flush before the live runtime is cleared");
+        assertTrue(controller.contains(".setOwnedState(MachineType.TIANSHU, machineId, state)"),
+                "Fresh snapshots should not be deep-copied a second time");
     }
 
     @Test
