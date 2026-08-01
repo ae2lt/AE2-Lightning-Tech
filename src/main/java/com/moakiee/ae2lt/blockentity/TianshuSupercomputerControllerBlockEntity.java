@@ -154,7 +154,6 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
                         instanceof TianshuSupercomputerPortBlockEntity port) {
             controller.applyPendingProfile();
             controller.maintenance.tick();
-            controller.persistRuntimeStateIfChanged();
             controller.refreshClosedLoopProviderForDependencyChanges(port);
         }
         controller.syncWorkingState();
@@ -756,7 +755,7 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
         long now = TickHandler.instance().getCurrentTick();
         if (lastCpuDirtyTick != now) {
             lastCpuDirtyTick = now;
-            persistRuntimeStateIfChanged();
+            setChanged();
         }
     }
 
@@ -767,7 +766,7 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
 
     @Override
     public void maintenanceStateChanged() {
-        persistRuntimeStateIfChanged();
+        setChanged();
     }
 
     public ImmutableSet<ICraftingLink> getRequestedJobs() {
@@ -1009,7 +1008,7 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
         maintenance.readFrom(state.getCompound(TAG_MAINTENANCE), serverLevel.registryAccess());
         cpuPool.readFromNBT(state.getCompound(TAG_CPU_POOL), serverLevel.registryAccess());
         loadedRuntimeId = machineId;
-        if (!stored) persistRuntimeStateIfChanged();
+        if (!stored) setChanged();
         if (legacy != null) port.consumeLegacyRuntimeState();
     }
 
@@ -1171,6 +1170,11 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
     @Override
     protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.saveAdditional(tag, registries);
+        // Runtime snapshots are expensive: the CPU pool serializes every active job.
+        // Normal CPU/maintenance changes only dirty this block entity; publish the
+        // UUID-owned snapshot when Minecraft actually writes the controller NBT.
+        // Lifecycle paths that clear the live runtime still flush explicitly first.
+        persistRuntimeStateIfChanged();
         tag.putBoolean(TAG_FORMED, formed);
         if (portPos != null) tag.putLong(TAG_PORT_POS, portPos.asLong());
         if (minPos != null) tag.putLong(TAG_MIN_POS, minPos.asLong());

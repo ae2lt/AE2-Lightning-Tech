@@ -113,6 +113,48 @@ class ControllerOwnedRuntimeArchitectureTest {
     }
 
     @Test
+    void tianshuDefersRoutineRuntimeSerializationUntilNbtWrite() throws Exception {
+        String controller = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/blockentity/"
+                        + "TianshuSupercomputerControllerBlockEntity.java"));
+
+        String serverTick = sourceBetween(controller,
+                "public static void serverTick(",
+                "public boolean isFormed()");
+        String form = sourceBetween(controller,
+                "private void form(",
+                "private void bindFunctionalMembers(");
+        String deform = sourceBetween(controller,
+                "private void deform()",
+                "public void clearStructureBindings()");
+        String markCpuDirty = sourceBetween(controller,
+                "public void markCpuDirty()",
+                "public Component getDisplayName()");
+        String maintenanceStateChanged = sourceBetween(controller,
+                "public void maintenanceStateChanged()",
+                "public ImmutableSet<ICraftingLink> getRequestedJobs()");
+        String saveAdditional = sourceBetween(controller,
+                "protected void saveAdditional(",
+                "protected void loadAdditional(");
+
+        assertFalse(serverTick.contains("persistRuntimeStateIfChanged()"),
+                "The server tick must not serialize every active CPU job");
+        assertTrue(form.contains("persistRuntimeStateIfChanged()"),
+                "Reforming must snapshot runtime state before rebinding members");
+        assertTrue(deform.contains("persistRuntimeStateIfChanged()"),
+                "Deforming must snapshot runtime state before severing member bindings");
+        assertTrue(markCpuDirty.contains("setChanged()"));
+        assertFalse(markCpuDirty.contains("persistRuntimeStateIfChanged()"));
+        assertTrue(maintenanceStateChanged.contains("setChanged()"));
+        assertFalse(maintenanceStateChanged.contains("persistRuntimeStateIfChanged()"));
+        assertTrue(saveAdditional.contains("persistRuntimeStateIfChanged()"),
+                "The UUID-owned runtime snapshot must be refreshed during controller NBT writes");
+        assertTrue(controller.contains(
+                "public void onChunkUnloaded() {\n        persistRuntimeStateIfChanged();"),
+                "Unloading must flush before the live runtime is cleared");
+    }
+
+    @Test
     void closedLoopProviderRechecksMembersAfterNetworkProvidersReload() throws Exception {
         String controller = Files.readString(Path.of(
                 "src/main/java/com/moakiee/ae2lt/blockentity/"
@@ -124,5 +166,13 @@ class ControllerOwnedRuntimeArchitectureTest {
                 "closedLoopDependencyChanges.shouldRecheck(grid.getCraftingService())"));
         assertTrue(controller.contains(
                 "available.patternDefinitions().equals(publishedClosedLoopPatternDefinitions)"));
+    }
+
+    private static String sourceBetween(String source, String start, String end) {
+        int startIndex = source.indexOf(start);
+        int endIndex = source.indexOf(end, startIndex);
+        assertTrue(startIndex >= 0, "Missing source marker: " + start);
+        assertTrue(endIndex > startIndex, "Missing source marker: " + end);
+        return source.substring(startIndex, endIndex);
     }
 }
