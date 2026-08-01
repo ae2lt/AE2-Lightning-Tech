@@ -245,14 +245,16 @@ class DispatchFairnessSchedulerTest {
         long accepted = 0L;
         long fullCredit = 0L;
         while (accepted < requested) {
-            long chunk = ProviderDispatchPolicy.nextRampChunk(
-                    fullCredit, requested - accepted);
+            long chunk = Math.min(
+                    fullCredit <= 0L ? 1L : fullCredit,
+                    requested - accepted);
             if (chunk > freeCapacity - accepted) {
                 break;
             }
             accepted += chunk;
-            fullCredit = ProviderDispatchPolicy.addRampCredit(
-                    fullCredit, chunk);
+            fullCredit = Long.MAX_VALUE - fullCredit < chunk
+                    ? Long.MAX_VALUE
+                    : fullCredit + chunk;
         }
         return accepted;
     }

@@ -13,6 +13,8 @@ import java.util.TreeMap;
 
 import org.jetbrains.annotations.Nullable;
 
+import appeng.api.crafting.IPatternDetails;
+
 /**
  * Runtime-only, pattern-scoped fair target scheduler.
  *
@@ -30,9 +32,23 @@ final class DispatchFairnessScheduler<T, P> {
 
     static final int WINDOW_TICKS = 100;
 
-    private final Map<P, PatternState<T>> patterns = new HashMap<>();
+    private final Map<P, PatternState<T>> patterns;
     private final Set<T> pausedTargets = new HashSet<>();
     private long sequence;
+
+    DispatchFairnessScheduler() {
+        this(new HashMap<>());
+    }
+
+    private DispatchFairnessScheduler(Map<P, PatternState<T>> patterns) {
+        this.patterns = patterns;
+    }
+
+    static <T> DispatchFairnessScheduler<T, IPatternDetails>
+            forCanonicalPatterns() {
+        return new DispatchFairnessScheduler<>(
+                CanonicalPatternMaps.create());
+    }
 
     Pass beginPass(
             P pattern,

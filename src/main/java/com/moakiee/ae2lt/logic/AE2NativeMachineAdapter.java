@@ -156,8 +156,8 @@ final class AE2NativeMachineAdapter implements MachineAdapter {
     public boolean canAccept(ServerLevel level, BlockPos pos, Direction face,
                              IPatternDetails pattern) {
         var machine = ICraftingMachine.of(level, pos, face);
-        if (machine != null) {
-            return machine.acceptsPlans();
+        if (machine != null && machine.acceptsPlans()) {
+            return true;
         }
         return pattern.supportsPushInputsToExternalInventory();
     }
@@ -334,8 +334,7 @@ final class AE2NativeMachineAdapter implements MachineAdapter {
         for (var input : plannedInputs) {
             long simulated = target.insert(
                     input.what(), input.amount(), Actionable.SIMULATE);
-            if (!ProviderDispatchPolicy.acceptsCompleteAmount(
-                    input.amount(), simulated)) {
+            if (input.amount() <= 0L || simulated < input.amount()) {
                 return false;
             }
         }

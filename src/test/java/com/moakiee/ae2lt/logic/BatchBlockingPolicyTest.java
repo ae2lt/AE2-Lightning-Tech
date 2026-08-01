@@ -3,40 +3,35 @@ package com.moakiee.ae2lt.logic;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
+
 import org.junit.jupiter.api.Test;
+
+import appeng.api.crafting.IPatternDetails;
+import appeng.api.stacks.AEItemKey;
+import appeng.api.stacks.GenericStack;
 
 class BatchBlockingPolicyTest {
 
     @Test
     void vanillaBlockingStopsTheNextPhysicalChunk() {
         assertTrue(BatchBlockingPolicy.isBlocked(
-                false, true, true, false, null, new Pattern("current", 1)));
+                false, true, true, false, null, new Pattern()));
     }
 
     @Test
-    void samePatternBlockingAllowsOnlyTheExactPreviousPattern() {
-        var previous = new Pattern("same", 7);
-        var equalCurrent = new Pattern("same", 7);
-        var other = new Pattern("other", 7);
+    void samePatternBlockingUsesCanonicalIdentityWithoutPatternEquality() {
+        var details = new Pattern();
 
         assertFalse(BatchBlockingPolicy.isBlocked(
-                false, true, true, true, previous, equalCurrent));
+                false, true, true, true, details, details));
         assertTrue(BatchBlockingPolicy.isBlocked(
-                false, true, true, true, previous, other));
-    }
-
-    @Test
-    void hashCollisionDoesNotReplaceFullEquality() {
-        var previous = new Pattern("first", 31);
-        var collision = new Pattern("second", 31);
-
-        assertTrue(BatchBlockingPolicy.isBlocked(
-                false, true, true, true, previous, collision));
+                false, true, true, true, details, new Pattern()));
     }
 
     @Test
     void craftingLockAlwaysStopsTheNextChunk() {
-        var pattern = new Pattern("same", 1);
+        var pattern = new Pattern();
 
         assertTrue(BatchBlockingPolicy.isBlocked(
                 true, false, false, true, pattern, pattern));
@@ -45,13 +40,33 @@ class BatchBlockingPolicyTest {
     @Test
     void disabledBlockingDoesNotInspectPatternHistory() {
         assertFalse(BatchBlockingPolicy.isBlocked(
-                false, false, true, false, null, new Pattern("current", 1)));
+                false, false, true, false, null, new Pattern()));
     }
 
-    private record Pattern(String id, int hash) {
+    private static final class Pattern implements IPatternDetails {
+        @Override
+        public AEItemKey getDefinition() {
+            return null;
+        }
+
+        @Override
+        public IInput[] getInputs() {
+            return new IInput[0];
+        }
+
+        @Override
+        public List<GenericStack> getOutputs() {
+            return List.of();
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            throw new AssertionError("third-party equality must not run");
+        }
+
         @Override
         public int hashCode() {
-            return hash;
+            return 31;
         }
     }
 }
