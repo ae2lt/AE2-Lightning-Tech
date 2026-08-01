@@ -179,6 +179,9 @@ final class ProviderNormalDispatch {
         penalties.clear();
         expirations.clear();
         fairness.clear();
+        for (var target : targets.values()) {
+            target.clearBatchHistory();
+        }
     }
 
     boolean returnDue(ProviderTarget target, long gameTick) {

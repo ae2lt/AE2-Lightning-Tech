@@ -604,6 +604,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
         boolean batchSupported = context.target().supportsBatch(
                 context.level(), pattern);
         return context.target().pushPattern(
+                patternHandle,
                 maxCraft,
                 batchSupported,
                 () -> isBatchTargetBlocked(context, patternHandle),

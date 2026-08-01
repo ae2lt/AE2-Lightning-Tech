@@ -165,6 +165,9 @@ final class ProviderWirelessDispatch {
         penalties.clear();
         penaltyExpirations.clear();
         fairness.clear();
+        for (var connection : states.keySet()) {
+            ((ProviderTarget) connection).clearBatchHistory();
+        }
     }
 
     void prepare(
@@ -593,8 +596,8 @@ final class ProviderWirelessDispatch {
             slot.clear();
         }
         clearReadyQueues();
-        states.clear();
         patternsChanged();
+        states.clear();
         clearReturnSchedule();
     }
 

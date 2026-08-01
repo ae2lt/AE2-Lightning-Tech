@@ -240,11 +240,18 @@ public class ProviderTarget extends TargetAddress {
     }
 
     /**
-     * Executes the provider's bounded {@code 1, 1, 2, 4, ...} batch ramp for
-     * this physical target. Dispatch decides the target allowance; the target
-     * owns how that allowance is attempted.
+     * Executes the provider's bounded batch ramp for this physical target.
+     * Each canonical pattern remembers its last non-tail chunk that was
+     * inserted in full without overflow. A later call starts from that chunk,
+     * repeats it once, and then doubles ({@code H, H, 2H, 4H, ...}). A clean
+     * rejection of the initial chunk halves the candidate until one succeeds;
+     * that first recovery success ends the current call.
+     *
+     * <p>Dispatch decides the target allowance; the target owns this physical
+     * acceptance history and how that allowance is attempted.</p>
      */
     public final BatchDispatchResult pushPattern(
+            IPatternDetails pattern,
             long maxCopies,
             boolean batchSupported,
             BooleanSupplier blocked,
@@ -261,36 +268,60 @@ public class ProviderTarget extends TargetAddress {
                     single.ownedCopies(), single.globalAbort());
         }
 
+        int rememberedChunk = runtime.batchChunks.getOrDefault(pattern, 1);
+        int nextChunk = rememberedChunk;
         long ownedCopies = 0L;
-        long fullCredit = 0L;
+        boolean fullChunkAccepted = false;
+        boolean backingOff = false;
         while (ownedCopies < maxCopies) {
             if (blocked.getAsBoolean()) {
                 break;
             }
 
             long remaining = maxCopies - ownedCopies;
-            long next = fullCredit <= 0L ? 1L : fullCredit;
             int chunkCopies = (int) Math.min(
-                    Math.min(next, remaining), Integer.MAX_VALUE);
+                    Math.min((long) nextChunk, remaining),
+                    Integer.MAX_VALUE);
+            boolean requestLimited = chunkCopies < nextChunk;
             var chunk = pushChunk.apply(chunkCopies);
             if (chunk.globalAbort()) {
                 return new BatchDispatchResult(ownedCopies, true);
             }
             if (chunk.ownedCopies() <= 0L) {
+                if (!fullChunkAccepted) {
+                    if (chunkCopies <= 1) {
+                        runtime.batchChunks.put(pattern, 1);
+                        break;
+                    }
+                    nextChunk = Math.max(1, chunkCopies / 2);
+                    runtime.batchChunks.put(pattern, nextChunk);
+                    backingOff = true;
+                    continue;
+                }
                 break;
             }
 
             ownedCopies += chunk.ownedCopies();
             if (chunk.ownedCopies() != chunkCopies
                     || !chunk.fullyInserted()) {
+                if (!fullChunkAccepted) {
+                    runtime.batchChunks.put(
+                            pattern, Math.max(1, chunkCopies / 2));
+                }
                 break;
             }
-            fullCredit = Long.MAX_VALUE - fullCredit < chunkCopies
-                    ? Long.MAX_VALUE
-                    : fullCredit + chunkCopies;
+
+            fullChunkAccepted = true;
+            if (!requestLimited) {
+                runtime.batchChunks.put(pattern, chunkCopies);
+            }
+            if (backingOff) {
+                break;
+            }
             if (chunkCopies == Integer.MAX_VALUE) {
                 break;
             }
+            nextChunk = (int) Math.min(ownedCopies, Integer.MAX_VALUE);
         }
         return new BatchDispatchResult(ownedCopies, false);
     }
@@ -346,6 +377,10 @@ public class ProviderTarget extends TargetAddress {
         invalidatePhysicalState();
     }
 
+    final void clearBatchHistory() {
+        runtime.batchChunks.clear();
+    }
+
     private void invalidatePhysicalState() {
         runtime.blockEntityRef = null;
         runtime.adapter = null;
@@ -354,6 +389,7 @@ public class ProviderTarget extends TargetAddress {
         runtime.blockedThisTick.clear();
         runtime.blockedGameTick = Long.MIN_VALUE;
         runtime.lastSuccessfulPattern = null;
+        runtime.batchChunks.clear();
     }
 
     /** Mutable state with the same lifetime as this physical target object. */
@@ -368,6 +404,8 @@ public class ProviderTarget extends TargetAddress {
         private final Set<PatternProviderTarget> blockedThisTick =
                 Collections.newSetFromMap(new IdentityHashMap<>());
         private long blockedGameTick = Long.MIN_VALUE;
+        private final IdentityHashMap<IPatternDetails, Integer> batchChunks =
+                new IdentityHashMap<>();
         @Nullable
         private IPatternDetails lastSuccessfulPattern;
         @Nullable

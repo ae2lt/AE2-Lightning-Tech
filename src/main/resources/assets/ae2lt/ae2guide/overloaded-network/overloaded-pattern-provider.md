@@ -85,7 +85,7 @@ Wireless dispatch and probe settings only take effect in Wireless Mode.
 
 ## Adaptive Doubling
 
-Adaptive Doubling is disabled by default. When enabled and a crafting request contains several copies of the same pattern, the provider starts with a small transfer and gradually increases the number of copies sent at once. It does not rely on a possibly stale capacity estimate from an earlier request.
+Adaptive Doubling is disabled by default. When enabled and a crafting request contains several copies of the same pattern, the first dispatch starts small and gradually increases the number of copies sent at once. For each target and pattern, later dispatches start from the last chunk that entered completely without overflow, repeat that chunk once, and then continue doubling. If that starting chunk is rejected, the provider halves it until one chunk succeeds; overflow keeps the normal pending-send behavior and lowers the next starting chunk.
 
 Before enabling it, make sure the target can hold and correctly process several recipe copies at once. Some machines or input layouts do not support batched ingredients and may mix recipes or stall the craft; disable Adaptive Doubling in those cases.
 
