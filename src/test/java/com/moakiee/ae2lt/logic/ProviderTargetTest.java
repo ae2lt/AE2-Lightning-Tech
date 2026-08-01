@@ -47,10 +47,18 @@ class ProviderTargetTest {
         var mutable = new BlockPos.MutableBlockPos(4, 5, 6);
         var address = new ProviderTarget(
                 Level.OVERWORLD, mutable, Direction.UP);
+        int hashBeforeMutation = address.hashCode();
 
         mutable.set(20, 30, 40);
 
         assertEquals(new BlockPos(4, 5, 6), address.pos());
+        assertEquals(hashBeforeMutation, address.hashCode());
+        assertEquals(
+                new ProviderTarget(
+                        Level.OVERWORLD,
+                        new BlockPos(4, 5, 6),
+                        Direction.UP),
+                address);
     }
 
     @Test

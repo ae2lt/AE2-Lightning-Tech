@@ -18,6 +18,7 @@ public abstract class TargetAddress {
     private final ResourceKey<Level> dimension;
     private final BlockPos pos;
     private final Direction boundFace;
+    private final int hashCode;
 
     protected TargetAddress(
             ResourceKey<Level> dimension,
@@ -26,6 +27,9 @@ public abstract class TargetAddress {
         this.dimension = Objects.requireNonNull(dimension, "dimension");
         this.pos = Objects.requireNonNull(pos, "pos").immutable();
         this.boundFace = Objects.requireNonNull(boundFace, "boundFace");
+        int hash = this.dimension.hashCode();
+        hash = 31 * hash + this.pos.hashCode();
+        this.hashCode = 31 * hash + this.boundFace.hashCode();
     }
 
     public final ResourceKey<Level> dimension() {
@@ -61,10 +65,7 @@ public abstract class TargetAddress {
 
     @Override
     public final int hashCode() {
-        int result = dimension.hashCode();
-        result = 31 * result + pos.hashCode();
-        result = 31 * result + boundFace.hashCode();
-        return result;
+        return hashCode;
     }
 
     @Override

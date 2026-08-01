@@ -1,11 +1,10 @@
 package com.moakiee.ae2lt.logic;
 
 import java.lang.ref.WeakReference;
+import java.util.Arrays;
 import java.util.Collections;
-import java.util.EnumMap;
 import java.util.IdentityHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.function.BooleanSupplier;
 import java.util.function.IntFunction;
@@ -95,18 +94,18 @@ public class ProviderTarget extends TargetAddress {
             return null;
         }
         long gameTick = level.getGameTime();
-        var cached = runtime.storageTargets.get(face);
+        int faceIndex = face.get3DDataValue();
+        var cached = runtime.storageTargets[faceIndex];
         if (cached != null && cached.isValid(blockEntity, gameTick)) {
             return cached.target;
         }
         var resolved = PatternProviderTarget.get(
                 level, pos(), blockEntity, face, source);
         if (resolved == null) {
-            runtime.storageTargets.remove(face);
+            runtime.storageTargets[faceIndex] = null;
         } else {
-            runtime.storageTargets.put(
-                    face,
-                    new CachedStorageTarget(blockEntity, resolved, gameTick));
+            runtime.storageTargets[faceIndex] =
+                    new CachedStorageTarget(blockEntity, resolved, gameTick);
         }
         return resolved;
     }
@@ -351,7 +350,7 @@ public class ProviderTarget extends TargetAddress {
         runtime.blockEntityRef = null;
         runtime.adapter = null;
         runtime.adapterResolved = false;
-        runtime.storageTargets.clear();
+        Arrays.fill(runtime.storageTargets, null);
         runtime.blockedThisTick.clear();
         runtime.blockedGameTick = Long.MIN_VALUE;
         runtime.lastSuccessfulPattern = null;
@@ -364,8 +363,8 @@ public class ProviderTarget extends TargetAddress {
         @Nullable
         private MachineAdapter adapter;
         private boolean adapterResolved;
-        private final Map<Direction, CachedStorageTarget> storageTargets =
-                new EnumMap<>(Direction.class);
+        private final CachedStorageTarget[] storageTargets =
+                new CachedStorageTarget[Direction.values().length];
         private final Set<PatternProviderTarget> blockedThisTick =
                 Collections.newSetFromMap(new IdentityHashMap<>());
         private long blockedGameTick = Long.MIN_VALUE;
