@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.function.Supplier;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Reference2IntOpenHashMap;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -21,8 +21,8 @@ import com.moakiee.thunderbolt.ae2.overload.pattern.OverloadPatternDetails;
 final class WirelessOverflowPatternTable {
     private static final int MAX_PATTERN_IDS = 0xFFFF;
 
-    private final Object2IntOpenHashMap<IPatternDetails> byPattern =
-            new Object2IntOpenHashMap<>();
+    private final Reference2IntOpenHashMap<IPatternDetails> byPattern =
+            new Reference2IntOpenHashMap<>();
     private final Int2ObjectOpenHashMap<IPatternDetails> byId =
             new Int2ObjectOpenHashMap<>();
     private int nextId;

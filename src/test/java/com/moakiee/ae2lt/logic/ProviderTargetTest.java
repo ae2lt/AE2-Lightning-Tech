@@ -178,5 +178,15 @@ class ProviderTargetTest {
         public List<GenericStack> getOutputs() {
             return List.of();
         }
+
+        @Override
+        public boolean equals(Object other) {
+            throw new AssertionError("third-party equality must not run");
+        }
+
+        @Override
+        public int hashCode() {
+            throw new AssertionError("third-party hashCode must not run");
+        }
     }
 }

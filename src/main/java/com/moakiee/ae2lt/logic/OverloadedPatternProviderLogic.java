@@ -426,7 +426,12 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
                                 0L, false, false);
                     }
                     var ramp = dispatchBatchRamp(
-                            context, pattern, oneCopyTemplate, share, oneCopyCost);
+                            context,
+                            pattern,
+                            patternHandle,
+                            oneCopyTemplate,
+                            share,
+                            oneCopyCost);
                     if (ramp.ownedCopies() <= 0L) {
                         return new ProviderNormalDispatch.BatchAttemptResult(
                                 0L, ramp.globalAbort(), false);
@@ -492,7 +497,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
 
     private long pushWirelessBatchTargets(
             IPatternDetails pattern,
-            IPatternDetails patternHandle,
+            ProviderPatternKey patternHandle,
             KeyCounter[] oneCopyTemplate,
             long maxCraft,
             net.minecraft.server.MinecraftServer server,
@@ -509,6 +514,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
                 (connection, share) -> {
                     var result = tryPushBatchToConnection(
                             pattern,
+                            patternHandle,
                             oneCopyTemplate,
                             share,
                             oneCopyCost,
@@ -523,6 +529,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
 
     private BatchTargetDispatchResult tryPushBatchToConnection(
             IPatternDetails pattern,
+            ProviderPatternKey patternHandle,
             KeyCounter[] oneCopyTemplate,
             long maxCraft,
             double oneCopyCost,
@@ -543,7 +550,12 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
         }
         var context = new BatchTargetContext(targetLevel, conn);
         var ramp = dispatchBatchRamp(
-                context, pattern, oneCopyTemplate, maxCraft, oneCopyCost);
+                context,
+                pattern,
+                patternHandle,
+                oneCopyTemplate,
+                maxCraft,
+                oneCopyCost);
         if (ramp.ownedCopies() <= 0L) {
             return new BatchTargetDispatchResult(
                     0L,
@@ -561,7 +573,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
     }
 
     private boolean isBatchTargetBlocked(
-            BatchTargetContext context, IPatternDetails pattern) {
+            BatchTargetContext context, ProviderPatternKey pattern) {
         return isTargetBlocked(
                 context.target(),
                 context.level(),
@@ -571,7 +583,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
     private boolean isTargetBlocked(
             ProviderTarget target,
             ServerLevel level,
-            IPatternDetails pattern) {
+            ProviderPatternKey pattern) {
         return target.isBlocked(
                 level,
                 wirelessSource,
@@ -585,6 +597,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
     private ProviderTarget.BatchDispatchResult dispatchBatchRamp(
             BatchTargetContext context,
             IPatternDetails pattern,
+            ProviderPatternKey patternHandle,
             KeyCounter[] oneCopyTemplate,
             long maxCraft,
             double oneCopyCost) {
@@ -593,10 +606,11 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
         return context.target().pushPattern(
                 maxCraft,
                 batchSupported,
-                () -> isBatchTargetBlocked(context, pattern),
+                () -> isBatchTargetBlocked(context, patternHandle),
                 copies -> pushBatchChunk(
                         context,
                         pattern,
+                        patternHandle,
                         oneCopyTemplate,
                         copies,
                         oneCopyCost));
@@ -605,6 +619,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
     private ProviderTarget.BatchChunk pushBatchChunk(
             BatchTargetContext context,
             IPatternDetails pattern,
+            ProviderPatternKey patternHandle,
             KeyCounter[] oneCopyTemplate,
             int copies,
             double oneCopyCost) {
@@ -645,7 +660,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
             }
         }
 
-        recordSuccessfulBatchChunk(context, pattern);
+        recordSuccessfulBatchChunk(context, pattern, patternHandle);
 
         return new ProviderTarget.BatchChunk(
                 ownedCopies,
@@ -667,10 +682,13 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
     }
 
     private void recordSuccessfulBatchChunk(
-            BatchTargetContext context, IPatternDetails pattern) {
+            BatchTargetContext context,
+            IPatternDetails pattern,
+            ProviderPatternKey patternHandle) {
         ((PatternProviderLogicAccessor) this).invokeOnPushPatternSuccess(pattern);
         syncPendingUnlockRule(pattern);
-        context.target().markPatternDispatched(context.level(), pattern);
+        context.target().markPatternDispatched(
+                context.level(), patternHandle);
     }
 
     private static long saturatingAdd(long left, long right) {
@@ -715,7 +733,11 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
                 fastMode,
                 SINGLE_PUSH_TARGET_ATTEMPTS,
                 connection -> tryPushToConnection(
-                        pattern, inputs, connection, server),
+                        pattern,
+                        patternHandle,
+                        inputs,
+                        connection,
+                        server),
                 connection -> isConnectionAlive(connection, server),
                 connection -> connectionsDirty = true);
     }
@@ -726,11 +748,16 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
         return level != null && conn.isAlive(level);
     }
 
-    private WirelessPushOutcome tryPushToConnection(IPatternDetails pattern, KeyCounter[] inputs,
-            WirelessConnection conn, net.minecraft.server.MinecraftServer server) {
+    private WirelessPushOutcome tryPushToConnection(
+            IPatternDetails pattern,
+            ProviderPatternKey patternHandle,
+            KeyCounter[] inputs,
+            WirelessConnection conn,
+            net.minecraft.server.MinecraftServer server) {
         if (wirelessOverflow.contains(conn)) return WirelessPushOutcome.SOFT_FAIL;
         if (AdvancedAECompat.isDirectional(pattern)) {
-            return tryPushToConnectionDirectionally(pattern, inputs, conn, server);
+            return tryPushToConnectionDirectionally(
+                    pattern, patternHandle, inputs, conn, server);
         }
 
         var targetLevel = server.getLevel(conn.dimension());
@@ -748,7 +775,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
             return WirelessPushOutcome.GLOBAL_ABORT;
         }
 
-        if (isTargetBlocked(conn, targetLevel, pattern)) {
+        if (isTargetBlocked(conn, targetLevel, patternHandle)) {
             return WirelessPushOutcome.SOFT_FAIL;
         }
         var result = conn.pushCopies(
@@ -765,7 +792,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
 
         ((PatternProviderLogicAccessor) this).invokeOnPushPatternSuccess(pattern);
         syncPendingUnlockRule(pattern);
-        conn.markPatternDispatched(targetLevel, pattern);
+        conn.markPatternDispatched(targetLevel, patternHandle);
         alertGridTick();
 
         if (overloadedHost.isAutoReturn()) {
@@ -811,10 +838,11 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
      */
     private boolean pushPatternDirectionally(IPatternDetails pattern, KeyCounter[] inputs) {
         var accessor = (PatternProviderLogicAccessor) this;
+        var patternHandle = patternCatalog.resolve(pattern);
         if (hasLocalDirectionalOverflow()) return false;
         if (!accessor.getSendList().isEmpty()) return false;
         if (!gridNode.isActive()) return false;
-        if (!patternCatalog.contains(pattern)) return false;
+        if (patternHandle == null) return false;
         if (getCraftingLockedReason() != LockCraftingMode.NONE) return false;
         if (!pattern.supportsPushInputsToExternalInventory()) return false;
 
@@ -837,7 +865,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
                         sl, target, defaultFace, pattern, inputs, wirelessSource);
                 if (faceToTarget == null) continue;
 
-                if (isTargetBlocked(target, sl, pattern)) continue;
+                if (isTargetBlocked(target, sl, patternHandle)) continue;
 
                 if (!simulateDirectionalAcceptance(faceToTarget, defaultFace, pattern, inputs)) continue;
 
@@ -853,7 +881,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
                 }
                 accessor.invokeOnPushPatternSuccess(pattern);
                 syncPendingUnlockRule(pattern);
-                target.markPatternDispatched(sl, pattern);
+                target.markPatternDispatched(sl, patternHandle);
                 return true;
             }
             return false;
@@ -870,8 +898,12 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
      * Each input key is routed to the target-machine face from the directionMap;
      * keys without a mapping default to {@code conn.boundFace()}.
      */
-    private WirelessPushOutcome tryPushToConnectionDirectionally(IPatternDetails pattern, KeyCounter[] inputs,
-            WirelessConnection conn, net.minecraft.server.MinecraftServer server) {
+    private WirelessPushOutcome tryPushToConnectionDirectionally(
+            IPatternDetails pattern,
+            ProviderPatternKey patternHandle,
+            KeyCounter[] inputs,
+            WirelessConnection conn,
+            net.minecraft.server.MinecraftServer server) {
         if (wirelessOverflow.contains(conn)) return WirelessPushOutcome.SOFT_FAIL;
         var targetLevel = server.getLevel(conn.dimension());
         if (targetLevel == null) return WirelessPushOutcome.HARD_FAIL;
@@ -897,7 +929,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
                     targetLevel, conn, defaultFace, pattern, inputs, wirelessSource);
             if (faceToTarget == null) return WirelessPushOutcome.SOFT_FAIL;
 
-            if (isTargetBlocked(conn, targetLevel, pattern)) {
+            if (isTargetBlocked(conn, targetLevel, patternHandle)) {
                 return WirelessPushOutcome.SOFT_FAIL;
             }
 
@@ -916,7 +948,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
 
         ((PatternProviderLogicAccessor) this).invokeOnPushPatternSuccess(pattern);
         syncPendingUnlockRule(pattern);
-        conn.markPatternDispatched(targetLevel, pattern);
+        conn.markPatternDispatched(targetLevel, patternHandle);
         alertGridTick();
 
         if (overloadedHost.isAutoReturn()) {

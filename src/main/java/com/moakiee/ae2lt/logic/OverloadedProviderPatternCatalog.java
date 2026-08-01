@@ -1,6 +1,7 @@
 package com.moakiee.ae2lt.logic;
 
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -21,16 +22,17 @@ import com.moakiee.thunderbolt.ae2.api.crafting.CraftingPatternDelegates;
  * Current decoded-pattern catalog for one overloaded pattern provider.
  *
  * <p>The catalog deliberately has the same lifetime as the provider's visible
- * pattern list. It gives every registered recipe stable provider details while
+ * pattern list. It gives every registered recipe a safe internal identity while
  * retaining the caller's execution details for fuzzy inputs and loop accounting.
  * It is not a global interner: decoded details may depend on the current level
  * and recipe reload state.
  */
 final class OverloadedProviderPatternCatalog {
 
-    private final Map<IPatternDetails, IPatternDetails> byDetails =
-            new HashMap<>();
-    private final Map<AEItemKey, IPatternDetails> byDefinition =
+    /** External details are indexed strictly by reference, never by mod-defined equality. */
+    private final Map<IPatternDetails, ProviderPatternKey> byDetails =
+            new IdentityHashMap<>();
+    private final Map<AEItemKey, ProviderPatternKey> byDefinition =
             new HashMap<>();
 
     void rebuild(
@@ -60,7 +62,7 @@ final class OverloadedProviderPatternCatalog {
     }
 
     @Nullable
-    IPatternDetails resolve(IPatternDetails executionDetails) {
+    ProviderPatternKey resolve(IPatternDetails executionDetails) {
         if (executionDetails == null) {
             return null;
         }
@@ -82,22 +84,18 @@ final class OverloadedProviderPatternCatalog {
         return definition == null ? null : byDefinition.get(definition);
     }
 
-    boolean contains(IPatternDetails details) {
-        return resolve(details) != null;
-    }
-
     void clear() {
         byDetails.clear();
         byDefinition.clear();
     }
 
-    private void register(IPatternDetails details) {
+    void register(IPatternDetails details) {
         var definition = details.getDefinition();
-        var canonicalDetails = definition == null
-                ? details
+        var patternKey = definition == null
+                ? ProviderPatternKey.forDetails(details)
                 : byDefinition.computeIfAbsent(
                         definition,
-                        ignored -> details);
-        byDetails.putIfAbsent(details, canonicalDetails);
+                        ProviderPatternKey::forDefinition);
+        byDetails.putIfAbsent(details, patternKey);
     }
 }

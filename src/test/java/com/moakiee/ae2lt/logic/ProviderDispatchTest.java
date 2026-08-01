@@ -14,6 +14,10 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.Level;
 
+import appeng.api.crafting.IPatternDetails;
+import appeng.api.stacks.AEItemKey;
+import appeng.api.stacks.GenericStack;
+
 import com.moakiee.ae2lt.blockentity.OverloadedPatternProviderBlockEntity.WirelessConnection;
 import com.moakiee.ae2lt.blockentity.OverloadedPatternProviderBlockEntity.WirelessDispatchMode;
 
@@ -99,6 +103,37 @@ class ProviderDispatchTest {
         assertTrue(dispatch.existingState(connection).cooldownUntil > 300L);
     }
 
+    @Test
+    void dispatchBookkeepingDoesNotInvokePatternEquality() {
+        var pattern = ProviderPatternKey.forDetails(
+                new ExplosiveEqualityPattern());
+        var normal = new ProviderNormalDispatch();
+        var target = target(4);
+
+        assertEquals(15L, normal.recordRejection(target, pattern, 10L));
+        assertEquals(15L, normal.retryAfter(target, pattern, 10L));
+        normal.recordSuccess(target, pattern);
+        assertEquals(Long.MIN_VALUE, normal.retryAfter(target, pattern, 10L));
+        assertEquals(0L, normal.dispatchBatch(
+                pattern,
+                List.of(target),
+                1L,
+                20L,
+                (ignored, copies) ->
+                        new ProviderNormalDispatch.BatchAttemptResult(
+                                copies, false, false)));
+
+        var wireless = new ProviderWirelessDispatch();
+        var connection = connection(4);
+        assertEquals(25L, wireless.recordRejection(
+                connection, pattern, 20L, false));
+        assertEquals(25L, wireless.retryAfter(
+                connection, pattern, 20L));
+        wireless.recordSuccess(connection, pattern);
+        assertEquals(Long.MIN_VALUE, wireless.retryAfter(
+                connection, pattern, 20L));
+    }
+
     private static ProviderTarget target(int x) {
         return new ProviderTarget(
                 Level.OVERWORLD,
@@ -111,5 +146,33 @@ class ProviderDispatchTest {
                 Level.OVERWORLD,
                 new BlockPos(x, 64, 0),
                 Direction.NORTH);
+    }
+
+    private static final class ExplosiveEqualityPattern
+            implements IPatternDetails {
+        @Override
+        public AEItemKey getDefinition() {
+            return null;
+        }
+
+        @Override
+        public IInput[] getInputs() {
+            return new IInput[0];
+        }
+
+        @Override
+        public List<GenericStack> getOutputs() {
+            return List.of();
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            throw new AssertionError("third-party equality must not run");
+        }
+
+        @Override
+        public int hashCode() {
+            throw new AssertionError("third-party hashCode must not run");
+        }
     }
 }

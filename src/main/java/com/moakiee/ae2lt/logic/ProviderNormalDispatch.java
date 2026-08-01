@@ -11,8 +11,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 
-import appeng.api.crafting.IPatternDetails;
-
 /** Runtime scheduling owner for the provider's adjacent physical targets. */
 final class ProviderNormalDispatch {
     private static final int INITIAL_COOLDOWN = 5;
@@ -20,10 +18,11 @@ final class ProviderNormalDispatch {
 
     private final Map<Direction, ProviderTarget> targets =
             new EnumMap<>(Direction.class);
-    private final Map<ProviderTarget, Map<IPatternDetails, Penalty>> penalties =
+    private final Map<ProviderTarget, Map<ProviderPatternKey, Penalty>> penalties =
             new HashMap<>();
-    private final DueTaskQueue<TargetPattern> expirations = new DueTaskQueue<>();
-    private final DispatchFairnessScheduler<ProviderTarget, IPatternDetails> fairness =
+    private final DueTaskQueue<TargetPatternKey<ProviderTarget>> expirations =
+            new DueTaskQueue<>();
+    private final DispatchFairnessScheduler<ProviderTarget, ProviderPatternKey> fairness =
             new DispatchFairnessScheduler<>();
     private final Map<ProviderTarget, Long> returnNextPoll = new HashMap<>();
     private final Map<ProviderTarget, Integer> returnBackoff = new HashMap<>();
@@ -70,8 +69,8 @@ final class ProviderNormalDispatch {
         return ordered;
     }
 
-    DispatchFairnessScheduler<ProviderTarget, IPatternDetails>.Pass beginPass(
-            IPatternDetails pattern,
+    DispatchFairnessScheduler<ProviderTarget, ProviderPatternKey>.Pass beginPass(
+            ProviderPatternKey pattern,
             java.util.Collection<ProviderTarget> currentTargets,
             long gameTick) {
         return fairness.beginPass(
@@ -79,7 +78,7 @@ final class ProviderNormalDispatch {
     }
 
     long dispatchBatch(
-            IPatternDetails pattern,
+            ProviderPatternKey pattern,
             java.util.Collection<ProviderTarget> currentTargets,
             long maxCopies,
             long gameTick,
@@ -133,7 +132,7 @@ final class ProviderNormalDispatch {
 
     long retryAfter(
             ProviderTarget target,
-            IPatternDetails pattern,
+            ProviderPatternKey pattern,
             long gameTick) {
         purgeExpired(gameTick);
         var byPattern = penalties.get(target);
@@ -146,7 +145,7 @@ final class ProviderNormalDispatch {
 
     long recordRejection(
             ProviderTarget target,
-            IPatternDetails pattern,
+            ProviderPatternKey pattern,
             long gameTick) {
         purgeExpired(gameTick);
         var byPattern = penalties.computeIfAbsent(
@@ -157,17 +156,18 @@ final class ProviderNormalDispatch {
                 : Math.min(MAX_COOLDOWN, previous.cooldown * 2);
         long retryAfter = gameTick + cooldown;
         byPattern.put(pattern, new Penalty(retryAfter, cooldown));
-        expirations.schedule(new TargetPattern(target, pattern), retryAfter);
+        expirations.schedule(
+                new TargetPatternKey<>(target, pattern), retryAfter);
         return retryAfter;
     }
 
-    void recordSuccess(ProviderTarget target, IPatternDetails pattern) {
+    void recordSuccess(ProviderTarget target, ProviderPatternKey pattern) {
         var byPattern = penalties.get(target);
         if (byPattern == null) {
             return;
         }
         byPattern.remove(pattern);
-        expirations.remove(new TargetPattern(target, pattern));
+        expirations.remove(new TargetPatternKey<>(target, pattern));
         if (byPattern.isEmpty()) {
             penalties.remove(target);
         }
@@ -239,25 +239,21 @@ final class ProviderNormalDispatch {
     }
 
     private void purgeExpired(long gameTick) {
-        TargetPattern expired;
+        TargetPatternKey<ProviderTarget> expired;
         while ((expired = expirations.pollDue(gameTick)) != null) {
-            var byPattern = penalties.get(expired.target);
+            var byPattern = penalties.get(expired.target());
             if (byPattern == null) {
                 continue;
             }
-            var penalty = byPattern.get(expired.pattern);
+            var penalty = byPattern.get(expired.pattern());
             if (penalty == null || penalty.retryAfter > gameTick) {
                 continue;
             }
-            byPattern.remove(expired.pattern);
+            byPattern.remove(expired.pattern());
             if (byPattern.isEmpty()) {
-                penalties.remove(expired.target);
+                penalties.remove(expired.target());
             }
         }
-    }
-
-    private record TargetPattern(
-            ProviderTarget target, IPatternDetails pattern) {
     }
 
     private record Penalty(long retryAfter, int cooldown) {

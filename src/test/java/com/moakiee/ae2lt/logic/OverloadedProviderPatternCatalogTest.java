@@ -1,0 +1,57 @@
+package com.moakiee.ae2lt.logic;
+
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+
+import java.util.List;
+
+import org.junit.jupiter.api.Test;
+
+import appeng.api.crafting.IPatternDetails;
+import appeng.api.stacks.AEItemKey;
+import appeng.api.stacks.GenericStack;
+
+class OverloadedProviderPatternCatalogTest {
+
+    @Test
+    void identityIndexDoesNotInvokePatternEquality() {
+        var canonical = new ExplosiveEqualityPattern();
+        var equivalentExecutionDetails =
+                new ExplosiveEqualityPattern();
+        var catalog = new OverloadedProviderPatternCatalog();
+
+        catalog.register(canonical);
+        var canonicalKey = catalog.resolve(canonical);
+
+        assertSame(canonicalKey, catalog.resolve(canonical));
+        assertNull(catalog.resolve(equivalentExecutionDetails));
+    }
+
+    private static final class ExplosiveEqualityPattern
+            implements IPatternDetails {
+        @Override
+        public AEItemKey getDefinition() {
+            return null;
+        }
+
+        @Override
+        public IInput[] getInputs() {
+            return new IInput[0];
+        }
+
+        @Override
+        public List<GenericStack> getOutputs() {
+            return List.of();
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            throw new AssertionError("third-party equality must not run");
+        }
+
+        @Override
+        public int hashCode() {
+            throw new AssertionError("third-party hashCode must not run");
+        }
+    }
+}

@@ -14,8 +14,8 @@ final class BatchBlockingPolicy {
             boolean blockingEnabled,
             boolean targetContainsPatternInput,
             boolean samePatternBlockingEnabled,
-            @Nullable Object lastSuccessfulPattern,
-            Object currentPattern) {
+            @Nullable ProviderPatternKey lastSuccessfulPattern,
+            ProviderPatternKey currentPattern) {
         if (craftingLocked) {
             return true;
         }
@@ -26,14 +26,11 @@ final class BatchBlockingPolicy {
                 || !samePattern(lastSuccessfulPattern, currentPattern);
     }
 
-    /**
-     * Check the cached hash first because pattern implementations may have a
-     * comparatively expensive structural equality check.
-     */
-    static boolean samePattern(@Nullable Object previous, Object current) {
-        return previous != null
-                && previous.hashCode() == current.hashCode()
-                && Objects.equals(previous, current);
+    /** Compare provider-owned keys without invoking third-party pattern equality. */
+    static boolean samePattern(
+            @Nullable ProviderPatternKey previous,
+            ProviderPatternKey current) {
+        return Objects.equals(previous, current);
     }
 
     private BatchBlockingPolicy() {

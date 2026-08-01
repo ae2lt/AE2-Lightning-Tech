@@ -12,8 +12,6 @@ import java.util.function.Predicate;
 
 import org.jetbrains.annotations.Nullable;
 
-import appeng.api.crafting.IPatternDetails;
-
 import com.moakiee.ae2lt.blockentity.OverloadedPatternProviderBlockEntity.WirelessConnection;
 import com.moakiee.ae2lt.blockentity.OverloadedPatternProviderBlockEntity.WirelessDispatchMode;
 
@@ -41,11 +39,11 @@ final class ProviderWirelessDispatch {
     private final List<WirelessConnection>[] wheel;
     private final ReadyQueue<WirelessConnection, ConnectionState> singleReady;
     private final ReadyQueue<WirelessConnection, ConnectionState> evenReady;
-    private final DispatchFairnessScheduler<WirelessConnection, IPatternDetails> fairness =
+    private final DispatchFairnessScheduler<WirelessConnection, ProviderPatternKey> fairness =
             new DispatchFairnessScheduler<>();
-    private final Map<WirelessConnection, Map<IPatternDetails, Penalty>> penalties =
+    private final Map<WirelessConnection, Map<ProviderPatternKey, Penalty>> penalties =
             new HashMap<>();
-    private final DueTaskQueue<TargetPattern> penaltyExpirations =
+    private final DueTaskQueue<TargetPatternKey<WirelessConnection>> penaltyExpirations =
             new DueTaskQueue<>();
 
     private List<WirelessConnection> validReference = List.of();
@@ -84,15 +82,15 @@ final class ProviderWirelessDispatch {
                 : evenReady;
     }
 
-    DispatchFairnessScheduler<WirelessConnection, IPatternDetails>.Pass beginFairPass(
-            IPatternDetails pattern, long gameTick) {
+    DispatchFairnessScheduler<WirelessConnection, ProviderPatternKey>.Pass beginFairPass(
+            ProviderPatternKey pattern, long gameTick) {
         return fairness.beginPass(
                 pattern, validReference, topologyVersion, gameTick);
     }
 
     long retryAfter(
             WirelessConnection target,
-            IPatternDetails pattern,
+            ProviderPatternKey pattern,
             long gameTick) {
         purgeExpiredPenalties(gameTick);
         var byPattern = penalties.get(target);
@@ -105,7 +103,7 @@ final class ProviderWirelessDispatch {
 
     long recordRejection(
             WirelessConnection target,
-            IPatternDetails pattern,
+            ProviderPatternKey pattern,
             long gameTick,
             boolean fast) {
         purgeExpiredPenalties(gameTick);
@@ -120,18 +118,18 @@ final class ProviderWirelessDispatch {
         long retryAfter = gameTick + cooldown;
         byPattern.put(pattern, new Penalty(retryAfter, cooldown));
         penaltyExpirations.schedule(
-                new TargetPattern(target, pattern), retryAfter);
+                new TargetPatternKey<>(target, pattern), retryAfter);
         return retryAfter;
     }
 
     void recordSuccess(
-            WirelessConnection target, IPatternDetails pattern) {
+            WirelessConnection target, ProviderPatternKey pattern) {
         var byPattern = penalties.get(target);
         if (byPattern == null) {
             return;
         }
         byPattern.remove(pattern);
-        penaltyExpirations.remove(new TargetPattern(target, pattern));
+        penaltyExpirations.remove(new TargetPatternKey<>(target, pattern));
         if (byPattern.isEmpty()) {
             penalties.remove(target);
         }
@@ -142,7 +140,7 @@ final class ProviderWirelessDispatch {
     }
 
     void excludeUntil(
-            IPatternDetails pattern,
+            ProviderPatternKey pattern,
             WirelessConnection target,
             long retryAfter,
             long gameTick) {
@@ -184,7 +182,7 @@ final class ProviderWirelessDispatch {
 
     long dispatchBatch(
             WirelessDispatchMode mode,
-            IPatternDetails pattern,
+            ProviderPatternKey pattern,
             long maxCopies,
             long gameTick,
             boolean fastMode,
@@ -203,7 +201,7 @@ final class ProviderWirelessDispatch {
 
     boolean dispatchSingleCopy(
             WirelessDispatchMode mode,
-            IPatternDetails pattern,
+            ProviderPatternKey pattern,
             long gameTick,
             boolean fastMode,
             int targetAttempts,
@@ -344,7 +342,7 @@ final class ProviderWirelessDispatch {
     }
 
     private long dispatchFairBatch(
-            IPatternDetails pattern,
+            ProviderPatternKey pattern,
             long maxCopies,
             long gameTick,
             boolean fastMode,
@@ -604,24 +602,25 @@ final class ProviderWirelessDispatch {
             return;
         }
         for (var pattern : byPattern.keySet()) {
-            penaltyExpirations.remove(new TargetPattern(target, pattern));
+            penaltyExpirations.remove(
+                    new TargetPatternKey<>(target, pattern));
         }
     }
 
     private void purgeExpiredPenalties(long gameTick) {
-        TargetPattern expired;
+        TargetPatternKey<WirelessConnection> expired;
         while ((expired = penaltyExpirations.pollDue(gameTick)) != null) {
-            var byPattern = penalties.get(expired.target);
+            var byPattern = penalties.get(expired.target());
             if (byPattern == null) {
                 continue;
             }
-            var penalty = byPattern.get(expired.pattern);
+            var penalty = byPattern.get(expired.pattern());
             if (penalty == null || penalty.retryAfter > gameTick) {
                 continue;
             }
-            byPattern.remove(expired.pattern);
+            byPattern.remove(expired.pattern());
             if (byPattern.isEmpty()) {
-                penalties.remove(expired.target);
+                penalties.remove(expired.target());
             }
         }
     }
@@ -825,10 +824,6 @@ final class ProviderWirelessDispatch {
         public void setQueued(boolean queued) {
             this.queued = queued;
         }
-    }
-
-    private record TargetPattern(
-            WirelessConnection target, IPatternDetails pattern) {
     }
 
     private record Penalty(long retryAfter, int cooldown) {
