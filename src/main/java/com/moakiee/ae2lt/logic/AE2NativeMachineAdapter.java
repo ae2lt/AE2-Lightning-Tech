@@ -246,16 +246,21 @@ final class AE2NativeMachineAdapter implements MachineAdapter {
     // ---- extractOutputs ---------------------------------------------------------
 
     @Override
-    public boolean extractOutputs(ServerLevel level, BlockPos pos, Direction face,
-                                  AllowedOutputFilter allowedOutputs, IActionSource source,
-                                  OutputSink sink) {
+    public OutputReturnResult extractOutputs(
+            ServerLevel level,
+            BlockPos pos,
+            Direction face,
+            AllowedOutputFilter allowedOutputs,
+            IActionSource source,
+            OutputSink sink) {
         var cached = resolveCache(level, pos, face);
-        if (cached == null) return false;
+        if (cached == null) return OutputReturnResult.UNAVAILABLE;
 
         var wrappers = cached.getWrappers(level.getGameTime());
-        if (wrappers == null) return false;
+        if (wrappers == null) return OutputReturnResult.UNAVAILABLE;
 
         boolean extractedAny = false;
+        boolean matchingOutputBlocked = false;
 
         for (var wrapper : wrappers.values()) {
             // Fresh counter per scan: KeyCounter.reset() keeps zeroed keys forever,
@@ -272,10 +277,16 @@ final class AE2NativeMachineAdapter implements MachineAdapter {
                 // Cap before extracting: an uncapped extract-then-store used to
                 // void items whenever power or sink capacity ran out mid-transfer.
                 long cap = sink.maxAccept(key, amount);
-                if (cap <= 0) continue;
+                if (cap <= 0) {
+                    matchingOutputBlocked = true;
+                    continue;
+                }
 
                 long taken = wrapper.extract(key, Math.min(cap, amount), Actionable.MODULATE, source);
-                if (taken <= 0) continue;
+                if (taken <= 0) {
+                    matchingOutputBlocked = true;
+                    continue;
+                }
                 extractedAny = true;
 
                 long leftover = taken - sink.accept(key, taken);
@@ -289,7 +300,12 @@ final class AE2NativeMachineAdapter implements MachineAdapter {
                 }
             }
         }
-        return extractedAny;
+        if (extractedAny) {
+            return OutputReturnResult.EXTRACTED;
+        }
+        return matchingOutputBlocked
+                ? OutputReturnResult.BLOCKED
+                : OutputReturnResult.EMPTY;
     }
 
     // ---- helpers ----------------------------------------------------------------

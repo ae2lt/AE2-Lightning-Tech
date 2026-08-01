@@ -2,7 +2,6 @@ package com.moakiee.ae2lt.logic;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -24,25 +23,13 @@ import com.moakiee.ae2lt.logic.energy.PowerCostUtil;
 
 /** Complete normal and wireless output-return subsystem. */
 final class OverloadedAutoReturnController {
-    private static final int BACKOFF_MIN = 10;
-    private static final int BACKOFF_MIN_FAST = 1;
-    private static final int BACKOFF_MAX = 100;
-    private static final int BACKOFF_MAX_FAST = 20;
-    private static final int RETURN_SPREAD_TICKS = 20;
     private static final int MAX_RETURN_POLLS_PER_TICK = 64;
 
     private final Environment environment;
-    private final ProviderNormalDispatch normalDispatch;
-    private final ProviderWirelessDispatch wirelessDispatch;
-    private long lastSingleReturnTick = -1L;
+    private final ProviderReturnSweep sweep = new ProviderReturnSweep();
 
-    OverloadedAutoReturnController(
-            Environment environment,
-            ProviderNormalDispatch normalDispatch,
-            ProviderWirelessDispatch wirelessDispatch) {
+    OverloadedAutoReturnController(Environment environment) {
         this.environment = environment;
-        this.normalDispatch = normalDispatch;
-        this.wirelessDispatch = wirelessDispatch;
     }
 
     void tick() {
@@ -60,185 +47,96 @@ final class OverloadedAutoReturnController {
         }
 
         long gameTick = level.getGameTime();
-        if (provider.getProviderMode() == ProviderMode.NORMAL) {
-            tickNormal(level, allowedOutputs, gameTick);
-        } else {
-            tickWireless(level, allowedOutputs, gameTick);
+        var targets = currentTargets(level, gameTick);
+        sweep.synchronize(targets, gameTick);
+
+        for (int scans = 0; scans < MAX_RETURN_POLLS_PER_TICK; scans++) {
+            var target = sweep.pollDue(gameTick);
+            if (target == null) {
+                break;
+            }
+            var targetLevel = resolveTargetLevel(level, target);
+            OutputReturnResult result;
+            if (targetLevel == null) {
+                result = OutputReturnResult.UNAVAILABLE;
+            } else if (!target.claimOutputReturnScan(gameTick)) {
+                // A pre-dispatch scan can happen before a topology refresh has
+                // synchronized this sweep. Count it now so the newly created
+                // round cannot retain an already-consumed due target forever.
+                sweep.recordDispatch(target, gameTick);
+                continue;
+            } else {
+                result = target.returnOutputs(
+                        targetLevel,
+                        allowedOutputs,
+                        environment.actionSource(),
+                        outputSink);
+            }
+            sweep.recordPeriodic(target, gameTick, result);
         }
     }
 
-    void beforeWirelessPush(ServerLevel providerLevel, WirelessConnection connection) {
-        if (environment.provider().getReturnMode() != ReturnMode.AUTO) {
+    /**
+     * Pulls completed outputs once immediately before this target receives new
+     * work. This is part of AUTO mode; EJECT remains a purely passive virtual
+     * output endpoint.
+     */
+    void beforeDispatch(ServerLevel targetLevel, ProviderTarget target) {
+        if (environment.provider().getReturnMode() != ReturnMode.AUTO
+                || !environment.gridNode().isActive()) {
             return;
         }
-        long gameTick = providerLevel.getGameTime();
-        if (gameTick == lastSingleReturnTick) {
-            return;
-        }
-        lastSingleReturnTick = gameTick;
 
         var allowedOutputs = environment.outputFilter();
         if (allowedOutputs.isEmpty()) {
             return;
         }
-        var targetLevel = environment.resolveTargetLevel(
-                providerLevel, connection);
-        if (targetLevel == null) {
-            return;
+        long gameTick = targetLevel.getGameTime();
+        if (target.claimOutputReturnScan(gameTick)) {
+            target.returnOutputs(
+                    targetLevel,
+                    allowedOutputs,
+                    environment.actionSource(),
+                    outputSink);
         }
-        boolean found = connection.returnOutputs(
-                targetLevel, allowedOutputs,
-                environment.actionSource(), outputSink);
-        recordWireless(connection, gameTick, found);
-    }
-
-    void synchronizeWireless(
-            List<WirelessConnection> validConnections,
-            Set<WirelessConnection> validConnectionSet,
-            long gameTick) {
-        wirelessDispatch.synchronizeReturns(
-                validConnections,
-                validConnectionSet,
-                environment.provider().getReturnMode() == ReturnMode.AUTO,
-                gameTick,
-                wirelessBackoffMin(),
-                RETURN_SPREAD_TICKS);
-    }
-
-    void retainWirelessStates(Set<WirelessConnection> retainedConnections) {
-        wirelessDispatch.retainReturnStates(retainedConnections);
-    }
-
-    void resetWirelessAfterPush(
-            WirelessConnection connection, long gameTick) {
-        wirelessDispatch.resetReturn(
-                connection,
-                gameTick,
-                wirelessBackoffMin(),
-                environment.provider().getReturnMode() == ReturnMode.AUTO);
-    }
-
-    void resetNormalAfterPush() {
-        var level = environment.provider().getLevel();
-        if (!(level instanceof ServerLevel serverLevel)) {
-            return;
-        }
-        long gameTick = serverLevel.getGameTime();
-        var machines = new ArrayList<ProviderTarget>();
-        for (var direction : environment.provider().getTargets()) {
-            machines.add(environment.normalTarget(serverLevel, direction));
-        }
-        normalDispatch.resetReturns(machines, gameTick, BACKOFF_MIN);
+        // Demand is activity even if the machine has not produced an output yet.
+        // It must never advance the idle sweep backoff.
+        sweep.recordDispatch(target, gameTick);
     }
 
     long nextPollTick(ServerLevel providerLevel) {
-        if (environment.provider().getProviderMode() == ProviderMode.NORMAL) {
-            var machines = new ArrayList<ProviderTarget>();
-            for (var direction : environment.provider().getTargets()) {
-                machines.add(environment.normalTarget(
-                        providerLevel, direction));
-            }
-            return normalDispatch.nextReturnPoll(machines);
-        }
-
-        var connections = environment.validConnections(
-                providerLevel, providerLevel.getGameTime());
-        return connections.isEmpty()
-                ? Long.MAX_VALUE
-                : wirelessDispatch.nextReturnPoll();
+        long gameTick = providerLevel.getGameTime();
+        sweep.synchronize(currentTargets(providerLevel, gameTick), gameTick);
+        return sweep.nextDueTick();
     }
 
     void clear() {
-        clearSchedule();
-        lastSingleReturnTick = -1L;
+        sweep.clear();
     }
 
     void clearSchedule() {
-        normalDispatch.clearReturnSchedule();
-        wirelessDispatch.clearReturnSchedule();
+        sweep.clear();
     }
 
-    private void tickNormal(
-            ServerLevel level,
-            AllowedOutputFilter allowedOutputs,
-            long gameTick) {
+    private List<ProviderTarget> currentTargets(
+            ServerLevel providerLevel, long gameTick) {
+        if (environment.provider().getProviderMode() == ProviderMode.WIRELESS) {
+            return new ArrayList<>(environment.validConnections(
+                    providerLevel, gameTick));
+        }
+        var targets = new ArrayList<ProviderTarget>();
         for (var direction : environment.provider().getTargets()) {
-            var target = environment.normalTarget(level, direction);
-            if (!normalDispatch.returnDue(target, gameTick)) {
-                continue;
-            }
-
-            boolean found = target.returnOutputs(
-                    level, allowedOutputs,
-                    environment.actionSource(), outputSink);
-            normalDispatch.recordReturn(
-                    target, gameTick, found, BACKOFF_MIN, BACKOFF_MAX);
+            targets.add(environment.normalTarget(providerLevel, direction));
         }
+        return targets;
     }
 
-    private void tickWireless(
-            ServerLevel providerLevel,
-            AllowedOutputFilter allowedOutputs,
-            long gameTick) {
-        var valid = environment.validConnections(providerLevel, gameTick);
-        int total = valid.size();
-        if (total == 0) {
-            return;
-        }
-
-        boolean fast = isFastWirelessSpeed();
-        int spreadBudget = Math.max(
-                1, (total + RETURN_SPREAD_TICKS - 1) / RETURN_SPREAD_TICKS);
-        int toProcess = Math.min(
-                MAX_RETURN_POLLS_PER_TICK,
-                fast ? total : spreadBudget);
-        int backoffMin = fast ? BACKOFF_MIN_FAST : BACKOFF_MIN;
-        int backoffCap = fast ? BACKOFF_MAX_FAST : BACKOFF_MAX;
-
-        for (int i = 0; i < toProcess; i++) {
-            var connection = wirelessDispatch.pollReturn(gameTick);
-            if (connection == null) {
-                break;
-            }
-            if (!environment.isValidConnection(connection)) {
-                continue;
-            }
-            var targetLevel = environment.resolveTargetLevel(
-                    providerLevel, connection);
-            if (targetLevel == null) {
-                wirelessDispatch.recordReturn(
-                        connection, gameTick, false, backoffMin, backoffCap);
-                continue;
-            }
-            boolean found = connection.returnOutputs(
-                    targetLevel, allowedOutputs,
-                    environment.actionSource(), outputSink);
-            wirelessDispatch.recordReturn(
-                    connection, gameTick, found, backoffMin, backoffCap);
-        }
-    }
-
-    private void recordWireless(
-            WirelessConnection connection, long gameTick, boolean foundItems) {
-        wirelessDispatch.recordReturn(
-                connection,
-                gameTick,
-                foundItems,
-                wirelessBackoffMin(),
-                wirelessBackoffCap());
-    }
-
-    private boolean isFastWirelessSpeed() {
-        return environment.provider().getWirelessSpeedMode()
-                == OverloadedPatternProviderBlockEntity.WirelessSpeedMode.FAST;
-    }
-
-    private int wirelessBackoffMin() {
-        return isFastWirelessSpeed() ? BACKOFF_MIN_FAST : BACKOFF_MIN;
-    }
-
-    private int wirelessBackoffCap() {
-        return isFastWirelessSpeed() ? BACKOFF_MAX_FAST : BACKOFF_MAX;
+    @Nullable
+    private ServerLevel resolveTargetLevel(
+            ServerLevel providerLevel, ProviderTarget target) {
+        return target instanceof WirelessConnection connection
+                ? environment.resolveTargetLevel(providerLevel, connection)
+                : providerLevel;
     }
 
     private final MachineAdapter.OutputSink outputSink =
@@ -303,8 +201,6 @@ final class OverloadedAutoReturnController {
 
         List<WirelessConnection> validConnections(
                 ServerLevel providerLevel, long gameTick);
-
-        boolean isValidConnection(WirelessConnection connection);
 
         @Nullable
         ServerLevel resolveTargetLevel(

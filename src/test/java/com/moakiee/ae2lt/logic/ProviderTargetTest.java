@@ -423,6 +423,21 @@ class ProviderTargetTest {
         assertEquals(List.of(4), chunks);
     }
 
+    @Test
+    void preDispatchReturnIsClaimedOncePerTargetAndTick() {
+        var otherTarget = new ProviderTarget(
+                Level.OVERWORLD, BlockPos.ZERO.relative(Direction.EAST), Direction.WEST);
+
+        assertTrue(target.claimOutputReturnScan(42L));
+        assertFalse(target.claimOutputReturnScan(42L));
+        assertTrue(otherTarget.claimOutputReturnScan(42L));
+        assertTrue(target.claimOutputReturnScan(43L));
+
+        target.clearRuntimeState();
+
+        assertTrue(target.claimOutputReturnScan(43L));
+    }
+
     private static final class EmptyPattern implements IPatternDetails {
         @Override
         public AEItemKey getDefinition() {

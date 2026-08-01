@@ -26,8 +26,6 @@ final class ProviderNormalDispatch {
             new DueTaskQueue<>();
     private final DispatchFairnessScheduler<ProviderTarget, IPatternDetails> fairness =
             DispatchFairnessScheduler.forCanonicalPatterns();
-    private final Map<ProviderTarget, Long> returnNextPoll = new HashMap<>();
-    private final Map<ProviderTarget, Integer> returnBackoff = new HashMap<>();
     private int cursor;
     private long topologyVersion;
     private Set<ProviderTarget> activeTargets = Set.of();
@@ -184,55 +182,11 @@ final class ProviderNormalDispatch {
         }
     }
 
-    boolean returnDue(ProviderTarget target, long gameTick) {
-        return gameTick >= returnNextPoll.getOrDefault(target, 0L);
-    }
-
-    void recordReturn(
-            ProviderTarget target,
-            long gameTick,
-            boolean foundItems,
-            int minimum,
-            int maximum) {
-        int interval = foundItems
-                ? minimum
-                : Math.min(
-                        returnBackoff.getOrDefault(target, minimum) * 2,
-                        maximum);
-        returnBackoff.put(target, interval);
-        returnNextPoll.put(target, gameTick + interval);
-    }
-
-    void resetReturns(
-            Iterable<ProviderTarget> currentTargets,
-            long gameTick,
-            int minimum) {
-        for (var target : currentTargets) {
-            returnBackoff.put(target, minimum);
-            returnNextPoll.put(target, gameTick + minimum);
-        }
-    }
-
-    long nextReturnPoll(Iterable<ProviderTarget> currentTargets) {
-        long next = Long.MAX_VALUE;
-        for (var target : currentTargets) {
-            next = Math.min(
-                    next, returnNextPoll.getOrDefault(target, 0L));
-        }
-        return next;
-    }
-
-    void clearReturnSchedule() {
-        returnNextPoll.clear();
-        returnBackoff.clear();
-    }
-
     void clearRuntimeState() {
         for (var target : targets.values()) {
             target.clearRuntimeState();
         }
         patternsChanged();
-        clearReturnSchedule();
     }
 
     void clear() {

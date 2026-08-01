@@ -125,11 +125,15 @@ public interface MachineAdapter {
      *
      * @param allowedOutputs filter describing which outputs belong to currently
      *                       loaded patterns
-     * @return {@code true} if anything was extracted
+     * @return whether output was extracted, absent, blocked, or unavailable
      */
-    default boolean extractOutputs(ServerLevel level, BlockPos pos, Direction face,
-                                   AllowedOutputFilter allowedOutputs, IActionSource source,
-                                   OutputSink sink) {
-        return false;
+    default OutputReturnResult extractOutputs(
+            ServerLevel level,
+            BlockPos pos,
+            Direction face,
+            AllowedOutputFilter allowedOutputs,
+            IActionSource source,
+            OutputSink sink) {
+        return OutputReturnResult.UNAVAILABLE;
     }
 }

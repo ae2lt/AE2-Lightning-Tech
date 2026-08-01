@@ -344,19 +344,34 @@ public class ProviderTarget extends TargetAddress {
         return resolveBlockEntity(level) != null;
     }
 
-    public final boolean returnOutputs(
+    public final OutputReturnResult returnOutputs(
             ServerLevel level,
             AllowedOutputFilter allowedOutputs,
             IActionSource source,
             MachineAdapter.OutputSink sink) {
         var resolvedAdapter = resolveAdapter(level);
-        return resolvedAdapter != null && resolvedAdapter.extractOutputs(
-                level,
-                pos(),
-                boundFace(),
-                allowedOutputs,
-                source,
-                sink);
+        return resolvedAdapter == null
+                ? OutputReturnResult.UNAVAILABLE
+                : resolvedAdapter.extractOutputs(
+                        level,
+                        pos(),
+                        boundFace(),
+                        allowedOutputs,
+                        source,
+                        sink);
+    }
+
+    /**
+     * Claims this target's output-return scan for the current server tick.
+     * Periodic and pre-dispatch paths share the same claim, so a target can be
+     * considered by several patterns without enumerating its inventory twice.
+     */
+    public final boolean claimOutputReturnScan(long gameTick) {
+        if (runtime.lastOutputReturnScanTick == gameTick) {
+            return false;
+        }
+        runtime.lastOutputReturnScanTick = gameTick;
+        return true;
     }
 
     public final boolean flushOverflow(
@@ -388,6 +403,7 @@ public class ProviderTarget extends TargetAddress {
         Arrays.fill(runtime.storageTargets, null);
         runtime.blockedThisTick.clear();
         runtime.blockedGameTick = Long.MIN_VALUE;
+        runtime.lastOutputReturnScanTick = Long.MIN_VALUE;
         runtime.lastSuccessfulPattern = null;
         runtime.batchChunks.clear();
     }
@@ -404,6 +420,7 @@ public class ProviderTarget extends TargetAddress {
         private final Set<PatternProviderTarget> blockedThisTick =
                 Collections.newSetFromMap(new IdentityHashMap<>());
         private long blockedGameTick = Long.MIN_VALUE;
+        private long lastOutputReturnScanTick = Long.MIN_VALUE;
         private final IdentityHashMap<IPatternDetails, Integer> batchChunks =
                 new IdentityHashMap<>();
         @Nullable

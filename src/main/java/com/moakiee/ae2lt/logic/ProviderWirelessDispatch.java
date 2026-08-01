@@ -34,10 +34,6 @@ final class ProviderWirelessDispatch {
     private final WirelessOverflowQueue overflow = new WirelessOverflowQueue();
     private final Predicate<WirelessConnection> blocked = overflow::contains;
     private final Map<WirelessConnection, ConnectionState> states = new HashMap<>();
-    private final Map<WirelessConnection, ReturnState> returnStates =
-            new HashMap<>();
-    private final DueTaskQueue<WirelessConnection> returnDue =
-            new DueTaskQueue<>();
     private final List<WirelessConnection>[] wheel;
     private final ReadyQueue<WirelessConnection, ConnectionState> singleReady;
     private final ReadyQueue<WirelessConnection, ConnectionState> evenReady;
@@ -514,80 +510,6 @@ final class ProviderWirelessDispatch {
         states.keySet().retainAll(retained);
     }
 
-    void synchronizeReturns(
-            List<WirelessConnection> connections,
-            java.util.Set<WirelessConnection> connectionSet,
-            boolean enabled,
-            long gameTick,
-            int minimum,
-            int spreadTicks) {
-        if (!enabled) {
-            returnDue.clear();
-            return;
-        }
-        returnDue.retainAll(connectionSet);
-        int initialOffset = 0;
-        for (var connection : connections) {
-            if (returnDue.contains(connection)) {
-                continue;
-            }
-            var state = returnStates.computeIfAbsent(
-                    connection, ignored -> new ReturnState(minimum));
-            long dueTick = state.nextPollTick > gameTick
-                    ? state.nextPollTick
-                    : gameTick + initialOffset++ % spreadTicks;
-            state.nextPollTick = dueTick;
-            returnDue.schedule(connection, dueTick);
-        }
-    }
-
-    @Nullable
-    WirelessConnection pollReturn(long gameTick) {
-        return returnDue.pollDue(gameTick);
-    }
-
-    void recordReturn(
-            WirelessConnection connection,
-            long gameTick,
-            boolean foundItems,
-            int minimum,
-            int maximum) {
-        var state = returnStates.computeIfAbsent(
-                connection, ignored -> new ReturnState(minimum));
-        state.backoffInterval = foundItems
-                ? minimum
-                : Math.min(state.backoffInterval * 2, maximum);
-        state.nextPollTick = gameTick + state.backoffInterval;
-        returnDue.schedule(connection, state.nextPollTick);
-    }
-
-    void resetReturn(
-            WirelessConnection connection,
-            long gameTick,
-            int minimum,
-            boolean enabled) {
-        var state = returnStates.computeIfAbsent(
-                connection, ignored -> new ReturnState(minimum));
-        state.backoffInterval = minimum;
-        state.nextPollTick = gameTick + minimum;
-        if (enabled) {
-            returnDue.schedule(connection, state.nextPollTick);
-        }
-    }
-
-    long nextReturnPoll() {
-        return returnDue.nextDueTick();
-    }
-
-    void retainReturnStates(java.util.Set<WirelessConnection> retained) {
-        returnStates.keySet().retainAll(retained);
-    }
-
-    void clearReturnSchedule() {
-        returnStates.clear();
-        returnDue.clear();
-    }
-
     void clear() {
         validReference = List.of();
         structuresDirty = true;
@@ -598,7 +520,6 @@ final class ProviderWirelessDispatch {
         clearReadyQueues();
         patternsChanged();
         states.clear();
-        clearReturnSchedule();
     }
 
     private void removePenalties(WirelessConnection target) {
@@ -832,15 +753,6 @@ final class ProviderWirelessDispatch {
     }
 
     private record Penalty(long retryAfter, int cooldown) {
-    }
-
-    private static final class ReturnState {
-        private long nextPollTick;
-        private int backoffInterval;
-
-        private ReturnState(int initialBackoff) {
-            backoffInterval = initialBackoff;
-        }
     }
 
     @FunctionalInterface

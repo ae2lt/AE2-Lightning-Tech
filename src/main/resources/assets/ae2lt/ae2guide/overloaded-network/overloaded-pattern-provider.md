@@ -111,6 +111,13 @@ The return mode determines how processed output is recovered from remote machine
 | AUTO | Actively pulls output back from the remote machines |
 | EJECT | Remote machines push output into the virtual output slot; the provider accepts it passively |
 
+Before AUTO dispatches new work to a target, the provider pulls completed output
+from that target once for the current server tick. This keeps a full machine
+output slot from blocking the next dispatch. A provider-wide safety sweep checks
+all linked targets over 20 ticks. Completely idle sweeps back off to 40, 80 and
+finally 128 ticks; dispatch activity or matching output restores the 20-tick
+interval. EJECT remains purely passive.
+
 ## Speed Tier
 
 | Speed | Description |
@@ -118,7 +125,8 @@ The return mode determines how processed output is recovered from remote machine
 | Normal | Standard cooldown (5 ~ 80 ticks) |
 | Fast (Probe) | Adaptive cooldown; uses a probe mechanic to detect readiness early (1 ~ 40 ticks) |
 
-Fast Mode also accelerates wireless auto return: the polling interval is 10 to 100 ticks in Normal Mode and 1 to 20 ticks in Fast Mode.
+Speed tier affects dispatch retry/probing only. AUTO output return uses the
+provider-wide sweep described above.
 
 ## ME Power Cost
 
