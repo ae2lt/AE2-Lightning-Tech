@@ -1,7 +1,6 @@
 package com.moakiee.ae2lt.logic;
 
 import java.util.HashMap;
-import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -31,7 +30,7 @@ final class OverloadedProviderPatternCatalog {
 
     /** External details are indexed strictly by reference, never by mod-defined equality. */
     private final Map<IPatternDetails, IPatternDetails> byDetails =
-            new IdentityHashMap<>();
+            CanonicalPatternMaps.create();
     private final Map<AEItemKey, IPatternDetails> byDefinition =
             new HashMap<>();
 

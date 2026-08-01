@@ -18,7 +18,7 @@ final class TargetPatternKey<T> {
         this.target = Objects.requireNonNull(target, "target");
         this.pattern = pattern;
         this.hashCode = 31 * target.hashCode()
-                + System.identityHashCode(pattern);
+                + (pattern == null ? 0 : pattern.hashCode());
     }
 
     T target() {

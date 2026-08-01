@@ -3,7 +3,6 @@ package com.moakiee.ae2lt.logic;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashMap;
-import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -26,7 +25,7 @@ final class ProviderNormalDispatch {
     private final DueTaskQueue<TargetPatternKey<ProviderTarget>> expirations =
             new DueTaskQueue<>();
     private final DispatchFairnessScheduler<ProviderTarget, IPatternDetails> fairness =
-            new DispatchFairnessScheduler<>();
+            DispatchFairnessScheduler.forCanonicalPatterns();
     private final Map<ProviderTarget, Long> returnNextPoll = new HashMap<>();
     private final Map<ProviderTarget, Integer> returnBackoff = new HashMap<>();
     private int cursor;
@@ -152,7 +151,7 @@ final class ProviderNormalDispatch {
             long gameTick) {
         purgeExpired(gameTick);
         var byPattern = penalties.computeIfAbsent(
-                target, ignored -> new IdentityHashMap<>());
+                target, ignored -> CanonicalPatternMaps.create());
         var previous = byPattern.get(pattern);
         int cooldown = previous == null
                 ? INITIAL_COOLDOWN

@@ -2,6 +2,7 @@ package com.moakiee.ae2lt.logic;
 
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 
@@ -24,10 +25,14 @@ class OverloadedProviderPatternCatalogTest {
 
         assertSame(canonical, catalog.resolve(canonical));
         assertNull(catalog.resolve(equivalentExecutionDetails));
+        assertTrue(canonical.hashCalls > 0);
+        assertTrue(equivalentExecutionDetails.hashCalls > 0);
     }
 
     private static final class ExplosiveEqualityPattern
             implements IPatternDetails {
+        private int hashCalls;
+
         @Override
         public AEItemKey getDefinition() {
             return null;
@@ -50,7 +55,8 @@ class OverloadedProviderPatternCatalogTest {
 
         @Override
         public int hashCode() {
-            throw new AssertionError("third-party hashCode must not run");
+            hashCalls++;
+            return 31;
         }
     }
 }

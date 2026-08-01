@@ -4,7 +4,6 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -43,7 +42,7 @@ final class ProviderWirelessDispatch {
     private final ReadyQueue<WirelessConnection, ConnectionState> singleReady;
     private final ReadyQueue<WirelessConnection, ConnectionState> evenReady;
     private final DispatchFairnessScheduler<WirelessConnection, IPatternDetails> fairness =
-            new DispatchFairnessScheduler<>();
+            DispatchFairnessScheduler.forCanonicalPatterns();
     private final Map<WirelessConnection, Map<IPatternDetails, Penalty>> penalties =
             new HashMap<>();
     private final DueTaskQueue<TargetPatternKey<WirelessConnection>> penaltyExpirations =
@@ -113,7 +112,7 @@ final class ProviderWirelessDispatch {
         int initial = fast ? 2 : 5;
         int maximum = fast ? 10 : 40;
         var byPattern = penalties.computeIfAbsent(
-                target, ignored -> new IdentityHashMap<>());
+                target, ignored -> CanonicalPatternMaps.create());
         var previous = byPattern.get(pattern);
         int cooldown = previous == null
                 ? initial

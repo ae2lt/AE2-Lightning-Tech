@@ -171,7 +171,7 @@ class ProviderDispatchTest {
 
         @Override
         public int hashCode() {
-            throw new AssertionError("third-party hashCode must not run");
+            return 31;
         }
     }
 }
