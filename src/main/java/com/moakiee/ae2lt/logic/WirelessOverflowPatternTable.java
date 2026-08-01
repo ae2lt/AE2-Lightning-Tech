@@ -2,10 +2,11 @@ package com.moakiee.ae2lt.logic;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Supplier;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2IntOpenCustomHashMap;
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -21,9 +22,15 @@ import com.moakiee.thunderbolt.ae2.overload.pattern.OverloadPatternDetails;
 final class WirelessOverflowPatternTable {
     private static final int MAX_PATTERN_IDS = 0xFFFF;
 
-    private final Object2IntOpenCustomHashMap<IPatternDetails> byPattern =
-            new Object2IntOpenCustomHashMap<>(
-                    CanonicalPatternMaps.strategy());
+    /** Exact execution objects bypass structural equality after their first lookup. */
+    private final Map<IPatternDetails, Integer> byIdentity =
+            WeakIdentityMaps.weakKeys();
+    /**
+     * Overflow replays execution inputs, so equivalent execution wrappers may
+     * share an id but must not be replaced by provider-canonical details.
+     */
+    private final Object2IntOpenHashMap<IPatternDetails> byPattern =
+            new Object2IntOpenHashMap<>();
     private final Int2ObjectOpenHashMap<IPatternDetails> byId =
             new Int2ObjectOpenHashMap<>();
     private int nextId;
@@ -35,8 +42,12 @@ final class WirelessOverflowPatternTable {
     short intern(
             IPatternDetails pattern,
             Supplier<? extends Iterable<? extends PatternReference>> liveReferences) {
-        int id = byPattern.getInt(pattern);
+        var cachedId = byIdentity.get(pattern);
+        int id = cachedId != null ? cachedId : byPattern.getInt(pattern);
         if (id >= 0) {
+            if (cachedId == null) {
+                byIdentity.put(pattern, id);
+            }
             return (short) id;
         }
 
@@ -69,6 +80,7 @@ final class WirelessOverflowPatternTable {
     }
 
     void clear() {
+        byIdentity.clear();
         byPattern.clear();
         byId.clear();
         nextId = 0;
@@ -101,6 +113,7 @@ final class WirelessOverflowPatternTable {
     }
 
     private void put(int id, IPatternDetails pattern) {
+        byIdentity.put(pattern, id);
         byPattern.put(pattern, id);
         byId.put(id, pattern);
     }

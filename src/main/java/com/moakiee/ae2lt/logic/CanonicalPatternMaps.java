@@ -7,7 +7,7 @@ import it.unimi.dsi.fastutil.objects.Object2ObjectOpenCustomHashMap;
 
 import appeng.api.crafting.IPatternDetails;
 
-/** Hashes canonical patterns structurally but compares them only by reference. */
+/** Uses the cached pattern hash while comparing catalog-canonical keys by reference. */
 final class CanonicalPatternMaps {
     private static final Hash.Strategy<IPatternDetails> STRATEGY =
             new Hash.Strategy<>() {
@@ -23,10 +23,6 @@ final class CanonicalPatternMaps {
                     return left == right;
                 }
             };
-
-    static Hash.Strategy<IPatternDetails> strategy() {
-        return STRATEGY;
-    }
 
     static <V> Map<IPatternDetails, V> create() {
         return new Object2ObjectOpenCustomHashMap<>(STRATEGY);

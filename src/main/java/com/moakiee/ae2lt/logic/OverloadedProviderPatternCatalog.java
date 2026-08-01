@@ -1,9 +1,11 @@
 package com.moakiee.ae2lt.logic;
 
+import java.lang.ref.WeakReference;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.WeakHashMap;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -11,7 +13,6 @@ import net.minecraft.world.level.Level;
 
 import appeng.api.crafting.IPatternDetails;
 import appeng.api.crafting.PatternDetailsHelper;
-import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.AEKey;
 import appeng.util.inv.AppEngInternalInventory;
 
@@ -28,18 +29,29 @@ import com.moakiee.thunderbolt.ae2.api.crafting.CraftingPatternDelegates;
  */
 final class OverloadedProviderPatternCatalog {
 
-    /** External details are indexed strictly by reference, never by mod-defined equality. */
-    private final Map<IPatternDetails, IPatternDetails> byDetails =
-            CanonicalPatternMaps.create();
-    private final Map<AEItemKey, IPatternDetails> byDefinition =
-            new HashMap<>();
+    /**
+     * Fast path from each observed execution object to the provider-owned
+     * details used by dispatch bookkeeping. Weak identity keys avoid retaining
+     * transient CPU wrappers and never invoke their equality implementation.
+     */
+    private final Map<IPatternDetails, IPatternDetails> resolvedByIdentity =
+            WeakIdentityMaps.weakKeysAndValues();
+
+    /**
+     * Cold-path semantic index of the patterns currently registered by this
+     * provider. A newly decoded/equivalent IPD pays its normal equality cost
+     * once while its registered representative remains live, then enters
+     * {@link #resolvedByIdentity}.
+     */
+    private final Map<IPatternDetails, Registration> registeredByEquality =
+            new WeakHashMap<>();
 
     void rebuild(
             AppEngInternalInventory inventory,
             Level level,
             List<IPatternDetails> visiblePatterns,
             Set<AEKey> patternInputs) {
-        var previousDefinitions = new HashMap<>(byDefinition);
+        var previousRegistrations = new HashMap<>(registeredByEquality);
         clear();
         visiblePatterns.clear();
         patternInputs.clear();
@@ -52,7 +64,7 @@ final class OverloadedProviderPatternCatalog {
             }
 
             visiblePatterns.add(details);
-            register(details, previousDefinitions);
+            register(details, previousRegistrations);
             for (var input : details.getInputs()) {
                 for (var possibleInput : input.getPossibleInputs()) {
                     patternInputs.add(possibleInput.what().dropSecondary());
@@ -67,26 +79,38 @@ final class OverloadedProviderPatternCatalog {
             return null;
         }
 
-        var direct = byDetails.get(executionDetails);
+        var direct = resolvedByIdentity.get(executionDetails);
         if (direct != null) {
             return direct;
         }
 
         var providerDetails = CraftingPatternDelegates.forProviderLookup(executionDetails);
         if (providerDetails != executionDetails) {
-            direct = byDetails.get(providerDetails);
+            direct = resolvedByIdentity.get(providerDetails);
             if (direct != null) {
+                resolvedByIdentity.put(executionDetails, direct);
                 return direct;
             }
         }
 
-        var definition = providerDetails.getDefinition();
-        return definition == null ? null : byDefinition.get(definition);
+        // This is the only IPatternDetails equality lookup on the resolve path.
+        // It preserves AE2's provider-map semantics for re-decoded details and
+        // third-party implementations instead of assuming definition equality
+        // is universally interchangeable with pattern equality.
+        var registration = registeredByEquality.get(providerDetails);
+        var resolved = registration == null ? null : registration.resolve();
+        if (resolved != null) {
+            resolvedByIdentity.put(providerDetails, resolved);
+            if (providerDetails != executionDetails) {
+                resolvedByIdentity.put(executionDetails, resolved);
+            }
+        }
+        return resolved;
     }
 
     void clear() {
-        byDetails.clear();
-        byDefinition.clear();
+        resolvedByIdentity.clear();
+        registeredByEquality.clear();
     }
 
     void register(IPatternDetails details) {
@@ -95,14 +119,46 @@ final class OverloadedProviderPatternCatalog {
 
     private void register(
             IPatternDetails details,
-            Map<AEItemKey, IPatternDetails> previousDefinitions) {
-        var definition = details.getDefinition();
-        var canonicalDetails = definition == null
-                ? details
-                : byDefinition.computeIfAbsent(
-                        definition,
-                        key -> previousDefinitions.getOrDefault(
-                                key, details));
-        byDetails.putIfAbsent(details, canonicalDetails);
+            Map<IPatternDetails, Registration> previousRegistrations) {
+        // Preserve the provider-owned representative across an equivalent
+        // decode/rebuild only while another owner still retains it. This
+        // comparison is off the dispatch hot path.
+        var registration = registeredByEquality.get(details);
+        if (registration == null) {
+            var previous = previousRegistrations.get(details);
+            var previousDetails = previous == null ? null : previous.resolve();
+            var candidate = previousDetails != null ? previousDetails : details;
+            registration = new Registration(candidate, details);
+            registeredByEquality.put(details, registration);
+        }
+        var canonicalDetails = registration.resolve();
+        if (canonicalDetails == null) {
+            // The current decoded details are strongly owned by AE2's visible
+            // pattern list, so this is only a defensive fallback for unusual
+            // lifecycle ordering.
+            canonicalDetails = details;
+            registration = new Registration(details, details);
+            registeredByEquality.put(details, registration);
+        }
+        resolvedByIdentity.put(details, canonicalDetails);
+    }
+
+    /** A registration index entry that never owns either IPatternDetails object. */
+    private static final class Registration {
+        private final WeakReference<IPatternDetails> preferred;
+        private final WeakReference<IPatternDetails> current;
+
+        private Registration(
+                IPatternDetails preferred,
+                IPatternDetails current) {
+            this.preferred = new WeakReference<>(preferred);
+            this.current = new WeakReference<>(current);
+        }
+
+        @Nullable
+        private IPatternDetails resolve() {
+            var result = preferred.get();
+            return result != null ? result : current.get();
+        }
     }
 }

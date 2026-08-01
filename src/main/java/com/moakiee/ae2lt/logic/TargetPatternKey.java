@@ -7,7 +7,7 @@ import appeng.api.crafting.IPatternDetails;
 /**
  * Target/pattern scheduling key whose pattern half uses canonical identity.
  *
- * <p>It never invokes third-party pattern equality or hashing.</p>
+ * <p>It caches the canonical pattern's hash and never invokes pattern equality.</p>
  */
 final class TargetPatternKey<T> {
     private final T target;

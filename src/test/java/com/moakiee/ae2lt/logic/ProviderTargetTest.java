@@ -114,6 +114,28 @@ class ProviderTargetTest {
     }
 
     @Test
+    void patternInternUsesEqualityOncePerEquivalentExecutionObject() {
+        var table = new WirelessOverflowPatternTable();
+        var equalityCalls = new AtomicInteger();
+        var throwOnEquality = new boolean[1];
+        var first = new LogicalPattern(
+                "same", equalityCalls, throwOnEquality);
+        var converted = new LogicalPattern(
+                "same", equalityCalls, throwOnEquality);
+
+        short firstId = table.intern(first, List::of);
+        short convertedId = table.intern(converted, List::of);
+
+        assertEquals(firstId, convertedId);
+        assertTrue(equalityCalls.get() > 0);
+
+        int coldEqualityCalls = equalityCalls.get();
+        throwOnEquality[0] = true;
+        assertEquals(convertedId, table.intern(converted, List::of));
+        assertEquals(coldEqualityCalls, equalityCalls.get());
+    }
+
+    @Test
     void fullAcceptanceUsesExponentialChunksWithoutExceedingRequest() {
         var chunks = new ArrayList<Integer>();
         var result = target.pushPattern(
@@ -182,6 +204,50 @@ class ProviderTargetTest {
         @Override
         public boolean equals(Object other) {
             throw new AssertionError("third-party equality must not run");
+        }
+
+        @Override
+        public int hashCode() {
+            return 31;
+        }
+    }
+
+    private static final class LogicalPattern implements IPatternDetails {
+        private final String id;
+        private final AtomicInteger equalityCalls;
+        private final boolean[] throwOnEquality;
+
+        private LogicalPattern(
+                String id,
+                AtomicInteger equalityCalls,
+                boolean[] throwOnEquality) {
+            this.id = id;
+            this.equalityCalls = equalityCalls;
+            this.throwOnEquality = throwOnEquality;
+        }
+
+        @Override
+        public AEItemKey getDefinition() {
+            return null;
+        }
+
+        @Override
+        public IInput[] getInputs() {
+            return new IInput[0];
+        }
+
+        @Override
+        public List<GenericStack> getOutputs() {
+            return List.of();
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            equalityCalls.incrementAndGet();
+            if (throwOnEquality[0]) {
+                throw new AssertionError("identity cache must bypass equality");
+            }
+            return other instanceof LogicalPattern pattern && id.equals(pattern.id);
         }
 
         @Override
