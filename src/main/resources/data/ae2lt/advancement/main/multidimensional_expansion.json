@@ -6,7 +6,7 @@
     "description": { "translate": "advancements.ae2lt.multidimensional_expansion.description" },
     "frame": "challenge",
     "show_toast": true,
-    "announce_to_chat": false,
+    "announce_to_chat": true,
     "hidden": true
   },
   "criteria": {

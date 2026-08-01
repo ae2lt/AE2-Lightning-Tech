@@ -6,7 +6,7 @@
     "description": { "translate": "advancements.ae2lt.observable_black_hole.description" },
     "frame": "challenge",
     "show_toast": true,
-    "announce_to_chat": false,
+    "announce_to_chat": true,
     "hidden": false
   },
   "criteria": {
