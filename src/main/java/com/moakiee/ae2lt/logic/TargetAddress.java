@@ -61,7 +61,10 @@ public abstract class TargetAddress {
 
     @Override
     public final int hashCode() {
-        return Objects.hash(dimension, pos, boundFace);
+        int result = dimension.hashCode();
+        result = 31 * result + pos.hashCode();
+        result = 31 * result + boundFace.hashCode();
+        return result;
     }
 
     @Override

@@ -34,7 +34,7 @@ import appeng.helpers.patternprovider.PatternProviderTarget;
  * cooldowns, probes, penalties and fairness remains outside this class.</p>
  */
 public class ProviderTarget extends TargetAddress {
-    private static final int TARGET_CACHE_TTL = 20;
+    private static final int STORAGE_TARGET_CACHE_TTL = 20;
 
     private final ProviderTargetRuntime runtime =
             new ProviderTargetRuntime();
@@ -71,11 +71,9 @@ public class ProviderTarget extends TargetAddress {
         if (blockEntity == null) {
             return null;
         }
-        long gameTick = level.getGameTime();
-        if (runtime.adapter == null
-                || gameTick - runtime.adapterCreatedTick >= TARGET_CACHE_TTL) {
+        if (!runtime.adapterResolved) {
             runtime.adapter = MachineAdapterRegistry.find(level, pos());
-            runtime.adapterCreatedTick = gameTick;
+            runtime.adapterResolved = true;
         }
         return runtime.adapter;
     }
@@ -352,7 +350,7 @@ public class ProviderTarget extends TargetAddress {
     private void invalidatePhysicalState() {
         runtime.blockEntityRef = null;
         runtime.adapter = null;
-        runtime.adapterCreatedTick = Long.MIN_VALUE;
+        runtime.adapterResolved = false;
         runtime.storageTargets.clear();
         runtime.blockedThisTick.clear();
         runtime.blockedGameTick = Long.MIN_VALUE;
@@ -365,7 +363,7 @@ public class ProviderTarget extends TargetAddress {
         private WeakReference<BlockEntity> blockEntityRef;
         @Nullable
         private MachineAdapter adapter;
-        private long adapterCreatedTick = Long.MIN_VALUE;
+        private boolean adapterResolved;
         private final Map<Direction, CachedStorageTarget> storageTargets =
                 new EnumMap<>(Direction.class);
         private final Set<PatternProviderTarget> blockedThisTick =
@@ -395,7 +393,7 @@ public class ProviderTarget extends TargetAddress {
 
         private boolean isValid(BlockEntity current, long gameTick) {
             return blockEntity.get() == current
-                    && gameTick - createdTick < TARGET_CACHE_TTL;
+                    && gameTick - createdTick < STORAGE_TARGET_CACHE_TTL;
         }
     }
 }

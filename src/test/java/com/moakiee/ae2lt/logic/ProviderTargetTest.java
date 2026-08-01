@@ -54,6 +54,19 @@ class ProviderTargetTest {
     }
 
     @Test
+    void wirelessConnectionTagRoundTripKeepsAddress() {
+        var original = new WirelessConnection(
+                Level.NETHER, new BlockPos(-7, 64, 12), Direction.WEST);
+
+        var restored = WirelessConnection.fromTag(original.toTag());
+
+        assertEquals(original, restored);
+        assertEquals(Level.NETHER, restored.dimension());
+        assertEquals(new BlockPos(-7, 64, 12), restored.pos());
+        assertEquals(Direction.WEST, restored.boundFace());
+    }
+
+    @Test
     void overflowQueueReusesOrphanConnectionRuntime() {
         var orphan = new WirelessConnection(
                 Level.OVERWORLD, new BlockPos(7, 8, 9), Direction.WEST);
