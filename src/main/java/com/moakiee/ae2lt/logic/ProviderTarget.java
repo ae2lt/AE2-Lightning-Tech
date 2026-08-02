@@ -182,6 +182,19 @@ public class ProviderTarget extends TargetAddress {
                 level, pos(), boundFace(), pattern);
     }
 
+    public final boolean canAccept(
+            ServerLevel level,
+            IPatternDetails pattern,
+            IActionSource source) {
+        var resolvedAdapter = resolveAdapter(level);
+        return resolvedAdapter != null && resolvedAdapter.canAccept(
+                level,
+                pos(),
+                boundFace(),
+                pattern,
+                resolveStorageTarget(level, source));
+    }
+
     public final boolean supportsBatch(
             ServerLevel level, IPatternDetails pattern) {
         var resolvedAdapter = resolveAdapter(level);
@@ -216,6 +229,24 @@ public class ProviderTarget extends TargetAddress {
             int copies,
             Set<AEKey> patternInputs,
             IActionSource source) {
+        return pushCopies(
+                level,
+                pattern,
+                inputs,
+                copies,
+                PatternInputAcceptance.COMPLETE_BATCH,
+                patternInputs,
+                source);
+    }
+
+    public final PushResult pushCopies(
+            ServerLevel level,
+            IPatternDetails pattern,
+            KeyCounter[] inputs,
+            int copies,
+            PatternInputAcceptance inputAcceptance,
+            Set<AEKey> patternInputs,
+            IActionSource source) {
         var resolvedAdapter = resolveAdapter(level);
         if (resolvedAdapter == null) {
             return PushResult.REJECTED;
@@ -227,6 +258,7 @@ public class ProviderTarget extends TargetAddress {
                 pattern,
                 inputs,
                 copies,
+                inputAcceptance,
                 false,
                 patternInputs,
                 source,
