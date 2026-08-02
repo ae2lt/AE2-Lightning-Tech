@@ -118,6 +118,9 @@ public class MatrixControllerBlockEntity extends BlockEntity
     private List<CraftingUnitCacheEntry> craftingUnitCacheEntries = List.of();
     private List<MatrixCraftingUnit> cachedCraftingUnits = List.of();
     private boolean structureCacheValid;
+    private boolean structureCacheValidationRequired = true;
+    private boolean lastStructureCacheValidationResult;
+    private long lastStructureCacheValidationTick = Long.MIN_VALUE;
     private boolean structureAvailable;
     private boolean waitingForChunks;
     private long scheduledScanTick = NO_SCHEDULED_SCAN;
@@ -269,6 +272,10 @@ public class MatrixControllerBlockEntity extends BlockEntity
         if (level == null || level.isClientSide) {
             return;
         }
+        // A neighbor update can invalidate a cache that was already checked earlier in this
+        // tick. Force the next reader to validate it once, while still allowing the thousands of
+        // pattern-menu slot reads that follow to share that result.
+        structureCacheValidationRequired = true;
         long targetTick = level.getGameTime() + Math.max(1L, delayTicks);
         if (scheduledScanTick == NO_SCHEDULED_SCAN || targetTick < scheduledScanTick) {
             scheduledScanTick = targetTick;
@@ -569,7 +576,7 @@ public class MatrixControllerBlockEntity extends BlockEntity
             return List.of();
         }
         ensureStructureCache();
-        if (!validateStructureCache()) return List.of();
+        if (!validateStructureCacheForCurrentTick()) return List.of();
         return cachedPatternStorages;
     }
 
@@ -578,7 +585,7 @@ public class MatrixControllerBlockEntity extends BlockEntity
             return List.of();
         }
         ensureStructureCache();
-        if (!validateStructureCache()) return List.of();
+        if (!validateStructureCacheForCurrentTick()) return List.of();
         return cachedCraftingUnits;
     }
 
@@ -783,6 +790,7 @@ public class MatrixControllerBlockEntity extends BlockEntity
                 .map(CraftingUnitCacheEntry::unit)
                 .toList();
         structureCacheValid = true;
+        rememberStructureCacheValidation(true);
 
         if (level.getBlockEntity(result.portPos()) instanceof MatrixPortBlockEntity port) {
             ensureRuntimeStateLoaded(port);
@@ -811,6 +819,7 @@ public class MatrixControllerBlockEntity extends BlockEntity
         craftingUnitCacheEntries = List.of();
         cachedCraftingUnits = List.of();
         structureCacheValid = false;
+        rememberStructureCacheValidation(false);
         setChangedAndUpdate();
     }
 
@@ -838,6 +847,22 @@ public class MatrixControllerBlockEntity extends BlockEntity
         return List.copyOf(entries);
     }
 
+    private boolean validateStructureCacheForCurrentTick() {
+        if (level == null || !isFormed() || !structureCacheValid) {
+            rememberStructureCacheValidation(false);
+            return false;
+        }
+
+        long currentTick = level.getGameTime();
+        if (!structureCacheValidationRequired && lastStructureCacheValidationTick == currentTick) {
+            return lastStructureCacheValidationResult;
+        }
+
+        boolean valid = validateStructureCache();
+        rememberStructureCacheValidation(valid);
+        return valid;
+    }
+
     private boolean validateStructureCache() {
         if (level == null || !isFormed() || !structureCacheValid) return false;
 
@@ -861,6 +886,14 @@ public class MatrixControllerBlockEntity extends BlockEntity
         cachedPatternStorages = storages.orElseThrow();
         cachedCraftingUnits = units.orElseThrow();
         return true;
+    }
+
+    private void rememberStructureCacheValidation(boolean valid) {
+        lastStructureCacheValidationTick = level != null
+                ? level.getGameTime()
+                : Long.MIN_VALUE;
+        lastStructureCacheValidationResult = valid;
+        structureCacheValidationRequired = false;
     }
 
     private static int distanceToCraftingCenter(BlockPos localPos) {
@@ -905,6 +938,7 @@ public class MatrixControllerBlockEntity extends BlockEntity
         waitingForChunks = true;
         structureAvailable = false;
         structureCacheValid = false;
+        rememberStructureCacheValidation(false);
         cachedPatternStorages = List.of();
         craftingUnitCacheEntries = List.of();
         cachedCraftingUnits = List.of();
@@ -1275,6 +1309,9 @@ public class MatrixControllerBlockEntity extends BlockEntity
         super.loadAdditional(tag, registries);
         formed = tag.getBoolean(TAG_FORMED);
         structureCacheValid = false;
+        structureCacheValidationRequired = true;
+        lastStructureCacheValidationResult = false;
+        lastStructureCacheValidationTick = Long.MIN_VALUE;
         structureAvailable = false;
         waitingForChunks = false;
         nextChunkCheckTick = 0L;
