@@ -31,6 +31,8 @@ import appeng.api.crafting.IPatternDetails;
 final class DispatchFairnessScheduler<T, P> {
 
     static final int WINDOW_TICKS = 100;
+    private static final int MIN_READY_COMPACTION_SIZE = 64;
+    private static final int READY_COMPACTION_MULTIPLIER = 4;
 
     private final Map<P, PatternState<T>> patterns;
     private final Set<T> pausedTargets = new HashSet<>();
@@ -128,7 +130,7 @@ final class DispatchFairnessScheduler<T, P> {
         var patternState = stateFor(pattern, gameTick);
         activateDueTargets(patternState, gameTick);
         var targetState = patternState.targets.get(target);
-        return targetState == null ? 0L : targetState.dispatchCount;
+        return targetState == null ? 0L : targetState.ownedCopies;
     }
 
     long minimumActiveDispatchCount(P pattern, long gameTick) {
@@ -137,7 +139,7 @@ final class DispatchFairnessScheduler<T, P> {
         long minimum = Long.MAX_VALUE;
         for (var targetState : patternState.targets.values()) {
             if (targetState.active) {
-                minimum = Math.min(minimum, targetState.dispatchCount);
+                minimum = Math.min(minimum, targetState.ownedCopies);
             }
         }
         return minimum == Long.MAX_VALUE ? 0L : minimum;
@@ -149,7 +151,7 @@ final class DispatchFairnessScheduler<T, P> {
         long maximum = 0L;
         for (var targetState : patternState.targets.values()) {
             if (targetState.active) {
-                maximum = Math.max(maximum, targetState.dispatchCount);
+                maximum = Math.max(maximum, targetState.ownedCopies);
             }
         }
         return maximum;
@@ -178,7 +180,8 @@ final class DispatchFairnessScheduler<T, P> {
             state.activeSum = 0L;
             state.activeCountFrequencies.clear();
             for (var targetState : state.targets.values()) {
-                targetState.dispatchCount = 0L;
+                targetState.ownedCopies = 0L;
+                targetState.schedulingCredit = 0L;
                 targetState.leased = false;
                 targetState.leasedAllowance = 0L;
                 targetState.queueVersion++;
@@ -194,28 +197,42 @@ final class DispatchFairnessScheduler<T, P> {
         while (!state.history.isEmpty()
                 && state.history.peekFirst().gameTick <= expireThrough) {
             var expired = state.history.removeFirst();
-            for (var entry : expired.amounts.entrySet()) {
-                var targetState = entry.getKey();
-                if (state.targets.get(targetState.target) != targetState) {
-                    continue;
-                }
-                long amount = Math.min(
-                        targetState.dispatchCount, entry.getValue());
-                if (amount <= 0L) {
-                    continue;
-                }
-                if (targetState.active) {
-                    removeFrequency(state, targetState.dispatchCount);
-                    state.activeSum -= amount;
-                }
-                targetState.dispatchCount -= amount;
-                if (targetState.active) {
-                    addFrequency(state, targetState.dispatchCount);
-                    offer(state, targetState);
-                }
+            expireAmounts(state, expired.ownedCopies, false);
+            expireAmounts(state, expired.schedulingCredits, true);
+        }
+    }
+
+    private void expireAmounts(
+            PatternState<T> state,
+            Map<TargetState<T>, Long> amounts,
+            boolean schedulingCredit) {
+        for (var entry : amounts.entrySet()) {
+            var targetState = entry.getKey();
+            if (state.targets.get(targetState.target) != targetState) {
+                continue;
+            }
+            long amount = Math.min(
+                    schedulingCredit
+                            ? targetState.schedulingCredit
+                            : targetState.ownedCopies,
+                    entry.getValue());
+            if (amount <= 0L) {
+                continue;
+            }
+            if (targetState.active) {
+                removeFrequency(state, targetState.effectiveCount());
+                state.activeSum -= amount;
+            }
+            if (schedulingCredit) {
+                targetState.schedulingCredit -= amount;
+            } else {
+                targetState.ownedCopies -= amount;
+            }
+            if (targetState.active) {
+                addFrequency(state, targetState.effectiveCount());
+                offer(state, targetState);
             }
         }
-        restoreRatioFloor(state);
     }
 
     private void synchronizeTargets(
@@ -275,24 +292,25 @@ final class DispatchFairnessScheduler<T, P> {
             PatternState<T> state,
             TargetState<T> targetState) {
         long baseline = ceilingAverage(state.activeSum, state.activeCount);
-        if (targetState.dispatchCount < baseline) {
+        if (targetState.effectiveCount() < baseline) {
             addSchedulingCredit(
-                    state, targetState, baseline - targetState.dispatchCount);
+                    state, targetState, baseline - targetState.effectiveCount());
         }
         targetState.cooldownUntil = Long.MIN_VALUE;
         targetState.active = true;
         targetState.leased = false;
         state.activeCount++;
-        state.activeSum = saturatingAdd(state.activeSum, targetState.dispatchCount);
-        addFrequency(state, targetState.dispatchCount);
+        state.activeSum = saturatingAdd(
+                state.activeSum, targetState.effectiveCount());
+        addFrequency(state, targetState.effectiveCount());
         offer(state, targetState);
     }
 
     private void deactivate(PatternState<T> state, TargetState<T> targetState) {
         if (targetState.active) {
             state.activeCount--;
-            state.activeSum -= targetState.dispatchCount;
-            removeFrequency(state, targetState.dispatchCount);
+            state.activeSum -= targetState.effectiveCount();
+            removeFrequency(state, targetState.effectiveCount());
         }
         targetState.active = false;
         targetState.leased = false;
@@ -309,12 +327,12 @@ final class DispatchFairnessScheduler<T, P> {
             PatternState<T> state,
             TargetState<T> targetState,
             long ownedCopies) {
-        removeFrequency(state, targetState.dispatchCount);
-        targetState.dispatchCount = saturatingAdd(
-                targetState.dispatchCount, ownedCopies);
+        removeFrequency(state, targetState.effectiveCount());
+        targetState.ownedCopies = saturatingAdd(
+                targetState.ownedCopies, ownedCopies);
         state.activeSum = saturatingAdd(state.activeSum, ownedCopies);
-        addFrequency(state, targetState.dispatchCount);
-        addHistory(state, targetState, ownedCopies);
+        addFrequency(state, targetState.effectiveCount());
+        addHistory(state, targetState, ownedCopies, false);
         targetState.lastSuccessfulSequence = ++sequence;
     }
 
@@ -326,22 +344,23 @@ final class DispatchFairnessScheduler<T, P> {
             return;
         }
         if (targetState.active) {
-            removeFrequency(state, targetState.dispatchCount);
+            removeFrequency(state, targetState.effectiveCount());
             state.activeSum = saturatingAdd(state.activeSum, credit);
         }
-        targetState.dispatchCount = saturatingAdd(
-                targetState.dispatchCount, credit);
+        targetState.schedulingCredit = saturatingAdd(
+                targetState.schedulingCredit, credit);
         if (targetState.active) {
-            addFrequency(state, targetState.dispatchCount);
+            addFrequency(state, targetState.effectiveCount());
             offer(state, targetState);
         }
-        addHistory(state, targetState, credit);
+        addHistory(state, targetState, credit, true);
     }
 
     private void addHistory(
             PatternState<T> state,
             TargetState<T> targetState,
-            long amount) {
+            long amount,
+            boolean schedulingCredit) {
         if (amount <= 0L) {
             return;
         }
@@ -350,37 +369,13 @@ final class DispatchFairnessScheduler<T, P> {
             bucket = new WindowBucket<>(state.lastAdvancedTick);
             state.history.addLast(bucket);
         }
-        bucket.amounts.merge(
+        var amounts = schedulingCredit
+                ? bucket.schedulingCredits
+                : bucket.ownedCopies;
+        amounts.merge(
                 targetState,
                 amount,
                 DispatchFairnessScheduler::saturatingAdd);
-    }
-
-    /**
-     * Expiration can remove one machine's old work before another machine's.
-     * Grant virtual scheduling credit up to half of the current maximum so a
-     * purely temporal bucket boundary cannot create catch-up monopolies.
-     */
-    private void restoreRatioFloor(PatternState<T> state) {
-        if (state.activeCountFrequencies.isEmpty()) {
-            return;
-        }
-        long maximum = state.activeCountFrequencies.lastKey();
-        long requiredMinimum = maximum <= 0L
-                ? 0L
-                : 1L + (maximum - 1L) / 2L;
-        if (state.activeCountFrequencies.firstKey() >= requiredMinimum) {
-            return;
-        }
-        for (var targetState : state.targets.values()) {
-            if (targetState.active
-                    && targetState.dispatchCount < requiredMinimum) {
-                addSchedulingCredit(
-                        state,
-                        targetState,
-                        requiredMinimum - targetState.dispatchCount);
-            }
-        }
     }
 
     private static <T> void addFrequency(PatternState<T> state, long count) {
@@ -405,11 +400,34 @@ final class DispatchFairnessScheduler<T, P> {
         }
         long version = ++targetState.queueVersion;
         state.ready.add(new ReadyEntry<>(
-                targetState.dispatchCount,
+                targetState.effectiveCount(),
                 targetState.lastSuccessfulSequence,
                 ++sequence,
                 version,
                 targetState));
+        compactReadyIfNeeded(state);
+    }
+
+    private void compactReadyIfNeeded(PatternState<T> state) {
+        int threshold = Math.max(
+                MIN_READY_COMPACTION_SIZE,
+                state.activeCount * READY_COMPACTION_MULTIPLIER);
+        if (state.ready.size() <= threshold) {
+            return;
+        }
+        state.ready.clear();
+        for (var targetState : state.targets.values()) {
+            if (!targetState.active || targetState.leased) {
+                continue;
+            }
+            long version = ++targetState.queueVersion;
+            state.ready.add(new ReadyEntry<>(
+                    targetState.effectiveCount(),
+                    targetState.lastSuccessfulSequence,
+                    ++sequence,
+                    version,
+                    targetState));
+        }
     }
 
     @Nullable
@@ -496,7 +514,7 @@ final class DispatchFairnessScheduler<T, P> {
             long ceiling = Math.max(
                     1L,
                     Math.min(averageCeiling, ratioCeiling));
-            return Math.max(0L, ceiling - targetState.dispatchCount);
+            return Math.max(0L, ceiling - targetState.effectiveCount());
         }
 
         @Nullable
@@ -507,6 +525,12 @@ final class DispatchFairnessScheduler<T, P> {
                 return null;
             }
             targetState.leasedAllowance = allowanceFor(state, targetState);
+            if (targetState.leasedAllowance <= 0L) {
+                targetState.leased = false;
+                targetState.leasedAllowance = 0L;
+                offer(state, targetState);
+                return null;
+            }
             leased.add(targetState);
             return targetState.target;
         }
@@ -523,6 +547,28 @@ final class DispatchFairnessScheduler<T, P> {
                         "Successful copies exceed this target's fairness allowance");
             }
             addSuccessfulCopies(state, targetState, ownedCopies);
+        }
+
+        /**
+         * Records physically owned copies and waits for the learned refill
+         * interval. Keeping the observed phase is required for machines whose
+         * processing completion is synchronized.
+         */
+        void successAndCover(
+                T target,
+                long ownedCopies,
+                int coverageTicks) {
+            success(target, ownedCopies);
+            var targetState = requireLeased(target);
+            int boundedCoverage = Math.max(1, coverageTicks);
+            long delay = boundedCoverage;
+            deactivate(state, targetState);
+            targetState.cooldownUntil = saturatingAdd(gameTick, delay);
+            targetState.cooldownVersion++;
+            state.cooldowns.add(new CooldownEntry<>(
+                    targetState.cooldownUntil,
+                    targetState.cooldownVersion,
+                    targetState));
         }
 
         void cooldown(T target, long retryAfter) {
@@ -595,7 +641,8 @@ final class DispatchFairnessScheduler<T, P> {
 
     private static final class TargetState<T> {
         private final T target;
-        private long dispatchCount;
+        private long ownedCopies;
+        private long schedulingCredit;
         private long lastSuccessfulSequence;
         private long queueVersion;
         private long cooldownVersion;
@@ -606,6 +653,10 @@ final class DispatchFairnessScheduler<T, P> {
 
         private TargetState(T target) {
             this.target = target;
+        }
+
+        private long effectiveCount() {
+            return saturatingAdd(ownedCopies, schedulingCredit);
         }
     }
 
@@ -625,7 +676,8 @@ final class DispatchFairnessScheduler<T, P> {
 
     private static final class WindowBucket<T> {
         private final long gameTick;
-        private final Map<TargetState<T>, Long> amounts = new HashMap<>();
+        private final Map<TargetState<T>, Long> ownedCopies = new HashMap<>();
+        private final Map<TargetState<T>, Long> schedulingCredits = new HashMap<>();
 
         private WindowBucket(long gameTick) {
             this.gameTick = gameTick;

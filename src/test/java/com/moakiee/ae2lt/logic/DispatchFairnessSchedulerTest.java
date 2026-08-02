@@ -66,7 +66,7 @@ class DispatchFairnessSchedulerTest {
     }
 
     @Test
-    void cooledTargetIsExcludedAndReturnsAtTheActiveAverage() {
+    void cooledTargetReturnsWithoutFabricatingOwnedCopies() {
         var scheduler = new DispatchFairnessScheduler<String, String>();
         var targets = List.of("fast", "slow");
 
@@ -91,9 +91,40 @@ class DispatchFairnessSchedulerTest {
         try (var ignored = scheduler.beginPass(PATTERN, targets, 1L, 10L)) {
             assertEquals(2, ignored.activeTargetsAtStart());
         }
-        assertEquals(
-                activeCount,
-                scheduler.dispatchCount(PATTERN, "slow", 10L));
+        assertEquals(2L, scheduler.dispatchCount(PATTERN, "slow", 10L));
+        assertEquals(4L, activeCount);
+    }
+
+    @Test
+    void coveragePreservesSynchronizedMachinePhase() {
+        var scheduler = new DispatchFairnessScheduler<String, String>();
+
+        try (var pass = scheduler.beginPass(
+                PATTERN, FOUR_TARGETS, 1L, 0L)) {
+            String target;
+            while ((target = pass.poll()) != null) {
+                pass.successAndCover(target, 1L, 2);
+            }
+        }
+
+        assertEquals(0, scheduler.activeTargetCount(PATTERN, 1L));
+        try (var pass = scheduler.beginPass(
+                PATTERN, FOUR_TARGETS, 1L, 1L)) {
+            assertEquals(null, pass.poll());
+        }
+
+        assertEquals(4, scheduler.activeTargetCount(PATTERN, 2L));
+        var refillWave = new java.util.HashSet<String>();
+        try (var pass = scheduler.beginPass(
+                PATTERN, FOUR_TARGETS, 1L, 2L)) {
+            String target;
+            while ((target = pass.poll()) != null) {
+                refillWave.add(target);
+                pass.successAndCover(target, 1L, 2);
+            }
+        }
+
+        assertEquals(4, refillWave.size());
     }
 
     @Test
@@ -132,12 +163,6 @@ class DispatchFairnessSchedulerTest {
         assertEquals(0L, scheduler.minimumActiveDispatchCount(PATTERN, 199L));
     }
 
-    @Test
-    void oneProviderBatchPerTickSustainsOneHundredParallelMachines() {
-        assertSustainedThroughput(128L);
-        assertSustainedThroughput(256L);
-    }
-
     private static <T> void assertActiveRatio(
             DispatchFairnessScheduler<T, String> scheduler,
             long tick) {
@@ -174,88 +199,4 @@ class DispatchFairnessSchedulerTest {
         assertEquals(d, scheduler.dispatchCount(PATTERN, "d", tick));
     }
 
-    private static void assertSustainedThroughput(long recipesPerTick) {
-        int machines = 100;
-        long capacity = 1_000L;
-        var scheduler = new DispatchFairnessScheduler<Integer, String>();
-        var targets = java.util.stream.IntStream.range(0, machines)
-                .boxed()
-                .toList();
-        long[] stored = new long[machines];
-
-        long tick = 0L;
-        while (tick < 32L
-                && java.util.Arrays.stream(stored).anyMatch(value -> value < capacity)) {
-            long free = java.util.Arrays.stream(stored)
-                    .map(value -> capacity - value)
-                    .sum();
-            dispatchCopies(scheduler, targets, stored, capacity, free, tick);
-            tick++;
-        }
-        for (long value : stored) {
-            assertEquals(capacity, value);
-        }
-
-        for (int sustainedTick = 0; sustainedTick < 160; sustainedTick++, tick++) {
-            for (int machine = 0; machine < machines; machine++) {
-                stored[machine] -= recipesPerTick;
-            }
-            long leftover = dispatchCopies(
-                    scheduler,
-                    targets,
-                    stored,
-                    capacity,
-                    recipesPerTick * machines,
-                    tick);
-            assertEquals(0L, leftover);
-            for (long value : stored) {
-                assertEquals(capacity, value);
-            }
-            assertActiveRatio(scheduler, tick);
-        }
-    }
-
-    private static long dispatchCopies(
-            DispatchFairnessScheduler<Integer, String> scheduler,
-            List<Integer> targets,
-            long[] stored,
-            long capacity,
-            long requested,
-            long tick) {
-        long remaining = requested;
-        try (var pass = scheduler.beginPass(PATTERN, targets, 1L, tick)) {
-            Integer target;
-            while (remaining > 0L && (target = pass.poll()) != null) {
-                long requestedForTarget = Math.min(
-                        remaining, pass.allowance(target));
-                long accepted = safeRampAccepted(
-                        requestedForTarget, capacity - stored[target]);
-                if (accepted <= 0L) {
-                    continue;
-                }
-                pass.success(target, accepted);
-                stored[target] += accepted;
-                remaining -= accepted;
-            }
-        }
-        return remaining;
-    }
-
-    private static long safeRampAccepted(long requested, long freeCapacity) {
-        long accepted = 0L;
-        long fullCredit = 0L;
-        while (accepted < requested) {
-            long chunk = Math.min(
-                    fullCredit <= 0L ? 1L : fullCredit,
-                    requested - accepted);
-            if (chunk > freeCapacity - accepted) {
-                break;
-            }
-            accepted += chunk;
-            fullCredit = Long.MAX_VALUE - fullCredit < chunk
-                    ? Long.MAX_VALUE
-                    : fullCredit + chunk;
-        }
-        return accepted;
-    }
 }

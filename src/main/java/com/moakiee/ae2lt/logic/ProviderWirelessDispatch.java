@@ -39,6 +39,8 @@ final class ProviderWirelessDispatch {
     private final ReadyQueue<WirelessConnection, ConnectionState> evenReady;
     private final DispatchFairnessScheduler<WirelessConnection, IPatternDetails> fairness =
             DispatchFairnessScheduler.forCanonicalPatterns();
+    private final WirelessBatchCadence<WirelessConnection> batchCadence =
+            new WirelessBatchCadence<>();
     private final Map<WirelessConnection, Map<IPatternDetails, Penalty>> penalties =
             new HashMap<>();
     private final DueTaskQueue<TargetPatternKey<WirelessConnection>> penaltyExpirations =
@@ -151,6 +153,7 @@ final class ProviderWirelessDispatch {
 
     void removeTarget(WirelessConnection target) {
         removePenalties(target);
+        batchCadence.removeTarget(target);
         fairness.removeTarget(target);
         evenReady.remove(target);
         singleReady.remove(target);
@@ -160,6 +163,7 @@ final class ProviderWirelessDispatch {
     void patternsChanged() {
         penalties.clear();
         penaltyExpirations.clear();
+        batchCadence.clear();
         fairness.clear();
         for (var connection : states.keySet()) {
             ((ProviderTarget) connection).clearBatchHistory();
@@ -304,7 +308,7 @@ final class ProviderWirelessDispatch {
                 continue;
             }
             boolean probing = isProbing(state, gameTick);
-            var result = attempt.push(connection, remaining);
+            var result = attempt.push(connection, remaining, false);
             if (result.outcome.consumesTargetAttempt()) {
                 state.probeArmed = false;
             }
@@ -388,12 +392,25 @@ final class ProviderWirelessDispatch {
                 if (share <= 0L) {
                     continue;
                 }
-                var result = attempt.push(connection, share);
+                boolean exploratoryAttempt =
+                        batchCadence.isExploratoryAttempt(
+                                connection, pattern);
+                var result = attempt.push(
+                        connection, share, exploratoryAttempt);
                 if (result.outcome.consumesTargetAttempt()) {
                     state.probeArmed = false;
                 }
                 if (result.ownedCopies > 0L) {
-                    pass.success(connection, result.ownedCopies);
+                    int coverageTicks = batchCadence.recordSuccess(
+                            connection,
+                            pattern,
+                            gameTick,
+                            result.ownedCopies,
+                            result.acceptedFullChunk,
+                            result.requestLimited,
+                            exploratoryAttempt);
+                    pass.successAndCover(
+                            connection, result.ownedCopies, coverageTicks);
                     recordSuccess(connection, pattern);
                     remaining -= result.ownedCopies;
                     recordPushSuccess(state, probing, gameTick);
@@ -409,19 +426,27 @@ final class ProviderWirelessDispatch {
 
                 switch (result.outcome) {
                     case HARD_FAIL -> {
+                        int retryDelay = recordBatchFailure(
+                                connection, pattern, gameTick, result,
+                                exploratoryAttempt);
                         if (!alive.test(connection)) {
                             pass.remove(connection);
                             removeTarget(connection);
                             targetRemoved.accept(connection);
                         } else {
-                            long due = recordRejection(
-                                    connection, pattern, gameTick, fastMode);
+                            long due = batchRetryAfter(
+                                    connection, pattern, gameTick,
+                                    fastMode, result, retryDelay);
                             pass.cooldown(connection, due);
                         }
                     }
                     case SOFT_FAIL -> {
-                        long due = recordRejection(
-                                connection, pattern, gameTick, fastMode);
+                        int retryDelay = recordBatchFailure(
+                                connection, pattern, gameTick, result,
+                                exploratoryAttempt);
+                        long due = batchRetryAfter(
+                                connection, pattern, gameTick,
+                                fastMode, result, retryDelay);
                         pass.cooldown(connection, due);
                     }
                     case GLOBAL_ABORT -> {
@@ -433,6 +458,36 @@ final class ProviderWirelessDispatch {
             }
         }
         return remaining;
+    }
+
+    private int recordBatchFailure(
+            WirelessConnection connection,
+            IPatternDetails pattern,
+            long gameTick,
+            BatchAttemptResult result,
+            boolean exploratoryAttempt) {
+        if (result.attemptedCopies > 0) {
+            return batchCadence.recordFailure(
+                    connection,
+                    pattern,
+                    gameTick,
+                    result.attemptedCopies,
+                    exploratoryAttempt);
+        }
+        return 0;
+    }
+
+    private long batchRetryAfter(
+            WirelessConnection connection,
+            IPatternDetails pattern,
+            long gameTick,
+            boolean fastMode,
+            BatchAttemptResult result,
+            int retryDelay) {
+        if (result.attemptedCopies > 0) {
+            return gameTick + Math.max(1, retryDelay);
+        }
+        return recordRejection(connection, pattern, gameTick, fastMode);
     }
 
     private static boolean isProbing(
@@ -507,7 +562,15 @@ final class ProviderWirelessDispatch {
         for (var connection : valid) {
             retained.add(connection);
         }
-        states.keySet().retainAll(retained);
+        var removed = new ArrayList<WirelessConnection>();
+        for (var connection : states.keySet()) {
+            if (!retained.contains(connection)) {
+                removed.add(connection);
+            }
+        }
+        for (var connection : removed) {
+            removeTarget(connection);
+        }
     }
 
     void clear() {
@@ -758,11 +821,17 @@ final class ProviderWirelessDispatch {
     @FunctionalInterface
     interface BatchAttempt {
         BatchAttemptResult push(
-                WirelessConnection connection, long maxCopies);
+                WirelessConnection connection,
+                long maxCopies,
+                boolean exploratoryAttempt);
     }
 
     record BatchAttemptResult(
-            long ownedCopies, WirelessPushOutcome outcome) {
+            long ownedCopies,
+            int attemptedCopies,
+            boolean acceptedFullChunk,
+            boolean requestLimited,
+            WirelessPushOutcome outcome) {
     }
 
     @FunctionalInterface

@@ -322,7 +322,20 @@ dependencies {
 }
 
 tasks.named('test', Test) {
-    useJUnitPlatform()
+    useJUnitPlatform {
+        excludeTags 'adaptive-batch-stress'
+    }
+}
+
+tasks.register('adaptiveBatchStress', Test) {
+    description = 'Runs the executable 512-target adaptive batch acceptance models.'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform {
+        includeTags 'adaptive-batch-stress'
+    }
+    shouldRunAfter tasks.named('test')
 }
 
 // Keep the source and adapted third-party licensing notices inside every published mod jar.

@@ -2,33 +2,18 @@ package com.moakiee.ae2lt.logic;
 
 import java.util.ArrayList;
 import java.util.EnumMap;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 
-import appeng.api.crafting.IPatternDetails;
-
 /** Runtime scheduling owner for the provider's adjacent physical targets. */
 final class ProviderNormalDispatch {
-    private static final int INITIAL_COOLDOWN = 5;
-    private static final int MAX_COOLDOWN = 40;
-
     private final Map<Direction, ProviderTarget> targets =
             new EnumMap<>(Direction.class);
-    private final Map<ProviderTarget, Map<IPatternDetails, Penalty>> penalties =
-            new HashMap<>();
-    private final DueTaskQueue<TargetPatternKey<ProviderTarget>> expirations =
-            new DueTaskQueue<>();
-    private final DispatchFairnessScheduler<ProviderTarget, IPatternDetails> fairness =
-            DispatchFairnessScheduler.forCanonicalPatterns();
     private int cursor;
-    private long topologyVersion;
-    private Set<ProviderTarget> activeTargets = Set.of();
 
     ProviderTarget target(
             ServerLevel level,
@@ -41,7 +26,6 @@ final class ProviderNormalDispatch {
                     || !current.dimension().equals(level.dimension())
                     || !current.pos().equals(targetPos)
                     || current.boundFace() != targetFace) {
-                topologyVersion++;
                 return new ProviderTarget(
                         level.dimension(), targetPos, targetFace);
             }
@@ -50,10 +34,7 @@ final class ProviderNormalDispatch {
     }
 
     void restore(Direction pushDirection, ProviderTarget target) {
-        var previous = targets.put(pushDirection, target);
-        if (previous != target) {
-            topologyVersion++;
-        }
+        targets.put(pushDirection, target);
     }
 
     List<Direction> dispatchOrder(List<Direction> directions) {
@@ -69,114 +50,30 @@ final class ProviderNormalDispatch {
         return ordered;
     }
 
-    DispatchFairnessScheduler<ProviderTarget, IPatternDetails>.Pass beginPass(
-            IPatternDetails pattern,
-            java.util.Collection<ProviderTarget> currentTargets,
-            long gameTick) {
-        return fairness.beginPass(
-                pattern, currentTargets, topologyVersion, gameTick);
-    }
-
     long dispatchBatch(
-            IPatternDetails pattern,
             java.util.Collection<ProviderTarget> currentTargets,
             long maxCopies,
-            long gameTick,
             BatchAttempt attempt) {
-        var currentActive = Set.copyOf(currentTargets);
-        if (!currentActive.equals(activeTargets)) {
-            activeTargets = currentActive;
-            topologyVersion++;
-        }
+        var orderedTargets = List.copyOf(currentTargets);
         long remaining = maxCopies;
-        try (var pass = beginPass(pattern, currentTargets, gameTick)) {
-            int attemptBudget = pass.activeTargetsAtStart();
-            for (int attempts = 0;
-                 attempts < attemptBudget && remaining > 0L;
-                 attempts++) {
-                var target = pass.poll();
-                if (target == null) {
-                    break;
-                }
-
-                long retryAfter = retryAfter(target, pattern, gameTick);
-                if (retryAfter > gameTick) {
-                    pass.cooldown(target, retryAfter);
-                    continue;
-                }
-
-                long share = Math.min(remaining, pass.allowance(target));
-                if (share <= 0L) {
-                    continue;
-                }
-                var result = attempt.push(target, share);
-                if (result.ownedCopies <= 0L) {
-                    if (result.globalAbort) {
-                        break;
-                    }
-                    long due = recordRejection(target, pattern, gameTick);
-                    pass.cooldown(target, due);
-                    continue;
-                }
-
-                pass.success(target, result.ownedCopies);
-                recordSuccess(target, pattern);
-                remaining -= result.ownedCopies;
-                if (result.stop || result.globalAbort) {
-                    break;
-                }
+        int targetsRemaining = orderedTargets.size();
+        for (var target : orderedTargets) {
+            if (remaining <= 0L) {
+                break;
+            }
+            long share = ceilingDivide(remaining, targetsRemaining--);
+            var result = attempt.push(target, share);
+            if (result.ownedCopies > 0L) {
+                remaining -= Math.min(remaining, result.ownedCopies);
+            }
+            if (result.stop || result.globalAbort) {
+                break;
             }
         }
         return remaining;
     }
 
-    long retryAfter(
-            ProviderTarget target,
-            IPatternDetails pattern,
-            long gameTick) {
-        purgeExpired(gameTick);
-        var byPattern = penalties.get(target);
-        if (byPattern == null) {
-            return Long.MIN_VALUE;
-        }
-        var penalty = byPattern.get(pattern);
-        return penalty == null ? Long.MIN_VALUE : penalty.retryAfter;
-    }
-
-    long recordRejection(
-            ProviderTarget target,
-            IPatternDetails pattern,
-            long gameTick) {
-        purgeExpired(gameTick);
-        var byPattern = penalties.computeIfAbsent(
-                target, ignored -> CanonicalPatternMaps.create());
-        var previous = byPattern.get(pattern);
-        int cooldown = previous == null
-                ? INITIAL_COOLDOWN
-                : Math.min(MAX_COOLDOWN, previous.cooldown * 2);
-        long retryAfter = gameTick + cooldown;
-        byPattern.put(pattern, new Penalty(retryAfter, cooldown));
-        expirations.schedule(
-                new TargetPatternKey<>(target, pattern), retryAfter);
-        return retryAfter;
-    }
-
-    void recordSuccess(ProviderTarget target, IPatternDetails pattern) {
-        var byPattern = penalties.get(target);
-        if (byPattern == null) {
-            return;
-        }
-        byPattern.remove(pattern);
-        expirations.remove(new TargetPatternKey<>(target, pattern));
-        if (byPattern.isEmpty()) {
-            penalties.remove(target);
-        }
-    }
-
     void patternsChanged() {
-        penalties.clear();
-        expirations.clear();
-        fairness.clear();
         for (var target : targets.values()) {
             target.clearBatchHistory();
         }
@@ -192,30 +89,13 @@ final class ProviderNormalDispatch {
     void clear() {
         clearRuntimeState();
         targets.clear();
-        activeTargets = Set.of();
         cursor = 0;
-        topologyVersion++;
     }
 
-    private void purgeExpired(long gameTick) {
-        TargetPatternKey<ProviderTarget> expired;
-        while ((expired = expirations.pollDue(gameTick)) != null) {
-            var byPattern = penalties.get(expired.target());
-            if (byPattern == null) {
-                continue;
-            }
-            var penalty = byPattern.get(expired.pattern());
-            if (penalty == null || penalty.retryAfter > gameTick) {
-                continue;
-            }
-            byPattern.remove(expired.pattern());
-            if (byPattern.isEmpty()) {
-                penalties.remove(expired.target());
-            }
-        }
-    }
-
-    private record Penalty(long retryAfter, int cooldown) {
+    private static long ceilingDivide(long amount, int divisor) {
+        return amount <= 0L || divisor <= 0
+                ? 0L
+                : 1L + (amount - 1L) / divisor;
     }
 
     @FunctionalInterface

@@ -263,6 +263,13 @@ final class AE2NativeMachineAdapter implements MachineAdapter {
         boolean matchingOutputBlocked = false;
 
         for (var wrapper : wrappers.values()) {
+            // TODO(perf): A 512-target Spark sample put getAvailableStacks at only
+            // about 0.1 ms/t, so a discovery cache is not worth its state cost yet.
+            // If this becomes material, keep a 100-tick cumulative key window,
+            // refresh it every 20 ticks, and disable accumulation in fast mode.
+            // Known keys can then be extracted with MODULATE/Long.MAX_VALUE
+            // (16_384 for configured rate-limited targets), after maxAccept has
+            // bounded the request so a full sink cannot force compensation inserts.
             // Fresh counter per scan: KeyCounter.reset() keeps zeroed keys forever,
             // so a reused buffer accumulates every key ever scanned and makes
             // reset/iteration cost grow unboundedly (was 77% of server tick).
