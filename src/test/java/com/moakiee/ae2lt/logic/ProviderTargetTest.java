@@ -424,60 +424,117 @@ class ProviderTargetTest {
     }
 
     @Test
-    void wirelessBatchStepPerformsOnlyOneProbePerTargetVisit() {
+    void wirelessGrowthProofRepeatsOnlyTheBaselineWithinEachTick() {
         var pattern = new EmptyPattern();
         var chunks = new ArrayList<Integer>();
+        var firstTick = target.pushPatternStep(
+                pattern,
+                1_000L,
+                0L,
+                true,
+                () -> false,
+                copies -> {
+                    chunks.add(copies);
+                    return new ProviderTarget.BatchChunk(
+                            copies, true, false);
+                });
 
-        for (long tick = 0L; tick < 5L; tick++) {
-            var result = target.pushPatternStep(
-                    pattern,
-                    1_000L,
-                    tick,
-                    true,
-                    () -> false,
-                    copies -> {
-                        chunks.add(copies);
-                        return new ProviderTarget.BatchChunk(
-                                copies, true, false);
-                    });
-            assertEquals(chunks.getLast().longValue(), result.ownedCopies());
-        }
+        assertEquals(1_000L, firstTick.ownedCopies());
+        assertEquals(
+                List.of(1, 1, 2, 4, 8, 16, 32, 64, 128, 256, 488),
+                chunks);
 
-        assertEquals(List.of(1, 1, 2, 4, 8), chunks);
+        chunks.clear();
+        var secondTick = target.pushPatternStep(
+                pattern,
+                1_024L,
+                1L,
+                true,
+                () -> false,
+                copies -> {
+                    chunks.add(copies);
+                    return new ProviderTarget.BatchChunk(
+                            copies, true, false);
+                });
+
+        assertEquals(1_024L, secondTick.ownedCopies());
+        assertEquals(List.of(256, 256, 512), chunks);
+    }
+
+    @Test
+    void wirelessSecondBaselineFailureRestartsTheProofNextTick() {
+        var pattern = new EmptyPattern();
+        var chunks = new ArrayList<Integer>();
+        int[] firstTickCalls = {0};
+
+        var firstTick = target.pushPatternStep(
+                pattern,
+                100L,
+                0L,
+                true,
+                () -> false,
+                copies -> {
+                    chunks.add(copies);
+                    return firstTickCalls[0]++ == 0
+                            ? new ProviderTarget.BatchChunk(
+                                    copies, true, false)
+                            : ProviderTarget.BatchChunk.REJECTED;
+                });
+        int nextTickStart = chunks.size();
+        var secondTick = target.pushPatternStep(
+                pattern,
+                100L,
+                1L,
+                true,
+                () -> false,
+                copies -> {
+                    chunks.add(copies);
+                    return new ProviderTarget.BatchChunk(
+                            copies, true, false);
+                });
+        assertEquals(1L, firstTick.ownedCopies());
+        assertEquals(
+                ProviderTarget.BaselineStatus.PREFIX_COMPLETE,
+                firstTick.baselineStatus());
+        assertEquals(100L, secondTick.ownedCopies());
+        assertEquals(
+                List.of(1, 1, 2, 4, 8, 16, 32, 36),
+                chunks.subList(nextTickStart, chunks.size()));
     }
 
     @Test
     void wirelessBatchStepCapsGrowthAtProvenChunk() {
         var pattern = new EmptyPattern();
-        for (long tick = 0L; tick < 5L; tick++) {
-            target.pushPatternStep(
-                    pattern,
-                    1_000L,
-                    tick,
-                    true,
-                    () -> false,
-                    copies -> new ProviderTarget.BatchChunk(
-                            copies, true, false));
-        }
+        target.pushPatternStep(
+                pattern,
+                16L,
+                0L,
+                true,
+                () -> false,
+                copies -> new ProviderTarget.BatchChunk(
+                        copies, true, false));
 
         var chunks = new ArrayList<Integer>();
         var rejected = target.pushPatternStep(
                 pattern,
                 1_000L,
-                5L,
+                1L,
                 true,
                 () -> false,
                 copies -> {
                     chunks.add(copies);
-                    return ProviderTarget.BatchChunk.REJECTED;
+                    return copies < 16
+                            ? new ProviderTarget.BatchChunk(
+                                    copies, true, false)
+                            : ProviderTarget.BatchChunk.REJECTED;
                 });
-        assertEquals(0L, rejected.ownedCopies());
-        assertEquals(List.of(16), chunks);
+        assertEquals(16L, rejected.ownedCopies());
+        assertEquals(List.of(8, 8, 16), chunks);
 
         var recovered = target.pushPatternStep(
                 pattern,
                 1_000L,
-                6L,
+                2L,
                 true,
                 () -> false,
                 copies -> {
@@ -485,12 +542,12 @@ class ProviderTargetTest {
                     return new ProviderTarget.BatchChunk(
                             copies, true, false);
                 });
-        assertEquals(8L, recovered.ownedCopies());
+        assertEquals(16L, recovered.ownedCopies());
 
         target.pushPatternStep(
                 pattern,
                 1_000L,
-                7L,
+                3L,
                 true,
                 () -> false,
                 copies -> {
@@ -498,76 +555,75 @@ class ProviderTargetTest {
                     return new ProviderTarget.BatchChunk(
                             copies, true, false);
                 });
-        assertEquals(List.of(16, 8, 8), chunks);
+        assertEquals(List.of(8, 8, 16, 8, 8, 8, 8), chunks);
     }
 
     @Test
     void wirelessBatchStepBacksOffWhenProvenChunkNoLongerFits() {
         var pattern = new EmptyPattern();
-        for (long tick = 0L; tick < 5L; tick++) {
-            target.pushPatternStep(
-                    pattern,
-                    1_000L,
-                    tick,
-                    true,
-                    () -> false,
-                    copies -> new ProviderTarget.BatchChunk(
-                            copies, true, false));
-        }
+        target.pushPatternStep(
+                pattern,
+                16L,
+                0L,
+                true,
+                () -> false,
+                copies -> new ProviderTarget.BatchChunk(
+                        copies, true, false));
 
         var chunks = new ArrayList<Integer>();
-        for (long tick = 5L; tick < 11L; tick++) {
-            int attempt = (int) tick - 5;
-            target.pushPatternStep(
-                    pattern,
-                    1_000L,
-                    tick,
-                    true,
-                    () -> false,
-                    copies -> {
-                        chunks.add(copies);
-                        return attempt == 0 || attempt == 3
-                                ? ProviderTarget.BatchChunk.REJECTED
-                                : new ProviderTarget.BatchChunk(
-                                        copies, true, false);
-                    });
-        }
+        target.pushPatternStep(
+                pattern,
+                1_000L,
+                1L,
+                true,
+                () -> false,
+                copies -> {
+                    chunks.add(copies);
+                    return ProviderTarget.BatchChunk.REJECTED;
+                });
+        target.pushPatternStep(
+                pattern,
+                1_000L,
+                2L,
+                true,
+                () -> false,
+                copies -> {
+                    chunks.add(copies);
+                    return new ProviderTarget.BatchChunk(
+                            copies, true, false);
+                });
+        target.pushPatternStep(
+                pattern,
+                1_000L,
+                3L,
+                true,
+                () -> false,
+                copies -> {
+                    chunks.add(copies);
+                    return ProviderTarget.BatchChunk.REJECTED;
+                });
+        target.pushPatternStep(
+                pattern,
+                1_000L,
+                4L,
+                true,
+                () -> false,
+                copies -> {
+                    chunks.add(copies);
+                    return new ProviderTarget.BatchChunk(
+                            copies, true, false);
+                });
 
-        assertEquals(List.of(16, 8, 8, 8, 4, 8), chunks);
+        assertEquals(List.of(8, 4, 8, 4), chunks);
     }
 
     @Test
     void wirelessExploratoryRejectionKeepsProvenChunk() {
         var pattern = new EmptyPattern();
-        for (long tick = 0L; tick < 5L; tick++) {
-            target.pushPatternStep(
-                    pattern,
-                    1_000L,
-                    tick,
-                    true,
-                    () -> false,
-                    copies -> new ProviderTarget.BatchChunk(
-                            copies, true, false));
-        }
         target.pushPatternStep(
                 pattern,
-                1_000L,
-                5L,
-                true,
-                () -> false,
-                ignored -> ProviderTarget.BatchChunk.REJECTED);
-        target.pushPatternStep(
-                pattern,
-                1_000L,
-                6L,
-                true,
-                () -> false,
-                copies -> new ProviderTarget.BatchChunk(
-                        copies, true, false));
-        target.pushPatternStep(
-                pattern,
-                1_000L,
-                7L,
+                16L,
+                0L,
                 true,
                 () -> false,
                 copies -> new ProviderTarget.BatchChunk(
@@ -577,7 +633,7 @@ class ProviderTargetTest {
         target.pushPatternStep(
                 pattern,
                 1_000L,
-                8L,
+                1L,
                 true,
                 true,
                 () -> false,
@@ -587,8 +643,8 @@ class ProviderTargetTest {
                 });
         target.pushPatternStep(
                 pattern,
-                1_000L,
-                9L,
+                16L,
+                2L,
                 true,
                 () -> false,
                 copies -> {
@@ -597,28 +653,26 @@ class ProviderTargetTest {
                             copies, true, false);
                 });
 
-        assertEquals(List.of(8, 8), chunks);
+        assertEquals(List.of(8, 8, 8), chunks);
     }
 
     @Test
     void wirelessRejectedRequestLimitedTailKeepsRememberedChunk() {
         var pattern = new EmptyPattern();
-        for (long tick = 0L; tick < 5L; tick++) {
-            target.pushPatternStep(
-                    pattern,
-                    1_000L,
-                    tick,
-                    true,
-                    () -> false,
-                    copies -> new ProviderTarget.BatchChunk(
-                            copies, true, false));
-        }
+        target.pushPatternStep(
+                pattern,
+                16L,
+                0L,
+                true,
+                () -> false,
+                copies -> new ProviderTarget.BatchChunk(
+                        copies, true, false));
 
         var chunks = new ArrayList<Integer>();
         target.pushPatternStep(
                 pattern,
                 3L,
-                5L,
+                1L,
                 true,
                 () -> false,
                 copies -> {
@@ -627,8 +681,8 @@ class ProviderTargetTest {
                 });
         target.pushPatternStep(
                 pattern,
-                1_000L,
-                6L,
+                16L,
+                2L,
                 true,
                 () -> false,
                 copies -> {
@@ -637,28 +691,26 @@ class ProviderTargetTest {
                             copies, true, false);
                 });
 
-        assertEquals(List.of(3, 16), chunks);
+        assertEquals(List.of(3, 8, 8), chunks);
     }
 
     @Test
     void wirelessSuccessfulRequestLimitedTailKeepsRememberedChunk() {
         var pattern = new EmptyPattern();
-        for (long tick = 0L; tick < 5L; tick++) {
-            target.pushPatternStep(
-                    pattern,
-                    1_000L,
-                    tick,
-                    true,
-                    () -> false,
-                    copies -> new ProviderTarget.BatchChunk(
-                            copies, true, false));
-        }
+        target.pushPatternStep(
+                pattern,
+                16L,
+                0L,
+                true,
+                () -> false,
+                copies -> new ProviderTarget.BatchChunk(
+                        copies, true, false));
 
         var chunks = new ArrayList<Integer>();
         target.pushPatternStep(
                 pattern,
                 3L,
-                5L,
+                1L,
                 true,
                 () -> false,
                 copies -> {
@@ -668,8 +720,8 @@ class ProviderTargetTest {
                 });
         target.pushPatternStep(
                 pattern,
-                1_000L,
-                6L,
+                16L,
+                2L,
                 true,
                 () -> false,
                 copies -> {
@@ -678,28 +730,26 @@ class ProviderTargetTest {
                             copies, true, false);
                 });
 
-        assertEquals(List.of(3, 16), chunks);
+        assertEquals(List.of(3, 8, 8), chunks);
     }
 
     @Test
     void wirelessBatchStepHistoryExpiresAfterOneHundredIdleTicks() {
         var pattern = new EmptyPattern();
-        for (long tick = 0L; tick < 4L; tick++) {
-            target.pushPatternStep(
-                    pattern,
-                    100L,
-                    tick,
-                    true,
-                    () -> false,
-                    copies -> new ProviderTarget.BatchChunk(
-                            copies, true, false));
-        }
+        target.pushPatternStep(
+                pattern,
+                16L,
+                0L,
+                true,
+                () -> false,
+                copies -> new ProviderTarget.BatchChunk(
+                        copies, true, false));
 
         var chunks = new ArrayList<Integer>();
         target.pushPatternStep(
                 pattern,
                 100L,
-                103L,
+                100L,
                 true,
                 () -> false,
                 copies -> {
@@ -708,7 +758,36 @@ class ProviderTargetTest {
                             copies, true, false);
                 });
 
-        assertEquals(List.of(1), chunks);
+        assertEquals(List.of(1, 1, 2, 4, 8, 16, 32, 36), chunks);
+    }
+
+    @Test
+    void wirelessBatchStepKeepsHistoryAtTheHundredTickFallbackBoundary() {
+        var pattern = new EmptyPattern();
+        target.pushPatternStep(
+                pattern,
+                16L,
+                0L,
+                true,
+                () -> false,
+                copies -> new ProviderTarget.BatchChunk(
+                        copies, true, false));
+
+        var chunks = new ArrayList<Integer>();
+        target.pushPatternStep(
+                pattern,
+                100L,
+                100L,
+                true,
+                true,
+                () -> false,
+                copies -> {
+                    chunks.add(copies);
+                    return new ProviderTarget.BatchChunk(
+                            copies, true, false);
+                });
+
+        assertEquals(List.of(8, 8, 16, 32, 36), chunks);
     }
 
     @Test

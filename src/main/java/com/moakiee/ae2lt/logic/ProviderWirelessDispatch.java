@@ -308,7 +308,8 @@ final class ProviderWirelessDispatch {
                 continue;
             }
             boolean probing = isProbing(state, gameTick);
-            var result = attempt.push(connection, remaining, false);
+            var result = attempt.push(
+                    connection, remaining, false, false);
             if (result.outcome.consumesTargetAttempt()) {
                 state.probeArmed = false;
             }
@@ -389,14 +390,44 @@ final class ProviderWirelessDispatch {
                 boolean probing = isProbing(state, gameTick);
                 long share = Math.min(
                         remaining, pass.allowance(connection));
+                int targetsLeft = attemptBudget - attempts;
+                long equalShareLimit = targetsLeft <= 0
+                        ? 0L
+                        : remaining / targetsLeft;
+                long rampAllowance = ((ProviderTarget) connection)
+                        .batchStepRampAllowance(
+                                pattern, equalShareLimit, gameTick);
+                if (rampAllowance > share
+                        && rampAllowance <= equalShareLimit) {
+                    share = Math.min(
+                            remaining,
+                            pass.raiseAllowance(
+                                    connection, rampAllowance));
+                }
+                boolean fillFallback = batchCadence.isFillFallback(
+                        connection, pattern);
+                if (fillFallback) {
+                    int candidate = ((ProviderTarget) connection)
+                            .batchStepCandidate(
+                                    pattern, remaining, gameTick);
+                    share = Math.min(
+                            remaining,
+                            pass.raiseAllowance(connection, candidate));
+                }
                 if (share <= 0L) {
                     continue;
                 }
                 boolean exploratoryAttempt =
                         batchCadence.isExploratoryAttempt(
                                 connection, pattern);
+                boolean preserveBatchHistory =
+                        batchCadence.shouldPreserveBatchHistory(
+                                connection, pattern, gameTick);
                 var result = attempt.push(
-                        connection, share, exploratoryAttempt);
+                        connection,
+                        share,
+                        exploratoryAttempt,
+                        preserveBatchHistory);
                 if (result.outcome.consumesTargetAttempt()) {
                     state.probeArmed = false;
                 }
@@ -408,7 +439,8 @@ final class ProviderWirelessDispatch {
                             result.ownedCopies,
                             result.acceptedFullChunk,
                             result.requestLimited,
-                            exploratoryAttempt);
+                            exploratoryAttempt,
+                            result.baselineStatus);
                     pass.successAndCover(
                             connection, result.ownedCopies, coverageTicks);
                     recordSuccess(connection, pattern);
@@ -823,7 +855,8 @@ final class ProviderWirelessDispatch {
         BatchAttemptResult push(
                 WirelessConnection connection,
                 long maxCopies,
-                boolean exploratoryAttempt);
+                boolean exploratoryAttempt,
+                boolean preserveBatchHistoryOnRejection);
     }
 
     record BatchAttemptResult(
@@ -831,6 +864,7 @@ final class ProviderWirelessDispatch {
             int attemptedCopies,
             boolean acceptedFullChunk,
             boolean requestLimited,
+            ProviderTarget.BaselineStatus baselineStatus,
             WirelessPushOutcome outcome) {
     }
 

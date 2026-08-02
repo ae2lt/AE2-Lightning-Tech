@@ -351,11 +351,10 @@ public class ProviderTarget extends TargetAddress {
     }
 
     /**
-     * Attempts exactly one adaptive batch chunk for a wireless scheduling
-     * opportunity. The safe cold sequence is {@code 1, 1, 2, 4, ...}; a
-     * rejected growth probe returns to the last proven chunk for a later
-     * opportunity. Before any chunk is proven, rejection halves the cold
-     * candidate instead of probing repeatedly in the same target visit.
+     * Attempts one regular refill chunk, or a complete same-tick growth ramp.
+     * Growth physically dispatches {@code H, H, 2H, 4H, 8H, ...} in this
+     * visit; proofs from earlier ticks never satisfy either of the two prefix
+     * chunks, while later growth levels do not need to be repeated.
      */
     public final BatchStepResult pushPatternStep(
             IPatternDetails pattern,
@@ -397,8 +396,19 @@ public class ProviderTarget extends TargetAddress {
 
         var state = runtime.batchSteps.computeIfAbsent(
                 pattern, ignored -> new BatchStepState());
-        state.expireIfIdle(gameTick);
+        state.expireIfIdle(
+                gameTick, preserveBatchHistoryOnRejection);
+        state.lastAttemptTick = gameTick;
 
+        if (!state.backingOff) {
+            return pushSameTickRamp(
+                    state,
+                    maxCopies,
+                    gameTick,
+                    preserveBatchHistoryOnRejection,
+                    blocked,
+                    pushChunk);
+        }
         int attemptedCopies = (int) Math.min(
                 Math.min((long) state.nextChunk, maxCopies),
                 Integer.MAX_VALUE);
@@ -416,7 +426,6 @@ public class ProviderTarget extends TargetAddress {
                     chunk, attemptedCopies, requestLimited);
         }
 
-        state.lastSuccessfulTick = gameTick;
         if (!requestLimited) {
             if (chunk.ownedCopies() == attemptedCopies
                     && chunk.fullyInserted()) {
@@ -425,8 +434,191 @@ public class ProviderTarget extends TargetAddress {
                 state.reject(attemptedCopies, false);
             }
         }
+        state.lastSuccessfulTick = gameTick;
         return BatchStepResult.from(
                 chunk, attemptedCopies, requestLimited);
+    }
+
+    private static BatchStepResult pushSameTickRamp(
+            BatchStepState state,
+            long maxCopies,
+            long gameTick,
+            boolean preserveBatchHistoryOnRejection,
+            BooleanSupplier blocked,
+            IntFunction<BatchChunk> pushChunk) {
+        int baseline = Math.max(1, state.provenChunk);
+        int nextChunk = baseline;
+        int baselineSuccesses = 0;
+        boolean allowGrowth = !state.growthCapped;
+        long ownedCopies = 0L;
+        long attemptedCopies = 0L;
+        boolean allFullyInserted = true;
+
+        while (ownedCopies < maxCopies) {
+            if (blocked.getAsBoolean()) {
+                break;
+            }
+            long remaining = maxCopies - ownedCopies;
+            int desiredCopies = nextChunk;
+            int attemptedChunk = (int) Math.min(
+                    Math.min((long) desiredCopies, remaining),
+                    Integer.MAX_VALUE);
+            boolean requestLimited = attemptedChunk < desiredCopies;
+            attemptedCopies = Math.min(
+                    Integer.MAX_VALUE,
+                    attemptedCopies + attemptedChunk);
+            var chunk = pushChunk.apply(attemptedChunk);
+            if (chunk.globalAbort()) {
+                return new BatchStepResult(
+                        ownedCopies,
+                        (int) attemptedCopies,
+                        false,
+                        true,
+                        requestLimited,
+                        BaselineStatus.NONE);
+            }
+            if (chunk.ownedCopies() <= 0L) {
+                BaselineStatus stopStatus = baselineSuccesses == 1
+                        ? BaselineStatus.PREFIX_COMPLETE
+                        : BaselineStatus.NONE;
+                if (!preserveBatchHistoryOnRejection) {
+                    if (baselineSuccesses == 0) {
+                        state.reject(attemptedChunk, requestLimited);
+                    } else if (baselineSuccesses >= 2) {
+                        state.growthCapped = true;
+                        state.nextChunk = Math.max(1, state.provenChunk);
+                    }
+                }
+                if (ownedCopies > 0L) {
+                    state.lastSuccessfulTick = gameTick;
+                }
+                return new BatchStepResult(
+                        ownedCopies,
+                        (int) attemptedCopies,
+                        false,
+                        false,
+                        requestLimited,
+                        stopStatus);
+            }
+
+            ownedCopies += chunk.ownedCopies();
+            boolean fullyInserted = chunk.ownedCopies() == attemptedChunk
+                    && chunk.fullyInserted();
+            if (!fullyInserted) {
+                BaselineStatus stopStatus = baselineSuccesses == 1
+                        ? BaselineStatus.PREFIX_COMPLETE
+                        : BaselineStatus.NONE;
+                allFullyInserted = false;
+                if (!preserveBatchHistoryOnRejection) {
+                    if (baselineSuccesses == 0) {
+                        state.reject(attemptedChunk, requestLimited);
+                    } else if (baselineSuccesses >= 2) {
+                        state.growthCapped = true;
+                        state.nextChunk = Math.max(1, state.provenChunk);
+                    }
+                }
+                state.lastSuccessfulTick = gameTick;
+                return new BatchStepResult(
+                        ownedCopies,
+                        (int) attemptedCopies,
+                        false,
+                        false,
+                        requestLimited,
+                        stopStatus);
+            }
+            if (requestLimited) {
+                state.lastSuccessfulTick = gameTick;
+                return new BatchStepResult(
+                        ownedCopies,
+                        (int) attemptedCopies,
+                        allFullyInserted,
+                        false,
+                        true,
+                        BaselineStatus.NONE);
+            }
+
+            if (baselineSuccesses < 2) {
+                baselineSuccesses++;
+                state.provenChunk = Math.max(state.provenChunk, baseline);
+                state.nextChunk = baseline;
+                if (baselineSuccesses < 2) {
+                    continue;
+                }
+                if (!allowGrowth) {
+                    state.lastSuccessfulTick = gameTick;
+                    return new BatchStepResult(
+                            ownedCopies,
+                            (int) attemptedCopies,
+                            true,
+                            false,
+                            false,
+                            BaselineStatus.COMPLETE);
+                }
+                nextChunk = saturatingDouble(baseline);
+            } else {
+                state.provenChunk = desiredCopies;
+                state.nextChunk = saturatingDouble(desiredCopies);
+                state.provenSuccesses = 1;
+                state.repeatCurrent = false;
+                state.growthCapped = false;
+                state.backingOff = false;
+                nextChunk = state.nextChunk;
+            }
+            state.lastSuccessfulTick = gameTick;
+            if (desiredCopies == Integer.MAX_VALUE) {
+                break;
+            }
+        }
+
+        return new BatchStepResult(
+                ownedCopies,
+                (int) attemptedCopies,
+                allFullyInserted,
+                false,
+                false,
+                baselineSuccesses >= 2
+                        ? BaselineStatus.GROWTH_COMPLETE
+                        : BaselineStatus.NONE);
+    }
+
+    private static int saturatingDouble(int value) {
+        return value >= Integer.MAX_VALUE / 2
+                ? Integer.MAX_VALUE
+                : value * 2;
+    }
+
+    /** Returns the next physical chunk without advancing its adaptive state. */
+    final int batchStepCandidate(
+            IPatternDetails pattern, long maxCopies, long gameTick) {
+        if (maxCopies <= 0L) {
+            return 0;
+        }
+        var state = runtime.batchSteps.computeIfAbsent(
+                pattern, ignored -> new BatchStepState());
+        state.expireIfIdle(gameTick, true);
+        return (int) Math.min(
+                Math.min((long) state.nextChunk, maxCopies),
+                Integer.MAX_VALUE);
+    }
+
+    /**
+     * Fair allowance available to the complete same-tick growth ramp.
+     * Dispatch supplies an equal-share upper bound, so the target may continue
+     * from {@code H, H, 2H} directly to {@code 4H, 8H, ...} without skewing a
+     * finite job toward the first targets in the pass.
+     */
+    final long batchStepRampAllowance(
+            IPatternDetails pattern, long maxCopies, long gameTick) {
+        if (maxCopies <= 0L) {
+            return 0L;
+        }
+        var state = runtime.batchSteps.computeIfAbsent(
+                pattern, ignored -> new BatchStepState());
+        state.expireIfIdle(gameTick, true);
+        if (state.growthCapped) {
+            return batchStepCandidate(pattern, maxCopies, gameTick);
+        }
+        return maxCopies;
     }
 
     public record BatchDispatchResult(
@@ -440,25 +632,47 @@ public class ProviderTarget extends TargetAddress {
             int attemptedCopies,
             boolean fullyInserted,
             boolean globalAbort,
-            boolean requestLimited) {
+            boolean requestLimited,
+            BaselineStatus baselineStatus) {
         private static final BatchStepResult EMPTY =
-                new BatchStepResult(0L, 0, false, false, false);
+                new BatchStepResult(
+                        0L, 0, false, false, false, BaselineStatus.NONE);
 
         private static BatchStepResult from(
                 BatchChunk chunk,
                 int attemptedCopies,
                 boolean requestLimited) {
+            return from(
+                    chunk,
+                    attemptedCopies,
+                    requestLimited,
+                    BaselineStatus.NONE);
+        }
+
+        private static BatchStepResult from(
+                BatchChunk chunk,
+                int attemptedCopies,
+                boolean requestLimited,
+                BaselineStatus baselineStatus) {
             return new BatchStepResult(
                     chunk.ownedCopies(),
                     attemptedCopies,
                     chunk.fullyInserted(),
                     chunk.globalAbort(),
-                    requestLimited);
+                    requestLimited,
+                    baselineStatus);
         }
 
         public boolean acceptedFullChunk() {
             return ownedCopies == attemptedCopies && fullyInserted;
         }
+    }
+
+    public enum BaselineStatus {
+        NONE,
+        PREFIX_COMPLETE,
+        COMPLETE,
+        GROWTH_COMPLETE
     }
 
     public record BatchChunk(
@@ -576,13 +790,22 @@ public class ProviderTarget extends TargetAddress {
         private boolean growthCapped;
         private boolean backingOff;
         private long lastSuccessfulTick = Long.MIN_VALUE;
+        private long lastAttemptTick = Long.MIN_VALUE;
 
-        private void expireIfIdle(long gameTick) {
-            if (lastSuccessfulTick == Long.MIN_VALUE) {
+        private void expireIfIdle(
+                long gameTick, boolean preserveAttemptHistory) {
+            long referenceTick = preserveAttemptHistory
+                    ? lastAttemptTick
+                    : lastSuccessfulTick;
+            if (referenceTick == Long.MIN_VALUE) {
                 return;
             }
-            if (gameTick < lastSuccessfulTick
-                    || gameTick - lastSuccessfulTick >= BATCH_HISTORY_TTL) {
+            boolean expired = preserveAttemptHistory
+                    ? gameTick < referenceTick
+                            || gameTick - referenceTick > BATCH_HISTORY_TTL
+                    : gameTick < referenceTick
+                            || gameTick - referenceTick >= BATCH_HISTORY_TTL;
+            if (expired) {
                 nextChunk = 1;
                 provenChunk = 0;
                 provenSuccesses = 0;
@@ -590,6 +813,7 @@ public class ProviderTarget extends TargetAddress {
                 growthCapped = false;
                 backingOff = false;
                 lastSuccessfulTick = Long.MIN_VALUE;
+                lastAttemptTick = Long.MIN_VALUE;
             }
         }
 
@@ -646,6 +870,7 @@ public class ProviderTarget extends TargetAddress {
                 repeatCurrent = true;
             }
         }
+
     }
 
     private static final class CachedStorageTarget {
