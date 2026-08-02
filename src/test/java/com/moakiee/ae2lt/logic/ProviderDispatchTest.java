@@ -163,7 +163,8 @@ class ProviderDispatchTest {
                 3L,
                 0L,
                 false,
-                (connection, allowance, exploratoryAttempt) -> {
+                (connection, allowance, exploratoryAttempt,
+                        preserveBatchHistoryOnRejection) -> {
                     visited.add(connection);
                     return successfulBatch(1);
                 },
@@ -198,7 +199,8 @@ class ProviderDispatchTest {
                 5L,
                 0L,
                 false,
-                (connection, allowance, exploratoryAttempt) -> {
+                (connection, allowance, exploratoryAttempt,
+                        preserveBatchHistoryOnRejection) -> {
                     attempts.merge(connection, 1, Integer::sum);
                     return rejected.contains(connection)
                             ? rejectedBatch(1)
@@ -360,6 +362,7 @@ class ProviderDispatchTest {
                 copies,
                 true,
                 false,
+                ProviderTarget.BaselineStatus.NONE,
                 WirelessPushOutcome.SUCCESS);
     }
 
@@ -370,6 +373,7 @@ class ProviderDispatchTest {
                 copies,
                 false,
                 false,
+                ProviderTarget.BaselineStatus.NONE,
                 WirelessPushOutcome.SOFT_FAIL);
     }
 
@@ -419,14 +423,15 @@ class ProviderDispatchTest {
                     1_000_000_000L,
                     tick,
                     false,
-                    (connection, allowance, exploratoryAttempt) -> {
+                    (connection, allowance, exploratoryAttempt,
+                            preserveBatchHistoryOnRejection) -> {
                         visits.incrementAndGet();
                         var step = connection.pushPatternStep(
                                 pattern,
                                 allowance,
                                 currentTick,
                                 true,
-                                exploratoryAttempt,
+                                preserveBatchHistoryOnRejection,
                                 () -> false,
                                 machines.get(connection)::pushChunk);
                         if (step.ownedCopies() <= 0L) {
@@ -437,6 +442,7 @@ class ProviderDispatchTest {
                                 step.attemptedCopies(),
                                 step.acceptedFullChunk(),
                                 step.requestLimited(),
+                                step.baselineStatus(),
                                 step.globalAbort()
                                         ? WirelessPushOutcome.GLOBAL_ABORT
                                         : step.ownedCopies() > 0L

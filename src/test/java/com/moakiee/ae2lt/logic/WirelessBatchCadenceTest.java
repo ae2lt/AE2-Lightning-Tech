@@ -109,9 +109,59 @@ class WirelessBatchCadenceTest {
         success(cadence, 2L, 2);
         success(cadence, 3L, 4);
 
-        int coverage = success(cadence, 103L, 100);
+        int coverage = success(cadence, 104L, 100);
 
         assertEquals(1, coverage);
+    }
+
+    @Test
+    void oneHundredTicksWithoutAcceptanceEntersFillFallback() {
+        var cadence = new WirelessBatchCadence<String>();
+        assertEquals(1, success(cadence, 0L, 128));
+
+        for (long tick = 1L; tick < 100L; tick++) {
+            assertEquals(1, cadence.recordFailure(
+                    TARGET, pattern, tick, 128));
+            assertFalse(cadence.isFillFallback(TARGET, pattern));
+        }
+
+        assertTrue(cadence.shouldPreserveBatchHistory(
+                TARGET, pattern, 100L));
+        assertEquals(25, cadence.recordFailure(
+                TARGET, pattern, 100L, 128));
+        assertTrue(cadence.isFillFallback(TARGET, pattern));
+        assertEquals(25, cadence.recordFailure(
+                TARGET, pattern, 125L, 128));
+    }
+
+    @Test
+    void smallProvenBatchStaysOnNormalLearnedCadence() {
+        var cadence = new WirelessBatchCadence<String>();
+        success(cadence, 0L, 32);
+
+        for (long tick = 1L; tick <= 100L; tick++) {
+            assertEquals(1, cadence.recordFailure(
+                    TARGET, pattern, tick, 32));
+        }
+
+        assertFalse(cadence.isFillFallback(TARGET, pattern));
+        assertFalse(cadence.shouldPreserveBatchHistory(
+                TARGET, pattern, 100L));
+    }
+
+    @Test
+    void twoConsecutiveFallbackSuccessesRestoreNormalCadence() {
+        var cadence = new WirelessBatchCadence<String>();
+        success(cadence, 0L, 128);
+        for (long tick = 1L; tick <= 100L; tick++) {
+            cadence.recordFailure(TARGET, pattern, tick, 128);
+        }
+
+        assertEquals(25, success(cadence, 125L, 128));
+        assertTrue(cadence.isFillFallback(TARGET, pattern));
+        assertEquals(1, success(cadence, 150L, 128));
+        assertFalse(cadence.isFillFallback(TARGET, pattern));
+        assertFalse(cadence.isExploratoryAttempt(TARGET, pattern));
     }
 
     private int success(

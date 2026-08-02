@@ -133,11 +133,13 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
             int attemptedCopies,
             boolean acceptedFullChunk,
             boolean requestLimited,
+            ProviderTarget.BaselineStatus baselineStatus,
             WirelessPushOutcome outcome) {
         private static BatchTargetDispatchResult rejected(
                 WirelessPushOutcome outcome) {
             return new BatchTargetDispatchResult(
-                    0L, 0, false, false, outcome);
+                    0L, 0, false, false,
+                    ProviderTarget.BaselineStatus.NONE, outcome);
         }
     }
 
@@ -549,14 +551,15 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
                 maxCraft,
                 gameTick,
                 fastMode,
-                (connection, share, exploratoryAttempt) -> {
+                (connection, share, exploratoryAttempt,
+                        preserveBatchHistoryOnRejection) -> {
                     var result = tryPushBatchToConnection(
                             pattern,
                             patternHandle,
                             oneCopyTemplate,
                             share,
                             oneCopyCost,
-                            exploratoryAttempt,
+                            preserveBatchHistoryOnRejection,
                             connection,
                             server);
                     return new ProviderWirelessDispatch.BatchAttemptResult(
@@ -564,6 +567,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
                             result.attemptedCopies(),
                             result.acceptedFullChunk(),
                             result.requestLimited(),
+                            result.baselineStatus(),
                             result.outcome());
                 },
                 connection -> isConnectionAlive(connection, server),
@@ -576,7 +580,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
             KeyCounter[] oneCopyTemplate,
             long maxCraft,
             double oneCopyCost,
-            boolean exploratoryAttempt,
+            boolean preserveBatchHistoryOnRejection,
             WirelessConnection conn,
             net.minecraft.server.MinecraftServer server) {
         if (wirelessOverflow.contains(conn)) {
@@ -607,13 +611,14 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
                 oneCopyTemplate,
                 maxCraft,
                 oneCopyCost,
-                exploratoryAttempt);
+                preserveBatchHistoryOnRejection);
         if (step.ownedCopies() <= 0L) {
             return new BatchTargetDispatchResult(
                     0L,
                     step.attemptedCopies(),
                     false,
                     step.requestLimited(),
+                    step.baselineStatus(),
                     step.globalAbort()
                             ? WirelessPushOutcome.GLOBAL_ABORT
                             : WirelessPushOutcome.SOFT_FAIL);
@@ -621,11 +626,12 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
 
         alertGridTick();
         return new BatchTargetDispatchResult(
-                step.ownedCopies(),
-                step.attemptedCopies(),
-                step.acceptedFullChunk(),
-                step.requestLimited(),
-                step.globalAbort()
+                    step.ownedCopies(),
+                    step.attemptedCopies(),
+                    step.acceptedFullChunk(),
+                    step.requestLimited(),
+                    step.baselineStatus(),
+                    step.globalAbort()
                         ? WirelessPushOutcome.GLOBAL_ABORT
                         : WirelessPushOutcome.SUCCESS);
     }
@@ -685,7 +691,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
             KeyCounter[] oneCopyTemplate,
             long maxCraft,
             double oneCopyCost,
-            boolean exploratoryAttempt) {
+            boolean preserveBatchHistoryOnRejection) {
         boolean batchSupported = context.target().supportsBatch(
                 context.level(), pattern);
         return context.target().pushPatternStep(
@@ -693,7 +699,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
                 maxCraft,
                 context.level().getGameTime(),
                 batchSupported,
-                exploratoryAttempt,
+                preserveBatchHistoryOnRejection,
                 () -> isBatchTargetBlocked(context, patternHandle),
                 copies -> pushBatchChunk(
                         context,

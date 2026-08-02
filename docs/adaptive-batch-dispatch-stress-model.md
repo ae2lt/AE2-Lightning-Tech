@@ -15,6 +15,9 @@
 固定模型单次处理量 Q      = 512 copies
 固定模型输入容量 C        = 512 或 2048 copies
 固定模型处理周期 P        = 1 或 5 tick
+低吞吐固定模型容量 C      = 576 copies
+低吞吐固定模型处理周期 P  = 20 tick
+低吞吐固定模型处理量 Q    = 9 copies
 随机模型输入容量 C        = 2048 copies
 随机模型处理间隔          = 2..5 tick
 随机模型单次处理量        = 512..1024 copies
@@ -51,9 +54,9 @@ chunk >  C - queuedCopies  -> 零接收
 
 该基准不制造部分插入和 overflow；部分所有权转移仍由独立正确性测试覆盖。
 
-## 3. 五组强制压力模型
+## 3. 六组强制压力模型
 
-旧基线以 100 tick 为一个冷启动观测段；正式验收仍按第 5 节运行 200 tick 和 5,000 tick。所有模型的初始目标库存和自适应运行时状态为空。
+旧基线以 100 tick 为一个冷启动观测段；正式验收按第 5 节运行“启动期加至少一个完整 100-tick 窗口”的收敛测试和 5,000-tick 长稳态测试。所有模型的初始目标库存和自适应运行时状态为空。
 
 | 模型 | 单目标容量 `C` | 处理间隔 | 单次处理上限 | 100 tick 理论总吞吐 |
 |---|---:|---:|---:|---:|
@@ -61,6 +64,7 @@ chunk >  C - queuedCopies  -> 零接收
 | B | 2048 | 1 tick | 512 | 26,214,400 copies |
 | C | 512 | 5 tick | 512 | 5,242,880 copies |
 | D | 2048 | 5 tick | 512 | 5,242,880 copies |
+| E | 576 | 20 tick | 9 | 23,040 copies |
 | R | 2048 | 每次随机 2..5 tick | 每次随机 512..1024 | 按固定随机事件流求和 |
 
 固定模型的理论总吞吐按下式计算：
@@ -93,6 +97,7 @@ baseSeed = 20260801L
 | B | 12,800 |
 | C | 10,240 |
 | D | 2,560 |
+| E | 40（纯容量下界；正式发配指标另应用每目标 100 tick 一次的存活保底） |
 | R | `sum(theoreticalCopiesPerTarget / 2048)`（实数除法），由固定事件流计算 |
 
 因此不能为所有工作负载设置同一个“push 数必须低于全扫描某固定比例”的指标。模型 A 若要吃满吞吐，本来就需要接近每 tick 向全部目标各 push 一次；发配优化必须服从吞吐，而不能反过来限制必要做工。
@@ -112,18 +117,21 @@ randomStartupTicks = 10 * maxRandomPeriod = 10 * 5 = 50
 |---|---:|---:|
 | A、B：`P=1` | 10 tick | 10 |
 | C、D：`P=5` | 50 tick | 50 |
+| E：`P=20` | 200 tick | 200 |
 | R：`P=2..5` | 50 tick | 50 |
 
-学习期是唯一允许的收敛时间，不对其吞吐设通过门槛。从各模型的 `startupTicks` 机器处理阶段开始，固定模型 A–D 的吞吐必须持续保持在理论上限的 95% 以上，随机模型 R 必须持续保持在其已生成理论处理量的 80% 以上。
+学习期是唯一允许的收敛时间，不对其吞吐设通过门槛。从各模型的 `startupTicks` 机器处理阶段开始，固定模型 A–E 的吞吐必须持续保持在理论上限的 95% 以上，随机模型 R 必须持续保持在其已生成理论处理量的 80% 以上。
 
 验收统一使用 100-tick 滑动窗口。从 `startTick=startupTicks` 开始，对每一个半开窗口 `[startTick, startTick+100)`，窗口总吞吐不得低于对应门槛。单处理 tick 和 20-tick 窗口只保留为诊断数据，不作为通过条件，避免短周期相位和随机处理量造成过大的统计波动。
 
-单个处理点的理论上限固定为：
+固定模型 A–D 单个处理点的理论上限为：
 
 ```text
 N * Q = 512 * 512 = 262,144 copies
 minimumProcessedPerProcessingTick = ceil(262,144 * 0.95) = 249,037 copies
 ```
+
+模型 E 单个处理点的理论上限为 `512 * 9 = 4,608 copies`，95% 最低通过量为 `4,378 copies`。
 
 100-tick 滑动窗口的断言值为：
 
@@ -131,6 +139,7 @@ minimumProcessedPerProcessingTick = ceil(262,144 * 0.95) = 249,037 copies
 |---|---:|---:|---:|
 | A、B：`P=1` | 100 | 26,214,400 | 24,903,680 |
 | C、D：`P=5` | 20 | 5,242,880 | 4,980,736 |
+| E：`P=20` | 5 | 23,040 | 21,888 |
 
 随机模型 R 不使用固定平均值代替理论处理量。对每个 100-tick 窗口执行：
 
@@ -139,29 +148,30 @@ theoreticalR = 固定随机事件流在该范围内生成的处理上限之和
 actualR * 100 >= theoreticalR * 80
 ```
 
-短暂达到门槛后再次跌落不算通过。参数化收敛测试至少运行 200 tick；长稳态测试运行 5,000 tick，并对各模型启动期之后的所有 100-tick 滑动窗口执行相同断言。超过对应 `startupTicks` 才逐渐收敛，即使最终达到 100%，仍判定不合格。
+短暂达到门槛后再次跌落不算通过。参数化收敛测试至少运行 `max(200, startupTicks + 100)` tick；长稳态测试运行 5,000 tick，并对各模型启动期之后的所有 100-tick 滑动窗口执行相同断言。超过对应 `startupTicks` 才逐渐收敛，即使最终达到 100%，仍判定不合格。
 
 ### 4.2 固定模型发配指标不得超过 400%
 
 `physicalPushes` 统计实际进入一次 chunk push 的次数，而不是外层调度器选择目标的次数。完整接收、部分接收和零接收均计一次，`SIMULATE` 插入即告失败或过大批次探测失败也计一次；一次 chunk push 内部的 `SIMULATE -> MODULATE` 仍合计一次，不按 capability 内部调用拆分。同一次目标选择内依次 push `1, 1, 2, 4` 必须计为四次。尚未调用目标插入就因阻挡、CPU 输入或全局能源不足而中止，不计物理 push。
 
-固定模型 A–D 以理论吞吐需求和目标容量计算理想最少发配数：
+固定模型 A–E 以理论吞吐需求和目标容量计算理想最少发配数。对于 100 tick 内容量需求不足一次完整 push 的模型 E，另应用每目标至少一次调度机会的存活保底：
 
 ```text
-idealPushesPerTarget100 = (100 / P) * Q / C
-idealPushesTotal100 = N * idealPushesPerTarget100
-dispatchMetric = actualPhysicalPushes100 / idealPushesTotal100 * 100%
+rawIdealPushesPerTarget100 = (100 / P) * Q / C
+effectiveIdealPushesPerTarget100 = max(1, rawIdealPushesPerTarget100)
+effectiveIdealPushesTotal100 = N * effectiveIdealPushesPerTarget100
+dispatchMetric = actualPhysicalPushes100 / effectiveIdealPushesTotal100 * 100%
 ```
 
 从各固定模型的 `startupTicks` 开始，每一个 100-tick 滑动窗口必须同时满足：
 
 ```text
 dispatchMetric <= 400%
-actualPhysicalPushes100 <= 4 * idealPushesTotal100
-每个目标的 physicalPushes100 <= 4 * idealPushesPerTarget100
+actualPhysicalPushes100 <= 4 * effectiveIdealPushesTotal100
+每个目标的 physicalPushes100 <= 4 * effectiveIdealPushesPerTarget100
 ```
 
-四组模型的具体上限如下：
+五组固定模型的具体上限如下：
 
 | 模型 | 理想每目标 push/100t | 理想总 push/100t | 400% 每目标上限 | 400% 总 push 上限 |
 |---|---:|---:|---:|---:|
@@ -169,8 +179,11 @@ actualPhysicalPushes100 <= 4 * idealPushesTotal100
 | B：2048 / 1 tick | 25 | 12,800 | 100 | 51,200 |
 | C：512 / 5 tick | 20 | 10,240 | 80 | 40,960 |
 | D：2048 / 5 tick | 5 | 2,560 | 20 | 10,240 |
+| E：576 / 20 tick、每次 9 | 1（原始容量下界为 0.078125） | 512 | 4 | 2,048 |
 
 模型 D 中，每个目标每 5 tick 最多处理 512，容量 2048 正好覆盖四次处理，因此理想状态是每 20 tick push 一次 2048。100 tick 内理想为每目标五次；400% 上限允许每目标最多二十次、全部目标最多 10,240 次，等价于平均每 5 tick push 一次。
+
+模型 E 专门验证低吞吐保底。单目标 100 tick 只消耗 45 copies，纯容量下界仅为 `45 / 576 = 0.078125` 次 push，不能直接作为整数窗口中的存活调度基线。因此按每目标每 100 tick 至少一次机会计为 100%；400% 表示任意滑动 100-tick 窗口内每目标最多四次物理 push、全部 512 个目标最多 2,048 次。该保底只改变发配指标的分母，不降低 95% 吞吐要求，也不要求目标在没有待发请求时产生空 push。
 
 400% 是上限而不是目标值。低于 100% 只有在吞吐断言同时通过时才代表减少了 push；若吞吐不足，低发配指标只说明目标没有得到足够补货，不能算性能优势。
 
@@ -197,11 +210,13 @@ physicalPushesR[i] * 2048 * 100 <= theoreticalCopiesR[i] * 800
 
 ### 4.4 公平性与失败稳定性
 
-同构、持续可用目标从各自启动期结束起不得出现长期零接收目标。固定模型 A–D 在每个 100-tick 窗口内应满足：
+同构、持续可用目标从各自启动期结束起不得出现长期零接收目标。固定模型 A–E 在每个 100-tick 窗口内应满足：
 
 ```text
-minAcceptedPerTarget > 0
-maxAcceptedPerTarget <= 2 * minAcceptedPerTarget
+standard models: minAcceptedPerTarget > 0
+standard models: maxAcceptedPerTarget <= 2 * minAcceptedPerTarget
+model E: minPhysicalPushesPerTarget > 0
+model E: maxPhysicalPushesPerTarget <= 2 * minPhysicalPushesPerTarget
 ```
 
 随机模型 R 的目标理论负载本身不同，不直接比较原始 accepted copies；改为比较每个目标的 `acceptedCopies / theoreticalCopies`，并保证每个有理论处理需求的目标都得到实际补货。随机负载差异不得被误报为调度不公平。
@@ -210,19 +225,20 @@ maxAcceptedPerTarget <= 2 * minAcceptedPerTarget
 
 ## 5. 参数化测试用例
 
-至少提供以下五个参数化用例；它们共享同一模拟器和断言，固定模型改变 `C` 与 `P`，随机模型改用固定事件流：
+至少提供以下六个参数化用例；它们共享同一模拟器和断言，固定模型改变 `C`、`P` 与 `Q`，随机模型改用固定事件流：
 
 ```text
 adaptiveBatch_capacity512_period1_targets512_maxProcess512
 adaptiveBatch_capacity2048_period1_targets512_maxProcess512
 adaptiveBatch_capacity512_period5_targets512_maxProcess512
 adaptiveBatch_capacity2048_period5_targets512_maxProcess512
+adaptiveBatch_capacity576_period20_targets512_maxProcess9
 adaptiveBatch_random_capacity2048_period2to5_targets512_maxProcess512to1024
 ```
 
-每个参数组合运行两个测试：
+每个参数组合运行收敛测试与长稳态测试：
 
-- `convergesAndStaysWithinLimitsFor200Ticks`：验证十倍处理时间学习期后的持续吞吐、发配指标和公平性。
+- A–D、R 使用 `convergesAndStaysWithinLimitsFor200Ticks`；E 的启动期本身为 200 tick，因此使用至少 300 tick 的对应收敛用例，保证启动期后存在完整的 100-tick 正式窗口。
 - `doesNotRegressAcross5000Ticks`：在长时间滑动窗口中重复相同验收，禁止后期节奏漂移。
 
 随机用例固定使用 `baseSeed=20260801L`，并在失败消息中输出 seed、目标编号、tick/窗口范围、理论处理量、实际处理量和物理 push 数，保证失败可复现。不得只断言全程平均值。
@@ -242,14 +258,18 @@ int dispatchPercent = model.isRandom() ? 800 : 400;
 
 for (long start = startupTicks; start + 100 <= testTicks; start++) {
     long theoretical = result.theoreticalBetween(start, start + 100);
+    long effectiveIdealNumerator = Math.max(
+            theoretical,
+            targets * C);
     assertThat(result.processedBetween(start, start + 100) * 100)
             .isAtLeast(theoretical * throughputPercent);
     assertThat(result.physicalPushesBetween(start, start + 100) * C * 100)
-            .isAtMost(theoretical * dispatchPercent);
+            .isAtMost(effectiveIdealNumerator * dispatchPercent);
     for (var target : result.targets()) {
         long targetTheoretical = result.theoreticalBetween(target, start, start + 100);
+        long targetIdealNumerator = Math.max(targetTheoretical, C);
         assertThat(result.physicalPushesBetween(target, start, start + 100) * C * 100)
-                .isAtMost(targetTheoretical * dispatchPercent);
+                .isAtMost(targetIdealNumerator * dispatchPercent);
     }
 }
 ```
@@ -325,7 +345,7 @@ for (long start = startupTicks; start + 100 <= testTicks; start++) {
 - `feat/...` 的同构目标分配较整齐，但存在同步全扫描和持续的成功/超量拒绝振荡，访问失败率过高。
 - `feat/...` 当时的完整 `check` 还因 `ProviderTarget.pushPattern` 签名与测试未同步而产生 44 个测试编译错误；压力主程序能够运行不代表该分支满足合并条件。
 
-后续实现更新基线时必须同时记录提交 ID、运行模式、五个模型的完整指标和最差滑动窗口，不能只替换吞吐百分比。
+后续实现更新基线时必须同时记录提交 ID、运行模式、六个模型的完整指标和最差滑动窗口，不能只替换吞吐百分比。
 
 ## 8. 实现刷新记录
 
@@ -385,7 +405,7 @@ for (long start = startupTicks; start + 100 <= testTicks; start++) {
 | D | 95.00% | 100.00% | 300.00% |
 | R | 92.09% | 95.07% | 440.77% |
 
-5,000-tick 长稳态结果如下；五个模型的每个滑动 100-tick 窗口、单目标发配上限和公平性断言全部通过：
+5,000-tick 长稳态结果如下；当时已有的五个模型（A–D、R）的每个滑动 100-tick 窗口、单目标发配上限和公平性断言全部通过，尚不包含后来新增的 E：
 
 | 模型 | 全程吞吐 | 最差 100-tick 吞吐 | 最大 100-tick 发配指标 |
 |---|---:|---:|---:|
@@ -429,13 +449,18 @@ for (long start = startupTicks; start + 100 <= testTicks; start++) {
 | D | 99.80% | 100.00% | 400.00% | 400.00% |
 | R | 99.50% | 99.04% | 516.12% | 756.71% |
 
-五个模型的吞吐、全局发配、单目标发配、100-tick 公平性和 ownership 守恒断言全部通过。
+当时已有的五个模型（A–D、R）的吞吐、全局发配、单目标发配、100-tick 公平性和 ownership 守恒断言全部通过；该历史结果不代表新增模型 E 已通过。
 
 ## 9. 安全语义边界
 
 本模型只验证批量大小学习、无线目标调度和吞吐收敛，不替代以下测试：
 
-- 多输入样板的 `1, 1, 2, 4...` 安全爬坡与原始输入顺序。
+- 批次增长证明以“当前 tick、当前目标、当前 canonical pattern”为边界，不能跨 tick 继承。同一 tick 如果要从当前基准 `H` 上升，必须先依次完整接收 `H, H`，随后才可以按 `2H, 4H, 8H...` 继续倍增。因此合法序列是 `H, H, 2H, 4H...`，禁止 `H, 2H...` 和直接 `2H...`。
+- 双重基准证明只在每个 tick 的增长开始处执行一次，不需要在同 tick 每翻一倍后再重复一次当前级。从 `2H` 成功继续上升到 `4H` 可以直接发送 `4H`，不要把序列写成 `H, H, 2H, 2H, 4H`。
+- 历史只允许提供本 tick 的起始基准 `H`，可以直接用于不增长的普通补货，但不能与本 tick 的一次 `H` 合并成增长证明。即使上一 tick 已完整接收过 `H` 且没有产生 `sendList`/overflow，本 tick 要上升时仍必须实际执行 `H, H, 2H...`。
+- 如果本 tick 的第二个 `H` 没有完整进入，则本 tick 的增长证明立即失效，第一份 `H` 不能与后续 tick 的任何发配拼成证明。该失败只终止当前 tick；下一 tick 仍可重新从一组全新的 `H, H, 2H...` 开始，不得把目标永久锁成单 `H` 补货。
+- 只有某个物理批次的全部输入完整进入目标、没有留下 `sendList`/overflow 时，它才可以成为后续 tick 的新基准 `H`。零接收、部分接收或产生 overflow 都立即终止该目标本 tick 的增长；已经转移所有权的 partial 部分可以保留并结算，但不能提升 `H`，且余量排空前禁止向该目标发起新批次。
+- 多输入样板在每个物理批次内保持原始输入顺序；上述 `H, H, 2H` 中的每一项都按一次完整 pattern copies 批次判断，不能按单个输入分别证明或增长。
 - 模糊输入和过载动态输出的 ownership 结算。
 - 部分插入后的 `sendList`/无线 overflow 排空。
 - 阻挡、同一样板放行、主产物锁和红石锁。

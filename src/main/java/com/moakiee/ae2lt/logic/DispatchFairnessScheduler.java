@@ -500,6 +500,17 @@ final class DispatchFairnessScheduler<T, P> {
             return allowanceFor(state, targetState);
         }
 
+        long raiseAllowance(T target, long minimumAllowance) {
+            // A long-idle target may retain a proven physical batch after its
+            // 100-tick fairness count expires. Keep the target ordering fair,
+            // but do not truncate that already-proven batch back to one copy.
+            var targetState = requireLeased(target);
+            targetState.leasedAllowance = Math.max(
+                    targetState.leasedAllowance,
+                    Math.max(0L, minimumAllowance));
+            return targetState.leasedAllowance;
+        }
+
         private long allowanceFor(
                 PatternState<T> patternState,
                 TargetState<T> targetState) {
