@@ -56,7 +56,6 @@ import com.moakiee.ae2lt.machine.overloadfactory.OverloadProcessingFactoryInvent
 import com.moakiee.ae2lt.machine.overloadfactory.OverloadProcessingFactoryLogic;
 import com.moakiee.ae2lt.machine.overloadfactory.recipe.OverloadProcessingLockedRecipe;
 import com.moakiee.ae2lt.machine.overloadfactory.recipe.OverloadProcessingRecipeCandidate;
-import com.moakiee.ae2lt.machine.overloadfactory.recipe.OverloadProcessingRecipeMatchCache;
 import com.moakiee.ae2lt.machine.overloadfactory.recipe.OverloadProcessingRecipeService;
 import com.moakiee.ae2lt.me.key.LightningKey;
 import com.moakiee.ae2lt.menu.OverloadProcessingFactoryMenu;
@@ -94,8 +93,6 @@ public class OverloadProcessingFactoryBlockEntity extends AENetworkedBlockEntity
             new OverloadProcessingFactoryFluidHandler(inputTank, outputTank);
     private final OverloadProcessingFactoryEnergyStorage energyStorage =
             new OverloadProcessingFactoryEnergyStorage(AE2LTCommonConfig.overloadFactoryEnergyCapacity(), this::onEnergyChanged);
-    private final OverloadProcessingRecipeMatchCache recipeMatchCache =
-            new OverloadProcessingRecipeMatchCache();
     private final IUpgradeInventory upgrades =
             UpgradeInventories.forMachine(ModBlocks.OVERLOAD_PROCESSING_FACTORY.get(), SPEED_CARD_SLOTS, this::onUpgradesChanged);
     private final OverloadProcessingFactoryLogic logic;
@@ -253,21 +250,7 @@ public class OverloadProcessingFactoryBlockEntity extends AENetworkedBlockEntity
                 getInputFluid(),
                 getOutputFluid(),
                 getAvailableHighVoltage(),
-                getAvailableExtremeHighVoltage(),
-                recipeMatchCache);
-    }
-
-    public Optional<OverloadProcessingRecipeCandidate> findLockedRecipeMatch(
-            OverloadProcessingLockedRecipe lockedRecipe) {
-        return OverloadProcessingRecipeService.findLockedRecipeMatch(
-                getLevel(),
-                inventory,
-                getInputFluid(),
-                getOutputFluid(),
-                lockedRecipe,
-                getAvailableHighVoltage(),
-                getAvailableExtremeHighVoltage(),
-                recipeMatchCache);
+                getAvailableExtremeHighVoltage());
     }
 
     public long getConsumedEnergy() {
