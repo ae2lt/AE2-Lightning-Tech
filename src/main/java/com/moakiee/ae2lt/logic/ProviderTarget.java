@@ -13,6 +13,7 @@ import org.jetbrains.annotations.Nullable;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
@@ -24,6 +25,8 @@ import appeng.api.stacks.AEKey;
 import appeng.api.stacks.GenericStack;
 import appeng.api.stacks.KeyCounter;
 import appeng.helpers.patternprovider.PatternProviderTarget;
+
+import com.moakiee.thunderbolt.CoreConfig;
 
 /**
  * One provider-owned physical target.
@@ -184,6 +187,26 @@ public class ProviderTarget extends TargetAddress {
         var resolvedAdapter = resolveAdapter(level);
         return resolvedAdapter != null && resolvedAdapter.supportsBatch(
                 level, pos(), boundFace(), pattern);
+    }
+
+    /**
+     * Returns the configured per-call copy limit for this physical machine.
+     * The wildcard rules are evaluated only when the target block or rule version changes.
+     */
+    public final long batchCopyLimit(ServerLevel level) {
+        var blockEntity = resolveBlockEntity(level);
+        if (blockEntity == null) {
+            return Long.MAX_VALUE;
+        }
+        var rules = CoreConfig.batchCopyLimitRules();
+        if (runtime.batchLimitRulesVersion != rules.version()) {
+            var blockId = BuiltInRegistries.BLOCK.getKey(blockEntity.getBlockState().getBlock());
+            runtime.batchCopyLimit = blockId != null
+                    ? rules.limit(blockId.toString())
+                    : Long.MAX_VALUE;
+            runtime.batchLimitRulesVersion = rules.version();
+        }
+        return runtime.batchCopyLimit;
     }
 
     public final PushResult pushCopies(
@@ -514,6 +537,8 @@ public class ProviderTarget extends TargetAddress {
         runtime.lastSuccessfulPattern = null;
         runtime.batchChunks.clear();
         runtime.batchSteps.clear();
+        runtime.batchLimitRulesVersion = Long.MIN_VALUE;
+        runtime.batchCopyLimit = Long.MAX_VALUE;
     }
 
     /** Mutable state with the same lifetime as this physical target object. */
@@ -533,6 +558,8 @@ public class ProviderTarget extends TargetAddress {
                 new IdentityHashMap<>();
         private final IdentityHashMap<IPatternDetails, BatchStepState> batchSteps =
                 new IdentityHashMap<>();
+        private long batchLimitRulesVersion = Long.MIN_VALUE;
+        private long batchCopyLimit = Long.MAX_VALUE;
         @Nullable
         private IPatternDetails lastSuccessfulPattern;
         @Nullable

@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.Set;
 
 import com.moakiee.ae2lt.blockentity.ExtendedPatternProviderCapacity;
+import com.moakiee.thunderbolt.core.util.FastWildcardMatcher;
 
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.common.ModConfigSpec;
@@ -47,6 +48,9 @@ public final class AE2LTCommonConfig {
             DEFAULT_EASTER_EGG_WEIGHTS.stream()
                     .map(entry -> ResourceLocation.parse(entry.substring(0, entry.lastIndexOf('='))))
                     .toList());
+    private static final List<String> DEFAULT_BATCH_COPY_LIMITED_BLOCKS = List.of(
+            "neoecoae:crafting_pattern_bus",
+            "sophisticated*:*");
 
     public static final ModConfigSpec SPEC;
 
@@ -143,6 +147,10 @@ public final class AE2LTCommonConfig {
 
     public static int extendedPatternProviderPages() {
         return ExtendedPatternProviderCapacity.clampPages(VALUES.extendedPatternProviderPages.get());
+    }
+
+    public static List<? extends String> batchCopyLimitedBlocks() {
+        return VALUES.batchCopyLimitedBlocks.get();
     }
 
     public static int overloadFactoryParallelPerMatrix() {
@@ -339,6 +347,7 @@ public final class AE2LTCommonConfig {
         private final ModConfigSpec.DoubleValue overloadedControllerPassiveAePerTick;
         private final ModConfigSpec.IntValue wirelessConnectorMaxDistance;
         private final ModConfigSpec.IntValue extendedPatternProviderPages;
+        private final ModConfigSpec.ConfigValue<List<? extends String>> batchCopyLimitedBlocks;
         private final ModConfigSpec.IntValue overloadFactoryParallelPerMatrix;
         private final ModConfigSpec.LongValue overloadFactoryEnergyCapacity;
         private final ModConfigSpec.LongValue overloadFactoryFePerTickNoSpeedCard;
@@ -550,6 +559,17 @@ public final class AE2LTCommonConfig {
                             ExtendedPatternProviderCapacity.DEFAULT_PAGES,
                             1,
                             ExtendedPatternProviderCapacity.MAX_PAGES);
+            builder.pop();
+            builder.push("batchDispatch");
+            batchCopyLimitedBlocks = builder
+                    .comment(
+                            "Block ids whose single-target pushBatch calls are capped at 1024 copies.",
+                            "Matches both batch-provider blocks and physical machines targeted by overloaded providers.",
+                            "Supports '*' and '?' wildcards; exact ids and namespace:* use constant-time lookup.")
+                    .defineListAllowEmpty(
+                            "copyLimitedBlocks",
+                            DEFAULT_BATCH_COPY_LIMITED_BLOCKS,
+                            FastWildcardMatcher::isValidPattern);
             builder.pop();
             builder.pop();
 

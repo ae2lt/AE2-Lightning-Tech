@@ -661,9 +661,12 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
             double oneCopyCost) {
         boolean batchSupported = context.target().supportsBatch(
                 context.level(), pattern);
+        long targetMaxCraft = Math.min(
+                maxCraft,
+                context.target().batchCopyLimit(context.level()));
         return context.target().pushPattern(
                 patternHandle,
-                maxCraft,
+                targetMaxCraft,
                 batchSupported,
                 () -> isBatchTargetBlocked(context, patternHandle),
                 copies -> pushBatchChunk(

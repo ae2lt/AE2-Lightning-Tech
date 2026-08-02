@@ -58,6 +58,7 @@ import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.ModList;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
+import net.neoforged.fml.event.config.ModConfigEvent;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
@@ -377,6 +378,7 @@ public class AE2LightningTech {
         modEventBus.addListener(ModAEKeyTypes::register);
         modEventBus.addListener(this::registerCapabilities);
         modEventBus.addListener(this::commonSetup);
+        modEventBus.addListener(this::onConfigChanged);
         modContainer.registerConfig(ModConfig.Type.COMMON, AE2LTCommonConfig.SPEC);
         modContainer.registerConfig(ModConfig.Type.CLIENT,
                 com.moakiee.ae2lt.config.AE2LTClientConfig.SPEC, "ae2lt-client.toml");
@@ -800,6 +802,8 @@ public class AE2LightningTech {
             ChannelProviderRegistry.registerController(OverloadedControllerBlockEntity.class);
             CoreConfig.setChannelsPerController(
                     AE2LTCommonConfig.overloadedControllerChannelsPerController());
+            CoreConfig.setBatchCopyLimitedBlocks(
+                    AE2LTCommonConfig.batchCopyLimitedBlocks());
 
             var lightningCollectorBlock = ModBlocks.LIGHTNING_COLLECTOR.get();
             var lightningCollectorBeType = ModBlockEntities.LIGHTNING_COLLECTOR.get();
@@ -1069,6 +1073,19 @@ public class AE2LightningTech {
             }
 
         });
+    }
+
+    private void onConfigChanged(ModConfigEvent event) {
+        if (event.getConfig().getSpec() == AE2LTCommonConfig.SPEC) {
+            syncThunderboltConfig();
+        }
+    }
+
+    private static void syncThunderboltConfig() {
+        CoreConfig.setChannelsPerController(
+                AE2LTCommonConfig.overloadedControllerChannelsPerController());
+        CoreConfig.setBatchCopyLimitedBlocks(
+                AE2LTCommonConfig.batchCopyLimitedBlocks());
     }
 
     private static void registerOverloadTntDispenseBehavior() {
