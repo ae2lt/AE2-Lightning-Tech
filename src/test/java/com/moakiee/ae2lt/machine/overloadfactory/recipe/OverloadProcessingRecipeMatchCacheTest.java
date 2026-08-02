@@ -131,9 +131,10 @@ class OverloadProcessingRecipeMatchCacheTest {
     void outputProbeDistinguishesEmptyAndPopulatedOutputSlot() {
         var inventory = new OverloadProcessingFactoryInventory(null);
 
-        assertFalse(hasItemOutput(inventory));
+        assertFalse(hasItemOutput(inventory, true));
         assertTrue(inventory.insertRecipeOutputs(List.of(new ItemStack(Items.GOLD_INGOT))));
-        assertTrue(hasItemOutput(inventory));
+        assertTrue(hasItemOutput(inventory, true));
+        assertFalse(hasItemOutput(inventory, false));
     }
 
     private static OverloadProcessingFactoryInventory inventoryWithIron(int count) {
@@ -142,9 +143,11 @@ class OverloadProcessingRecipeMatchCacheTest {
         return inventory;
     }
 
-    private static boolean hasItemOutput(OverloadProcessingFactoryInventory inventory) {
+    private static boolean hasItemOutput(
+            OverloadProcessingFactoryInventory inventory,
+            boolean autoExport) {
         return AdjacentItemAutoExportHelper.hasAnyOutput(
-                true,
+                autoExport,
                 OverloadProcessingFactoryInventory.SLOT_OUTPUT_0,
                 OverloadProcessingFactoryInventory.OUTPUT_SLOT_COUNT,
                 inventory::getStackInSlot);

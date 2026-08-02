@@ -386,12 +386,12 @@ public class OverloadProcessingFactoryBlockEntity extends AENetworkedBlockEntity
     }
 
     public boolean pushOutResult() {
-        if (allowedOutputs.isEmpty() || !(level instanceof ServerLevel serverLevel)) {
+        if (!hasAutoExportWork() || !(level instanceof ServerLevel serverLevel)) {
             return false;
         }
 
         boolean hasItemOutput = AdjacentItemAutoExportHelper.hasAnyOutput(
-                true,
+                autoExport,
                 OverloadProcessingFactoryInventory.SLOT_OUTPUT_0,
                 OverloadProcessingFactoryInventory.OUTPUT_SLOT_COUNT,
                 inventory::getStackInSlot);
@@ -414,8 +414,6 @@ public class OverloadProcessingFactoryBlockEntity extends AENetworkedBlockEntity
                 },
                 direction -> getExportTarget(serverLevel, direction));
 
-        // Re-check after item insertion because capability callbacks are
-        // allowed to mutate adjacent state synchronously.
         boolean pushedFluid = !outputTank.getFluid().isEmpty()
                 && AdjacentItemAutoExportHelper.pushOutFluid(
                         this,

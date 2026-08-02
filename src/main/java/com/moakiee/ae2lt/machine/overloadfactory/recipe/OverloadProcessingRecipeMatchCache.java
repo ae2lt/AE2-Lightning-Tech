@@ -79,12 +79,6 @@ public final class OverloadProcessingRecipeMatchCache {
         return prepared;
     }
 
-    public void clear() {
-        cachedInput = null;
-        preparedMatches.clear();
-        observedReloadGeneration = reloadGeneration;
-    }
-
     @SubscribeEvent
     public static void onTagsUpdated(TagsUpdatedEvent event) {
         invalidateAllForReload();
