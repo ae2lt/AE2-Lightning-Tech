@@ -79,10 +79,6 @@ public class MatrixControllerScreen extends MultiblockControllerScreen<MatrixCon
                         formatCount(menu.getPatternSlotCount())),
                 COL_VALUE);
 
-        if (!multidimensional) {
-            guiGraphics.drawString(font, hintText(), TEXT_X, y + HINT_GAP, hintColor(), false);
-        }
-
         renderFooter(guiGraphics, multidimensional);
     }
 
@@ -112,24 +108,6 @@ public class MatrixControllerScreen extends MultiblockControllerScreen<MatrixCon
                 ? values[ordinal].name().toLowerCase(Locale.ROOT)
                 : "unknown";
         return Component.translatable("ae2lt.matrix.issue." + name);
-    }
-
-    private Component hintText() {
-        return Component.translatable(switch (heatStateKey()) {
-            case "ae2lt.matrix.gui.heat_cold" -> "ae2lt.matrix.gui.hint_cold";
-            case "ae2lt.matrix.gui.heat_sweet" -> "ae2lt.matrix.gui.hint_sweet";
-            case "ae2lt.matrix.gui.heat_hot" -> "ae2lt.matrix.gui.hint_hot";
-            default -> "ae2lt.matrix.gui.hint_stable";
-        });
-    }
-
-    private int hintColor() {
-        return switch (heatStateKey()) {
-            case "ae2lt.matrix.gui.heat_sweet" -> COL_GREEN;
-            case "ae2lt.matrix.gui.heat_hot" -> COL_RED;
-            case "ae2lt.matrix.gui.heat_cold" -> COL_BLUE;
-            default -> COL_MUTED;
-        };
     }
 
     private String heatStateKey() {
