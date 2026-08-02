@@ -30,6 +30,10 @@ final class WirelessBatchCadence<T> {
     private static final int FILL_FALLBACK_MIN_BATCH_COPIES = 64;
     private static final int STABLE_PREFIX_SAMPLES = 5;
     private static final int SINGLE_CHUNK_SETTLE_REJECTIONS = 2;
+    private static final int SINGLE_CHUNK_AUDIT_MIN_COVERAGE = 16;
+    private static final int RESERVOIR_WINDOW_TICKS = 25;
+    private static final int RESERVOIR_SUCCESS_SAMPLES = 5;
+    private static final int RESERVOIR_RECOVERY_SUCCESS_SAMPLES = 2;
     private static final int MAX_FAILURE_PRESSURE = 8;
     private static final int HIGH_FAILURE_PRESSURE = 7;
     private static final int MODERATE_FAILURE_PRESSURE = 2;
@@ -82,6 +86,28 @@ final class WirelessBatchCadence<T> {
             boolean requestLimited,
             boolean exploratoryAttempt,
             ProviderTarget.BaselineStatus baselineStatus) {
+        return recordSuccess(
+                target,
+                pattern,
+                gameTick,
+                ownedCopies,
+                acceptedFullChunk,
+                requestLimited,
+                exploratoryAttempt,
+                baselineStatus,
+                false);
+    }
+
+    int recordSuccess(
+            T target,
+            IPatternDetails pattern,
+            long gameTick,
+            long ownedCopies,
+            boolean acceptedFullChunk,
+            boolean requestLimited,
+            boolean exploratoryAttempt,
+            ProviderTarget.BaselineStatus baselineStatus,
+            boolean reservoirBatch) {
         if (ownedCopies <= 0L) {
             throw new IllegalArgumentException(
                     "Successful cadence samples must own at least one copy");
@@ -89,12 +115,89 @@ final class WirelessBatchCadence<T> {
         var state = state(target, pattern);
         state.expireIfIdle(gameTick);
         state.lastActivityTick = gameTick;
+        reservoirBatch = state.reservoirCadenceActive
+                || reservoirBatch && usesReservoirCadence(ownedCopies);
         boolean capacitySuccess = acceptedFullChunk && !requestLimited;
+        if (capacitySuccess
+                && baselineStatus
+                        == ProviderTarget.BaselineStatus.GROWTH_COMPLETE
+                && state.stablePrefixCopies > 0L
+                && ownedCopies / state.stablePrefixCopies >= 3L) {
+            // A refill several times larger than the old stable prefix is a
+            // direct speed-change signal. Keeping the old long interval here
+            // can starve a reconfigured machine for another whole window.
+            state.clearStablePrefix();
+            return beginReservoirWindowLearning(
+                    state, gameTick, ownedCopies);
+        }
+        if (state.singleChunkRefill
+                && exploratoryAttempt
+                && state.stablePrefixCopies > 0L
+                && ownedCopies >= 2L * state.stablePrefixCopies) {
+            // The exploratory visit refilled at least two proven H chunks.
+            // Promote the complete owned transaction to a new sliding-window
+            // candidate instead of treating it as another single-H sample.
+            int previousCoverage = state.singleChunkCoverage;
+            state.clearStablePrefix();
+            return beginReservoirCadence(
+                    state,
+                    gameTick,
+                    ownedCopies,
+                    previousCoverage);
+        }
         if (state.singleChunkRefill
                 && baselineStatus == ProviderTarget.BaselineStatus.NONE
+                && ownedCopies == state.stablePrefixCopies
                 && capacitySuccess) {
+            if (reservoirBatch
+                    && exploratoryAttempt
+                    && state.singleChunkFullTailAudit) {
+                state.clearStablePrefix();
+                return beginReservoirWindowLearning(
+                        state, gameTick, ownedCopies);
+            }
+            boolean recoveredFromRejection = !exploratoryAttempt
+                    && state.singleChunkRejectedProbes > 0;
+            int observedCoverage = state.lastSuccessTick == Long.MIN_VALUE
+                    ? state.singleChunkCoverage
+                    : (int) Math.clamp(
+                            gameTick - state.lastSuccessTick,
+                            1L,
+                            MAX_COVERAGE_TICKS);
             finishBaselineSample(state, gameTick, ownedCopies, true);
-            return state.recordSingleChunkSuccess(exploratoryAttempt);
+            if (recoveredFromRejection) {
+                state.singleChunkCoverage = observedCoverage;
+                state.singleChunkRejectedProbes = 0;
+                state.singleChunkProbeSettled = true;
+            }
+            return state.recordSingleChunkSuccess(
+                    exploratoryAttempt, gameTick);
+        }
+        if (state.singleChunkRefill
+                && capacitySuccess
+                && ownedCopies != state.stablePrefixCopies) {
+            if (reservoirBatch
+                    && state.reservoirCadenceActive
+                    && ownedCopies * 4L
+                            < state.reservoirCadenceCopies * 3L) {
+                finishBaselineSample(
+                        state, gameTick, ownedCopies, true);
+                state.nextAttemptExploratory = false;
+                state.singleChunkReservoirAudit = false;
+                state.singleChunkFullTailAudit = false;
+                return state.singleChunkCoverage;
+            }
+            // A formerly slow reservoir accepted a larger complete refill.
+            // The old single-H cadence no longer describes this machine, so
+            // return to ordinary interval learning immediately.
+            int previousCoverage = state.singleChunkCoverage;
+            state.clearStablePrefix();
+            finishBaselineSample(state, gameTick, ownedCopies, true);
+            return beginReservoirCadence(
+                    state,
+                    gameTick,
+                    ownedCopies,
+                    previousCoverage);
         }
         if (state.fillFallback) {
             if (!capacitySuccess) {
@@ -126,12 +229,58 @@ final class WirelessBatchCadence<T> {
                 return enterFillFallback(state);
             }
         }
+        if (reservoirBatch
+                && state.reservoirCadenceActive
+                && state.reservoirCadenceCopies > ownedCopies
+                && (!requestLimited
+                        || state.reservoirWaterlineSettled)
+                && (!capacitySuccess
+                        || ownedCopies * 4L
+                                < state.reservoirCadenceCopies * 3L)) {
+            return recordReservoirBoundary(
+                    state, gameTick, ownedCopies);
+        }
+        if (state.reservoirCadenceActive
+                && capacitySuccess
+                && ownedCopies > state.reservoirCadenceCopies) {
+            // A reconfigured fast target may accept progressively larger
+            // complete ramps (1536, 1792, 1920, ...). Promote each observed
+            // waterline immediately; otherwise the first smaller candidate
+            // remains authoritative and later successes are misclassified as
+            // unrelated baseline samples.
+            return beginReservoirWindowLearning(
+                    state, gameTick, ownedCopies);
+        }
+        if (reservoirBatch
+                && state.reservoirCadenceActive
+                && ownedCopies == state.reservoirCadenceCopies
+                && (baselineStatus
+                                == ProviderTarget.BaselineStatus.GROWTH_COMPLETE
+                        || baselineStatus
+                                == ProviderTarget.BaselineStatus.COMPLETE)) {
+            // The physical ramp may reject a speculative tail after the whole
+            // learned transaction has already entered. That is a successful
+            // reservoir refill for cadence purposes, not a one-tick baseline.
+            return recordReservoirSuccess(
+                    state,
+                    gameTick,
+                    ownedCopies,
+                    exploratoryAttempt);
+        }
         if (baselineStatus != ProviderTarget.BaselineStatus.NONE) {
             return recordBaselineResult(
                     state,
                     gameTick,
                     ownedCopies,
-                    baselineStatus);
+                    baselineStatus,
+                    reservoirBatch);
+        }
+        if (reservoirBatch && capacitySuccess) {
+            return recordReservoirSuccess(
+                    state,
+                    gameTick,
+                    ownedCopies,
+                    exploratoryAttempt);
         }
         boolean confirmedFasterCoverage = false;
         int coverage = 1;
@@ -141,11 +290,18 @@ final class WirelessBatchCadence<T> {
                 && ownedCopies == state.lastOwnedCopies) {
             long elapsed = Math.max(1L, gameTick - state.lastSuccessTick);
             if (exploratoryAttempt) {
-                if (++state.exploratorySuccesses >= 2) {
-                    state.learnedCoverage = Math.max(
-                            1, state.learnedCoverage - 1);
+                int requiredSuccesses = reservoirBatch ? 1 : 2;
+                if (++state.exploratorySuccesses >= requiredSuccesses) {
+                    state.learnedCoverage = reservoirBatch
+                            ? Math.max(1, state.learnedCoverage / 2)
+                            : Math.max(1, state.learnedCoverage - 1);
+                    if (reservoirBatch) {
+                        state.baselineCoverage = state.learnedCoverage;
+                    }
                     state.exploratorySuccesses = 0;
                     confirmedFasterCoverage = true;
+                    state.reservoirRejectedProbes = 0;
+                    state.reservoirProbeSettled = false;
                 }
                 elapsed = state.learnedCoverage;
             } else if (state.exploratoryProbeRejected) {
@@ -180,7 +336,10 @@ final class WirelessBatchCadence<T> {
                 && !state.fillFallback
                 && state.lastSuccessTick != Long.MIN_VALUE
                 && ownedCopies == state.lastOwnedCopies
-                && state.learnedCoverage > 1) {
+                && state.learnedCoverage > 1
+                && !(reservoirBatch
+                        && state.reservoirProbeSettled
+                        && gameTick - state.lastReservoirProbeTick < 100L)) {
             int exploratoryCoverage = Math.max(
                     pressureFloor, state.learnedCoverage - 1);
             if (exploratoryCoverage < state.learnedCoverage) {
@@ -204,6 +363,7 @@ final class WirelessBatchCadence<T> {
             state.firstProvenRejectionTick = Long.MIN_VALUE;
         }
         state.exploratoryProbeRejected = false;
+        state.reservoirBatch = reservoirBatch;
         return coverage;
     }
 
@@ -238,29 +398,40 @@ final class WirelessBatchCadence<T> {
         }
         if (state.singleChunkRefill) {
             if (exploratoryAttempt) {
+                boolean reservoirAudit = state.singleChunkReservoirAudit;
+                state.singleChunkReservoirAudit = false;
+                state.singleChunkFullTailAudit = false;
                 state.exploratorySuccesses = 0;
                 state.exploratoryProbeRejected = true;
                 if (++state.singleChunkRejectedProbes
                         >= SINGLE_CHUNK_SETTLE_REJECTIONS) {
                     state.singleChunkProbeSettled = true;
                 }
+                state.lastReservoirProbeTick = gameTick;
+                return reservoirAudit
+                        ? state.singleChunkCoverage
+                        : 1;
             } else {
                 state.exploratorySuccesses = 0;
-                state.exploratoryProbeRejected = false;
-                state.singleChunkCoverage = Math.min(
-                        MAX_COVERAGE_TICKS,
-                        state.singleChunkCoverage + 1);
-                state.singleChunkRejectedProbes = 0;
-                state.singleChunkProbeSettled = false;
+                state.exploratoryProbeRejected = true;
+                state.singleChunkRejectedProbes = Math.min(
+                        Integer.MAX_VALUE,
+                        state.singleChunkRejectedProbes + 1);
+                return rejectionBackoff(
+                        state.singleChunkRejectedProbes);
             }
-            // A probe is intentionally one tick early. Retry at the original
-            // due tick; an unexpected ordinary rejection also receives this
-            // cheap one-tick recheck before its enlarged interval is used.
-            return 1;
+        }
+        if (state.reservoirCadenceActive) {
+            return recordReservoirFailure(state, gameTick);
         }
         if (exploratoryAttempt) {
             state.exploratorySuccesses = 0;
             state.exploratoryProbeRejected = true;
+            if (state.reservoirBatch
+                    && ++state.reservoirRejectedProbes >= 1) {
+                state.reservoirProbeSettled = true;
+                state.lastReservoirProbeTick = gameTick;
+            }
             return 1;
         }
         state.exploratoryProbeRejected = false;
@@ -284,7 +455,9 @@ final class WirelessBatchCadence<T> {
         if (shouldEnterFillFallback(state, gameTick)) {
             return enterFillFallback(state);
         }
-        return 1;
+        return Math.max(
+                rejectionBackoff(state.provenChunkRejections),
+                state.baselineCoverage);
     }
 
     boolean isExploratoryAttempt(T target, IPatternDetails pattern) {
@@ -294,6 +467,19 @@ final class WirelessBatchCadence<T> {
         }
         var state = byPattern.get(pattern);
         return state != null && state.nextAttemptExploratory;
+    }
+
+    boolean shouldReopenReservoirTail(
+            T target, IPatternDetails pattern) {
+        var byPattern = states.get(target);
+        if (byPattern == null) {
+            return false;
+        }
+        var state = byPattern.get(pattern);
+        return state != null
+                && state.nextAttemptExploratory
+                && (state.singleChunkFullTailAudit
+                        || state.reservoirFullTailAudit);
     }
 
     boolean isFillFallback(T target, IPatternDetails pattern) {
@@ -312,6 +498,36 @@ final class WirelessBatchCadence<T> {
         }
         var state = byPattern.get(pattern);
         return state != null && state.singleChunkRefill;
+    }
+
+    boolean usesProvenChunkProbe(
+            T target, IPatternDetails pattern) {
+        var byPattern = states.get(target);
+        if (byPattern == null) {
+            return false;
+        }
+        var state = byPattern.get(pattern);
+        return state != null
+                && state.reservoirCadenceActive
+                && state.nextAttemptExploratory
+                && !state.reservoirFullTailAudit;
+    }
+
+    long reservoirAllowance(T target, IPatternDetails pattern) {
+        var byPattern = states.get(target);
+        if (byPattern == null) {
+            return Long.MAX_VALUE;
+        }
+        var state = byPattern.get(pattern);
+        if (state == null
+                || !state.reservoirCadenceActive
+                || !state.reservoirWaterlineSettled) {
+            return Long.MAX_VALUE;
+        }
+        return Math.max(
+                1L,
+                state.reservoirCadenceCopies
+                        - state.reservoirCycleOwnedCopies);
     }
 
     boolean shouldPreserveBatchHistory(
@@ -351,17 +567,30 @@ final class WirelessBatchCadence<T> {
                 : 1L + (amount - 1L) / Math.max(1L, divisor);
     }
 
+    private static boolean usesReservoirCadence(long copies) {
+        return copies >= 1_024L && (copies & (copies - 1L)) != 0L;
+    }
+
     private static int recordBaselineResult(
             State state,
             long gameTick,
             long ownedCopies,
-            ProviderTarget.BaselineStatus baselineStatus) {
+            ProviderTarget.BaselineStatus baselineStatus,
+            boolean reservoirBatch) {
         long elapsed = state.lastSuccessTick == Long.MIN_VALUE
                 ? 1L
                 : Math.max(1L, gameTick - state.lastSuccessTick);
+        boolean continuesStablePrefix = baselineStatus
+                        == ProviderTarget.BaselineStatus.GROWTH_COMPLETE
+                && state.stablePrefixSamples > 0
+                && state.stablePrefixCopies > 0L
+                && ownedCopies >= state.stablePrefixCopies;
         if (baselineStatus
                 == ProviderTarget.BaselineStatus.GROWTH_COMPLETE) {
-            state.baselineCoverage = 1;
+            state.baselineCoverage = continuesStablePrefix
+                    ? (int) Math.clamp(
+                            elapsed, 1L, MAX_COVERAGE_TICKS)
+                    : 1;
         } else if ((baselineStatus
                                 == ProviderTarget.BaselineStatus.COMPLETE
                         || baselineStatus
@@ -375,7 +604,19 @@ final class WirelessBatchCadence<T> {
         }
         if (baselineStatus
                 == ProviderTarget.BaselineStatus.PREFIX_COMPLETE) {
-            state.observeStablePrefix(ownedCopies, elapsed);
+            state.observeStablePrefix(
+                    ownedCopies,
+                    elapsed,
+                    reservoirBatch ? 2 : STABLE_PREFIX_SAMPLES);
+        } else if (continuesStablePrefix) {
+            // The first proven H still arrived at the same observed cadence;
+            // accepting a second H (and then reaching a reservoir boundary)
+            // does not invalidate that refill proof. Treat it as one prefix
+            // sample instead of restarting learning from scratch.
+            state.observeStablePrefix(
+                    state.stablePrefixCopies,
+                    elapsed,
+                    reservoirBatch ? 2 : STABLE_PREFIX_SAMPLES);
         } else if (baselineStatus
                 == ProviderTarget.BaselineStatus.COMPLETE
                 || baselineStatus
@@ -383,12 +624,291 @@ final class WirelessBatchCadence<T> {
             state.clearStablePrefix();
         }
         finishBaselineSample(state, gameTick, ownedCopies, true);
+        state.reservoirBatch = reservoirBatch;
         state.nextAttemptExploratory = false;
         state.exploratorySuccesses = 0;
         state.exploratoryProbeRejected = false;
         return state.singleChunkRefill
                 ? state.singleChunkCoverage
                 : state.baselineCoverage;
+    }
+
+    private static int beginReservoirCadence(
+            State state,
+            long gameTick,
+            long ownedCopies,
+            int acceptedUpperBound) {
+        finishBaselineSample(state, gameTick, ownedCopies, true);
+        state.reservoirBatch = true;
+        state.reservoirCadenceActive = true;
+        state.reservoirCadenceCopies = ownedCopies;
+        state.reservoirRejectedCoverage = 0;
+        state.reservoirAcceptedCoverage = Math.clamp(
+                acceptedUpperBound, 1, MAX_COVERAGE_TICKS);
+        state.reservoirCycleOwnedCopies = 0L;
+        state.reservoirWaterlineSettled = false;
+        state.reservoirCycleStartTick = gameTick;
+        state.lastReservoirProbeTick = gameTick;
+        return scheduleReservoirProbe(state, gameTick);
+    }
+
+    /**
+     * Discards a stale refill interval after a full reservoir audit succeeds.
+     * The new machine state is deliberately relearned from one tick: rejected
+     * attempts double the absolute delay from the last refill until a new
+     * successful upper bound exists, after which the same window is bisected.
+     */
+    private static int beginReservoirWindowLearning(
+            State state, long gameTick, long ownedCopies) {
+        finishBaselineSample(state, gameTick, ownedCopies, true);
+        state.reservoirBatch = true;
+        state.reservoirCadenceActive = true;
+        state.reservoirCadenceCopies = ownedCopies;
+        state.reservoirRejectedCoverage = 0;
+        state.reservoirAcceptedCoverage = 0;
+        state.nextAttemptExploratory = true;
+        state.reservoirFullTailAudit = true;
+        state.reservoirNeedsFullAudit = true;
+        state.reservoirWindowLearning = true;
+        state.reservoirAggressiveLearning = true;
+        state.reservoirPeriodicAudit = false;
+        state.reservoirAuditSuccesses = 0;
+        state.reservoirCandidateCoverage = 0;
+        state.reservoirCandidateSuccesses = 0;
+        state.reservoirCycleOwnedCopies = 0L;
+        state.reservoirWaterlineSettled = false;
+        state.reservoirCycleStartTick = gameTick;
+        state.lastReservoirProbeTick = gameTick;
+        state.reservoirWindowStartTick = gameTick;
+        return 1;
+    }
+
+    private static int recordReservoirSuccess(
+            State state,
+            long gameTick,
+            long ownedCopies,
+            boolean exploratoryAttempt) {
+        int elapsed = state.reservoirCycleStartTick == Long.MIN_VALUE
+                ? 1
+                : (int) Math.clamp(
+                        gameTick - state.reservoirCycleStartTick,
+                        1L,
+                        MAX_COVERAGE_TICKS);
+        if (state.reservoirCadenceActive
+                && state.reservoirCycleOwnedCopies == 0L
+                && ownedCopies == state.reservoirCadenceCopies
+                && state.lastOwnedCopies > 0L
+                && ownedCopies > state.lastOwnedCopies
+                && elapsed >= RESERVOIR_WINDOW_TICKS
+                && (state.reservoirWindowStartTick == Long.MIN_VALUE
+                        || gameTick - state.reservoirWindowStartTick
+                                >= RESERVOIR_WINDOW_TICKS)) {
+            return beginReservoirWindowLearning(
+                    state, gameTick, ownedCopies);
+        }
+        if (!state.reservoirCadenceActive
+                || ownedCopies != state.reservoirCadenceCopies) {
+            if (state.reservoirCadenceActive
+                    && ownedCopies < state.reservoirCadenceCopies
+                    && ownedCopies * 4L
+                            >= state.reservoirCadenceCopies * 3L) {
+                return beginReservoirWindowLearning(
+                        state, gameTick, ownedCopies);
+            }
+            state.reservoirCadenceActive = true;
+            state.reservoirCadenceCopies = ownedCopies;
+            state.reservoirRejectedCoverage = 0;
+            state.reservoirAcceptedCoverage = elapsed;
+        } else {
+            if (state.reservoirWindowLearning
+                    && (state.reservoirAcceptedCoverage <= 0
+                            || elapsed
+                                    < state.reservoirAcceptedCoverage)) {
+                if (state.reservoirCandidateCoverage == elapsed) {
+                    state.reservoirCandidateSuccesses++;
+                } else {
+                    state.reservoirCandidateCoverage = elapsed;
+                    state.reservoirCandidateSuccesses = 1;
+                }
+                int requiredSamples = state.reservoirAggressiveLearning
+                        ? RESERVOIR_RECOVERY_SUCCESS_SAMPLES
+                        : RESERVOIR_SUCCESS_SAMPLES;
+                if (state.reservoirCandidateSuccesses
+                        < requiredSamples) {
+                    state.reservoirNeedsFullAudit = true;
+                    finishBaselineSample(
+                            state, gameTick, ownedCopies, true);
+                    finishReservoirCycle(state, gameTick);
+                    state.reservoirBatch = true;
+                    state.nextAttemptExploratory = true;
+                    state.reservoirFullTailAudit = true;
+                    state.lastReservoirProbeTick = gameTick;
+                    return elapsed;
+                }
+                state.reservoirCandidateSuccesses = 0;
+                if (state.reservoirPeriodicAudit) {
+                    state.reservoirAuditSuccesses++;
+                }
+            }
+            state.reservoirAcceptedCoverage = Math.max(
+                    1,
+                    state.reservoirAcceptedCoverage <= 0
+                            ? elapsed
+                            : Math.min(
+                                    state.reservoirAcceptedCoverage,
+                                    elapsed));
+        }
+        state.reservoirNeedsFullAudit = false;
+        finishBaselineSample(state, gameTick, ownedCopies, true);
+        finishReservoirCycle(state, gameTick);
+        state.reservoirBatch = true;
+        return scheduleReservoirProbe(state, gameTick);
+    }
+
+    private static void finishReservoirCycle(
+            State state, long gameTick) {
+        state.reservoirCycleOwnedCopies = 0L;
+        state.reservoirCycleStartTick = gameTick;
+    }
+
+    private static int recordReservoirBoundary(
+            State state, long gameTick, long ownedCopies) {
+        int elapsedSinceProgress = state.lastSuccessTick == Long.MIN_VALUE
+                ? 1
+                : (int) Math.clamp(
+                        gameTick - state.lastSuccessTick,
+                        1L,
+                        MAX_COVERAGE_TICKS);
+        state.reservoirCycleOwnedCopies = Math.min(
+                state.reservoirCadenceCopies,
+                state.reservoirCycleOwnedCopies + ownedCopies);
+        state.reservoirWaterlineSettled = true;
+        if (state.reservoirCycleOwnedCopies
+                >= state.reservoirCadenceCopies) {
+            return recordReservoirSuccess(
+                    state,
+                    gameTick,
+                    state.reservoirCadenceCopies,
+                    false);
+        }
+        // Partial ownership is progress, not a rejected timing sample. Keep
+        // the full-refill window unchanged and finish this cycle with proven
+        // H chunks. Treating this as a new lower bound made a stochastic
+        // machine's interval monotonically drift upward after every harmless
+        // half refill.
+        finishBaselineSample(state, gameTick, ownedCopies, true);
+        state.reservoirBatch = true;
+        state.nextAttemptExploratory = false;
+        state.reservoirFullTailAudit = false;
+        long remaining = state.reservoirCadenceCopies
+                - state.reservoirCycleOwnedCopies;
+        return (int) Math.clamp(
+                ceilingDivide(
+                        remaining * elapsedSinceProgress,
+                        ownedCopies),
+                1L,
+                MAX_COVERAGE_TICKS);
+    }
+
+    private static int recordReservoirFailure(
+            State state, long gameTick) {
+        if (state.reservoirCycleOwnedCopies > 0L) {
+            state.nextAttemptExploratory = false;
+            state.reservoirFullTailAudit = false;
+            state.exploratorySuccesses = 0;
+            state.exploratoryProbeRejected = true;
+            state.lastReservoirProbeTick = gameTick;
+            return state.lastSuccessTick == Long.MIN_VALUE
+                    ? 1
+                    : (int) Math.clamp(
+                            gameTick - state.lastSuccessTick,
+                            1L,
+                            MAX_COVERAGE_TICKS);
+        }
+        int elapsed = state.reservoirCycleStartTick == Long.MIN_VALUE
+                ? 1
+                : (int) Math.clamp(
+                        gameTick - state.reservoirCycleStartTick,
+                        1L,
+                        MAX_COVERAGE_TICKS);
+        state.reservoirRejectedCoverage = Math.max(
+                state.reservoirRejectedCoverage, elapsed);
+        if (state.reservoirAcceptedCoverage > 0
+                && state.reservoirAcceptedCoverage
+                <= state.reservoirRejectedCoverage) {
+            state.reservoirAcceptedCoverage = Math.min(
+                    MAX_COVERAGE_TICKS,
+                    state.reservoirRejectedCoverage + 1);
+        }
+        state.nextAttemptExploratory = state.reservoirWindowLearning;
+        state.reservoirFullTailAudit = state.reservoirWindowLearning;
+        state.exploratorySuccesses = 0;
+        state.exploratoryProbeRejected = true;
+        state.lastReservoirProbeTick = gameTick;
+        int nextCoverage = nextReservoirCoverage(state);
+        return Math.max(1, nextCoverage - elapsed);
+    }
+
+    private static int scheduleReservoirProbe(
+            State state, long gameTick) {
+        state.reservoirFullTailAudit = false;
+        int low = state.reservoirRejectedCoverage;
+        int high = state.reservoirAcceptedCoverage;
+        if (high <= 0) {
+            int next = nextReservoirCoverage(state);
+            state.nextAttemptExploratory = true;
+            state.reservoirFullTailAudit = true;
+            state.lastReservoirProbeTick = gameTick;
+            return next;
+        }
+        if (high - low > 1) {
+            state.nextAttemptExploratory = true;
+            state.reservoirFullTailAudit = true;
+            state.lastReservoirProbeTick = gameTick;
+            return low + (high - low) / 2;
+        }
+        if (state.reservoirNeedsFullAudit) {
+            state.nextAttemptExploratory = true;
+            state.reservoirFullTailAudit = true;
+            state.lastReservoirProbeTick = gameTick;
+            return high;
+        }
+        if (high > 1
+                && gameTick - state.lastReservoirProbeTick >= 100L) {
+            state.reservoirRejectedCoverage = 0;
+            state.reservoirWindowLearning = true;
+            state.reservoirAggressiveLearning = true;
+            state.reservoirPeriodicAudit = true;
+            state.reservoirAuditSuccesses = 0;
+            state.reservoirWindowStartTick = gameTick;
+            state.reservoirCandidateCoverage = 0;
+            state.reservoirCandidateSuccesses = 0;
+            state.nextAttemptExploratory = true;
+            // A periodic speed audit only needs one already proven H. A full
+            // H,H,tail transaction would spend three physical pushes merely
+            // to ask whether a slow target has become faster.
+            state.reservoirFullTailAudit = false;
+            state.lastReservoirProbeTick = gameTick;
+            return Math.max(1, high / 2);
+        }
+        state.reservoirWindowLearning = false;
+        state.reservoirAggressiveLearning = false;
+        state.reservoirPeriodicAudit = false;
+        state.reservoirAuditSuccesses = 0;
+        state.nextAttemptExploratory = false;
+        return high;
+    }
+
+    private static int nextReservoirCoverage(State state) {
+        int low = state.reservoirRejectedCoverage;
+        int high = state.reservoirAcceptedCoverage;
+        if (high > low) {
+            return low + (high - low) / 2;
+        }
+        if (low <= 0) {
+            return 1;
+        }
+        return Math.min(MAX_COVERAGE_TICKS, low * 2);
     }
 
     private static void finishBaselineSample(
@@ -443,6 +963,11 @@ final class WirelessBatchCadence<T> {
         return failurePressure >= MODERATE_FAILURE_PRESSURE ? 2 : 1;
     }
 
+    private static int rejectionBackoff(int rejections) {
+        int shift = Math.clamp(rejections - 1, 0, 5);
+        return Math.min(FILL_FALLBACK_RETRY_TICKS, 1 << shift);
+    }
+
     private static final class State {
         private long lastSuccessTick = Long.MIN_VALUE;
         private long lastCapacitySuccessTick = Long.MIN_VALUE;
@@ -467,8 +992,31 @@ final class WirelessBatchCadence<T> {
         private int singleChunkCoverage = 1;
         private int singleChunkRejectedProbes;
         private boolean singleChunkProbeSettled;
+        private boolean reservoirBatch;
+        private int reservoirRejectedProbes;
+        private boolean reservoirProbeSettled;
+        private long lastReservoirProbeTick = Long.MIN_VALUE;
+        private boolean reservoirCadenceActive;
+        private long reservoirCadenceCopies;
+        private int reservoirRejectedCoverage;
+        private int reservoirAcceptedCoverage = 1;
+        private long reservoirCycleOwnedCopies;
+        private boolean reservoirWaterlineSettled;
+        private long reservoirCycleStartTick = Long.MIN_VALUE;
+        private long reservoirWindowStartTick = Long.MIN_VALUE;
+        private boolean singleChunkReservoirAudit;
+        private boolean singleChunkFullTailAudit;
+        private boolean reservoirFullTailAudit;
+        private boolean reservoirNeedsFullAudit;
+        private boolean reservoirWindowLearning;
+        private boolean reservoirAggressiveLearning;
+        private boolean reservoirPeriodicAudit;
+        private int reservoirAuditSuccesses;
+        private int reservoirCandidateCoverage;
+        private int reservoirCandidateSuccesses;
 
-        private int recordSingleChunkSuccess(boolean exploratoryAttempt) {
+        private int recordSingleChunkSuccess(
+                boolean exploratoryAttempt, long gameTick) {
             nextAttemptExploratory = false;
             if (exploratoryAttempt) {
                 exploratoryProbeRejected = false;
@@ -485,15 +1033,32 @@ final class WirelessBatchCadence<T> {
                 exploratoryProbeRejected = false;
                 return singleChunkCoverage;
             }
+            if (singleChunkCoverage >= SINGLE_CHUNK_AUDIT_MIN_COVERAGE
+                    && (!singleChunkProbeSettled
+                            || gameTick - lastReservoirProbeTick >= 100L)) {
+                // A settled slow reservoir still needs one bounded audit after
+                // its next successful refill. If the machine became faster,
+                // the audit reopens the full reservoir transaction on the next
+                // tick; if it did not, one rejected audit preserves the proven
+                // single-chunk cadence.
+                nextAttemptExploratory = true;
+                singleChunkReservoirAudit = true;
+                singleChunkFullTailAudit = true;
+                lastReservoirProbeTick = gameTick;
+                return Math.min(10, singleChunkCoverage);
+            }
             if (!singleChunkProbeSettled
                     && singleChunkCoverage > 1) {
                 nextAttemptExploratory = true;
+                singleChunkReservoirAudit = false;
+                singleChunkFullTailAudit = false;
                 return singleChunkCoverage - 1;
             }
             return singleChunkCoverage;
         }
 
-        private void observeStablePrefix(long ownedCopies, long elapsed) {
+        private void observeStablePrefix(
+                long ownedCopies, long elapsed, int requiredSamples) {
             int coverage = (int) Math.clamp(
                     elapsed, 1L, MAX_COVERAGE_TICKS);
             if (stablePrefixCopies == ownedCopies
@@ -506,7 +1071,7 @@ final class WirelessBatchCadence<T> {
                 stablePrefixCoverage = coverage;
                 stablePrefixSamples = 1;
             }
-            if (stablePrefixSamples >= STABLE_PREFIX_SAMPLES) {
+            if (stablePrefixSamples >= requiredSamples) {
                 singleChunkRefill = true;
                 singleChunkCoverage = coverage;
             }
@@ -520,6 +1085,9 @@ final class WirelessBatchCadence<T> {
             singleChunkCoverage = 1;
             singleChunkRejectedProbes = 0;
             singleChunkProbeSettled = false;
+            singleChunkReservoirAudit = false;
+            singleChunkFullTailAudit = false;
+            reservoirFullTailAudit = false;
         }
 
         private void expireIfIdle(long gameTick) {
@@ -545,6 +1113,26 @@ final class WirelessBatchCadence<T> {
                 fillFallbackRejections = 0;
                 baselineCoverage = 1;
                 clearStablePrefix();
+                reservoirBatch = false;
+                reservoirRejectedProbes = 0;
+                reservoirProbeSettled = false;
+                lastReservoirProbeTick = Long.MIN_VALUE;
+                reservoirCadenceActive = false;
+                reservoirCadenceCopies = 0L;
+                reservoirRejectedCoverage = 0;
+                reservoirAcceptedCoverage = 1;
+                reservoirCycleOwnedCopies = 0L;
+                reservoirWaterlineSettled = false;
+                reservoirCycleStartTick = Long.MIN_VALUE;
+                reservoirWindowStartTick = Long.MIN_VALUE;
+                reservoirFullTailAudit = false;
+                reservoirNeedsFullAudit = false;
+                reservoirWindowLearning = false;
+                reservoirAggressiveLearning = false;
+                reservoirPeriodicAudit = false;
+                reservoirAuditSuccesses = 0;
+                reservoirCandidateCoverage = 0;
+                reservoirCandidateSuccesses = 0;
             }
         }
     }

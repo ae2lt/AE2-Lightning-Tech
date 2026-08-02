@@ -219,7 +219,7 @@ model E: minPhysicalPushesPerTarget > 0
 model E: maxPhysicalPushesPerTarget <= 2 * minPhysicalPushesPerTarget
 ```
 
-随机模型 R 的目标理论负载本身不同，不直接比较原始 accepted copies；改为比较每个目标的 `acceptedCopies / theoreticalCopies`，并保证每个有理论处理需求的目标都得到实际补货。随机负载差异不得被误报为调度不公平。
+随机模型 R 与变档模型 RC 不比较机器之间的 accepted copies、push 次数或归一化比例。它们允许每台机器具有不同处理速度与处理相位，跨机器比例不能证明调度不公平。二者只验收吞吐、全局与单目标发配上限以及所有权守恒；目标尚有库存可供处理时，不得仅因窗口内没有再次补货而判定饿死。不得为缩小无意义的跨机器差值增加额外调度状态。A–E 的目标同构，仍严格保持上述 `max/min <= 2` 公平性。
 
 超过安全批次上界的探索失败必须与“目标不可用、机器拒绝当前样板、overflow 未排空”等真实失败分开统计。稳态不得形成“安全批次成功一次、下一次翻倍失败、进入多 tick 冷却”的固定振荡。
 
