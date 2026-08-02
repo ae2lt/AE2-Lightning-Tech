@@ -77,11 +77,31 @@ public final class OverloadProcessingRecipeService {
             FluidStack outputFluid,
             long availableHighVoltage,
             long availableExtremeHighVoltage) {
+        return findFirstProcessable(
+                level,
+                inventory,
+                inputFluid,
+                outputFluid,
+                availableHighVoltage,
+                availableExtremeHighVoltage,
+                null);
+    }
+
+    public static Optional<OverloadProcessingRecipeCandidate> findFirstProcessable(
+            Level level,
+            OverloadProcessingFactoryInventory inventory,
+            FluidStack inputFluid,
+            FluidStack outputFluid,
+            long availableHighVoltage,
+            long availableExtremeHighVoltage,
+            OverloadProcessingRecipeMatchCache matchCache) {
         if (level == null) {
             return Optional.empty();
         }
 
-        OverloadProcessingRecipeInput input = OverloadProcessingRecipeInput.fromInventory(inventory, inputFluid);
+        OverloadProcessingRecipeInput input = matchCache == null
+                ? OverloadProcessingRecipeInput.fromInventory(inventory, inputFluid)
+                : matchCache.snapshot(inventory, inputFluid);
         if (input.isEmpty()) {
             return Optional.empty();
         }
@@ -99,7 +119,8 @@ public final class OverloadProcessingRecipeService {
                     outputFluid,
                     parallelCapacity,
                     availableHighVoltage,
-                    availableExtremeHighVoltage);
+                    availableExtremeHighVoltage,
+                    matchCache);
             if (candidate.isEmpty()) {
                 continue;
             }
@@ -120,15 +141,17 @@ public final class OverloadProcessingRecipeService {
             FluidStack outputFluid,
             int parallelCapacity,
             long availableHighVoltage,
-            long availableExtremeHighVoltage) {
+            long availableExtremeHighVoltage,
+            OverloadProcessingRecipeMatchCache matchCache) {
             Optional<ParallelMatch> parallelMatch = findMaxParallel(
-                    recipe.value(),
+                    recipe,
                     input,
                     inventory,
                     outputFluid,
                     parallelCapacity,
                     availableHighVoltage,
-                    availableExtremeHighVoltage);
+                    availableExtremeHighVoltage,
+                    matchCache);
             if (parallelMatch.isEmpty()) {
                 return Optional.empty();
             }
@@ -167,6 +190,26 @@ public final class OverloadProcessingRecipeService {
             OverloadProcessingLockedRecipe lockedRecipe,
             long availableHighVoltage,
             long availableExtremeHighVoltage) {
+        return findLockedRecipeMatch(
+                level,
+                inventory,
+                inputFluid,
+                outputFluid,
+                lockedRecipe,
+                availableHighVoltage,
+                availableExtremeHighVoltage,
+                null);
+    }
+
+    public static Optional<OverloadProcessingRecipeCandidate> findLockedRecipeMatch(
+            Level level,
+            OverloadProcessingFactoryInventory inventory,
+            FluidStack inputFluid,
+            FluidStack outputFluid,
+            OverloadProcessingLockedRecipe lockedRecipe,
+            long availableHighVoltage,
+            long availableExtremeHighVoltage,
+            OverloadProcessingRecipeMatchCache matchCache) {
         if (level == null || lockedRecipe == null || lockedRecipe.parallel() <= 0) {
             return Optional.empty();
         }
@@ -176,7 +219,9 @@ public final class OverloadProcessingRecipeService {
             return Optional.empty();
         }
 
-        OverloadProcessingRecipeInput input = OverloadProcessingRecipeInput.fromInventory(inventory, inputFluid);
+        OverloadProcessingRecipeInput input = matchCache == null
+                ? OverloadProcessingRecipeInput.fromInventory(inventory, inputFluid)
+                : matchCache.snapshot(inventory, inputFluid);
         if (input.isEmpty()) {
             return Optional.empty();
         }
@@ -195,7 +240,11 @@ public final class OverloadProcessingRecipeService {
         if (!canAcceptOutputs(inventory, recipe.get().value(), outputFluid, lockedRecipe.parallel())) {
             return Optional.empty();
         }
-        Optional<OverloadProcessingRecipeMatch> match = recipe.get().value().planMatch(input, lockedRecipe.parallel());
+        Optional<OverloadProcessingRecipe.MatchPlan> prepared = matchCache == null
+                ? recipe.get().value().prepareMatch(input)
+                : matchCache.prepare(recipe.get(), input);
+        Optional<OverloadProcessingRecipeMatch> match = prepared
+                .flatMap(plan -> plan.allocate(lockedRecipe.parallel()));
         if (match.isEmpty()) {
             return Optional.empty();
         }
@@ -295,13 +344,15 @@ public final class OverloadProcessingRecipeService {
     }
 
     private static Optional<ParallelMatch> findMaxParallel(
-            OverloadProcessingRecipe recipe,
+            RecipeHolder<OverloadProcessingRecipe> holder,
             OverloadProcessingRecipeInput input,
             OverloadProcessingFactoryInventory inventory,
             FluidStack outputFluid,
             int parallelCapacity,
             long availableHighVoltage,
-            long availableExtremeHighVoltage) {
+            long availableExtremeHighVoltage,
+            OverloadProcessingRecipeMatchCache matchCache) {
+        OverloadProcessingRecipe recipe = holder.value();
         int upper = parallelCapacity;
         if (upper <= 0) {
             return Optional.empty();
@@ -321,7 +372,9 @@ public final class OverloadProcessingRecipeService {
             return Optional.empty();
         }
 
-        Optional<OverloadProcessingRecipe.MatchPlan> plan = recipe.prepareMatch(input);
+        Optional<OverloadProcessingRecipe.MatchPlan> plan = matchCache == null
+                ? recipe.prepareMatch(input)
+                : matchCache.prepare(holder, input);
         if (plan.isEmpty()) {
             return Optional.empty();
         }

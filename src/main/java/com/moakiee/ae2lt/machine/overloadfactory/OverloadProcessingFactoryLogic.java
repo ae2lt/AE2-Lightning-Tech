@@ -7,7 +7,6 @@ import com.moakiee.ae2lt.config.AE2LTCommonConfig;
 import com.moakiee.ae2lt.machine.common.AbstractGridRecipeMachineLogic;
 import com.moakiee.ae2lt.machine.overloadfactory.recipe.OverloadProcessingLockedRecipe;
 import com.moakiee.ae2lt.machine.overloadfactory.recipe.OverloadProcessingRecipeCandidate;
-import com.moakiee.ae2lt.machine.overloadfactory.recipe.OverloadProcessingRecipeService;
 
 public final class OverloadProcessingFactoryLogic extends AbstractGridRecipeMachineLogic<
         OverloadProcessingFactoryBlockEntity,
@@ -43,13 +42,6 @@ public final class OverloadProcessingFactoryLogic extends AbstractGridRecipeMach
     @Override
     protected Optional<OverloadProcessingRecipeCandidate> validateLockedRecipe(
             OverloadProcessingLockedRecipe lockedRecipe) {
-        return OverloadProcessingRecipeService.findLockedRecipeMatch(
-                host.getLevel(),
-                host.getInventory(),
-                host.getInputFluid(),
-                host.getOutputFluid(),
-                lockedRecipe,
-                host.getAvailableHighVoltage(),
-                host.getAvailableExtremeHighVoltage());
+        return host.findLockedRecipeMatch(lockedRecipe);
     }
 }

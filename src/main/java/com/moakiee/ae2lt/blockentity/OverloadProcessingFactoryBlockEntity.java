@@ -56,6 +56,7 @@ import com.moakiee.ae2lt.machine.overloadfactory.OverloadProcessingFactoryInvent
 import com.moakiee.ae2lt.machine.overloadfactory.OverloadProcessingFactoryLogic;
 import com.moakiee.ae2lt.machine.overloadfactory.recipe.OverloadProcessingLockedRecipe;
 import com.moakiee.ae2lt.machine.overloadfactory.recipe.OverloadProcessingRecipeCandidate;
+import com.moakiee.ae2lt.machine.overloadfactory.recipe.OverloadProcessingRecipeMatchCache;
 import com.moakiee.ae2lt.machine.overloadfactory.recipe.OverloadProcessingRecipeService;
 import com.moakiee.ae2lt.me.key.LightningKey;
 import com.moakiee.ae2lt.menu.OverloadProcessingFactoryMenu;
@@ -93,6 +94,8 @@ public class OverloadProcessingFactoryBlockEntity extends AENetworkedBlockEntity
             new OverloadProcessingFactoryFluidHandler(inputTank, outputTank);
     private final OverloadProcessingFactoryEnergyStorage energyStorage =
             new OverloadProcessingFactoryEnergyStorage(AE2LTCommonConfig.overloadFactoryEnergyCapacity(), this::onEnergyChanged);
+    private final OverloadProcessingRecipeMatchCache recipeMatchCache =
+            new OverloadProcessingRecipeMatchCache();
     private final IUpgradeInventory upgrades =
             UpgradeInventories.forMachine(ModBlocks.OVERLOAD_PROCESSING_FACTORY.get(), SPEED_CARD_SLOTS, this::onUpgradesChanged);
     private final OverloadProcessingFactoryLogic logic;
@@ -250,7 +253,21 @@ public class OverloadProcessingFactoryBlockEntity extends AENetworkedBlockEntity
                 getInputFluid(),
                 getOutputFluid(),
                 getAvailableHighVoltage(),
-                getAvailableExtremeHighVoltage());
+                getAvailableExtremeHighVoltage(),
+                recipeMatchCache);
+    }
+
+    public Optional<OverloadProcessingRecipeCandidate> findLockedRecipeMatch(
+            OverloadProcessingLockedRecipe lockedRecipe) {
+        return OverloadProcessingRecipeService.findLockedRecipeMatch(
+                getLevel(),
+                inventory,
+                getInputFluid(),
+                getOutputFluid(),
+                lockedRecipe,
+                getAvailableHighVoltage(),
+                getAvailableExtremeHighVoltage(),
+                recipeMatchCache);
     }
 
     public long getConsumedEnergy() {
@@ -373,7 +390,16 @@ public class OverloadProcessingFactoryBlockEntity extends AENetworkedBlockEntity
             return false;
         }
 
-        boolean pushedItem = AdjacentItemAutoExportHelper.pushOutResult(
+        boolean hasItemOutput = AdjacentItemAutoExportHelper.hasAnyOutput(
+                true,
+                OverloadProcessingFactoryInventory.SLOT_OUTPUT_0,
+                OverloadProcessingFactoryInventory.OUTPUT_SLOT_COUNT,
+                inventory::getStackInSlot);
+        if (!hasItemOutput && outputTank.getFluid().isEmpty()) {
+            return false;
+        }
+
+        boolean pushedItem = hasItemOutput && AdjacentItemAutoExportHelper.pushOutResult(
                 this,
                 getOrientation(),
                 allowedOutputs,
@@ -388,16 +414,19 @@ public class OverloadProcessingFactoryBlockEntity extends AENetworkedBlockEntity
                 },
                 direction -> getExportTarget(serverLevel, direction));
 
-        boolean pushedFluid = AdjacentItemAutoExportHelper.pushOutFluid(
-                this,
-                getOrientation(),
-                allowedOutputs,
-                outputTank::getFluid,
-                amount -> {
-                    FluidStack drained = outputTank.drain(amount, FluidAction.EXECUTE);
-                    return drained.getAmount();
-                },
-                direction -> getExportTarget(serverLevel, direction));
+        // Re-check after item insertion because capability callbacks are
+        // allowed to mutate adjacent state synchronously.
+        boolean pushedFluid = !outputTank.getFluid().isEmpty()
+                && AdjacentItemAutoExportHelper.pushOutFluid(
+                        this,
+                        getOrientation(),
+                        allowedOutputs,
+                        outputTank::getFluid,
+                        amount -> {
+                            FluidStack drained = outputTank.drain(amount, FluidAction.EXECUTE);
+                            return drained.getAmount();
+                        },
+                        direction -> getExportTarget(serverLevel, direction));
 
         return pushedItem || pushedFluid;
     }
