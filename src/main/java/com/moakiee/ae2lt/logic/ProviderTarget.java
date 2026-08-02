@@ -505,9 +505,6 @@ public class ProviderTarget extends TargetAddress {
             boolean fullyInserted = chunk.ownedCopies() == attemptedChunk
                     && chunk.fullyInserted();
             if (!fullyInserted) {
-                BaselineStatus stopStatus = baselineSuccesses == 1
-                        ? BaselineStatus.PREFIX_COMPLETE
-                        : BaselineStatus.NONE;
                 allFullyInserted = false;
                 if (!preserveBatchHistoryOnRejection) {
                     if (baselineSuccesses == 0) {
@@ -524,7 +521,10 @@ public class ProviderTarget extends TargetAddress {
                         false,
                         false,
                         requestLimited,
-                        stopStatus);
+                        // Partial ownership/overflow is not evidence that the
+                        // second H was cleanly rejected, so it must never feed
+                        // the stable reservoir-prefix learner.
+                        BaselineStatus.NONE);
             }
             if (requestLimited) {
                 state.lastSuccessfulTick = gameTick;
@@ -537,6 +537,11 @@ public class ProviderTarget extends TargetAddress {
                         BaselineStatus.NONE);
             }
 
+            // A steady-state refill can intentionally stop after this first
+            // proven H. Refresh the physical-history lifetime before the
+            // prefix branch continues, otherwise repeated single-H refills
+            // still expire exactly 100 ticks after the original growth proof.
+            state.lastSuccessfulTick = gameTick;
             if (baselineSuccesses < 2) {
                 baselineSuccesses++;
                 state.provenChunk = Math.max(state.provenChunk, baseline);
@@ -564,7 +569,6 @@ public class ProviderTarget extends TargetAddress {
                 state.backingOff = false;
                 nextChunk = state.nextChunk;
             }
-            state.lastSuccessfulTick = gameTick;
             if (desiredCopies == Integer.MAX_VALUE) {
                 break;
             }
@@ -598,6 +602,29 @@ public class ProviderTarget extends TargetAddress {
         state.expireIfIdle(gameTick, true);
         return (int) Math.min(
                 Math.min((long) state.nextChunk, maxCopies),
+                Integer.MAX_VALUE);
+    }
+
+    /**
+     * Returns the chunk whose complete insertion has already been proven.
+     * Unlike {@link #batchStepCandidate(IPatternDetails, long, long)}, this
+     * never exposes the next growth level. Dispatch uses it for steady-state
+     * reservoir refills, where one physical insertion must replenish the
+     * observed drain without starting another {@code H,H,2H} proof.
+     */
+    final int batchStepProvenChunk(
+            IPatternDetails pattern, long maxCopies, long gameTick) {
+        if (maxCopies <= 0L) {
+            return 0;
+        }
+        var state = runtime.batchSteps.computeIfAbsent(
+                pattern, ignored -> new BatchStepState());
+        state.expireIfIdle(gameTick, true);
+        int proven = state.provenChunk > 0
+                ? state.provenChunk
+                : state.nextChunk;
+        return (int) Math.min(
+                Math.min((long) Math.max(1, proven), maxCopies),
                 Integer.MAX_VALUE);
     }
 

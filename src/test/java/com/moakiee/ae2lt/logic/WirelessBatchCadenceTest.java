@@ -164,17 +164,147 @@ class WirelessBatchCadenceTest {
         assertFalse(cadence.isExploratoryAttempt(TARGET, pattern));
     }
 
+    @Test
+    void stablePrefixFailuresConvergeToSingleChunkRefill() {
+        var cadence = new WirelessBatchCadence<String>();
+        for (long tick = 1L; tick <= 4L; tick++) {
+            assertEquals(1, cadence.recordSuccess(
+                    TARGET,
+                    pattern,
+                    tick,
+                    8L,
+                    false,
+                    false,
+                    false,
+                    ProviderTarget.BaselineStatus.PREFIX_COMPLETE));
+            assertFalse(cadence.usesSingleChunkRefill(TARGET, pattern));
+        }
+
+        assertEquals(1, cadence.recordSuccess(
+                TARGET,
+                pattern,
+                5L,
+                8L,
+                false,
+                false,
+                false,
+                ProviderTarget.BaselineStatus.PREFIX_COMPLETE));
+        assertTrue(cadence.usesSingleChunkRefill(TARGET, pattern));
+
+        assertEquals(1, cadence.recordSuccess(
+                TARGET,
+                pattern,
+                6L,
+                8L,
+                true,
+                false,
+                false,
+                ProviderTarget.BaselineStatus.NONE));
+        assertTrue(cadence.usesSingleChunkRefill(TARGET, pattern));
+    }
+
+    @Test
+    void unstablePrefixIntervalsDoNotLockSingleChunkRefill() {
+        var cadence = new WirelessBatchCadence<String>();
+        long tick = 0L;
+        for (int sample = 0; sample < 10; sample++) {
+            tick += sample % 2 == 0 ? 1L : 2L;
+            cadence.recordSuccess(
+                    TARGET,
+                    pattern,
+                    tick,
+                    8L,
+                    false,
+                    false,
+                    false,
+                    ProviderTarget.BaselineStatus.PREFIX_COMPLETE);
+        }
+
+        assertFalse(cadence.usesSingleChunkRefill(TARGET, pattern));
+    }
+
+    @Test
+    void singleChunkRefillProbesEarlierWithoutDiscardingItsInterval() {
+        var cadence = cadenceWithFiveTickSingleChunkRefill();
+
+        assertEquals(4, success(cadence, 35L, 8, false));
+        assertTrue(cadence.isExploratoryAttempt(TARGET, pattern));
+
+        assertEquals(1, cadence.recordFailure(
+                TARGET, pattern, 39L, 8, true));
+        assertTrue(cadence.usesSingleChunkRefill(TARGET, pattern));
+        assertEquals(5, success(cadence, 40L, 8, false));
+        assertFalse(cadence.isExploratoryAttempt(TARGET, pattern));
+    }
+
+    @Test
+    void repeatedEarlyRejectionsSettleAStableSingleChunkCadence() {
+        var cadence = cadenceWithFiveTickSingleChunkRefill();
+
+        assertEquals(4, success(cadence, 35L, 8, false));
+        assertEquals(1, cadence.recordFailure(
+                TARGET, pattern, 39L, 8, true));
+        assertEquals(5, success(cadence, 40L, 8, false));
+
+        assertEquals(4, success(cadence, 45L, 8, false));
+        assertEquals(1, cadence.recordFailure(
+                TARGET, pattern, 49L, 8, true));
+        assertEquals(5, success(cadence, 50L, 8, false));
+
+        for (long tick = 55L; tick <= 75L; tick += 5L) {
+            assertEquals(5, success(cadence, tick, 8, false));
+            assertFalse(cadence.isExploratoryAttempt(TARGET, pattern));
+        }
+    }
+
+    @Test
+    void acceptedEarlyProbeShortensSingleChunkCadence() {
+        var cadence = cadenceWithFiveTickSingleChunkRefill();
+
+        assertEquals(4, success(cadence, 35L, 8, false));
+        assertTrue(cadence.isExploratoryAttempt(TARGET, pattern));
+        assertEquals(4, success(cadence, 39L, 8, true));
+        assertFalse(cadence.isExploratoryAttempt(TARGET, pattern));
+    }
+
+    private WirelessBatchCadence<String>
+            cadenceWithFiveTickSingleChunkRefill() {
+        var cadence = new WirelessBatchCadence<String>();
+        for (long tick = 5L; tick <= 30L; tick += 5L) {
+            cadence.recordSuccess(
+                    TARGET,
+                    pattern,
+                    tick,
+                    8L,
+                    false,
+                    false,
+                    false,
+                    ProviderTarget.BaselineStatus.PREFIX_COMPLETE);
+        }
+        assertTrue(cadence.usesSingleChunkRefill(TARGET, pattern));
+        return cadence;
+    }
+
     private int success(
             WirelessBatchCadence<String> cadence,
             long tick,
             int copies) {
+        return success(cadence, tick, copies, false);
+    }
+
+    private int success(
+            WirelessBatchCadence<String> cadence,
+            long tick,
+            int copies,
+            boolean exploratory) {
         return cadence.recordSuccess(
                 TARGET,
                 pattern,
                 tick,
                 copies,
                 true,
-                false);
+                false,
+                exploratory);
     }
 
     private static final class EmptyPattern implements IPatternDetails {

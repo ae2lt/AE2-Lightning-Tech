@@ -503,6 +503,101 @@ class ProviderTargetTest {
     }
 
     @Test
+    void partialSecondBaselineDoesNotBecomeAReservoirPrefixSample() {
+        var pattern = new EmptyPattern();
+        target.pushPatternStep(
+                pattern,
+                4L,
+                0L,
+                true,
+                () -> false,
+                copies -> new ProviderTarget.BatchChunk(
+                        copies, true, false));
+
+        int[] calls = {0};
+        var partial = target.pushPatternStep(
+                pattern,
+                10L,
+                1L,
+                true,
+                () -> false,
+                copies -> calls[0]++ == 0
+                        ? new ProviderTarget.BatchChunk(
+                                copies, true, false)
+                        : new ProviderTarget.BatchChunk(
+                                1L, false, false));
+
+        assertEquals(3L, partial.ownedCopies());
+        assertEquals(
+                ProviderTarget.BaselineStatus.NONE,
+                partial.baselineStatus());
+    }
+
+    @Test
+    void provenRefillAllowancePerformsOnePhysicalInsertion() {
+        var pattern = new EmptyPattern();
+        target.pushPatternStep(
+                pattern,
+                16L,
+                0L,
+                true,
+                () -> false,
+                copies -> new ProviderTarget.BatchChunk(
+                        copies, true, false));
+
+        int refill = target.batchStepProvenChunk(
+                pattern, Long.MAX_VALUE, 1L);
+        var chunks = new ArrayList<Integer>();
+        var result = target.pushPatternStep(
+                pattern,
+                refill,
+                1L,
+                true,
+                () -> false,
+                copies -> {
+                    chunks.add(copies);
+                    return new ProviderTarget.BatchChunk(
+                            copies, true, false);
+                });
+
+        assertEquals(8, refill);
+        assertEquals(8L, result.ownedCopies());
+        assertEquals(List.of(8), chunks);
+    }
+
+    @Test
+    void provenSingleChunkRefillsKeepPhysicalHistoryAlive() {
+        var pattern = new EmptyPattern();
+        target.pushPatternStep(
+                pattern,
+                16L,
+                0L,
+                true,
+                () -> false,
+                copies -> new ProviderTarget.BatchChunk(
+                        copies, true, false));
+
+        for (long tick = 1L; tick <= 200L; tick++) {
+            int refill = target.batchStepProvenChunk(
+                    pattern, Long.MAX_VALUE, tick);
+            var chunks = new ArrayList<Integer>();
+            target.pushPatternStep(
+                    pattern,
+                    refill,
+                    tick,
+                    true,
+                    () -> false,
+                    copies -> {
+                        chunks.add(copies);
+                        return new ProviderTarget.BatchChunk(
+                                copies, true, false);
+                    });
+            assertEquals(List.of(8), chunks,
+                    "physical proof expired at tick " + tick);
+        }
+    }
+
+    @Test
     void wirelessBatchStepCapsGrowthAtProvenChunk() {
         var pattern = new EmptyPattern();
         target.pushPatternStep(

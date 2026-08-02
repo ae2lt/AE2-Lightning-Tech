@@ -56,6 +56,70 @@ class AdaptiveBatchDispatchStressTest {
         assertFiniteDistribution(2_048L, 4);
     }
 
+    @Test
+    void relearnsWithinTenProcessingTimesAfterDispatchStateIsCleared() {
+        var failures = new ArrayList<String>();
+        var summaries = new ArrayList<String>();
+        for (var model : MODELS) {
+            // Leave one complete accepted window before the reset, and place
+            // fixed models on a processing tick so the cold scheduler sees
+            // newly available capacity immediately.
+            int resetTick = model.startupTicks * 2
+                    + ACCEPTANCE_WINDOW_TICKS;
+            int recoveryTicks = model.startupTicks;
+            int windowStart = resetTick + recoveryTicks;
+            var result = simulate(
+                    model,
+                    windowStart + ACCEPTANCE_WINDOW_TICKS,
+                    resetTick);
+
+            long theoretical = sum(
+                    result.theoreticalAt,
+                    windowStart,
+                    windowStart + ACCEPTANCE_WINDOW_TICKS);
+            long processed = sum(
+                    result.processedAt,
+                    windowStart,
+                    windowStart + ACCEPTANCE_WINDOW_TICKS);
+            long pushes = sum(
+                    result.physicalPushesAt,
+                    windowStart,
+                    windowStart + ACCEPTANCE_WINDOW_TICKS);
+            double throughput = ratio(processed, theoretical);
+            double dispatch = dispatchMetric(
+                    model, pushes, theoretical, TARGETS);
+            summaries.add(model.id + " reset@" + resetTick
+                    + " recovery=" + recoveryTicks
+                    + " throughput100=" + percent(throughput)
+                    + " dispatch100=" + percent(dispatch));
+
+            if (!atLeastPercent(
+                    processed, theoretical, model.throughputPercent)) {
+                failures.add(model.id + " did not recover within "
+                        + recoveryTicks + " ticks: throughput="
+                        + percent(throughput) + " < "
+                        + model.throughputPercent + "%");
+            }
+            if (!atMostDispatchPercent(
+                    model,
+                    pushes,
+                    theoretical,
+                    TARGETS,
+                    model.dispatchPercent)) {
+                failures.add(model.id + " exceeded dispatch limit after "
+                        + recoveryTicks + " recovery ticks: dispatch="
+                        + percent(dispatch) + " > "
+                        + model.dispatchPercent + "%");
+            }
+        }
+
+        var report = "adaptive batch reset recovery\n"
+                + String.join("\n", summaries);
+        System.out.println(report);
+        assertTrue(failures.isEmpty(), () -> report + "\n"
+                + String.join("\n", failures));
+    }
+
     private static void assertFiniteDistribution(
             long requestedCopies, int expectedPerTarget) {
         var dispatch = new ProviderWirelessDispatch();
@@ -150,6 +214,11 @@ class AdaptiveBatchDispatchStressTest {
     }
 
     private static SimulationResult simulate(Model model, int ticks) {
+        return simulate(model, ticks, -1);
+    }
+
+    private static SimulationResult simulate(
+            Model model, int ticks, int resetTick) {
         var dispatch = new ProviderWirelessDispatch();
         var pattern = new ExplosiveEqualityPattern();
         var connections = new ArrayList<WirelessConnection>(TARGETS);
@@ -181,6 +250,12 @@ class AdaptiveBatchDispatchStressTest {
                 }
                 result.scheduleHash = 31L * result.scheduleHash
                         + processing.theoretical();
+            }
+
+            if (tick == resetTick) {
+                // Models a runtime reload/rebuild that loses every adaptive
+                // dispatch hint while preserving the machines' real contents.
+                dispatch.patternsChanged();
             }
 
             dispatch.prepare(

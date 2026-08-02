@@ -414,6 +414,14 @@ final class ProviderWirelessDispatch {
                             remaining,
                             pass.raiseAllowance(connection, candidate));
                 }
+                if (!fillFallback
+                        && batchCadence.usesSingleChunkRefill(
+                                connection, pattern)) {
+                    int candidate = ((ProviderTarget) connection)
+                            .batchStepProvenChunk(
+                                    pattern, remaining, gameTick);
+                    share = Math.min(share, candidate);
+                }
                 if (share <= 0L) {
                     continue;
                 }

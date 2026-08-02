@@ -240,6 +240,7 @@ adaptiveBatch_random_capacity2048_period2to5_targets512_maxProcess512to1024
 
 - A–D、R 使用 `convergesAndStaysWithinLimitsFor200Ticks`；E 的启动期本身为 200 tick，因此使用至少 300 tick 的对应收敛用例，保证启动期后存在完整的 100-tick 正式窗口。
 - `doesNotRegressAcross5000Ticks`：在长时间滑动窗口中重复相同验收，禁止后期节奏漂移。
+- `relearnsWithinTenProcessingTimesAfterDispatchStateIsCleared`：先让模型进入稳态，再清空调度公平计数、节拍学习和目标批次历史，但保留机器真实库存；给予对应模型一段新的 `startupTicks` 学习期后，紧接着的完整 100-tick 窗口必须重新满足相同吞吐、总发配和单目标发配门槛。不得沿用清空前的隐藏状态通过该用例。
 
 随机用例固定使用 `baseSeed=20260801L`，并在失败消息中输出 seed、目标编号、tick/窗口范围、理论处理量、实际处理量和物理 push 数，保证失败可复现。不得只断言全程平均值。
 

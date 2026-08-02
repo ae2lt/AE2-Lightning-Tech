@@ -13,8 +13,12 @@ import appeng.api.crafting.IPatternDetails;
  * If a substantial proven chunk remains under sustained rejection without an
  * unrestricted acceptance for 100 ticks, a bounded fallback visits it at most
  * four times per 100 ticks until two consecutive successes prove that normal
- * cadence learning can safely resume. Small chunks remain on the original
- * learned cadence so ordinary slow machines are not overfilled.
+ * cadence learning can safely resume. Five equal first-chunk successes followed
+ * by equal second-chunk rejections form a reservoir refill proof: steady state
+ * then sends one proven chunk at the observed drain interval. Successful early
+ * probes shorten that interval, while two rejected early probes settle a fixed
+ * cadence. An unexpected regular rejection reopens learning. Small chunks remain
+ * on the original learned cadence so ordinary slow machines are not overfilled.
  */
 final class WirelessBatchCadence<T> {
     static final int MAX_COVERAGE_TICKS = 100;
@@ -24,6 +28,8 @@ final class WirelessBatchCadence<T> {
     private static final int FILL_FALLBACK_RECOVERY_SUCCESSES = 2;
     private static final int FILL_FALLBACK_MIN_REJECTIONS = 64;
     private static final int FILL_FALLBACK_MIN_BATCH_COPIES = 64;
+    private static final int STABLE_PREFIX_SAMPLES = 5;
+    private static final int SINGLE_CHUNK_SETTLE_REJECTIONS = 2;
     private static final int MAX_FAILURE_PRESSURE = 8;
     private static final int HIGH_FAILURE_PRESSURE = 7;
     private static final int MODERATE_FAILURE_PRESSURE = 2;
@@ -84,6 +90,12 @@ final class WirelessBatchCadence<T> {
         state.expireIfIdle(gameTick);
         state.lastActivityTick = gameTick;
         boolean capacitySuccess = acceptedFullChunk && !requestLimited;
+        if (state.singleChunkRefill
+                && baselineStatus == ProviderTarget.BaselineStatus.NONE
+                && capacitySuccess) {
+            finishBaselineSample(state, gameTick, ownedCopies, true);
+            return state.recordSingleChunkSuccess(exploratoryAttempt);
+        }
         if (state.fillFallback) {
             if (!capacitySuccess) {
                 state.fillFallbackSuccesses = 0;
@@ -224,6 +236,28 @@ final class WirelessBatchCadence<T> {
             state.fillFallbackSuccesses = 0;
             return FILL_FALLBACK_RETRY_TICKS;
         }
+        if (state.singleChunkRefill) {
+            if (exploratoryAttempt) {
+                state.exploratorySuccesses = 0;
+                state.exploratoryProbeRejected = true;
+                if (++state.singleChunkRejectedProbes
+                        >= SINGLE_CHUNK_SETTLE_REJECTIONS) {
+                    state.singleChunkProbeSettled = true;
+                }
+            } else {
+                state.exploratorySuccesses = 0;
+                state.exploratoryProbeRejected = false;
+                state.singleChunkCoverage = Math.min(
+                        MAX_COVERAGE_TICKS,
+                        state.singleChunkCoverage + 1);
+                state.singleChunkRejectedProbes = 0;
+                state.singleChunkProbeSettled = false;
+            }
+            // A probe is intentionally one tick early. Retry at the original
+            // due tick; an unexpected ordinary rejection also receives this
+            // cheap one-tick recheck before its enlarged interval is used.
+            return 1;
+        }
         if (exploratoryAttempt) {
             state.exploratorySuccesses = 0;
             state.exploratoryProbeRejected = true;
@@ -271,6 +305,15 @@ final class WirelessBatchCadence<T> {
         return state != null && state.fillFallback;
     }
 
+    boolean usesSingleChunkRefill(T target, IPatternDetails pattern) {
+        var byPattern = states.get(target);
+        if (byPattern == null) {
+            return false;
+        }
+        var state = byPattern.get(pattern);
+        return state != null && state.singleChunkRefill;
+    }
+
     boolean shouldPreserveBatchHistory(
             T target, IPatternDetails pattern, long gameTick) {
         var byPattern = states.get(target);
@@ -283,6 +326,7 @@ final class WirelessBatchCadence<T> {
         }
         state.expireIfIdle(gameTick);
         return state.fillFallback
+                || state.singleChunkRefill
                 || state.nextAttemptExploratory
                 || shouldEnterFillFallback(state, gameTick);
     }
@@ -312,6 +356,9 @@ final class WirelessBatchCadence<T> {
             long gameTick,
             long ownedCopies,
             ProviderTarget.BaselineStatus baselineStatus) {
+        long elapsed = state.lastSuccessTick == Long.MIN_VALUE
+                ? 1L
+                : Math.max(1L, gameTick - state.lastSuccessTick);
         if (baselineStatus
                 == ProviderTarget.BaselineStatus.GROWTH_COMPLETE) {
             state.baselineCoverage = 1;
@@ -326,11 +373,22 @@ final class WirelessBatchCadence<T> {
                     1L,
                     MAX_COVERAGE_TICKS);
         }
+        if (baselineStatus
+                == ProviderTarget.BaselineStatus.PREFIX_COMPLETE) {
+            state.observeStablePrefix(ownedCopies, elapsed);
+        } else if (baselineStatus
+                == ProviderTarget.BaselineStatus.COMPLETE
+                || baselineStatus
+                        == ProviderTarget.BaselineStatus.GROWTH_COMPLETE) {
+            state.clearStablePrefix();
+        }
         finishBaselineSample(state, gameTick, ownedCopies, true);
         state.nextAttemptExploratory = false;
         state.exploratorySuccesses = 0;
         state.exploratoryProbeRejected = false;
-        return state.baselineCoverage;
+        return state.singleChunkRefill
+                ? state.singleChunkCoverage
+                : state.baselineCoverage;
     }
 
     private static void finishBaselineSample(
@@ -402,6 +460,67 @@ final class WirelessBatchCadence<T> {
         private long firstProvenRejectionTick = Long.MIN_VALUE;
         private int fillFallbackRejections;
         private int baselineCoverage = 1;
+        private long stablePrefixCopies;
+        private int stablePrefixCoverage;
+        private int stablePrefixSamples;
+        private boolean singleChunkRefill;
+        private int singleChunkCoverage = 1;
+        private int singleChunkRejectedProbes;
+        private boolean singleChunkProbeSettled;
+
+        private int recordSingleChunkSuccess(boolean exploratoryAttempt) {
+            nextAttemptExploratory = false;
+            if (exploratoryAttempt) {
+                exploratoryProbeRejected = false;
+                exploratorySuccesses = 0;
+                singleChunkRejectedProbes = 0;
+                singleChunkProbeSettled = false;
+                singleChunkCoverage = Math.max(
+                        1, singleChunkCoverage - 1);
+                return singleChunkCoverage;
+            }
+
+            exploratorySuccesses = 0;
+            if (exploratoryProbeRejected) {
+                exploratoryProbeRejected = false;
+                return singleChunkCoverage;
+            }
+            if (!singleChunkProbeSettled
+                    && singleChunkCoverage > 1) {
+                nextAttemptExploratory = true;
+                return singleChunkCoverage - 1;
+            }
+            return singleChunkCoverage;
+        }
+
+        private void observeStablePrefix(long ownedCopies, long elapsed) {
+            int coverage = (int) Math.clamp(
+                    elapsed, 1L, MAX_COVERAGE_TICKS);
+            if (stablePrefixCopies == ownedCopies
+                    && stablePrefixCoverage == coverage) {
+                if (stablePrefixSamples < Integer.MAX_VALUE) {
+                    stablePrefixSamples++;
+                }
+            } else {
+                stablePrefixCopies = ownedCopies;
+                stablePrefixCoverage = coverage;
+                stablePrefixSamples = 1;
+            }
+            if (stablePrefixSamples >= STABLE_PREFIX_SAMPLES) {
+                singleChunkRefill = true;
+                singleChunkCoverage = coverage;
+            }
+        }
+
+        private void clearStablePrefix() {
+            stablePrefixCopies = 0L;
+            stablePrefixCoverage = 0;
+            stablePrefixSamples = 0;
+            singleChunkRefill = false;
+            singleChunkCoverage = 1;
+            singleChunkRejectedProbes = 0;
+            singleChunkProbeSettled = false;
+        }
 
         private void expireIfIdle(long gameTick) {
             if (lastActivityTick == Long.MIN_VALUE) {
@@ -425,6 +544,7 @@ final class WirelessBatchCadence<T> {
                 firstProvenRejectionTick = Long.MIN_VALUE;
                 fillFallbackRejections = 0;
                 baselineCoverage = 1;
+                clearStablePrefix();
             }
         }
     }
