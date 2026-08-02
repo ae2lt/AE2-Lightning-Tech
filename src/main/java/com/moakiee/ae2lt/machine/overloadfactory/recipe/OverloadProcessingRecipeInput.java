@@ -19,7 +19,8 @@ public record OverloadProcessingRecipeInput(List<SlotStack> slotStacks, FluidSta
              slot++) {
             ItemStack stack = inventory.getStackInSlot(slot);
             if (!stack.isEmpty()) {
-                slotStacks.add(new SlotStack(slot, stack.copy()));
+                // SlotStack already takes a defensive copy.
+                slotStacks.add(new SlotStack(slot, stack));
             }
         }
         return new OverloadProcessingRecipeInput(List.copyOf(slotStacks), inputFluid.copy());

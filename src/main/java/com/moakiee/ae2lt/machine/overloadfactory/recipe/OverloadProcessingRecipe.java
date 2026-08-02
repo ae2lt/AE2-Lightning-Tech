@@ -223,9 +223,13 @@ public final class OverloadProcessingRecipe implements Recipe<OverloadProcessing
             // drain upper rows before lower ones.
             matchingSlots.sort(Comparator
                     .comparingInt((Integer slotIndex) -> slotStacks.get(slotIndex).slot()));
+            int[] matchingSlotArray = new int[matchingSlots.size()];
+            for (int index = 0; index < matchingSlots.size(); index++) {
+                matchingSlotArray[index] = matchingSlots.get(index);
+            }
             requirements.add(new PreparedRequirement(
                     requirement.count(),
-                    matchingSlots.stream().mapToInt(Integer::intValue).toArray(),
+                    matchingSlotArray,
                     availableCount));
         }
 

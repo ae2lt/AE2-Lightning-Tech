@@ -60,6 +60,8 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
     private boolean patternUpdatePending;
     private MatrixPatternStorageBlockEntity exposedPatternStorage;
     private boolean exposedPatternStorageDirty = true;
+    private List<TerminalPatternSlot> terminalPatternSlots = List.of();
+    private boolean terminalPatternSlotsDirty = true;
     private long nextBindingCheckTick;
 
     public MatrixPortBlockEntity(BlockPos pos, BlockState state) {
@@ -158,6 +160,7 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
             }
         }
         invalidateExposedPatternStorage();
+        invalidateTerminalPatternSlots();
         // Re-notifying an unchanged binding schedules another multiblock scan through
         // neighborChanged, creating a permanent scan -> bind -> notify feedback loop.
         if ((bindingChanged || blockStateChanged) && level != null && !level.isClientSide) {
@@ -381,6 +384,29 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
         exposedPatternStorageDirty = true;
     }
 
+    private void invalidateTerminalPatternSlots() {
+        terminalPatternSlotsDirty = true;
+    }
+
+    private List<TerminalPatternSlot> getTerminalPatternSlots() {
+        // Keep the controller's structural safety check in the access path. The controller
+        // memoizes it for the current tick, so thousands of menu reads pay for one physical
+        // validation rather than one validation each. If that validation suspends the port,
+        // updateLinkState marks this mapping dirty before we use a removed storage.
+        var storages = getPatternStorages();
+        if (terminalPatternSlotsDirty) {
+            var slots = new ArrayList<TerminalPatternSlot>();
+            for (var storage : storages) {
+                for (int slot = 0; slot < storage.capacity(); slot++) {
+                    slots.add(new TerminalPatternSlot(storage, slot));
+                }
+            }
+            terminalPatternSlots = List.copyOf(slots);
+            terminalPatternSlotsDirty = false;
+        }
+        return terminalPatternSlots;
+    }
+
     private MatrixPatternStorageBlockEntity getExposedPatternStorage() {
         if (exposedPatternStorageDirty) {
             exposedPatternStorage = selectExposedPatternStorage();
@@ -420,18 +446,8 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
     }
 
     private TerminalPatternSlot terminalPatternSlot(int slot) {
-        if (slot < 0) {
-            return null;
-        }
-        int remaining = slot;
-        for (var storage : getPatternStorages()) {
-            int capacity = storage.capacity();
-            if (remaining < capacity) {
-                return new TerminalPatternSlot(storage, remaining);
-            }
-            remaining -= capacity;
-        }
-        return null;
+        var slots = getTerminalPatternSlots();
+        return slot >= 0 && slot < slots.size() ? slots.get(slot) : null;
     }
 
     private record TerminalPatternSlot(MatrixPatternStorageBlockEntity storage, int slot) {
@@ -440,11 +456,7 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
     private final class MatrixTerminalPatternInventory extends BaseInternalInventory {
         @Override
         public int size() {
-            int slots = 0;
-            for (var storage : getPatternStorages()) {
-                slots += storage.capacity();
-            }
-            return slots;
+            return getTerminalPatternSlots().size();
         }
 
         @Override

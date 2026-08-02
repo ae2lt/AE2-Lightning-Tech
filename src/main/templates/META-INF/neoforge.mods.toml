@@ -190,6 +190,13 @@ ordering = "AFTER"
 side = "BOTH"
 
 [[dependencies."${mod_id}"]]
+modId = "al2ltpp"
+type = "optional"
+versionRange = "[1.1.0,)"
+ordering = "BEFORE"
+side = "BOTH"
+
+[[dependencies."${mod_id}"]]
 modId = "jei"
 type = "optional"
 versionRange = "[0,)"

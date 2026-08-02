@@ -369,11 +369,20 @@ public class OverloadProcessingFactoryBlockEntity extends AENetworkedBlockEntity
     }
 
     public boolean pushOutResult() {
-        if (allowedOutputs.isEmpty() || !(level instanceof ServerLevel serverLevel)) {
+        if (!hasAutoExportWork() || !(level instanceof ServerLevel serverLevel)) {
             return false;
         }
 
-        boolean pushedItem = AdjacentItemAutoExportHelper.pushOutResult(
+        boolean hasItemOutput = AdjacentItemAutoExportHelper.hasAnyOutput(
+                autoExport,
+                OverloadProcessingFactoryInventory.SLOT_OUTPUT_0,
+                OverloadProcessingFactoryInventory.OUTPUT_SLOT_COUNT,
+                inventory::getStackInSlot);
+        if (!hasItemOutput && outputTank.getFluid().isEmpty()) {
+            return false;
+        }
+
+        boolean pushedItem = hasItemOutput && AdjacentItemAutoExportHelper.pushOutResult(
                 this,
                 getOrientation(),
                 allowedOutputs,
@@ -388,16 +397,17 @@ public class OverloadProcessingFactoryBlockEntity extends AENetworkedBlockEntity
                 },
                 direction -> getExportTarget(serverLevel, direction));
 
-        boolean pushedFluid = AdjacentItemAutoExportHelper.pushOutFluid(
-                this,
-                getOrientation(),
-                allowedOutputs,
-                outputTank::getFluid,
-                amount -> {
-                    FluidStack drained = outputTank.drain(amount, FluidAction.EXECUTE);
-                    return drained.getAmount();
-                },
-                direction -> getExportTarget(serverLevel, direction));
+        boolean pushedFluid = !outputTank.getFluid().isEmpty()
+                && AdjacentItemAutoExportHelper.pushOutFluid(
+                        this,
+                        getOrientation(),
+                        allowedOutputs,
+                        outputTank::getFluid,
+                        amount -> {
+                            FluidStack drained = outputTank.drain(amount, FluidAction.EXECUTE);
+                            return drained.getAmount();
+                        },
+                        direction -> getExportTarget(serverLevel, direction));
 
         return pushedItem || pushedFluid;
     }
