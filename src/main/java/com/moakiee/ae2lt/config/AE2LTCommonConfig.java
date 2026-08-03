@@ -269,6 +269,9 @@ public final class AE2LTCommonConfig {
     public static double overloadArmorUnderwaterDigMultiplier() { return VALUES.overloadArmorUnderwaterDigMultiplier.get(); }
     public static double overloadArmorAirborneDigMultiplier() { return VALUES.overloadArmorAirborneDigMultiplier.get(); }
     public static boolean overloadArmorPhaseFlightEnabled() { return VALUES.overloadArmorPhaseFlightEnabled.get(); }
+    public static PhaseLockTeleportMode overloadArmorPhaseLockTeleportMode() {
+        return PhaseLockTeleportMode.fromConfigValue(VALUES.overloadArmorPhaseLockTeleportMode.get());
+    }
     public static double overloadArmorPhaseFlightSpeedMultiplier() { return VALUES.overloadArmorPhaseFlightSpeedMultiplier.get(); }
     public static long overloadArmorPassiveHvPerTick() { return VALUES.overloadArmorPassiveHvPerTick.get(); }
     public static long overloadArmorFlightHvPerTick() { return VALUES.overloadArmorFlightHvPerTick.get(); }
@@ -389,6 +392,7 @@ public final class AE2LTCommonConfig {
         private final ModConfigSpec.DoubleValue overloadArmorUnderwaterDigMultiplier;
         private final ModConfigSpec.DoubleValue overloadArmorAirborneDigMultiplier;
         private final ModConfigSpec.BooleanValue overloadArmorPhaseFlightEnabled;
+        private final ModConfigSpec.ConfigValue<String> overloadArmorPhaseLockTeleportMode;
         private final ModConfigSpec.DoubleValue overloadArmorPhaseFlightSpeedMultiplier;
         private final ModConfigSpec.LongValue overloadArmorPassiveHvPerTick;
         private final ModConfigSpec.LongValue overloadArmorFlightHvPerTick;
@@ -634,6 +638,16 @@ public final class AE2LTCommonConfig {
             overloadArmorPhaseFlightEnabled = builder
                     .comment("Server master switch for the phase module's no-clip mode. Creative flight and movement guards remain available.")
                     .define("phaseFlightEnabled", true);
+            overloadArmorPhaseLockTeleportMode = builder
+                    .comment(
+                            "Server policy for the phase-lock module's external-teleport protection.",
+                            "ignore-all: disable teleport protection entirely.",
+                            "ignore-command: allow player-self commands and permission-level-2 management commands; block other external teleports.",
+                            "ignore-none: allow player-self commands only; block every external teleport source.")
+                    .define(
+                            "phaseLockTeleportMode",
+                            PhaseLockTeleportMode.IGNORE_COMMAND.configValue(),
+                            PhaseLockTeleportMode::isValidConfigValue);
             overloadArmorPhaseFlightSpeedMultiplier = builder
                     .comment("Movement multiplier applied while phase flight is active.")
                     .defineInRange("phaseFlightSpeedMultiplier", 0.35D, 0.0D, 4.0D);

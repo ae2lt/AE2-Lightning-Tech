@@ -8,6 +8,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -15,6 +17,8 @@ import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
+
+import com.moakiee.ae2lt.config.AE2LTCommonConfig;
 
 /**
  * Separates player-authorized phase-flight movement from force and coordinate changes initiated by
@@ -30,6 +34,7 @@ public final class PhaseFlightMovementGuard {
             ThreadLocal.withInitial(IdentityHashMap::new);
     private static final ThreadLocal<Player> MOVEMENT_PACKET_PLAYER = new ThreadLocal<>();
     private static final ThreadLocal<Player> CUSTOM_PAYLOAD_PLAYER = new ThreadLocal<>();
+    private static final ThreadLocal<CommandSourceStack> COMMAND_SOURCE = new ThreadLocal<>();
     private static final StackWalker MOVEMENT_PACKET_STACK_WALKER =
             StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
     private static final int MOVEMENT_PACKET_STACK_SCAN_LIMIT = 24;
@@ -124,7 +129,14 @@ public final class PhaseFlightMovementGuard {
             return false;
         }
         ServerSettings settings = SERVER_SETTINGS.get(player.getUUID());
-        return settings != null && settings.owner() == player && settings.blockTeleports();
+        if (settings == null || settings.owner() != player || !settings.blockTeleports()) {
+            return false;
+        }
+        var mode = AE2LTCommonConfig.overloadArmorPhaseLockTeleportMode();
+        if (mode.disablesProtection()) {
+            return false;
+        }
+        return !mode.ignoresPrivilegedCommands() || !isPrivilegedCommandExecution();
     }
 
     public static boolean isPhaseFlightActive(Player player) {
@@ -166,8 +178,8 @@ public final class PhaseFlightMovementGuard {
 
     /**
      * Teleport authorization is intentionally broader than force authorization. A serverbound
-     * custom payload may represent an explicit player action such as activating a waystone, but it
-     * must only authorize teleporting the exact player who sent that payload.
+     * custom payload or command may represent an explicit player action, but it must only authorize
+     * teleporting the exact player who initiated that action.
      */
     public static boolean isSelfTeleportAuthorized(Player player) {
         if (player == null) {
@@ -177,7 +189,16 @@ public final class PhaseFlightMovementGuard {
                 || PLAYER_PAYLOAD_TELEPORT_DEPTH.get().getOrDefault(player, 0) > 0) {
             return true;
         }
+        CommandSourceStack commandSource = COMMAND_SOURCE.get();
+        if (commandSource != null && commandSource.getEntity() == player) {
+            return true;
+        }
         return isCurrentMovementPacket(player) || isCurrentCustomPayload(player);
+    }
+
+    private static boolean isPrivilegedCommandExecution() {
+        CommandSourceStack commandSource = COMMAND_SOURCE.get();
+        return commandSource != null && commandSource.hasPermission(Commands.LEVEL_GAMEMASTERS);
     }
 
     /**
@@ -293,6 +314,21 @@ public final class PhaseFlightMovementGuard {
             return action.get();
         } finally {
             endPlayerPayloadTeleport(player);
+        }
+    }
+
+    /** Runs one executable command with its effective source bound to teleport authorization. */
+    public static void runAsCommandExecution(CommandSourceStack source, Runnable action) {
+        CommandSourceStack previous = COMMAND_SOURCE.get();
+        COMMAND_SOURCE.set(source);
+        try {
+            action.run();
+        } finally {
+            if (previous == null) {
+                COMMAND_SOURCE.remove();
+            } else {
+                COMMAND_SOURCE.set(previous);
+            }
         }
     }
 
