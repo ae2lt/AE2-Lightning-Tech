@@ -1,11 +1,11 @@
-package com.moakiee.ae2lt.integration.jei.multiblock;
+package com.moakiee.ae2lt.integration.recipeviewer.multiblock;
 
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 
-/** Code-drawn controls that follow JEI's beveled button palette and state treatment. */
-final class JeiStyleControls {
+/** Code-drawn controls shared by recipe-viewer multiblock previews. */
+final class MultiblockPreviewControls {
     private static final int BORDER_COLOR = 0xFF000000;
     private static final int HOVER_BORDER_COLOR = 0xFFFFFFFF;
     private static final int FACE_COLOR = 0xFF6E6E6E;
@@ -292,6 +292,6 @@ final class JeiStyleControls {
         }
     }
 
-    private JeiStyleControls() {
+    private MultiblockPreviewControls() {
     }
 }

@@ -1,4 +1,4 @@
-package com.moakiee.ae2lt.integration.jei.multiblock;
+package com.moakiee.ae2lt.integration.recipeviewer.multiblock;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -14,7 +14,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 
 /**
- * Immutable client-side description of one JEI multiblock structure page.
+ * Immutable client-side description shared by JEI and EMI multiblock structure pages.
  *
  * <p>The displayed state is a concrete, valid example. {@link Cell#alternatives()}
  * contains every block accepted at that position and is used by the selection

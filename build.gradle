@@ -12,8 +12,8 @@ repositories {
     mavenLocal()
     mavenCentral()
     maven {
-        name = "TerraformersMC"
-        url = "https://maven.terraformersmc.com/releases/"
+        name = "Sleeping Town"
+        url = "https://repo.sleeping.town/"
         content {
             includeGroup "dev.emi"
         }
@@ -258,7 +258,8 @@ dependencies {
     // compile time; the compatibility bootstrap never loads API-backed classes unless both mods
     // are installed by the modpack.
     compileOnly "curse.maven:polymorph-388800:${polymorph_curse_file_id}"
-    compileOnly "dev.emi:emi-neoforge:1.1.10+1.21"
+    compileOnly "dev.emi:emi-neoforge:${emi_version}:api"
+    runtimeOnly "dev.emi:emi-neoforge:${emi_version}"
     compileOnly "curse.maven:jade-324717:6291517"
     runtimeOnly "curse.maven:jade-324717:6291517"
     runtimeOnly "curse.maven:mekanism-268560:7621971"

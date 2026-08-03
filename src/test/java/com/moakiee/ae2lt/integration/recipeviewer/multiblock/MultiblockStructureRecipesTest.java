@@ -1,4 +1,4 @@
-package com.moakiee.ae2lt.integration.jei.multiblock;
+package com.moakiee.ae2lt.integration.recipeviewer.multiblock;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;

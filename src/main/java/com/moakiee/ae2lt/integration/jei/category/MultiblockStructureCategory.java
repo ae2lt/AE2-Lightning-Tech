@@ -5,7 +5,8 @@ import java.util.List;
 
 import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.integration.jei.multiblock.InteractiveMultiblockWidget;
-import com.moakiee.ae2lt.integration.jei.multiblock.MultiblockStructureRecipe;
+import com.moakiee.ae2lt.integration.recipeviewer.multiblock.InteractiveMultiblockPreview;
+import com.moakiee.ae2lt.integration.recipeviewer.multiblock.MultiblockStructureRecipe;
 import com.moakiee.ae2lt.registry.ModBlocks;
 
 import mezz.jei.api.gui.builder.IRecipeLayoutBuilder;
@@ -24,8 +25,8 @@ import net.minecraft.world.item.ItemStack;
 
 /** JEI category that hosts interactive construction previews for large multiblocks. */
 public final class MultiblockStructureCategory implements IRecipeCategory<MultiblockStructureRecipe> {
-    public static final int WIDTH = 300;
-    public static final int HEIGHT = 184;
+    public static final int WIDTH = InteractiveMultiblockPreview.DEFAULT_WIDTH;
+    public static final int HEIGHT = InteractiveMultiblockPreview.DEFAULT_HEIGHT;
 
     private static final int PANEL_WIDTH = 105;
     private static final int PANEL_X = WIDTH - PANEL_WIDTH - 2;

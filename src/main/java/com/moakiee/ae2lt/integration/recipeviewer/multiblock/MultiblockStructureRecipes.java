@@ -1,4 +1,4 @@
-package com.moakiee.ae2lt.integration.jei.multiblock;
+package com.moakiee.ae2lt.integration.recipeviewer.multiblock;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -19,7 +19,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraft.world.level.block.state.BlockState;
 
-/** Builds the two code-defined multiblock pages exposed through JEI. */
+/** Builds the two code-defined multiblock pages exposed through JEI and EMI. */
 public final class MultiblockStructureRecipes {
     private static final BlockPos MATRIX_DEFAULT_PATTERN = new BlockPos(1, 1, 1);
     private static final BlockPos MATRIX_DEFAULT_PORT = new BlockPos(6, 5, 3);

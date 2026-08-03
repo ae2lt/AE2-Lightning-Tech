@@ -20,9 +20,9 @@ import com.moakiee.ae2lt.integration.jei.category.OverloadGrowthCategory;
 import com.moakiee.ae2lt.integration.jei.category.OverloadProcessingCategory;
 import com.moakiee.ae2lt.integration.jei.category.TeslaCoilCategory;
 import com.moakiee.ae2lt.integration.jei.compat.ae2jeiintegration.AE2JeiIntegrationCompat;
+import com.moakiee.ae2lt.integration.recipeviewer.multiblock.MultiblockStructureRecipes;
 import com.moakiee.ae2lt.menu.TianshuPatternEncodingTermMenu;
 import com.moakiee.ae2lt.menu.TianshuWirelessPatternEncodingTermMenu;
-import com.moakiee.ae2lt.integration.jei.multiblock.MultiblockStructureRecipes;
 import com.moakiee.ae2lt.registry.ModBlocks;
 import com.moakiee.ae2lt.registry.ModItems;
 import mezz.jei.api.IModPlugin;
@@ -49,6 +49,7 @@ public class JEIPlugin implements IModPlugin {
     private static final ResourceLocation ID =
             ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "jei_plugin");
     private static final String AE2_JEI_INTEGRATION_MODID = "ae2jeiintegration";
+    private static final String EMI_MODID = "emi";
 
     public JEIPlugin() {
         if (ModList.get().isLoaded(AE2_JEI_INTEGRATION_MODID)) {
@@ -83,15 +84,21 @@ public class JEIPlugin implements IModPlugin {
                 new OverloadProcessingCategory(guiHelper),
                 new TeslaCoilCategory(guiHelper),
                 new CrystalCatalyzerCategory(guiHelper),
-                new FirmamentConversionCategory(guiHelper),
-                new MultiblockStructureCategory(guiHelper));
+                new FirmamentConversionCategory(guiHelper));
+        // EMI has a native adapter for this highly interactive page. Avoid also feeding
+        // the JEI version through EMI's JEI bridge when both viewers are installed.
+        if (!isEmiLoaded()) {
+            registration.addRecipeCategories(new MultiblockStructureCategory(guiHelper));
+        }
     }
 
     @Override
     public void registerRecipes(IRecipeRegistration registration) {
         registration.addRecipes(OverloadGrowthCategory.TYPE, List.of(OverloadGrowthCategory.Page.values()));
         registration.addRecipes(TeslaCoilCategory.TYPE, List.of(TeslaCoilCategory.Page.values()));
-        registration.addRecipes(MultiblockStructureCategory.TYPE, MultiblockStructureRecipes.all());
+        if (!isEmiLoaded()) {
+            registration.addRecipes(MultiblockStructureCategory.TYPE, MultiblockStructureRecipes.all());
+        }
         registration.addIngredientInfo(
                 ModItems.PIGMEE_CORE.get(),
                 Component.translatable("jei.ae2lt.pigmee_core.info"));
@@ -161,12 +168,14 @@ public class JEIPlugin implements IModPlugin {
         registration.addRecipeCatalyst(ModBlocks.TESLA_COIL.toStack(), TeslaCoilCategory.TYPE);
         registration.addRecipeCatalyst(ModBlocks.CRYSTAL_CATALYZER.toStack(), CrystalCatalyzerCategory.TYPE);
         registration.addRecipeCatalyst(ModBlocks.FIRMAMENT_CONVERSION_CORE.toStack(), FirmamentConversionCategory.TYPE);
-        registration.addRecipeCatalyst(
-                ModBlocks.MATTER_WARPING_MATRIX_CONTROLLER.toStack(),
-                MultiblockStructureCategory.TYPE);
-        registration.addRecipeCatalyst(
-                ModBlocks.TIANSHU_SUPERCOMPUTER_CONTROLLER.toStack(),
-                MultiblockStructureCategory.TYPE);
+        if (!isEmiLoaded()) {
+            registration.addRecipeCatalyst(
+                    ModBlocks.MATTER_WARPING_MATRIX_CONTROLLER.toStack(),
+                    MultiblockStructureCategory.TYPE);
+            registration.addRecipeCatalyst(
+                    ModBlocks.TIANSHU_SUPERCOMPUTER_CONTROLLER.toStack(),
+                    MultiblockStructureCategory.TYPE);
+        }
     }
 
     @Override
@@ -211,5 +220,9 @@ public class JEIPlugin implements IModPlugin {
                 return List.of(IGuiClickableArea.createBasic(x, y, width, height, recipeType));
             }
         };
+    }
+
+    private static boolean isEmiLoaded() {
+        return ModList.get().isLoaded(EMI_MODID);
     }
 }
