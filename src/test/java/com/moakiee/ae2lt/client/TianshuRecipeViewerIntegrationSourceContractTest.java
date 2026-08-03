@@ -30,6 +30,19 @@ class TianshuRecipeViewerIntegrationSourceContractTest {
     }
 
     @Test
+    void emiRegistersRecipeHandlersForBothTianshuTerminalMenuTypes() throws Exception {
+        String emiPlugin = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/integration/emi/AE2LTEmiPlugin.java"));
+
+        assertTrue(emiPlugin.contains("TianshuPatternEncodingTermMenu.TYPE"));
+        assertTrue(emiPlugin.contains(
+                "new EmiEncodePatternHandler<>(TianshuPatternEncodingTermMenu.class)"));
+        assertTrue(emiPlugin.contains("TianshuWirelessPatternEncodingTermMenu.TYPE"));
+        assertTrue(emiPlugin.contains(
+                "new EmiEncodePatternHandler<>(TianshuWirelessPatternEncodingTermMenu.class)"));
+    }
+
+    @Test
     void bothViewersObserveOnlyActualTransfersAndCaptureStableRecipeIdentity() throws Exception {
         String jei = Files.readString(Path.of(
                 "src/main/java/com/moakiee/ae2lt/mixin/recipeviewer/jei/JeiEncodePatternTransferMixin.java"));

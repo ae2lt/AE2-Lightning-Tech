@@ -1,7 +1,10 @@
 package com.moakiee.ae2lt.integration.emi;
 
+import appeng.integration.modules.emi.EmiEncodePatternHandler;
 import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.integration.recipeviewer.multiblock.MultiblockStructureRecipes;
+import com.moakiee.ae2lt.menu.TianshuPatternEncodingTermMenu;
+import com.moakiee.ae2lt.menu.TianshuWirelessPatternEncodingTermMenu;
 import com.moakiee.ae2lt.registry.ModBlocks;
 
 import dev.emi.emi.api.EmiEntrypoint;
@@ -27,6 +30,12 @@ public final class AE2LTEmiPlugin implements EmiPlugin {
     @Override
     public void register(EmiRegistry registry) {
         EmiMultiblockInputEvents.register();
+        registry.addRecipeHandler(
+                TianshuPatternEncodingTermMenu.TYPE,
+                new EmiEncodePatternHandler<>(TianshuPatternEncodingTermMenu.class));
+        registry.addRecipeHandler(
+                TianshuWirelessPatternEncodingTermMenu.TYPE,
+                new EmiEncodePatternHandler<>(TianshuWirelessPatternEncodingTermMenu.class));
         registry.addCategory(MULTIBLOCK_STRUCTURE);
         registry.addWorkstation(
                 MULTIBLOCK_STRUCTURE,
