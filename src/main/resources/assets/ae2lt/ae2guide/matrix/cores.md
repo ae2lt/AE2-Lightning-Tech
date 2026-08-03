@@ -8,8 +8,8 @@ item_ids:
   - ae2lt:matter_warping_matrix_stable_main_core
   - ae2lt:matter_warping_matrix_quantum_main_core
   - ae2lt:matter_warping_matrix_overload_main_core
-  - ae2lt:matter_warping_matrix_creative_main_core
-  - ae2lt:matter_warping_matrix_blank_unit
+  - ae2lt:matter_warping_matrix_multidimensional_main_core
+  - ae2lt:tianshu_blank_unit
   - ae2lt:matter_warping_matrix_thread_unit_t1
   - ae2lt:matter_warping_matrix_thread_unit_t2
   - ae2lt:tianshu_amplifier_unit
@@ -37,16 +37,16 @@ The core chamber supports Thread, Thermal Control, and Amplifier Units as specia
 
 Thread Units determine the crafting capacity per tick, similar to adding more Molecular Assemblers. Thermal Control Units regulate heat, but their effectiveness decreases with distance from the Main Core. Amplifier Units multiply overall thread capacity, and no more than 15 may be installed. Blank Units fill required positions without providing bonuses.
 
-> The Creative Main Core cannot use specialized Peripheral Units; all other positions must contain Blank Units. The Stable Main Core cannot use Amplifier Units.
+> The Multidimensional Main Core cannot use specialized Peripheral Units; all other positions must contain Tianshu Blank Units. The Stable Main Core cannot use Amplifier Units.
 
 Every position in the core chamber must be filled or the structure will not form. Higher-tier Main Cores provide higher capacity limits, summarized below. The structure also requires at least one Pattern Storage.
 
 | Main Core | Crafting Cap per Tick | Thermal Strategy |
 |-----------|----------------------:|------------------|
-| Stable Main Core | 1,024 executions | Keep heat as low as possible |
-| Quantum Main Core | 10,240 executions | Lower heat provides higher efficiency |
+| Stable Main Core | 4,096 executions | Keep heat as low as possible |
+| Quantum Main Core | 122,880 executions | Lower heat provides higher efficiency |
 | Overload Main Core | 4,194,304 executions | Keep heat near 50% |
-| Creative Main Core | Unlimited | Heat is ignored |
+| Multidimensional Main Core | Unlimited | Heat is ignored |
 
 ## Outer Structure
 
@@ -58,31 +58,31 @@ By default, the Matrix Port is installed opposite the Controller. It may instead
 
 | Main Core | Crafting Cap per Tick | Thermal Strategy |
 |-----------|----------------------:|------------------|
-| Stable Main Core | 1,024 executions | Keep it cool; efficiency falls with heat but never below 45% |
-| Quantum Main Core | 10,240 executions | Lower heat provides higher efficiency |
+| Stable Main Core | 4,096 executions | Keep it cool; efficiency falls with heat but never below 45% |
+| Quantum Main Core | 122,880 executions | Lower heat provides higher efficiency |
 | Overload Main Core | 4,194,304 executions | Peak efficiency is near 50% heat; keep it in the 42%–58% sweet spot |
-| Creative Main Core | Unlimited | Heat is ignored; all other 80 slots must be Blank Units |
+| Multidimensional Main Core | Unlimited | Heat is ignored; all other 80 slots must be Tianshu Blank Units |
 
 The number of pattern executions the matrix performs each tick is determined in three steps:
 
-1. **Base capacity** = `256 × thread points × amplification factor`. Thread points come from Thread Units: T1 provides 1 point and T2 provides 2. The Main Core determines the amplification factor: Stable always uses 1, Quantum uses `R²`, and Overload uses `R³`, where `R = 1 + the number of Tianshu Amplifier Units`.
+1. **Base capacity**: Stable uses dedicated values: each T1 Thread Unit provides `1,024`, each T2 provides `3,584`, and the total is capped at `4,096`. Quantum and Overload use `256 × thread points × amplification factor`; T1 provides 1 thread point and T2 provides 2. The amplification factor is `R²` for Quantum and `R³` for Overload, where `R = 1 + the number of Tianshu Amplifier Units`.
 2. Base capacity beyond the Main Core's per-tick cap is cut off at the cap.
 3. The result is multiplied by the current thermal efficiency to give the actual throughput.
 
-The Creative Main Core has no execution cap, but the matrix still issues at most 16,384 crafting calls per tick. Matrix throughput depends only on its own core configuration and heat; it is independent of the Tianshu Supercomputing Array's dispatch and copy budgets.
+The Multidimensional Main Core has no execution cap, but the matrix still issues at most 16,384 crafting calls per tick. Matrix throughput depends only on its own core configuration and heat; it is independent of the Tianshu Supercomputing Array's dispatch and copy budgets.
 
 ## Peripheral Units
 
 | Peripheral Unit | Provides | Purpose |
 |-----------------|----------|---------|
-| Thread Unit T1 | 1 thread point | Raises base crafting capacity per tick |
-| Thread Unit T2 | 2 thread points | Provides twice the thread points per slot at a higher cost |
+| Thread Unit T1 | Stable: 1,024; Quantum/Overload: 1 thread point | Raises base crafting capacity per tick |
+| Thread Unit T2 | Stable: 3,584; Quantum/Overload: 2 thread points | Provides dedicated Stable capacity; in Quantum and Overload, two thread points per slot save core positions |
 | Tianshu Amplifier Unit | `R` +1 | Raises the amplification factor of Quantum and Overload cores; the same block is shared with the Tianshu Supercomputing Array |
 | Thermal Control Unit T1 | 1 cooling point | Raises heat capacity and cooling rate; the actual effect decays with distance from the Main Core |
 | Thermal Control Unit T2 | 2 cooling points | Twice the cooling points per slot, with the same distance decay |
-| Blank Unit | — | Fills a required core slot without adding performance attributes |
+| Tianshu Blank Unit | — | Shared by both Tianshu multiblocks; fills a required core slot without adding performance attributes |
 
-Quantum and Overload configurations allow at most **15 Tianshu Amplifier Units**; a sixteenth prevents the structure from forming. Stable and Creative Main Cores reject amplifiers.
+Quantum and Overload configurations allow at most **15 Tianshu Amplifier Units**; a sixteenth prevents the structure from forming. Stable and Multidimensional Main Cores reject amplifiers.
 
 ## Cooling Distance
 
