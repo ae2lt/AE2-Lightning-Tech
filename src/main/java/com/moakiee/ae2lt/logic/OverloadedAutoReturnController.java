@@ -125,7 +125,7 @@ final class OverloadedAutoReturnController {
                     providerLevel, gameTick));
         }
         var targets = new ArrayList<ProviderTarget>();
-        for (var direction : environment.provider().getTargets()) {
+        for (var direction : environment.normalTargetDirections()) {
             targets.add(environment.normalTarget(providerLevel, direction));
         }
         return targets;
@@ -208,6 +208,8 @@ final class OverloadedAutoReturnController {
 
         ProviderTarget normalTarget(
                 ServerLevel level, Direction pushDirection);
+
+        List<Direction> normalTargetDirections();
 
         void onReturnedStack(GenericStack returnedStack);
     }

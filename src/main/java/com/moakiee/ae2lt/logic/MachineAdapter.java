@@ -40,6 +40,19 @@ public interface MachineAdapter {
     boolean canAccept(ServerLevel level, BlockPos pos, Direction face, IPatternDetails pattern);
 
     /**
+     * Capacity-aware form used by provider dispatch after it has resolved the
+     * exact AE2 storage target for the selected face.
+     */
+    default boolean canAccept(
+            ServerLevel level,
+            BlockPos pos,
+            Direction face,
+            IPatternDetails pattern,
+            @Nullable PatternProviderTarget cachedTarget) {
+        return canAccept(level, pos, face, pattern);
+    }
+
+    /**
      * Whether this target supports aggregated copies. Dedicated crafting
      * machines whose {@code pushPattern} call is itself the execution event
      * should return {@code false} and remain on one-copy dispatch.
@@ -64,6 +77,27 @@ public interface MachineAdapter {
                           boolean blocking, Set<AEKey> patternInputs,
                           IActionSource source,
                           @Nullable PatternProviderTarget cachedTarget);
+
+    /**
+     * Dispatch using an explicit input-acceptance contract. Existing external
+     * adapters retain their previous behavior unless they override this method.
+     */
+    default PushResult pushCopies(
+            ServerLevel level,
+            BlockPos pos,
+            Direction face,
+            IPatternDetails pattern,
+            KeyCounter[] inputs,
+            int maxCopies,
+            PatternInputAcceptance inputAcceptance,
+            boolean blocking,
+            Set<AEKey> patternInputs,
+            IActionSource source,
+            @Nullable PatternProviderTarget cachedTarget) {
+        return pushCopies(
+                level, pos, face, pattern, inputs, maxCopies,
+                blocking, patternInputs, source, cachedTarget);
+    }
 
     /**
      * Try to flush leftover items into the same target.

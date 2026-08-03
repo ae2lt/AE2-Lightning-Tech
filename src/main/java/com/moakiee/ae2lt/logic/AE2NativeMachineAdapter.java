@@ -163,6 +163,21 @@ final class AE2NativeMachineAdapter implements MachineAdapter {
     }
 
     @Override
+    public boolean canAccept(
+            ServerLevel level,
+            BlockPos pos,
+            Direction face,
+            IPatternDetails pattern,
+            @Nullable PatternProviderTarget cachedTarget) {
+        var machine = ICraftingMachine.of(level, pos, face);
+        if (machine != null && machine.acceptsPlans()) {
+            return true;
+        }
+        return cachedTarget != null
+                && pattern.supportsPushInputsToExternalInventory();
+    }
+
+    @Override
     public boolean supportsBatch(
             ServerLevel level, BlockPos pos, Direction face, IPatternDetails pattern) {
         return ICraftingMachine.of(level, pos, face) == null;
@@ -176,6 +191,33 @@ final class AE2NativeMachineAdapter implements MachineAdapter {
                                  boolean blocking, Set<AEKey> patternInputs,
                                  IActionSource source,
                                  @Nullable PatternProviderTarget cachedTarget) {
+        return pushCopies(
+                level,
+                pos,
+                face,
+                pattern,
+                inputs,
+                maxCopies,
+                PatternInputAcceptance.COMPLETE_BATCH,
+                blocking,
+                patternInputs,
+                source,
+                cachedTarget);
+    }
+
+    @Override
+    public PushResult pushCopies(
+            ServerLevel level,
+            BlockPos pos,
+            Direction face,
+            IPatternDetails pattern,
+            KeyCounter[] inputs,
+            int maxCopies,
+            PatternInputAcceptance inputAcceptance,
+            boolean blocking,
+            Set<AEKey> patternInputs,
+            IActionSource source,
+            @Nullable PatternProviderTarget cachedTarget) {
         long now = level.getGameTime();
         sweepStaleEntries(now);
         var be = level.getBlockEntity(pos);
@@ -214,8 +256,34 @@ final class AE2NativeMachineAdapter implements MachineAdapter {
             return PushResult.REJECTED;
         }
 
-        if (!adapterAcceptsCompleteBatch(target, plannedInputs)) {
+        return pushPlannedInputs(
+                target, plannedInputs, maxCopies, inputAcceptance);
+    }
+
+    static PushResult pushPlannedInputs(
+            PatternProviderTarget target,
+            List<GenericStack> plannedInputs,
+            int maxCopies,
+            PatternInputAcceptance inputAcceptance) {
+        if (!adapterAcceptsInputs(target, plannedInputs, inputAcceptance)) {
             return PushResult.REJECTED;
+        }
+
+        if (inputAcceptance == PatternInputAcceptance.VANILLA_SINGLE_COPY) {
+            if (maxCopies != 1) {
+                throw new IllegalArgumentException(
+                        "Vanilla provider dispatch must contain exactly one copy");
+            }
+            var overflow = new ArrayList<GenericStack>();
+            for (var input : plannedInputs) {
+                long inserted = target.insert(
+                        input.what(), input.amount(), Actionable.MODULATE);
+                if (inserted < input.amount()) {
+                    overflow.add(new GenericStack(
+                            input.what(), input.amount() - inserted));
+                }
+            }
+            return new PushResult(1, overflow);
         }
 
         var overflow = new ArrayList<GenericStack>();
@@ -352,12 +420,18 @@ final class AE2NativeMachineAdapter implements MachineAdapter {
         return planned;
     }
 
-    private static boolean adapterAcceptsCompleteBatch(
-            PatternProviderTarget target, List<GenericStack> plannedInputs) {
+    private static boolean adapterAcceptsInputs(
+            PatternProviderTarget target,
+            List<GenericStack> plannedInputs,
+            PatternInputAcceptance inputAcceptance) {
         for (var input : plannedInputs) {
             long simulated = target.insert(
                     input.what(), input.amount(), Actionable.SIMULATE);
-            if (input.amount() <= 0L || simulated < input.amount()) {
+            boolean accepted = inputAcceptance
+                            == PatternInputAcceptance.VANILLA_SINGLE_COPY
+                    ? simulated > 0L
+                    : input.amount() > 0L && simulated >= input.amount();
+            if (!accepted) {
                 return false;
             }
         }
