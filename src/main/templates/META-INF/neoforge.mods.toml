@@ -192,7 +192,7 @@ ordering = "AFTER"
 side = "BOTH"
 
 [[dependencies."${mod_id}"]]
-modId = "al2ltpp"
+modId = "ae2ltpp"
 type = "optional"
 versionRange = "[1.1.0,)"
 ordering = "BEFORE"
