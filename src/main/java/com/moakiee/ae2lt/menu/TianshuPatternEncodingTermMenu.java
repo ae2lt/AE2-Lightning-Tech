@@ -2223,6 +2223,14 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         beginClientEncoding(true, true);
     }
 
+    /**
+     * Requests the output refresh action registered by Polymorphic Energistics' menu mixin.
+     * Called only by the optional client widget when both compatibility mods are loaded.
+     */
+    public void refreshPolymorphRecipe() {
+        if (isClientSide()) sendClientAction("polyeng$selectRecipe");
+    }
+
     private void beginClientEncoding(boolean triggerUpload, boolean directUpload) {
         com.moakiee.ae2lt.client.TianshuRecipeTransferContext.beginEncoding(
                 this, tianshuHost.getLogic().getEncodedPatternInv().getStackInSlot(0));
