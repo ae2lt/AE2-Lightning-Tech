@@ -26,6 +26,30 @@ item_ids:
   <IsometricCamera yaw="215" pitch="25" />
 </GameScene>
 
+# 省流
+
+**你不妨用jei查看控制器的用途来的更实在(默认按U)，并且可以一键编码材料清单的样板**
+
+~~写完了才想起来补充，罢了，写都写了~~
+
+## 超超超超超超超低配材料清单
+| 材料 | 数量(个) |
+|------|-----:|
+| <ItemLink id="ae2lt:matter_warping_matrix_casing" /> | 174 |
+| <ItemLink id="ae2lt:matter_warping_matrix_constraint_frame" /> | 132 |
+| <ItemLink id="ae2lt:matter_warping_matrix_glass" /> | 44 |
+| <ItemLink id="ae2lt:matter_warping_matrix_port" /> | 1 |
+| <ItemLink id="ae2lt:matter_warping_matrix_pattern_storage_t1" /> 或 <ItemLink id="ae2lt:matter_warping_matrix_pattern_storage_t2" /> | 1-50 |
+▲自动搭建会放的方块；▼自动搭建不会放的方块
+| 材料 | 数量(个) |
+|------|-----:|
+| <ItemLink id="ae2lt:tianshu_blank_unit" /> | 79 |
+| <ItemLink id="ae2lt:matter_warping_matrix_stable_main_core" /> | 1 |
+| <ItemLink id="ae2lt:matter_warping_matrix_thread_unit_t1" /> | 1 |
+主核心必须位于结构中央。
+
+# 原文
+
 ## 自动搭建材料清单
 
 以下数量适用于只放置了控制器、其余目标位置均为空的结构。已有的正确方块会被保留，并从实际需求中扣除。

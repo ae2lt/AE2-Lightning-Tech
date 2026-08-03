@@ -26,6 +26,32 @@ The scene below shows a complete formable structure with the minimum pattern cap
   <IsometricCamera yaw="215" pitch="25" />
 </GameScene>
 
+## Quick Reference
+
+The Controller's use page in JEI (`U` by default) can encode a pattern for the material list with one click.
+
+### Minimum Configuration Materials
+
+The following blocks are placed by auto-build:
+
+| Material | Count |
+|----------|------:|
+| <ItemLink id="ae2lt:matter_warping_matrix_casing" /> | 174 |
+| <ItemLink id="ae2lt:matter_warping_matrix_constraint_frame" /> | 132 |
+| <ItemLink id="ae2lt:matter_warping_matrix_glass" /> | 44 |
+| <ItemLink id="ae2lt:matter_warping_matrix_port" /> | 1 |
+| <ItemLink id="ae2lt:matter_warping_matrix_pattern_storage_t1" /> or <ItemLink id="ae2lt:matter_warping_matrix_pattern_storage_t2" /> | 1–50 |
+
+The minimum manual core configuration is:
+
+| Material | Count |
+|----------|------:|
+| <ItemLink id="ae2lt:tianshu_blank_unit" /> | 79 |
+| <ItemLink id="ae2lt:matter_warping_matrix_stable_main_core" /> | 1 |
+| <ItemLink id="ae2lt:matter_warping_matrix_thread_unit_t1" /> | 1 |
+
+The Main Core must occupy the center of the structure.
+
 ## Auto-build Material List
 
 These quantities apply when only the Controller has been placed and every other target position is empty. Existing valid blocks are preserved and deducted from the actual requirement.

@@ -130,7 +130,7 @@ When a formed Tianshu Supercomputing Array is available on the network, the term
 
 Click any entry under **Crafting topology** to set how much of that material maintenance jobs may not consume. Switch **Tianshu global** to **Rule additional** to configure an extra reserve for this rule. A rule-specific reserve only changes the effective protection when it is greater than the matching global reserve; see “Global Reserves” below.
 
-> Configured materials show a colored marker in the Tianshu Pattern Encoding Terminal: gray means the rule is disabled, green means the stock target is satisfied, orange means crafting is in progress, and red indicates missing materials.
+> Configured materials show a colored marker in the Tianshu Pattern Encoding Terminal: gray means the rule is disabled, green means the stock target is satisfied, orange means the rule is idle or crafting, and red indicates missing materials.
 
 ### Global Reserves
 A global reserve protects a quantity of an item from automatic maintenance jobs. Player-requested crafting jobs may still use this protected stock.
