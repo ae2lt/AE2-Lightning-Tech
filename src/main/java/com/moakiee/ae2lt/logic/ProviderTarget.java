@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.BooleanSupplier;
 import java.util.function.IntFunction;
@@ -60,8 +61,13 @@ public class ProviderTarget extends TargetAddress {
             invalidatePhysicalState();
             return null;
         }
-        if (runtime.blockEntityRef == null
-                || runtime.blockEntityRef.get() != current) {
+        if (runtime.blockEntityRef == null) {
+            // A freshly reconstructed provider target may already carry
+            // persisted adaptive history. Establishing its first live block
+            // entity reference must not erase that history.
+            invalidateResolvedPhysicalCaches();
+            runtime.blockEntityRef = new WeakReference<>(current);
+        } else if (runtime.blockEntityRef.get() != current) {
             invalidatePhysicalState();
             runtime.blockEntityRef = new WeakReference<>(current);
         }
@@ -346,11 +352,11 @@ public class ProviderTarget extends TargetAddress {
             if (chunk.ownedCopies() <= 0L) {
                 if (!fullChunkAccepted) {
                     if (chunkCopies <= 1) {
-                        runtime.batchChunks.put(pattern, 1);
+                        rememberBatchChunk(pattern, 1);
                         break;
                     }
                     nextChunk = Math.max(1, chunkCopies / 2);
-                    runtime.batchChunks.put(pattern, nextChunk);
+                    rememberBatchChunk(pattern, nextChunk);
                     backingOff = true;
                     continue;
                 }
@@ -361,7 +367,7 @@ public class ProviderTarget extends TargetAddress {
             if (chunk.ownedCopies() != chunkCopies
                     || !chunk.fullyInserted()) {
                 if (!fullChunkAccepted) {
-                    runtime.batchChunks.put(
+                    rememberBatchChunk(
                             pattern, Math.max(1, chunkCopies / 2));
                 }
                 break;
@@ -369,7 +375,7 @@ public class ProviderTarget extends TargetAddress {
 
             fullChunkAccepted = true;
             if (!requestLimited) {
-                runtime.batchChunks.put(pattern, chunkCopies);
+                rememberBatchChunk(pattern, chunkCopies);
             }
             if (backingOff) {
                 break;
@@ -380,6 +386,15 @@ public class ProviderTarget extends TargetAddress {
             nextChunk = (int) Math.min(ownedCopies, Integer.MAX_VALUE);
         }
         return new BatchDispatchResult(ownedCopies, false);
+    }
+
+    private void rememberBatchChunk(
+            IPatternDetails pattern, int chunkCopies) {
+        int sanitized = Math.max(1, chunkCopies);
+        var previous = runtime.batchChunks.put(pattern, sanitized);
+        if (previous == null || previous != sanitized) {
+            runtime.batchHistoryDirty = true;
+        }
     }
 
     /**
@@ -428,19 +443,40 @@ public class ProviderTarget extends TargetAddress {
 
         var state = runtime.batchSteps.computeIfAbsent(
                 pattern, ignored -> new BatchStepState());
+        var previousState = state.snapshot();
         state.expireIfIdle(
                 gameTick, preserveBatchHistoryOnRejection);
         state.lastAttemptTick = gameTick;
 
+        BatchStepResult result;
         if (!state.backingOff) {
-            return pushSameTickRamp(
+            result = pushSameTickRamp(
                     state,
                     maxCopies,
                     gameTick,
                     preserveBatchHistoryOnRejection,
                     blocked,
                     pushChunk);
+        } else {
+            result = pushBackoffStep(
+                    state,
+                    maxCopies,
+                    gameTick,
+                    preserveBatchHistoryOnRejection,
+                    pushChunk);
         }
+        if (!previousState.equals(state.snapshot())) {
+            runtime.batchHistoryDirty = true;
+        }
+        return result;
+    }
+
+    private static BatchStepResult pushBackoffStep(
+            BatchStepState state,
+            long maxCopies,
+            long gameTick,
+            boolean preserveBatchHistoryOnRejection,
+            IntFunction<BatchChunk> pushChunk) {
         int attemptedCopies = (int) Math.min(
                 Math.min((long) state.nextChunk, maxCopies),
                 Integer.MAX_VALUE);
@@ -627,7 +663,11 @@ public class ProviderTarget extends TargetAddress {
         }
         var state = runtime.batchSteps.computeIfAbsent(
                 pattern, ignored -> new BatchStepState());
+        var previousState = state.snapshot();
         state.expireIfIdle(gameTick, true);
+        if (!previousState.equals(state.snapshot())) {
+            runtime.batchHistoryDirty = true;
+        }
         return (int) Math.min(
                 Math.min((long) state.nextChunk, maxCopies),
                 Integer.MAX_VALUE);
@@ -768,11 +808,88 @@ public class ProviderTarget extends TargetAddress {
     }
 
     final void clearBatchHistory() {
+        if (!runtime.batchChunks.isEmpty()
+                || !runtime.batchSteps.isEmpty()) {
+            runtime.batchHistoryDirty = true;
+        }
         runtime.batchChunks.clear();
         runtime.batchSteps.clear();
     }
 
+    final Map<IPatternDetails, AdaptiveBatchSnapshot>
+            adaptiveBatchSnapshots() {
+        var result = new IdentityHashMap<
+                IPatternDetails, AdaptiveBatchSnapshot>();
+        runtime.batchChunks.forEach((pattern, chunk) -> result.put(
+                pattern,
+                new AdaptiveBatchSnapshot(chunk, null)));
+        runtime.batchSteps.forEach((pattern, state) -> result.merge(
+                pattern,
+                new AdaptiveBatchSnapshot(0, state.snapshot()),
+                (left, right) -> new AdaptiveBatchSnapshot(
+                        left.rememberedChunk(),
+                        right.step())));
+        return result;
+    }
+
+    final void restoreAdaptiveBatchSnapshot(
+            IPatternDetails pattern,
+            AdaptiveBatchSnapshot snapshot) {
+        if (pattern == null || snapshot == null
+                || !snapshot.isValid()) {
+            return;
+        }
+        if (snapshot.rememberedChunk() > 0) {
+            runtime.batchChunks.put(
+                    pattern, snapshot.rememberedChunk());
+        }
+        if (snapshot.step() != null) {
+            runtime.batchSteps.put(
+                    pattern, new BatchStepState(snapshot.step()));
+        }
+        runtime.batchHistoryDirty = false;
+    }
+
+    final boolean consumeAdaptiveBatchHistoryDirty() {
+        boolean dirty = runtime.batchHistoryDirty;
+        runtime.batchHistoryDirty = false;
+        return dirty;
+    }
+
+    record AdaptiveBatchSnapshot(
+            int rememberedChunk,
+            @Nullable BatchStepSnapshot step) {
+        boolean isValid() {
+            return rememberedChunk >= 0
+                    && (rememberedChunk > 0 || step != null)
+                    && (step == null || step.isValid());
+        }
+    }
+
+    record BatchStepSnapshot(
+            int nextChunk,
+            int provenChunk,
+            int provenSuccesses,
+            boolean repeatCurrent,
+            boolean growthCapped,
+            boolean backingOff,
+            long lastSuccessfulTick,
+            long lastAttemptTick) {
+        boolean isValid() {
+            return nextChunk > 0
+                    && provenChunk >= 0
+                    && provenSuccesses >= 0
+                    && (provenChunk > 0
+                            || nextChunk == 1 && !backingOff);
+        }
+    }
+
     private void invalidatePhysicalState() {
+        invalidateResolvedPhysicalCaches();
+        clearBatchHistory();
+    }
+
+    private void invalidateResolvedPhysicalCaches() {
         runtime.blockEntityRef = null;
         runtime.adapter = null;
         runtime.adapterResolved = false;
@@ -781,8 +898,6 @@ public class ProviderTarget extends TargetAddress {
         runtime.blockedGameTick = Long.MIN_VALUE;
         runtime.lastOutputReturnScanTick = Long.MIN_VALUE;
         runtime.lastSuccessfulPattern = null;
-        runtime.batchChunks.clear();
-        runtime.batchSteps.clear();
         runtime.batchLimitRulesVersion = Long.MIN_VALUE;
         runtime.batchCopyLimit = Long.MAX_VALUE;
     }
@@ -804,6 +919,7 @@ public class ProviderTarget extends TargetAddress {
                 new IdentityHashMap<>();
         private final IdentityHashMap<IPatternDetails, BatchStepState> batchSteps =
                 new IdentityHashMap<>();
+        private boolean batchHistoryDirty;
         private long batchLimitRulesVersion = Long.MIN_VALUE;
         private long batchCopyLimit = Long.MAX_VALUE;
         @Nullable
@@ -823,6 +939,32 @@ public class ProviderTarget extends TargetAddress {
         private boolean backingOff;
         private long lastSuccessfulTick = Long.MIN_VALUE;
         private long lastAttemptTick = Long.MIN_VALUE;
+
+        private BatchStepState() {
+        }
+
+        private BatchStepState(BatchStepSnapshot snapshot) {
+            this.nextChunk = snapshot.nextChunk();
+            this.provenChunk = snapshot.provenChunk();
+            this.provenSuccesses = snapshot.provenSuccesses();
+            this.repeatCurrent = snapshot.repeatCurrent();
+            this.growthCapped = snapshot.growthCapped();
+            this.backingOff = snapshot.backingOff();
+            this.lastSuccessfulTick = snapshot.lastSuccessfulTick();
+            this.lastAttemptTick = snapshot.lastAttemptTick();
+        }
+
+        private BatchStepSnapshot snapshot() {
+            return new BatchStepSnapshot(
+                    nextChunk,
+                    provenChunk,
+                    provenSuccesses,
+                    repeatCurrent,
+                    growthCapped,
+                    backingOff,
+                    lastSuccessfulTick,
+                    lastAttemptTick);
+        }
 
         private void expireIfIdle(
                 long gameTick, boolean preserveAttemptHistory) {

@@ -103,6 +103,8 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
             wirelessDispatch.overflow();
     private final WirelessOverflowPersistence wirelessOverflowPersistence =
             new WirelessOverflowPersistence();
+    private final AdaptiveBatchStatePersistence adaptiveBatchStatePersistence =
+            new AdaptiveBatchStatePersistence();
 
     // ---- push timing wheel + ready queue ----------------------------------------
 
@@ -296,6 +298,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
 
         var level = overloadedHost.getLevel();
         patternCatalog.rebuild(inventory, level, patterns, patternInputs);
+        finishPendingAdaptiveBatchStateLoad();
         returnPolicy.patternsChanged();
         refreshEjectRegistrations();
 
@@ -681,7 +684,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
         long targetMaxCraft = Math.min(
                 maxCraft,
                 context.target().batchCopyLimit(context.level()));
-        return context.target().pushPattern(
+        var result = context.target().pushPattern(
                 patternHandle,
                 targetMaxCraft,
                 batchSupported,
@@ -694,6 +697,8 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
                         copies,
                         oneCopyCost,
                         inputAcceptance));
+        saveAdaptiveBatchStateIfDirty(context.target());
+        return result;
     }
 
     private ProviderTarget.BatchStepResult dispatchWirelessBatchStep(
@@ -706,7 +711,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
             boolean preserveBatchHistoryOnRejection) {
         boolean batchSupported = context.target().supportsBatch(
                 context.level(), pattern);
-        return context.target().pushPatternStep(
+        var result = context.target().pushPatternStep(
                 patternHandle,
                 maxCraft,
                 context.level().getGameTime(),
@@ -721,6 +726,14 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
                         copies,
                         oneCopyCost,
                         PatternInputAcceptance.COMPLETE_BATCH));
+        saveAdaptiveBatchStateIfDirty(context.target());
+        return result;
+    }
+
+    private void saveAdaptiveBatchStateIfDirty(ProviderTarget target) {
+        if (target.consumeAdaptiveBatchHistoryDirty()) {
+            saveChanges();
+        }
     }
 
     private ProviderTarget.BatchChunk pushBatchChunk(
@@ -1817,7 +1830,6 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
      */
     public void onBlockEntityReady() {
         if (storage.loadOnReady()) {
-            updatePatterns();
             saveChanges();
         }
         finishPendingLocalDirectionalOverflowLoad();
@@ -1931,6 +1943,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
         wirelessDispatch.clear();
         autoReturn.clear();
         returnPolicy.patternsChanged();
+        adaptiveBatchStatePersistence.clear();
         invalidateValidConnectionsCache();
         inductionCardCacheDirty = true;
         lastEnergyTickGameTime = -1;
@@ -1972,6 +1985,13 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
             tag.put(TAG_LOCAL_DIRECTIONAL_OVERFLOW, localTag);
         }
         wirelessOverflowPersistence.write(tag, registries, wirelessOverflow);
+        adaptiveBatchStatePersistence.write(
+                tag,
+                registries,
+                ((PatternProviderLogicAccessor) this).getPatternInventory(),
+                patternCatalog,
+                normalDispatch,
+                overloadedHost.getConnections());
     }
 
     @Override
@@ -2001,6 +2021,11 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
         finishPendingWirelessOverflowLoad();
         autoReturn.clear();
         invalidateValidConnectionsCache();
+        adaptiveBatchStatePersistence.read(
+                tag,
+                registries,
+                totalCapacity,
+                OverloadedPatternProviderBlockEntity.MAX_WIRELESS_CONNECTIONS);
         inductionCardCacheDirty = true;
         lastEnergyTickGameTime = -1;
         refreshEjectRegistrations();
@@ -2061,6 +2086,21 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
         normalDispatch.restore(pending.pushDirection(), target);
         pendingLocalDirectionalOverflowTarget = target;
         pendingLocalDirectionalOverflowLoad = null;
+    }
+
+    private void finishPendingAdaptiveBatchStateLoad() {
+        var level = overloadedHost.getLevel();
+        if (!(level instanceof ServerLevel serverLevel)) {
+            return;
+        }
+        adaptiveBatchStatePersistence.finishLoad(
+                serverLevel,
+                overloadedHost.getBlockPos(),
+                ((PatternProviderLogicAccessor) this).getPatternInventory(),
+                patternCatalog,
+                normalDispatch,
+                activeNormalTargetDirections(),
+                overloadedHost.getConnections());
     }
 
     private boolean hasLocalDirectionalOverflow() {

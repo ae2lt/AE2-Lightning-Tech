@@ -37,6 +37,10 @@ final class ProviderNormalDispatch {
         targets.put(pushDirection, target);
     }
 
+    Map<Direction, ProviderTarget> targets() {
+        return Map.copyOf(targets);
+    }
+
     List<Direction> dispatchOrder(List<Direction> directions) {
         if (directions.isEmpty()) {
             return List.of();
