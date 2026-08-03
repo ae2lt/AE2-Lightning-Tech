@@ -26,8 +26,6 @@ import com.moakiee.ae2lt.registry.ModDataComponents;
  * GUI need no changes.
  */
 public final class ArmorPersistentData {
-    private static final int MAX_MODULE_TYPES = 32;
-
     private ArmorPersistentData() {
     }
 
@@ -130,20 +128,11 @@ public final class ArmorPersistentData {
             });
         }
         List<ItemStack> out = new ArrayList<>();
-        int writtenTypes = 0;
-        int writtenUnits = 0;
         long energyCapacityFe = 0L;
-        int maxUnits = armorPart(armor).moduleSlotCount();
         for (ItemStack stack : merged.values()) {
-            if (writtenTypes >= MAX_MODULE_TYPES || writtenUnits >= maxUnits) {
-                break;
-            }
-            int count = Math.min(Math.max(1, stack.getCount()), maxUnits - writtenUnits);
-            ItemStack writtenStack = stack.copyWithCount(count);
+            ItemStack writtenStack = stack.copyWithCount(Math.max(1, stack.getCount()));
             out.add(writtenStack);
             energyCapacityFe = Math.max(energyCapacityFe, energyCapacityFe(writtenStack));
-            writtenTypes++;
-            writtenUnits += count;
         }
         // No modules -> clear the capacity cache (empty) too; otherwise always cache (even 0).
         Optional<Long> capacity = out.isEmpty() ? Optional.empty() : Optional.of(energyCapacityFe);
@@ -225,10 +214,4 @@ public final class ArmorPersistentData {
         return 0L;
     }
 
-    private static ArmorPart armorPart(ItemStack armor) {
-        if (armor != null && armor.getItem() instanceof BaseCelestweaveArmorItem item) {
-            return item.armorPart();
-        }
-        return ArmorPart.CHEST;
-    }
 }

@@ -78,7 +78,7 @@ public interface CelestweaveArmorSubmodule extends OverloadDeviceSubmodule {
     /**
      * Optional per-type install cap. When {@code > 0}, the workbench refuses to install a new
      * instance of this submodule once the installed count reaches this value. {@code 0} (default)
-     * means unlimited within the available module slots.
+     * means unlimited.
      *
      * <p>This lets modules express semantics that the idle budget alone can't: e.g. "only one
      * "at most three dash modules", etc., without forcing the module to consume

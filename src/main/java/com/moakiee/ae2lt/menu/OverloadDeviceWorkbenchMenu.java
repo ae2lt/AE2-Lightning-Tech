@@ -27,7 +27,6 @@ import com.moakiee.ae2lt.device.DeviceItem;
 import com.moakiee.ae2lt.device.DeviceKind;
 import com.moakiee.ae2lt.device.DeviceSlotType;
 import com.moakiee.ae2lt.menu.hub.DeviceHubDisplayRules;
-import com.moakiee.ae2lt.celestweave.BaseCelestweaveArmorItem;
 
 public class OverloadDeviceWorkbenchMenu extends AEBaseMenu {
     public static final MenuType<OverloadDeviceWorkbenchMenu> TYPE = MenuTypeBuilder
@@ -68,9 +67,6 @@ public class OverloadDeviceWorkbenchMenu extends AEBaseMenu {
     public int railgunDevice;
     @GuiSync(8)
     public int moduleUnitCount;
-    @GuiSync(9)
-    public int moduleSlotCount;
-
     public static final int INSTALL_TICKS = 20;
 
     private static final List<SlotSemantic> STRUCTURAL_SEMANTICS = List.of(
@@ -297,7 +293,6 @@ public class OverloadDeviceWorkbenchMenu extends AEBaseMenu {
             energyStored = 0L;
             railgunDevice = 0;
             moduleUnitCount = 0;
-            moduleSlotCount = 0;
             return;
         }
 
@@ -306,19 +301,10 @@ public class OverloadDeviceWorkbenchMenu extends AEBaseMenu {
         moduleTypeCount = modules.size();
         moduleUnitCount = DeviceHubDisplayRules.countModuleUnits(
                 modules.stream().map(ItemStack::getCount).toList());
-        moduleSlotCount = adapter.deviceKind() == DeviceKind.RAILGUN
-                ? 0
-                : armorModuleSlotCount(device);
         energyCapacity = adapter.energyBuffer().capacity(device);
         energyStored = adapter.energyBuffer().stored(device);
 
         coreInstalled = structuralInstalled(DeviceSlotType.CORE) ? 1 : 0;
-    }
-
-    private static int armorModuleSlotCount(ItemStack device) {
-        return device.getItem() instanceof BaseCelestweaveArmorItem armorItem
-                ? armorItem.armorPart().moduleSlotCount()
-                : 0;
     }
 
     private boolean structuralInstalled(DeviceSlotType type) {

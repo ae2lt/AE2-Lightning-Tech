@@ -43,12 +43,12 @@ item_ids:
 
 **Celestweave** is a modular armor set. Each piece has its own FE buffer, network binding, core slot and module slots.
 
-| Piece | Armor Slot | Module Slots |
-|-------|------------|--------------|
-| Celestweave Oculus | Helmet | 4 |
-| Celestweave Core | Chestplate | 5 |
-| Celestweave Conduit | Leggings | 4 |
-| Celestweave Stride | Boots | 4 |
+| Piece | Armor Slot |
+|-------|------------|
+| Celestweave Oculus | Helmet |
+| Celestweave Core | Chestplate |
+| Celestweave Conduit | Leggings |
+| Celestweave Stride | Boots |
 
 ## Assembly
 
@@ -59,7 +59,7 @@ Use the <ItemLink id="ae2lt:overload_device_workbench" /> for each piece:
 3. Install one optional Energy Module and any compatible armor modules
 4. Equip the armor and open the Overload Device Hub with the default key G to enable, disable or configure modules
 
-An Energy Module also occupies one module slot. Without an Energy Module, each piece stores 10,000,000 FE. T1 / T2 / T3 modules raise armor capacity to 1,000,000,000 / 5,000,000,000 / 20,000,000,000 FE.
+Each armor piece accepts any number of compatible modules, while per-module limits and mutual-exclusion groups still apply; only one Energy Module can be installed. Without an Energy Module, each piece stores 10,000,000 FE. T1 / T2 / T3 modules raise armor capacity to 1,000,000,000 / 5,000,000,000 / 20,000,000,000 FE.
 
 ## Runtime
 

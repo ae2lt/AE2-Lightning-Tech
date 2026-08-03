@@ -35,7 +35,6 @@ import com.moakiee.ae2lt.celestweave.state.ArmorRuntimeRegistry;
 public final class CelestweaveArmorState {
     public static final int SLOT_CORE = 0;
     public static final int SLOT_COUNT = 1;
-    private static final int MAX_MODULE_TYPES = 32;
     private static volatile boolean CLIENT_FLIGHT_INERTIA = true;
     private static volatile UUID CLIENT_FLIGHT_INERTIA_ARMOR_ID = null;
     private static volatile boolean CLIENT_PHASE_MODE_ENABLED = true;
@@ -109,7 +108,7 @@ public final class CelestweaveArmorState {
             if (getInstalledAmount(armor, registries, ArmorEnergyModuleItem.MODULE_TYPE_ID) >= 1) {
                 return false;
             }
-            return getInstalledUnitCount(armor, registries) < part.moduleSlotCount();
+            return true;
         }
         if (!(candidate.getItem() instanceof OverloadDeviceModuleItem provider)) {
             return false;
@@ -133,12 +132,6 @@ public final class CelestweaveArmorState {
         int current = getInstalledAmount(armor, registries, id);
         int max = getSubmoduleMaxInstallAmountForStack(candidate);
         if (max > 0 && current >= max) {
-            return false;
-        }
-        if (getInstalledUnitCount(armor, registries) >= part.moduleSlotCount()) {
-            return false;
-        }
-        if (current == 0 && loadModuleStacks(armor, registries).size() >= MAX_MODULE_TYPES) {
             return false;
         }
         return true;
@@ -239,14 +232,6 @@ public final class CelestweaveArmorState {
             if (groupId.equals(resolveSubmoduleGroupId(stack))) {
                 total += Math.max(1, stack.getCount());
             }
-        }
-        return total;
-    }
-
-    private static int getInstalledUnitCount(ItemStack armor, HolderLookup.Provider registries) {
-        int total = 0;
-        for (var stack : loadModuleStacks(armor, registries)) {
-            total += Math.max(1, stack.getCount());
         }
         return total;
     }
