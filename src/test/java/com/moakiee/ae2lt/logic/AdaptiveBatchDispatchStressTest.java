@@ -118,7 +118,8 @@ class AdaptiveBatchDispatchStressTest {
             summaries.add(model.id + " reset@" + resetTick
                     + " recovery=" + recoveryTicks
                     + " throughput100=" + percent(throughput)
-                    + " dispatch100=" + percent(dispatch));
+                    + " dispatch100=" + percent(dispatch)
+                    + describeWindow(model, result, windowStart));
 
             if (!atLeastPercent(
                     processed, theoretical, model.throughputPercent)) {
@@ -164,6 +165,7 @@ class AdaptiveBatchDispatchStressTest {
             var stage = RECONFIGURING_MODEL.stages.get(stageIndex);
             double minimumThroughput = Double.POSITIVE_INFINITY;
             double maximumDispatch = 0.0;
+            int maximumDispatchStart = firstWindow;
 
             for (int start = firstWindow;
                  start + ACCEPTANCE_WINDOW_TICKS <= stageEnd;
@@ -179,7 +181,10 @@ class AdaptiveBatchDispatchStressTest {
                         TARGETS,
                         RECONFIGURING_MODEL.capacity);
                 minimumThroughput = Math.min(minimumThroughput, throughput);
-                maximumDispatch = Math.max(maximumDispatch, dispatch);
+                if (dispatch > maximumDispatch) {
+                    maximumDispatch = dispatch;
+                    maximumDispatchStart = start;
+                }
 
                 if (!atLeastPercent(processed, theoretical, 95)) {
                     recordFailure(failures, "RC stage " + stageIndex
@@ -230,7 +235,9 @@ class AdaptiveBatchDispatchStressTest {
                     + percent(minimumThroughput)
                     + ", dispatch(max100)=" + percent(maximumDispatch)
                     + describeWindow(
-                            RECONFIGURING_MODEL, result, firstWindow));
+                            RECONFIGURING_MODEL,
+                            result,
+                            maximumDispatchStart));
         }
 
         var report = "adaptive batch reconfiguration\n"
