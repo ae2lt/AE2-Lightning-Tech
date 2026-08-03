@@ -55,8 +55,36 @@ class CoreEffectShaderSourceContractTest {
                 () -> assertFalse(build.contains("implementation(\"foundry.veil")),
                 () -> assertTrue(metadata.contains("modId = \"veil\"")),
                 () -> assertTrue(metadata.contains("type = \"optional\"")),
+                () -> assertTrue(metadata.contains("versionRange = \"*\"")),
                 () -> assertTrue(Files.exists(Path.of(
                         "src/main/resources/assets/ae2lt/pinwheel/shaders/program/multiblock/core.vsh"))));
+    }
+
+    @Test
+    void incompatibleVeilCanFallBackAfterStartup() throws Exception {
+        String backend = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/client/core/CoreEffectBackend.java"));
+        String renderTypes = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/client/core/CoreEffectRenderTypes.java"));
+        String nativeShaders = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/client/core/CoreEffectShaders.java"));
+
+        assertAll(
+                () -> assertTrue(backend.contains("detectCompatibleVeil()")),
+                () -> assertTrue(backend.contains("disableVeil(Throwable cause)")),
+                () -> assertTrue(backend.contains("new DefaultArtifactVersion(\"4.3.0\")")),
+                () -> assertTrue(backend.contains("new DefaultArtifactVersion(\"5.0.0\")")),
+                () -> assertTrue(backend.contains("installedVersion.compareTo(MINIMUM_VEIL_VERSION) < 0")),
+                () -> assertTrue(backend.contains("installedVersion.compareTo(MAXIMUM_VEIL_VERSION) >= 0")),
+                () -> assertTrue(renderTypes.contains("RuntimeException | LinkageError")),
+                () -> assertTrue(renderTypes.contains("CoreEffectBackend.disableVeil(exception)")),
+                () -> assertFalse(nativeShaders.contains(
+                        "LOGGER.info(\"Veil detected; using the Veil core-effect shader backend\");\n"
+                                + "            return;")),
+                () -> assertTrue(nativeShaders.contains(
+                        "registerShader(event, TIANSHU_SHADER, TIANSHU);")),
+                () -> assertTrue(nativeShaders.contains(
+                        "registerShader(event, MATRIX_SHADER, MATRIX);")));
     }
 
     @Test

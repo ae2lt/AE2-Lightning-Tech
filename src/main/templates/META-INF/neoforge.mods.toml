@@ -106,7 +106,9 @@ side = "BOTH"
 [[dependencies."${mod_id}"]]
 modId = "veil"
 type = "optional"
-versionRange = "[4.3.0,5.0.0)"
+# Compatibility is checked against the client API at runtime. Keeping this unrestricted lets
+# AE2LT start and use its native shader backend when an unsupported Veil version is installed.
+versionRange = "*"
 ordering = "AFTER"
 side = "CLIENT"
 

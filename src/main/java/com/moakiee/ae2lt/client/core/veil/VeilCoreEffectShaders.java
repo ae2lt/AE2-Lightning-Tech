@@ -2,6 +2,7 @@ package com.moakiee.ae2lt.client.core.veil;
 
 import com.moakiee.ae2lt.AE2LightningTech;
 import foundry.veil.api.client.render.VeilRenderBridge;
+import java.lang.reflect.Modifier;
 import net.minecraft.client.renderer.RenderStateShard;
 import net.minecraft.resources.ResourceLocation;
 
@@ -17,6 +18,18 @@ public final class VeilCoreEffectShaders {
             ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "multiblock/matrix_core");
 
     private VeilCoreEffectShaders() {
+    }
+
+    public static boolean isApiCompatible() {
+        try {
+            var shaderState = VeilRenderBridge.class.getMethod(
+                    "shaderState", ResourceLocation.class);
+            return Modifier.isStatic(shaderState.getModifiers())
+                    && RenderStateShard.ShaderStateShard.class.isAssignableFrom(
+                            shaderState.getReturnType());
+        } catch (ReflectiveOperationException | SecurityException exception) {
+            return false;
+        }
     }
 
     public static RenderStateShard.ShaderStateShard tianshu() {

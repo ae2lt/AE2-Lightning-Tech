@@ -8,12 +8,13 @@ import net.minecraft.client.renderer.RenderStateShard;
 import net.minecraft.client.renderer.RenderType;
 
 final class CoreEffectRenderTypes extends RenderType {
+    private static final EffectShaders SHADERS = selectShaders();
     private static final RenderType TIANSHU =
-            createEffectType("tianshu", tianshuShader());
+            createEffectType("tianshu", SHADERS.tianshu());
     private static final RenderType MATRIX_CORE =
-            createEffectType("matrix_core", matrixShader());
+            createEffectType("matrix_core", SHADERS.matrix());
     private static final RenderType MATRIX_GLOW =
-            createGlowEffectType("matrix_glow", matrixShader());
+            createGlowEffectType("matrix_glow", SHADERS.matrix());
 
     private CoreEffectRenderTypes(String name, VertexFormat format, VertexFormat.Mode mode,
                                   int bufferSize, boolean affectsCrumbling, boolean sortOnUpload,
@@ -33,18 +34,24 @@ final class CoreEffectRenderTypes extends RenderType {
         return MATRIX_GLOW;
     }
 
-    private static RenderStateShard.ShaderStateShard tianshuShader() {
+    private static EffectShaders selectShaders() {
         if (CoreEffectBackend.useVeil()) {
-            return VeilCoreEffectShaders.tianshu();
+            try {
+                // Resolve both shaders as one unit so a partially compatible Veil API cannot
+                // leave the two core effects using different backends.
+                return new EffectShaders(
+                        VeilCoreEffectShaders.tianshu(),
+                        VeilCoreEffectShaders.matrix());
+            } catch (RuntimeException | LinkageError exception) {
+                CoreEffectBackend.disableVeil(exception);
+            }
         }
-        return CoreEffectShaders.tianshu();
+        return new EffectShaders(CoreEffectShaders.tianshu(), CoreEffectShaders.matrix());
     }
 
-    private static RenderStateShard.ShaderStateShard matrixShader() {
-        if (CoreEffectBackend.useVeil()) {
-            return VeilCoreEffectShaders.matrix();
-        }
-        return CoreEffectShaders.matrix();
+    private record EffectShaders(
+            RenderStateShard.ShaderStateShard tianshu,
+            RenderStateShard.ShaderStateShard matrix) {
     }
 
     private static RenderType createEffectType(

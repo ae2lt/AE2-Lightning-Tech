@@ -36,11 +36,11 @@ public final class CoreEffectShaders {
     @SubscribeEvent
     public static void registerShaders(RegisterShadersEvent event) throws IOException {
         if (CoreEffectBackend.useVeil()) {
-            LOGGER.info("Veil detected; using the Veil core-effect shader backend");
-            return;
+            LOGGER.info("Compatible Veil detected; preparing native core-effect shaders as fallback");
+        } else {
+            LOGGER.info("Veil not detected or incompatible; using the native core-effect shader backend");
         }
 
-        LOGGER.info("Veil not detected; using the native core-effect shader backend");
         registerShader(event, TIANSHU_SHADER, TIANSHU);
         registerShader(event, MATRIX_SHADER, MATRIX);
     }
