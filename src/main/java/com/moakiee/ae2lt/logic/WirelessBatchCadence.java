@@ -22,6 +22,7 @@ import appeng.api.crafting.IPatternDetails;
 final class WirelessBatchCadence<T> {
     static final int MAX_COVERAGE_TICKS = 100;
     private static final int HISTORY_TTL = 100;
+    private static final int CAPACITY_AUDIT_INTERVAL = 50;
 
     private final Map<T, Map<IPatternDetails, State>> states =
             new HashMap<>();
@@ -103,7 +104,8 @@ final class WirelessBatchCadence<T> {
 
         var state = state(target, pattern);
         state.expireIfIdle(gameTick);
-        trace(target, gameTick, "OK " + ownedCopies, state);
+        state.finishCapacityAudit(gameTick);
+        state.observeBaseline(ownedCopies, baselineStatus);
         if (state.lastSuccessTick != Long.MIN_VALUE) {
             long elapsed = Math.max(1L, gameTick - state.lastSuccessTick);
             boolean capacityIncreased = ownedCopies > state.capacityEstimate;
@@ -144,7 +146,12 @@ final class WirelessBatchCadence<T> {
         state.lastActivityTick = gameTick;
         state.lastOwnedCopies = ownedCopies;
         state.rejectedElapsed = 0;
-        state.nextInterval = probeDelay(state.fullInterval);
+        state.nextInterval = probeDelay(
+                state.fullInterval, state.rapidSamples > 0);
+        state.nextExploratory = state.nextInterval < state.fullInterval;
+        state.nextCapacityAudit = state.nextExploratory
+                && gameTick - state.lastCapacityAuditTick
+                        >= CAPACITY_AUDIT_INTERVAL;
         return state.nextInterval;
     }
 
@@ -165,9 +172,14 @@ final class WirelessBatchCadence<T> {
             boolean exploratoryAttempt) {
         var state = state(target, pattern);
         state.expireIfIdle(gameTick);
-        trace(target, gameTick, "NO " + attemptedCopies, state);
+        state.finishCapacityAudit(gameTick);
         state.lastActivityTick = gameTick;
         state.fasterCandidate = 0;
+        state.nextExploratory = false;
+        state.nextCapacityAudit = false;
+        if (!exploratoryAttempt) {
+            state.clearStablePrefix();
+        }
 
         if (state.lastSuccessTick == Long.MIN_VALUE) {
             state.nextInterval = Math.min(
@@ -196,12 +208,14 @@ final class WirelessBatchCadence<T> {
     }
 
     boolean isExploratoryAttempt(T target, IPatternDetails pattern) {
-        return existingState(target, pattern) != null;
+        var state = existingState(target, pattern);
+        return state != null && state.nextExploratory;
     }
 
     boolean shouldReopenReservoirTail(
             T target, IPatternDetails pattern) {
-        return existingState(target, pattern) != null;
+        var state = existingState(target, pattern);
+        return state != null && state.nextCapacityAudit;
     }
 
     boolean isFillFallback(T target, IPatternDetails pattern) {
@@ -209,11 +223,16 @@ final class WirelessBatchCadence<T> {
     }
 
     boolean usesSingleChunkRefill(T target, IPatternDetails pattern) {
-        return false;
+        var state = existingState(target, pattern);
+        return state != null && state.singleChunkRefill;
     }
 
     boolean usesProvenChunkProbe(T target, IPatternDetails pattern) {
-        return false;
+        var state = existingState(target, pattern);
+        return state != null
+                && state.singleChunkRefill
+                && state.nextExploratory
+                && !state.nextCapacityAudit;
     }
 
     long reservoirAllowance(T target, IPatternDetails pattern) {
@@ -227,7 +246,7 @@ final class WirelessBatchCadence<T> {
             return false;
         }
         state.expireIfIdle(gameTick);
-        return state.lastActivityTick != Long.MIN_VALUE;
+        return state.singleChunkRefill || state.nextExploratory;
     }
 
     void removeTarget(T target) {
@@ -263,22 +282,12 @@ final class WirelessBatchCadence<T> {
                 quotient, 1L, MAX_COVERAGE_TICKS);
     }
 
-    private static int probeDelay(int fullInterval) {
-        return Math.max(1, (fullInterval + 3) / 4);
-    }
-
-    private static void trace(
-            Object target, long tick, String event, State state) {
-        if (target instanceof ProviderTarget providerTarget
-                && providerTarget.pos().getX() == 0
-                && tick >= 450 && tick < 820) {
-            System.err.println("t=" + tick + " " + event
-                    + " last=" + state.lastSuccessTick
-                    + " cap=" + state.capacityEstimate
-                    + " full=" + state.fullInterval
-                    + " rejected=" + state.rejectedElapsed
-                    + " next=" + state.nextInterval);
+    private static int probeDelay(
+            int fullInterval, boolean rapidLearning) {
+        if (rapidLearning) {
+            return Math.max(1, (fullInterval + 3) / 4);
         }
+        return Math.max(1, (fullInterval + 1) / 2);
     }
 
     private static final class State {
@@ -291,6 +300,50 @@ final class WirelessBatchCadence<T> {
         private int rapidSamples;
         private int rejectedElapsed;
         private int nextInterval = 1;
+        private boolean nextExploratory;
+        private long lastCapacityAuditTick = Long.MIN_VALUE;
+        private boolean nextCapacityAudit;
+        private long stablePrefixCopies;
+        private int stablePrefixSamples;
+        private boolean singleChunkRefill;
+
+        private void observeBaseline(
+                long ownedCopies,
+                ProviderTarget.BaselineStatus baselineStatus) {
+            boolean prefix = baselineStatus
+                            == ProviderTarget.BaselineStatus.PREFIX_COMPLETE
+                    || baselineStatus
+                            == ProviderTarget.BaselineStatus.RESERVOIR_PREFIX_COMPLETE;
+            if (prefix) {
+                if (stablePrefixCopies == ownedCopies) {
+                    stablePrefixSamples++;
+                } else {
+                    stablePrefixCopies = ownedCopies;
+                    stablePrefixSamples = 1;
+                }
+                singleChunkRefill = stablePrefixSamples >= 4;
+            } else if (singleChunkRefill
+                    && (ownedCopies > stablePrefixCopies
+                            || baselineStatus
+                                    == ProviderTarget.BaselineStatus.GROWTH_COMPLETE)) {
+                clearStablePrefix();
+            }
+        }
+
+        private void clearStablePrefix() {
+            stablePrefixCopies = 0L;
+            stablePrefixSamples = 0;
+            singleChunkRefill = false;
+        }
+
+        private void finishCapacityAudit(long gameTick) {
+            if (lastSuccessTick == Long.MIN_VALUE) {
+                lastCapacityAuditTick = gameTick;
+            } else if (nextCapacityAudit) {
+                lastCapacityAuditTick = gameTick;
+            }
+            nextCapacityAudit = false;
+        }
 
         private void expireIfIdle(long gameTick) {
             if (lastActivityTick == Long.MIN_VALUE) {
@@ -307,6 +360,10 @@ final class WirelessBatchCadence<T> {
                 rapidSamples = 0;
                 rejectedElapsed = 0;
                 nextInterval = 1;
+                nextExploratory = false;
+                lastCapacityAuditTick = Long.MIN_VALUE;
+                nextCapacityAudit = false;
+                clearStablePrefix();
             }
         }
     }

@@ -639,6 +639,9 @@ public class ProviderTarget extends TargetAddress {
                 if (chunk.ownedCopies() > 0L) {
                     ownedCopies += chunk.ownedCopies();
                     state.lastSuccessfulTick = gameTick;
+                } else if (baselineIndex == 0
+                        && !preserveBatchHistoryOnRejection) {
+                    state.backOffReservoirBaseline(baseline);
                 }
                 return new BatchStepResult(
                         ownedCopies,
@@ -1071,6 +1074,17 @@ public class ProviderTarget extends TargetAddress {
             lastReservoirTailAttemptTick = Long.MIN_VALUE;
         }
 
+        private void backOffReservoirBaseline(int rejectedBaseline) {
+            int smaller = Math.max(1, rejectedBaseline / 2);
+            clearReservoirSearch();
+            provenChunk = smaller;
+            provenSuccesses = 0;
+            nextChunk = smaller;
+            repeatCurrent = false;
+            growthCapped = true;
+            backingOff = false;
+        }
+
         private boolean isReservoirTailSearching() {
             return reservoirMode
                     && reservoirTailUpperExclusive - reservoirTailLower > 1;
@@ -1133,13 +1147,6 @@ public class ProviderTarget extends TargetAddress {
             }
             if (provenChunk > 0 && rejectedChunk > provenChunk) {
                 growthCapped = true;
-                nextChunk = provenChunk;
-                repeatCurrent = false;
-                return;
-            }
-            if (growthCapped
-                    && rejectedChunk >= provenChunk
-                    && provenSuccesses < 3) {
                 nextChunk = provenChunk;
                 repeatCurrent = false;
                 return;
