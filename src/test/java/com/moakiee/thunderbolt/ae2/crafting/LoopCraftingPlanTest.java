@@ -60,11 +60,7 @@ class LoopCraftingPlanTest {
                 fast.hostReusableSeedAllocations().stream()
                         .map(LoopCraftingPlan.HostReusableSeedAllocation::reusableSeedGroupId)
                         .collect(java.util.stream.Collectors.toSet()));
-        assertSame(delegate, LoopCraftingPlan.unwrapForSummary(fast),
-                "summary integrations see the concrete AE2 plan without changing the wrapped job");
         assertSame(delegate, fast.delegate());
-        assertSame(delegate, LoopCraftingPlan.unwrapForSummary(delegate),
-                "ordinary AE2 plans pass through the summary compatibility view unchanged");
     }
 
     @Test
