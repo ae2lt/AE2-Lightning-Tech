@@ -14,11 +14,6 @@ Jar/
 .docs/
 archive/
 docs/
-!docs/
-docs/*
-!docs/tianshu-extension-design.md
-!docs/closed-loop-pattern-encoding-ui-design.md
-!docs/adaptive-batch-dispatch-stress-model.md
 
 # Bundled source mirrors / references
 Source Code/
