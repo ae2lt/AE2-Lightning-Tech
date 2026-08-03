@@ -83,6 +83,11 @@ public final class MultiblockStructureCategory implements IRecipeCategory<Multib
             IRecipeLayoutBuilder builder,
             MultiblockStructureRecipe recipe,
             IFocusGroup focuses) {
+        // Index every block associated with this structure as an output as well as a
+        // catalyst, so JEI's recipe key (R) can open the same preview as its uses key (U).
+        builder.addInvisibleIngredients(RecipeIngredientRole.OUTPUT)
+                .addItemStacks(recipe.focusStacks());
+
         List<MultiblockStructureRecipe.MaterialEntry> materials = recipe.materials();
         for (int i = 0; i < materials.size(); i++) {
             var material = materials.get(i);
