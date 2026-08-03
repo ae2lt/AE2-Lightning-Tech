@@ -36,6 +36,7 @@ public final class AE2LTEmiPlugin implements EmiPlugin {
         registry.addRecipeHandler(
                 TianshuWirelessPatternEncodingTermMenu.TYPE,
                 new EmiEncodePatternHandler<>(TianshuWirelessPatternEncodingTermMenu.class));
+        AE2LTEmiCategories.register(registry);
         registry.addCategory(MULTIBLOCK_STRUCTURE);
         registry.addWorkstation(
                 MULTIBLOCK_STRUCTURE,
