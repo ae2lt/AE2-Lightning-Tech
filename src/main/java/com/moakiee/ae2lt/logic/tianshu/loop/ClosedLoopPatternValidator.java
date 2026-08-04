@@ -1,9 +1,8 @@
 package com.moakiee.ae2lt.logic.tianshu.loop;
 
-import appeng.api.crafting.PatternDetailsHelper;
+import appeng.api.crafting.IPatternDetails;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.GenericStack;
-import com.moakiee.ae2lt.item.ClosedLoopPatternItem;
 import com.moakiee.thunderbolt.core.planner.Sat;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -14,19 +13,19 @@ import net.minecraft.world.level.Level;
 /** Server-side validation for encoded or uploaded closed-loop declarations. */
 public final class ClosedLoopPatternValidator {
     public static ClosedLoopValidationResult validate(ClosedLoopPatternPayload payload, Level level) {
-        if (payload == null || level == null) {
+        return ClosedLoopPatternDecoder.decodePayload(payload, level).validation();
+    }
+
+    static ClosedLoopValidationResult validateDecoded(
+            ClosedLoopPatternPayload payload,
+            List<IPatternDetails> decodedMembers) {
+        if (payload == null || decodedMembers == null
+                || decodedMembers.size() != payload.memberPatterns().size()) {
             return invalid(ClosedLoopValidationResult.Status.MEMBER_UNDECODABLE);
         }
-
         var members = new ArrayList<ClosedLoopPatternAnalyzer.Member>(payload.memberPatterns().size());
-        for (var stored : payload.memberPatterns()) {
-            var stack = stored.pattern().toItemStack(level.registryAccess());
-            // A persisted execution-member stack decodes as an expanded ordinary delegate. Check
-            // the raw item first so neither it nor an unflattened macro can cross this boundary.
-            if (stack.getItem() instanceof ClosedLoopPatternItem) {
-                return invalid(ClosedLoopValidationResult.Status.MEMBER_IS_CLOSED_LOOP);
-            }
-            var details = PatternDetailsHelper.decodePattern(stack, level);
+        for (int i = 0; i < decodedMembers.size(); i++) {
+            var details = decodedMembers.get(i);
             if (details == null) {
                 return invalid(ClosedLoopValidationResult.Status.MEMBER_UNDECODABLE);
             }
@@ -34,7 +33,7 @@ public final class ClosedLoopPatternValidator {
                 return invalid(ClosedLoopValidationResult.Status.MEMBER_IS_CLOSED_LOOP);
             }
             members.add(new ClosedLoopPatternAnalyzer.Member(
-                    details, stored.copiesPerCycle()));
+                    details, payload.memberPatterns().get(i).copiesPerCycle()));
         }
         if (!ClosedLoopPatternAnalyzer.isPrimitiveCycle(members)) {
             return invalid(ClosedLoopValidationResult.Status.STRUCTURE_CHECK_FAILED);
@@ -84,7 +83,7 @@ public final class ClosedLoopPatternValidator {
         return Map.copyOf(result);
     }
 
-    private static ClosedLoopValidationResult invalid(ClosedLoopValidationResult.Status status) {
+    static ClosedLoopValidationResult invalid(ClosedLoopValidationResult.Status status) {
         return new ClosedLoopValidationResult(status, null);
     }
 
