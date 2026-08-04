@@ -13,7 +13,7 @@ item_ids:
 
 ## Tianshu Supercomputing Array Port
 
-After formation, the <ItemLink id="ae2lt:tianshu_supercomputer_port" /> publishes the multiblock to the ME network as a crafting CPU named “Tianshu Supercomputing Array.” ME cables can connect on all six sides only while the structure is formed; they cannot connect while it is unformed. The port uses **8 AE/t** while idle, and the formed multiblock consumes **1 channel**.
+After formation, the <ItemLink id="ae2lt:tianshu_supercomputer_port" /> publishes the multiblock to the ME network as a crafting CPU named “Tianshu Supercomputing Array.” ME cables can connect on all six sides only while the structure is formed; they cannot connect while it is unformed. The formed multiblock consumes **1 channel**. Port idle power depends on the installed Main Core: Baseline uses **256 AE/t**, Quantum uses **8,192 AE/t**, Overload uses **262,144 AE/t**, and Multidimensional uses **8 AE/t**. If the ME network cannot supply that power, the port is not active and terminals cannot bind to the array.
 
 The supercomputer does not accept new jobs while its port is offline, its ME network is unpowered, or the structure is unformed. Saved job state persists across chunk unloads and can continue after the structure and network return.
 

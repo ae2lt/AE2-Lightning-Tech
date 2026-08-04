@@ -25,6 +25,6 @@ The supercomputer calculates plans, retains job state, and schedules crafting st
 ## Operating Requirements
 
 * The structure must be fully formed: one Tianshu Main Core at the core-chamber center, the remaining 26 cells filled with a Peripheral Unit combination allowed by that Main Core, and all 17 non-port cooling-compatible positions filled with Phase-Change Cooling Units or closed-loop storage; see [Structure and Auto-build](construction.md) and [Main Cores, Computing Units, and Performance](computing-units.md) for the full rules
-* Exactly one Tianshu Supercomputing Array Port is required, connected to a powered ME network; the port uses **8 AE/t** while idle, and the formed multiblock consumes **1 channel**
+* Exactly one Tianshu Supercomputing Array Port is required, connected to a powered ME network; the formed multiblock consumes **1 channel**. Port idle power depends on the Main Core: Baseline **256 AE/t**, Quantum **8,192 AE/t**, Overload **262,144 AE/t**, and Multidimensional **8 AE/t**
 
 The structure requires neither external FE nor Lightning.
