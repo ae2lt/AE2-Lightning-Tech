@@ -13,7 +13,8 @@ import com.moakiee.ae2lt.logic.tianshu.CpuInternalCoreProfile;
 import com.moakiee.ae2lt.logic.tianshu.CpuMainCoreTier;
 import com.moakiee.ae2lt.logic.tianshu.TianshuFunctionProfile;
 import com.moakiee.ae2lt.logic.tianshu.TianshuCraftingCpuHost;
-import com.moakiee.ae2lt.logic.tianshu.loop.Ae2ClosedLoopPatternDetails;
+import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternDecoder;
+import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternPayload;
 import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternRepository;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.TianshuInventoryMaintenanceHost;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.TianshuInventoryMaintenanceService;
@@ -28,6 +29,7 @@ import com.moakiee.thunderbolt.ae2.api.crafting.CraftingProviderChangeTracker;
 import com.moakiee.thunderbolt.ae2.timewheel.ReusableSeedPattern;
 import com.moakiee.thunderbolt.ae2.timewheel.TimeWheelCraftingCpuPool;
 import com.moakiee.thunderbolt.ae2.timewheel.TimeWheelCraftingCpuPoolHost;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -37,7 +39,6 @@ import java.util.stream.Collectors;
 import com.google.common.collect.ImmutableSet;
 import appeng.api.config.Actionable;
 import appeng.api.crafting.IPatternDetails;
-import appeng.api.crafting.PatternDetailsHelper;
 import appeng.api.networking.IGrid;
 import appeng.api.networking.IGridNode;
 import appeng.api.networking.crafting.ICraftingLink;
@@ -97,6 +98,8 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
             this, 0L, 0, 1L, false);
     private final ClosedLoopPatternRepository closedLoopPatterns =
             new ClosedLoopPatternRepository(() -> functionProfile.closedLoopPatternCapacity());
+    private final IdentityHashMap<ClosedLoopPatternPayload, ClosedLoopPatternDecoder.DecodedPayload>
+            decodedClosedLoopPatterns = new IdentityHashMap<>();
     private final TianshuInventoryMaintenanceService maintenance =
             new TianshuInventoryMaintenanceService(this);
     private List<BlockPos> patternStoragePositions = List.of();
@@ -866,6 +869,7 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
     }
 
     public void closedLoopPatternsChanged() {
+        decodedClosedLoopPatterns.clear();
         if (!persistPatternsToWarehouses()) return;
         var port = getLinkedPort();
         if (port != null) port.refreshCraftingProvider();
@@ -896,17 +900,17 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
         var result = new java.util.ArrayList<IPatternDetails>();
         var patternDefinitions = new java.util.LinkedHashSet<AEItemKey>();
         for (var payload : closedLoopPatterns.activePatterns()) {
-            if (!payload.enabled()
-                    || !com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternValidator
-                            .validate(payload, level).valid()
-                    || !membersAreAvailable(payload)) continue;
+            if (!payload.enabled()) continue;
+            var decoded = decodedClosedLoopPatterns.computeIfAbsent(
+                    payload, candidate -> ClosedLoopPatternDecoder.decodePayload(candidate, level));
+            if (!decoded.valid() || !membersAreAvailable(decoded.members())) continue;
             var item = (com.moakiee.ae2lt.item.ClosedLoopPatternItem)
                     ModItems.CLOSED_LOOP_PATTERN.get();
             var key = AEItemKey.of(item.createStack(payload, level.registryAccess()));
             IPatternDetails details;
             try {
-                details = key != null ? new Ae2ClosedLoopPatternDetails(
-                        key, payload, level, machineId, this::availableSeedsFor) : null;
+                details = key != null ? decoded.createDetails(
+                        key, level, machineId, this::availableSeedsFor) : null;
             } catch (RuntimeException ignored) {
                 details = null;
             }
@@ -944,15 +948,11 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
         return Map.copyOf(variants);
     }
 
-    private boolean membersAreAvailable(
-            com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternPayload payload) {
+    private boolean membersAreAvailable(List<IPatternDetails> members) {
         var grid = getGrid();
         if (grid == null) return false;
         var crafting = (CraftingService) grid.getCraftingService();
-        for (var member : payload.memberPatterns()) {
-            var details = PatternDetailsHelper.decodePattern(
-                    member.pattern().toItemStack(level.registryAccess()), level);
-            if (details == null) return false;
+        for (var details : members) {
             var providerPattern = com.moakiee.thunderbolt.ae2.api.crafting.CraftingPatternDelegates
                     .forProviderLookup(details);
             if (!crafting.getProviders(providerPattern).iterator().hasNext()) return false;
@@ -1049,6 +1049,7 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
         maintenance.readFrom(new CompoundTag(), level.registryAccess());
         cpuPool.readFromNBT(new CompoundTag(), level.registryAccess());
         closedLoopPatterns.clear();
+        decodedClosedLoopPatterns.clear();
         pendingStorage = -1L;
         pendingParallel = -1;
         pendingMaxCopiesPerTick = -1L;
@@ -1087,6 +1088,7 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
                 com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternPayload>();
         for (var storage : storages) merged.addAll(storage.patterns());
         closedLoopPatterns.replaceAll(merged);
+        decodedClosedLoopPatterns.clear();
         return true;
     }
 
