@@ -91,6 +91,7 @@ public class LightningAssemblyChamberBlockEntity extends AENetworkedBlockEntity
     private boolean working;
     private boolean powered;
     private boolean autoExport;
+    private boolean removing;
     private ItemStack clientRecipeResult = ItemStack.EMPTY;
     private EnumSet<RelativeSide> allowedOutputs = EnumSet.noneOf(RelativeSide.class);
     private final AdjacentItemAutoExportHelper.DirectionalTargetCache exportTargetCache =
@@ -411,8 +412,10 @@ public class LightningAssemblyChamberBlockEntity extends AENetworkedBlockEntity
         boolean changed = this.working != working;
         this.working = working;
         if (level != null) {
-            BlockState state = getBlockState();
-            if (state.hasProperty(LightningAssemblyChamberBlock.WORKING)
+            BlockState state = level.getBlockState(worldPosition);
+            if (state.is(ModBlocks.LIGHTNING_ASSEMBLY_CHAMBER.get())
+                    && level.getBlockEntity(worldPosition) == this
+                    && state.hasProperty(LightningAssemblyChamberBlock.WORKING)
                     && state.getValue(LightningAssemblyChamberBlock.WORKING) != working) {
                 level.setBlock(worldPosition, state.setValue(LightningAssemblyChamberBlock.WORKING, working), Block.UPDATE_ALL);
             } else if (changed) {
@@ -424,7 +427,7 @@ public class LightningAssemblyChamberBlockEntity extends AENetworkedBlockEntity
     @Override
     public void onMainNodeStateChanged(IGridNodeListener.State reason) {
         frequencyBinding.onMainNodeStateChanged(reason);
-        if (reason != IGridNodeListener.State.GRID_BOOT) {
+        if (!removing && reason != IGridNodeListener.State.GRID_BOOT) {
             refreshPoweredState();
         }
     }
@@ -454,6 +457,7 @@ public class LightningAssemblyChamberBlockEntity extends AENetworkedBlockEntity
 
     @Override
     public void setRemoved() {
+        removing = true;
         frequencyBinding.setRemoved();
         super.setRemoved();
     }
@@ -461,6 +465,7 @@ public class LightningAssemblyChamberBlockEntity extends AENetworkedBlockEntity
     @Override
     public void clearRemoved() {
         super.clearRemoved();
+        removing = false;
         frequencyBinding.clearRemoved();
     }
 

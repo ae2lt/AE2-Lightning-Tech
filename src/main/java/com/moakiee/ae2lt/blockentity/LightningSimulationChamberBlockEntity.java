@@ -406,8 +406,10 @@ public class LightningSimulationChamberBlockEntity extends AENetworkedBlockEntit
         boolean changed = this.working != working;
         this.working = working;
         if (level != null) {
-            BlockState state = getBlockState();
-            if (state.hasProperty(LightningSimulationChamberBlock.WORKING)
+            BlockState state = level.getBlockState(worldPosition);
+            if (state.is(ModBlocks.LIGHTNING_SIMULATION_CHAMBER.get())
+                    && level.getBlockEntity(worldPosition) == this
+                    && state.hasProperty(LightningSimulationChamberBlock.WORKING)
                     && state.getValue(LightningSimulationChamberBlock.WORKING) != working) {
                 level.setBlock(worldPosition, state.setValue(LightningSimulationChamberBlock.WORKING, working), Block.UPDATE_ALL);
             } else if (changed) {

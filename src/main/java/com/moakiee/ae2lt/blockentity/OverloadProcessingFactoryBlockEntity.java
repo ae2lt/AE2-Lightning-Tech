@@ -593,8 +593,10 @@ public class OverloadProcessingFactoryBlockEntity extends AENetworkedBlockEntity
         boolean changed = this.working != working;
         this.working = working;
         if (level != null) {
-            BlockState state = getBlockState();
-            if (state.hasProperty(OverloadProcessingFactoryBlock.WORKING)
+            BlockState state = level.getBlockState(worldPosition);
+            if (state.is(ModBlocks.OVERLOAD_PROCESSING_FACTORY.get())
+                    && level.getBlockEntity(worldPosition) == this
+                    && state.hasProperty(OverloadProcessingFactoryBlock.WORKING)
                     && state.getValue(OverloadProcessingFactoryBlock.WORKING) != working) {
                 level.setBlock(worldPosition, state.setValue(OverloadProcessingFactoryBlock.WORKING, working), Block.UPDATE_ALL);
             } else if (changed) {

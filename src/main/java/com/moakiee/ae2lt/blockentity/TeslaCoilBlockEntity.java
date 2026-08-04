@@ -344,8 +344,10 @@ public class TeslaCoilBlockEntity extends AENetworkedBlockEntity
         boolean changed = this.working != working;
         this.working = working;
         if (level != null) {
-            BlockState state = getBlockState();
-            if (state.hasProperty(TeslaCoilBlock.WORKING)
+            BlockState state = level.getBlockState(worldPosition);
+            if (state.is(ModBlocks.TESLA_COIL.get())
+                    && level.getBlockEntity(worldPosition) == this
+                    && state.hasProperty(TeslaCoilBlock.WORKING)
                     && state.getValue(TeslaCoilBlock.WORKING) != working) {
                 level.setBlock(worldPosition, state.setValue(TeslaCoilBlock.WORKING, working), Block.UPDATE_ALL);
             } else if (changed) {
