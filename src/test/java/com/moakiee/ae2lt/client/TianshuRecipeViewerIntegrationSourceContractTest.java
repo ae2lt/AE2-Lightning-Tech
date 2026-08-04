@@ -143,6 +143,8 @@ class TianshuRecipeViewerIntegrationSourceContractTest {
                 "src/main/java/com/moakiee/ae2lt/client/TianshuUploadTargetMatcher.java"));
         String coordinator = Files.readString(Path.of(
                 "src/main/java/com/moakiee/ae2lt/client/TianshuDirectUploadClient.java"));
+        String terminalScreen = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/client/TianshuPatternEncodingTermScreen.java"));
         String menu = Files.readString(Path.of(
                 "src/main/java/com/moakiee/ae2lt/menu/TianshuPatternEncodingTermMenu.java"));
         String transferButton = Files.readString(Path.of(
@@ -170,6 +172,10 @@ class TianshuRecipeViewerIntegrationSourceContractTest {
         assertTrue(coordinator.contains("requestDirectUploadTargetsAfterEncoding()"));
         assertTrue(coordinator.contains("hasFreshDirectUploadTargets()"));
         assertTrue(coordinator.contains("recipeScreen.onClose()"));
+        assertTrue(coordinator.contains("terminalScreen.openDirectUploadFallback()"));
+        assertTrue(terminalScreen.contains("public boolean openDirectUploadFallback()"));
+        assertTrue(terminalScreen.contains(
+                "switchToScreen(new TianshuUploadTargetScreen<>(this, true))"));
         assertTrue(coordinator.contains("menu.uploadTianshuPatternToTarget(target.group())"));
         assertTrue(picker.contains("\"ae2lt.tianshu.upload.success_target\""));
         assertTrue(coordinator.contains("\"ae2lt.tianshu.upload.success_target\""));

@@ -283,6 +283,14 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
         }
     }
 
+    /** Opens the provider picker immediately after a recipe viewer restores this parent screen. */
+    public boolean openDirectUploadFallback() {
+        if (!menu.consumeTriggeredUpload()) return false;
+        if (!menu.consumeDirectUploadRequest()) return false;
+        switchToScreen(new TianshuUploadTargetScreen<>(this, true));
+        return true;
+    }
+
     private TianshuViewModeButton replaceViewModeButton() {
         var toolbar = ((AEBaseScreenAccessor) this).ae2lt$getVerticalToolbar();
         var buttons = ((VerticalButtonBarAccessor) toolbar).ae2lt$getButtons();
