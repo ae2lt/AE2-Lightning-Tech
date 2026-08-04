@@ -8,6 +8,7 @@ package com.moakiee.ae2lt.mixin.recipeviewer.emi;
 import appeng.integration.modules.emi.EmiEncodePatternHandler;
 import appeng.integration.modules.emi.EmiStackHelper;
 import appeng.menu.AEBaseMenu;
+import com.moakiee.ae2lt.client.TianshuDirectUploadClient;
 import com.moakiee.ae2lt.client.TianshuRecipeTransferContext;
 import com.moakiee.ae2lt.client.TianshuUploadAliasRules;
 import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuEncodingMode;
@@ -15,6 +16,7 @@ import com.moakiee.ae2lt.menu.TianshuPatternEncodingTermMenu;
 import dev.emi.emi.api.EmiApi;
 import dev.emi.emi.api.recipe.EmiRecipe;
 import java.util.ArrayList;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import org.spongepowered.asm.mixin.Mixin;
@@ -131,6 +133,10 @@ public abstract class EmiEncodePatternTransferMixin {
                 && cir.getReturnValue() instanceof EmiRecipeTransferResultAccessor result
                 && result.ae2lt$canCraft()) {
             tianshuMenu.encodeAndUploadDirectly();
+            var currentScreen = Minecraft.getInstance().screen;
+            if (currentScreen != null && currentScreen != EmiApi.getHandledScreen()) {
+                TianshuDirectUploadClient.holdRecipeScreen(tianshuMenu, currentScreen);
+            }
         }
     }
 }

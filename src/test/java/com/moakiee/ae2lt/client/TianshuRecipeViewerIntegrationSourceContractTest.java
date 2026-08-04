@@ -158,6 +158,8 @@ class TianshuRecipeViewerIntegrationSourceContractTest {
         assertTrue(emi.contains("EmiRecipeTransferResultAccessor result"));
         assertTrue(emi.contains("result.ae2lt$canCraft()"));
         assertTrue(emi.contains("encodeAndUploadDirectly()"));
+        assertTrue(emi.contains("currentScreen != EmiApi.getHandledScreen()"));
+        assertTrue(emi.contains("TianshuDirectUploadClient.holdRecipeScreen("));
         assertTrue(picker.contains("directUploadRequested"));
         assertTrue(picker.contains("findUniqueCandidate"));
         assertTrue(picker.contains("if (selected != null) select("));
@@ -186,6 +188,9 @@ class TianshuRecipeViewerIntegrationSourceContractTest {
         int resultReady = coordinator.indexOf("isEncodingResultReady(menu, stack)");
         int targetRefresh = coordinator.indexOf("requestDirectUploadTargetsAfterEncoding()");
         assertTrue(resultReady >= 0 && targetRefresh > resultReady);
+        int emiEncode = emi.indexOf("tianshuMenu.encodeAndUploadDirectly()");
+        int emiHold = emi.indexOf("TianshuDirectUploadClient.holdRecipeScreen(");
+        assertTrue(emiEncode >= 0 && emiHold > emiEncode);
         int beginEncoding = menu.indexOf("private void beginClientEncoding(");
         int encodeServer = menu.indexOf("private void encodeServerWithOptions(", beginEncoding);
         assertTrue(beginEncoding >= 0 && encodeServer > beginEncoding);
