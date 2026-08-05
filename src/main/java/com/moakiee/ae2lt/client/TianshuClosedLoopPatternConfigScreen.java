@@ -1,8 +1,10 @@
 package com.moakiee.ae2lt.client;
 
+import appeng.api.stacks.AmountFormat;
 import appeng.api.stacks.GenericStack;
 import appeng.client.gui.AESubScreen;
 import appeng.client.gui.Icon;
+import appeng.client.gui.me.common.StackSizeRenderer;
 import appeng.client.gui.widgets.AE2Button;
 import appeng.client.gui.widgets.AETextField;
 import appeng.client.gui.widgets.IconButton;
@@ -11,6 +13,7 @@ import appeng.client.gui.widgets.TabButton;
 import appeng.menu.SlotSemantics;
 import appeng.menu.slot.AppEngSlot;
 import com.moakiee.ae2lt.logic.tianshu.terminal.ClosedLoopDraftStatus;
+import com.moakiee.ae2lt.logic.tianshu.terminal.ClosedLoopResultPage;
 import com.moakiee.ae2lt.menu.Ae2ltSlotSemantics;
 import com.moakiee.ae2lt.menu.TianshuPatternEncodingTermMenu;
 import java.util.ArrayList;
@@ -21,6 +24,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
+import org.jetbrains.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
 
 /** Server-backed, paged editor for one closed-loop pattern draft. */
@@ -60,6 +64,9 @@ final class TianshuClosedLoopPatternConfigScreen<M extends TianshuPatternEncodin
     private ArrowButton previousCandidate;
     private ArrowButton nextCandidate;
     private boolean syncingFields;
+    @Nullable private ClosedLoopResultPage.Kind requestedResultKind;
+    private int requestedResultRevision = Integer.MIN_VALUE;
+    private int requestedResultOffset = -1;
 
     TianshuClosedLoopPatternConfigScreen(TianshuPatternEncodingTermScreen<M> parent) {
         super(parent, "/screens/tianshu_closed_loop_pattern_config.json");
@@ -184,6 +191,7 @@ final class TianshuClosedLoopPatternConfigScreen<M extends TianshuPatternEncodin
         }
         updateVisibleSlots();
         updateControls();
+        requestVisibleResultPage();
     }
 
     @Override
@@ -191,6 +199,7 @@ final class TianshuClosedLoopPatternConfigScreen<M extends TianshuPatternEncodin
         super.updateBeforeRender();
         updateVisibleSlots();
         updateControls();
+        requestVisibleResultPage();
     }
 
     @Override
@@ -202,30 +211,18 @@ final class TianshuClosedLoopPatternConfigScreen<M extends TianshuPatternEncodin
     private void updateVisibleSlots() {
         hideSlots(menu.getClosedLoopMemberSlots());
         hideSlots(menu.getClosedLoopOutputSlots());
-        hideSlots(menu.getClosedLoopExternalInputSlots());
-        hideSlots(menu.getClosedLoopSeedSlots());
         setSlotsHidden(Ae2ltSlotSemantics.TIANSHU_CLOSED_LOOP_MEMBER, page != Page.MEMBERS);
         setSlotsHidden(Ae2ltSlotSemantics.TIANSHU_CLOSED_LOOP_OUTPUT_MARK, page != Page.OUTPUTS);
-        setSlotsHidden(Ae2ltSlotSemantics.TIANSHU_CLOSED_LOOP_EXTERNAL_INPUT,
-                page != Page.EXTERNAL_INPUTS);
-        setSlotsHidden(Ae2ltSlotSemantics.TIANSHU_CLOSED_LOOP_SEED_INPUT, page != Page.SEEDS);
 
         var slots = switch (page) {
             case MEMBERS -> menu.getClosedLoopMemberSlots();
             case OUTPUTS -> menu.getClosedLoopOutputSlots();
-            case EXTERNAL_INPUTS -> menu.getClosedLoopExternalInputSlots();
-            case SEEDS -> menu.getClosedLoopSeedSlots();
-            case SETTINGS -> List.<AppEngSlot>of();
-        };
-        int available = switch (page) {
-            case EXTERNAL_INPUTS -> Math.min(menu.closedLoopExternalInputCount, slots.size());
-            case SEEDS -> Math.min(menu.closedLoopSeedInputCount, slots.size());
-            default -> slots.size();
+            case EXTERNAL_INPUTS, SEEDS, SETTINGS -> List.<AppEngSlot>of();
         };
         int scroll = scrollbar.getCurrentScroll();
         for (int visible = 0; visible < TianshuPatternConfigLayout.VISIBLE_ROWS; visible++) {
             int index = scroll + visible;
-            if (index >= available) break;
+            if (index >= slots.size()) break;
             var slot = slots.get(index);
             slot.x = SLOT_X;
             slot.y = TianshuPatternConfigLayout.HEADER_HEIGHT
@@ -328,10 +325,11 @@ final class TianshuClosedLoopPatternConfigScreen<M extends TianshuPatternEncodin
     public void drawFG(GuiGraphics graphics, int offsetX, int offsetY, int mouseX, int mouseY) {
         switch (page) {
             case MEMBERS -> drawMemberRows(graphics);
-            case OUTPUTS -> drawStackRows(graphics, menu.getClosedLoopOutputSlots(), ROLE_X - NAME_X - 4);
-            case EXTERNAL_INPUTS -> drawStackRows(
-                    graphics, menu.getClosedLoopExternalInputSlots(), RESULT_NAME_WIDTH);
-            case SEEDS -> drawStackRows(graphics, menu.getClosedLoopSeedSlots(), RESULT_NAME_WIDTH);
+            case OUTPUTS -> drawOutputRows(
+                    graphics, menu.getClosedLoopOutputSlots(), ROLE_X - NAME_X - 4);
+            case EXTERNAL_INPUTS -> drawResultRows(
+                    graphics, ClosedLoopResultPage.Kind.EXTERNAL_INPUTS);
+            case SEEDS -> drawResultRows(graphics, ClosedLoopResultPage.Kind.SEEDS);
             case SETTINGS -> drawSettings(graphics);
         }
         var status = Component.translatable("ae2lt.tianshu.closed_loop.status."
@@ -365,16 +363,11 @@ final class TianshuClosedLoopPatternConfigScreen<M extends TianshuPatternEncodin
         }
     }
 
-    private void drawStackRows(GuiGraphics graphics, List<AppEngSlot> slots, int width) {
+    private void drawOutputRows(GuiGraphics graphics, List<AppEngSlot> slots, int width) {
         int scroll = scrollbar.getCurrentScroll();
-        int available = switch (page) {
-            case EXTERNAL_INPUTS -> Math.min(menu.closedLoopExternalInputCount, slots.size());
-            case SEEDS -> Math.min(menu.closedLoopSeedInputCount, slots.size());
-            default -> slots.size();
-        };
         for (int visible = 0; visible < TianshuPatternConfigLayout.VISIBLE_ROWS; visible++) {
             int index = scroll + visible;
-            if (index >= available) break;
+            if (index >= slots.size()) break;
             var stack = slots.get(index).getItem();
             if (stack.isEmpty()) continue;
             int y = TianshuPatternConfigLayout.HEADER_HEIGHT
@@ -385,6 +378,44 @@ final class TianshuClosedLoopPatternConfigScreen<M extends TianshuPatternEncodin
             graphics.drawString(font, font.plainSubstrByWidth(name, width),
                     NAME_X, y, 0x404040, false);
         }
+    }
+
+    private void drawResultRows(GuiGraphics graphics, ClosedLoopResultPage.Kind kind) {
+        var resultPage = menu.getClosedLoopResultPage(kind, scrollbar.getCurrentScroll());
+        if (resultPage == null) return;
+        for (int visible = 0; visible < resultPage.entries().size(); visible++) {
+            var entry = resultPage.entries().get(visible);
+            int rowY = TianshuPatternConfigLayout.HEADER_HEIGHT
+                    + visible * TianshuPatternConfigLayout.ROW_HEIGHT;
+            graphics.renderItem(GenericStack.wrapInItemStack(entry), SLOT_X, rowY + ROW_SLOT_Y_OFFSET);
+            graphics.drawString(font,
+                    font.plainSubstrByWidth(entry.what().getDisplayName().getString(), RESULT_NAME_WIDTH),
+                    NAME_X, rowY + 8, 0x404040, false);
+            var poseStack = graphics.pose();
+            poseStack.pushPose();
+            poseStack.translate(0, 0, 100);
+            StackSizeRenderer.renderSizeLabel(graphics, font, SLOT_X, rowY + ROW_SLOT_Y_OFFSET,
+                    entry.what().formatAmount(entry.amount(), AmountFormat.SLOT), false);
+            poseStack.popPose();
+        }
+    }
+
+    private void requestVisibleResultPage() {
+        ClosedLoopResultPage.Kind kind = switch (page) {
+            case EXTERNAL_INPUTS -> ClosedLoopResultPage.Kind.EXTERNAL_INPUTS;
+            case SEEDS -> ClosedLoopResultPage.Kind.SEEDS;
+            default -> null;
+        };
+        if (kind == null) return;
+        int offset = scrollbar.getCurrentScroll();
+        if (menu.getClosedLoopResultPage(kind, offset) != null) return;
+        if (requestedResultKind == kind
+                && requestedResultRevision == menu.closedLoopResultRevision
+                && requestedResultOffset == offset) return;
+        requestedResultKind = kind;
+        requestedResultRevision = menu.closedLoopResultRevision;
+        requestedResultOffset = offset;
+        menu.requestClosedLoopResultPage(kind, offset);
     }
 
     private void drawSettings(GuiGraphics graphics) {
@@ -414,6 +445,7 @@ final class TianshuClosedLoopPatternConfigScreen<M extends TianshuPatternEncodin
             scrollbar.setCurrentScroll(scrollbar.getCurrentScroll() + (deltaY > 0 ? -1 : 1));
             updateVisibleSlots();
             updateControls();
+            requestVisibleResultPage();
             return true;
         }
         return super.mouseScrolled(mouseX, mouseY, deltaX, deltaY);
@@ -436,9 +468,32 @@ final class TianshuClosedLoopPatternConfigScreen<M extends TianshuPatternEncodin
     private void closeEditor() {
         hideSlots(menu.getClosedLoopMemberSlots());
         hideSlots(menu.getClosedLoopOutputSlots());
-        hideSlots(menu.getClosedLoopExternalInputSlots());
-        hideSlots(menu.getClosedLoopSeedSlots());
         returnToParent();
+    }
+
+    @Override
+    protected void renderTooltip(GuiGraphics graphics, int x, int y) {
+        ClosedLoopResultPage.Kind kind = switch (page) {
+            case EXTERNAL_INPUTS -> ClosedLoopResultPage.Kind.EXTERNAL_INPUTS;
+            case SEEDS -> ClosedLoopResultPage.Kind.SEEDS;
+            default -> null;
+        };
+        int localX = x - leftPos;
+        int localY = y - topPos;
+        int resultTop = TianshuPatternConfigLayout.HEADER_HEIGHT + ROW_SLOT_Y_OFFSET;
+        int visible = (localY - resultTop) / TianshuPatternConfigLayout.ROW_HEIGHT;
+        if (kind != null && localX >= SLOT_X && localX < SLOT_X + 16
+                && localY >= resultTop
+                && visible >= 0 && visible < TianshuPatternConfigLayout.VISIBLE_ROWS) {
+            var resultPage = menu.getClosedLoopResultPage(kind, scrollbar.getCurrentScroll());
+            if (resultPage != null && visible < resultPage.entries().size()
+                    && localY < resultTop + visible * TianshuPatternConfigLayout.ROW_HEIGHT + 16) {
+                graphics.renderTooltip(font,
+                        GenericStack.wrapInItemStack(resultPage.entries().get(visible)), x, y);
+                return;
+            }
+        }
+        super.renderTooltip(graphics, x, y);
     }
 
     @Override

@@ -188,6 +188,28 @@ class TianshuPatternEncodingTermMenuSourceContractTest {
     }
 
     @Test
+    void closedLoopComputedResultsUseBoundedPagesInsteadOfHundredsOfMenuSlots()
+            throws Exception {
+        String menu = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/menu/TianshuPatternEncodingTermMenu.java"));
+        String config = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/client/TianshuClosedLoopPatternConfigScreen.java"));
+        String network = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/network/NetworkInit.java"));
+
+        assertFalse(menu.contains("closedLoopExternalInputInventory"));
+        assertFalse(menu.contains("closedLoopSeedInventory"));
+        assertFalse(menu.contains("getClosedLoopExternalInputSlots"));
+        assertFalse(menu.contains("getClosedLoopSeedSlots"));
+        assertTrue(menu.contains("ClosedLoopResultPage.from("));
+        assertTrue(menu.contains("sendClosedLoopResultPage("));
+        assertTrue(config.contains("requestVisibleResultPage()"));
+        assertTrue(config.contains("drawResultRows("));
+        assertTrue(network.contains("RequestClosedLoopResultPagePacket.TYPE"));
+        assertTrue(network.contains("ClosedLoopResultPagePacket.TYPE"));
+    }
+
+    @Test
     void globalReserveAdditionUsesAnAe2FakeSlotDiscoverableByJeiAndEmi() throws Exception {
         String menu = Files.readString(Path.of(
                 "src/main/java/com/moakiee/ae2lt/menu/TianshuPatternEncodingTermMenu.java"));
