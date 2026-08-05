@@ -355,9 +355,10 @@ public class AE2LightningTech {
         AE2LTConfigMigration.runIfNeeded();
         WirelessPatternProviderPolicy.setMaxDistanceSupplier(
                 AE2LTCommonConfig::wirelessConnectorMaxDistance);
-        // AddTerminalEvent is consumed during item registration. Install the callback now,
-        // while its ItemWT instance remains deferred until that registry is writable.
-        Ae2wtlibIntegration.registerTerminal();
+        // Register the external terminal when the item registry opens. AE2WTLib has registered
+        // its built-in terminals by then, so this terminal is appended after them in the
+        // universal-terminal selector instead of always occupying the first position.
+        modEventBus.addListener(Ae2wtlibIntegration::onRegister);
         ModFumos.register();
         LegacyRegistryAliases.register();
         ModBlocks.BLOCKS.register(modEventBus);
