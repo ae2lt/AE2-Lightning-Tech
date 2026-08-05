@@ -8,11 +8,11 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
-import com.moakiee.thunderbolt.core.craft.CopyAssembler;
-import com.moakiee.thunderbolt.core.craft.CraftingCoreHost;
-import com.moakiee.thunderbolt.core.craft.CraftingCoreRegistry;
+import com.moakiee.ae2lt.crafting.matrix.core.CopyAssembler;
+import com.moakiee.ae2lt.crafting.matrix.core.CraftingCoreHost;
+import com.moakiee.ae2lt.crafting.matrix.core.CraftingCoreRegistry;
 import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopBatchPatternDetails;
-import com.moakiee.thunderbolt.ae2.batch.BatchCopyLimitPattern;
+import com.moakiee.thunderbolt.api.crafting.batch.BatchCopyLimitPattern;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.NonNullList;

@@ -4,7 +4,7 @@ import appeng.api.crafting.PatternDetailsHelper;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.GenericStack;
 import com.moakiee.ae2lt.item.ClosedLoopPatternItem;
-import com.moakiee.thunderbolt.core.planner.Sat;
+import com.moakiee.thunderbolt.core.crafting.planner.Sat;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;

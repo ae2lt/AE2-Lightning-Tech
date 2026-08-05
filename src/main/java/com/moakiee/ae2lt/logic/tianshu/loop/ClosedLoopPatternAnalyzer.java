@@ -3,10 +3,10 @@ package com.moakiee.ae2lt.logic.tianshu.loop;
 import appeng.api.crafting.IPatternDetails;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.GenericStack;
-import com.moakiee.thunderbolt.ae2.api.crafting.CraftingPatternDelegates;
-import com.moakiee.thunderbolt.ae2.overload.pattern.OverloadedProviderOnlyPatternDetails;
-import com.moakiee.thunderbolt.core.planner.Sat;
-import com.moakiee.thunderbolt.core.planner.PositiveIntegerLinearSolver;
+import com.moakiee.thunderbolt.core.crafting.support.CraftingPatternDelegates;
+import com.moakiee.ae2lt.overload.runtime.pattern.OverloadedProviderOnlyPatternDetails;
+import com.moakiee.thunderbolt.core.crafting.planner.Sat;
+import com.moakiee.thunderbolt.core.crafting.planner.PositiveIntegerLinearSolver;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -586,10 +586,10 @@ public final class ClosedLoopPatternAnalyzer {
         var produced = new LinkedHashMap<AEKey, Long>();
         var inputSeedBySlot = new LinkedHashMap<Integer, AEKey>();
         var inputs = details.getInputs();
-        var providerDetails = com.moakiee.thunderbolt.ae2.api.crafting.CraftingPatternDelegates
+        var providerDetails = com.moakiee.thunderbolt.core.crafting.support.CraftingPatternDelegates
                 .forProviderLookup(details);
         var overload = providerDetails instanceof
-                com.moakiee.thunderbolt.ae2.overload.pattern.OverloadedProviderOnlyPatternDetails value
+                com.moakiee.ae2lt.overload.runtime.pattern.OverloadedProviderOnlyPatternDetails value
                 ? value : null;
         for (int slot = 0; slot < inputs.length; slot++) {
             var input = inputs[slot];
@@ -642,10 +642,10 @@ public final class ClosedLoopPatternAnalyzer {
         var result = new ArrayList<LoopOutput>();
         for (var member : members) {
             if (member == null) return null;
-            var providerDetails = com.moakiee.thunderbolt.ae2.api.crafting.CraftingPatternDelegates
+            var providerDetails = com.moakiee.thunderbolt.core.crafting.support.CraftingPatternDelegates
                     .forProviderLookup(member);
             var overload = providerDetails instanceof
-                    com.moakiee.thunderbolt.ae2.overload.pattern.OverloadedProviderOnlyPatternDetails value
+                    com.moakiee.ae2lt.overload.runtime.pattern.OverloadedProviderOnlyPatternDetails value
                     ? value : null;
             var outputs = member.getOutputs();
             for (int slot = 0; slot < outputs.size(); slot++) {

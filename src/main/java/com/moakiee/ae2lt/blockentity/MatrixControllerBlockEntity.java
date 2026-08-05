@@ -33,9 +33,9 @@ import com.moakiee.ae2lt.network.MatrixControllerActionPacket;
 import com.moakiee.ae2lt.registry.ModBlockEntities;
 import com.moakiee.ae2lt.registry.ModBlocks;
 import com.moakiee.ae2lt.registry.ModItems;
-import com.moakiee.thunderbolt.ae2.api.crafting.BatchDispatchMode;
-import com.moakiee.thunderbolt.core.craft.CraftingCoreHost;
-import com.moakiee.thunderbolt.core.craft.MolecularCopyAssembler;
+import com.moakiee.thunderbolt.api.crafting.batch.BatchDispatchMode;
+import com.moakiee.ae2lt.crafting.matrix.core.CraftingCoreHost;
+import com.moakiee.ae2lt.crafting.matrix.core.MolecularCopyAssembler;
 
 import appeng.api.crafting.IPatternDetails;
 import appeng.api.config.Actionable;

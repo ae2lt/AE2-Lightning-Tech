@@ -16,10 +16,10 @@ import appeng.me.helpers.MachineSource;
 
 import com.moakiee.ae2lt.registry.ModBlockEntities;
 import com.moakiee.ae2lt.registry.ModBlocks;
-import com.moakiee.thunderbolt.ae2.crafting.ExtendedCraftingCpuClusterProvider;
-import com.moakiee.thunderbolt.ae2.timewheel.TimeWheelCraftingCpuPool;
-import com.moakiee.thunderbolt.ae2.timewheel.TimeWheelCraftingCpuPoolHost;
-import com.moakiee.thunderbolt.ae2.timewheel.TimeWheelCraftingCpuPoolProvider;
+import com.moakiee.ae2lt.crafting.runtime.ExtendedCraftingCpuClusterProvider;
+import com.moakiee.ae2lt.crafting.timewheel.TimeWheelCraftingCpuPool;
+import com.moakiee.ae2lt.crafting.timewheel.TimeWheelCraftingCpuPoolHost;
+import com.moakiee.ae2lt.crafting.timewheel.TimeWheelCraftingCpuPoolProvider;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;

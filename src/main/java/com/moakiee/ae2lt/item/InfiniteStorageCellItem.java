@@ -15,10 +15,10 @@ import net.minecraft.world.item.component.CustomData;
 import appeng.api.networking.security.IActionSource;
 import appeng.api.stacks.AEKey;
 
-import com.moakiee.thunderbolt.ae2.cell.IIndexedStorageCellItem;
-import com.moakiee.thunderbolt.ae2.cell.IndexedCellSummary;
-import com.moakiee.thunderbolt.ae2.cell.IndexedStorage;
-import com.moakiee.thunderbolt.core.cell.ByteTracker;
+import com.moakiee.thunderbolt.core.storage.cell.IIndexedStorageCellItem;
+import com.moakiee.thunderbolt.core.storage.cell.IndexedCellSummary;
+import com.moakiee.thunderbolt.core.storage.cell.IndexedStorage;
+import com.moakiee.thunderbolt.core.storage.cell.ByteTracker;
 
 public final class InfiniteStorageCellItem extends Item implements IIndexedStorageCellItem {
 

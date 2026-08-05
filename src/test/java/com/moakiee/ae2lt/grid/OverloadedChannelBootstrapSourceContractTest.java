@@ -15,7 +15,8 @@ class OverloadedChannelBootstrapSourceContractTest {
 
         int setup = mod.indexOf("private void commonSetup(FMLCommonSetupEvent event)");
         int register = mod.indexOf(
-                "ChannelProviderRegistry.registerController(OverloadedControllerBlockEntity.class)",
+                "ChannelSourceRegistry.registerController(\n"
+                        + "                    \"ae2lt:overloaded_controller\", OverloadedControllerBlockEntity.class)",
                 setup);
         int configure = mod.indexOf(
                 "CoreConfig.setChannelsPerController(", setup);

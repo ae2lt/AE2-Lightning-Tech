@@ -89,10 +89,10 @@ import com.moakiee.ae2lt.me.cell.FixedInfiniteCellHandler;
 import com.moakiee.ae2lt.logic.MachineAdapterRegistry;
 import com.moakiee.ae2lt.logic.craft.BatchPatternEligibility;
 import com.moakiee.thunderbolt.CoreConfig;
-import com.moakiee.thunderbolt.ae2.batch.BatchExecutor;
-import com.moakiee.thunderbolt.ae2.channel.ChannelProviderRegistry;
+import com.moakiee.thunderbolt.core.crafting.batch.BatchExecutor;
+import com.moakiee.thunderbolt.api.channel.ChannelSourceRegistry;
 import com.moakiee.ae2lt.api.patternprovider.WirelessPatternProviderPolicy;
-import com.moakiee.thunderbolt.core.craft.CraftingCoreRegistry;
+import com.moakiee.ae2lt.crafting.matrix.core.CraftingCoreRegistry;
 import com.moakiee.ae2lt.logic.railgun.RailgunEnergyBuffer;
 import com.moakiee.ae2lt.celestweave.ArmorEnergyBuffer;
 import com.moakiee.ae2lt.celestweave.CelestweaveArmorMaterials;
@@ -799,7 +799,8 @@ public class AE2LightningTech {
             // AE2LT controller family before any grid can be created so infinite
             // channel mode can use AE2's native pathing with these nodes as roots.
             // Registering the base class also covers both wireless subclasses.
-            ChannelProviderRegistry.registerController(OverloadedControllerBlockEntity.class);
+            ChannelSourceRegistry.registerController(
+                    "ae2lt:overloaded_controller", OverloadedControllerBlockEntity.class);
             CoreConfig.setChannelsPerController(
                     AE2LTCommonConfig.overloadedControllerChannelsPerController());
             CoreConfig.setBatchCopyLimitedBlocks(

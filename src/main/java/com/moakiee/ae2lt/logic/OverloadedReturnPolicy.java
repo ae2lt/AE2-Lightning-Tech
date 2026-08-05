@@ -14,9 +14,9 @@ import appeng.api.crafting.IPatternDetails;
 import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.GenericStack;
 
-import com.moakiee.thunderbolt.ae2.overload.model.MatchMode;
-import com.moakiee.thunderbolt.ae2.overload.pattern.OverloadedProviderOnlyPatternDetails;
-import com.moakiee.thunderbolt.ae2.overload.pattern.OverloadPatternDetails;
+import com.moakiee.ae2lt.overload.runtime.model.MatchMode;
+import com.moakiee.ae2lt.overload.runtime.pattern.OverloadedProviderOnlyPatternDetails;
+import com.moakiee.ae2lt.overload.runtime.pattern.OverloadPatternDetails;
 
 /** Output filtering and LOCK_UNTIL_RESULT matching derived from loaded patterns. */
 final class OverloadedReturnPolicy {

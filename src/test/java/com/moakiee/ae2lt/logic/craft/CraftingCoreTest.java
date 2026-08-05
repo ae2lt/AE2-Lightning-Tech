@@ -7,10 +7,10 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
-import com.moakiee.thunderbolt.core.craft.CopyAssembler;
-import com.moakiee.thunderbolt.core.craft.CraftingCore;
-import com.moakiee.thunderbolt.core.craft.CraftingCoreHost;
-import com.moakiee.thunderbolt.core.craft.CraftingCoreRegistry;
+import com.moakiee.ae2lt.crafting.matrix.core.CopyAssembler;
+import com.moakiee.ae2lt.crafting.matrix.core.CraftingCore;
+import com.moakiee.ae2lt.crafting.matrix.core.CraftingCoreHost;
+import com.moakiee.ae2lt.crafting.matrix.core.CraftingCoreRegistry;
 import com.mojang.serialization.MapCodec;
 import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
 import net.minecraft.core.BlockPos;
@@ -30,7 +30,7 @@ import appeng.api.stacks.AEKeyType;
 import appeng.api.stacks.GenericStack;
 import appeng.api.stacks.KeyCounter;
 import appeng.blockentity.crafting.IMolecularAssemblerSupportedPattern;
-import com.moakiee.thunderbolt.ae2.batch.SharedBatchInputPattern;
+import com.moakiee.thunderbolt.api.crafting.batch.SharedBatchInputPattern;
 
 class CraftingCoreTest {
     @Test

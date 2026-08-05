@@ -23,6 +23,14 @@
     "ServerPayloadContextPhaseTeleportMixin",
     "ServerGamePacketListenerCelestweaveCreativeSyncMixin",
     "compat.DraconicChargeUpPhaseFlightMixin",
+    "thunderbolt.Ae2CraftingTreeCompatibilityMixin",
+    "thunderbolt.CraftingCalculationPlanBindingMixin",
+    "thunderbolt.LoopCraftingPlanSummaryMixin",
+    "thunderbolt.ExtendedCraftingCpuServiceMixin",
+    "thunderbolt.TimeWheelCraftingCPUMenuMixin",
+    "thunderbolt.CraftingCpuLogicMixin",
+    "thunderbolt.AdvCraftingCpuLogicMixin",
+    "thunderbolt.ECOCraftingCpuLogicMixin",
     "ControllerValidatorMixin",
     "AnnihilationPlaneShulkerMixin"
   ],
@@ -40,7 +48,9 @@
     "client.LocalPlayerShieldHitFeedbackMixin",
     "client.LocalPlayerPhaseMovementMixin",
     "client.LevelRendererPhaseFlightMixin",
-    "client.EntityShieldFireVisualMixin"
+    "client.EntityShieldFireVisualMixin",
+    "thunderbolt.client.CPUSelectionListStorageMixin",
+    "thunderbolt.client.CraftConfirmScreenCpuStatusMixin"
   ],
   "injectors": {
     "defaultRequire": 1

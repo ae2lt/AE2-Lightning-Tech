@@ -11,11 +11,11 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
-import com.moakiee.thunderbolt.ae2.batch.BatchProviderFilterIterable;
-import com.moakiee.thunderbolt.ae2.batch.BatchJobView;
-import com.moakiee.thunderbolt.ae2.batch.BatchTaskHandle;
-import com.moakiee.thunderbolt.ae2.batch.ParallelBatchCpuHelper;
-import com.moakiee.thunderbolt.ae2.batch.SharedBatchInputPattern;
+import com.moakiee.thunderbolt.core.crafting.batch.BatchProviderFilterIterable;
+import com.moakiee.thunderbolt.core.crafting.batch.BatchJobView;
+import com.moakiee.thunderbolt.core.crafting.batch.BatchTaskHandle;
+import com.moakiee.thunderbolt.core.crafting.batch.ParallelBatchCpuHelper;
+import com.moakiee.thunderbolt.api.crafting.batch.SharedBatchInputPattern;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;

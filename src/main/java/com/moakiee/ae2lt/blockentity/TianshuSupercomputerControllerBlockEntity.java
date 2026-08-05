@@ -24,10 +24,10 @@ import com.moakiee.ae2lt.logic.persistence.CompletePhysicalStorageSet;
 import com.moakiee.ae2lt.registry.ModBlockEntities;
 import com.moakiee.ae2lt.registry.ModItems;
 import com.moakiee.ae2lt.registry.ModBlocks;
-import com.moakiee.thunderbolt.ae2.api.crafting.CraftingProviderChangeTracker;
-import com.moakiee.thunderbolt.ae2.timewheel.ReusableSeedPattern;
-import com.moakiee.thunderbolt.ae2.timewheel.TimeWheelCraftingCpuPool;
-import com.moakiee.thunderbolt.ae2.timewheel.TimeWheelCraftingCpuPoolHost;
+import com.moakiee.thunderbolt.mixin.ae2.crafting.support.CraftingProviderChangeTracker;
+import com.moakiee.ae2lt.crafting.timewheel.ReusableSeedPattern;
+import com.moakiee.ae2lt.crafting.timewheel.TimeWheelCraftingCpuPool;
+import com.moakiee.ae2lt.crafting.timewheel.TimeWheelCraftingCpuPoolHost;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -953,7 +953,7 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
             var details = PatternDetailsHelper.decodePattern(
                     member.pattern().toItemStack(level.registryAccess()), level);
             if (details == null) return false;
-            var providerPattern = com.moakiee.thunderbolt.ae2.api.crafting.CraftingPatternDelegates
+            var providerPattern = com.moakiee.thunderbolt.core.crafting.support.CraftingPatternDelegates
                     .forProviderLookup(details);
             if (!crafting.getProviders(providerPattern).iterator().hasNext()) return false;
         }

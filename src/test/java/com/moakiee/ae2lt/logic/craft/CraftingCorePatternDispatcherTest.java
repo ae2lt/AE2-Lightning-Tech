@@ -8,7 +8,7 @@ import java.util.function.Predicate;
 
 import org.junit.jupiter.api.Test;
 
-import com.moakiee.thunderbolt.core.craft.CraftingCorePatternDispatcher;
+import com.moakiee.ae2lt.crafting.matrix.core.CraftingCorePatternDispatcher;
 import net.minecraft.core.NonNullList;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.CraftingInput;

@@ -3,7 +3,7 @@ package com.moakiee.ae2lt.logic.tianshu.loop;
 import appeng.api.config.Actionable;
 import appeng.api.stacks.AEKey;
 import com.moakiee.ae2lt.blockentity.TianshuSupercomputerPortBlockEntity;
-import com.moakiee.thunderbolt.core.planner.Sat;
+import com.moakiee.thunderbolt.core.crafting.planner.Sat;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
