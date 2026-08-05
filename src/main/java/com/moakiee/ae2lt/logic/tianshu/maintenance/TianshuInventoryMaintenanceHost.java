@@ -7,7 +7,7 @@ import appeng.api.networking.IGridNode;
 import appeng.api.networking.security.IActionSource;
 
 import com.moakiee.ae2lt.logic.tianshu.TianshuFunctionProfile;
-import com.moakiee.thunderbolt.ae2.timewheel.TimeWheelCraftingCpuPool;
+import com.moakiee.ae2lt.crafting.timewheel.TimeWheelCraftingCpuPool;
 
 import net.minecraft.world.level.Level;
 

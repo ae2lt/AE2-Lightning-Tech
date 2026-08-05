@@ -1,7 +1,7 @@
 package com.moakiee.ae2lt.blockentity;
 
 import com.moakiee.ae2lt.config.AE2LTCommonConfig;
-import com.moakiee.thunderbolt.ae2.channel.OverloadedGridNodeOwner;
+import com.moakiee.thunderbolt.api.channel.HighCapacityChannelOwner;
 import com.moakiee.ae2lt.logic.PassiveAeCharger;
 import com.moakiee.ae2lt.registry.ModBlockEntities;
 import com.moakiee.ae2lt.registry.ModBlocks;
@@ -26,7 +26,7 @@ import appeng.blockentity.networking.ControllerBlockEntity;
  * so vanilla ControllerBlockEntity instances remain untouched.
  */
 public class OverloadedControllerBlockEntity extends ControllerBlockEntity
-        implements OverloadedGridNodeOwner, PassiveAeCharger.Storage {
+        implements HighCapacityChannelOwner, PassiveAeCharger.Storage {
     private static final double INTERNAL_MAX_POWER = 16_000_000.0;
 
     public OverloadedControllerBlockEntity(BlockPos pos, BlockState blockState) {

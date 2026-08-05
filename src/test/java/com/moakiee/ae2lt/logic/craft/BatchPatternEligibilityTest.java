@@ -18,7 +18,7 @@ import appeng.api.stacks.GenericStack;
 import appeng.api.stacks.KeyCounter;
 import appeng.blockentity.crafting.IMolecularAssemblerSupportedPattern;
 
-import com.moakiee.thunderbolt.ae2.overload.pattern.WrappedPatternDetails;
+import com.moakiee.ae2lt.overload.runtime.pattern.WrappedPatternDetails;
 
 class BatchPatternEligibilityTest {
     @Test

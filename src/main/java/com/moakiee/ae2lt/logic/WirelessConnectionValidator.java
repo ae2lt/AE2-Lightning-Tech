@@ -15,13 +15,13 @@ public final class WirelessConnectionValidator {
     private WirelessConnectionValidator() {}
 
     public static boolean shouldRunPeriodicPrune(ServerLevel level, BlockPos hostPos) {
-        return com.moakiee.thunderbolt.api.wireless.WirelessConnectionValidator
+        return com.moakiee.ae2lt.logic.wireless.support.WirelessConnectionValidator
                 .shouldRunPeriodicPrune(level, hostPos, PERIODIC_PRUNE_INTERVAL_TICKS);
     }
 
     public static Status validate(
             ServerLevel hostLevel, BlockPos hostPos, WirelessConnectionRef target) {
-        return convert(com.moakiee.thunderbolt.api.wireless.WirelessConnectionValidator.validate(
+        return convert(com.moakiee.ae2lt.logic.wireless.support.WirelessConnectionValidator.validate(
                 hostLevel, hostPos, target, WirelessConnectionRange.maxConnectorDistance()));
     }
 
@@ -30,7 +30,7 @@ public final class WirelessConnectionValidator {
             BlockPos hostPos,
             ResourceKey<Level> targetDimension,
             BlockPos targetPos) {
-        return convert(com.moakiee.thunderbolt.api.wireless.WirelessConnectionValidator.validate(
+        return convert(com.moakiee.ae2lt.logic.wireless.support.WirelessConnectionValidator.validate(
                 hostLevel,
                 hostPos,
                 targetDimension,
@@ -39,7 +39,7 @@ public final class WirelessConnectionValidator {
     }
 
     private static Status convert(
-            com.moakiee.thunderbolt.api.wireless.WirelessConnectionValidator.Status status) {
+            com.moakiee.ae2lt.logic.wireless.support.WirelessConnectionValidator.Status status) {
         return Status.valueOf(status.name());
     }
 }

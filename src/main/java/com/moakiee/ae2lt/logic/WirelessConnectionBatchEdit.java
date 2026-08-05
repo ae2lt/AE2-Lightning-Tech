@@ -3,7 +3,7 @@ package com.moakiee.ae2lt.logic;
 import java.util.List;
 import java.util.function.Function;
 
-/** @deprecated Use {@code com.moakiee.thunderbolt.api.wireless.WirelessConnectionBatchEdit}. */
+/** @deprecated Use {@code com.moakiee.ae2lt.logic.wireless.support.WirelessConnectionBatchEdit}. */
 @Deprecated(forRemoval = false)
 public final class WirelessConnectionBatchEdit {
     private WirelessConnectionBatchEdit() {}
@@ -22,7 +22,7 @@ public final class WirelessConnectionBatchEdit {
             Function<C, D> dimensionGetter,
             Function<C, T> posGetter,
             Function<C, F> faceGetter) {
-        return wrap(com.moakiee.thunderbolt.api.wireless.WirelessConnectionBatchEdit
+        return wrap(com.moakiee.ae2lt.logic.wireless.support.WirelessConnectionBatchEdit
                 .planSingleFacePerTarget(
                         targets, dimension, connections, face,
                         dimensionGetter, posGetter, faceGetter));
@@ -36,14 +36,14 @@ public final class WirelessConnectionBatchEdit {
             Function<C, D> dimensionGetter,
             Function<C, T> posGetter,
             Function<C, F> faceGetter) {
-        return wrap(com.moakiee.thunderbolt.api.wireless.WirelessConnectionBatchEdit
+        return wrap(com.moakiee.ae2lt.logic.wireless.support.WirelessConnectionBatchEdit
                 .planMultiFacePerTarget(
                         targets, dimension, connections, face,
                         dimensionGetter, posGetter, faceGetter));
     }
 
     private static <T> Plan<T> wrap(
-            com.moakiee.thunderbolt.api.wireless.WirelessConnectionBatchEdit.Plan<T> plan) {
+            com.moakiee.ae2lt.logic.wireless.support.WirelessConnectionBatchEdit.Plan<T> plan) {
         return new Plan<>(plan.deselecting(), plan.disconnect(), plan.update(), plan.connect());
     }
 }

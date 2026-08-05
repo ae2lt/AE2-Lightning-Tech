@@ -18,7 +18,7 @@ import appeng.api.networking.IManagedGridNode;
 import appeng.api.networking.pathing.ChannelMode;
 import appeng.me.GridConnection;
 
-import com.moakiee.thunderbolt.ae2.channel.WirelessConnectionCapProvider;
+import com.moakiee.thunderbolt.api.channel.ConnectionChannelCapacityProvider;
 import com.moakiee.ae2lt.grid.FrequencyBindingHelper;
 import com.moakiee.ae2lt.grid.WirelessFrequencyManager;
 import com.moakiee.ae2lt.registry.ModBlockEntities;
@@ -31,7 +31,7 @@ import com.moakiee.ae2lt.registry.ModBlocks;
  * Receivers with the matching frequency connect directly to this controller's grid node.
  */
 public class WirelessOverloadedControllerBlockEntity extends OverloadedControllerBlockEntity
-        implements WirelessFrequencyManager.WirelessTransmitterNodeProvider, WirelessConnectionCapProvider {
+        implements WirelessFrequencyManager.WirelessTransmitterNodeProvider, ConnectionChannelCapacityProvider {
 
     private int frequencyId = -1;
 
@@ -59,7 +59,7 @@ public class WirelessOverloadedControllerBlockEntity extends OverloadedControlle
     }
 
     @Override
-    public int getWirelessChannelCap(ChannelMode mode) {
+    public int getConnectionChannelCapacity(ChannelMode mode) {
         return isAdvanced() ? Integer.MAX_VALUE / 2 : 32 * mode.getCableCapacityFactor();
     }
 
@@ -93,7 +93,7 @@ public class WirelessOverloadedControllerBlockEntity extends OverloadedControlle
     public int getGridUsedChannels() {
         var grid = getMainNode().getGrid();
         if (grid == null) return 0;
-        return com.moakiee.thunderbolt.ae2.channel.OverloadedChannelOwnerHelper.countUsedChannels(grid);
+        return com.moakiee.thunderbolt.core.channel.HighCapacityChannelSupport.countUsedChannels(grid);
     }
 
     /**
@@ -111,7 +111,7 @@ public class WirelessOverloadedControllerBlockEntity extends OverloadedControlle
 
         int overloadedCount = 0;
         int vanillaCount = 0;
-        for (var node : com.moakiee.thunderbolt.ae2.channel.OverloadedChannelOwnerHelper.getAllControllerNodes(grid)) {
+        for (var node : com.moakiee.thunderbolt.core.channel.HighCapacityChannelSupport.getAllControllerNodes(grid)) {
             if (node.getOwner() instanceof OverloadedControllerBlockEntity) {
                 overloadedCount++;
             } else {
@@ -120,7 +120,7 @@ public class WirelessOverloadedControllerBlockEntity extends OverloadedControlle
         }
         int factor = Math.max(1, channelMode.getCableCapacityFactor());
         long cap = (long) overloadedCount
-                * com.moakiee.thunderbolt.ae2.channel.OverloadedChannelOwnerHelper.channelsPerController() * factor
+                * com.moakiee.thunderbolt.core.channel.HighCapacityChannelSupport.channelsPerController() * factor
                 + (long) vanillaCount * 32L * factor;
         return (int) Math.min(Integer.MAX_VALUE, cap);
     }

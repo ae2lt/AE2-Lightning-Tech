@@ -23,7 +23,7 @@ public final class WirelessConnectionRange {
             BlockPos hostPos,
             ResourceKey<Level> targetDimension,
             BlockPos targetPos) {
-        return com.moakiee.thunderbolt.api.wireless.WirelessConnectionRange.isInRange(
+        return com.moakiee.ae2lt.logic.wireless.support.WirelessConnectionRange.isInRange(
                 hostDimension, hostPos, targetDimension, targetPos, maxConnectorDistance());
     }
 }

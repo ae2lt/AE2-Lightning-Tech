@@ -13,7 +13,7 @@ import org.junit.jupiter.api.Test;
 import com.moakiee.ae2lt.logic.craft.MatrixCraftingCluster;
 import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternRepository;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.TianshuInventoryMaintenanceService;
-import com.moakiee.thunderbolt.ae2.timewheel.TimeWheelCraftingCpuPool;
+import com.moakiee.ae2lt.crafting.timewheel.TimeWheelCraftingCpuPool;
 
 class ControllerOwnedRuntimeArchitectureTest {
     @Test

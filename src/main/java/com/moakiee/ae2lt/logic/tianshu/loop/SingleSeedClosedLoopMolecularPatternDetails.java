@@ -2,7 +2,7 @@ package com.moakiee.ae2lt.logic.tianshu.loop;
 
 import appeng.api.stacks.AEKey;
 import appeng.blockentity.crafting.IMolecularAssemblerSupportedPattern;
-import com.moakiee.thunderbolt.ae2.batch.SharedBatchInputPattern;
+import com.moakiee.thunderbolt.api.crafting.batch.SharedBatchInputPattern;
 
 final class SingleSeedClosedLoopMolecularPatternDetails extends ClosedLoopMolecularPatternDetails
         implements SharedBatchInputPattern, ClosedLoopBatchPatternDetails {

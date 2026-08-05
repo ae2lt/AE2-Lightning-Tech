@@ -5,7 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.AEKeyType;
-import com.moakiee.thunderbolt.core.planner.Sat;
+import com.moakiee.thunderbolt.core.crafting.planner.Sat;
 import com.mojang.serialization.MapCodec;
 import java.util.List;
 import java.util.Map;

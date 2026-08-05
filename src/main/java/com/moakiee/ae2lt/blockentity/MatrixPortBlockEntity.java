@@ -8,8 +8,8 @@ import java.util.Set;
 import java.util.UUID;
 
 import com.moakiee.ae2lt.block.MatrixPortBlock;
-import com.moakiee.thunderbolt.ae2.api.crafting.IBatchCraftingProvider;
-import com.moakiee.thunderbolt.ae2.api.crafting.BatchDispatchMode;
+import com.moakiee.thunderbolt.api.crafting.batch.IBatchCraftingProvider;
+import com.moakiee.thunderbolt.api.crafting.batch.BatchDispatchMode;
 import com.moakiee.ae2lt.logic.craft.MatrixCraftingMath;
 import com.moakiee.ae2lt.logic.craft.MatrixCraftingProfile;
 import com.moakiee.ae2lt.registry.ModBlockEntities;

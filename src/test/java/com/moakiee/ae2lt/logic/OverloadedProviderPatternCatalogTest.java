@@ -14,7 +14,7 @@ import appeng.api.crafting.IPatternDetails;
 import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.GenericStack;
 
-import com.moakiee.thunderbolt.ae2.api.crafting.IProviderLookupPattern;
+import com.moakiee.thunderbolt.core.crafting.support.IProviderLookupPattern;
 
 class OverloadedProviderPatternCatalogTest {
 

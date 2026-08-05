@@ -1,6 +1,6 @@
 package com.moakiee.ae2lt.part;
 
-import com.moakiee.thunderbolt.ae2.channel.OverloadedGridNodeOwner;
+import com.moakiee.thunderbolt.api.channel.HighCapacityChannelOwner;
 import com.moakiee.ae2lt.registry.ModItems;
 import net.minecraft.world.entity.player.Player;
 import appeng.api.networking.IGridNode;
@@ -20,7 +20,7 @@ import appeng.parts.networking.IUsedChannelProvider;
  * logic and extra tooltip display should apply to.
  */
 public class OverloadedCablePart extends CoveredDenseCablePart
-        implements OverloadedGridNodeOwner, IUsedChannelProvider {
+        implements HighCapacityChannelOwner, IUsedChannelProvider {
 
     public OverloadedCablePart(ColoredPartItem<?> partItem) {
         super(partItem);

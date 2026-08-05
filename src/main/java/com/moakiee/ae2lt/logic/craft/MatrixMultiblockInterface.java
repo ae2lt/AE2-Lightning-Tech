@@ -3,8 +3,8 @@ package com.moakiee.ae2lt.logic.craft;
 import java.util.List;
 import java.util.Objects;
 
-import com.moakiee.thunderbolt.ae2.api.crafting.IBatchCraftingProvider;
-import com.moakiee.thunderbolt.ae2.api.crafting.BatchDispatchMode;
+import com.moakiee.thunderbolt.api.crafting.batch.IBatchCraftingProvider;
+import com.moakiee.thunderbolt.api.crafting.batch.BatchDispatchMode;
 
 import appeng.api.crafting.IPatternDetails;
 import appeng.api.stacks.KeyCounter;

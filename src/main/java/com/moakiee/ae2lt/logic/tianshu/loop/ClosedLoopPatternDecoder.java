@@ -42,7 +42,7 @@ public final class ClosedLoopPatternDecoder implements IPatternDetailsDecoder {
                 var delegate = decodedMembers.get(executionMember);
                 var seedAmounts = new java.util.LinkedHashMap<appeng.api.stacks.AEKey, Long>();
                 for (var seed : payload.seeds()) seedAmounts.merge(
-                        seed.what(), seed.amount(), com.moakiee.thunderbolt.core.planner.Sat::add);
+                        seed.what(), seed.amount(), com.moakiee.thunderbolt.core.crafting.planner.Sat::add);
                 var cycleKeys = ClosedLoopCycleKeys.analyze(decodedMembers, seedAmounts.keySet());
                 var analyzedMembers = new java.util.ArrayList<ClosedLoopPatternAnalyzer.Member>(
                         decodedMembers.size());

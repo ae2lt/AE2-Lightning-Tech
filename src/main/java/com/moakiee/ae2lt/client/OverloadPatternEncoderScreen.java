@@ -15,7 +15,7 @@ import net.minecraft.world.item.ItemStack;
 
 import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.menu.OverloadPatternEncoderMenu;
-import com.moakiee.thunderbolt.ae2.overload.model.MatchMode;
+import com.moakiee.ae2lt.overload.runtime.model.MatchMode;
 
 /**
  * Client-side screen for the overload pattern encoder.

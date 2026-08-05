@@ -13,7 +13,7 @@ import appeng.api.stacks.AEKey;
 import appeng.crafting.CraftingLink;
 import appeng.me.service.CraftingService;
 import com.google.common.collect.ImmutableSet;
-import com.moakiee.thunderbolt.ae2.crafting.ReservedStockCraftingRequester;
+import com.moakiee.ae2lt.crafting.runtime.ReservedStockCraftingRequester;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashSet;

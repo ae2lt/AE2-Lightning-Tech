@@ -9,7 +9,7 @@ import appeng.api.stacks.GenericStack;
 import com.mojang.serialization.MapCodec;
 import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopMemberPattern;
 import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternPayload;
-import com.moakiee.thunderbolt.ae2.overload.pattern.SourcePatternSnapshot;
+import com.moakiee.ae2lt.overload.runtime.pattern.SourcePatternSnapshot;
 import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;

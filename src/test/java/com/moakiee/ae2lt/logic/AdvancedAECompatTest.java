@@ -7,7 +7,7 @@ import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.GenericStack;
 import appeng.api.stacks.KeyCounter;
-import com.moakiee.thunderbolt.ae2.overload.pattern.WrappedPatternDetails;
+import com.moakiee.ae2lt.overload.runtime.pattern.WrappedPatternDetails;
 import java.util.HashMap;
 import java.util.List;
 import net.minecraft.core.Direction;

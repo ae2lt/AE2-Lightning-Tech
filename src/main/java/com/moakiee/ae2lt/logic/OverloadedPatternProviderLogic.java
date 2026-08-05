@@ -54,7 +54,7 @@ import com.moakiee.ae2lt.logic.energy.WirelessEnergyDistributor;
 import com.moakiee.ae2lt.logic.WirelessOverflowQueue.Bucket;
 import com.moakiee.ae2lt.mixin.PatternProviderLogicAccessor;
 
-import com.moakiee.thunderbolt.ae2.api.crafting.IBatchCraftingProvider;
+import com.moakiee.thunderbolt.api.crafting.batch.IBatchCraftingProvider;
 
 /**
  * Extended pattern-provider logic that adds a wireless dispatch path.

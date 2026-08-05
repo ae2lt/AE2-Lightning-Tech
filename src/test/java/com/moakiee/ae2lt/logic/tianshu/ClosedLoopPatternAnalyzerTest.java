@@ -16,10 +16,10 @@ import org.junit.jupiter.api.Test;
 
 import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternAnalyzer;
 import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternAuthoringService;
-import com.moakiee.thunderbolt.ae2.overload.pattern.SourcePatternSnapshot;
-import com.moakiee.thunderbolt.ae2.overload.pattern.OverloadedProviderOnlyPatternDetails;
-import com.moakiee.thunderbolt.ae2.overload.pattern.OverloadPatternDetails;
-import com.moakiee.thunderbolt.ae2.overload.pattern.PatternExecutionHostKind;
+import com.moakiee.ae2lt.overload.runtime.pattern.SourcePatternSnapshot;
+import com.moakiee.ae2lt.overload.runtime.pattern.OverloadedProviderOnlyPatternDetails;
+import com.moakiee.ae2lt.overload.runtime.pattern.OverloadPatternDetails;
+import com.moakiee.ae2lt.overload.runtime.pattern.PatternExecutionHostKind;
 import com.mojang.serialization.MapCodec;
 
 import net.minecraft.core.BlockPos;
@@ -306,7 +306,7 @@ class ClosedLoopPatternAnalyzerTest {
 
         var solved = ClosedLoopPatternAnalyzer.solveCoefficients(members, target);
 
-        assertEquals(com.moakiee.thunderbolt.core.planner.PositiveIntegerLinearSolver.Status.SOLVED,
+        assertEquals(com.moakiee.thunderbolt.core.crafting.planner.PositiveIntegerLinearSolver.Status.SOLVED,
                 solved.status());
         assertArrayEquals(new long[] {2, 3, 8, 8, 8, 8}, solved.coefficients());
         var analyzed = new java.util.ArrayList<ClosedLoopPatternAnalyzer.Member>();
@@ -327,7 +327,7 @@ class ClosedLoopPatternAnalyzerTest {
         var members = List.<IPatternDetails>of(grow, downstream);
         var solved = ClosedLoopPatternAnalyzer.solveCoefficients(members, product);
 
-        assertEquals(com.moakiee.thunderbolt.core.planner.PositiveIntegerLinearSolver.Status.SOLVED,
+        assertEquals(com.moakiee.thunderbolt.core.crafting.planner.PositiveIntegerLinearSolver.Status.SOLVED,
                 solved.status());
         assertEquals(ClosedLoopPatternAnalyzer.StructureStatus.VALID,
                 ClosedLoopPatternAnalyzer.validateStructure(members));
@@ -552,7 +552,7 @@ class ClosedLoopPatternAnalyzerTest {
 
         var solved = ClosedLoopPatternAnalyzer.solveCoefficients(List.of(seedless), product);
 
-        assertEquals(com.moakiee.thunderbolt.core.planner.PositiveIntegerLinearSolver.Status.INFEASIBLE,
+        assertEquals(com.moakiee.thunderbolt.core.crafting.planner.PositiveIntegerLinearSolver.Status.INFEASIBLE,
                 solved.status());
         assertNull(ClosedLoopPatternAnalyzer.analyzeBestOrder(List.of(
                 new ClosedLoopPatternAnalyzer.Member(seedless, 1)), product));
@@ -569,7 +569,7 @@ class ClosedLoopPatternAnalyzerTest {
 
         var solved = ClosedLoopPatternAnalyzer.solveCoefficients(details, product);
 
-        assertEquals(com.moakiee.thunderbolt.core.planner.PositiveIntegerLinearSolver.Status.SOLVED,
+        assertEquals(com.moakiee.thunderbolt.core.crafting.planner.PositiveIntegerLinearSolver.Status.SOLVED,
                 solved.status());
         var members = List.of(
                 new ClosedLoopPatternAnalyzer.Member(consumingLoop, solved.coefficients()[0]),

@@ -9,7 +9,7 @@ import appeng.blockentity.crafting.IMolecularAssemblerSupportedPattern;
 
 import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopBatchPatternDetails;
 import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopExpandedPatternDetails;
-import com.moakiee.thunderbolt.ae2.overload.pattern.WrappedPatternDetails;
+import com.moakiee.ae2lt.overload.runtime.pattern.WrappedPatternDetails;
 
 /**
  * Selects pattern types that may enter Thunderbolt's batch-provider dispatch.

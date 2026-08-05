@@ -7,10 +7,10 @@ import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
-import com.moakiee.thunderbolt.ae2.overload.pattern.OverloadPatternDetails;
-import com.moakiee.thunderbolt.ae2.overload.pattern.OverloadedProviderOnlyPatternDetails;
-import com.moakiee.thunderbolt.ae2.overload.pattern.PatternExecutionHostKind;
-import com.moakiee.thunderbolt.ae2.overload.pattern.SourcePatternSnapshot;
+import com.moakiee.ae2lt.overload.runtime.pattern.OverloadPatternDetails;
+import com.moakiee.ae2lt.overload.runtime.pattern.OverloadedProviderOnlyPatternDetails;
+import com.moakiee.ae2lt.overload.runtime.pattern.PatternExecutionHostKind;
+import com.moakiee.ae2lt.overload.runtime.pattern.SourcePatternSnapshot;
 import com.mojang.serialization.MapCodec;
 
 import net.minecraft.core.BlockPos;

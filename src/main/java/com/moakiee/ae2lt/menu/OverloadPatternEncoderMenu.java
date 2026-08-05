@@ -21,10 +21,10 @@ import appeng.util.inv.InternalInventoryHost;
 
 import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.item.OverloadPatternItem;
-import com.moakiee.thunderbolt.ae2.overload.pattern.Ae2PlainPatternResolver;
-import com.moakiee.thunderbolt.ae2.overload.pattern.EditableOverloadPatternState;
-import com.moakiee.thunderbolt.ae2.overload.pattern.OverloadPatternEditState;
-import com.moakiee.thunderbolt.ae2.overload.pattern.ParsedPatternDefinition;
+import com.moakiee.ae2lt.overload.runtime.pattern.Ae2PlainPatternResolver;
+import com.moakiee.ae2lt.overload.runtime.pattern.EditableOverloadPatternState;
+import com.moakiee.ae2lt.overload.runtime.pattern.OverloadPatternEditState;
+import com.moakiee.ae2lt.overload.runtime.pattern.ParsedPatternDefinition;
 import com.moakiee.ae2lt.overload.pattern.PatternConversionService;
 import com.moakiee.ae2lt.registry.ModItems;
 
