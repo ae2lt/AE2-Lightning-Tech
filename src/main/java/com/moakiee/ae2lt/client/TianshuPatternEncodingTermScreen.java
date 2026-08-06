@@ -22,6 +22,7 @@ import appeng.core.localization.ButtonToolTips;
 import appeng.core.localization.Tooltips;
 import appeng.core.definitions.AEItems;
 import appeng.core.network.ServerboundPacket;
+import appeng.core.network.bidirectional.ConfigValuePacket;
 import appeng.core.network.serverbound.InventoryActionPacket;
 import appeng.helpers.InventoryAction;
 import appeng.menu.SlotSemantics;
@@ -328,8 +329,13 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
             menu.getConfigManager().putSetting(Settings.VIEW_MODE, ViewItems.ALL);
             menu.setMaintainableView(true);
         } else {
-            menu.getConfigManager().putSetting(Settings.VIEW_MODE, next);
+            setViewMode(next);
         }
+    }
+
+    private void setViewMode(ViewItems viewMode) {
+        menu.getConfigManager().putSetting(Settings.VIEW_MODE, viewMode);
+        PacketDistributor.sendToServer(new ConfigValuePacket(Settings.VIEW_MODE, viewMode));
     }
 
     private final class TianshuViewModeButton extends IconButton {

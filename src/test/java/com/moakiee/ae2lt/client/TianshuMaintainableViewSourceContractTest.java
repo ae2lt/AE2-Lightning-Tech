@@ -19,6 +19,8 @@ class TianshuMaintainableViewSourceContractTest {
         assertTrue(screen.contains("protected IPartitionList createPartitionList"));
         assertTrue(screen.contains("entry.ruleConfigured()"));
         assertTrue(screen.contains("menu.getConfigManager().putSetting(Settings.VIEW_MODE, ViewItems.ALL)"));
+        assertTrue(screen.contains(
+                "PacketDistributor.sendToServer(new ConfigValuePacket(Settings.VIEW_MODE, viewMode))"));
         assertTrue(screen.contains("Filters the visible view without deleting entries"));
         assertTrue(menu.contains("lastMaintenanceSummaryTick = Integer.MIN_VALUE"));
         assertFalse(menu.contains("MEStorageMenuAccessor"));
