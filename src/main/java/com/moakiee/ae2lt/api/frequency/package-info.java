@@ -8,9 +8,9 @@
  * {@link com.moakiee.ae2lt.api.frequency.FrequencyBindingAccess#load}.
  *
  * <p>Like the rest of {@code com.moakiee.ae2lt.api.*}, this package only
- * depends on JDK, Minecraft, NeoForge, and the AE2 public API. It does not
- * import any non-{@code api} classes of this mod, so addons can compile
- * against the API surface alone.
+ * depends on JDK, Minecraft, Forge, AE2 public API, and other types from the
+ * same {@code api} sub-tree. It does not import any non-{@code api} classes of
+ * this mod, so addons can compile against the API surface alone.
  *
  * <h2>Read-only queries</h2>
  * <pre>
@@ -23,7 +23,7 @@
  *
  * <h2>Integrating a third-party block entity as a receiver</h2>
  * <pre>
- * public class MyMachineBE extends AENetworkedBlockEntity implements FrequencyBindingHost {
+ * public class MyMachineBE extends AENetworkBlockEntity implements FrequencyBindingHost {
  *     private final FrequencyBindingAccess binding = FrequencyApi.createBinding(this);
  *
  *     public void serverTick() { binding.serverTick(); }
@@ -32,19 +32,17 @@
  *     &#64;Override public void setRemoved()   { super.setRemoved();   binding.setRemoved(); }
  *     &#64;Override public void clearRemoved() { super.clearRemoved(); binding.clearRemoved(); }
  *
- *     &#64;Override
- *     public void saveAdditional(CompoundTag tag, HolderLookup.Provider provider) {
- *         super.saveAdditional(tag, provider);
+ *     &#64;Override public void saveAdditional(CompoundTag tag) {
+ *         super.saveAdditional(tag);
  *         binding.save(tag);
  *     }
  *
- *     &#64;Override
- *     public void loadTag(CompoundTag tag, HolderLookup.Provider provider) {
- *         super.loadTag(tag, provider);
+ *     &#64;Override public void loadTag(CompoundTag tag) {
+ *         super.loadTag(tag);
  *         binding.load(tag);
  *     }
  *
- *     &#64;Override public AENetworkedBlockEntity getFrequencyBindingBlockEntity() { return this; }
+ *     &#64;Override public AENetworkBlockEntity getFrequencyBindingBlockEntity() { return this; }
  *     &#64;Override public FrequencyBindingAccess getFrequencyBindingAccess()     { return binding; }
  *     &#64;Override public void saveFrequencyBindingChanges()                     { setChanged(); }
  *     &#64;Override public void markFrequencyBindingForUpdate()                   { markForUpdate(); }

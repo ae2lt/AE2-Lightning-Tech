@@ -1,6 +1,6 @@
 package com.moakiee.ae2lt.api.frequency;
 
-import appeng.blockentity.grid.AENetworkedBlockEntity;
+import appeng.blockentity.grid.AENetworkBlockEntity;
 
 /**
  * Receiver-side binding contract for AE-networked block entities that join a
@@ -8,18 +8,18 @@ import appeng.blockentity.grid.AENetworkedBlockEntity;
  *
  * <p>Implementing block entities must:
  * <ul>
- *   <li>extend {@link AENetworkedBlockEntity} (AE2 requirement: a main grid
+ *   <li>extend {@link AENetworkBlockEntity} (AE2 requirement: a main grid
  *       node is needed for the virtual connection to be built),</li>
  *   <li>hold a {@link FrequencyBindingAccess} obtained from
  *       {@link FrequencyApi#createBinding(FrequencyBindingHost)},</li>
  *   <li>forward the lifecycle calls (onReady / setRemoved / clearRemoved /
- *       saveAdditional / loadAdditional / serverTick / main-node state
+ *       saveAdditional / load / serverTick / main-node state
  *       change) to the access object.</li>
  * </ul>
  */
 public interface FrequencyBindingHost {
     /** The AE-networked block entity that owns the main grid node to be connected. */
-    AENetworkedBlockEntity getFrequencyBindingBlockEntity();
+    AENetworkBlockEntity getFrequencyBindingBlockEntity();
 
     /** Persist pending NBT changes — typically {@code setChanged()} on the BE. */
     void saveFrequencyBindingChanges();

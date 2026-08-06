@@ -2,13 +2,13 @@ package com.moakiee.ae2lt.api.event;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
-import net.neoforged.bus.api.ICancellableEvent;
-import net.neoforged.bus.api.Event;
+import net.minecraftforge.eventbus.api.Event;
+import net.minecraftforge.eventbus.api.Cancelable;
 
 import com.moakiee.ae2lt.api.lightning.LightningTier;
 
 /**
- * Fired on the {@code NeoForge.EVENT_BUS} when a Lightning Collector has rolled the
+ * Fired on the {@code MinecraftForge.EVENT_BUS} when a Lightning Collector has rolled the
  * amount of lightning to capture from a strike, but before it has been inserted
  * into the AE2 grid.
  *
@@ -33,7 +33,8 @@ import com.moakiee.ae2lt.api.lightning.LightningTier;
  *       {@code LightningCollectorBlockEntity}, not the lightning bolt's position.</li>
  * </ul>
  */
-public class LightningCollectedEvent extends Event implements ICancellableEvent {
+@Cancelable
+public class LightningCollectedEvent extends Event {
 
     private final ServerLevel level;
     private final BlockPos collectorPos;
@@ -84,3 +85,5 @@ public class LightningCollectedEvent extends Event implements ICancellableEvent 
         this.amount = Math.max(0L, amount);
     }
 }
+
+

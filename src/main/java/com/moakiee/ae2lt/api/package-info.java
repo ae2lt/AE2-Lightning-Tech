@@ -22,7 +22,7 @@
  *
  * <h2>Constraints on the API package itself</h2>
  * <p>Code under {@code com.moakiee.ae2lt.api.*} only depends on JDK, Minecraft,
- * NeoForge, AE2 public API, and other types from the same {@code api} sub-tree. It
+ * Forge, AE2 public API, and other types from the same {@code api} sub-tree. It
  * does not import any non-api package of this mod, so addons can compile against
  * the API surface without pulling in implementation classes.
  */

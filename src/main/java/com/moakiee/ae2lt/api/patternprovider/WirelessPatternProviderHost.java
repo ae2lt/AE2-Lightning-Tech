@@ -35,3 +35,4 @@ public interface WirelessPatternProviderHost {
     /** Maximum number of endpoint records this host accepts. */
     int getMaxWirelessConnections();
 }
+

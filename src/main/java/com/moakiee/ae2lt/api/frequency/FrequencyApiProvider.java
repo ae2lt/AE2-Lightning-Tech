@@ -10,8 +10,8 @@ import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.level.block.entity.BlockEntity;
 
 /**
- * SPI bridged by the AE2LT mod itself at common setup time. Addon authors
- * must not implement this interface — call {@link FrequencyApi} instead.
+ * SPI bridged by AE2LT itself at common setup time. Addon authors should call
+ * {@link FrequencyApi} instead of implementing this interface.
  */
 @ApiStatus.Internal
 public interface FrequencyApiProvider {

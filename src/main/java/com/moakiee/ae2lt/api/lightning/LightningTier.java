@@ -1,9 +1,7 @@
 package com.moakiee.ae2lt.api.lightning;
 
 import com.mojang.serialization.Codec;
-
-import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.util.StringRepresentable;
 
 /**
@@ -25,11 +23,6 @@ public enum LightningTier implements StringRepresentable {
     EXTREME_HIGH_VOLTAGE("extreme_high_voltage");
 
     public static final Codec<LightningTier> CODEC = StringRepresentable.fromEnum(LightningTier::values);
-
-    public static final StreamCodec<RegistryFriendlyByteBuf, LightningTier> STREAM_CODEC =
-            StreamCodec.of(
-                    (buf, tier) -> buf.writeByte(tier.ordinal()),
-                    buf -> fromOrdinal(buf.readByte()));
 
     private final String serializedName;
 
@@ -64,5 +57,13 @@ public enum LightningTier implements StringRepresentable {
      */
     public static LightningTier fromOrdinal(int ordinal) {
         return ordinal == EXTREME_HIGH_VOLTAGE.ordinal() ? EXTREME_HIGH_VOLTAGE : HIGH_VOLTAGE;
+    }
+
+    public static LightningTier fromNetwork(FriendlyByteBuf buffer) {
+        return fromOrdinal(buffer.readByte());
+    }
+
+    public void toNetwork(FriendlyByteBuf buffer) {
+        buffer.writeByte(ordinal());
     }
 }

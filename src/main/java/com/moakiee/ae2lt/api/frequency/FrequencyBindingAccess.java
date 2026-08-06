@@ -4,7 +4,6 @@ import java.util.function.Consumer;
 
 import appeng.api.networking.IGridNodeListener;
 import appeng.util.SettingsFrom;
-import net.minecraft.core.component.DataComponentMap;
 import net.minecraft.nbt.CompoundTag;
 
 /**
@@ -53,29 +52,32 @@ public interface FrequencyBindingAccess {
 
     /**
      * Export the frequency and host-supplied fields through AE2LT's stable
-     * memory-card data component.
+     * memory-card NBT data.
      *
      * <p>The callback is invoked only for a memory-card export. Keeping the
-     * component itself behind this public API lets addon hosts preserve cards
+     * payload format behind this public API lets addon hosts preserve cards
      * written by older AE2LT-backed implementations without importing AE2LT
      * registry or memory-card internals.
+     *
+     * <p>Forge 1.20.1 note: the newer branch exports through a data component;
+     * on 1.20.1 the same data travels as an NBT tag instead.
      */
     default void exportMemorySettings(
             SettingsFrom mode,
-            DataComponentMap.Builder builder,
+            CompoundTag output,
             Consumer<CompoundTag> additionalWriter) {
     }
 
     /**
      * Import the frequency and host-supplied fields from AE2LT's stable
-     * memory-card data component.
+     * memory-card NBT data.
      *
      * <p>The callback is invoked only when compatible exported machine data is
      * present on a memory card.
      */
     default void importMemorySettings(
             SettingsFrom mode,
-            DataComponentMap input,
+            CompoundTag input,
             Consumer<CompoundTag> additionalReader) {
     }
 
