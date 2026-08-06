@@ -35,9 +35,11 @@ public sealed interface CrystalCatalyzerOutput
     Codec<CrystalCatalyzerOutput> CODEC = Codec.either(OfTag.CODEC, ItemStack.STRICT_CODEC)
             .xmap(
                     either -> either.map(tag -> (CrystalCatalyzerOutput) tag, OfItem::new),
-                    output -> switch (output) {
-                        case OfTag tag -> Either.left(tag);
-                        case OfItem item -> Either.right(item.stack());
+                    output -> {
+                        if (output instanceof OfTag tag) {
+                            return Either.<OfTag, ItemStack>left(tag);
+                        }
+                        return Either.<OfTag, ItemStack>right(((OfItem) output).stack());
                     });
 
     StreamCodec<RegistryFriendlyByteBuf, CrystalCatalyzerOutput> STREAM_CODEC =
@@ -60,16 +62,13 @@ public sealed interface CrystalCatalyzerOutput
     }
 
     private static void encode(RegistryFriendlyByteBuf buf, CrystalCatalyzerOutput output) {
-        switch (output) {
-            case OfItem item -> {
-                buf.writeBoolean(false);
-                ItemStack.STREAM_CODEC.encode(buf, item.stack());
-            }
-            case OfTag tag -> {
-                buf.writeBoolean(true);
-                buf.writeResourceLocation(tag.tag().location());
-                ByteBufCodecs.VAR_INT.encode(buf, tag.count());
-            }
+        if (output instanceof OfItem item) {
+            buf.writeBoolean(false);
+            ItemStack.STREAM_CODEC.encode(buf, item.stack());
+        } else if (output instanceof OfTag tag) {
+            buf.writeBoolean(true);
+            buf.writeResourceLocation(tag.tag().location());
+            ByteBufCodecs.VAR_INT.encode(buf, tag.count());
         }
     }
 

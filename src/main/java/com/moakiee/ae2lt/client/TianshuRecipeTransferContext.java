@@ -60,11 +60,14 @@ public final class TianshuRecipeTransferContext {
             Object recipeBase,
             String fallbackSourceKey,
             Iterable<String> additionalAliases) {
-        Recipe<?> recipe = switch (recipeBase) {
-            case RecipeHolder<?> holder -> holder.value();
-            case Recipe<?> direct -> direct;
-            default -> null;
-        };
+        Recipe<?> recipe;
+        if (recipeBase instanceof RecipeHolder<?> holder) {
+            recipe = holder.value();
+        } else if (recipeBase instanceof Recipe<?> direct) {
+            recipe = direct;
+        } else {
+            recipe = null;
+        }
         String sourceKey = "";
         String recipeId = "";
         var defaultAliases = new ArrayList<String>();
