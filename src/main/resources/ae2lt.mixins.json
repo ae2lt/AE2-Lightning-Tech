@@ -25,7 +25,7 @@
     "ServerGamePacketListenerCelestweaveCreativeSyncMixin",
     "compat.DraconicChargeUpPhaseFlightMixin",
     "ControllerValidatorMixin",
-    "AnnihilationPlaneShulkerMixin"
+    "ShulkerBulletMixin"
   ],
   "client": [
     "client.CableBusRenderStateMixin",
