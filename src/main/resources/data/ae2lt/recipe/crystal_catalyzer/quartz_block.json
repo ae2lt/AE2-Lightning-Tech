@@ -1,0 +1,14 @@
+{
+  "type": "ae2lt:crystal_catalyzer",
+  "catalyst": {
+    "item": "ae2:quartz_block"
+  },
+  "catalystCount": 1,
+  "output": {
+    "id": "ae2:certus_quartz_crystal",
+    "count": 1
+  },
+  "energyPerCycle": 100000,
+  "lightningCost": 1,
+  "lightningTier": "high_voltage"
+}

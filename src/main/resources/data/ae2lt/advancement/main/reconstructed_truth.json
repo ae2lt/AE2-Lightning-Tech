@@ -1,0 +1,24 @@
+{
+  "parent": "ae2lt:main/neutralization",
+  "display": {
+    "icon": { "id": "ae2lt:research_note" },
+    "title": { "translate": "advancements.ae2lt.reconstructed_truth.title" },
+    "description": { "translate": "advancements.ae2lt.reconstructed_truth.description" },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": true
+  },
+  "criteria": {
+    "obtain_research_note": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          { "items": "ae2lt:research_note" }
+        ]
+      }
+    }
+  },
+  "requirements": [ [ "obtain_research_note" ] ],
+  "sends_telemetry_event": false
+}

@@ -1,0 +1,25 @@
+{
+  "type": "ae2lt:overload_processing",
+  "priority": 0,
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "ae2:matter_ball"
+      },
+      "count": 64
+    }
+  ],
+  "inputFluid": {
+    "id": "minecraft:lava",
+    "amount": 100
+  },
+  "results": [
+    {
+      "id": "ae2:singularity",
+      "count": 1
+    }
+  ],
+  "totalEnergy": 1000000,
+  "lightningCost": 1,
+  "lightningTier": "high_voltage"
+}

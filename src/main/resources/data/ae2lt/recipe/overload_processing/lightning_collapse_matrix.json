@@ -1,0 +1,27 @@
+{
+  "type": "ae2lt:overload_processing",
+  "priority": 0,
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "ae2lt:perfect_electro_chime_crystal"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "ae2lt:ultimate_overload_core"
+      },
+      "count": 16
+    }
+  ],
+  "results": [
+    {
+      "id": "ae2lt:lightning_collapse_matrix",
+      "count": 1
+    }
+  ],
+  "totalEnergy": 50000000,
+  "lightningCost": 128,
+  "lightningTier": "extreme_high_voltage"
+}

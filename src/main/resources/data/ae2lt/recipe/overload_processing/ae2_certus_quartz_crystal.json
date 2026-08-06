@@ -1,0 +1,31 @@
+{
+  "type": "ae2lt:overload_processing",
+  "priority": 0,
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "ae2:charged_certus_quartz_crystal"
+      },
+      "count": 16
+    },
+    {
+      "ingredient": {
+        "item": "ae2:certus_quartz_dust"
+      },
+      "count": 16
+    }
+  ],
+  "inputFluid": {
+    "id": "minecraft:water",
+    "amount": 500
+  },
+  "results": [
+    {
+      "id": "ae2:certus_quartz_crystal",
+      "count": 64
+    }
+  ],
+  "totalEnergy": 50000,
+  "lightningCost": 1,
+  "lightningTier": "high_voltage"
+}

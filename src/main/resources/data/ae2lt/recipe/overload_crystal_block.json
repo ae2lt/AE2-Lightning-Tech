@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "AB ",
+    "CD ",
+    "   "
+  ],
+  "key": {
+    "A": {
+      "item": "ae2lt:overload_crystal"
+    },
+    "B": {
+      "item": "ae2lt:overload_crystal"
+    },
+    "C": {
+      "item": "ae2lt:overload_crystal"
+    },
+    "D": {
+      "item": "ae2lt:overload_crystal"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "ae2lt:overload_crystal_block"
+  }
+}

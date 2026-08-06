@@ -1,0 +1,10 @@
+package com.moakiee.ae2lt.logic.tianshu.terminal;
+
+public enum TianshuTerminalAction {
+    ENCODE_NORMAL_PATTERN,
+    UPLOAD_NORMAL_PATTERN,
+    ENCODE_CLOSED_LOOP_PATTERN,
+    UPLOAD_CLOSED_LOOP_PATTERN,
+    CONFIGURE_INVENTORY_MAINTENANCE,
+    CONFIGURE_RESERVED_STOCK
+}

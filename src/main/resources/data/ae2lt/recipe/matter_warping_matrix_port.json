@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "ABC",
+    "DEF",
+    "GHI"
+  ],
+  "key": {
+    "A": { "item": "ae2lt:matter_warping_matrix_casing" },
+    "B": { "item": "ae2:fluix_glass_cable" },
+    "C": { "item": "ae2lt:matter_warping_matrix_casing" },
+    "D": { "item": "ae2lt:overload_crystal" },
+    "E": { "item": "ae2:wireless_access_point" },
+    "F": { "item": "ae2lt:overload_crystal" },
+    "G": { "item": "ae2lt:matter_warping_matrix_casing" },
+    "H": { "item": "ae2:fluix_glass_cable" },
+    "I": { "item": "ae2lt:matter_warping_matrix_casing" }
+  },
+  "result": {
+    "count": 1,
+    "id": "ae2lt:matter_warping_matrix_port"
+  }
+}

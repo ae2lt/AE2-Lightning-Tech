@@ -1,0 +1,41 @@
+{
+  "$schema": "schema.json",
+  "includes": ["common/common.json", "common/player_inventory.json"],
+  "background": {
+    "texture": "ae2lt:textures/guis/lightning_collector.png",
+    "srcRect": [0, 0, 176, 168]
+  },
+  "slots": {
+    "AE2LT_ATMOSPHERIC_IONIZER_CONDENSATE": {
+      "left": 80,
+      "top": 37
+    }
+  },
+  "images": {
+    "energyBar": {
+      "texture": "ae2:textures/guis/inscriber.png",
+      "srcRect": [176, 0, 6, 18]
+    }
+  },
+  "widgets": {
+    "energyBar": {
+      "left": 99,
+      "top": 36
+    },
+    "lightningStatus": {
+      "left": 156,
+      "top": 4
+    }
+  },
+  "text": {
+    "dialog_title": {
+      "text": {
+        "translate": "block.ae2lt.atmospheric_ionizer"
+      },
+      "position": {
+        "left": 8,
+        "top": 6
+      }
+    }
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "type": "ae2lt:lightning_assembly",
+  "priority": 0,
+  "inputs": [
+    {
+      "ingredient": { "item": "ae2:crafting_accelerator" },
+      "count": 4
+    },
+    {
+      "ingredient": { "item": "ae2:speed_card" },
+      "count": 2
+    },
+    {
+      "ingredient": { "item": "ae2lt:tianshu_blank_unit" },
+      "count": 1
+    },
+    {
+      "ingredient": { "item": "ae2lt:overload_processor" },
+      "count": 4
+    },
+    {
+      "ingredient": { "item": "ae2lt:overload_alloy_plate" },
+      "count": 4
+    },
+    {
+      "ingredient": { "item": "ae2lt:dense_topological_lattice" },
+      "count": 1
+    }
+  ],
+  "result": {
+    "id": "ae2lt:parallel_supercomputing_unit",
+    "count": 1
+  },
+  "totalEnergy": 16000000,
+  "lightningCost": 128,
+  "lightningTier": "high_voltage"
+}

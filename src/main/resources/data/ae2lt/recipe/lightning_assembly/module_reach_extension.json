@@ -1,0 +1,37 @@
+{
+  "type": "ae2lt:lightning_assembly",
+  "priority": 0,
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "ae2lt:overload_module_base"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:ender_pearl"
+      },
+      "count": 128
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:chorus_fruit"
+      },
+      "count": 256
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:shulker_shell"
+      },
+      "count": 64
+    }
+  ],
+  "result": {
+    "id": "ae2lt:module_reach_extension",
+    "count": 1
+  },
+  "totalEnergy": 4000000,
+  "lightningCost": 16,
+  "lightningTier": "high_voltage"
+}

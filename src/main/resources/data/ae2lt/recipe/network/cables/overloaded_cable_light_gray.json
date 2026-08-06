@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "a": {
+      "item": "ae2lt:overloaded_cable"
+    },
+    "b": {
+      "tag": "c:dyes/light_gray"
+    }
+  },
+  "pattern": [
+    "aaa",
+    "aba",
+    "aaa"
+  ],
+  "result": {
+    "count": 8,
+    "id": "ae2lt:overloaded_cable_light_gray"
+  }
+}

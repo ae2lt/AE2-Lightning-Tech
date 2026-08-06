@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "ABC",
+    "DEF",
+    "GHI"
+  ],
+  "key": {
+    "A": { "item": "ae2lt:matter_warping_matrix_casing" },
+    "B": { "item": "ae2lt:matter_warping_matrix_constraint_frame" },
+    "C": { "item": "ae2lt:matter_warping_matrix_casing" },
+    "D": { "item": "ae2lt:matter_warping_matrix_constraint_frame" },
+    "E": { "item": "ae2:singularity" },
+    "F": { "item": "ae2lt:matter_warping_matrix_constraint_frame" },
+    "G": { "item": "ae2lt:matter_warping_matrix_casing" },
+    "H": { "item": "ae2lt:matter_warping_matrix_constraint_frame" },
+    "I": { "item": "ae2lt:matter_warping_matrix_casing" }
+  },
+  "result": {
+    "count": 1,
+    "id": "ae2lt:matter_warping_matrix_controller"
+  }
+}

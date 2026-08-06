@@ -1,0 +1,6 @@
+{
+  "order": 60,
+  "size": 1,
+  "icon": "ae2lt:slot/empty_overloaded_frequency_card",
+  "validators": ["curios:tag"]
+}

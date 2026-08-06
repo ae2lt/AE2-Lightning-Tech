@@ -1,0 +1,28 @@
+{
+  "type": "ae2lt:lightning_transform",
+  "priority": 0,
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "ae2:logic_processor_press"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "ae2:engineering_processor_press"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "ae2:calculation_processor_press"
+      },
+      "count": 1
+    }
+  ],
+  "result": {
+    "count": 1,
+    "id": "ae2lt:overload_inscriber_press"
+  }
+}

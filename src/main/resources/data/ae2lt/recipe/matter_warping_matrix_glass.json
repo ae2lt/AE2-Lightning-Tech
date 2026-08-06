@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "ABC",
+    "DEF",
+    "GHI"
+  ],
+  "key": {
+    "A": { "item": "ae2:quartz_glass" },
+    "B": { "item": "ae2:fluix_crystal" },
+    "C": { "item": "ae2:quartz_glass" },
+    "D": { "item": "ae2lt:overload_crystal" },
+    "E": { "item": "minecraft:quartz_block" },
+    "F": { "item": "ae2lt:overload_crystal" },
+    "G": { "item": "ae2:quartz_glass" },
+    "H": { "item": "ae2:fluix_crystal" },
+    "I": { "item": "ae2:quartz_glass" }
+  },
+  "result": {
+    "count": 2,
+    "id": "ae2lt:matter_warping_matrix_glass"
+  }
+}

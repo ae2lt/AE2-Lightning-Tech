@@ -1,0 +1,36 @@
+{
+    "multipart": [
+        {
+            "when": { "facing": "north", "working": false },
+            "apply": { "model": "ae2lt:block/crystal_catalyzer_off" }
+        },
+        {
+            "when": { "facing": "east", "working": false },
+            "apply": { "model": "ae2lt:block/crystal_catalyzer_off", "y": 90 }
+        },
+        {
+            "when": { "facing": "south", "working": false },
+            "apply": { "model": "ae2lt:block/crystal_catalyzer_off", "y": 180 }
+        },
+        {
+            "when": { "facing": "west", "working": false },
+            "apply": { "model": "ae2lt:block/crystal_catalyzer_off", "y": 270 }
+        },
+        {
+            "when": { "facing": "north", "working": true },
+            "apply": { "model": "ae2lt:block/crystal_catalyzer_on" }
+        },
+        {
+            "when": { "facing": "east", "working": true },
+            "apply": { "model": "ae2lt:block/crystal_catalyzer_on", "y": 90 }
+        },
+        {
+            "when": { "facing": "south", "working": true },
+            "apply": { "model": "ae2lt:block/crystal_catalyzer_on", "y": 180 }
+        },
+        {
+            "when": { "facing": "west", "working": true },
+            "apply": { "model": "ae2lt:block/crystal_catalyzer_on", "y": 270 }
+        }
+    ]
+}

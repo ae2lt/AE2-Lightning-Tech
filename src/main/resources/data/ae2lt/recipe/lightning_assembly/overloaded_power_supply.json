@@ -1,0 +1,43 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "appflux"
+    }
+  ],
+  "type": "ae2lt:lightning_assembly",
+  "priority": 0,
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "appflux:flux_accessor"
+      },
+      "count": 4
+    },
+    {
+      "ingredient": {
+        "item": "ae2:fluix_pearl"
+      },
+      "count": 256
+    },
+    {
+      "ingredient": {
+        "item": "ae2lt:overload_machine_frame"
+      },
+      "count": 2
+    },
+    {
+      "ingredient": {
+        "item": "ae2lt:overload_singularity"
+      },
+      "count": 1
+    }
+  ],
+  "result": {
+    "id": "ae2lt:overloaded_power_supply",
+    "count": 1
+  },
+  "totalEnergy": 1000000,
+  "lightningCost": 16,
+  "lightningTier": "extreme_high_voltage"
+}

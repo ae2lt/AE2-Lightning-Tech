@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "BBB",
+    "LCL",
+    "PPP"
+  ],
+  "key": {
+    "B": {
+      "item": "minecraft:stone_button"
+    },
+    "L": {
+      "item": "minecraft:lever"
+    },
+    "C": {
+      "item": "ae2lt:pigmee_storage_component"
+    },
+    "P": {
+      "item": "minecraft:stone_pressure_plate"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "ae2lt:pigmee_mentalmath_unit"
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "type": "ae2lt:overload_processing",
+  "priority": 0,
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "ae2lt:firmament_dust"
+      },
+      "count": 16
+    },
+    {
+      "ingredient": {
+        "item": "ae2:sky_dust"
+      },
+      "count": 64
+    },
+    {
+      "ingredient": {
+        "tag": "c:dusts/ender_pearl"
+      },
+      "count": 64
+    }
+  ],
+  "inputFluid": {
+    "id": "minecraft:lava",
+    "amount": 1000
+  },
+  "results": [
+    {
+      "id": "ae2lt:firmament_mixture",
+      "count": 1
+    }
+  ],
+  "totalEnergy": 100000,
+  "lightningCost": 1,
+  "lightningTier": "high_voltage"
+}

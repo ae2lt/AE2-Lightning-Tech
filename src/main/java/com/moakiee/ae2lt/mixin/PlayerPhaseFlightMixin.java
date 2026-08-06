@@ -1,0 +1,73 @@
+package com.moakiee.ae2lt.mixin;
+
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.phys.Vec3;
+
+import com.moakiee.ae2lt.celestweave.ArmorPhaseFlightRules;
+import com.moakiee.ae2lt.celestweave.PhaseFlightMovementGuard;
+import com.moakiee.ae2lt.celestweave.PhaseFlightPlayerState;
+import com.moakiee.ae2lt.celestweave.module.PhaseFlightSubmodule;
+
+@Mixin(Player.class)
+public abstract class PlayerPhaseFlightMixin implements PhaseFlightPlayerState.Access {
+    @Unique
+    private boolean ae2lt$phaseFlightControlled;
+    @Unique
+    private boolean ae2lt$phaseFlying;
+
+    @Override
+    public boolean ae2lt$isPhaseFlightControlled() {
+        return ae2lt$phaseFlightControlled;
+    }
+
+    @Override
+    public void ae2lt$setPhaseFlightControlled(boolean controlled) {
+        ae2lt$phaseFlightControlled = controlled;
+    }
+
+    @Override
+    public boolean ae2lt$isPhaseFlying() {
+        return ae2lt$phaseFlying;
+    }
+
+    @Override
+    public void ae2lt$setPhaseFlying(boolean flying) {
+        ae2lt$phaseFlying = flying;
+    }
+
+    @Inject(method = "tick", at = @At("HEAD"))
+    private void ae2lt$syncPrivatePhaseFlightAbilities(CallbackInfo ci) {
+        PhaseFlightPlayerState.syncVanillaAbilities((Player) (Object) this);
+    }
+
+    @Inject(method = "travel", at = @At("HEAD"))
+    private void ae2lt$beginPlayerAuthorizedTravel(Vec3 travelVector, CallbackInfo ci) {
+        PhaseFlightMovementGuard.beginSelfMovement((Player) (Object) this);
+    }
+
+    @Inject(method = "travel", at = @At("RETURN"))
+    private void ae2lt$endPlayerAuthorizedTravel(Vec3 travelVector, CallbackInfo ci) {
+        PhaseFlightMovementGuard.endSelfMovement((Player) (Object) this);
+    }
+
+    @Inject(
+            method = "tick",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/world/entity/player/Player;updateIsUnderwater()Z",
+                    shift = At.Shift.BEFORE))
+    private void ae2lt$applyPhaseFlightPseudoSpectator(CallbackInfo ci) {
+        Player player = (Player) (Object) this;
+        if (ArmorPhaseFlightRules.shouldApplyPseudoSpectatorState(
+                PhaseFlightSubmodule.hasTransientPhaseState(player),
+                true)) {
+            PhaseFlightSubmodule.applyTransientPhaseState(player);
+        }
+    }
+}

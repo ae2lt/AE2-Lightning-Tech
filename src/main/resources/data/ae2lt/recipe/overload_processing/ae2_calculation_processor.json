@@ -1,0 +1,33 @@
+{
+  "type": "ae2lt:overload_processing",
+  "priority": 0,
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "ae2:quartz_block"
+      },
+      "count": 9
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:redstone_block"
+      },
+      "count": 4
+    },
+    {
+      "ingredient": {
+        "tag": "c:storage_blocks/silicon"
+      },
+      "count": 4
+    }
+  ],
+  "results": [
+    {
+      "id": "ae2:calculation_processor",
+      "count": 36
+    }
+  ],
+  "totalEnergy": 400000,
+  "lightningCost": 1,
+  "lightningTier": "high_voltage"
+}

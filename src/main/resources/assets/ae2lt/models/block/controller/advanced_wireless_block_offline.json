@@ -1,0 +1,7 @@
+{
+  "parent": "block/cube_all",
+  "textures": {
+    "all": "ae2lt:block/overload_controller/advanced_wireless"
+  }
+}
+

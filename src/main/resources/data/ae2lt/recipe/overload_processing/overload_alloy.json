@@ -1,0 +1,51 @@
+{
+  "type": "ae2lt:overload_processing",
+  "priority": 0,
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "minecraft:copper_ingot"
+      },
+      "count": 9
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:iron_ingot"
+      },
+      "count": 9
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:gold_ingot"
+      },
+      "count": 9
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:amethyst_block"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:ender_eye"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:diamond"
+      },
+      "count": 3
+    }
+  ],
+  "results": [
+    {
+      "id": "ae2lt:overload_alloy",
+      "count": 27
+    }
+  ],
+  "totalEnergy": 100000,
+  "lightningCost": 1,
+  "lightningTier": "high_voltage"
+}

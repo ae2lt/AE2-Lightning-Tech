@@ -1,0 +1,28 @@
+{
+  "type": "ae2lt:lightning_transform",
+  "priority": 0,
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "ae2:fluix_crystal"
+      },
+      "count": 64
+    },
+    {
+      "ingredient": {
+        "item": "ae2:charged_certus_quartz_crystal"
+      },
+      "count": 64
+    },
+    {
+      "ingredient": {
+        "item": "ae2lt:overload_crystal"
+      },
+      "count": 64
+    }
+  ],
+  "result": {
+    "count": 1,
+    "id": "ae2lt:electro_chime_crystal"
+  }
+}

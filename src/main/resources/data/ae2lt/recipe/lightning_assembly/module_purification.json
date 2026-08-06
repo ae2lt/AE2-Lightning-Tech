@@ -1,0 +1,37 @@
+{
+  "type": "ae2lt:lightning_assembly",
+  "priority": 0,
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "ae2lt:overload_module_base"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:milk_bucket"
+      },
+      "count": 16
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:golden_apple"
+      },
+      "count": 16
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:fermented_spider_eye"
+      },
+      "count": 64
+    }
+  ],
+  "result": {
+    "id": "ae2lt:module_purification",
+    "count": 1
+  },
+  "totalEnergy": 5000000,
+  "lightningCost": 20,
+  "lightningTier": "high_voltage"
+}

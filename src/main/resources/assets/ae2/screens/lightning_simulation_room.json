@@ -1,0 +1,58 @@
+{
+  "$schema": "schema.json",
+  "includes": ["common/common.json", "common/player_inventory.json", "common/toolbox.json"],
+  "background": {
+    "texture": "ae2lt:textures/guis/lightning_simulation_room.png",
+    "srcRect": [0, 0, 176, 178]
+  },
+  "slots": {
+    "MACHINE_INPUT": {
+      "left": 39,
+      "top": 22,
+      "grid": "VERTICAL"
+    },
+    "AE2LT_LIGHTNING_SIMULATION_CATALYST": {
+      "left": 65,
+      "top": 40
+    },
+    "MACHINE_OUTPUT": {
+      "left": 119,
+      "top": 41
+    }
+  },
+  "text": {
+    "dialog_title": {
+      "text": {
+        "translate": "block.ae2lt.lightning_simulation_room"
+      },
+      "position": {
+        "left": 8,
+        "top": 6
+      }
+    }
+  },
+  "images": {
+    "energyBar": {
+      "texture": "ae2:textures/guis/inscriber.png",
+      "srcRect": [176, 0, 6, 18]
+    },
+    "processOverlay": {
+      "texture": "ae2lt:textures/guis/lightning_simulation_room.png",
+      "srcRect": [177, 64, 50, 46]
+    }
+  },
+  "widgets": {
+    "processArea": {
+      "left": 58,
+      "top": 25
+    },
+    "energyBar": {
+      "left": 141,
+      "top": 40
+    },
+    "lightningStatus": {
+      "left": 156,
+      "top": 4
+    }
+  }
+}

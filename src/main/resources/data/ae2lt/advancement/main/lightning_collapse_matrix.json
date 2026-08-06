@@ -1,0 +1,24 @@
+{
+  "parent": "ae2lt:main/ultimate_overload_core",
+  "display": {
+    "icon": { "id": "ae2lt:lightning_collapse_matrix" },
+    "title": { "translate": "advancements.ae2lt.lightning_collapse_matrix.title" },
+    "description": { "translate": "advancements.ae2lt.lightning_collapse_matrix.description" },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "get_item": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          { "items": "ae2lt:lightning_collapse_matrix" }
+        ]
+      }
+    }
+  },
+  "requirements": [ [ "get_item" ] ],
+  "sends_telemetry_event": false
+}

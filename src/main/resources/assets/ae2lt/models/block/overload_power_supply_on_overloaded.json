@@ -1,0 +1,6 @@
+{
+	"parent": "ae2lt:block/overload_power_supply_on",
+	"textures": {
+		"2": "ae2lt:block/overload_power_supply/crystal_overloaded"
+	}
+}

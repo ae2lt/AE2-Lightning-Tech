@@ -1,0 +1,157 @@
+{
+  "multipart": [
+    {
+      "apply": {
+        "model": "ae2lt:block/controller/wireless_block_offline"
+      },
+      "when": {
+        "state": "offline",
+        "type": "block"
+      }
+    },
+    {
+      "apply": {
+        "model": "ae2lt:block/controller/wireless_block_online"
+      },
+      "when": {
+        "state": "online",
+        "type": "block"
+      }
+    },
+    {
+      "apply": {
+        "model": "ae2lt:block/controller/wireless_block_conflicted"
+      },
+      "when": {
+        "state": "conflicted",
+        "type": "block"
+      }
+    },
+    {
+      "apply": {
+        "model": "ae2lt:block/controller/wireless_column_h_offline",
+        "x": 90,
+        "y": 90
+      },
+      "when": {
+        "state": "offline",
+        "type": "column_x"
+      }
+    },
+    {
+      "apply": {
+        "model": "ae2lt:block/controller/wireless_column_offline"
+      },
+      "when": {
+        "state": "offline",
+        "type": "column_y"
+      }
+    },
+    {
+      "apply": {
+        "model": "ae2lt:block/controller/wireless_column_h_offline",
+        "x": 90
+      },
+      "when": {
+        "state": "offline",
+        "type": "column_z"
+      }
+    },
+    {
+      "apply": {
+        "model": "ae2lt:block/controller/wireless_column_h_online",
+        "x": 90,
+        "y": 90
+      },
+      "when": {
+        "state": "online",
+        "type": "column_x"
+      }
+    },
+    {
+      "apply": {
+        "model": "ae2lt:block/controller/wireless_column_online"
+      },
+      "when": {
+        "state": "online",
+        "type": "column_y"
+      }
+    },
+    {
+      "apply": {
+        "model": "ae2lt:block/controller/wireless_column_h_online",
+        "x": 90
+      },
+      "when": {
+        "state": "online",
+        "type": "column_z"
+      }
+    },
+    {
+      "apply": {
+        "model": "ae2lt:block/controller/wireless_column_h_conflicted",
+        "x": 90,
+        "y": 90
+      },
+      "when": {
+        "state": "conflicted",
+        "type": "column_x"
+      }
+    },
+    {
+      "apply": {
+        "model": "ae2lt:block/controller/wireless_column_conflicted"
+      },
+      "when": {
+        "state": "conflicted",
+        "type": "column_y"
+      }
+    },
+    {
+      "apply": {
+        "model": "ae2lt:block/controller/wireless_column_h_conflicted",
+        "x": 90
+      },
+      "when": {
+        "state": "conflicted",
+        "type": "column_z"
+      }
+    },
+    {
+      "apply": {
+        "model": "ae2lt:block/controller/wireless_inside_a"
+      },
+      "when": {
+        "state": "offline|online",
+        "type": "inside_a"
+      }
+    },
+    {
+      "apply": {
+        "model": "ae2lt:block/controller/wireless_inside_b"
+      },
+      "when": {
+        "state": "offline|online",
+        "type": "inside_b"
+      }
+    },
+    {
+      "apply": {
+        "model": "ae2lt:block/controller/wireless_inside_a_conflicted"
+      },
+      "when": {
+        "state": "conflicted",
+        "type": "inside_a"
+      }
+    },
+    {
+      "apply": {
+        "model": "ae2lt:block/controller/wireless_inside_b_conflicted"
+      },
+      "when": {
+        "state": "conflicted",
+        "type": "inside_b"
+      }
+    }
+  ]
+}

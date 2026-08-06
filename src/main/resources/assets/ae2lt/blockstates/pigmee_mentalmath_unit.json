@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "ae2lt:block/pigmee_mentalmath_unit"
+    },
+    "facing=east": {
+      "model": "ae2lt:block/pigmee_mentalmath_unit",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "ae2lt:block/pigmee_mentalmath_unit",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "ae2lt:block/pigmee_mentalmath_unit",
+      "y": 270
+    }
+  }
+}

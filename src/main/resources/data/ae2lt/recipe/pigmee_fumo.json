@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "a": {
+      "item": "minecraft:pink_wool"
+    },
+    "c": {
+      "item": "ae2lt:pigmee_core"
+    }
+  },
+  "pattern": [
+    "aaa",
+    "aca",
+    "aaa"
+  ],
+  "result": {
+    "count": 1,
+    "id": "ae2lt:pigmee_fumo"
+  }
+}

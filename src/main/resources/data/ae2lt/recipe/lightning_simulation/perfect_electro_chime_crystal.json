@@ -1,0 +1,25 @@
+{
+  "type": "ae2lt:lightning_simulation",
+  "priority": 0,
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "ae2lt:electro_chime_crystal"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "ae2lt:overload_singularity"
+      },
+      "count": 1024
+    }
+  ],
+  "result": {
+    "id": "ae2lt:perfect_electro_chime_crystal",
+    "count": 1
+  },
+  "totalEnergy": 10000000,
+  "lightningCost": 512,
+  "lightningTier": "extreme_high_voltage"
+}

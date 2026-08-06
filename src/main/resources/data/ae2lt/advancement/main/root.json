@@ -1,0 +1,24 @@
+{
+  "display": {
+    "icon": { "id": "ae2lt:overload_crystal" },
+    "title": { "translate": "advancements.ae2lt.root.title" },
+    "description": { "translate": "advancements.ae2lt.root.description" },
+    "background": "ae2:textures/block/sky_stone_brick.png",
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": false
+  },
+  "criteria": {
+    "get_overload_crystal": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          { "items": "ae2lt:overload_crystal" }
+        ]
+      }
+    }
+  },
+  "requirements": [ [ "get_overload_crystal" ] ],
+  "sends_telemetry_event": false
+}

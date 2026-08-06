@@ -1,0 +1,7 @@
+{
+  "parent": "ae2lt:block/pigmee_fumo",
+  "textures": {
+    "0": "ae2lt:block/creative_pigmee_fumo",
+    "particle": "ae2lt:block/creative_pigmee_fumo"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "ABC",
+    "DEF",
+    "GHI"
+  ],
+  "key": {
+    "A": { "item": "ae2lt:tianshu_supercomputer_casing" },
+    "B": { "item": "ae2:fluix_glass_cable" },
+    "C": { "item": "ae2lt:tianshu_supercomputer_casing" },
+    "D": { "item": "ae2lt:overload_crystal_block" },
+    "E": { "item": "ae2:wireless_access_point" },
+    "F": { "item": "ae2lt:overload_crystal_block" },
+    "G": { "item": "ae2lt:tianshu_supercomputer_casing" },
+    "H": { "item": "ae2:fluix_glass_cable" },
+    "I": { "item": "ae2lt:tianshu_supercomputer_casing" }
+  },
+  "result": {
+    "id": "ae2lt:tianshu_supercomputer_port",
+    "count": 1
+  }
+}

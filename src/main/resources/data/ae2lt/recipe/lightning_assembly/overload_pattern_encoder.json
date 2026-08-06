@@ -1,0 +1,31 @@
+{
+  "type": "ae2lt:lightning_assembly",
+  "priority": 0,
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "ae2:blank_pattern"
+      },
+      "count": 64
+    },
+    {
+      "ingredient": {
+        "item": "ae2lt:overload_processor"
+      },
+      "count": 16
+    },
+    {
+      "ingredient": {
+        "item": "ae2lt:overload_alloy_plate"
+      },
+      "count": 4
+    }
+  ],
+  "result": {
+    "id": "ae2lt:overload_pattern_encoder",
+    "count": 1
+  },
+  "totalEnergy": 1000000,
+  "lightningCost": 20,
+  "lightningTier": "extreme_high_voltage"
+}

@@ -1,0 +1,39 @@
+{
+  "$schema": "schema.json",
+  "includes": ["common/common.json"],
+  "generatedBackground": {
+    "width": 176,
+    "height": 122
+  },
+  "text": {
+    "dialog_title": {
+      "text": {
+        "translate": "ae2lt.gui.provider_advanced.title"
+      },
+      "position": {
+        "left": 8,
+        "top": 6
+      }
+    }
+  },
+  "widgets": {
+    "return": {
+      "left": 152,
+      "top": -5,
+      "width": 20,
+      "height": 20
+    },
+    "wirelessStrategy": {
+      "left": 14,
+      "top": 28
+    },
+    "wirelessSpeed": {
+      "left": 14,
+      "top": 52
+    },
+    "filteredImport": {
+      "left": 14,
+      "top": 76
+    }
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "$schema": "schema.json",
+  "includes": ["common/common.json", "common/player_inventory.json"],
+  "background": {
+    "texture": "ae2lt:textures/guis/overload_power_supply.png",
+    "srcRect": [0, 0, 176, 166]
+  },
+  "slots": {
+    "AE2LT_OVERLOADED_POWER_SUPPLY_CELL": {
+      "left": 134,
+      "top": 53
+    },
+    "PLAYER_INVENTORY": {
+      "left": 8,
+      "top": 84,
+      "grid": "BREAK_AFTER_9COLS"
+    },
+    "PLAYER_HOTBAR": {
+      "left": 8,
+      "top": 142,
+      "grid": "HORIZONTAL"
+    }
+  },
+  "text": {
+    "dialog_title": {
+      "text": {
+        "translate": "block.ae2lt.overloaded_power_supply"
+      },
+      "position": {
+        "left": 8,
+        "top": 6
+      }
+    },
+    "player_inventory_title": {
+      "text": {
+        "translate": "container.inventory"
+      },
+      "position": {
+        "left": 8,
+        "top": 72
+      }
+    }
+  },
+  "widgets": {
+    "lightningStatus": {
+      "left": 156,
+      "top": 4
+    }
+  }
+}

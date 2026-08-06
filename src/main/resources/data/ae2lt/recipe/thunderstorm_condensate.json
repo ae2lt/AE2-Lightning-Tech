@@ -1,0 +1,42 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "ABC",
+    "DEF",
+    "GHI"
+  ],
+  "key": {
+    "A": {
+      "item": "ae2lt:overload_crystal"
+    },
+    "B": {
+      "item": "ae2lt:overload_alloy"
+    },
+    "C": {
+      "item": "ae2lt:overload_crystal"
+    },
+    "D": {
+      "item": "ae2lt:overload_alloy"
+    },
+    "E": {
+      "item": "minecraft:redstone_block"
+    },
+    "F": {
+      "item": "ae2lt:overload_alloy"
+    },
+    "G": {
+      "item": "ae2lt:overload_crystal"
+    },
+    "H": {
+      "item": "ae2lt:overload_alloy"
+    },
+    "I": {
+      "item": "ae2lt:overload_crystal"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "ae2lt:thunderstorm_condensate"
+  }
+}

@@ -1,0 +1,83 @@
+{
+  "$schema": "schema.json",
+  "includes": ["common/common.json", "common/player_inventory.json", "common/toolbox.json"],
+  "background": {
+    "texture": "ae2lt:textures/guis/overload_processing_factory.png",
+    "srcRect": [0, 0, 176, 178]
+  },
+  "slots": {
+    "PLAYER_INVENTORY": {
+      "left": 8,
+      "bottom": 79,
+      "grid": "BREAK_AFTER_9COLS"
+    },
+    "PLAYER_HOTBAR": {
+      "left": 8,
+      "bottom": 21,
+      "grid": "HORIZONTAL"
+    },
+    "AE2LT_OVERLOAD_FACTORY_INPUT_0": { "left": 29, "top": 24 },
+    "AE2LT_OVERLOAD_FACTORY_INPUT_1": { "left": 47, "top": 24 },
+    "AE2LT_OVERLOAD_FACTORY_INPUT_2": { "left": 65, "top": 24 },
+    "AE2LT_OVERLOAD_FACTORY_INPUT_3": { "left": 29, "top": 42 },
+    "AE2LT_OVERLOAD_FACTORY_INPUT_4": { "left": 47, "top": 42 },
+    "AE2LT_OVERLOAD_FACTORY_INPUT_5": { "left": 65, "top": 42 },
+    "AE2LT_OVERLOAD_FACTORY_INPUT_6": { "left": 29, "top": 60 },
+    "AE2LT_OVERLOAD_FACTORY_INPUT_7": { "left": 47, "top": 60 },
+    "AE2LT_OVERLOAD_FACTORY_INPUT_8": { "left": 65, "top": 60 },
+    "AE2LT_OVERLOAD_FACTORY_MATRIX": { "left": 91, "top": 60 },
+    "AE2LT_OVERLOAD_FACTORY_OUTPUT_0": { "left": 118, "top": 42 }
+  },
+  "text": {
+    "dialog_title": {
+      "text": {
+        "translate": "block.ae2lt.overload_processing_factory"
+      },
+      "position": {
+        "left": 8,
+        "top": 6
+      }
+    },
+    "player_inventory_title": {
+      "text": {
+        "translate": "container.inventory"
+      },
+      "position": {
+        "left": 8,
+        "bottom": 90
+      }
+    }
+  },
+  "images": {
+    "energyBar": {
+      "texture": "ae2lt:textures/guis/overload_processing_factory.png",
+      "srcRect": [176, 0, 6, 18]
+    },
+    "processOverlay": {
+      "texture": "ae2lt:textures/guis/overload_processing_factory.png",
+      "srcRect": [176, 18, 31, 10]
+    }
+  },
+  "widgets": {
+    "energyBar": {
+      "left": 140,
+      "top": 42
+    },
+    "inputFluidBar": {
+      "left": 9,
+      "top": 23
+    },
+    "outputFluidBar": {
+      "left": 151,
+      "top": 23
+    },
+    "processArea": {
+      "left": 84,
+      "top": 46
+    },
+    "lightningStatus": {
+      "left": 156,
+      "top": 4
+    }
+  }
+}

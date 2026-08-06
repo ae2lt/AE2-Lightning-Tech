@@ -1,0 +1,14 @@
+{
+  "type": "ae2lt:crystal_catalyzer",
+  "catalyst": {
+    "item": "minecraft:amethyst_block"
+  },
+  "catalystCount": 1,
+  "output": {
+    "id": "minecraft:amethyst_shard",
+    "count": 1
+  },
+  "energyPerCycle": 100000,
+  "lightningCost": 1,
+  "lightningTier": "high_voltage"
+}

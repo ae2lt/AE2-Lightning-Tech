@@ -1,0 +1,14 @@
+{
+  "type": "ae2lt:firmament_starship",
+  "biomes": "#ae2lt:has_firmament_starship",
+  "step": "surface_structures",
+  "spawn_overrides": {},
+  "terrain_adaptation": "none",
+  "template": "ae2lt:firmament_starship/firmament_starship",
+  "search_radius": 64,
+  "sample_step": 16,
+  "min_anchor_height": 60,
+  "horizontal_offset": 64,
+  "min_y_offset": 28,
+  "max_y_offset": 52
+}

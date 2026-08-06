@@ -1,0 +1,76 @@
+{
+  "multipart": [
+    {
+      "when": { "facing": "up", "powered": false },
+      "apply": { "model": "ae2lt:block/overload_power_supply_off" }
+    },
+    {
+      "when": { "facing": "down", "powered": false },
+      "apply": { "model": "ae2lt:block/overload_power_supply_off", "x": 180 }
+    },
+    {
+      "when": { "facing": "north", "powered": false },
+      "apply": { "model": "ae2lt:block/overload_power_supply_off", "x": 90 }
+    },
+    {
+      "when": { "facing": "east", "powered": false },
+      "apply": { "model": "ae2lt:block/overload_power_supply_off", "x": 90, "y": 90 }
+    },
+    {
+      "when": { "facing": "south", "powered": false },
+      "apply": { "model": "ae2lt:block/overload_power_supply_off", "x": 90, "y": 180 }
+    },
+    {
+      "when": { "facing": "west", "powered": false },
+      "apply": { "model": "ae2lt:block/overload_power_supply_off", "x": 90, "y": 270 }
+    },
+    {
+      "when": { "facing": "up", "overloaded": false, "powered": true },
+      "apply": { "model": "ae2lt:block/overload_power_supply_on" }
+    },
+    {
+      "when": { "facing": "down", "overloaded": false, "powered": true },
+      "apply": { "model": "ae2lt:block/overload_power_supply_on", "x": 180 }
+    },
+    {
+      "when": { "facing": "north", "overloaded": false, "powered": true },
+      "apply": { "model": "ae2lt:block/overload_power_supply_on", "x": 90 }
+    },
+    {
+      "when": { "facing": "east", "overloaded": false, "powered": true },
+      "apply": { "model": "ae2lt:block/overload_power_supply_on", "x": 90, "y": 90 }
+    },
+    {
+      "when": { "facing": "south", "overloaded": false, "powered": true },
+      "apply": { "model": "ae2lt:block/overload_power_supply_on", "x": 90, "y": 180 }
+    },
+    {
+      "when": { "facing": "west", "overloaded": false, "powered": true },
+      "apply": { "model": "ae2lt:block/overload_power_supply_on", "x": 90, "y": 270 }
+    },
+    {
+      "when": { "facing": "up", "overloaded": true, "powered": true },
+      "apply": { "model": "ae2lt:block/overload_power_supply_on_overloaded" }
+    },
+    {
+      "when": { "facing": "down", "overloaded": true, "powered": true },
+      "apply": { "model": "ae2lt:block/overload_power_supply_on_overloaded", "x": 180 }
+    },
+    {
+      "when": { "facing": "north", "overloaded": true, "powered": true },
+      "apply": { "model": "ae2lt:block/overload_power_supply_on_overloaded", "x": 90 }
+    },
+    {
+      "when": { "facing": "east", "overloaded": true, "powered": true },
+      "apply": { "model": "ae2lt:block/overload_power_supply_on_overloaded", "x": 90, "y": 90 }
+    },
+    {
+      "when": { "facing": "south", "overloaded": true, "powered": true },
+      "apply": { "model": "ae2lt:block/overload_power_supply_on_overloaded", "x": 90, "y": 180 }
+    },
+    {
+      "when": { "facing": "west", "overloaded": true, "powered": true },
+      "apply": { "model": "ae2lt:block/overload_power_supply_on_overloaded", "x": 90, "y": 270 }
+    }
+  ]
+}

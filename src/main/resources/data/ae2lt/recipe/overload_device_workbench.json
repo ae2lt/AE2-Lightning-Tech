@@ -1,0 +1,30 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "EWE",
+    "SFS",
+    "BBB"
+  ],
+  "key": {
+    "E": {
+      "item": "ae2lt:firmament_essence"
+    },
+    "W": {
+      "item": "ae2:wireless_access_point"
+    },
+    "S": {
+      "item": "ae2lt:overload_singularity"
+    },
+    "F": {
+      "item": "ae2lt:overload_machine_frame"
+    },
+    "B": {
+      "item": "ae2lt:overload_crystal_block"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "ae2lt:overload_device_workbench"
+  }
+}
