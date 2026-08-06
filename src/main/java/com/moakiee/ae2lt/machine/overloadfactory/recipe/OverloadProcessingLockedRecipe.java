@@ -5,12 +5,10 @@ import java.util.Objects;
 
 import org.jetbrains.annotations.Nullable;
 
-import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.IntArrayTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.item.crafting.RecipeHolder;
 
 import com.moakiee.ae2lt.machine.overloadfactory.OverloadProcessingFactoryInventory;
 import com.moakiee.ae2lt.me.key.LightningKey;
@@ -59,12 +57,12 @@ public final class OverloadProcessingLockedRecipe {
     }
 
     public static OverloadProcessingLockedRecipe fromCandidate(OverloadProcessingRecipeCandidate candidate) {
-        RecipeHolder<OverloadProcessingRecipe> holder = candidate.recipe();
+        OverloadProcessingRecipe recipe = candidate.recipe();
         return new OverloadProcessingLockedRecipe(
-                holder.id(),
+                recipe.getId(),
                 candidate.totalEnergy(),
                 candidate.totalLightningCost(),
-                holder.value().lightningTier(),
+                recipe.lightningTier(),
                 candidate.parallel(),
                 candidate.match().inputConsumptions());
     }
@@ -97,7 +95,7 @@ public final class OverloadProcessingLockedRecipe {
         return inputConsumptions[slot];
     }
 
-    public CompoundTag toTag(HolderLookup.Provider registries) {
+    public CompoundTag toTag() {
         CompoundTag tag = new CompoundTag();
         tag.putString(TAG_RECIPE_ID, recipeId.toString());
         tag.putLong(TAG_TOTAL_ENERGY, totalEnergy);
@@ -109,7 +107,7 @@ public final class OverloadProcessingLockedRecipe {
     }
 
     @Nullable
-    public static OverloadProcessingLockedRecipe fromTag(CompoundTag tag, HolderLookup.Provider registries) {
+    public static OverloadProcessingLockedRecipe fromTag(CompoundTag tag) {
         if (!tag.contains(TAG_RECIPE_ID, Tag.TAG_STRING)) {
             return null;
         }
@@ -129,7 +127,7 @@ public final class OverloadProcessingLockedRecipe {
                 ? LightningKey.Tier.fromSerializedName(tag.getString(TAG_LIGHTNING_TIER))
                 : OverloadProcessingRecipe.DEFAULT_LIGHTNING_TIER;
         return new OverloadProcessingLockedRecipe(
-                ResourceLocation.parse(tag.getString(TAG_RECIPE_ID)),
+                new ResourceLocation(tag.getString(TAG_RECIPE_ID)),
                 totalEnergy,
                 totalLightningCost,
                 lightningTier,

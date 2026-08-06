@@ -15,7 +15,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 
-public class WeatherCondensateItem extends Item {
+public class WeatherCondensateItem extends AE2LTItem {
     private final Type type;
 
     public WeatherCondensateItem(Type type, Properties properties) {
@@ -150,3 +150,4 @@ public class WeatherCondensateItem extends Item {
         }
     }
 }
+

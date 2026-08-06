@@ -14,16 +14,14 @@ import appeng.api.networking.IGridNodeListener;
 import appeng.api.networking.security.IActionHost;
 import appeng.api.orientation.BlockOrientation;
 import appeng.api.util.AECableType;
-import appeng.blockentity.grid.AENetworkedBlockEntity;
+import appeng.blockentity.grid.AENetworkBlockEntity;
 import appeng.menu.MenuOpener;
-import appeng.menu.locator.MenuHostLocator;
+import appeng.menu.locator.MenuLocator;
 
 import com.moakiee.ae2lt.grid.FrequencyBindingHelper;
 import com.moakiee.ae2lt.grid.FrequencyBindingHost;
 import com.moakiee.ae2lt.item.WeatherCondensateItem;
 import com.moakiee.ae2lt.logic.WeatherControlHelper;
-import com.moakiee.ae2lt.logic.energy.PowerCostUtil;
-import com.moakiee.ae2lt.logic.research.ResearchRitualService;
 import com.moakiee.ae2lt.machine.atmosphericionizer.AtmosphericIonizerInventory;
 import com.moakiee.ae2lt.machine.atmosphericionizer.AtmosphericIonizerLogic;
 import com.moakiee.ae2lt.machine.atmosphericionizer.AtmosphericIonizerStatus;
@@ -35,7 +33,6 @@ import com.moakiee.ae2lt.block.AtmosphericIonizerBlock;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.EntityType;
@@ -47,9 +44,9 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.neoforge.items.IItemHandlerModifiable;
+import net.minecraftforge.items.IItemHandlerModifiable;
 
-public class AtmosphericIonizerBlockEntity extends AENetworkedBlockEntity
+public class AtmosphericIonizerBlockEntity extends AENetworkBlockEntity
         implements IActionHost, FrequencyBindingHost {
     private static final Logger LOG = LogUtils.getLogger();
     public static final int PROCESS_TICKS = 100;
@@ -92,7 +89,7 @@ public class AtmosphericIonizerBlockEntity extends AENetworkedBlockEntity
     }
 
     @Override
-    public AENetworkedBlockEntity getFrequencyBindingBlockEntity() {
+    public AENetworkBlockEntity getFrequencyBindingBlockEntity() {
         return this;
     }
 
@@ -192,7 +189,7 @@ public class AtmosphericIonizerBlockEntity extends AENetworkedBlockEntity
 
         lockedType = selectedType;
         saveChanges();
-        markForClientUpdate();
+        markForUpdate();
         logic.onStateChanged();
         return true;
     }
@@ -205,7 +202,7 @@ public class AtmosphericIonizerBlockEntity extends AENetworkedBlockEntity
         consumedEnergy = Math.min(lockedType.totalEnergy(), consumedEnergy + amount);
         processingTicksSpent = Math.min(PROCESS_TICKS, processingTicksSpent + 1);
         saveChanges();
-        markForClientUpdate();
+        markForUpdate();
     }
 
     public AtmosphericIonizerStatus getStatus() {
@@ -275,12 +272,12 @@ public class AtmosphericIonizerBlockEntity extends AENetworkedBlockEntity
         processingTicksSpent = 0;
         setWorking(false);
         saveChanges();
-        markForClientUpdate();
+        markForUpdate();
         logic.onStateChanged();
         return true;
     }
 
-    public void openMenu(Player player, MenuHostLocator locator) {
+    public void openMenu(Player player, MenuLocator locator) {
         MenuOpener.open(AtmosphericIonizerMenu.TYPE, player, locator);
     }
 
@@ -304,14 +301,12 @@ public class AtmosphericIonizerBlockEntity extends AENetworkedBlockEntity
         boolean changed = this.working != working;
         this.working = working;
         if (level != null) {
-            BlockState state = level.getBlockState(worldPosition);
-            if (state.is(ModBlocks.ATMOSPHERIC_IONIZER.get())
-                    && level.getBlockEntity(worldPosition) == this
-                    && state.hasProperty(AtmosphericIonizerBlock.WORKING)
+            BlockState state = getBlockState();
+            if (state.hasProperty(AtmosphericIonizerBlock.WORKING)
                     && state.getValue(AtmosphericIonizerBlock.WORKING) != working) {
                 level.setBlock(worldPosition, state.setValue(AtmosphericIonizerBlock.WORKING, working), Block.UPDATE_ALL);
             } else if (changed) {
-                markForClientUpdate();
+                markForUpdate();
             }
         }
     }
@@ -357,16 +352,15 @@ public class AtmosphericIonizerBlockEntity extends AENetworkedBlockEntity
         BlockPos strikePos = worldPosition.above(RITUAL_STRIKE_HEIGHT_OFFSET);
         bolt.moveTo(Vec3.atBottomCenterOf(strikePos));
         bolt.setVisualOnly(false);
-        ResearchRitualService.markRitualLightning(bolt, worldPosition);
         serverLevel.addFreshEntity(bolt);
         LOG.info("[ae2lt/ionizer] thunderstorm nucleation -> spawn lightning at {} (ionizer={})", strikePos,
                 worldPosition);
     }
 
     @Override
-    public void saveAdditional(CompoundTag data, HolderLookup.Provider registries) {
-        super.saveAdditional(data, registries);
-        inventory.saveToTag(data, TAG_INVENTORY, registries);
+    public void saveAdditional(CompoundTag data) {
+        super.saveAdditional(data);
+        inventory.saveToTag(data, TAG_INVENTORY);
         data.putLong(TAG_CONSUMED_ENERGY, consumedEnergy);
         data.putInt(TAG_PROCESSING_TICKS, processingTicksSpent);
         if (lockedType != null) {
@@ -378,9 +372,9 @@ public class AtmosphericIonizerBlockEntity extends AENetworkedBlockEntity
     }
 
     @Override
-    public void loadTag(CompoundTag data, HolderLookup.Provider registries) {
-        super.loadTag(data, registries);
-        inventory.loadFromTag(data, TAG_INVENTORY, registries);
+    public void loadTag(CompoundTag data) {
+        super.loadTag(data);
+        inventory.loadFromTag(data, TAG_INVENTORY);
         lockedType = data.contains(TAG_LOCKED_TYPE)
                 ? WeatherCondensateItem.Type.fromName(data.getString(TAG_LOCKED_TYPE))
                 : null;
@@ -415,15 +409,15 @@ public class AtmosphericIonizerBlockEntity extends AENetworkedBlockEntity
 
     @Override
     public void exportSettings(appeng.util.SettingsFrom mode,
-                               net.minecraft.core.component.DataComponentMap.Builder builder,
+                               net.minecraft.nbt.CompoundTag output,
                                @org.jetbrains.annotations.Nullable Player player) {
-        super.exportSettings(mode, builder, player);
-        FrequencyBindingHelper.exportMemorySettings(mode, builder, getFrequencyId());
+        super.exportSettings(mode, output, player);
+        FrequencyBindingHelper.exportMemorySettings(mode, output, getFrequencyId());
     }
 
     @Override
     public void importSettings(appeng.util.SettingsFrom mode,
-                               net.minecraft.core.component.DataComponentMap input,
+                               net.minecraft.nbt.CompoundTag input,
                                @org.jetbrains.annotations.Nullable Player player) {
         super.importSettings(mode, input, player);
         FrequencyBindingHelper.importMemorySettings(mode, input, this::setFrequency);
@@ -444,11 +438,6 @@ public class AtmosphericIonizerBlockEntity extends AENetworkedBlockEntity
         return EnumSet.of(Direction.DOWN);
     }
 
-    @Override
-    public AECableType getCableConnectionType(Direction dir) {
-        return AECableType.SMART;
-    }
-
     private boolean isWeatherAlreadyActive(WeatherCondensateItem.Type type) {
         return level instanceof ServerLevel serverLevel && type.isActive(serverLevel);
     }
@@ -465,7 +454,7 @@ public class AtmosphericIonizerBlockEntity extends AENetworkedBlockEntity
 
     private void onInventoryChanged() {
         saveChanges();
-        markForClientUpdate();
+        markForUpdate();
         logic.onStateChanged();
     }
 
@@ -479,16 +468,12 @@ public class AtmosphericIonizerBlockEntity extends AENetworkedBlockEntity
             return false;
         }
 
-        if (mode == Actionable.SIMULATE) {
-            // Require an idle-drain reserve on top so the later MODULATE
-            // draw can never starve the grid into a power-down reboot.
-            double total = amount + PowerCostUtil.idleReserve(grid);
-            double available = grid.getEnergyService().extractAEPower(total, mode, PowerMultiplier.CONFIG);
-            return available >= total - POWER_EPSILON;
-        }
-
         double extracted = grid.getEnergyService().extractAEPower(amount, mode, PowerMultiplier.CONFIG);
         return extracted >= amount - POWER_EPSILON;
+    }
+    @Override
+    public AECableType getCableConnectionType(Direction dir) {
+        return AECableType.SMART;
     }
 }
 

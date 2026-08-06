@@ -8,7 +8,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 
-public class PerfectElectroChimeCrystalItem extends Item {
+public class PerfectElectroChimeCrystalItem extends AE2LTItem {
     public PerfectElectroChimeCrystalItem(Properties properties) {
         super(properties.stacksTo(1));
     }
@@ -28,3 +28,4 @@ public class PerfectElectroChimeCrystalItem extends Item {
                 "item.ae2lt.perfect_electro_chime_crystal.complete").withStyle(ChatFormatting.AQUA));
     }
 }
+

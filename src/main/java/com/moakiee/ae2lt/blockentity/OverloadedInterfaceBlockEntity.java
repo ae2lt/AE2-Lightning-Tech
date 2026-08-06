@@ -37,11 +37,10 @@ import com.moakiee.ae2lt.registry.ModBlockEntities;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
-import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
@@ -66,14 +65,15 @@ import appeng.api.storage.MEStorage;
 import appeng.api.storage.cells.ICellWorkbenchItem;
 import appeng.api.util.AECableType;
 import appeng.blockentity.misc.InterfaceBlockEntity;
-import appeng.blockentity.grid.AENetworkedBlockEntity;
+import appeng.blockentity.grid.AENetworkBlockEntity;
 import appeng.core.definitions.AEItems;
 import appeng.helpers.InterfaceLogic;
 import appeng.util.inv.AppEngInternalInventory;
+import appeng.api.inventories.InternalInventory;
 import appeng.util.inv.InternalInventoryHost;
 
 import appeng.menu.MenuOpener;
-import appeng.menu.locator.MenuHostLocator;
+import appeng.menu.locator.MenuLocator;
 import appeng.parts.automation.StackWorldBehaviors;
 
 public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
@@ -178,7 +178,7 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         public static WirelessConnection fromTag(CompoundTag tag) {
             var dim = ResourceKey.create(
                     net.minecraft.core.registries.Registries.DIMENSION,
-                    ResourceLocation.parse(tag.getString(TAG_DIM)));
+                    new ResourceLocation(tag.getString(TAG_DIM)));
             return new WirelessConnection(
                     dim, BlockPos.of(tag.getLong(TAG_POS)),
                     Direction.from3DDataValue(tag.getInt(TAG_FACE)));
@@ -261,7 +261,7 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
             }
             if (model.rateEMA > 0) {
                 long predicted = (long) Math.ceil(deficit / model.rateEMA);
-                return (int) Math.clamp(predicted, NORMAL_CD_MIN, NORMAL_CD_MAX);
+                return (int) Math.max(NORMAL_CD_MIN, Math.min(NORMAL_CD_MAX, predicted));
             }
             return NORMAL_CD_MAX;
         }
@@ -345,7 +345,7 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
                 }
             }
             if (maxObserved > 0) {
-                effectiveMax = Math.clamp(effectiveMax, maxObserved / 4, maxObserved);
+                effectiveMax = Math.max(maxObserved / 4, Math.min(maxObserved, effectiveMax));
             }
             lastAvail = totalAvail;
             lastTick = now;
@@ -468,7 +468,7 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         /**
          * Resolve cached storage wrappers (MEStorage facades from ExternalStorageStrategy).
          * Supports both insert (export) and extract (import) on the same wrappers.
-         * Strategy objects are stable (they hold internal BlockCapabilityCache);
+         * Strategy objects are stable (they own AE2's external-storage lookup state);
          * wrappers are rebuilt every {@link #WRAPPER_REFRESH_TICKS}.
          */
         @Nullable
@@ -582,12 +582,13 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
     private final IActionSource machineSource = IActionSource.ofMachine(this);
     private final InternalInventoryHost filterInvHost = new InternalInventoryHost() {
         @Override
-        public void saveChangedInventory(AppEngInternalInventory inv) {
-            saveChanges(); markForUpdate();
+        public void saveChanges() {
+            OverloadedInterfaceBlockEntity.this.saveChanges();
+            markForUpdate();
         }
 
         @Override
-        public void onChangeInventory(AppEngInternalInventory inv, int slot) {
+        public void onChangeInventory(InternalInventory inv, int slot) {
             rebuildFilter();
         }
 
@@ -634,7 +635,7 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
     }
 
     @Override
-    public AENetworkedBlockEntity getFrequencyBindingBlockEntity() {
+    public AENetworkBlockEntity getFrequencyBindingBlockEntity() {
         return this;
     }
 
@@ -677,7 +678,7 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
     }
 
     @Override
-    public void openMenu(Player player, MenuHostLocator locator) {
+    public void openMenu(Player player, MenuLocator locator) {
         if (level instanceof ServerLevel) {
             clearInvalidConnections();
         }
@@ -1849,7 +1850,8 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
                 new EjectModeRegistry.EjectEntry(
                         new java.lang.ref.WeakReference<>(this), ghost,
                         level.dimension(), getBlockPos()));
-        if (tl instanceof ServerLevel s) s.invalidateCapabilities(ip);
+        // Forge 1.20.1 capability lookups resolve through the live BlockEntity,
+        // so there is no position-scoped invalidate hook to poke here.
     }
 
     private void unregisterEject() {
@@ -1859,7 +1861,9 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
             var srv = sl.getServer();
             for (var dp : removed) {
                 var t = srv.getLevel(dp.dimension());
-                if (t!=null) t.invalidateCapabilities(dp.pos());
+                if (t != null) {
+                    // No explicit Forge-side invalidation hook needed here.
+                }
             }
         }
     }
@@ -1895,7 +1899,7 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
     // ══════════════════════════════════════════════════════════════════════
 
     @Override
-    protected void writeToStream(RegistryFriendlyByteBuf data) {
+    protected void writeToStream(FriendlyByteBuf data) {
         super.writeToStream(data);
         data.writeByte(interfaceMode.ordinal());
         data.writeByte(ioSpeedMode.ordinal());
@@ -1920,7 +1924,7 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
     }
 
     @Override
-    protected boolean readFromStream(RegistryFriendlyByteBuf data) {
+    protected boolean readFromStream(FriendlyByteBuf data) {
         boolean changed = super.readFromStream(data);
 
         int interfaceOrd = data.readByte();
@@ -2002,8 +2006,8 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
     }
 
     @Override
-    public void saveAdditional(CompoundTag d, HolderLookup.Provider r) {
-        super.saveAdditional(d, r);
+    public void saveAdditional(CompoundTag d) {
+        super.saveAdditional(d);
         d.putString(TAG_INTERFACE_MODE, interfaceMode.name());
         d.putString(TAG_IO_SPEED_MODE, ioSpeedMode.name());
         d.putString(TAG_EXPORT_MODE, exportMode.name());
@@ -2013,11 +2017,11 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         for (int i = 0; i < SLOT_COUNT; i++) if (unlimitedSlots[i]) bits |= (1L << i);
         d.putLong(TAG_UNLIMITED_SLOTS, bits);
         d.put(TAG_CONNECTIONS, WirelessConnectionLists.writeTagList(connections));
-        filterInv.writeToNBT(d, TAG_FILTER_INV, r);
+        filterInv.writeToNBT(d, TAG_FILTER_INV);
         if (!importBuffer.isEmpty()) {
             var buffered = new ListTag();
             for (var entry : importBuffer.entrySet()) {
-                buffered.add(GenericStack.writeTag(r, new GenericStack(entry.getKey(), entry.getValue())));
+                buffered.add(GenericStack.writeTag(new GenericStack(entry.getKey(), entry.getValue())));
             }
             d.put(TAG_IMPORT_BUFFER, buffered);
         }
@@ -2026,8 +2030,8 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
     }
 
     @Override
-    public void loadTag(CompoundTag d, HolderLookup.Provider r) {
-        super.loadTag(d, r);
+    public void loadTag(CompoundTag d) {
+        super.loadTag(d);
         if (d.contains(TAG_INTERFACE_MODE)) {
             try { interfaceMode = InterfaceMode.valueOf(d.getString(TAG_INTERFACE_MODE)); }
             catch (IllegalArgumentException e) { interfaceMode = InterfaceMode.NORMAL; }
@@ -2051,13 +2055,13 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         WirelessConnectionLists.readTagList(
                 d, TAG_CONNECTIONS, connections, MAX_WIRELESS_CONNECTIONS, WirelessConnection::fromTag);
         invalidConnectionScanCursor = 0;
-        filterInv.readFromNBT(d, TAG_FILTER_INV, r);
+        filterInv.readFromNBT(d, TAG_FILTER_INV);
         rebuildFilter();
         importBuffer.clear();
         if (d.contains(TAG_IMPORT_BUFFER, Tag.TAG_LIST)) {
             var buffered = d.getList(TAG_IMPORT_BUFFER, Tag.TAG_COMPOUND);
             for (int i = 0; i < buffered.size(); i++) {
-                var stack = GenericStack.readTag(r, buffered.getCompound(i));
+                var stack = GenericStack.readTag(buffered.getCompound(i));
                 if (stack != null && stack.amount() > 0) {
                     importBuffer.merge(stack.what(), stack.amount(), (oldAmount, added) ->
                             oldAmount > Long.MAX_VALUE - added ? Long.MAX_VALUE : oldAmount + added);
@@ -2081,10 +2085,10 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
 
     @Override
     public void exportSettings(appeng.util.SettingsFrom mode,
-                               net.minecraft.core.component.DataComponentMap.Builder builder,
+                               net.minecraft.nbt.CompoundTag output,
                                @Nullable Player player) {
-        super.exportSettings(mode, builder, player);
-        com.moakiee.ae2lt.logic.MemoryCardConfigSupport.exportMemoryCardSettings(mode, builder, tag -> {
+        super.exportSettings(mode, output, player);
+        com.moakiee.ae2lt.logic.MemoryCardConfigSupport.exportMemoryCardSettings(mode, output, tag -> {
             com.moakiee.ae2lt.logic.MemoryCardConfigSupport.writeEnum(tag, TAG_INTERFACE_MODE, interfaceMode);
             com.moakiee.ae2lt.logic.MemoryCardConfigSupport.writeEnum(tag, TAG_IO_SPEED_MODE, ioSpeedMode);
             com.moakiee.ae2lt.logic.MemoryCardConfigSupport.writeEnum(tag, TAG_EXPORT_MODE, exportMode);
@@ -2101,7 +2105,7 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
 
     @Override
     public void importSettings(appeng.util.SettingsFrom mode,
-                               net.minecraft.core.component.DataComponentMap input,
+                               net.minecraft.nbt.CompoundTag input,
                                @Nullable Player player) {
         super.importSettings(mode, input, player);
         com.moakiee.ae2lt.logic.MemoryCardConfigSupport.importMemoryCardSettings(mode, input, tag -> {

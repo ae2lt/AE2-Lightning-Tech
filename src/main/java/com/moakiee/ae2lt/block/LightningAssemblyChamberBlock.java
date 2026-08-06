@@ -15,10 +15,10 @@ import net.minecraft.world.phys.BlockHitResult;
 
 import appeng.api.orientation.IOrientationStrategy;
 import appeng.api.orientation.OrientationStrategies;
-import appeng.block.AEBaseEntityBlock;
 import appeng.menu.locator.MenuLocators;
+import appeng.util.InteractionUtil;
 
-public class LightningAssemblyChamberBlock extends AEBaseEntityBlock<LightningAssemblyChamberBlockEntity> {
+public class LightningAssemblyChamberBlock extends AE2LTBaseEntityBlock<LightningAssemblyChamberBlockEntity> {
     public static final BooleanProperty WORKING = BooleanProperty.create("working");
     public static final BooleanProperty POWERED = BooleanProperty.create("powered");
 
@@ -59,6 +59,10 @@ public class LightningAssemblyChamberBlock extends AEBaseEntityBlock<LightningAs
     @Override
     protected InteractionResult useWithoutItem(
             BlockState state, Level level, net.minecraft.core.BlockPos pos, Player player, BlockHitResult hitResult) {
+        if (InteractionUtil.isInAlternateUseMode(player)) {
+            return InteractionResult.PASS;
+        }
+
         var be = getBlockEntity(level, pos);
         if (be == null) {
             return InteractionResult.PASS;
@@ -71,3 +75,4 @@ public class LightningAssemblyChamberBlock extends AEBaseEntityBlock<LightningAs
         return InteractionResult.sidedSuccess(level.isClientSide());
     }
 }
+

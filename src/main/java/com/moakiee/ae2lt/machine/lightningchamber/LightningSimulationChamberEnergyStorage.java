@@ -2,13 +2,13 @@ package com.moakiee.ae2lt.machine.lightningchamber;
 
 import java.util.Objects;
 
-import net.neoforged.neoforge.energy.IEnergyStorage;
+import net.minecraftforge.energy.IEnergyStorage;
 
 /**
  * FE buffer for the lightning simulation chamber.
  *
  * <p>The machine consumes FE through AE grid ticks only, but the actual energy
- * source remains NeoForge FE.</p>
+ * source remains Forge Energy.</p>
  */
 public final class LightningSimulationChamberEnergyStorage implements IEnergyStorage {
     private final long capacity;
@@ -111,3 +111,4 @@ public final class LightningSimulationChamberEnergyStorage implements IEnergySto
         return true;
     }
 }
+

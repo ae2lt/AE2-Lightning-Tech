@@ -2,7 +2,7 @@ package com.moakiee.ae2lt.machine.common;
 
 import java.util.Optional;
 
-import net.neoforged.neoforge.energy.IEnergyStorage;
+import net.minecraftforge.energy.IEnergyStorage;
 
 public interface GridRecipeMachineHost<L, C> {
     boolean hasLockedRecipe();
@@ -35,3 +35,4 @@ public interface GridRecipeMachineHost<L, C> {
 
     void onEnergyConsumed(int consumed);
 }
+

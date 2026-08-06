@@ -33,23 +33,23 @@ import appeng.api.orientation.BlockOrientation;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.KeyCounter;
 import appeng.api.util.AECableType;
-import appeng.blockentity.grid.AENetworkedBlockEntity;
+import appeng.blockentity.grid.AENetworkBlockEntity;
 import appeng.me.helpers.MachineSource;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.core.RegistryAccess;
 
 /**
  * AE network link for a Tianshu controller. Runtime state and functional services belong to the
  * controller; this block entity only exposes them to the grid and keeps link/migration metadata.
  */
-public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
+public class TianshuSupercomputerPortBlockEntity extends AENetworkBlockEntity
         implements TimeWheelCraftingCpuPoolProvider, ICraftingProvider, ICraftingRequester {
     private static final double LINK_IDLE_POWER = 8.0D;
     private static final String TAG_CONTROLLER_POS = "ControllerPos";
@@ -358,8 +358,8 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
     }
 
     @Override
-    public void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
-        super.saveAdditional(tag, registries);
+    public void saveAdditional(CompoundTag tag) {
+        super.saveAdditional(tag);
         if (controllerPos != null) tag.putLong(TAG_CONTROLLER_POS, controllerPos.asLong());
         tag.putBoolean(TAG_FORMED, formed);
         if (legacyTianshuId != null) tag.putUUID(TAG_TIANSHU_ID, legacyTianshuId);
@@ -378,7 +378,7 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
     }
 
     @Override
-    public void loadTag(CompoundTag tag, HolderLookup.Provider registries) {
+    public void loadTag(CompoundTag tag, RegistryAccess registries) {
         super.loadTag(tag, registries);
         controllerPos = tag.contains(TAG_CONTROLLER_POS, Tag.TAG_LONG)
                 ? BlockPos.of(tag.getLong(TAG_CONTROLLER_POS)) : null;
@@ -435,3 +435,4 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
         }
     }
 }
+

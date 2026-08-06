@@ -1,9 +1,9 @@
 package com.moakiee.ae2lt.machine.crystalcatalyzer.recipe;
 
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.crafting.RecipeInput;
 
 import com.moakiee.ae2lt.machine.crystalcatalyzer.CrystalCatalyzerInventory;
+import com.moakiee.ae2lt.recipe.RecipeContainerInput;
 
 /**
  * Snapshot of the machine state that's fed into {@link CrystalCatalyzerRecipe#matches}.
@@ -12,7 +12,7 @@ import com.moakiee.ae2lt.machine.crystalcatalyzer.CrystalCatalyzerInventory;
  * part of the recipe; the machine drains a fixed water cost per cycle independent
  * of the selected recipe.</p>
  */
-public final class CrystalCatalyzerRecipeInput implements RecipeInput {
+public final class CrystalCatalyzerRecipeInput extends RecipeContainerInput {
     private final ItemStack catalyst;
 
     public CrystalCatalyzerRecipeInput(ItemStack catalyst) {
@@ -26,6 +26,11 @@ public final class CrystalCatalyzerRecipeInput implements RecipeInput {
 
     public ItemStack catalyst() {
         return catalyst;
+    }
+
+    @Override
+    public boolean isEmpty() {
+        return catalyst.isEmpty();
     }
 
     @Override

@@ -5,7 +5,6 @@ import java.util.List;
 import org.jetbrains.annotations.Nullable;
 
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
@@ -20,6 +19,7 @@ import appeng.me.GridConnection;
 
 import com.moakiee.thunderbolt.ae2.channel.WirelessConnectionCapProvider;
 import com.moakiee.ae2lt.grid.FrequencyBindingHelper;
+import com.moakiee.thunderbolt.ae2.channel.OverloadedChannelOwnerHelper;
 import com.moakiee.ae2lt.grid.WirelessFrequencyManager;
 import com.moakiee.ae2lt.registry.ModBlockEntities;
 import com.moakiee.ae2lt.registry.ModBlocks;
@@ -93,7 +93,7 @@ public class WirelessOverloadedControllerBlockEntity extends OverloadedControlle
     public int getGridUsedChannels() {
         var grid = getMainNode().getGrid();
         if (grid == null) return 0;
-        return com.moakiee.thunderbolt.ae2.channel.OverloadedChannelOwnerHelper.countUsedChannels(grid);
+        return OverloadedChannelOwnerHelper.countUsedChannels(grid);
     }
 
     /**
@@ -282,28 +282,28 @@ public class WirelessOverloadedControllerBlockEntity extends OverloadedControlle
     // ── Persistence ──
 
     @Override
-    public void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
-        super.saveAdditional(tag, registries);
+    public void saveAdditional(CompoundTag tag) {
+        super.saveAdditional(tag);
         tag.putInt("FrequencyId", frequencyId);
     }
 
     @Override
-    public void loadTag(CompoundTag tag, HolderLookup.Provider registries) {
-        super.loadTag(tag, registries);
+    public void loadTag(CompoundTag tag) {
+        super.loadTag(tag);
         frequencyId = tag.contains("FrequencyId") ? tag.getInt("FrequencyId") : -1;
     }
 
     @Override
     public void exportSettings(appeng.util.SettingsFrom mode,
-                               net.minecraft.core.component.DataComponentMap.Builder builder,
+                               net.minecraft.nbt.CompoundTag output,
                                @Nullable net.minecraft.world.entity.player.Player player) {
-        super.exportSettings(mode, builder, player);
-        FrequencyBindingHelper.exportMemorySettings(mode, builder, frequencyId);
+        super.exportSettings(mode, output, player);
+        FrequencyBindingHelper.exportMemorySettings(mode, output, frequencyId);
     }
 
     @Override
     public void importSettings(appeng.util.SettingsFrom mode,
-                               net.minecraft.core.component.DataComponentMap input,
+                               net.minecraft.nbt.CompoundTag input,
                                @Nullable net.minecraft.world.entity.player.Player player) {
         super.importSettings(mode, input, player);
         // setFrequency guards against duplicates on transmitters and reverts on conflict,

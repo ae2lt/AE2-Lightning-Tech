@@ -2,8 +2,8 @@ package com.moakiee.ae2lt.machine.overloadfactory;
 
 import java.util.Objects;
 
-import net.neoforged.neoforge.fluids.FluidStack;
-import net.neoforged.neoforge.fluids.capability.IFluidHandler;
+import net.minecraftforge.fluids.FluidStack;
+import net.minecraftforge.fluids.capability.IFluidHandler;
 
 public final class OverloadProcessingFactoryFluidHandler implements IFluidHandler {
     private final NotifyingFluidTank inputTank;
@@ -57,3 +57,4 @@ public final class OverloadProcessingFactoryFluidHandler implements IFluidHandle
         return outputTank.drain(maxDrain, action);
     }
 }
+

@@ -1,76 +1,36 @@
 package com.moakiee.ae2lt.machine.overloadfactory.recipe;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-
-import com.mojang.serialization.Codec;
-import com.mojang.serialization.DataResult;
-import com.mojang.serialization.MapCodec;
-import com.mojang.serialization.codecs.RecordCodecBuilder;
-
-import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
-import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.network.codec.ByteBufCodecs;
-import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.core.RegistryAccess;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.GsonHelper;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.Level;
-import net.neoforged.neoforge.fluids.FluidStack;
+import net.minecraftforge.fluids.FluidStack;
 
+import com.moakiee.ae2lt.logic.FluidStackHelper;
 import com.moakiee.ae2lt.machine.overloadfactory.OverloadProcessingFactoryInventory;
 import com.moakiee.ae2lt.me.key.LightningKey;
 import com.moakiee.ae2lt.registry.ModRecipeTypes;
+import com.moakiee.ae2lt.util.RecipeSerializationHelper;
 
 public final class OverloadProcessingRecipe implements Recipe<OverloadProcessingRecipeInput> {
     public static final long MIN_TOTAL_ENERGY = 5L;
     public static final int DEFAULT_LIGHTNING_COST = 4;
     public static final LightningKey.Tier DEFAULT_LIGHTNING_TIER = LightningKey.Tier.HIGH_VOLTAGE;
-
-    private static final Codec<List<OverloadProcessingIngredient>> INPUTS_CODEC =
-            OverloadProcessingIngredient.CODEC.codec()
-                    .listOf()
-                    .validate(inputs -> inputs.size() > OverloadProcessingFactoryInventory.INPUT_SLOT_COUNT
-                            ? DataResult.error(() -> "overload processing supports at most 9 item inputs")
-                            : DataResult.success(List.copyOf(inputs)));
-
-    private static final Codec<List<ItemStack>> OUTPUTS_CODEC = ItemStack.STRICT_CODEC.listOf().validate(outputs -> {
-        if (outputs.size() > OverloadProcessingFactoryInventory.OUTPUT_SLOT_COUNT) {
-            return DataResult.error(() -> "overload processing supports at most 1 item output");
-        }
-        if (outputs.stream().anyMatch(ItemStack::isEmpty)) {
-            return DataResult.error(() -> "item results cannot contain empty stacks");
-        }
-        return DataResult.success(List.copyOf(outputs));
-    });
-
-    private static final Codec<Long> POSITIVE_ENERGY_CODEC = Codec.LONG.validate(totalEnergy -> {
-        if (totalEnergy < MIN_TOTAL_ENERGY) {
-            return DataResult.error(() -> "totalEnergy must be at least " + MIN_TOTAL_ENERGY);
-        }
-        return DataResult.success(totalEnergy);
-    });
-
-    private static final Codec<Integer> POSITIVE_LIGHTNING_COST_CODEC = Codec.INT.validate(lightningCost -> {
-        if (lightningCost <= 0) {
-            return DataResult.error(() -> "lightningCost must be positive");
-        }
-        return DataResult.success(lightningCost);
-    });
-
-    private static final StreamCodec<RegistryFriendlyByteBuf, List<OverloadProcessingIngredient>> INPUTS_STREAM_CODEC =
-            OverloadProcessingIngredient.STREAM_CODEC.apply(ByteBufCodecs.list());
-    private static final StreamCodec<RegistryFriendlyByteBuf, List<ItemStack>> OUTPUTS_STREAM_CODEC =
-            ItemStack.STREAM_CODEC.apply(ByteBufCodecs.list());
-    private static final StreamCodec<RegistryFriendlyByteBuf, LightningKey.Tier> TIER_STREAM_CODEC =
-            StreamCodec.of((buffer, tier) -> buffer.writeEnum(tier), buffer -> buffer.readEnum(LightningKey.Tier.class));
-
+    private final ResourceLocation id;
     private final int priority;
     private final List<OverloadProcessingIngredient> itemInputs;
     private final FluidStack fluidInput;
@@ -82,6 +42,7 @@ public final class OverloadProcessingRecipe implements Recipe<OverloadProcessing
     private final int totalInputCount;
 
     public OverloadProcessingRecipe(
+            ResourceLocation id,
             int priority,
             List<OverloadProcessingIngredient> itemInputs,
             FluidStack fluidInput,
@@ -90,6 +51,7 @@ public final class OverloadProcessingRecipe implements Recipe<OverloadProcessing
             long totalEnergy,
             int lightningCost,
             LightningKey.Tier lightningTier) {
+        this.id = Objects.requireNonNull(id, "id");
         Objects.requireNonNull(itemInputs, "itemInputs");
         Objects.requireNonNull(fluidInput, "fluidInput");
         Objects.requireNonNull(itemResults, "itemResults");
@@ -162,6 +124,11 @@ public final class OverloadProcessingRecipe implements Recipe<OverloadProcessing
 
     public int totalInputCount() {
         return totalInputCount;
+    }
+
+    @Override
+    public ResourceLocation getId() {
+        return id;
     }
 
     @Override
@@ -250,7 +217,7 @@ public final class OverloadProcessingRecipe implements Recipe<OverloadProcessing
             return true;
         }
         return !availableFluid.isEmpty()
-                && FluidStack.isSameFluidSameComponents(fluidInput, availableFluid)
+                && FluidStackHelper.sameFluidAndTag(fluidInput, availableFluid)
                 && availableFluid.getAmount() >= multiplyExactToInt(fluidInput.getAmount(), operations);
     }
 
@@ -264,12 +231,12 @@ public final class OverloadProcessingRecipe implements Recipe<OverloadProcessing
         if (fluidResult.isEmpty()) {
             return FluidStack.EMPTY;
         }
-        return fluidResult.copyWithAmount(multiplyExactToInt(fluidResult.getAmount(), operations));
+        return new FluidStack(fluidResult, multiplyExactToInt(fluidResult.getAmount(), operations));
     }
 
     @Override
-    public ItemStack assemble(OverloadProcessingRecipeInput input, HolderLookup.Provider registries) {
-        return itemResults.isEmpty() ? ItemStack.EMPTY : itemResults.getFirst().copy();
+    public ItemStack assemble(OverloadProcessingRecipeInput input, RegistryAccess registries) {
+        return itemResults.isEmpty() ? ItemStack.EMPTY : itemResults.get(0).copy();
     }
 
     @Override
@@ -278,8 +245,8 @@ public final class OverloadProcessingRecipe implements Recipe<OverloadProcessing
     }
 
     @Override
-    public ItemStack getResultItem(HolderLookup.Provider registries) {
-        return itemResults.isEmpty() ? ItemStack.EMPTY : itemResults.getFirst().copy();
+    public ItemStack getResultItem(RegistryAccess registries) {
+        return itemResults.isEmpty() ? ItemStack.EMPTY : itemResults.get(0).copy();
     }
 
     @Override
@@ -302,12 +269,17 @@ public final class OverloadProcessingRecipe implements Recipe<OverloadProcessing
     }
 
     @Override
+    public boolean isSpecial() {
+        return true;
+    }
+
+    @Override
     public boolean isIncomplete() {
         return totalEnergy < MIN_TOTAL_ENERGY
                 || lightningCost <= 0
                 || (itemInputs.isEmpty() && fluidInput.isEmpty())
                 || (itemResults.isEmpty() && fluidResult.isEmpty())
-                || itemInputs.stream().anyMatch(input -> input.ingredient().hasNoItems());
+                || itemInputs.stream().anyMatch(input -> input.ingredient().getItems().length == 0);
     }
 
     private FluidStack rawFluidInput() {
@@ -477,57 +449,103 @@ public final class OverloadProcessingRecipe implements Recipe<OverloadProcessing
     }
 
     public static final class Serializer implements RecipeSerializer<OverloadProcessingRecipe> {
-        private static final MapCodec<OverloadProcessingRecipe> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
-                        Codec.INT.optionalFieldOf("priority", 0).forGetter(OverloadProcessingRecipe::priority),
-                        INPUTS_CODEC.optionalFieldOf("inputs", List.of()).forGetter(OverloadProcessingRecipe::itemInputs),
-                        FluidStack.OPTIONAL_CODEC.optionalFieldOf("inputFluid", FluidStack.EMPTY)
-                                .forGetter(OverloadProcessingRecipe::rawFluidInput),
-                        OUTPUTS_CODEC.optionalFieldOf("results", List.of()).forGetter(OverloadProcessingRecipe::rawItemResults),
-                        FluidStack.OPTIONAL_CODEC.optionalFieldOf("resultFluid", FluidStack.EMPTY)
-                                .forGetter(OverloadProcessingRecipe::rawFluidResult),
-                        POSITIVE_ENERGY_CODEC.fieldOf("totalEnergy").forGetter(OverloadProcessingRecipe::totalEnergy),
-                        POSITIVE_LIGHTNING_COST_CODEC.optionalFieldOf("lightningCost", DEFAULT_LIGHTNING_COST)
-                                .forGetter(OverloadProcessingRecipe::lightningCost),
-                        LightningKey.Tier.CODEC.optionalFieldOf("lightningTier", DEFAULT_LIGHTNING_TIER)
-                                .forGetter(OverloadProcessingRecipe::lightningTier))
-                .apply(instance, OverloadProcessingRecipe::new));
-
-        private static final StreamCodec<RegistryFriendlyByteBuf, OverloadProcessingRecipe> STREAM_CODEC =
-                new StreamCodec<>() {
-                    @Override
-                    public OverloadProcessingRecipe decode(RegistryFriendlyByteBuf buffer) {
-                        return new OverloadProcessingRecipe(
-                                ByteBufCodecs.VAR_INT.decode(buffer),
-                                INPUTS_STREAM_CODEC.decode(buffer),
-                                FluidStack.OPTIONAL_STREAM_CODEC.decode(buffer),
-                                OUTPUTS_STREAM_CODEC.decode(buffer),
-                                FluidStack.OPTIONAL_STREAM_CODEC.decode(buffer),
-                                ByteBufCodecs.VAR_LONG.decode(buffer),
-                                ByteBufCodecs.VAR_INT.decode(buffer),
-                                TIER_STREAM_CODEC.decode(buffer));
-                    }
-
-                    @Override
-                    public void encode(RegistryFriendlyByteBuf buffer, OverloadProcessingRecipe recipe) {
-                        ByteBufCodecs.VAR_INT.encode(buffer, recipe.priority());
-                        INPUTS_STREAM_CODEC.encode(buffer, recipe.itemInputs());
-                        FluidStack.OPTIONAL_STREAM_CODEC.encode(buffer, recipe.rawFluidInput());
-                        OUTPUTS_STREAM_CODEC.encode(buffer, recipe.rawItemResults());
-                        FluidStack.OPTIONAL_STREAM_CODEC.encode(buffer, recipe.rawFluidResult());
-                        ByteBufCodecs.VAR_LONG.encode(buffer, recipe.totalEnergy());
-                        ByteBufCodecs.VAR_INT.encode(buffer, recipe.lightningCost());
-                        TIER_STREAM_CODEC.encode(buffer, recipe.lightningTier());
-                    }
-                };
-
         @Override
-        public MapCodec<OverloadProcessingRecipe> codec() {
-            return CODEC;
+        public OverloadProcessingRecipe fromJson(ResourceLocation recipeId, JsonObject json) {
+            List<OverloadProcessingIngredient> itemInputs = new ArrayList<>();
+            if (json.has("inputs")) {
+                JsonArray inputsJson = GsonHelper.getAsJsonArray(json, "inputs");
+                itemInputs = new ArrayList<>(inputsJson.size());
+                for (var element : inputsJson) {
+                    itemInputs.add(OverloadProcessingIngredient.fromJson(
+                            GsonHelper.convertToJsonObject(element, "inputs[]")));
+                }
+            }
+
+            List<ItemStack> itemResults = new ArrayList<>();
+            if (json.has("results")) {
+                JsonArray resultsJson = GsonHelper.getAsJsonArray(json, "results");
+                itemResults = new ArrayList<>(resultsJson.size());
+                for (var element : resultsJson) {
+                    itemResults.add(RecipeSerializationHelper.itemStackFromJson(
+                            GsonHelper.convertToJsonObject(element, "results[]")));
+                }
+            }
+
+            return new OverloadProcessingRecipe(
+                    recipeId,
+                    GsonHelper.getAsInt(json, "priority", 0),
+                    itemInputs,
+                    RecipeSerializationHelper.optionalFluidStackFromJson(json, "inputFluid"),
+                    itemResults,
+                    RecipeSerializationHelper.optionalFluidStackFromJson(json, "resultFluid"),
+                    GsonHelper.getAsLong(json, "totalEnergy"),
+                    GsonHelper.getAsInt(json, "lightningCost", DEFAULT_LIGHTNING_COST),
+                    RecipeSerializationHelper.enumFromJson(
+                            json,
+                            "lightningTier",
+                            DEFAULT_LIGHTNING_TIER,
+                            LightningKey.Tier.values()));
         }
 
         @Override
-        public StreamCodec<RegistryFriendlyByteBuf, OverloadProcessingRecipe> streamCodec() {
-            return STREAM_CODEC;
+        public OverloadProcessingRecipe fromNetwork(ResourceLocation recipeId, FriendlyByteBuf buffer) {
+            int inputCount = buffer.readInt();
+            List<OverloadProcessingIngredient> itemInputs = new ArrayList<>(inputCount);
+            for (int i = 0; i < inputCount; i++) {
+                itemInputs.add(OverloadProcessingIngredient.fromNetwork(buffer));
+            }
+
+            FluidStack inputFluid = buffer.readBoolean() ? buffer.readFluidStack() : FluidStack.EMPTY;
+
+            int resultCount = buffer.readInt();
+            List<ItemStack> itemResults = new ArrayList<>(resultCount);
+            for (int i = 0; i < resultCount; i++) {
+                itemResults.add(buffer.readItem());
+            }
+
+            FluidStack resultFluid = buffer.readBoolean() ? buffer.readFluidStack() : FluidStack.EMPTY;
+
+            return new OverloadProcessingRecipe(
+                    recipeId,
+                    buffer.readInt(),
+                    itemInputs,
+                    inputFluid,
+                    itemResults,
+                    resultFluid,
+                    buffer.readLong(),
+                    buffer.readInt(),
+                    buffer.readEnum(LightningKey.Tier.class));
+        }
+
+        @Override
+        public void toNetwork(FriendlyByteBuf buffer, OverloadProcessingRecipe recipe) {
+            buffer.writeInt(recipe.itemInputs().size());
+            for (OverloadProcessingIngredient input : recipe.itemInputs()) {
+                input.toNetwork(buffer);
+            }
+
+            FluidStack inputFluid = recipe.rawFluidInput();
+            buffer.writeBoolean(!inputFluid.isEmpty());
+            if (!inputFluid.isEmpty()) {
+                buffer.writeFluidStack(inputFluid);
+            }
+
+            buffer.writeInt(recipe.rawItemResults().size());
+            for (ItemStack itemResult : recipe.rawItemResults()) {
+                buffer.writeItem(itemResult);
+            }
+
+            FluidStack resultFluid = recipe.rawFluidResult();
+            buffer.writeBoolean(!resultFluid.isEmpty());
+            if (!resultFluid.isEmpty()) {
+                buffer.writeFluidStack(resultFluid);
+            }
+
+            buffer.writeInt(recipe.priority());
+            buffer.writeLong(recipe.totalEnergy());
+            buffer.writeInt(recipe.lightningCost());
+            buffer.writeEnum(recipe.lightningTier());
         }
     }
 }
+

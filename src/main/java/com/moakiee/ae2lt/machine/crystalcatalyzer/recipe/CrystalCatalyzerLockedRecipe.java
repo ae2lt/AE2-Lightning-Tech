@@ -4,12 +4,10 @@ import java.util.Objects;
 
 import org.jetbrains.annotations.Nullable;
 
-import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.crafting.RecipeHolder;
 
 import com.moakiee.ae2lt.me.key.LightningKey;
 
@@ -58,10 +56,9 @@ public final class CrystalCatalyzerLockedRecipe {
     public static CrystalCatalyzerLockedRecipe fromCandidate(
             CrystalCatalyzerRecipeCandidate candidate,
             int outputMultiplier) {
-        RecipeHolder<CrystalCatalyzerRecipe> holder = candidate.recipe();
-        CrystalCatalyzerRecipe recipe = holder.value();
+        CrystalCatalyzerRecipe recipe = candidate.recipe();
         return new CrystalCatalyzerLockedRecipe(
-                holder.id(),
+                recipe.getId(),
                 recipe.getOutputTemplate(),
                 recipe.energyPerCycle(),
                 outputMultiplier,
@@ -97,10 +94,10 @@ public final class CrystalCatalyzerLockedRecipe {
         return energyPerCycle;
     }
 
-    public CompoundTag toTag(HolderLookup.Provider registries) {
+    public CompoundTag toTag() {
         CompoundTag tag = new CompoundTag();
         tag.putString(TAG_RECIPE_ID, recipeId.toString());
-        tag.put(TAG_OUTPUT, output.save(registries, new CompoundTag()));
+        tag.put(TAG_OUTPUT, output.save(new CompoundTag()));
         tag.putInt(TAG_ENERGY, energyPerCycle);
         tag.putInt(TAG_OUTPUT_MULTIPLIER, outputMultiplier);
         tag.putInt(TAG_LIGHTNING_COST, lightningCost);
@@ -109,20 +106,19 @@ public final class CrystalCatalyzerLockedRecipe {
     }
 
     @Nullable
-    public static CrystalCatalyzerLockedRecipe fromTag(CompoundTag tag, HolderLookup.Provider registries) {
-        return fromTag(tag, registries, 1);
+    public static CrystalCatalyzerLockedRecipe fromTag(CompoundTag tag) {
+        return fromTag(tag, 1);
     }
 
     @Nullable
     public static CrystalCatalyzerLockedRecipe fromTag(
             CompoundTag tag,
-            HolderLookup.Provider registries,
             int defaultOutputMultiplier) {
         if (!tag.contains(TAG_RECIPE_ID) || !tag.contains(TAG_OUTPUT, Tag.TAG_COMPOUND)) {
             return null;
         }
 
-        ItemStack output = ItemStack.parseOptional(registries, tag.getCompound(TAG_OUTPUT));
+        ItemStack output = ItemStack.of(tag.getCompound(TAG_OUTPUT));
         if (output.isEmpty()) {
             return null;
         }
@@ -139,25 +135,19 @@ public final class CrystalCatalyzerLockedRecipe {
             return null;
         }
 
-        int lightningCost = tag.contains(TAG_LIGHTNING_COST, Tag.TAG_INT)
-                ? tag.getInt(TAG_LIGHTNING_COST) : 1;
+        int lightningCost = tag.contains(TAG_LIGHTNING_COST, Tag.TAG_ANY_NUMERIC)
+                ? tag.getInt(TAG_LIGHTNING_COST)
+                : CrystalCatalyzerRecipe.DEFAULT_LIGHTNING_COST;
         if (lightningCost < 1) {
-            lightningCost = 1;
+            lightningCost = CrystalCatalyzerRecipe.DEFAULT_LIGHTNING_COST;
         }
 
-        LightningKey.Tier lightningTier = LightningKey.Tier.HIGH_VOLTAGE;
-        if (tag.contains(TAG_LIGHTNING_TIER, Tag.TAG_STRING)) {
-            String tierName = tag.getString(TAG_LIGHTNING_TIER);
-            for (LightningKey.Tier t : LightningKey.Tier.values()) {
-                if (t.getSerializedName().equals(tierName)) {
-                    lightningTier = t;
-                    break;
-                }
-            }
-        }
+        LightningKey.Tier lightningTier = tag.contains(TAG_LIGHTNING_TIER, Tag.TAG_STRING)
+                ? LightningKey.Tier.fromSerializedName(tag.getString(TAG_LIGHTNING_TIER))
+                : CrystalCatalyzerRecipe.DEFAULT_LIGHTNING_TIER;
 
         return new CrystalCatalyzerLockedRecipe(
-                ResourceLocation.parse(tag.getString(TAG_RECIPE_ID)),
+                new ResourceLocation(tag.getString(TAG_RECIPE_ID)),
                 output,
                 energy,
                 outputMultiplier,

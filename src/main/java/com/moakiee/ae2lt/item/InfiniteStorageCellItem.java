@@ -3,14 +3,12 @@ package com.moakiee.ae2lt.item;
 import java.util.List;
 
 import net.minecraft.ChatFormatting;
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
-import net.minecraft.world.item.component.CustomData;
 
 import appeng.api.networking.security.IActionSource;
 import appeng.api.stacks.AEKey;
@@ -20,10 +18,10 @@ import com.moakiee.thunderbolt.ae2.cell.IndexedCellSummary;
 import com.moakiee.thunderbolt.ae2.cell.IndexedStorage;
 import com.moakiee.thunderbolt.core.cell.ByteTracker;
 
-public final class InfiniteStorageCellItem extends Item implements IIndexedStorageCellItem {
+public final class InfiniteStorageCellItem extends AE2LTItem implements IIndexedStorageCellItem {
 
     private static final ResourceLocation STORAGE_TYPE =
-            ResourceLocation.fromNamespaceAndPath("ae2lt", "infinite_cell");
+            new ResourceLocation("ae2lt", "infinite_cell");
 
     private final long capacityLo;
     private final long capacityHi;
@@ -46,7 +44,7 @@ public final class InfiniteStorageCellItem extends Item implements IIndexedStora
     @Override
     public void appendHoverText(ItemStack stack, TooltipContext context,
                                 List<Component> tooltipComponents, TooltipFlag tooltipFlag) {
-        CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+        CompoundTag tag = com.moakiee.ae2lt.util.ItemStackTagSupport.getTagCopy(stack);
         // 空壳(创造物品栏里的初始 cell)上显示 "0 types / 0 B" 只是噪音,
         // 完全没带 ae2lt:types / ae2lt:bytes 数据时直接不画 tooltip。
         if (!tag.contains("ae2lt:types") && !tag.contains("ae2lt:bytes")) {
@@ -107,7 +105,7 @@ public final class InfiniteStorageCellItem extends Item implements IIndexedStora
 
     @Override
     public void writeSummary(ItemStack stack, IndexedCellSummary summary) {
-        CustomData.update(DataComponents.CUSTOM_DATA, stack, tag -> {
+        com.moakiee.ae2lt.util.ItemStackTagSupport.updateTag(stack, tag -> {
             tag.putInt("ae2lt:types", summary.totalTypes());
             tag.putLong("ae2lt:bytes", summary.usedBytes());
         });

@@ -3,13 +3,28 @@ package com.moakiee.ae2lt.machine.overloadfactory;
 import java.util.Objects;
 
 import net.minecraft.world.item.ItemStack;
+import net.minecraftforge.items.IItemHandlerModifiable;
 
-import com.moakiee.ae2lt.machine.common.MatrixHidingAutomationInventory;
+public class OverloadProcessingFactoryAutomationInventory implements IItemHandlerModifiable {
+    private final OverloadProcessingFactoryInventory inventory;
 
-public class OverloadProcessingFactoryAutomationInventory
-        extends MatrixHidingAutomationInventory<OverloadProcessingFactoryInventory> {
     public OverloadProcessingFactoryAutomationInventory(OverloadProcessingFactoryInventory inventory) {
-        super(inventory, OverloadProcessingFactoryInventory.SLOT_MATRIX);
+        this.inventory = Objects.requireNonNull(inventory, "inventory");
+    }
+
+    @Override
+    public int getSlots() {
+        return inventory.getSlots();
+    }
+
+    @Override
+    public ItemStack getStackInSlot(int slot) {
+        return inventory.getStackInSlot(slot);
+    }
+
+    @Override
+    public void setStackInSlot(int slot, ItemStack stack) {
+        inventory.setStackInSlot(slot, stack);
     }
 
     @Override
@@ -64,6 +79,11 @@ public class OverloadProcessingFactoryAutomationInventory
     }
 
     @Override
+    public int getSlotLimit(int slot) {
+        return inventory.getSlotLimit(slot);
+    }
+
+    @Override
     public boolean isItemValid(int slot, ItemStack stack) {
         if (slot < 0 || slot >= inventory.getSlots()) {
             throw new IllegalArgumentException("Slot " + slot + " not in valid range");
@@ -75,3 +95,4 @@ public class OverloadProcessingFactoryAutomationInventory
                 && inventory.isInputSlot(slot);
     }
 }
+

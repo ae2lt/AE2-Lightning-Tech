@@ -5,16 +5,14 @@ import java.util.List;
 import com.moakiee.ae2lt.config.AE2LTCommonConfig;
 
 import net.minecraft.ChatFormatting;
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
-import net.minecraft.world.item.component.CustomData;
 
-public class ElectroChimeCrystalItem extends Item {
+public class ElectroChimeCrystalItem extends AE2LTItem {
     private static final String TAG_CATALYSIS = "ae2lt.catalysis_value";
     private static final double STAGE_1_FRACTION = 0.20D;
     private static final double STAGE_2_FRACTION = 0.55D;
@@ -30,14 +28,14 @@ public class ElectroChimeCrystalItem extends Item {
 
     public static int getCatalysisValue(ItemStack stack) {
         return Mth.clamp(
-                stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().getInt(TAG_CATALYSIS),
+                com.moakiee.ae2lt.util.ItemStackTagSupport.getTagCopy(stack).getInt(TAG_CATALYSIS),
                 0,
                 getMaxCatalysis());
     }
 
     public static void setCatalysisValue(ItemStack stack, int catalysisValue) {
         int clamped = Mth.clamp(catalysisValue, 0, getMaxCatalysis());
-        CustomData.update(DataComponents.CUSTOM_DATA, stack, tag -> tag.putInt(TAG_CATALYSIS, clamped));
+        com.moakiee.ae2lt.util.ItemStackTagSupport.updateTag(stack, tag -> tag.putInt(TAG_CATALYSIS, clamped));
     }
 
     public static int addCatalysis(ItemStack stack, int amount) {

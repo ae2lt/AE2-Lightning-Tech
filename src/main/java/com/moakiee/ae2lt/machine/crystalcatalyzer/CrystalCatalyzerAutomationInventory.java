@@ -3,8 +3,7 @@ package com.moakiee.ae2lt.machine.crystalcatalyzer;
 import java.util.Objects;
 
 import net.minecraft.world.item.ItemStack;
-
-import com.moakiee.ae2lt.machine.common.MatrixHidingAutomationInventory;
+import net.minecraftforge.items.IItemHandlerModifiable;
 
 /**
  * Capability-facing inventory wrapper.
@@ -12,10 +11,26 @@ import com.moakiee.ae2lt.machine.common.MatrixHidingAutomationInventory;
  * <p>Automation may insert catalysts into slot 0. The dedicated matrix slot is
  * reserved for manual GUI placement, and extraction is restricted to output.</p>
  */
-public class CrystalCatalyzerAutomationInventory
-        extends MatrixHidingAutomationInventory<CrystalCatalyzerInventory> {
+public class CrystalCatalyzerAutomationInventory implements IItemHandlerModifiable {
+    private final CrystalCatalyzerInventory inventory;
+
     public CrystalCatalyzerAutomationInventory(CrystalCatalyzerInventory inventory) {
-        super(inventory, CrystalCatalyzerInventory.SLOT_MATRIX);
+        this.inventory = Objects.requireNonNull(inventory, "inventory");
+    }
+
+    @Override
+    public int getSlots() {
+        return inventory.getSlots();
+    }
+
+    @Override
+    public ItemStack getStackInSlot(int slot) {
+        return inventory.getStackInSlot(slot);
+    }
+
+    @Override
+    public void setStackInSlot(int slot, ItemStack stack) {
+        inventory.setStackInSlot(slot, stack);
     }
 
     @Override
@@ -50,6 +65,11 @@ public class CrystalCatalyzerAutomationInventory
     }
 
     @Override
+    public int getSlotLimit(int slot) {
+        return inventory.getSlotLimit(slot);
+    }
+
+    @Override
     public boolean isItemValid(int slot, ItemStack stack) {
         if (slot < 0 || slot >= inventory.getSlots()) {
             throw new IllegalArgumentException("Slot " + slot + " not in valid range");
@@ -67,3 +87,4 @@ public class CrystalCatalyzerAutomationInventory
                 && inventory.isItemValid(CrystalCatalyzerInventory.SLOT_CATALYST, stack);
     }
 }
+

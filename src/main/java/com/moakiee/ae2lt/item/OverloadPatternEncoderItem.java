@@ -2,18 +2,16 @@ package com.moakiee.ae2lt.item;
 
 import org.jetbrains.annotations.Nullable;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.phys.BlockHitResult;
 
 import appeng.api.implementations.menuobjects.IMenuItem;
 import appeng.menu.MenuOpener;
-import appeng.menu.locator.ItemMenuHostLocator;
 import appeng.menu.locator.MenuLocators;
 
 import com.moakiee.ae2lt.menu.OverloadPatternEncoderHost;
@@ -24,7 +22,7 @@ import com.moakiee.ae2lt.menu.OverloadPatternEncoderMenu;
  * <p>
  * This item only opens the editor UI. It does not execute pattern semantics.
  */
-public class OverloadPatternEncoderItem extends Item implements IMenuItem {
+public class OverloadPatternEncoderItem extends AE2LTItem implements IMenuItem {
     public OverloadPatternEncoderItem(Properties properties) {
         super(properties.stacksTo(1));
     }
@@ -32,10 +30,11 @@ public class OverloadPatternEncoderItem extends Item implements IMenuItem {
     @Override
     public @Nullable OverloadPatternEncoderHost getMenuHost(
             Player player,
-            ItemMenuHostLocator locator,
-            @Nullable BlockHitResult hitResult
+            int inventorySlot,
+            ItemStack stack,
+            @Nullable BlockPos pos
     ) {
-        return new OverloadPatternEncoderHost(this, player, locator);
+        return new OverloadPatternEncoderHost(player, inventorySlot, stack);
     }
 
     @Override
@@ -48,3 +47,5 @@ public class OverloadPatternEncoderItem extends Item implements IMenuItem {
                 player.getItemInHand(hand));
     }
 }
+
+

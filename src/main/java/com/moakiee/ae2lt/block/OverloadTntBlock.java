@@ -1,15 +1,13 @@
 package com.moakiee.ae2lt.block;
 
 import com.moakiee.ae2lt.entity.OverloadTntEntity;
-import com.moakiee.ae2lt.logic.advancement.ProgressionAdvancementService;
 import javax.annotation.Nullable;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.InteractionHand;
-import net.minecraft.world.ItemInteractionResult;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -27,16 +25,11 @@ public class OverloadTntBlock extends TntBlock {
     }
 
     @Override
-    protected ItemInteractionResult useItemOn(
-            ItemStack stack,
-            BlockState state,
-            Level level,
-            BlockPos pos,
-            Player player,
-            InteractionHand hand,
-            BlockHitResult hitResult) {
+    public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player,
+            InteractionHand hand, BlockHitResult hitResult) {
+        ItemStack stack = player.getItemInHand(hand);
         if (!stack.is(Items.FLINT_AND_STEEL) && !stack.is(Items.FIRE_CHARGE)) {
-            return super.useItemOn(stack, state, level, pos, player, hand, hitResult);
+            return super.use(state, level, pos, player, hand, hitResult);
         }
 
         prime(level, pos, player);
@@ -44,14 +37,14 @@ public class OverloadTntBlock extends TntBlock {
 
         if (!player.getAbilities().instabuild) {
             if (stack.is(Items.FLINT_AND_STEEL)) {
-                stack.hurtAndBreak(1, player, LivingEntity.getSlotForHand(hand));
+                stack.hurtAndBreak(1, player, brokenPlayer -> brokenPlayer.broadcastBreakEvent(hand));
             } else {
                 stack.shrink(1);
             }
         }
 
         player.awardStat(net.minecraft.stats.Stats.ITEM_USED.get(stack.getItem()));
-        return ItemInteractionResult.sidedSuccess(level.isClientSide);
+        return InteractionResult.sidedSuccess(level.isClientSide);
     }
 
     @Override
@@ -81,12 +74,12 @@ public class OverloadTntBlock extends TntBlock {
     }
 
     @Override
-    public BlockState playerWillDestroy(Level level, BlockPos pos, BlockState state, Player player) {
+    public void playerWillDestroy(Level level, BlockPos pos, BlockState state, Player player) {
         if (!level.isClientSide() && !player.isCreative() && state.getValue(UNSTABLE)) {
             prime(level, pos, player);
         }
 
-        return super.playerWillDestroy(level, pos, state, player);
+        super.playerWillDestroy(level, pos, state, player);
     }
 
     @Override
@@ -101,7 +94,8 @@ public class OverloadTntBlock extends TntBlock {
             return;
         }
 
-        LivingEntity owner = explosion.getIndirectSourceEntity() instanceof LivingEntity livingEntity ? livingEntity : null;
+        var source = explosion.getIndirectSourceEntity();
+        LivingEntity owner = source instanceof LivingEntity ? (LivingEntity) source : null;
         OverloadTntEntity tnt = new OverloadTntEntity(level, pos.getX() + 0.5D, pos.getY(), pos.getZ() + 0.5D, owner);
         int fuse = tnt.getFuse();
         // Keep vanilla-style shortened chain-explosion timing. The current fuse values are small,
@@ -127,9 +121,6 @@ public class OverloadTntBlock extends TntBlock {
                 pos.getZ() + 0.5D,
                 igniter);
         level.addFreshEntity(tnt);
-        if (igniter instanceof ServerPlayer player) {
-            ProgressionAdvancementService.awardOverloadTntIgnited(player);
-        }
         level.playSound(null, tnt.getX(), tnt.getY(), tnt.getZ(), SoundEvents.TNT_PRIMED, SoundSource.BLOCKS, 1.0F, 1.0F);
         level.gameEvent(igniter, GameEvent.PRIME_FUSE, pos);
     }

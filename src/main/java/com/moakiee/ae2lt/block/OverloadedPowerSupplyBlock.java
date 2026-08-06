@@ -21,12 +21,12 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 
 import appeng.api.orientation.IOrientationStrategy;
 import appeng.api.orientation.OrientationStrategies;
-import appeng.block.AEBaseEntityBlock;
 import appeng.menu.locator.MenuLocators;
+import appeng.util.InteractionUtil;
 
 import com.moakiee.ae2lt.blockentity.OverloadedPowerSupplyBlockEntity;
 
-public class OverloadedPowerSupplyBlock extends AEBaseEntityBlock<OverloadedPowerSupplyBlockEntity> {
+public class OverloadedPowerSupplyBlock extends AE2LTBaseEntityBlock<OverloadedPowerSupplyBlockEntity> {
 
     /**
      * Block-state visualisation:
@@ -80,28 +80,32 @@ public class OverloadedPowerSupplyBlock extends AEBaseEntityBlock<OverloadedPowe
     }
 
     @Override
-    protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
+    public VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
         return SHAPES.get(state.getValue(FACING));
     }
 
     @Override
-    protected VoxelShape getCollisionShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
+    public VoxelShape getCollisionShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
         return SHAPES.get(state.getValue(FACING));
     }
 
     @Override
-    protected VoxelShape getOcclusionShape(BlockState state, BlockGetter level, BlockPos pos) {
+    public VoxelShape getOcclusionShape(BlockState state, BlockGetter level, BlockPos pos) {
         return Shapes.empty();
     }
 
     @Override
-    protected boolean propagatesSkylightDown(BlockState state, BlockGetter level, BlockPos pos) {
+    public boolean propagatesSkylightDown(BlockState state, BlockGetter level, BlockPos pos) {
         return true;
     }
 
     @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos,
                                                Player player, BlockHitResult hitResult) {
+        if (InteractionUtil.isInAlternateUseMode(player)) {
+            return InteractionResult.PASS;
+        }
+
         var be = this.getBlockEntity(level, pos);
         if (be != null) {
             if (!level.isClientSide()) {
@@ -112,3 +116,4 @@ public class OverloadedPowerSupplyBlock extends AEBaseEntityBlock<OverloadedPowe
         return InteractionResult.PASS;
     }
 }
+

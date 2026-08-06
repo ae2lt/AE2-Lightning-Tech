@@ -2,8 +2,8 @@ package com.moakiee.ae2lt.machine.crystalcatalyzer;
 
 import java.util.Objects;
 
-import net.neoforged.neoforge.fluids.FluidStack;
-import net.neoforged.neoforge.fluids.capability.IFluidHandler;
+import net.minecraftforge.fluids.FluidStack;
+import net.minecraftforge.fluids.capability.IFluidHandler;
 
 /**
  * Capability-facing fluid handler. Only exposes the single 16 B input tank,
@@ -51,3 +51,4 @@ public final class CrystalCatalyzerFluidHandler implements IFluidHandler {
         return FluidStack.EMPTY;
     }
 }
+

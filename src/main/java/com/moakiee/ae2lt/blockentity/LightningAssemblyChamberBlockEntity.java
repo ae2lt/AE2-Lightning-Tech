@@ -7,26 +7,27 @@ import java.util.Set;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
-import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
-import net.neoforged.neoforge.energy.IEnergyStorage;
-import net.neoforged.neoforge.items.IItemHandlerModifiable;
+import net.minecraftforge.energy.IEnergyStorage;
+import net.minecraftforge.items.IItemHandlerModifiable;
 
 import appeng.api.config.Actionable;
 import appeng.api.config.PowerMultiplier;
 import appeng.api.networking.IGridNode;
 import appeng.api.networking.IGridNodeListener;
+import appeng.api.networking.IStackWatcher;
 import appeng.api.networking.security.IActionSource;
+import appeng.api.networking.storage.IStorageWatcherNode;
 import appeng.api.orientation.RelativeSide;
 import appeng.api.stacks.AEKey;
 import appeng.api.networking.ticking.IGridTickable;
@@ -35,9 +36,9 @@ import appeng.api.upgrades.IUpgradeInventory;
 import appeng.api.upgrades.IUpgradeableObject;
 import appeng.api.upgrades.UpgradeInventories;
 import appeng.api.util.AECableType;
-import appeng.blockentity.grid.AENetworkedBlockEntity;
+import appeng.blockentity.grid.AENetworkBlockEntity;
 import appeng.menu.MenuOpener;
-import appeng.menu.locator.MenuHostLocator;
+import appeng.menu.locator.MenuLocator;
 
 import com.moakiee.ae2lt.block.LightningAssemblyChamberBlock;
 import com.moakiee.ae2lt.grid.FrequencyBindingHelper;
@@ -45,7 +46,6 @@ import com.moakiee.ae2lt.grid.FrequencyBindingHost;
 import com.moakiee.ae2lt.logic.AdjacentItemAutoExportHelper;
 import com.moakiee.ae2lt.logic.MemoryCardConfigSupport;
 import com.moakiee.ae2lt.machine.common.GridRecipeMachineHost;
-import com.moakiee.ae2lt.machine.common.LightningCollapseMatrixHost;
 import com.moakiee.ae2lt.machine.common.SingleOutputLightningRecipeExecutor;
 import com.moakiee.ae2lt.machine.lightningassembly.LightningAssemblyChamberAutomationInventory;
 import com.moakiee.ae2lt.machine.lightningassembly.LightningAssemblyChamberEnergyStorage;
@@ -58,10 +58,10 @@ import com.moakiee.ae2lt.machine.lightningassembly.recipe.LightningAssemblyRecip
 import com.moakiee.ae2lt.me.key.LightningKey;
 import com.moakiee.ae2lt.registry.ModBlockEntities;
 import com.moakiee.ae2lt.registry.ModBlocks;
+import com.moakiee.ae2lt.util.LargeStackStreamCodecs;
 
-public class LightningAssemblyChamberBlockEntity extends AENetworkedBlockEntity
+public class LightningAssemblyChamberBlockEntity extends AENetworkBlockEntity
     implements IUpgradeableObject, FrequencyBindingHost,
-        LightningCollapseMatrixHost,
         GridRecipeMachineHost<LightningAssemblyLockedRecipe, LightningAssemblyRecipeCandidate> {
     private static final String TAG_INVENTORY = "Inventory";
     private static final String TAG_LOCKED_RECIPE = "LockedRecipe";
@@ -91,7 +91,6 @@ public class LightningAssemblyChamberBlockEntity extends AENetworkedBlockEntity
     private boolean working;
     private boolean powered;
     private boolean autoExport;
-    private boolean removing;
     private ItemStack clientRecipeResult = ItemStack.EMPTY;
     private EnumSet<RelativeSide> allowedOutputs = EnumSet.noneOf(RelativeSide.class);
     private final AdjacentItemAutoExportHelper.DirectionalTargetCache exportTargetCache =
@@ -102,7 +101,18 @@ public class LightningAssemblyChamberBlockEntity extends AENetworkedBlockEntity
         this.logic = new LightningAssemblyChamberLogic(this);
         this.getMainNode()
                 .setIdlePowerUsage(0)
-                .addService(IGridTickable.class, logic);
+                .addService(IGridTickable.class, logic)
+                .addService(IStorageWatcherNode.class, new IStorageWatcherNode() {
+                    @Override
+                    public void updateWatcher(IStackWatcher newWatcher) {
+                        configureLightningWatcher(newWatcher);
+                    }
+
+                    @Override
+                    public void onStackChange(AEKey what, long amount) {
+                        onLightningStackChanged(what);
+                    }
+                });
     }
 
     public static void serverTick(Level level, BlockPos pos, BlockState state, LightningAssemblyChamberBlockEntity be) {
@@ -117,7 +127,7 @@ public class LightningAssemblyChamberBlockEntity extends AENetworkedBlockEntity
     }
 
     @Override
-    public AENetworkedBlockEntity getFrequencyBindingBlockEntity() {
+    public AENetworkBlockEntity getFrequencyBindingBlockEntity() {
         return this;
     }
 
@@ -133,16 +143,6 @@ public class LightningAssemblyChamberBlockEntity extends AENetworkedBlockEntity
 
     public LightningAssemblyChamberInventory getInventory() {
         return inventory;
-    }
-
-    @Override
-    public IItemHandlerModifiable getMatrixInventory() {
-        return inventory;
-    }
-
-    @Override
-    public int getMatrixSlot() {
-        return LightningAssemblyChamberInventory.SLOT_CATALYST;
     }
 
     public IItemHandlerModifiable getAutomationInventory() {
@@ -186,10 +186,17 @@ public class LightningAssemblyChamberBlockEntity extends AENetworkedBlockEntity
     }
 
     public void addConsumedEnergy(long amount) {
-        if (addConsumedEnergyUnchecked(amount)) {
-            saveChanges();
-            markForClientUpdate();
+        if (amount <= 0) {
+            return;
         }
+
+        if (amount > Long.MAX_VALUE - this.consumedEnergy) {
+            this.consumedEnergy = Long.MAX_VALUE;
+        } else {
+            this.consumedEnergy += amount;
+        }
+        saveChanges();
+        markForUpdate();
     }
 
     public void incrementProcessingTicksSpent() {
@@ -203,7 +210,7 @@ public class LightningAssemblyChamberBlockEntity extends AENetworkedBlockEntity
         this.processingTicksSpent = 0;
         if (changed) {
             saveChanges();
-            markForClientUpdate();
+            markForUpdate();
         }
     }
 
@@ -326,7 +333,7 @@ public class LightningAssemblyChamberBlockEntity extends AENetworkedBlockEntity
                 LightningAssemblyChamberInventory.SLOT_INPUT_0,
                 LightningAssemblyChamberInventory.SLOT_INPUT_8,
                 candidate.match()::getConsumptionForSlot,
-                candidate.recipe().value().getResultStack(),
+                candidate.recipe().getResultStack(),
                 () -> LightningAssemblyRecipeService.resolveLightningConsumption(
                                 inventory,
                                 lockedRecipe.lightningTier(),
@@ -387,7 +394,7 @@ public class LightningAssemblyChamberBlockEntity extends AENetworkedBlockEntity
         return true;
     }
 
-    public void openMenu(Player player, MenuHostLocator locator) {
+    public void openMenu(Player player, MenuLocator locator) {
         MenuOpener.open(LightningAssemblyChamberMenu.TYPE, player, locator);
     }
 
@@ -412,14 +419,12 @@ public class LightningAssemblyChamberBlockEntity extends AENetworkedBlockEntity
         boolean changed = this.working != working;
         this.working = working;
         if (level != null) {
-            BlockState state = level.getBlockState(worldPosition);
-            if (state.is(ModBlocks.LIGHTNING_ASSEMBLY_CHAMBER.get())
-                    && level.getBlockEntity(worldPosition) == this
-                    && state.hasProperty(LightningAssemblyChamberBlock.WORKING)
+            BlockState state = getBlockState();
+            if (state.hasProperty(LightningAssemblyChamberBlock.WORKING)
                     && state.getValue(LightningAssemblyChamberBlock.WORKING) != working) {
                 level.setBlock(worldPosition, state.setValue(LightningAssemblyChamberBlock.WORKING, working), Block.UPDATE_ALL);
             } else if (changed) {
-                markForClientUpdate();
+                markForUpdate();
             }
         }
     }
@@ -427,7 +432,7 @@ public class LightningAssemblyChamberBlockEntity extends AENetworkedBlockEntity
     @Override
     public void onMainNodeStateChanged(IGridNodeListener.State reason) {
         frequencyBinding.onMainNodeStateChanged(reason);
-        if (!removing && reason != IGridNodeListener.State.GRID_BOOT) {
+        if (reason != IGridNodeListener.State.GRID_BOOT) {
             refreshPoweredState();
         }
     }
@@ -457,7 +462,6 @@ public class LightningAssemblyChamberBlockEntity extends AENetworkedBlockEntity
 
     @Override
     public void setRemoved() {
-        removing = true;
         frequencyBinding.setRemoved();
         super.setRemoved();
     }
@@ -465,13 +469,12 @@ public class LightningAssemblyChamberBlockEntity extends AENetworkedBlockEntity
     @Override
     public void clearRemoved() {
         super.clearRemoved();
-        removing = false;
         frequencyBinding.clearRemoved();
     }
 
     private void onInventoryChanged() {
         saveChanges();
-        markForClientUpdate();
+        markForUpdate();
         logic.onStateChanged();
     }
 
@@ -486,15 +489,27 @@ public class LightningAssemblyChamberBlockEntity extends AENetworkedBlockEntity
         logic.onStateChanged();
     }
 
+    private void configureLightningWatcher(IStackWatcher watcher) {
+        watcher.reset();
+        watcher.add(LightningKey.HIGH_VOLTAGE);
+        watcher.add(LightningKey.EXTREME_HIGH_VOLTAGE);
+    }
+
+    private void onLightningStackChanged(AEKey what) {
+        if (LightningKey.HIGH_VOLTAGE.equals(what) || LightningKey.EXTREME_HIGH_VOLTAGE.equals(what)) {
+            logic.onStateChanged();
+        }
+    }
+
     private appeng.me.storage.CompositeStorage getExportTarget(ServerLevel level, Direction direction) {
         return exportTargetCache.resolve(level, worldPosition, direction);
     }
 
     @Override
-    public void saveAdditional(CompoundTag data, HolderLookup.Provider registries) {
-        super.saveAdditional(data, registries);
-        inventory.saveToTag(data, TAG_INVENTORY, registries);
-        upgrades.writeToNBT(data, TAG_UPGRADES, registries);
+    public void saveAdditional(CompoundTag data) {
+        super.saveAdditional(data);
+        inventory.saveToTag(data, TAG_INVENTORY);
+        upgrades.writeToNBT(data, TAG_UPGRADES);
         data.putLong(TAG_ENERGY, energyStorage.getStoredEnergyLong());
         data.putLong(TAG_CONSUMED_ENERGY, consumedEnergy);
         data.putInt(TAG_PROCESSING_TICKS, processingTicksSpent);
@@ -505,7 +520,7 @@ public class LightningAssemblyChamberBlockEntity extends AENetworkedBlockEntity
         }
         data.put(TAG_ALLOWED_OUTPUTS, outputTags);
         if (lockedRecipe != null) {
-            data.put(TAG_LOCKED_RECIPE, lockedRecipe.toTag(registries));
+            data.put(TAG_LOCKED_RECIPE, lockedRecipe.toTag());
         } else {
             data.remove(TAG_LOCKED_RECIPE);
         }
@@ -513,10 +528,10 @@ public class LightningAssemblyChamberBlockEntity extends AENetworkedBlockEntity
     }
 
     @Override
-    public void loadTag(CompoundTag data, HolderLookup.Provider registries) {
-        super.loadTag(data, registries);
-        inventory.loadFromTag(data, TAG_INVENTORY, registries);
-        upgrades.readFromNBT(data, TAG_UPGRADES, registries);
+    public void loadTag(CompoundTag data) {
+        super.loadTag(data);
+        inventory.loadFromTag(data, TAG_INVENTORY);
+        upgrades.readFromNBT(data, TAG_UPGRADES);
         energyStorage.loadStoredEnergy(data.getLong(TAG_ENERGY));
         consumedEnergy = Math.max(0L, data.getLong(TAG_CONSUMED_ENERGY));
         processingTicksSpent = Math.max(0, data.getInt(TAG_PROCESSING_TICKS));
@@ -531,7 +546,7 @@ public class LightningAssemblyChamberBlockEntity extends AENetworkedBlockEntity
             }
         }
         if (data.contains(TAG_LOCKED_RECIPE, Tag.TAG_COMPOUND)) {
-            lockedRecipe = LightningAssemblyLockedRecipe.fromTag(data.getCompound(TAG_LOCKED_RECIPE), registries);
+            lockedRecipe = LightningAssemblyLockedRecipe.fromTag(data.getCompound(TAG_LOCKED_RECIPE));
         } else {
             lockedRecipe = null;
         }
@@ -547,31 +562,30 @@ public class LightningAssemblyChamberBlockEntity extends AENetworkedBlockEntity
     }
 
     @Override
-    protected void writeToStream(RegistryFriendlyByteBuf data) {
+    protected void writeToStream(FriendlyByteBuf data) {
         super.writeToStream(data);
         for (int slot = LightningAssemblyChamberInventory.SLOT_INPUT_0;
              slot <= LightningAssemblyChamberInventory.SLOT_INPUT_8;
              slot++) {
-            ItemStack.OPTIONAL_STREAM_CODEC.encode(data, inventory.getStackInSlot(slot));
+            LargeStackStreamCodecs.writeItemStack(data, inventory.getStackInSlot(slot));
         }
-        ItemStack.OPTIONAL_STREAM_CODEC.encode(data,
-                lockedRecipe != null ? lockedRecipe.result() : ItemStack.EMPTY);
+        LargeStackStreamCodecs.writeItemStack(data, lockedRecipe != null ? lockedRecipe.result() : ItemStack.EMPTY);
     }
 
     @Override
-    protected boolean readFromStream(RegistryFriendlyByteBuf data) {
+    protected boolean readFromStream(FriendlyByteBuf data) {
         boolean changed = super.readFromStream(data);
         for (int slot = LightningAssemblyChamberInventory.SLOT_INPUT_0;
              slot <= LightningAssemblyChamberInventory.SLOT_INPUT_8;
              slot++) {
             ItemStack oldStack = inventory.getStackInSlot(slot);
-            ItemStack newStack = ItemStack.OPTIONAL_STREAM_CODEC.decode(data);
+            ItemStack newStack = LargeStackStreamCodecs.readItemStack(data);
             if (!ItemStack.matches(oldStack, newStack)) {
                 inventory.setClientRenderStack(slot, newStack);
                 changed = true;
             }
         }
-        ItemStack newResult = ItemStack.OPTIONAL_STREAM_CODEC.decode(data);
+        ItemStack newResult = LargeStackStreamCodecs.readItemStack(data);
         if (!ItemStack.matches(clientRecipeResult, newResult)) {
             clientRecipeResult = newResult;
             changed = true;
@@ -604,27 +618,22 @@ public class LightningAssemblyChamberBlockEntity extends AENetworkedBlockEntity
 
     @Override
     public void exportSettings(appeng.util.SettingsFrom mode,
-                               net.minecraft.core.component.DataComponentMap.Builder builder,
+                               net.minecraft.nbt.CompoundTag output,
                                @org.jetbrains.annotations.Nullable Player player) {
-        super.exportSettings(mode, builder, player);
-        MemoryCardConfigSupport.exportAutoExportSettings(mode, builder, autoExport, allowedOutputs, tag -> {
-            FrequencyBindingHelper.writeMemoryFrequency(tag, getFrequencyId());
-            MemoryCardConfigSupport.writeMatrixCount(tag, this);
-        });
+        super.exportSettings(mode, output, player);
+        MemoryCardConfigSupport.exportAutoExportSettings(mode, output, autoExport, allowedOutputs,
+                tag -> FrequencyBindingHelper.writeMemoryFrequency(tag, getFrequencyId()));
     }
 
     @Override
     public void importSettings(appeng.util.SettingsFrom mode,
-                               net.minecraft.core.component.DataComponentMap input,
+                               net.minecraft.nbt.CompoundTag input,
                                @org.jetbrains.annotations.Nullable Player player) {
         super.importSettings(mode, input, player);
         MemoryCardConfigSupport.importAutoExportSettings(mode, input,
                 v -> this.autoExport = v,
                 sides -> this.allowedOutputs = sides,
-                tag -> {
-                    FrequencyBindingHelper.importMemoryFrequency(tag, this::setFrequency);
-                    MemoryCardConfigSupport.restoreMatrixCount(tag, player, this);
-                },
+                tag -> FrequencyBindingHelper.importMemoryFrequency(tag, this::setFrequency),
                 () -> {
                     invalidateExportTargets();
                     saveChanges();
@@ -645,11 +654,6 @@ public class LightningAssemblyChamberBlockEntity extends AENetworkedBlockEntity
     @Override
     public Set<Direction> getGridConnectableSides(BlockOrientation orientation) {
         return EnumSet.allOf(Direction.class);
-    }
-
-    @Override
-    public AECableType getCableConnectionType(Direction dir) {
-        return AECableType.SMART;
     }
 
     private void invalidateExportTargets() {
@@ -673,26 +677,8 @@ public class LightningAssemblyChamberBlockEntity extends AENetworkedBlockEntity
 
     @Override
     public void onEnergyConsumed(int consumed) {
-        if (consumed <= 0) {
-            return;
-        }
-        addConsumedEnergyUnchecked(consumed);
-        this.processingTicksSpent++;
-        saveChanges();
-        markForClientUpdate();
-    }
-
-    private boolean addConsumedEnergyUnchecked(long amount) {
-        if (amount <= 0) {
-            return false;
-        }
-
-        if (amount > Long.MAX_VALUE - this.consumedEnergy) {
-            this.consumedEnergy = Long.MAX_VALUE;
-        } else {
-            this.consumedEnergy += amount;
-        }
-        return true;
+        addConsumedEnergy(consumed);
+        incrementProcessingTicksSpent();
     }
 
     private long simulateLightningExtract(LightningKey key, long amount) {
@@ -729,6 +715,10 @@ public class LightningAssemblyChamberBlockEntity extends AENetworkedBlockEntity
         }
         return grid.getStorageService().getInventory()
                 .insert(key, amount, Actionable.MODULATE, IActionSource.ofMachine(this));
+    }
+    @Override
+    public AECableType getCableConnectionType(Direction dir) {
+        return AECableType.SMART;
     }
 }
 

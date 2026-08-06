@@ -16,7 +16,7 @@ public final class AtmosphericIonizerLogic implements IGridTickable {
 
     @Override
     public TickingRequest getTickingRequest(IGridNode node) {
-        return new TickingRequest(1, 20, !hasGridTickWork());
+        return new TickingRequest(1, 20, !hasGridTickWork(), true);
     }
 
     @Override

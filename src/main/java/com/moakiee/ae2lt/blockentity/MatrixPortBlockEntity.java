@@ -17,7 +17,6 @@ import com.moakiee.ae2lt.registry.ModBlocks;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.world.item.Item;
@@ -25,7 +24,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
-import net.neoforged.neoforge.items.IItemHandlerModifiable;
+import net.minecraftforge.items.IItemHandlerModifiable;
 
 import appeng.api.config.Actionable;
 import appeng.api.crafting.IPatternDetails;
@@ -40,10 +39,11 @@ import appeng.api.orientation.BlockOrientation;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.KeyCounter;
 import appeng.api.util.AECableType;
-import appeng.blockentity.grid.AENetworkedBlockEntity;
+import appeng.blockentity.grid.AENetworkBlockEntity;
 import appeng.me.helpers.MachineSource;
+import net.minecraft.core.RegistryAccess;
 
-public class MatrixPortBlockEntity extends AENetworkedBlockEntity
+public class MatrixPortBlockEntity extends AENetworkBlockEntity
         implements IBatchCraftingProvider {
     private static final String TAG_CONTROLLER_POS = "ControllerPos";
     private static final String TAG_FORMED = "Formed";
@@ -296,8 +296,8 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
     }
 
     @Override
-    public void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
-        super.saveAdditional(tag, registries);
+    public void saveAdditional(CompoundTag tag) {
+        super.saveAdditional(tag);
         if (controllerPos != null) {
             tag.putLong(TAG_CONTROLLER_POS, controllerPos.asLong());
         }
@@ -307,7 +307,7 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
     }
 
     @Override
-    public void loadTag(CompoundTag tag, HolderLookup.Provider registries) {
+    public void loadTag(CompoundTag tag, RegistryAccess registries) {
         super.loadTag(tag, registries);
         controllerPos = tag.contains(TAG_CONTROLLER_POS, Tag.TAG_LONG)
                 ? BlockPos.of(tag.getLong(TAG_CONTROLLER_POS))
@@ -589,3 +589,4 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
         }
     }
 }
+

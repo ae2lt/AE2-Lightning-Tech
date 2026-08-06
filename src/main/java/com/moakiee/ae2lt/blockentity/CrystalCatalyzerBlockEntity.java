@@ -7,12 +7,11 @@ import java.util.Set;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
-import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -20,17 +19,19 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.Fluids;
-import net.neoforged.neoforge.energy.IEnergyStorage;
-import net.neoforged.neoforge.fluids.FluidStack;
-import net.neoforged.neoforge.fluids.capability.IFluidHandler;
-import net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction;
-import net.neoforged.neoforge.items.IItemHandlerModifiable;
+import net.minecraftforge.energy.IEnergyStorage;
+import net.minecraftforge.fluids.FluidStack;
+import net.minecraftforge.fluids.capability.IFluidHandler;
+import net.minecraftforge.fluids.capability.IFluidHandler.FluidAction;
+import net.minecraftforge.items.IItemHandlerModifiable;
 
 import appeng.api.config.Actionable;
 import appeng.api.networking.IGridNode;
 import appeng.api.networking.IGridNodeListener;
+import appeng.api.networking.IStackWatcher;
 import appeng.api.networking.security.IActionHost;
 import appeng.api.networking.security.IActionSource;
+import appeng.api.networking.storage.IStorageWatcherNode;
 import appeng.api.networking.ticking.IGridTickable;
 import appeng.api.orientation.BlockOrientation;
 import appeng.api.orientation.RelativeSide;
@@ -39,35 +40,35 @@ import appeng.api.upgrades.IUpgradeInventory;
 import appeng.api.upgrades.IUpgradeableObject;
 import appeng.api.upgrades.UpgradeInventories;
 import appeng.api.util.AECableType;
-import appeng.blockentity.grid.AENetworkedBlockEntity;
+import appeng.blockentity.grid.AENetworkBlockEntity;
 import appeng.menu.MenuOpener;
-import appeng.menu.locator.MenuHostLocator;
+import appeng.menu.locator.MenuLocator;
 
 import com.moakiee.ae2lt.block.CrystalCatalyzerBlock;
 import com.moakiee.ae2lt.grid.FrequencyBindingHelper;
 import com.moakiee.ae2lt.grid.FrequencyBindingHost;
 import com.moakiee.ae2lt.logic.AdjacentItemAutoExportHelper;
+import com.moakiee.ae2lt.logic.FluidStackHelper;
 import com.moakiee.ae2lt.logic.MemoryCardConfigSupport;
 import com.moakiee.ae2lt.machine.common.GridRecipeMachineHost;
-import com.moakiee.ae2lt.machine.common.LightningCollapseMatrixHost;
 import com.moakiee.ae2lt.machine.crystalcatalyzer.CrystalCatalyzerAutomationInventory;
 import com.moakiee.ae2lt.machine.crystalcatalyzer.CrystalCatalyzerFluidHandler;
 import com.moakiee.ae2lt.machine.crystalcatalyzer.CrystalCatalyzerInventory;
 import com.moakiee.ae2lt.machine.crystalcatalyzer.CrystalCatalyzerLogic;
-import com.moakiee.ae2lt.me.key.LightningKey;
 import com.moakiee.ae2lt.machine.crystalcatalyzer.recipe.CrystalCatalyzerLockedRecipe;
 import com.moakiee.ae2lt.machine.crystalcatalyzer.recipe.CrystalCatalyzerRecipeCandidate;
 import com.moakiee.ae2lt.machine.crystalcatalyzer.recipe.CrystalCatalyzerRecipeService;
 import com.moakiee.ae2lt.machine.crystalcatalyzer.recipe.Mode;
 import com.moakiee.ae2lt.machine.overloadfactory.NotifyingFluidTank;
 import com.moakiee.ae2lt.machine.overloadfactory.OverloadProcessingFactoryEnergyStorage;
+import com.moakiee.ae2lt.me.key.LightningKey;
 import com.moakiee.ae2lt.menu.CrystalCatalyzerMenu;
 import com.moakiee.ae2lt.registry.ModBlockEntities;
 import com.moakiee.ae2lt.registry.ModBlocks;
+import com.moakiee.ae2lt.util.LargeStackStreamCodecs;
 
-public class CrystalCatalyzerBlockEntity extends AENetworkedBlockEntity
+public class CrystalCatalyzerBlockEntity extends AENetworkBlockEntity
         implements IActionHost, IUpgradeableObject, FrequencyBindingHost,
-        LightningCollapseMatrixHost,
         GridRecipeMachineHost<CrystalCatalyzerLockedRecipe, CrystalCatalyzerRecipeCandidate> {
 
     private static final String TAG_INVENTORY = "Inventory";
@@ -103,7 +104,7 @@ public class CrystalCatalyzerBlockEntity extends AENetworkedBlockEntity
     private final OverloadProcessingFactoryEnergyStorage energyStorage =
             new OverloadProcessingFactoryEnergyStorage(ENERGY_CAPACITY, this::onEnergyChanged);
     private final IUpgradeInventory upgrades =
-            UpgradeInventories.forMachine(ModBlocks.CRYSTAL_CATALYZER, 0, this::onUpgradesChanged);
+            UpgradeInventories.forMachine(ModBlocks.CRYSTAL_CATALYZER.get(), 0, this::onUpgradesChanged);
     private final CrystalCatalyzerLogic logic;
     private final FrequencyBindingHelper frequencyBinding = new FrequencyBindingHelper(this);
 
@@ -120,7 +121,18 @@ public class CrystalCatalyzerBlockEntity extends AENetworkedBlockEntity
         this.logic = new CrystalCatalyzerLogic(this);
         getMainNode()
                 .setIdlePowerUsage(0)
-                .addService(IGridTickable.class, logic);
+                .addService(IGridTickable.class, logic)
+                .addService(IStorageWatcherNode.class, new IStorageWatcherNode() {
+                    @Override
+                    public void updateWatcher(IStackWatcher newWatcher) {
+                        configureLightningWatcher(newWatcher);
+                    }
+
+                    @Override
+                    public void onStackChange(AEKey what, long amount) {
+                        onLightningStackChanged(what);
+                    }
+                });
     }
 
     public static void serverTick(Level level, BlockPos pos, BlockState state, CrystalCatalyzerBlockEntity be) {
@@ -135,7 +147,7 @@ public class CrystalCatalyzerBlockEntity extends AENetworkedBlockEntity
     }
 
     @Override
-    public AENetworkedBlockEntity getFrequencyBindingBlockEntity() {
+    public AENetworkBlockEntity getFrequencyBindingBlockEntity() {
         return this;
     }
 
@@ -157,16 +169,6 @@ public class CrystalCatalyzerBlockEntity extends AENetworkedBlockEntity
 
     public CrystalCatalyzerInventory getInventory() {
         return inventory;
-    }
-
-    @Override
-    public IItemHandlerModifiable getMatrixInventory() {
-        return inventory;
-    }
-
-    @Override
-    public int getMatrixSlot() {
-        return CrystalCatalyzerInventory.SLOT_MATRIX;
     }
 
     public IItemHandlerModifiable getAutomationInventory() {
@@ -229,7 +231,7 @@ public class CrystalCatalyzerBlockEntity extends AENetworkedBlockEntity
         return upgrades;
     }
 
-    public void openMenu(Player player, MenuHostLocator locator) {
+    public void openMenu(Player player, MenuLocator locator) {
         MenuOpener.open(CrystalCatalyzerMenu.TYPE, player, locator);
     }
 
@@ -281,7 +283,7 @@ public class CrystalCatalyzerBlockEntity extends AENetworkedBlockEntity
         this.mode = previous.next();
         abortProcessing();
         saveChanges();
-        markForClientUpdate();
+        markForUpdate();
         logic.onStateChanged();
     }
 
@@ -291,13 +293,13 @@ public class CrystalCatalyzerBlockEntity extends AENetworkedBlockEntity
         if (current.isEmpty()) {
             return false;
         }
-        return FluidStack.isSameFluidSameComponents(current, required)
+        return FluidStackHelper.sameFluidAndTag(current, required)
                 && current.getAmount() >= required.getAmount();
     }
 
     private boolean canAcceptRecipeOutput(CrystalCatalyzerRecipeCandidate candidate) {
         return canAcceptRecipeOutput(
-                candidate.recipe().value().getOutputTemplate(),
+                candidate.recipe().getOutputTemplate(),
                 getCurrentOutputMultiplier(candidate));
     }
 
@@ -358,7 +360,7 @@ public class CrystalCatalyzerBlockEntity extends AENetworkedBlockEntity
         if (candidate == null) {
             return 1;
         }
-        var recipe = candidate.recipe().value();
+        var recipe = candidate.recipe();
         int perInstance = recipe.catalystCount();
         if (perInstance <= 0) {
             return 1;
@@ -513,6 +515,12 @@ public class CrystalCatalyzerBlockEntity extends AENetworkedBlockEntity
         logic.onStateChanged();
     }
 
+    public void onNeighborChanged(BlockPos changedPos) {
+        if (changedPos != null && worldPosition.distManhattan(changedPos) == 1) {
+            exportTargetCache.invalidate();
+        }
+    }
+
     public long getAvailableHighVoltage() {
         return simulateLightningExtract(LightningKey.HIGH_VOLTAGE, Long.MAX_VALUE);
     }
@@ -521,33 +529,15 @@ public class CrystalCatalyzerBlockEntity extends AENetworkedBlockEntity
         return simulateLightningExtract(LightningKey.EXTREME_HIGH_VOLTAGE, Long.MAX_VALUE);
     }
 
-    private long simulateLightningExtract(LightningKey key, long amount) {
-        if (amount <= 0L) return 0L;
-        var grid = getMainNode().getGrid();
-        if (grid == null) return 0L;
-        return grid.getStorageService().getInventory()
-                .extract(key, amount, Actionable.SIMULATE, IActionSource.ofMachine(this));
+    private void configureLightningWatcher(IStackWatcher watcher) {
+        watcher.reset();
+        watcher.add(LightningKey.HIGH_VOLTAGE);
+        watcher.add(LightningKey.EXTREME_HIGH_VOLTAGE);
     }
 
-    private long extractLightning(LightningKey key, long amount) {
-        if (amount <= 0L) return 0L;
-        var grid = getMainNode().getGrid();
-        if (grid == null) return 0L;
-        return grid.getStorageService().getInventory()
-                .extract(key, amount, Actionable.MODULATE, IActionSource.ofMachine(this));
-    }
-
-    private long insertLightning(LightningKey key, long amount) {
-        if (amount <= 0L) return 0L;
-        var grid = getMainNode().getGrid();
-        if (grid == null) return 0L;
-        return grid.getStorageService().getInventory()
-                .insert(key, amount, Actionable.MODULATE, IActionSource.ofMachine(this));
-    }
-
-    public void onNeighborChanged(BlockPos changedPos) {
-        if (changedPos != null && worldPosition.distManhattan(changedPos) == 1) {
-            exportTargetCache.invalidate();
+    private void onLightningStackChanged(AEKey what) {
+        if (LightningKey.HIGH_VOLTAGE.equals(what) || LightningKey.EXTREME_HIGH_VOLTAGE.equals(what)) {
+            logic.onStateChanged();
         }
     }
 
@@ -569,7 +559,7 @@ public class CrystalCatalyzerBlockEntity extends AENetworkedBlockEntity
         FluidStack requiredFluid = getFixedFluidPerCycle();
         FluidStack currentFluid = tank.getFluid();
         if (currentFluid.isEmpty()
-                || !FluidStack.isSameFluidSameComponents(currentFluid, requiredFluid)
+                || !FluidStackHelper.sameFluidAndTag(currentFluid, requiredFluid)
                 || currentFluid.getAmount() < requiredFluid.getAmount()) {
             return false;
         }
@@ -641,10 +631,8 @@ public class CrystalCatalyzerBlockEntity extends AENetworkedBlockEntity
     @Override
     public void setWorking(boolean working) {
         if (level != null) {
-            BlockState state = level.getBlockState(worldPosition);
-            if (state.is(ModBlocks.CRYSTAL_CATALYZER.get())
-                    && level.getBlockEntity(worldPosition) == this
-                    && state.hasProperty(CrystalCatalyzerBlock.WORKING)
+            BlockState state = getBlockState();
+            if (state.hasProperty(CrystalCatalyzerBlock.WORKING)
                     && state.getValue(CrystalCatalyzerBlock.WORKING) != working) {
                 level.setBlock(worldPosition, state.setValue(CrystalCatalyzerBlock.WORKING, working), Block.UPDATE_ALL);
             }
@@ -652,10 +640,10 @@ public class CrystalCatalyzerBlockEntity extends AENetworkedBlockEntity
     }
 
     @Override
-    public void saveAdditional(CompoundTag data, HolderLookup.Provider registries) {
-        super.saveAdditional(data, registries);
-        inventory.saveToTag(data, TAG_INVENTORY, registries);
-        data.put(TAG_TANK, tank.writeToNBT(registries, new CompoundTag()));
+    public void saveAdditional(CompoundTag data) {
+        super.saveAdditional(data);
+        inventory.saveToTag(data, TAG_INVENTORY);
+        data.put(TAG_TANK, tank.writeToNBT(new CompoundTag()));
         data.putLong(TAG_ENERGY, energyStorage.getStoredEnergyLong());
         data.putLong(TAG_CONSUMED_ENERGY, consumedEnergy);
         data.putInt(TAG_PROCESSING_TICKS, processingTicksSpent);
@@ -667,7 +655,7 @@ public class CrystalCatalyzerBlockEntity extends AENetworkedBlockEntity
         data.put(TAG_ALLOWED_OUTPUTS, outputTags);
         data.putString(TAG_MODE, mode.getSerializedName());
         if (lockedRecipe != null) {
-            data.put(TAG_LOCKED_RECIPE, lockedRecipe.toTag(registries));
+            data.put(TAG_LOCKED_RECIPE, lockedRecipe.toTag());
         } else {
             data.remove(TAG_LOCKED_RECIPE);
         }
@@ -675,10 +663,10 @@ public class CrystalCatalyzerBlockEntity extends AENetworkedBlockEntity
     }
 
     @Override
-    public void loadTag(CompoundTag data, HolderLookup.Provider registries) {
-        super.loadTag(data, registries);
-        inventory.loadFromTag(data, TAG_INVENTORY, registries);
-        tank.readFromNBT(registries, data.getCompound(TAG_TANK));
+    public void loadTag(CompoundTag data) {
+        super.loadTag(data);
+        inventory.loadFromTag(data, TAG_INVENTORY);
+        tank.readFromNBT(data.getCompound(TAG_TANK));
         energyStorage.loadStoredEnergy(data.getLong(TAG_ENERGY));
         consumedEnergy = Math.max(0L, data.getLong(TAG_CONSUMED_ENERGY));
         processingTicksSpent = Math.max(0, data.getInt(TAG_PROCESSING_TICKS));
@@ -707,7 +695,6 @@ public class CrystalCatalyzerBlockEntity extends AENetworkedBlockEntity
         if (data.contains(TAG_LOCKED_RECIPE, Tag.TAG_COMPOUND)) {
             lockedRecipe = CrystalCatalyzerLockedRecipe.fromTag(
                     data.getCompound(TAG_LOCKED_RECIPE),
-                    registries,
                     getCurrentOutputMultiplier());
         } else {
             lockedRecipe = null;
@@ -722,23 +709,23 @@ public class CrystalCatalyzerBlockEntity extends AENetworkedBlockEntity
     }
 
     @Override
-    protected void writeToStream(RegistryFriendlyByteBuf data) {
+    protected void writeToStream(FriendlyByteBuf data) {
         super.writeToStream(data);
         for (int slot = CrystalCatalyzerInventory.SLOT_CATALYST;
              slot <= CrystalCatalyzerInventory.SLOT_MATRIX;
              slot++) {
-            ItemStack.OPTIONAL_STREAM_CODEC.encode(data, inventory.getStackInSlot(slot));
+            LargeStackStreamCodecs.writeItemStack(data, inventory.getStackInSlot(slot));
         }
     }
 
     @Override
-    protected boolean readFromStream(RegistryFriendlyByteBuf data) {
+    protected boolean readFromStream(FriendlyByteBuf data) {
         boolean changed = super.readFromStream(data);
         for (int slot = CrystalCatalyzerInventory.SLOT_CATALYST;
              slot <= CrystalCatalyzerInventory.SLOT_MATRIX;
              slot++) {
             ItemStack oldStack = inventory.getStackInSlot(slot);
-            ItemStack newStack = ItemStack.OPTIONAL_STREAM_CODEC.decode(data);
+            ItemStack newStack = LargeStackStreamCodecs.readItemStack(data);
             if (!ItemStack.matches(oldStack, newStack)) {
                 inventory.setClientRenderStack(slot, newStack);
                 changed = true;
@@ -769,45 +756,32 @@ public class CrystalCatalyzerBlockEntity extends AENetworkedBlockEntity
         allowedOutputs.clear();
         exportTargetCache.invalidate();
         saveChanges();
-        markForClientUpdate();
+        markForUpdate();
         logic.onStateChanged();
     }
 
     @Override
     public void exportSettings(appeng.util.SettingsFrom mode,
-                               net.minecraft.core.component.DataComponentMap.Builder builder,
+                               net.minecraft.nbt.CompoundTag output,
                                @org.jetbrains.annotations.Nullable Player player) {
-        super.exportSettings(mode, builder, player);
-        MemoryCardConfigSupport.exportAutoExportSettings(mode, builder, autoExport, allowedOutputs, tag -> {
-            MemoryCardConfigSupport.writeEnum(tag, TAG_MODE, this.mode);
-            FrequencyBindingHelper.writeMemoryFrequency(tag, getFrequencyId());
-            MemoryCardConfigSupport.writeMatrixCount(tag, this);
-        });
+        super.exportSettings(mode, output, player);
+        MemoryCardConfigSupport.exportAutoExportSettings(mode, output, autoExport, allowedOutputs,
+                tag -> FrequencyBindingHelper.writeMemoryFrequency(tag, getFrequencyId()));
     }
 
     @Override
     public void importSettings(appeng.util.SettingsFrom mode,
-                               net.minecraft.core.component.DataComponentMap input,
+                               net.minecraft.nbt.CompoundTag input,
                                @org.jetbrains.annotations.Nullable Player player) {
         super.importSettings(mode, input, player);
         MemoryCardConfigSupport.importAutoExportSettings(mode, input,
                 v -> this.autoExport = v,
                 sides -> this.allowedOutputs = sides,
-                tag -> {
-                    Mode importedMode = MemoryCardConfigSupport.readEnum(
-                            tag, TAG_MODE, Mode.class, this.mode);
-                    if (this.mode != importedMode) {
-                        this.mode = importedMode;
-                        abortProcessing();
-                    }
-                    FrequencyBindingHelper.importMemoryFrequency(tag, this::setFrequency);
-                    MemoryCardConfigSupport.restoreMatrixCount(tag, player, this);
-                },
+                tag -> FrequencyBindingHelper.importMemoryFrequency(tag, this::setFrequency),
                 () -> {
                     exportTargetCache.invalidate();
                     saveChanges();
-                    markForClientUpdate();
-                    logic.onStateChanged();
+                    markForUpdate();
                 });
     }
 
@@ -826,20 +800,15 @@ public class CrystalCatalyzerBlockEntity extends AENetworkedBlockEntity
         return EnumSet.allOf(Direction.class);
     }
 
-    @Override
-    public AECableType getCableConnectionType(Direction dir) {
-        return AECableType.SMART;
-    }
-
     private void onInventoryChanged() {
         saveChanges();
-        markForClientUpdate();
+        markForUpdate();
         logic.onStateChanged();
     }
 
     private void onTankChanged() {
         saveChanges();
-        markForClientUpdate();
+        markForUpdate();
         logic.onStateChanged();
     }
 
@@ -852,4 +821,45 @@ public class CrystalCatalyzerBlockEntity extends AENetworkedBlockEntity
         saveChanges();
         logic.onStateChanged();
     }
+
+    private long simulateLightningExtract(LightningKey key, long amount) {
+        if (amount <= 0L) {
+            return 0L;
+        }
+        var grid = getMainNode().getGrid();
+        if (grid == null) {
+            return 0L;
+        }
+        return grid.getStorageService().getInventory()
+                .extract(key, amount, Actionable.SIMULATE, IActionSource.ofMachine(this));
+    }
+
+    private long extractLightning(LightningKey key, long amount) {
+        if (amount <= 0L) {
+            return 0L;
+        }
+        var grid = getMainNode().getGrid();
+        if (grid == null) {
+            return 0L;
+        }
+        return grid.getStorageService().getInventory()
+                .extract(key, amount, Actionable.MODULATE, IActionSource.ofMachine(this));
+    }
+
+    private long insertLightning(LightningKey key, long amount) {
+        if (amount <= 0L) {
+            return 0L;
+        }
+        var grid = getMainNode().getGrid();
+        if (grid == null) {
+            return 0L;
+        }
+        return grid.getStorageService().getInventory()
+                .insert(key, amount, Actionable.MODULATE, IActionSource.ofMachine(this));
+    }
+    @Override
+    public AECableType getCableConnectionType(Direction dir) {
+        return AECableType.SMART;
+    }
 }
+

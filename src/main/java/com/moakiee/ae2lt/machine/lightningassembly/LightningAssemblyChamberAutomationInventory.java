@@ -3,8 +3,7 @@ package com.moakiee.ae2lt.machine.lightningassembly;
 import java.util.Objects;
 
 import net.minecraft.world.item.ItemStack;
-
-import com.moakiee.ae2lt.machine.common.MatrixHidingAutomationInventory;
+import net.minecraftforge.items.IItemHandlerModifiable;
 
 /**
  * Capability-facing inventory wrapper.
@@ -12,10 +11,26 @@ import com.moakiee.ae2lt.machine.common.MatrixHidingAutomationInventory;
  * <p>External automation only inserts into recipe input slots. The dedicated
  * catalyst matrix slot is reserved for manual GUI placement.</p>
  */
-public class LightningAssemblyChamberAutomationInventory
-        extends MatrixHidingAutomationInventory<LightningAssemblyChamberInventory> {
+public class LightningAssemblyChamberAutomationInventory implements IItemHandlerModifiable {
+    private final LightningAssemblyChamberInventory inventory;
+
     public LightningAssemblyChamberAutomationInventory(LightningAssemblyChamberInventory inventory) {
-        super(inventory, LightningAssemblyChamberInventory.SLOT_CATALYST);
+        this.inventory = Objects.requireNonNull(inventory, "inventory");
+    }
+
+    @Override
+    public int getSlots() {
+        return inventory.getSlots();
+    }
+
+    @Override
+    public ItemStack getStackInSlot(int slot) {
+        return inventory.getStackInSlot(slot);
+    }
+
+    @Override
+    public void setStackInSlot(int slot, ItemStack stack) {
+        inventory.setStackInSlot(slot, stack);
     }
 
     @Override
@@ -77,6 +92,11 @@ public class LightningAssemblyChamberAutomationInventory
     }
 
     @Override
+    public int getSlotLimit(int slot) {
+        return inventory.getSlotLimit(slot);
+    }
+
+    @Override
     public boolean isItemValid(int slot, ItemStack stack) {
         if (slot < 0 || slot >= inventory.getSlots()) {
             throw new IllegalArgumentException(
@@ -93,3 +113,4 @@ public class LightningAssemblyChamberAutomationInventory
         return inventory.isInputSlot(slot);
     }
 }
+

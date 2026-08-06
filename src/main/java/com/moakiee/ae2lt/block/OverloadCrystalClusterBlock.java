@@ -31,8 +31,8 @@ import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
 
 import appeng.client.render.effects.ParticleTypes;
 
@@ -59,7 +59,7 @@ public class OverloadCrystalClusterBlock extends Block implements SimpleWaterlog
     }
 
     @Override
-    protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
+    public VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
         return switch (state.getValue(FACING)) {
             case NORTH -> northAabb;
             case SOUTH -> southAabb;
@@ -71,7 +71,7 @@ public class OverloadCrystalClusterBlock extends Block implements SimpleWaterlog
     }
 
     @Override
-    protected List<ItemStack> getDrops(BlockState state, LootParams.Builder builder) {
+    public List<ItemStack> getDrops(BlockState state, LootParams.Builder builder) {
         if (builder.getOptionalParameter(LootContextParams.THIS_ENTITY) == null) {
             // Intentional design: non-entity destruction paths such as explosions or piston-related
             // breakage should not drop cluster items.
@@ -81,14 +81,14 @@ public class OverloadCrystalClusterBlock extends Block implements SimpleWaterlog
     }
 
     @Override
-    protected boolean canSurvive(BlockState state, LevelReader level, BlockPos pos) {
+    public boolean canSurvive(BlockState state, LevelReader level, BlockPos pos) {
         var direction = state.getValue(FACING);
         var supportPos = pos.relative(direction.getOpposite());
         return level.getBlockState(supportPos).isFaceSturdy(level, supportPos, direction);
     }
 
     @Override
-    protected BlockState updateShape(
+    public BlockState updateShape(
             BlockState state,
             Direction direction,
             BlockState neighborState,
@@ -114,17 +114,17 @@ public class OverloadCrystalClusterBlock extends Block implements SimpleWaterlog
     }
 
     @Override
-    protected BlockState rotate(BlockState state, Rotation rotation) {
+    public BlockState rotate(BlockState state, Rotation rotation) {
         return state.setValue(FACING, rotation.rotate(state.getValue(FACING)));
     }
 
     @Override
-    protected BlockState mirror(BlockState state, Mirror mirror) {
+    public BlockState mirror(BlockState state, Mirror mirror) {
         return state.rotate(mirror.getRotation(state.getValue(FACING)));
     }
 
     @Override
-    protected FluidState getFluidState(BlockState state) {
+    public FluidState getFluidState(BlockState state) {
         return state.getValue(WATERLOGGED) ? Fluids.WATER.getSource(false) : super.getFluidState(state);
     }
 
@@ -164,3 +164,4 @@ public class OverloadCrystalClusterBlock extends Block implements SimpleWaterlog
         }
     }
 }
+

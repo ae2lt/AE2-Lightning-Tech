@@ -9,13 +9,13 @@ import com.moakiee.ae2lt.logic.research.ResearchNoteData;
 import com.moakiee.ae2lt.logic.research.ResearchNoteGenerator;
 
 import net.minecraft.ChatFormatting;
-import net.minecraft.core.component.DataComponents;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.StringTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.protocol.game.ClientboundOpenBookPacket;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.network.Filterable;
 import net.minecraft.stats.Stats;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
@@ -24,10 +24,9 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.WrittenBookItem;
-import net.minecraft.world.item.component.WrittenBookContent;
 import net.minecraft.world.level.Level;
 
-public class ResearchNoteItem extends Item {
+public class ResearchNoteItem extends AE2LTItem {
     private static final String[] ORDER_MARKERS = {"1", "2", "3", "4", "5", "6", "7", "8", "9"};
     private static final String BOOK_TITLE_KEY = "ae2lt.research_note.book.title";
     private static final String BOOK_AUTHOR_KEY = "ae2lt.research_note.book.author";
@@ -70,11 +69,10 @@ public class ResearchNoteItem extends Item {
         // 即便被强行堆,也不在此处处理)。
         applyGeneratedState(heldStack, data);
 
-        // ServerPlayer#openItemGui 只认 vanilla Items.WRITTEN_BOOK,碰到我们这种"挂着
-        // WRITTEN_BOOK_CONTENT 组件的自定义物品"会直接 return。所以这里手动走一遍
-        // 官方那套:先 resolve 书页里的动态组件(实体选择器之类),再把
-        // ClientboundOpenBookPacket 直接发给客户端。客户端 handleOpenBook 会用玩家
-        // 当前手持物 + WRITTEN_BOOK_CONTENT 组件构造 BookViewScreen。
+        // ServerPlayer#openItemGui 只认 vanilla Items.WRITTEN_BOOK，直接拿我们的自定义
+        // 物品去走那条分支会提前 return。所以这里手动走一遍官方链路：先 resolve 书页
+        // 里的动态组件（实体选择器之类），再把 ClientboundOpenBookPacket 直接发给客户端。
+        // 客户端随后会基于当前手持物上的 written-book NBT 打开阅读界面。
         if (player instanceof ServerPlayer serverPlayer) {
             WrittenBookItem.resolveBookComponents(heldStack, serverPlayer.createCommandSourceStack(), serverPlayer);
             serverPlayer.connection.send(new ClientboundOpenBookPacket(hand));
@@ -116,24 +114,20 @@ public class ResearchNoteItem extends Item {
 
     public static void applyGeneratedState(ItemStack stack, ResearchNoteData data) {
         data.writeTo(stack);
-        stack.set(DataComponents.WRITTEN_BOOK_CONTENT, createBookContent(data));
+        var tag = stack.getOrCreateTag();
+        tag.putString(WrittenBookItem.TAG_TITLE, Component.translatable(BOOK_TITLE_KEY, data.shortCode()).getString());
+        tag.putString(WrittenBookItem.TAG_AUTHOR, Component.translatable(BOOK_AUTHOR_KEY).getString());
+        tag.putInt(WrittenBookItem.TAG_GENERATION, 0);
+        tag.putBoolean(WrittenBookItem.TAG_RESOLVED, true);
+        tag.put(WrittenBookItem.TAG_PAGES, createBookPages(data));
     }
 
-    private static WrittenBookContent createBookContent(ResearchNoteData data) {
-        List<Filterable<Component>> pages = buildPages(data).stream()
-                .map(Filterable::passThrough)
-                .toList();
-        // WrittenBookContent 的 title/author 是 String,不支持 Component 序列化到网络后
-        // 客户端自动翻译。这里用服务器端 Language.getInstance() 在生成时解析一次 lang 键,
-        // 之后所有玩家看到的都是这份服务端 locale 的版本;至少去掉了代码里的硬编码英文。
-        String title = Component.translatable(BOOK_TITLE_KEY, data.shortCode()).getString();
-        String author = Component.translatable(BOOK_AUTHOR_KEY).getString();
-        return new WrittenBookContent(
-                Filterable.passThrough(title),
-                author,
-                0,
-                pages,
-                true);
+    private static ListTag createBookPages(ResearchNoteData data) {
+        var pages = new ListTag();
+        for (var page : buildPages(data)) {
+            pages.add(StringTag.valueOf(Component.Serializer.toJson(page)));
+        }
+        return pages;
     }
 
     private static List<Component> buildPages(ResearchNoteData data) {
@@ -173,3 +167,4 @@ public class ResearchNoteItem extends Item {
         return page;
     }
 }
+

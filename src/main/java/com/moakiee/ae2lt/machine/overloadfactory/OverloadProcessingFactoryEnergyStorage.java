@@ -2,7 +2,7 @@ package com.moakiee.ae2lt.machine.overloadfactory;
 
 import java.util.Objects;
 
-import net.neoforged.neoforge.energy.IEnergyStorage;
+import net.minecraftforge.energy.IEnergyStorage;
 
 public final class OverloadProcessingFactoryEnergyStorage implements IEnergyStorage {
     private final long capacity;
@@ -95,3 +95,4 @@ public final class OverloadProcessingFactoryEnergyStorage implements IEnergyStor
         return true;
     }
 }
+

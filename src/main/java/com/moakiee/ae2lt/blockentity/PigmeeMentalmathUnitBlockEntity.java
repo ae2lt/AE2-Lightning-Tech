@@ -10,7 +10,7 @@ import appeng.api.networking.IManagedGridNode;
 import appeng.api.networking.security.IActionSource;
 import appeng.api.orientation.BlockOrientation;
 import appeng.api.util.AECableType;
-import appeng.blockentity.grid.AENetworkedBlockEntity;
+import appeng.blockentity.grid.AENetworkBlockEntity;
 import appeng.hooks.ticking.TickHandler;
 import appeng.me.helpers.MachineSource;
 
@@ -23,19 +23,19 @@ import com.moakiee.thunderbolt.ae2.timewheel.TimeWheelCraftingCpuPoolProvider;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.core.RegistryAccess;
 
 /**
  * Thunderbolt-backed CPU host for the Pigmee mental arithmetic unit. AE2 indexes machine owners by
  * exact class, so a CraftingBlockEntity subclass cannot participate in its base-class CPU scan.
  */
-public final class PigmeeMentalmathUnitBlockEntity extends AENetworkedBlockEntity
+public final class PigmeeMentalmathUnitBlockEntity extends AENetworkBlockEntity
         implements TimeWheelCraftingCpuPoolHost {
     public static final long STORAGE_BYTES = 256L;
     public static final int PARALLELISM = 1;
@@ -110,8 +110,8 @@ public final class PigmeeMentalmathUnitBlockEntity extends AENetworkedBlockEntit
     }
 
     @Override
-    public void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
-        super.saveAdditional(tag, registries);
+    public void saveAdditional(CompoundTag tag) {
+        super.saveAdditional(tag);
         tag.remove(TAG_CPU_POOL);
         if (cpuPool.hasPersistentState()) {
             var poolTag = new CompoundTag();
@@ -121,7 +121,7 @@ public final class PigmeeMentalmathUnitBlockEntity extends AENetworkedBlockEntit
     }
 
     @Override
-    public void loadTag(CompoundTag tag, HolderLookup.Provider registries) {
+    public void loadTag(CompoundTag tag, RegistryAccess registries) {
         super.loadTag(tag, registries);
         cpuPool.readFromNBT(
                 tag.contains(TAG_CPU_POOL, Tag.TAG_COMPOUND)
@@ -152,3 +152,4 @@ public final class PigmeeMentalmathUnitBlockEntity extends AENetworkedBlockEntit
         return ModBlocks.PIGMEE_MENTALMATH_UNIT.get().asItem();
     }
 }
+

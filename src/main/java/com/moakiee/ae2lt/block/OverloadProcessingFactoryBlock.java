@@ -8,7 +8,6 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.ItemInteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.BucketItem;
 import net.minecraft.world.item.ItemStack;
@@ -20,20 +19,20 @@ import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.phys.BlockHitResult;
-import net.neoforged.neoforge.capabilities.Capabilities;
-import net.neoforged.neoforge.common.SoundActions;
-import net.neoforged.neoforge.fluids.FluidType;
-import net.neoforged.neoforge.fluids.FluidStack;
-import net.neoforged.neoforge.fluids.capability.IFluidHandler;
+import net.minecraftforge.common.SoundActions;
+import net.minecraftforge.common.capabilities.ForgeCapabilities;
+import net.minecraftforge.fluids.FluidType;
+import net.minecraftforge.fluids.FluidStack;
+import net.minecraftforge.fluids.capability.IFluidHandler;
 
 import appeng.api.orientation.IOrientationStrategy;
 import appeng.api.orientation.OrientationStrategies;
-import appeng.block.AEBaseEntityBlock;
 import appeng.menu.locator.MenuLocators;
+import appeng.util.InteractionUtil;
 
 import com.moakiee.ae2lt.blockentity.OverloadProcessingFactoryBlockEntity;
 
-public class OverloadProcessingFactoryBlock extends AEBaseEntityBlock<OverloadProcessingFactoryBlockEntity> {
+public class OverloadProcessingFactoryBlock extends AE2LTBaseEntityBlock<OverloadProcessingFactoryBlockEntity> {
     public static final BooleanProperty WORKING = BooleanProperty.create("working");
 
     public OverloadProcessingFactoryBlock() {
@@ -66,6 +65,10 @@ public class OverloadProcessingFactoryBlock extends AEBaseEntityBlock<OverloadPr
     @Override
     protected InteractionResult useWithoutItem(
             BlockState state, Level level, net.minecraft.core.BlockPos pos, Player player, BlockHitResult hitResult) {
+        if (InteractionUtil.isInAlternateUseMode(player)) {
+            return InteractionResult.PASS;
+        }
+
         var be = getBlockEntity(level, pos);
         if (be == null) {
             return InteractionResult.PASS;
@@ -79,7 +82,7 @@ public class OverloadProcessingFactoryBlock extends AEBaseEntityBlock<OverloadPr
     }
 
     @Override
-    protected ItemInteractionResult useItemOn(
+    protected InteractionResult useItemOn(
             ItemStack heldItem,
             BlockState state,
             Level level,
@@ -89,7 +92,7 @@ public class OverloadProcessingFactoryBlock extends AEBaseEntityBlock<OverloadPr
             BlockHitResult hit) {
         if (heldItem.getItem() instanceof BucketItem) {
             if (useBucket(player, level, pos, heldItem, hand)) {
-                return ItemInteractionResult.sidedSuccess(level.isClientSide());
+                return InteractionResult.sidedSuccess(level.isClientSide());
             }
         }
 
@@ -97,8 +100,10 @@ public class OverloadProcessingFactoryBlock extends AEBaseEntityBlock<OverloadPr
     }
 
     private boolean useBucket(Player player, Level level, BlockPos pos, ItemStack stack, InteractionHand hand) {
-        var itemFluid = stack.getCapability(Capabilities.FluidHandler.ITEM);
-        var blockFluid = level.getCapability(Capabilities.FluidHandler.BLOCK, pos, null);
+        var itemFluid = stack.getCapability(ForgeCapabilities.FLUID_HANDLER_ITEM).orElse(null);
+        var blockEntity = level.getBlockEntity(pos);
+        var blockFluid = blockEntity != null ? blockEntity.getCapability(ForgeCapabilities.FLUID_HANDLER).orElse(null)
+                : null;
         if (itemFluid == null || blockFluid == null) {
             return false;
         }
@@ -115,7 +120,7 @@ public class OverloadProcessingFactoryBlock extends AEBaseEntityBlock<OverloadPr
                 player.setItemInHand(hand, itemFluid.getContainer());
             } else {
                 var newBucket = new ItemStack(Items.BUCKET, 1);
-                var newBucketFluid = newBucket.getCapability(Capabilities.FluidHandler.ITEM);
+                var newBucketFluid = newBucket.getCapability(ForgeCapabilities.FLUID_HANDLER_ITEM).orElse(null);
                 if (newBucketFluid == null) {
                     return false;
                 }
@@ -145,7 +150,7 @@ public class OverloadProcessingFactoryBlock extends AEBaseEntityBlock<OverloadPr
     }
 
     private void playBucketSound(Player player, Level level, BlockPos pos, FluidStack fluid, boolean fillBucket) {
-        SoundEvent sound = fluid.getFluidType().getSound(
+        SoundEvent sound = fluid.getFluid().getFluidType().getSound(
                 player,
                 level,
                 pos,
@@ -154,10 +159,12 @@ public class OverloadProcessingFactoryBlock extends AEBaseEntityBlock<OverloadPr
                         : SoundActions.BUCKET_EMPTY);
         if (sound == null) {
             sound = fillBucket
-                    ? (fluid.is(FluidTags.LAVA) ? SoundEvents.BUCKET_FILL_LAVA : SoundEvents.BUCKET_FILL)
-                    : (fluid.is(FluidTags.LAVA) ? SoundEvents.BUCKET_EMPTY_LAVA : SoundEvents.BUCKET_EMPTY);
+                    ? (fluid.getFluid().is(FluidTags.LAVA) ? SoundEvents.BUCKET_FILL_LAVA : SoundEvents.BUCKET_FILL)
+                    : (fluid.getFluid().is(FluidTags.LAVA) ? SoundEvents.BUCKET_EMPTY_LAVA : SoundEvents.BUCKET_EMPTY);
         }
         level.playSound(player, pos, sound, SoundSource.BLOCKS, 1.0F, 1.0F);
     }
 }
+
+
 

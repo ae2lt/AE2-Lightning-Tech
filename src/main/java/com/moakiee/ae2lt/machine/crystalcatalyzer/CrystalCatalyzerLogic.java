@@ -42,8 +42,8 @@ public final class CrystalCatalyzerLogic extends AbstractGridRecipeMachineLogic<
     protected Optional<CrystalCatalyzerRecipeCandidate> validateLockedRecipe(
             CrystalCatalyzerLockedRecipe lockedRecipe) {
         return CrystalCatalyzerRecipeService.findRecipeById(host.getLevel(), lockedRecipe.recipeId())
-                .filter(candidate -> candidate.recipe().value().mode() == host.getMode())
-                .filter(candidate -> candidate.recipe().value().matches(
+                .filter(candidate -> candidate.recipe().mode() == host.getMode())
+                .filter(candidate -> candidate.recipe().matches(
                         com.moakiee.ae2lt.machine.crystalcatalyzer.recipe.CrystalCatalyzerRecipeInput
                                 .fromMachine(host.getInventory()),
                         host.getLevel()));

@@ -21,7 +21,7 @@ public final class TeslaCoilLogic implements IGridTickable {
         // (尤其依赖 grid 的查找) 推断 sleeping 容易错判, 导致机器明明可以工作
         // 却卡在 sleeping。始终以 awake 入队, 首次 tick 自行评估,
         // 无工作时通过返回 SLEEP 自动转 sleeping。
-        return new TickingRequest(1, 20, false);
+        return new TickingRequest(1, 20, false, true);
     }
 
     @Override

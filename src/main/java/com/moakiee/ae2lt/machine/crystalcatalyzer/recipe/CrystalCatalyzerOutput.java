@@ -1,21 +1,19 @@
 package com.moakiee.ae2lt.machine.crystalcatalyzer.recipe;
 
+import com.google.gson.JsonObject;
 import java.util.Iterator;
-
-import com.mojang.datafixers.util.Either;
-import com.mojang.serialization.Codec;
-import com.mojang.serialization.codecs.RecordCodecBuilder;
-
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderSet;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.network.codec.ByteBufCodecs;
-import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
+import net.minecraft.util.GsonHelper;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+
+import com.moakiee.ae2lt.util.RecipeSerializationHelper;
 
 /**
  * 水晶催化器配方的产物声明。
@@ -31,19 +29,6 @@ import net.minecraft.world.item.ItemStack;
  */
 public sealed interface CrystalCatalyzerOutput
         permits CrystalCatalyzerOutput.OfItem, CrystalCatalyzerOutput.OfTag {
-
-    Codec<CrystalCatalyzerOutput> CODEC = Codec.either(OfTag.CODEC, ItemStack.STRICT_CODEC)
-            .xmap(
-                    either -> either.map(tag -> (CrystalCatalyzerOutput) tag, OfItem::new),
-                    output -> {
-                        if (output instanceof OfTag tag) {
-                            return Either.<OfTag, ItemStack>left(tag);
-                        }
-                        return Either.<OfTag, ItemStack>right(((OfItem) output).stack());
-                    });
-
-    StreamCodec<RegistryFriendlyByteBuf, CrystalCatalyzerOutput> STREAM_CODEC =
-            StreamCodec.of(CrystalCatalyzerOutput::encode, CrystalCatalyzerOutput::decode);
 
     /**
      * Resolve to a concrete {@link ItemStack}. Returns {@link ItemStack#EMPTY} when this is a tag
@@ -61,24 +46,37 @@ public sealed interface CrystalCatalyzerOutput
         return new OfTag(tag, count);
     }
 
-    private static void encode(RegistryFriendlyByteBuf buf, CrystalCatalyzerOutput output) {
-        if (output instanceof OfItem item) {
-            buf.writeBoolean(false);
-            ItemStack.STREAM_CODEC.encode(buf, item.stack());
-        } else if (output instanceof OfTag tag) {
-            buf.writeBoolean(true);
-            buf.writeResourceLocation(tag.tag().location());
-            ByteBufCodecs.VAR_INT.encode(buf, tag.count());
+    static CrystalCatalyzerOutput fromJson(JsonObject json) {
+        if (json.has("tag")) {
+            return new OfTag(
+                    TagKey.create(Registries.ITEM, new ResourceLocation(GsonHelper.getAsString(json, "tag"))),
+                    GsonHelper.getAsInt(json, "count", 1));
         }
+        return new OfItem(RecipeSerializationHelper.itemStackFromJson(json));
     }
 
-    private static CrystalCatalyzerOutput decode(RegistryFriendlyByteBuf buf) {
+    static void encode(FriendlyByteBuf buf, CrystalCatalyzerOutput output) {
+        if (output instanceof OfItem item) {
+            buf.writeBoolean(false);
+            buf.writeItem(item.stack());
+            return;
+        }
+        if (output instanceof OfTag tag) {
+            buf.writeBoolean(true);
+            buf.writeResourceLocation(tag.tag().location());
+            buf.writeInt(tag.count());
+            return;
+        }
+        throw new IllegalStateException("Unknown crystal catalyzer output type: " + output);
+    }
+
+    static CrystalCatalyzerOutput decode(FriendlyByteBuf buf) {
         if (buf.readBoolean()) {
             ResourceLocation tagId = buf.readResourceLocation();
-            int count = ByteBufCodecs.VAR_INT.decode(buf);
-            return new OfTag(TagKey.create(BuiltInRegistries.ITEM.key(), tagId), count);
+            int count = buf.readInt();
+            return new OfTag(TagKey.create(Registries.ITEM, tagId), count);
         }
-        ItemStack stack = ItemStack.STREAM_CODEC.decode(buf);
+        ItemStack stack = buf.readItem();
         return new OfItem(stack);
     }
 
@@ -102,11 +100,6 @@ public sealed interface CrystalCatalyzerOutput
     }
 
     record OfTag(TagKey<Item> tag, int count) implements CrystalCatalyzerOutput {
-        public static final Codec<OfTag> CODEC = RecordCodecBuilder.create(instance -> instance.group(
-                        TagKey.codec(BuiltInRegistries.ITEM.key()).fieldOf("tag").forGetter(OfTag::tag),
-                        Codec.INT.optionalFieldOf("count", 1).forGetter(OfTag::count))
-                .apply(instance, OfTag::new));
-
         public OfTag {
             if (count <= 0) {
                 throw new IllegalArgumentException("tag output count must be positive");

@@ -21,7 +21,6 @@ public class OverloadProcessingFactoryInventory extends LargeStackItemHandler {
     public static final int OUTPUT_SLOT_COUNT = 1;
     public static final int LARGE_SLOT_LIMIT = 16_384;
     public static final int MATRIX_SLOT_LIMIT = 32;
-
     public OverloadProcessingFactoryInventory(@Nullable Runnable changeListener) {
         super(SLOT_COUNT, changeListener);
     }
@@ -123,7 +122,7 @@ public class OverloadProcessingFactoryInventory extends LargeStackItemHandler {
             ItemStack existing = getStackInSlot(slot);
             if (existing.isEmpty()) {
                 capacity += LARGE_SLOT_LIMIT;
-            } else if (ItemStack.isSameItemSameComponents(existing, stack)) {
+            } else if (ItemStack.isSameItemSameTags(existing, stack)) {
                 capacity += Math.max(0, LARGE_SLOT_LIMIT - existing.getCount());
             }
         }
@@ -172,7 +171,7 @@ public class OverloadProcessingFactoryInventory extends LargeStackItemHandler {
 
         for (int index = 0; index < simulated.length; index++) {
             ItemStack existing = simulated[index];
-            if (existing.isEmpty() || !ItemStack.isSameItemSameComponents(existing, remainder)) {
+            if (existing.isEmpty() || !ItemStack.isSameItemSameTags(existing, remainder)) {
                 continue;
             }
 

@@ -30,7 +30,7 @@ import net.minecraft.world.phys.Vec3;
  * as such (lightning rituals that require natural lightning, the collector
  * tiering, etc.).</p>
  */
-public class DebugLightningRodItem extends Item {
+public class DebugLightningRodItem extends AE2LTItem {
     public DebugLightningRodItem(Properties properties) {
         super(properties);
     }
@@ -81,3 +81,4 @@ public class DebugLightningRodItem extends Item {
         super.appendHoverText(stack, context, tooltip, tooltipFlag);
     }
 }
+

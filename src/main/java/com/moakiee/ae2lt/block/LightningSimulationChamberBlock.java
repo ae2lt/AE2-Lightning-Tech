@@ -22,10 +22,10 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 
 import appeng.api.orientation.IOrientationStrategy;
 import appeng.api.orientation.OrientationStrategies;
-import appeng.block.AEBaseEntityBlock;
 import appeng.menu.locator.MenuLocators;
+import appeng.util.InteractionUtil;
 
-public class LightningSimulationChamberBlock extends AEBaseEntityBlock<LightningSimulationChamberBlockEntity> {
+public class LightningSimulationChamberBlock extends AE2LTBaseEntityBlock<LightningSimulationChamberBlockEntity> {
     public static final BooleanProperty WORKING = BooleanProperty.create("working");
     public static final DirectionProperty FACING = BlockStateProperties.HORIZONTAL_FACING;
     private static final VoxelShape NORTH_SHAPE = BlockShapeHelper.or(
@@ -57,12 +57,12 @@ public class LightningSimulationChamberBlock extends AEBaseEntityBlock<Lightning
     }
 
     @Override
-    protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
+    public VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
         return SHAPES.get(state.getValue(FACING));
     }
 
     @Override
-    protected VoxelShape getCollisionShape(BlockState state, BlockGetter level, BlockPos pos,
+    public VoxelShape getCollisionShape(BlockState state, BlockGetter level, BlockPos pos,
             CollisionContext context) {
         return SHAPES.get(state.getValue(FACING));
     }
@@ -79,6 +79,10 @@ public class LightningSimulationChamberBlock extends AEBaseEntityBlock<Lightning
     @Override
     protected InteractionResult useWithoutItem(
             BlockState state, Level level, net.minecraft.core.BlockPos pos, Player player, BlockHitResult hitResult) {
+        if (InteractionUtil.isInAlternateUseMode(player)) {
+            return InteractionResult.PASS;
+        }
+
         var be = getBlockEntity(level, pos);
         if (be == null) {
             return InteractionResult.PASS;
@@ -91,3 +95,4 @@ public class LightningSimulationChamberBlock extends AEBaseEntityBlock<Lightning
         return InteractionResult.sidedSuccess(level.isClientSide());
     }
 }
+

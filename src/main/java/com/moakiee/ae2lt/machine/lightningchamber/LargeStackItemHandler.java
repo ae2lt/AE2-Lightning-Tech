@@ -4,13 +4,12 @@ import java.util.Objects;
 
 import org.jetbrains.annotations.Nullable;
 
-import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.items.IItemHandlerModifiable;
+import net.minecraftforge.items.IItemHandlerModifiable;
 
 import appeng.api.inventories.InternalInventory;
 
@@ -20,9 +19,8 @@ import appeng.api.inventories.InternalInventory;
  * than 64 items in a single slot.
  *
  * <p>Do not replace this with a plain ItemStackHandler + getSlotLimit override.
- * NeoForge's default insert path still clamps to the inserted stack's own max
- * size, which means automation commonly stops at 64 even when the slot says
- * 1024.</p>
+ * Forge's default insert path still clamps to the inserted stack's own max size,
+ * which means automation commonly stops at 64 even when the slot says 1024.</p>
  */
 public abstract class LargeStackItemHandler implements IItemHandlerModifiable, InternalInventory {
     private static final String TAG_SLOT = "Slot";
@@ -114,7 +112,7 @@ public abstract class LargeStackItemHandler implements IItemHandlerModifiable, I
         }
 
         ItemStack existing = stacks.get(slot);
-        if (!existing.isEmpty() && !ItemStack.isSameItemSameComponents(existing, stack)) {
+        if (!existing.isEmpty() && !ItemStack.isSameItemSameTags(existing, stack)) {
             return stack;
         }
 
@@ -215,7 +213,7 @@ public abstract class LargeStackItemHandler implements IItemHandlerModifiable, I
         }
     }
 
-    public final void saveToTag(CompoundTag tag, String key, HolderLookup.Provider registries) {
+    public final void saveToTag(CompoundTag tag, String key) {
         if (isEmpty()) {
             tag.remove(key);
             return;
@@ -231,14 +229,14 @@ public abstract class LargeStackItemHandler implements IItemHandlerModifiable, I
             CompoundTag itemTag = new CompoundTag();
             itemTag.putInt(TAG_SLOT, slot);
             itemTag.putInt(TAG_COUNT_INT, stack.getCount());
-            Tag stackTag = stack.copyWithCount(1).save(registries, new CompoundTag());
+            Tag stackTag = stack.copyWithCount(1).save(new CompoundTag());
             itemTag.put(TAG_STACK, stackTag);
             items.add(itemTag);
         }
         tag.put(key, items);
     }
 
-    public final void loadFromTag(CompoundTag tag, String key, HolderLookup.Provider registries) {
+    public final void loadFromTag(CompoundTag tag, String key) {
         for (int slot = 0; slot < stacks.size(); slot++) {
             stacks.set(slot, ItemStack.EMPTY);
         }
@@ -256,8 +254,8 @@ public abstract class LargeStackItemHandler implements IItemHandlerModifiable, I
             }
 
             ItemStack stack = itemTag.contains(TAG_STACK, Tag.TAG_COMPOUND)
-                    ? ItemStack.parseOptional(registries, itemTag.getCompound(TAG_STACK))
-                    : ItemStack.parseOptional(registries, itemTag);
+                    ? ItemStack.of(itemTag.getCompound(TAG_STACK))
+                    : ItemStack.of(itemTag);
             if (stack.isEmpty()) {
                 continue;
             }
@@ -284,3 +282,4 @@ public abstract class LargeStackItemHandler implements IItemHandlerModifiable, I
         return true;
     }
 }
+

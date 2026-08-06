@@ -7,11 +7,10 @@ import java.util.List;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
-import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
@@ -25,14 +24,15 @@ import net.minecraft.world.level.block.state.BlockState;
 import appeng.api.networking.GridFlags;
 import appeng.api.networking.IGridNodeListener;
 import appeng.api.networking.IManagedGridNode;
+import appeng.api.inventories.InternalInventory;
 import appeng.api.storage.MEStorage;
 import appeng.api.storage.StorageCells;
 import appeng.api.storage.cells.ISaveProvider;
 import appeng.api.storage.cells.StorageCell;
 import appeng.api.util.AECableType;
-import appeng.blockentity.grid.AENetworkedBlockEntity;
+import appeng.blockentity.grid.AENetworkBlockEntity;
 import appeng.menu.MenuOpener;
-import appeng.menu.locator.MenuHostLocator;
+import appeng.menu.locator.MenuLocator;
 import appeng.util.inv.AppEngInternalInventory;
 import appeng.util.inv.InternalInventoryHost;
 
@@ -50,7 +50,7 @@ import com.moakiee.ae2lt.menu.OverloadedPowerSupplyMenu;
 import com.moakiee.ae2lt.registry.ModBlockEntities;
 import com.moakiee.ae2lt.registry.ModBlocks;
 
-public class OverloadedPowerSupplyBlockEntity extends AENetworkedBlockEntity
+public class OverloadedPowerSupplyBlockEntity extends AENetworkBlockEntity
         implements InternalInventoryHost, FrequencyBindingHost {
 
     public static final int MAX_WIRELESS_CONNECTIONS = 64;
@@ -86,7 +86,7 @@ public class OverloadedPowerSupplyBlockEntity extends AENetworkedBlockEntity
         }
 
         public static WirelessConnection fromTag(CompoundTag tag) {
-            var dim = ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(tag.getString(TAG_DIM)));
+            var dim = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(tag.getString(TAG_DIM)));
             var pos = BlockPos.of(tag.getLong(TAG_POS));
             int rawFace = tag.getInt(TAG_FACE);
             var face = (rawFace >= 0 && rawFace < Direction.values().length)
@@ -156,7 +156,7 @@ public class OverloadedPowerSupplyBlockEntity extends AENetworkedBlockEntity
     }
 
     @Override
-    public AENetworkedBlockEntity getFrequencyBindingBlockEntity() {
+    public AENetworkBlockEntity getFrequencyBindingBlockEntity() {
         return this;
     }
 
@@ -181,11 +181,6 @@ public class OverloadedPowerSupplyBlockEntity extends AENetworkedBlockEntity
         return super.createMainNode()
                 .setTagName("overloaded_power_supply")
                 .setVisualRepresentation(ModBlocks.OVERLOADED_POWER_SUPPLY.get());
-    }
-
-    @Override
-    public AECableType getCableConnectionType(Direction dir) {
-        return AECableType.SMART;
     }
 
     @Override
@@ -242,7 +237,7 @@ public class OverloadedPowerSupplyBlockEntity extends AENetworkedBlockEntity
      * AE2 ME Chest pattern, deferred-persist variant: every cell mutation
      * (extract/insert) routes through {@link FluxCellInventory#saveChanges()},
      * which fires this callback. We do NOT call {@code persist()} here —
-     * doing so on every mutation would write the ItemStack data component
+     * doing so on every mutation would write the ItemStack NBT
      * 64+ times per OVERLOAD tick, AND would briefly flash the post-extract
      * value (often 0) into the ItemStack between distribution and refill.
      *
@@ -263,7 +258,7 @@ public class OverloadedPowerSupplyBlockEntity extends AENetworkedBlockEntity
     /**
      * Externally-invoked persist (lifecycle hooks: cell removed, BE saved,
      * chunk unloaded). Forces the latest in-memory cell state to be flushed
-     * into the ItemStack data component before the stack leaves the BE.
+     * into the ItemStack NBT before the stack leaves the BE.
      */
     public void persistCellStorage() {
         AppFluxBridge.persistCellStorage(cachedCellView);
@@ -277,7 +272,7 @@ public class OverloadedPowerSupplyBlockEntity extends AENetworkedBlockEntity
     public void cycleMode() {
         mode = mode.next();
         saveChanges();
-        markForClientUpdate();
+        markForUpdate();
         logic.onStateChanged();
         // Always pair OVERLOADED with the current mode; POWERED stays where
         // it is (the next tick will refresh it). Clearing it here would
@@ -483,7 +478,7 @@ public class OverloadedPowerSupplyBlockEntity extends AENetworkedBlockEntity
     private void notifyConnectionsChanged() {
         connectionVersion++;
         saveChanges();
-        markForClientUpdate();
+        markForUpdate();
         logic.onStateChanged();
     }
 
@@ -492,13 +487,13 @@ public class OverloadedPowerSupplyBlockEntity extends AENetworkedBlockEntity
     }
 
     @Override
-    public void saveChangedInventory(AppEngInternalInventory inv) {
-        saveChanges();
-        markForClientUpdate();
+    public void saveChanges() {
+        super.saveChanges();
+        markForUpdate();
     }
 
     @Override
-    public void onChangeInventory(AppEngInternalInventory inv, int slot) {
+    public void onChangeInventory(InternalInventory inv, int slot) {
         if (inv == cellInv) {
             // The cell slot just changed (player took out / inserted / swapped).
             // Flush any FE BufferedMEStorage is still holding (transient buffer
@@ -543,15 +538,15 @@ public class OverloadedPowerSupplyBlockEntity extends AENetworkedBlockEntity
 
     @Override
     public void exportSettings(appeng.util.SettingsFrom mode,
-                               net.minecraft.core.component.DataComponentMap.Builder builder,
+                               net.minecraft.nbt.CompoundTag output,
                                @Nullable Player player) {
-        super.exportSettings(mode, builder, player);
-        FrequencyBindingHelper.exportMemorySettings(mode, builder, getFrequencyId());
+        super.exportSettings(mode, output, player);
+        FrequencyBindingHelper.exportMemorySettings(mode, output, getFrequencyId());
     }
 
     @Override
     public void importSettings(appeng.util.SettingsFrom mode,
-                               net.minecraft.core.component.DataComponentMap input,
+                               net.minecraft.nbt.CompoundTag input,
                                @Nullable Player player) {
         super.importSettings(mode, input, player);
         FrequencyBindingHelper.importMemorySettings(mode, input, this::setFrequency);
@@ -577,23 +572,23 @@ public class OverloadedPowerSupplyBlockEntity extends AENetworkedBlockEntity
     }
 
     @Override
-    public void saveAdditional(CompoundTag data, HolderLookup.Provider registries) {
+    public void saveAdditional(CompoundTag data) {
         // Only copy the cell's in-memory state into its ItemStack before the
         // inventory is serialized. Do not call saveChanges() from this path:
         // the chunk is already being saved, and re-marking it dirty here makes
         // /save-all flush pick it up again in the next dirty pass.
         AppFluxBridge.persistCellStorage(cachedCellView);
-        super.saveAdditional(data, registries);
+        super.saveAdditional(data);
         data.putString(TAG_MODE, mode.name());
-        cellInv.writeToNBT(data, TAG_CELL_INV, registries);
+        cellInv.writeToNBT(data, TAG_CELL_INV);
 
         data.put(TAG_CONNECTIONS, WirelessConnectionLists.writeTagList(connections));
         frequencyBinding.save(data);
     }
 
     @Override
-    public void loadTag(CompoundTag data, HolderLookup.Provider registries) {
-        super.loadTag(data, registries);
+    public void loadTag(CompoundTag data) {
+        super.loadTag(data);
 
         if (data.contains(TAG_MODE, Tag.TAG_STRING)) {
             try {
@@ -605,7 +600,7 @@ public class OverloadedPowerSupplyBlockEntity extends AENetworkedBlockEntity
             mode = PowerMode.NORMAL;
         }
 
-        cellInv.readFromNBT(data, TAG_CELL_INV, registries);
+        cellInv.readFromNBT(data, TAG_CELL_INV);
         cellViewDirty = true;
         cellCapacityDirty = true;
         cachedCellView = null;
@@ -619,7 +614,7 @@ public class OverloadedPowerSupplyBlockEntity extends AENetworkedBlockEntity
     }
 
     @Override
-    protected void writeToStream(RegistryFriendlyByteBuf data) {
+    protected void writeToStream(FriendlyByteBuf data) {
         super.writeToStream(data);
         data.writeByte(mode.ordinal());
         data.writeVarInt(connections.size());
@@ -631,7 +626,7 @@ public class OverloadedPowerSupplyBlockEntity extends AENetworkedBlockEntity
     }
 
     @Override
-    protected boolean readFromStream(RegistryFriendlyByteBuf data) {
+    protected boolean readFromStream(FriendlyByteBuf data) {
         boolean changed = super.readFromStream(data);
 
         int modeOrdinal = data.readByte();
@@ -664,10 +659,15 @@ public class OverloadedPowerSupplyBlockEntity extends AENetworkedBlockEntity
         return changed;
     }
 
-    public void openMenu(Player player, MenuHostLocator locator) {
+    public void openMenu(Player player, MenuLocator locator) {
         if (level instanceof ServerLevel) {
             clearInvalidConnections();
         }
         MenuOpener.open(OverloadedPowerSupplyMenu.TYPE, player, locator);
     }
+    @Override
+    public AECableType getCableConnectionType(Direction dir) {
+        return AECableType.SMART;
+    }
 }
+

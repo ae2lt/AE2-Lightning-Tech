@@ -2,7 +2,6 @@ package com.moakiee.ae2lt.blockentity;
 
 import com.moakiee.ae2lt.config.AE2LTCommonConfig;
 import com.moakiee.thunderbolt.ae2.channel.OverloadedGridNodeOwner;
-import com.moakiee.ae2lt.logic.PassiveAeCharger;
 import com.moakiee.ae2lt.registry.ModBlockEntities;
 import com.moakiee.ae2lt.registry.ModBlocks;
 import net.minecraft.core.BlockPos;
@@ -11,11 +10,13 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
-import net.neoforged.neoforge.energy.IEnergyStorage;
+import net.minecraftforge.energy.IEnergyStorage;
 
+import appeng.api.config.Actionable;
 import appeng.api.networking.IManagedGridNode;
 import appeng.api.util.AECableType;
 import appeng.blockentity.networking.ControllerBlockEntity;
+import appeng.helpers.ForgeEnergyAdapter;
 
 /**
  * Minimal custom controller node owner.
@@ -25,8 +26,7 @@ import appeng.blockentity.networking.ControllerBlockEntity;
  * Important: later 128-channel logic is keyed off this concrete owner type,
  * so vanilla ControllerBlockEntity instances remain untouched.
  */
-public class OverloadedControllerBlockEntity extends ControllerBlockEntity
-        implements OverloadedGridNodeOwner, PassiveAeCharger.Storage {
+public class OverloadedControllerBlockEntity extends ControllerBlockEntity implements OverloadedGridNodeOwner {
     private static final double INTERNAL_MAX_POWER = 16_000_000.0;
 
     public OverloadedControllerBlockEntity(BlockPos pos, BlockState blockState) {
@@ -43,17 +43,15 @@ public class OverloadedControllerBlockEntity extends ControllerBlockEntity
             return;
         }
 
-        PassiveAeCharger.charge(be, AE2LTCommonConfig.overloadedControllerPassiveAePerTick());
+        be.injectAEPower(AE2LTCommonConfig.overloadedControllerPassiveAePerTick(), Actionable.MODULATE);
     }
 
     public IEnergyStorage getEnergyStorageCapability(Direction side) {
-        return this.getEnergyStorage(side);
+        return new ForgeEnergyAdapter(this);
     }
 
     @Override
     protected IManagedGridNode createMainNode() {
-        // AE2 1.21.1 uses IManagedGridNode#setTagName here.
-        // If your target AE2/MC version renames this API, adjust this override accordingly.
         // The tag/visual representation are AE2LT-specific, but the underlying node
         // still follows vanilla AE2 controller behavior unless an owner-scoped mixin says otherwise.
         return super.createMainNode()
@@ -68,9 +66,7 @@ public class OverloadedControllerBlockEntity extends ControllerBlockEntity
 
     @Override
     protected Item getItemFromBlockEntity() {
-        // AE2 network tool / network status uses the node's visual representation,
-        // which defaults to this representative item in AENetworkedPoweredBlockEntity.
-        // If this hook is renamed in another AE2/MC version, adjust accordingly.
         return ModBlocks.OVERLOADED_CONTROLLER.get().asItem();
     }
 }
+

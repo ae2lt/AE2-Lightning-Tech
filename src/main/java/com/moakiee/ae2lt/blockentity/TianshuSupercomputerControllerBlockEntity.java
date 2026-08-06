@@ -50,7 +50,6 @@ import appeng.me.service.CraftingService;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
@@ -65,6 +64,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.core.RegistryAccess;
 
 public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
         implements TimeWheelCraftingCpuPoolHost, TianshuInventoryMaintenanceHost,
@@ -464,8 +464,8 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
     private Map<Item, Integer> findMissingRequirements(Player player, Map<Item, Integer> requirements) {
         var missing = new java.util.LinkedHashMap<Item, Integer>();
         for (var entry : requirements.entrySet()) {
-            int available = countItem(player, entry.getKey());
-            if (available < entry.getValue()) missing.put(entry.getKey(), entry.getValue() - available);
+            int available = countItem(player, entry.getId() /* TODO: verify getKey->getId */);
+            if (available < entry.getValue()) missing.put(entry.getId() /* TODO: verify getKey->getId */, entry.getValue() - available);
         }
         return missing;
     }
@@ -511,7 +511,7 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
         int index = 0;
         for (var entry : missing.entrySet()) {
             if (index > 0) result.append(", ");
-            result.append(entry.getKey().getDescription()).append(" x").append(Integer.toString(entry.getValue()));
+            result.append(entry.getId() /* TODO: verify getKey->getId */.getDescription()).append(" x").append(Integer.toString(entry.getValue()));
             index++;
         }
         return result;
@@ -812,10 +812,10 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
         var candidates = new java.util.ArrayList<AEKey>();
         if (available.get(planned) > 0 && acceptsVariant.test(planned)) candidates.add(planned);
         for (var entry : available) {
-            if (!entry.getKey().equals(planned)
+            if (!entry.getId() /* TODO: verify getKey->getId */.equals(planned)
                     && entry.getLongValue() > 0
-                    && acceptsVariant.test(entry.getKey())) {
-                candidates.add(entry.getKey());
+                    && acceptsVariant.test(entry.getId() /* TODO: verify getKey->getId */)) {
+                candidates.add(entry.getId() /* TODO: verify getKey->getId */);
             }
         }
         candidates.sort(java.util.Comparator
@@ -942,7 +942,7 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
         var variants = new java.util.LinkedHashMap<AEKey, Long>();
         for (var candidate : available) {
             if (candidate.getLongValue() > 0) {
-                variants.put(candidate.getKey(), candidate.getLongValue());
+                variants.put(candidate.getId() /* TODO: verify getKey->getId */, candidate.getLongValue());
             }
         }
         return Map.copyOf(variants);
@@ -1201,8 +1201,8 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
     }
 
     @Override
-    protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
-        super.saveAdditional(tag, registries);
+    protected void saveAdditional(CompoundTag tag) {
+        super.saveAdditional(tag);
         // SavedData normally materializes the deferred snapshot before its own write.
         // Keep this fallback for standalone chunk saves and unloads between world saves.
         flushRuntimeStateIfDirty();
@@ -1224,8 +1224,8 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
     }
 
     @Override
-    protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
-        super.loadAdditional(tag, registries);
+    protected void loadAdditional(CompoundTag tag) {
+        super.loadAdditional(tag);
         formed = tag.getBoolean(TAG_FORMED);
         structureAvailable = false;
         waitingForChunks = false;
@@ -1304,3 +1304,4 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
         persistentStateOwner = false;
     }
 }
+

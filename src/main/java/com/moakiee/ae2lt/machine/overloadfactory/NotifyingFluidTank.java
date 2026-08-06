@@ -3,8 +3,8 @@ package com.moakiee.ae2lt.machine.overloadfactory;
 import java.util.Objects;
 import java.util.function.Predicate;
 
-import net.neoforged.neoforge.fluids.FluidStack;
-import net.neoforged.neoforge.fluids.capability.templates.FluidTank;
+import net.minecraftforge.fluids.FluidStack;
+import net.minecraftforge.fluids.capability.templates.FluidTank;
 
 public final class NotifyingFluidTank extends FluidTank {
     private final Runnable changeListener;
@@ -23,3 +23,4 @@ public final class NotifyingFluidTank extends FluidTank {
         changeListener.run();
     }
 }
+

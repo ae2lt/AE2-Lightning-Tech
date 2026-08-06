@@ -7,59 +7,24 @@ import java.util.Optional;
 
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.crafting.RecipeHolder;
-import net.minecraft.world.item.crafting.RecipeManager;
 import net.minecraft.world.level.Level;
 
 import com.moakiee.ae2lt.machine.lightningchamber.LightningSimulationChamberInventory;
 import com.moakiee.ae2lt.me.key.LightningKey;
 import com.moakiee.ae2lt.registry.ModRecipeTypes;
+import com.moakiee.ae2lt.util.RecipeManagerByTypeAccess;
 
 public final class LightningSimulationRecipeService {
     public static final int EXTREME_TO_HIGH_RATIO = 4;
 
-    private static final Comparator<RecipeHolder<LightningSimulationRecipe>> RECIPE_ORDER = Comparator
-            .<RecipeHolder<LightningSimulationRecipe>>comparingInt(holder -> holder.value().priority())
+    private static final Comparator<LightningSimulationRecipe> RECIPE_ORDER = Comparator
+            .comparingInt(LightningSimulationRecipe::priority)
             .reversed()
-            .thenComparing(Comparator.comparingInt(
-                    (RecipeHolder<LightningSimulationRecipe> holder) -> holder.value().inputs().size()).reversed())
-            .thenComparing(Comparator.comparingInt(
-                    (RecipeHolder<LightningSimulationRecipe> holder) -> holder.value().totalInputCount()).reversed())
-            .thenComparing(holder -> holder.id().toString());
-
-    private static RecipeManager cachedRecipeManager;
-    private static List<RecipeHolder<LightningSimulationRecipe>> sortedRecipeCache;
-    private static int cachedRecipeOrderFingerprint;
+            .thenComparing(Comparator.comparingInt((LightningSimulationRecipe recipe) -> recipe.inputs().size()).reversed())
+            .thenComparing(Comparator.comparingInt(LightningSimulationRecipe::totalInputCount).reversed())
+            .thenComparing(recipe -> recipe.getId().toString());
 
     private LightningSimulationRecipeService() {
-    }
-
-    private static synchronized List<RecipeHolder<LightningSimulationRecipe>> getSortedRecipes(Level level) {
-        RecipeManager recipeManager = level.getRecipeManager();
-        var raw = recipeManager.getAllRecipesFor(ModRecipeTypes.LIGHTNING_SIMULATION_TYPE.get());
-        int orderFingerprint = computeRecipeOrderFingerprint(raw);
-        if (recipeManager != cachedRecipeManager
-                || orderFingerprint != cachedRecipeOrderFingerprint
-                || sortedRecipeCache == null) {
-            sortedRecipeCache = new ArrayList<>(raw);
-            sortedRecipeCache.sort(RECIPE_ORDER);
-            cachedRecipeManager = recipeManager;
-            cachedRecipeOrderFingerprint = orderFingerprint;
-        }
-        return sortedRecipeCache;
-    }
-
-    private static int computeRecipeOrderFingerprint(List<RecipeHolder<LightningSimulationRecipe>> recipes) {
-        int hash = 1;
-        for (var holder : recipes) {
-            var recipe = holder.value();
-            hash = 31 * hash + holder.id().hashCode();
-            hash = 31 * hash + System.identityHashCode(recipe);
-            hash = 31 * hash + recipe.priority();
-            hash = 31 * hash + recipe.inputs().size();
-            hash = 31 * hash + recipe.totalInputCount();
-        }
-        return hash;
     }
 
     public static Optional<LightningSimulationRecipeCandidate> findFirstProcessable(
@@ -76,23 +41,25 @@ public final class LightningSimulationRecipeService {
             return Optional.empty();
         }
 
-        List<RecipeHolder<LightningSimulationRecipe>> recipes = getSortedRecipes(level);
+        List<LightningSimulationRecipe> recipes =
+                new ArrayList<>(level.getRecipeManager().getAllRecipesFor(ModRecipeTypes.LIGHTNING_SIMULATION_TYPE.get()));
+        recipes.sort(RECIPE_ORDER);
 
-        for (RecipeHolder<LightningSimulationRecipe> recipe : recipes) {
-            Optional<LightningSimulationRecipeMatch> match = recipe.value().planMatch(input);
+        for (LightningSimulationRecipe recipe : recipes) {
+            Optional<LightningSimulationRecipeMatch> match = recipe.planMatch(input);
             if (match.isEmpty()) {
                 continue;
             }
             if (resolveLightningConsumption(
                     inventory,
-                    recipe.value().lightningTier(),
-                    recipe.value().lightningCost(),
+                    recipe.lightningTier(),
+                    recipe.lightningCost(),
                     availableHighVoltage,
                     availableExtremeHighVoltage).isEmpty()) {
                 continue;
             }
 
-            if (!canAcceptOutput(inventory, recipe.value().getResultStack())) {
+            if (!canAcceptOutput(inventory, recipe.getResultStack())) {
                 continue;
             }
 
@@ -102,21 +69,15 @@ public final class LightningSimulationRecipeService {
         return Optional.empty();
     }
 
-    public static Optional<RecipeHolder<LightningSimulationRecipe>> findRecipeById(Level level, ResourceLocation recipeId) {
+    public static Optional<LightningSimulationRecipe> findRecipeById(Level level, ResourceLocation recipeId) {
         if (level == null || recipeId == null) {
             return Optional.empty();
         }
 
-        return level.getRecipeManager()
-                .byKey(recipeId)
-                .flatMap(holder -> {
-                    var recipe = holder.value();
-                    if (!(recipe instanceof LightningSimulationRecipe simulationRecipe)
-                            || recipe.getType() != ModRecipeTypes.LIGHTNING_SIMULATION_TYPE.get()) {
-                        return Optional.empty();
-                    }
-                    return Optional.of(new RecipeHolder<>(holder.id(), simulationRecipe));
-                });
+        return RecipeManagerByTypeAccess.findById(
+                level.getRecipeManager(),
+                ModRecipeTypes.LIGHTNING_SIMULATION_TYPE.get(),
+                recipeId);
     }
 
     public static Optional<LightningSimulationRecipeCandidate> findLockedRecipeMatch(
@@ -129,7 +90,7 @@ public final class LightningSimulationRecipeService {
             return Optional.empty();
         }
 
-        Optional<RecipeHolder<LightningSimulationRecipe>> recipe = findRecipeById(level, lockedRecipe.recipeId());
+        Optional<LightningSimulationRecipe> recipe = findRecipeById(level, lockedRecipe.recipeId());
         if (recipe.isEmpty()) {
             return Optional.empty();
         }
@@ -139,7 +100,7 @@ public final class LightningSimulationRecipeService {
             return Optional.empty();
         }
 
-        Optional<LightningSimulationRecipeMatch> match = recipe.get().value().planMatch(input);
+        Optional<LightningSimulationRecipeMatch> match = recipe.get().planMatch(input);
         if (match.isEmpty()) {
             return Optional.empty();
         }
@@ -163,7 +124,7 @@ public final class LightningSimulationRecipeService {
             return Optional.empty();
         }
 
-        Optional<RecipeHolder<LightningSimulationRecipe>> recipe = findRecipeById(level, lockedRecipe.recipeId());
+        Optional<LightningSimulationRecipe> recipe = findRecipeById(level, lockedRecipe.recipeId());
         if (recipe.isEmpty()) {
             return Optional.empty();
         }
@@ -173,7 +134,7 @@ public final class LightningSimulationRecipeService {
             return Optional.empty();
         }
 
-        Optional<LightningSimulationRecipeMatch> match = recipe.get().value().planMatch(input);
+        Optional<LightningSimulationRecipeMatch> match = recipe.get().planMatch(input);
         if (match.isEmpty()) {
             return Optional.empty();
         }

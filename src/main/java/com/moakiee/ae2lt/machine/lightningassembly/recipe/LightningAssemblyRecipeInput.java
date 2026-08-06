@@ -4,11 +4,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.crafting.RecipeInput;
 
 import com.moakiee.ae2lt.machine.lightningassembly.LightningAssemblyChamberInventory;
+import com.moakiee.ae2lt.recipe.RecipeContainerInput;
 
-public final class LightningAssemblyRecipeInput implements RecipeInput {
+public final class LightningAssemblyRecipeInput extends RecipeContainerInput {
     private final List<SlotStack> slotStacks;
     private final List<ItemStack> displayStacks;
 

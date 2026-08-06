@@ -13,7 +13,7 @@ import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.block.Block;
 import org.jetbrains.annotations.Nullable;
 
-public class FumoBlockItem extends BlockItem implements Equipable {
+public class FumoBlockItem extends AE2LTBlockItem implements Equipable {
     @Nullable
     private final String tooltipKey;
 
@@ -44,3 +44,4 @@ public class FumoBlockItem extends BlockItem implements Equipable {
         tooltipComponents.add(Component.translatable(tooltipKey + ".4").withStyle(ChatFormatting.LIGHT_PURPLE));
     }
 }
+

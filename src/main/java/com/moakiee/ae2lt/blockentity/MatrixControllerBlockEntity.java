@@ -45,7 +45,6 @@ import appeng.api.stacks.KeyCounter;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
@@ -60,6 +59,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.core.RegistryAccess;
 
 public class MatrixControllerBlockEntity extends BlockEntity
         implements CraftingCoreHost, MatrixCraftingEnergy {
@@ -1101,9 +1101,9 @@ public class MatrixControllerBlockEntity extends BlockEntity
     private java.util.Map<Item, Integer> findMissingRequirements(Player player, java.util.Map<Item, Integer> requirements) {
         var missing = new java.util.LinkedHashMap<Item, Integer>();
         for (var entry : requirements.entrySet()) {
-            int available = countItem(player, entry.getKey());
+            int available = countItem(player, entry.getId() /* TODO: verify getKey->getId */);
             if (available < entry.getValue()) {
-                missing.put(entry.getKey(), entry.getValue() - available);
+                missing.put(entry.getId() /* TODO: verify getKey->getId */, entry.getValue() - available);
             }
         }
         return missing;
@@ -1181,7 +1181,7 @@ public class MatrixControllerBlockEntity extends BlockEntity
                     missingPatternStorages, visibleEntries++);
         }
         for (var entry : missing.entrySet()) {
-            appendMissingEntry(result, entry.getKey().getDescription(), entry.getValue(), visibleEntries++);
+            appendMissingEntry(result, entry.getId() /* TODO: verify getKey->getId */.getDescription(), entry.getValue(), visibleEntries++);
             if (visibleEntries >= 4 && totalEntries > visibleEntries) {
                 result.append(", ...");
                 break;
@@ -1285,8 +1285,8 @@ public class MatrixControllerBlockEntity extends BlockEntity
     }
 
     @Override
-    protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
-        super.saveAdditional(tag, registries);
+    protected void saveAdditional(CompoundTag tag) {
+        super.saveAdditional(tag);
         tag.putBoolean(TAG_FORMED, formed);
         tag.putInt(TAG_ORIENTATION, orientation.get3DDataValue());
         if (portPos != null) {
@@ -1305,8 +1305,8 @@ public class MatrixControllerBlockEntity extends BlockEntity
     }
 
     @Override
-    protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
-        super.loadAdditional(tag, registries);
+    protected void loadAdditional(CompoundTag tag) {
+        super.loadAdditional(tag);
         formed = tag.getBoolean(TAG_FORMED);
         structureCacheValid = false;
         structureCacheValidationRequired = true;
@@ -1377,3 +1377,4 @@ public class MatrixControllerBlockEntity extends BlockEntity
             MatrixCraftingUnit unit) {
     }
 }
+

@@ -7,13 +7,13 @@ import appeng.api.networking.ticking.IGridTickable;
 import appeng.api.networking.ticking.TickRateModulation;
 import appeng.api.networking.ticking.TickingRequest;
 import appeng.api.upgrades.IUpgradeableObject;
-import appeng.blockentity.grid.AENetworkedBlockEntity;
+import appeng.blockentity.grid.AENetworkBlockEntity;
 import appeng.core.definitions.AEItems;
 
 import com.moakiee.ae2lt.logic.AppFluxHelper;
 
 public abstract class AbstractGridRecipeMachineLogic<
-        H extends AENetworkedBlockEntity & GridRecipeMachineHost<L, C> & IUpgradeableObject,
+        H extends AENetworkBlockEntity & GridRecipeMachineHost<L, C> & IUpgradeableObject,
         L,
         C> implements IGridTickable {
 
@@ -29,7 +29,7 @@ public abstract class AbstractGridRecipeMachineLogic<
         // 当前状态(尤其是依赖 grid 的查找)推断 sleeping 容易错判,导致机器
         // 即便有材料也卡在 sleeping。始终以 awake 入队,首次 tick 自行评估,
         // 无工作时通过 SLEEP 自动转 sleeping。
-        return new TickingRequest(1, 20, false);
+        return new TickingRequest(1, 20, false, true);
     }
 
     @Override

@@ -12,26 +12,20 @@ import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.GenericStack;
 import appeng.items.storage.StorageCellTooltipComponent;
 import net.minecraft.ChatFormatting;
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.inventory.tooltip.TooltipComponent;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.TooltipFlag;
-import net.minecraft.world.item.component.CustomData;
-import net.neoforged.neoforge.server.ServerLifecycleHooks;
+import net.minecraftforge.server.ServerLifecycleHooks;
 
-import com.moakiee.ae2lt.config.AE2LTCommonConfig;
-import com.moakiee.ae2lt.logic.advancement.ProgressionAdvancementService;
 import com.moakiee.ae2lt.me.key.LightningKey;
 import com.moakiee.ae2lt.registry.ModFumos;
 import com.moakiee.ae2lt.registry.ModItems;
 
-public final class FixedInfiniteCellItem extends Item {
+public final class FixedInfiniteCellItem extends AE2LTItem {
 
     private static final String TAG_SEED = "CellSeed";
     private static final String TAG_TYPE = "CellType";
@@ -92,23 +86,10 @@ public final class FixedInfiniteCellItem extends Item {
         super(properties.stacksTo(1));
     }
 
-    @Override
-    public void inventoryTick(
-            ItemStack stack,
-            net.minecraft.world.level.Level level,
-            Entity entity,
-            int slotId,
-            boolean isSelected) {
-        super.inventoryTick(stack, level, entity, slotId, isSelected);
-        if (!level.isClientSide && entity instanceof ServerPlayer player) {
-            ProgressionAdvancementService.inspectMysteriousCell(player, stack);
-        }
-    }
-
     // ── Seed (outer cell only) ──
 
     public static void setSeed(ItemStack stack, UUID seed) {
-        CustomData.update(DataComponents.CUSTOM_DATA, stack, tag -> tag.putUUID(TAG_SEED, seed));
+        com.moakiee.ae2lt.util.ItemStackTagSupport.updateTag(stack, tag -> tag.putUUID(TAG_SEED, seed));
     }
 
     public static void initializeOuterCell(ItemStack stack) {
@@ -128,7 +109,7 @@ public final class FixedInfiniteCellItem extends Item {
 
     @Nullable
     public static UUID getSeed(ItemStack stack) {
-        CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+        CompoundTag tag = com.moakiee.ae2lt.util.ItemStackTagSupport.getTagCopy(stack);
         return tag.hasUUID(TAG_SEED) ? tag.getUUID(TAG_SEED) : null;
     }
 
@@ -137,16 +118,16 @@ public final class FixedInfiniteCellItem extends Item {
     }
 
     private static void setWorldSeed(ItemStack stack, long worldSeed) {
-        CustomData.update(DataComponents.CUSTOM_DATA, stack, tag -> tag.putLong(TAG_WORLD_SEED, worldSeed));
+        com.moakiee.ae2lt.util.ItemStackTagSupport.updateTag(stack, tag -> tag.putLong(TAG_WORLD_SEED, worldSeed));
     }
 
     private static boolean hasWorldSeed(ItemStack stack) {
-        CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+        CompoundTag tag = com.moakiee.ae2lt.util.ItemStackTagSupport.getTagCopy(stack);
         return tag.contains(TAG_WORLD_SEED);
     }
 
     private static long getWorldSeed(ItemStack stack) {
-        CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+        CompoundTag tag = com.moakiee.ae2lt.util.ItemStackTagSupport.getTagCopy(stack);
         return tag.getLong(TAG_WORLD_SEED);
     }
 
@@ -158,7 +139,7 @@ public final class FixedInfiniteCellItem extends Item {
         if (!isOuterCell(stack)) {
             return false;
         }
-        CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+        CompoundTag tag = com.moakiee.ae2lt.util.ItemStackTagSupport.getTagCopy(stack);
         return tag.getBoolean(TAG_RESULT_CONSUMED);
     }
 
@@ -167,15 +148,17 @@ public final class FixedInfiniteCellItem extends Item {
             return;
         }
         initializeOuterCell(stack);
-        CustomData.update(DataComponents.CUSTOM_DATA, stack, tag -> tag.putBoolean(TAG_RESULT_CONSUMED, consumed));
+        com.moakiee.ae2lt.util.ItemStackTagSupport.updateTag(stack, tag -> tag.putBoolean(TAG_RESULT_CONSUMED, consumed));
     }
 
     /**
      * 按 seed + 世界种子 hash 出 10000 个 roll 区间,再映射到一个 outcome:
      * <ul>
-     *   <li>首段 → RESEARCH_NOTE,长度由 common config 的 eastereggweight 决定</li>
-     *   <li>随后两段各 2000 → 两种作者玩偶</li>
-     *   <li>剩余区间 → LIGHTNING_ROD</li>
+     *   <li>roll 0..49 → RESEARCH_NOTE (50/10000, 0.5%, UR 暗门;是 HV/EHV/矩阵/无限存储
+     *       仪式的唯一入口)</li>
+     *   <li>roll 50..2049 → MOAKIEE_FUMO (2000/10000, 20%, 作者彩蛋)</li>
+     *   <li>roll 2050..4049 → CYSTRYSU_FUMO (2000/10000, 20%, 作者彩蛋)</li>
+     *   <li>roll 4050..9999 → LIGHTNING_ROD (5950/10000, 59.5%, R)</li>
      * </ul>
      * HIGH_VOLTAGE / EXTREME_HIGH_VOLTAGE / LIGHTNING_COLLAPSE_MATRIX /
      * INFINITE_STORAGE_CELL 全部仅通过研究笔记仪式产出,不再由扭蛋直接抽到。
@@ -184,44 +167,32 @@ public final class FixedInfiniteCellItem extends Item {
         long mixed = (seed.getLeastSignificantBits() ^ worldSeed)
                    ^ (seed.getMostSignificantBits() ^ Long.reverseBytes(worldSeed));
         int roll = Math.floorMod(mixed, 10000);
-        int noteEnd = AE2LTCommonConfig.easterEggWeight();
-        int moakieeEnd = Math.min(10000, noteEnd + 2000);
-        int cystrysuEnd = Math.min(10000, moakieeEnd + 2000);
-        if (roll < noteEnd) return CellOutcome.RESEARCH_NOTE;
-        if (roll < moakieeEnd) return CellOutcome.MOAKIEE_FUMO;
-        if (roll < cystrysuEnd) return CellOutcome.CYSTRYSU_FUMO;
+        if (roll <= 49) return CellOutcome.RESEARCH_NOTE;
+        if (roll <= 2049) return CellOutcome.MOAKIEE_FUMO;
+        if (roll <= 4049) return CellOutcome.CYSTRYSU_FUMO;
         return CellOutcome.LIGHTNING_ROD;
     }
 
     public static CellOutcome getOutcomeFromSeed(ItemStack stack) {
         UUID seed = getSeed(stack);
         if (seed == null) return CellOutcome.LIGHTNING_ROD;
-        long worldSeed;
-        if (hasWorldSeed(stack)) {
-            worldSeed = getWorldSeed(stack);
-        } else {
-            worldSeed = 0L;
-            var server = ServerLifecycleHooks.getCurrentServer();
-            if (server != null) {
-                worldSeed = server.overworld().getSeed();
-            }
-        }
-        return resolveOutcome(seed, worldSeed);
+        if (!hasWorldSeed(stack)) return CellOutcome.LIGHTNING_ROD;
+        return resolveOutcome(seed, getWorldSeed(stack));
     }
 
     // ── Type byte (inner cell only) ──
 
     public static void setType(ItemStack stack, byte type) {
-        CustomData.update(DataComponents.CUSTOM_DATA, stack, tag -> tag.putByte(TAG_TYPE, type));
+        com.moakiee.ae2lt.util.ItemStackTagSupport.updateTag(stack, tag -> tag.putByte(TAG_TYPE, type));
     }
 
     public static boolean hasType(ItemStack stack) {
-        CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+        CompoundTag tag = com.moakiee.ae2lt.util.ItemStackTagSupport.getTagCopy(stack);
         return tag.contains(TAG_TYPE);
     }
 
     public static byte getType(ItemStack stack) {
-        CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+        CompoundTag tag = com.moakiee.ae2lt.util.ItemStackTagSupport.getTagCopy(stack);
         return tag.getByte(TAG_TYPE);
     }
 

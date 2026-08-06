@@ -3,7 +3,7 @@ package com.moakiee.ae2lt.machine.common;
 import java.util.Objects;
 
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.items.IItemHandlerModifiable;
+import net.minecraftforge.items.IItemHandlerModifiable;
 
 /**
  * Capability-facing item wrapper for machines whose exposed slots are inputs.
@@ -58,3 +58,4 @@ public class InsertOnlyAutomationInventory implements IItemHandlerModifiable {
         }
     }
 }
+

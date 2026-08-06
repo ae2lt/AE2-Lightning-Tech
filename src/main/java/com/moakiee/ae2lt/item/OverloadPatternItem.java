@@ -2,23 +2,24 @@ package com.moakiee.ae2lt.item;
 
 import java.util.Objects;
 import java.util.Optional;
+import java.util.List;
 
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.component.CustomData;
+import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.Level;
 
 import appeng.api.crafting.IPatternDetails;
+import appeng.api.stacks.AEItemKey;
 import appeng.crafting.pattern.EncodedPatternItem;
 
-import com.moakiee.thunderbolt.ae2.overload.model.EncodedOverloadPattern;
+import com.moakiee.ae2lt.overload.model.EncodedOverloadPattern;
 import com.moakiee.ae2lt.overload.pattern.OverloadPatternDecoder;
-import com.moakiee.thunderbolt.ae2.overload.pattern.OverloadPatternPayload;
-import com.moakiee.thunderbolt.ae2.overload.pattern.OverloadPatternPayloadTagCodec;
-import com.moakiee.thunderbolt.ae2.overload.pattern.PatternExecutionHostKind;
-import com.moakiee.thunderbolt.ae2.overload.pattern.SourcePatternSnapshot;
-import com.moakiee.ae2lt.api.patternprovider.EncodedPatternPayloadValidator;
+import com.moakiee.ae2lt.overload.pattern.OverloadPatternPayload;
+import com.moakiee.ae2lt.overload.pattern.OverloadPatternPayloadTagCodec;
+import com.moakiee.ae2lt.overload.pattern.PatternExecutionHostKind;
+import com.moakiee.ae2lt.overload.pattern.SourcePatternSnapshot;
 
 /**
  * Final item form of an overload pattern.
@@ -27,21 +28,15 @@ import com.moakiee.ae2lt.api.patternprovider.EncodedPatternPayloadValidator;
  * payload. It must not be treated as a transparent variant of a normal AE2
  * pattern item.
  */
-public class OverloadPatternItem extends EncodedPatternItem<IPatternDetails>
-        implements EncodedPatternPayloadValidator {
+public class OverloadPatternItem extends EncodedPatternItem {
     private static final String TAG_OVERLOAD_PATTERN = "OverloadPattern";
 
-    public OverloadPatternItem(Properties properties) {
-        super(properties.stacksTo(1), OverloadPatternDecoder.INSTANCE::decodePattern, null);
+    public OverloadPatternItem(net.minecraft.world.item.Item.Properties properties) {
+        super(properties.stacksTo(1));
     }
 
     public boolean hasPayload(ItemStack stack) {
         return readRootTag(stack).contains(TAG_OVERLOAD_PATTERN, CompoundTag.TAG_COMPOUND);
-    }
-
-    @Override
-    public boolean hasEncodedPatternPayload(ItemStack stack) {
-        return hasPayload(stack);
     }
 
     public Optional<OverloadPatternPayload> readPayload(ItemStack stack) {
@@ -73,7 +68,7 @@ public class OverloadPatternItem extends EncodedPatternItem<IPatternDetails>
         Objects.requireNonNull(stack, "stack");
         Objects.requireNonNull(payload, "payload");
 
-        CustomData.update(DataComponents.CUSTOM_DATA, stack, rootTag -> {
+        com.moakiee.ae2lt.util.ItemStackTagSupport.updateTag(stack, rootTag -> {
             rootTag.put(TAG_OVERLOAD_PATTERN, OverloadPatternPayloadTagCodec.writePayload(payload));
         });
     }
@@ -95,12 +90,29 @@ public class OverloadPatternItem extends EncodedPatternItem<IPatternDetails>
         return stack;
     }
 
-    @Override
     public IPatternDetails decode(ItemStack stack, Level level) {
-        return stack.getItem() == this ? OverloadPatternDecoder.INSTANCE.decodePattern(stack, level) : null;
+        return stack.getItem() == this ? OverloadPatternDecoder.INSTANCE.decodePattern(AEItemKey.of(stack), level) : null;
+    }
+
+    @Override
+    public IPatternDetails decode(ItemStack stack, Level level, boolean tryRecovery) {
+        return decode(stack, level);
+    }
+
+    @Override
+    public IPatternDetails decode(AEItemKey what, Level level) {
+        return what != null && what.getItem() == this ? decode(what.toStack(), level) : null;
+    }
+
+    @Override
+    public void appendHoverText(ItemStack stack, Level level, List<Component> lines, TooltipFlag advancedTooltips) {
+        super.appendHoverText(stack, level, lines, advancedTooltips);
+        if (hasPayload(stack) && requiredHostKind(stack) == PatternExecutionHostKind.OVERLOADED_PATTERN_PROVIDER) {
+            lines.add(Component.translatable("tooltip.ae2lt.overload_pattern.provider_only"));
+        }
     }
 
     private static CompoundTag readRootTag(ItemStack stack) {
-        return stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+        return com.moakiee.ae2lt.util.ItemStackTagSupport.getTagCopy(stack);
     }
 }
