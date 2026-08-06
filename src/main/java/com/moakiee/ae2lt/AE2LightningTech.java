@@ -56,6 +56,8 @@ import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.ModList;
+import net.neoforged.fml.ModLoader;
+import net.neoforged.fml.ModLoadingIssue;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
 import net.neoforged.fml.event.config.ModConfigEvent;
@@ -383,6 +385,7 @@ public class AE2LightningTech {
         modContainer.registerConfig(ModConfig.Type.CLIENT,
                 com.moakiee.ae2lt.config.AE2LTClientConfig.SPEC, "ae2lt-client.toml");
 
+        addDataEnergisticsLoadingWarning(modContainer);
         warnAboutDataEnergistics();
 
         NeoForge.EVENT_BUS.addListener(this::onServerStarting);
@@ -433,6 +436,19 @@ public class AE2LightningTech {
                     + "unsupported. Do not report resulting problems to either issue tracker. "
                     + "Compatibility details: {}", version, DATA_ENERGISTICS_COMPATIBILITY_ISSUE);
         }
+    }
+
+    private static void addDataEnergisticsLoadingWarning(ModContainer ae2ltContainer) {
+        ModList.get().getModContainerById("data_energistics").ifPresent(dataEnergistics -> {
+            String warningKey = EarlyCompatibilityConfig.dataEnergisticsMixinProtectionEnabled()
+                    ? "ae2lt.modloadingissue.data_energistics.unsupported"
+                    : "ae2lt.modloadingissue.data_energistics.protection_disabled";
+            ModLoader.addLoadingIssue(ModLoadingIssue.warning(
+                            warningKey,
+                            dataEnergistics.getModInfo().getVersion(),
+                            "ae2lt.compat.data_energistics.feedback_scope")
+                    .withAffectedMod(ae2ltContainer.getModInfo()));
+        });
     }
 
     // Prevents automation from accessing the workbench inventory
