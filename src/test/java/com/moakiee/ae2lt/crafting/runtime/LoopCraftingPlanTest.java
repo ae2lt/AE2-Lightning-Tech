@@ -13,6 +13,7 @@ import appeng.api.stacks.GenericStack;
 import appeng.api.stacks.KeyCounter;
 import appeng.crafting.CraftingPlan;
 import com.moakiee.ae2lt.crafting.timewheel.ReusableSeedPattern;
+import com.moakiee.ae2lt.crafting.timewheel.TimeWheelCraftingCpuPool;
 import com.moakiee.ae2lt.crafting.timewheel.TimeWheelCraftingCpuPoolHost;
 import com.moakiee.ae2lt.crafting.timewheel.TimeWheelPoolRestrictedPattern;
 import com.moakiee.thunderbolt.core.crafting.planner.ReusableBootstrapRoute;
@@ -53,18 +54,17 @@ class LoopCraftingPlanTest {
                 usage(left, seed), 1L,
                 usage(right, seed), 1L);
         var fast = (LoopCraftingPlan) LoopCraftingPlan.wrapIfNeeded(delegate, usage);
+        var pool = new TimeWheelCraftingCpuPool(null, 1L, 0, 1L, false);
 
         assertEquals(Map.of(seed, 2L), fast.hostReusableSeeds());
+        assertTrue(pool.canHandle(delegate), "TimeWheel retains native AE2 plan compatibility");
+        assertTrue(pool.canHandle(fast), "TimeWheel opts in to its loop-plan subtype");
         assertEquals(2, fast.hostReusableSeedAllocations().size());
         assertEquals(Set.of(left.reusableSeedGroupId(), right.reusableSeedGroupId()),
                 fast.hostReusableSeedAllocations().stream()
                         .map(LoopCraftingPlan.HostReusableSeedAllocation::reusableSeedGroupId)
                         .collect(java.util.stream.Collectors.toSet()));
-        assertSame(delegate, LoopCraftingPlan.unwrapForSummary(fast),
-                "summary integrations see the concrete AE2 plan without changing the wrapped job");
         assertSame(delegate, fast.delegate());
-        assertSame(delegate, LoopCraftingPlan.unwrapForSummary(delegate),
-                "ordinary AE2 plans pass through the summary compatibility view unchanged");
     }
 
     @Test

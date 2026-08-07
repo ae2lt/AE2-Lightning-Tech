@@ -45,7 +45,7 @@ import appeng.crafting.inv.ICraftingInventory;
 import com.moakiee.ae2lt.overload.runtime.pattern.OverloadPatternDetails;
 import com.moakiee.ae2lt.overload.runtime.pattern.OverloadedProviderOnlyPatternDetails;
 import com.moakiee.ae2lt.overload.runtime.pattern.PatternExecutionHostKind;
-import com.moakiee.thunderbolt.mixin.ae2.crafting.support.FastCraftingPlanner;
+import com.moakiee.thunderbolt.core.crafting.support.FastCraftingPlanner;
 
 import org.junit.jupiter.api.Test;
 
@@ -307,8 +307,8 @@ class FastCraftingPlannerIdOnlyCraftableVariantTest {
     }
 
     /**
-     * Same {@code getId()} across variants of one "item", per-variant equality — the shape the
-     * ID_ONLY expansion keys on ({@code getType() == && getId().equals}).
+     * Same primary identity across variants of one "item", per-variant equality. Like
+     * {@code AEItemKey}, {@link #dropSecondary()} removes the variant components.
      */
     private static final class VariantKey extends AEKey {
         private static final VariantKeyType TYPE = new VariantKeyType();
@@ -321,7 +321,7 @@ class FastCraftingPlannerIdOnlyCraftableVariantTest {
         }
 
         @Override public AEKeyType getType() { return TYPE; }
-        @Override public AEKey dropSecondary() { return this; }
+        @Override public AEKey dropSecondary() { return new VariantKey(id, null); }
         @Override public CompoundTag toTag(net.minecraft.core.HolderLookup.Provider registries) {
             var tag = new CompoundTag();
             tag.putString("id", id);

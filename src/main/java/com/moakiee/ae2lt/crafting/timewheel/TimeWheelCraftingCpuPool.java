@@ -23,8 +23,10 @@ import appeng.api.config.Actionable;
 import appeng.api.config.CpuSelectionMode;
 import appeng.api.networking.IGrid;
 import appeng.api.networking.crafting.CraftingJobStatus;
+import appeng.api.networking.crafting.ICraftingLink;
 import appeng.api.networking.crafting.ICraftingPlan;
 import appeng.api.networking.crafting.ICraftingRequester;
+import appeng.api.networking.crafting.ICraftingService;
 import appeng.api.networking.crafting.ICraftingSubmitResult;
 import appeng.api.networking.energy.IEnergyService;
 import appeng.api.networking.security.IActionSource;
@@ -35,8 +37,8 @@ import appeng.me.service.CraftingService;
 import appeng.hooks.ticking.TickHandler;
 
 import com.moakiee.thunderbolt.core.crafting.batch.TickProviderDispatchSchedule;
-import com.moakiee.ae2lt.crafting.runtime.ExtendedCraftingCpuCluster;
 import com.moakiee.ae2lt.crafting.runtime.LoopCraftingPlan;
+import com.moakiee.thunderbolt.api.crafting.cpu.ExtendedCraftingCpuCluster;
 
 /**
  * Shared-capacity time-wheel CPU that creates one virtual CPU per crafting job.
@@ -126,7 +128,11 @@ public final class TimeWheelCraftingCpuPool implements ExtendedCraftingCpuCluste
     }
 
     @Override
-    public long tickCraftingLogic(IEnergyService energyService, CraftingService craftingService) {
+    public long tickCraftingLogic(IEnergyService energyService, ICraftingService craftingService) {
+        if (!(craftingService instanceof CraftingService concreteCraftingService)) {
+            throw new IllegalArgumentException(
+                    "TimeWheel requires AE2's concrete CraftingService implementation");
+        }
         resolvePendingLoad();
         var latestChange = new long[] {Long.MIN_VALUE};
         int successfulDispatchBudget = sharedCoProcessors >= Integer.MAX_VALUE - 1
@@ -148,7 +154,7 @@ public final class TimeWheelCraftingCpuPool implements ExtendedCraftingCpuCluste
                     (scheduled, allowance) -> {
                         if (scheduled.remainingCopies <= 0L) return 0;
                         var usage = tickScheduledCpu(
-                                scheduled, allowance, energyService, craftingService);
+                                scheduled, allowance, energyService, concreteCraftingService);
                         latestChange[0] = Math.max(
                                 latestChange[0],
                                 scheduled.entry.cpu().getCraftingLogic().getWaitingKeysModifiedOnTick());
@@ -225,7 +231,7 @@ public final class TimeWheelCraftingCpuPool implements ExtendedCraftingCpuCluste
     }
 
     @Override
-    public void restoreCraftingLinks(Consumer<CraftingLink> consumer) {
+    public void restoreCraftingLinks(Consumer<ICraftingLink> consumer) {
         for (var entry : activeCpus.values()) {
             var maybeLink = entry.cpu().getCraftingLogic().getLastLink();
             if (maybeLink instanceof CraftingLink link) {
@@ -246,7 +252,7 @@ public final class TimeWheelCraftingCpuPool implements ExtendedCraftingCpuCluste
                                             ICraftingPlan plan,
                                             IActionSource src,
                                             @Nullable ICraftingRequester requester) {
-        if (!isActive() || !canAcceptPlan(plan)) {
+        if (!isActive() || !canHandle(plan)) {
             return CraftingSubmitResult.CPU_OFFLINE;
         }
 
@@ -282,11 +288,11 @@ public final class TimeWheelCraftingCpuPool implements ExtendedCraftingCpuCluste
     }
 
     @Override
-    public boolean canAcceptPlan(ICraftingPlan plan) {
+    public boolean canHandle(ICraftingPlan plan) {
         if (plan instanceof LoopCraftingPlan loopPlan) {
             return loopPlan.canRunOn(host);
         }
-        return ExtendedCraftingCpuCluster.super.canAcceptPlan(plan);
+        return ExtendedCraftingCpuCluster.super.canHandle(plan);
     }
 
     public void cancelAll() {

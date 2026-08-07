@@ -1,7 +1,6 @@
 package com.moakiee.ae2lt.crafting.timewheel;
 
-import com.moakiee.ae2lt.crafting.runtime.ExtendedCraftingCpuCluster;
-import com.moakiee.ae2lt.crafting.runtime.ExtendedCraftingCpuClusterHost;
+import com.moakiee.thunderbolt.api.crafting.cpu.ExtendedCraftingCpuClusterHost;
 
 /**
  * State owner for a split time-wheel crafting CPU pool.
@@ -15,7 +14,7 @@ public interface TimeWheelCraftingCpuPoolHost
     TimeWheelCraftingCpuPool getTimeWheelCraftingCpuPool();
 
     @Override
-    default ExtendedCraftingCpuCluster getExtendedCraftingCpuCluster() {
+    default TimeWheelCraftingCpuPool getExtendedCraftingCpuCluster() {
         return getTimeWheelCraftingCpuPool();
     }
 }

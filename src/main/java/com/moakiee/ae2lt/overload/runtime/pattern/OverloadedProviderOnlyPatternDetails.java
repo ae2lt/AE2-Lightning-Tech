@@ -42,4 +42,9 @@ public interface OverloadedProviderOnlyPatternDetails extends FuzzyPatternInputs
         var view = overloadPatternDetailsView();
         return view != null && view.outputMode(slot).ignoresComponents();
     }
+
+    @Override
+    default boolean producesSameIdVariants(int slot) {
+        return isFuzzyOutput(slot);
+    }
 }

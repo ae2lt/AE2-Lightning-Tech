@@ -17,7 +17,6 @@ import com.moakiee.ae2lt.logic.tianshu.CpuMainCoreTier;
 import com.moakiee.ae2lt.logic.tianshu.TianshuFunctionProfile;
 import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternRepository;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.TianshuInventoryMaintenanceService;
-import com.moakiee.ae2lt.crafting.runtime.ExtendedCraftingCpuClusterProvider;
 import com.moakiee.ae2lt.crafting.timewheel.TimeWheelCraftingCpuPoolProvider;
 
 import appeng.api.config.Actionable;
@@ -93,7 +92,9 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
                 .setVisualRepresentation(ModBlocks.TIANSHU_SUPERCOMPUTER_PORT.get())
                 .setIdlePowerUsage(LINK_IDLE_POWER)
                 .setFlags(GridFlags.REQUIRE_CHANNEL)
-                .addService(ExtendedCraftingCpuClusterProvider.class, this)
+                .addService(
+                        com.moakiee.thunderbolt.api.crafting.cpu.ExtendedCraftingCpuClusterProvider.class,
+                        this)
                 .addService(TimeWheelCraftingCpuPoolProvider.class, this)
                 .addService(ICraftingProvider.class, this)
                 .addService(ICraftingRequester.class, this);

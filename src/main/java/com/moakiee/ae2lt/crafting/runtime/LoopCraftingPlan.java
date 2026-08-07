@@ -127,14 +127,6 @@ public record LoopCraftingPlan(
                         hostAllocations);
     }
 
-    /**
-     * Returns the concrete AE2 plan used by display-only integrations while preserving the wrapper
-     * everywhere else, especially in the confirmation menu's stored result and CPU submission.
-     */
-    public static ICraftingPlan unwrapForSummary(ICraftingPlan plan) {
-        return plan instanceof LoopCraftingPlan loopPlan ? loopPlan.delegate() : plan;
-    }
-
     public boolean canRunOn(TimeWheelCraftingCpuPoolHost host) {
         for (var restriction : restrictions) {
             if (!restriction.acceptsTimeWheelPool(host)) {
