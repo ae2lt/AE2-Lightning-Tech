@@ -1299,7 +1299,5 @@
   "ae2lt.gui.matrix_port.title": "Pattern Management",
   "ae2lt.compat.data_energistics.unsupported": "[AE2LT] Data Energistics %s was detected. AE2LT has taken the necessary measures to mitigate compatibility problems where possible, but this combination remains explicitly unsupported. To disable this protection, set compatibility.dataEnergisticsMixinProtection to false in ae2lt-common.toml and fully restart the client or server.",
   "ae2lt.compat.data_energistics.protection_disabled": "[AE2LT] Data Energistics %s was detected. Compatibility protection is disabled by configuration, so no safeguards are active for this launch; this combination remains explicitly unsupported.",
-  "ae2lt.compat.data_energistics.feedback_scope": "Do not report crashes, broken features, compatibility failures, or performance problems from this combination to either the AE2 Lightning Tech or Data Energistics issue tracker. Report only issues that still reproduce after removing one of the two mods.",
-  "ae2lt.modloadingissue.data_energistics.unsupported": "\u00a7c\u00a7l{0,i18n,ae2lt.compat.data_energistics.unsupported}\u00a7r\n\u00a7e{1,i18ntranslate}\u00a7r",
-  "ae2lt.modloadingissue.data_energistics.protection_disabled": "\u00a7c\u00a7l{0,i18n,ae2lt.compat.data_energistics.protection_disabled}\u00a7r\n\u00a7e{1,i18ntranslate}\u00a7r"
+  "ae2lt.compat.data_energistics.feedback_scope": "Do not report crashes, broken features, compatibility failures, or performance problems from this combination to either the AE2 Lightning Tech or Data Energistics issue tracker. Report only issues that still reproduce after removing one of the two mods."
 }
