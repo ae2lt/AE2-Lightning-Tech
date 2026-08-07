@@ -3,35 +3,29 @@ package com.moakiee.ae2lt.network;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.moakiee.ae2lt.client.ClientNetworkPacketHandlers;
 import com.moakiee.ae2lt.grid.FrequencySecurityLevel;
 import com.moakiee.ae2lt.grid.WirelessFrequency;
 import com.moakiee.ae2lt.grid.WirelessFrequencyManager;
 import com.moakiee.ae2lt.menu.FrequencyMenu;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
-import net.neoforged.neoforge.network.PacketDistributor;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.fml.DistExecutor;
+import net.minecraftforge.network.NetworkEvent;
+import java.util.function.Supplier;
 
 /**
  * S→C packet: syncs the basic frequency list to the client. The current device
  * frequency id is auto-synced via the FrequencyMenu DataSlot, so this packet
  * carries only the registry contents.
  */
-public record SyncFrequencyListPacket(List<FrequencyEntry> entries) implements CustomPacketPayload {
+public record SyncFrequencyListPacket(List<FrequencyEntry> entries) {
 
     public record FrequencyEntry(int id, String name, int color,
                                   java.util.UUID ownerUUID, FrequencySecurityLevel security) {}
 
-    public static final Type<SyncFrequencyListPacket> TYPE =
-            new Type<>(ResourceLocation.fromNamespaceAndPath("ae2lt", "sync_frequency_list"));
-
-    public static final StreamCodec<FriendlyByteBuf, SyncFrequencyListPacket> STREAM_CODEC =
-            StreamCodec.of(SyncFrequencyListPacket::encode, SyncFrequencyListPacket::decode);
-
-    private static void encode(FriendlyByteBuf buf, SyncFrequencyListPacket pkt) {
+    public static void encode(SyncFrequencyListPacket pkt, FriendlyByteBuf buf) {
         buf.writeInt(pkt.entries.size());
         for (var e : pkt.entries) {
             buf.writeInt(e.id);
@@ -42,7 +36,7 @@ public record SyncFrequencyListPacket(List<FrequencyEntry> entries) implements C
         }
     }
 
-    private static SyncFrequencyListPacket decode(FriendlyByteBuf buf) {
+    public static SyncFrequencyListPacket decode(FriendlyByteBuf buf) {
         int size = buf.readInt();
         List<FrequencyEntry> entries = new ArrayList<>(size);
         for (int i = 0; i < size; i++) {
@@ -54,11 +48,6 @@ public record SyncFrequencyListPacket(List<FrequencyEntry> entries) implements C
                     FrequencySecurityLevel.fromId(buf.readByte())));
         }
         return new SyncFrequencyListPacket(entries);
-    }
-
-    @Override
-    public Type<? extends CustomPacketPayload> type() {
-        return TYPE;
     }
 
     public static SyncFrequencyListPacket fromServer() {
@@ -78,12 +67,17 @@ public record SyncFrequencyListPacket(List<FrequencyEntry> entries) implements C
         SyncFrequencyListPacket pkt = fromServer();
         for (var player : server.getPlayerList().getPlayers()) {
             if (player.containerMenu instanceof FrequencyMenu) {
-                PacketDistributor.sendToPlayer(player, pkt);
+                NetworkInit.sendToPlayer(player, pkt);
             }
         }
     }
 
-    public static void handle(SyncFrequencyListPacket pkt, IPayloadContext ctx) {
-        ctx.enqueueWork(() -> com.moakiee.ae2lt.client.ClientFrequencyCache.updateFromSync(pkt.entries));
+    public static void handle(SyncFrequencyListPacket pkt, Supplier<NetworkEvent.Context> ctxSupplier) {
+        var ctx = ctxSupplier.get();
+        ctx.enqueueWork(() -> DistExecutor.unsafeRunWhenOn(
+                Dist.CLIENT,
+                () -> () -> ClientNetworkPacketHandlers.handleFrequencyList(pkt.entries())));
+        ctx.setPacketHandled(true);
     }
 }
+

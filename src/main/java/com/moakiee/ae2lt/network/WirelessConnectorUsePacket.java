@@ -11,36 +11,26 @@ import com.moakiee.ae2lt.logic.WirelessConnectorTargetHelper;
 import com.moakiee.ae2lt.api.patternprovider.WirelessPatternProviderHost;
 import com.moakiee.thunderbolt.api.wireless.WirelessConnectionRef;
 import java.util.ArrayList;
+import java.util.function.Supplier;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.minecraftforge.common.ForgeMod;
+import net.minecraftforge.network.NetworkEvent;
 
 public record WirelessConnectorUsePacket(
         InteractionHand hand,
         BlockPos pos,
         Direction face,
         boolean contiguous
-) implements CustomPacketPayload {
-    public static final Type<WirelessConnectorUsePacket> TYPE =
-            new Type<>(NetworkInit.id("wireless_connector_use"));
+) {
 
-    public static final StreamCodec<RegistryFriendlyByteBuf, WirelessConnectorUsePacket> STREAM_CODEC =
-            StreamCodec.ofMember(WirelessConnectorUsePacket::write, WirelessConnectorUsePacket::decode);
-
-    @Override
-    public Type<WirelessConnectorUsePacket> type() {
-        return TYPE;
-    }
-
-    public static WirelessConnectorUsePacket decode(RegistryFriendlyByteBuf buf) {
+    public static WirelessConnectorUsePacket decode(FriendlyByteBuf buf) {
         return new WirelessConnectorUsePacket(
                 buf.readEnum(InteractionHand.class),
                 buf.readBlockPos(),
@@ -48,19 +38,22 @@ public record WirelessConnectorUsePacket(
                 buf.readBoolean());
     }
 
-    public void write(RegistryFriendlyByteBuf buf) {
-        buf.writeEnum(hand);
-        buf.writeBlockPos(pos);
-        buf.writeEnum(face);
-        buf.writeBoolean(contiguous);
+    public static void encode(WirelessConnectorUsePacket payload, FriendlyByteBuf buf) {
+        buf.writeEnum(payload.hand);
+        buf.writeBlockPos(payload.pos);
+        buf.writeEnum(payload.face);
+        buf.writeBoolean(payload.contiguous);
     }
 
-    public static void handle(WirelessConnectorUsePacket payload, IPayloadContext context) {
-        context.enqueueWork(() -> {
-            if (context.player() instanceof ServerPlayer player) {
+    public static void handle(WirelessConnectorUsePacket payload, Supplier<NetworkEvent.Context> ctxSupplier) {
+        var ctx = ctxSupplier.get();
+        ctx.enqueueWork(() -> {
+            ServerPlayer player = ctx.getSender();
+            if (player != null) {
                 payload.handleOnServer(player);
             }
         });
+        ctx.setPacketHandled(true);
     }
 
     private void handleOnServer(ServerPlayer player) {
@@ -69,7 +62,8 @@ public record WirelessConnectorUsePacket(
 
         ItemStack stack = player.getItemInHand(hand);
         if (!(stack.getItem() instanceof OverloadedWirelessConnectorItem)) return;
-        if (!player.canInteractWithBlock(pos, 1.0D)) return;
+        double reach = player.getAttributeValue(ForgeMod.BLOCK_REACH.get()) + 1.0D;
+        if (player.distanceToSqr(pos.getX() + 0.5D, pos.getY() + 0.5D, pos.getZ() + 0.5D) > reach * reach) return;
 
         var state = level.getBlockState(pos);
         var targetBe = level.getBlockEntity(pos);
@@ -551,20 +545,21 @@ public record WirelessConnectorUsePacket(
         }
 
         if (!disconnected.isEmpty()) {
-            var p = disconnected.getFirst();
+            var p = disconnected.get(0);
             player.displayClientMessage(Component.translatable(
                     "ae2lt.connector.disconnected", p.getX(), p.getY(), p.getZ())
                     .withStyle(ChatFormatting.GREEN), true);
         } else if (!updated.isEmpty()) {
-            var p = updated.getFirst();
+            var p = updated.get(0);
             player.displayClientMessage(Component.translatable(
                     "ae2lt.connector.updated", p.getX(), p.getY(), p.getZ(), face.getName())
                     .withStyle(ChatFormatting.GREEN), true);
         } else if (!connected.isEmpty()) {
-            var p = connected.getFirst();
+            var p = connected.get(0);
             player.displayClientMessage(Component.translatable(
                     "ae2lt.connector.connected", p.getX(), p.getY(), p.getZ(), face.getName())
                     .withStyle(ChatFormatting.GREEN), true);
         }
     }
 }
+

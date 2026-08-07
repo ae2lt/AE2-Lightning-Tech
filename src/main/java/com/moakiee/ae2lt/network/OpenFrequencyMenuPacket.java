@@ -9,24 +9,17 @@ import com.moakiee.ae2lt.menu.FrequencyMenu;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.minecraftforge.network.NetworkEvent;
+import java.util.function.Supplier;
 
 import appeng.menu.AEBaseMenu;
 import appeng.menu.MenuOpener;
 import appeng.menu.locator.ItemMenuHostLocator;
 import appeng.menu.locator.MenuHostLocator;
 
-public record OpenFrequencyMenuPacket(boolean cardMode) implements CustomPacketPayload {
-    public static final Type<OpenFrequencyMenuPacket> TYPE =
-            new Type<>(ResourceLocation.fromNamespaceAndPath("ae2lt", "open_frequency_menu"));
-
-    public static final StreamCodec<FriendlyByteBuf, OpenFrequencyMenuPacket> STREAM_CODEC =
-            StreamCodec.of(OpenFrequencyMenuPacket::encode, OpenFrequencyMenuPacket::decode);
+public record OpenFrequencyMenuPacket(boolean cardMode) {
 
     public static OpenFrequencyMenuPacket forBlock() {
         return new OpenFrequencyMenuPacket(false);
@@ -36,22 +29,19 @@ public record OpenFrequencyMenuPacket(boolean cardMode) implements CustomPacketP
         return new OpenFrequencyMenuPacket(true);
     }
 
-    private static void encode(FriendlyByteBuf buf, OpenFrequencyMenuPacket pkt) {
+    public static void encode(OpenFrequencyMenuPacket pkt, FriendlyByteBuf buf) {
         buf.writeBoolean(pkt.cardMode);
     }
 
-    private static OpenFrequencyMenuPacket decode(FriendlyByteBuf buf) {
+    public static OpenFrequencyMenuPacket decode(FriendlyByteBuf buf) {
         return new OpenFrequencyMenuPacket(buf.readBoolean());
     }
 
-    @Override
-    public Type<? extends CustomPacketPayload> type() {
-        return TYPE;
-    }
-
-    public static void handle(OpenFrequencyMenuPacket pkt, IPayloadContext ctx) {
+    public static void handle(OpenFrequencyMenuPacket pkt, Supplier<NetworkEvent.Context> ctxSupplier) {
+        var ctx = ctxSupplier.get();
         ctx.enqueueWork(() -> {
-            if (!(ctx.player() instanceof ServerPlayer player)) return;
+            ServerPlayer player = ctx.getSender();
+            if (player == null) return;
 
             if (pkt.cardMode) {
                 handleCardMode(player);
@@ -59,6 +49,7 @@ public record OpenFrequencyMenuPacket(boolean cardMode) implements CustomPacketP
             }
             handleBlockMode(player);
         });
+        ctx.setPacketHandled(true);
     }
 
     private static void handleBlockMode(ServerPlayer player) {

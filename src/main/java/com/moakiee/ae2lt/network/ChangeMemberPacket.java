@@ -1,50 +1,38 @@
 package com.moakiee.ae2lt.network;
 
 import java.util.UUID;
+import java.util.function.Supplier;
 
 import com.moakiee.ae2lt.grid.WirelessFrequency;
 import com.moakiee.ae2lt.grid.WirelessFrequencyManager;
 import com.moakiee.ae2lt.menu.FrequencyMenu;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.neoforge.network.PacketDistributor;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.minecraftforge.network.NetworkEvent;
 
 public record ChangeMemberPacket(
         int token,
         int frequencyId, UUID targetUUID, byte operationType
-) implements CustomPacketPayload {
+) {
 
-    public static final Type<ChangeMemberPacket> TYPE =
-            new Type<>(ResourceLocation.fromNamespaceAndPath("ae2lt", "change_member"));
-
-    public static final StreamCodec<FriendlyByteBuf, ChangeMemberPacket> STREAM_CODEC =
-            StreamCodec.of(ChangeMemberPacket::encode, ChangeMemberPacket::decode);
-
-    private static void encode(FriendlyByteBuf buf, ChangeMemberPacket pkt) {
+    public static void encode(ChangeMemberPacket pkt, FriendlyByteBuf buf) {
         buf.writeVarInt(pkt.token);
         buf.writeInt(pkt.frequencyId);
         buf.writeUUID(pkt.targetUUID);
         buf.writeByte(pkt.operationType);
     }
 
-    private static ChangeMemberPacket decode(FriendlyByteBuf buf) {
+    public static ChangeMemberPacket decode(FriendlyByteBuf buf) {
         return new ChangeMemberPacket(buf.readVarInt(), buf.readInt(), buf.readUUID(), buf.readByte());
     }
 
-    @Override
-    public Type<? extends CustomPacketPayload> type() {
-        return TYPE;
-    }
-
-    public static void handle(ChangeMemberPacket pkt, IPayloadContext ctx) {
+    public static void handle(ChangeMemberPacket pkt, Supplier<NetworkEvent.Context> ctxSupplier) {
+        var ctx = ctxSupplier.get();
         ctx.enqueueWork(() -> {
-            if (!(ctx.player() instanceof ServerPlayer player)) return;
+            ServerPlayer player = ctx.getSender();
+            if (player == null) return;
             if (FrequencyMenu.validateToken(player, pkt.token) == null) {
-                PacketDistributor.sendToPlayer(player, new FrequencyResponsePacket(FrequencyResponsePacket.REJECTED));
+                NetworkInit.sendToPlayer(player, new FrequencyResponsePacket(FrequencyResponsePacket.REJECTED));
                 return;
             }
             var manager = WirelessFrequencyManager.get();
@@ -52,7 +40,7 @@ public record ChangeMemberPacket(
 
             WirelessFrequency freq = manager.getFrequency(pkt.frequencyId);
             if (freq == null) {
-                PacketDistributor.sendToPlayer(player,
+                NetworkInit.sendToPlayer(player,
                         new FrequencyResponsePacket(FrequencyResponsePacket.INVALID_FREQUENCY));
                 return;
             }
@@ -68,7 +56,9 @@ public record ChangeMemberPacket(
                 case WirelessFrequency.RESPONSE_NO_PERMISSION -> FrequencyResponsePacket.NO_PERMISSION;
                 default -> FrequencyResponsePacket.REJECTED;
             };
-            PacketDistributor.sendToPlayer(player, new FrequencyResponsePacket(responseCode));
+            NetworkInit.sendToPlayer(player, new FrequencyResponsePacket(responseCode));
         });
+        ctx.setPacketHandled(true);
     }
 }
+

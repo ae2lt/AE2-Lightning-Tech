@@ -5,26 +5,17 @@ import com.moakiee.ae2lt.grid.WirelessFrequency;
 import com.moakiee.ae2lt.grid.WirelessFrequencyManager;
 import com.moakiee.ae2lt.menu.FrequencyMenu;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.neoforge.network.PacketDistributor;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.minecraftforge.network.NetworkEvent;
+import java.util.function.Supplier;
 
 public record CreateFrequencyPacket(
         int token,
         String name, int color,
         FrequencySecurityLevel security, String password
-) implements CustomPacketPayload {
+) {
 
-    public static final Type<CreateFrequencyPacket> TYPE =
-            new Type<>(ResourceLocation.fromNamespaceAndPath("ae2lt", "create_frequency"));
-
-    public static final StreamCodec<FriendlyByteBuf, CreateFrequencyPacket> STREAM_CODEC =
-            StreamCodec.of(CreateFrequencyPacket::encode, CreateFrequencyPacket::decode);
-
-    private static void encode(FriendlyByteBuf buf, CreateFrequencyPacket pkt) {
+    public static void encode(CreateFrequencyPacket pkt, FriendlyByteBuf buf) {
         buf.writeVarInt(pkt.token);
         buf.writeUtf(pkt.name, WirelessFrequency.MAX_NAME_LENGTH);
         buf.writeInt(pkt.color);
@@ -32,7 +23,7 @@ public record CreateFrequencyPacket(
         buf.writeUtf(pkt.password, WirelessFrequency.MAX_PASSWORD_LENGTH);
     }
 
-    private static CreateFrequencyPacket decode(FriendlyByteBuf buf) {
+    public static CreateFrequencyPacket decode(FriendlyByteBuf buf) {
         return new CreateFrequencyPacket(
                 buf.readVarInt(),
                 buf.readUtf(WirelessFrequency.MAX_NAME_LENGTH),
@@ -41,23 +32,20 @@ public record CreateFrequencyPacket(
                 buf.readUtf(WirelessFrequency.MAX_PASSWORD_LENGTH));
     }
 
-    @Override
-    public Type<? extends CustomPacketPayload> type() {
-        return TYPE;
-    }
-
-    public static void handle(CreateFrequencyPacket pkt, IPayloadContext ctx) {
+    public static void handle(CreateFrequencyPacket pkt, Supplier<NetworkEvent.Context> ctxSupplier) {
+        var ctx = ctxSupplier.get();
         ctx.enqueueWork(() -> {
-            if (!(ctx.player() instanceof ServerPlayer player)) return;
+            ServerPlayer player = ctx.getSender();
+            if (player == null) return;
             if (FrequencyMenu.validateToken(player, pkt.token) == null) {
-                PacketDistributor.sendToPlayer(player, new FrequencyResponsePacket(FrequencyResponsePacket.REJECTED));
+                NetworkInit.sendToPlayer(player, new FrequencyResponsePacket(FrequencyResponsePacket.REJECTED));
                 return;
             }
             var manager = WirelessFrequencyManager.get();
             if (manager == null) return;
 
             if (pkt.name.isBlank()) {
-                PacketDistributor.sendToPlayer(player, new FrequencyResponsePacket(FrequencyResponsePacket.REJECTED));
+                NetworkInit.sendToPlayer(player, new FrequencyResponsePacket(FrequencyResponsePacket.REJECTED));
                 return;
             }
             // UI rule: "ENCRYPTED without a password is PRIVATE" — silently
@@ -80,7 +68,7 @@ public record CreateFrequencyPacket(
                 // filters on "player.containerMenu's current freq id ==
                 // this freq", but a newly-created frequency isn't yet
                 // bound to any device — so without this explicit send
-                // the creator's {@link com.moakiee.ae2lt.client.ClientFrequencyCache}
+                // the creator's client frequency cache
                 // never learns they're an OWNER member, and the client's
                 // {@code needsPasswordUnlock} predicate misfires on the
                 // first Select click (pops the password modal for the
@@ -88,5 +76,7 @@ public record CreateFrequencyPacket(
                 SyncFrequencyDetailPacket.sendInitialMembersIfNeeded(player, freq.getId());
             }
         });
+        ctx.setPacketHandled(true);
     }
 }
+
