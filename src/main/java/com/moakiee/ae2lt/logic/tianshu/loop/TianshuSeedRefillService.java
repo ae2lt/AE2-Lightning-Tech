@@ -44,7 +44,8 @@ public final class TianshuSeedRefillService {
             return RefillResult.UNAVAILABLE;
         }
         var moved = new LinkedHashMap<AEKey, Long>();
-        var missing = new LinkedHashMap<AEKey, Long>();
+        var networkMissing = new LinkedHashMap<AEKey, Long>();
+        var storageBlocked = new LinkedHashMap<AEKey, Long>();
         var network = grid.getStorageService().getInventory();
         for (var entry : required.entrySet()) {
             long need = Math.max(0L, entry.getValue() - target.reusableSeedAmount(entry.getKey()));
@@ -61,21 +62,32 @@ public final class TianshuSeedRefillService {
                         target.getActionSource());
             }
             if (inserted > 0) moved.put(entry.getKey(), inserted);
-            long left = need - inserted;
-            if (left > 0) missing.put(entry.getKey(), left);
+            // Keep supply and destination failures separate so the terminal can tell players
+            // whether to add seeds to the ME network or fix the seed storage cells.
+            long unavailableFromNetwork = Math.max(0L, canStore - extracted);
+            long rejectedByStorage = Math.max(0L, need - canStore)
+                    + Math.max(0L, extracted - inserted);
+            if (unavailableFromNetwork > 0) {
+                networkMissing.put(entry.getKey(), unavailableFromNetwork);
+            }
+            if (rejectedByStorage > 0) {
+                storageBlocked.put(entry.getKey(), rejectedByStorage);
+            }
         }
-        return new RefillResult(true, Map.copyOf(moved), Map.copyOf(missing));
+        return new RefillResult(true, Map.copyOf(moved),
+                Map.copyOf(networkMissing), Map.copyOf(storageBlocked));
     }
 
     public record RefillResult(
             boolean available,
             Map<AEKey, Long> moved,
-            Map<AEKey, Long> missing) {
+            Map<AEKey, Long> networkMissing,
+            Map<AEKey, Long> storageBlocked) {
         private static final RefillResult UNAVAILABLE =
-                new RefillResult(false, Map.of(), Map.of());
+                new RefillResult(false, Map.of(), Map.of(), Map.of());
 
         public boolean complete() {
-            return available && missing.isEmpty();
+            return available && networkMissing.isEmpty() && storageBlocked.isEmpty();
         }
     }
 

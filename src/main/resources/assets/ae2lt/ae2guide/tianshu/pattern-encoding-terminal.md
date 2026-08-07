@@ -100,7 +100,16 @@ For a Certus Quartz closed loop, this could be a processing pattern such as `16 
    * **Stored task sets:** How many jobs' worth of seeds the Tianshu keeps pre-stocked—effectively the number of jobs that can run in parallel.
 5. When the status reads ready to encode, encode to obtain a <ItemLink id="ae2lt:closed_loop_pattern" />, then upload it into the Closed-Loop Pattern Storage. Authoring and encoding a closed-loop pattern needs no Tianshu; however, the pattern must be stored in some Tianshu's Closed-Loop Pattern Storage before it can execute.
 
-> Encoding a closed-loop pattern requires at least one Closed-Loop Pattern Storage installed in the Tianshu Supercomputing Array. Running closed-loop patterns requires at least one Closed-Loop Seed Storage with an ME Storage Cell installed.
+### Preparing Seed Storage
+
+Encoding a closed-loop pattern requires at least one Closed-Loop Pattern Storage in the Tianshu Supercomputing Array. To run one, install at least one Closed-Loop Seed Storage and place an **ME Storage Cell** compatible with the seed type inside it. The Seed Storage's 10 slots hold storage cells only; seed items cannot be inserted directly.
+
+After installing the cell, select **Refill Seeds** on the closed-loop page. The terminal calculates the stored requirement for every enabled closed-loop pattern and transfers missing seeds from the current ME network into Seed Storage:
+
+* **ME network lacks seeds:** The current network does not contain enough of the listed item or fluid. Add it to the network and try again.
+* **Seed storage cannot accept seeds:** No suitable storage cell is installed, or its byte/type capacity is full, or a partition rejects the seed.
+* **Seed refill incomplete:** Both kinds of problem are present. Hover over the status text to see the reason and amount for each seed.
+* **Seeds ready:** The stored requirement is satisfied and the corresponding closed-loop crafting jobs can start.
 
 Members can also be filled entirely by hand when no automatic candidate exists. An encoded closed-loop pattern can be re-inserted to load it for editing; encoding again updates the original pattern. A closed-loop pattern may itself be nested as a member of another loop; it is flattened during encoding, and the flattened member total must still not exceed 27. `(In other words, the old fake-crafting workaround is no longer available—but how many recipes truly need more than 27 member patterns?)`
 
