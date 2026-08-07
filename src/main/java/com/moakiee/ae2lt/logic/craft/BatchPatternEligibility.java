@@ -48,3 +48,4 @@ public final class BatchPatternEligibility {
         return false;
     }
 }
+

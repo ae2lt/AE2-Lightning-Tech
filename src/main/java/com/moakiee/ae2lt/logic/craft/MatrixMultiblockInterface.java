@@ -75,3 +75,4 @@ public final class MatrixMultiblockInterface implements IBatchCraftingProvider {
         return cluster.pushBatch(details, oneCopyTemplate, maxCraft);
     }
 }
+

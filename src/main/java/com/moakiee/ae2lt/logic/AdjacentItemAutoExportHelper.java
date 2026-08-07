@@ -25,7 +25,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.neoforged.neoforge.fluids.FluidStack;
+import net.minecraftforge.fluids.FluidStack;
 
 public final class AdjacentItemAutoExportHelper {
     private static final long WRAPPER_REFRESH_TICKS = 20L;
@@ -240,6 +240,7 @@ public final class AdjacentItemAutoExportHelper {
             if (remaining <= 0) {
                 break;
             }
+
             var direction = orientation.getSide(side);
             if (direction == null) {
                 continue;

@@ -3,7 +3,7 @@ package com.moakiee.ae2lt.logic;
 import com.mojang.authlib.GameProfile;
 import java.util.UUID;
 import net.minecraft.server.level.ServerLevel;
-import net.neoforged.neoforge.common.util.FakePlayer;
+import net.minecraftforge.common.util.FakePlayer;
 
 public final class OverloadBlastFakePlayer extends FakePlayer {
     private static final GameProfile PROFILE = new GameProfile(
@@ -18,3 +18,4 @@ public final class OverloadBlastFakePlayer extends FakePlayer {
         return new OverloadBlastFakePlayer(level);
     }
 }
+

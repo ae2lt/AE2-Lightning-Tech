@@ -26,3 +26,4 @@ final class SingleSeedClosedLoopMolecularPatternDetails extends ClosedLoopMolecu
         return super.sharedBatchOutputAmount(outputKey);
     }
 }
+

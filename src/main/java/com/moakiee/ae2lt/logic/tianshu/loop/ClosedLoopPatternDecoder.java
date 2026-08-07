@@ -14,6 +14,7 @@ import java.util.function.Function;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.Nullable;
+import net.minecraft.core.RegistryAccess;
 
 public final class ClosedLoopPatternDecoder implements IPatternDetailsDecoder {
     public static final ClosedLoopPatternDecoder INSTANCE = new ClosedLoopPatternDecoder();
@@ -184,3 +185,4 @@ public final class ClosedLoopPatternDecoder implements IPatternDetailsDecoder {
         }
     }
 }
+

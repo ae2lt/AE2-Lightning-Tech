@@ -4,7 +4,7 @@ import appeng.api.stacks.AEItemKey;
 import com.moakiee.thunderbolt.ae2.overload.pattern.SourcePatternSnapshot;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
-import net.minecraft.core.HolderLookup;
+import net.minecraft.core.RegistryAccess;
 
 /**
  * Derives the transient seed-ledger key required by Thunderbolt from encoded pattern content.
@@ -16,7 +16,7 @@ public final class ClosedLoopPatternIdentity {
     private static final String DOMAIN = "ae2lt:closed-loop:";
 
     public static UUID runtimeGroupId(
-            AEItemKey definition, HolderLookup.Provider registries) {
+            AEItemKey definition, RegistryAccess registries) {
         if (definition == null || registries == null) {
             throw new IllegalArgumentException("closed-loop definition and registries are required");
         }
@@ -30,3 +30,4 @@ public final class ClosedLoopPatternIdentity {
     private ClosedLoopPatternIdentity() {
     }
 }
+

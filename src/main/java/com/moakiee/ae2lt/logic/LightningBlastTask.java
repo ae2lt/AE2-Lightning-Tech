@@ -20,9 +20,9 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.neoforge.common.NeoForge;
-import net.neoforged.neoforge.common.util.FakePlayer;
-import net.neoforged.neoforge.event.level.BlockEvent;
+import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.common.util.FakePlayer;
+import net.minecraftforge.event.level.BlockEvent;
 
 public class LightningBlastTask {
     public record TickResult(int consumedBlocks, int consumedLightning) {}
@@ -430,7 +430,7 @@ public class LightningBlastTask {
         boolean cancelled;
         try {
             BlockEvent.BreakEvent event = new BlockEvent.BreakEvent(this.level, pos, state, breaker);
-            NeoForge.EVENT_BUS.post(event);
+            MinecraftForge.EVENT_BUS.post(event);
             cancelled = event.isCanceled();
         } catch (Throwable ignored) {
             cancelled = true;
@@ -447,3 +447,5 @@ public class LightningBlastTask {
     }
 
 }
+
+

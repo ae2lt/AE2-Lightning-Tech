@@ -28,3 +28,4 @@ class SingleSeedClosedLoopPatternDetails extends ClosedLoopExpandedPatternDetail
         return super.sharedBatchOutputAmount(outputKey);
     }
 }
+

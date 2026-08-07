@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
 import net.minecraft.world.level.Level;
+import net.minecraft.core.RegistryAccess;
 
 public final class ClosedLoopDiscoveryService {
     private static final int MAX_DEPTH = 8;
@@ -636,3 +637,4 @@ public final class ClosedLoopDiscoveryService {
 
     private ClosedLoopDiscoveryService() { }
 }
+

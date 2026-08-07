@@ -4,7 +4,6 @@ import java.util.List;
 
 import org.jetbrains.annotations.Nullable;
 
-import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.world.item.Item;
@@ -17,6 +16,7 @@ import appeng.api.stacks.GenericStack;
 import com.moakiee.thunderbolt.ae2.overload.model.MatchMode;
 import com.moakiee.thunderbolt.ae2.overload.pattern.OverloadedProviderOnlyPatternDetails;
 import com.moakiee.thunderbolt.ae2.overload.pattern.OverloadPatternDetails;
+import net.minecraft.core.RegistryAccess;
 
 /** Output filtering and LOCK_UNTIL_RESULT matching derived from loaded patterns. */
 final class OverloadedReturnPolicy {
@@ -83,7 +83,7 @@ final class OverloadedReturnPolicy {
         unlockTemplate = null;
     }
 
-    void writeToNBT(CompoundTag tag, HolderLookup.Provider registries) {
+    void writeToNBT(CompoundTag tag, RegistryAccess registries) {
         if (unlockMatchMode != null) {
             tag.putString(TAG_UNLOCK_MATCH_MODE, unlockMatchMode.name());
         }
@@ -92,7 +92,7 @@ final class OverloadedReturnPolicy {
         }
     }
 
-    void readFromNBT(CompoundTag tag, HolderLookup.Provider registries) {
+    void readFromNBT(CompoundTag tag, RegistryAccess registries) {
         clearUnlockRule();
         if (tag.contains(TAG_UNLOCK_MATCH_MODE, Tag.TAG_STRING)) {
             try {
@@ -162,3 +162,4 @@ final class OverloadedReturnPolicy {
         return 0;
     }
 }
+

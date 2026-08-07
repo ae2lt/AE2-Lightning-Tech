@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import net.minecraft.world.level.Level;
+import net.minecraft.core.RegistryAccess;
 
 /**
  * Compile-time expansion of nested closed-loop pattern references.
@@ -239,3 +240,4 @@ public final class ClosedLoopPatternFlattener {
     private ClosedLoopPatternFlattener() {
     }
 }
+

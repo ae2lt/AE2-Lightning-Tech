@@ -18,7 +18,7 @@ import net.minecraft.network.chat.Component;
  * mutates the cell directly; the cell's internal {@code storedEnergy}
  * counter is the canonical source of truth. The cell's ItemStack-data
  * persist is deferred to {@link #endTick(AEKey, IActionSource)} so that 64+ writes
- * during a single OVERLOAD tick collapse to a single ItemStack data-component
+ * during a single OVERLOAD tick collapse to a single ItemStack NBT
  * update.
  *
  * <p>When no cell is installed, NORMAL-mode distribution falls back to the
@@ -337,7 +337,7 @@ public class BufferedMEStorage implements MEStorage {
      * Tick-end synchronisation point. Flushes any orphan {@link #feBuffer}
      * back to the delegate (defensive — should already be empty if
      * {@link #endBatch} ran), then invokes the persist callback so the host
-     * can write the cell's storedEnergy into the ItemStack data component.
+     * can write the cell's storedEnergy into the ItemStack NBT.
      *
      * <p>The callback is responsible for both the cell's persist and the
      * host's setChanged; this class deliberately avoids touching either so

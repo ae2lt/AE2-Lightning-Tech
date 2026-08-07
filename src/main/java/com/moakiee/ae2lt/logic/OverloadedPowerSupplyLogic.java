@@ -118,7 +118,7 @@ public class OverloadedPowerSupplyLogic implements IGridTickable {
 
     @Override
     public TickingRequest getTickingRequest(IGridNode node) {
-        return new TickingRequest(TICK_MIN, TICK_MAX, false);
+        return new TickingRequest(TICK_MIN, TICK_MAX, false, true);
     }
 
     @Override
@@ -162,7 +162,7 @@ public class OverloadedPowerSupplyLogic implements IGridTickable {
         // Defensively persist the cell on every state-change boundary
         // (cell removed, mode toggled, connections edited, grid detached).
         // The cell IS the buffer now, so we can never carry stale FE forward
-        // — but we still want the ItemStack data component to reflect the
+        // — but we still want the ItemStack NBT to reflect the
         // latest in-memory storedEnergy before the cell potentially leaves
         // this BE.
         distributor.flushBufferToNetwork();

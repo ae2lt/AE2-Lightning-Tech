@@ -7,14 +7,14 @@ import java.util.UUID;
 
 import org.jetbrains.annotations.Nullable;
 
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.component.CustomData;
+
+import com.moakiee.ae2lt.util.ItemStackTagSupport;
 
 public record ResearchNoteData(
         UUID ritualSeed,
@@ -28,13 +28,33 @@ public record ResearchNoteData(
     public static final String TAG_RECIPE_ITEMS = "RecipeItems";
     public static final String TAG_DESCRIPTIONS = "Descriptions";
     public static final String TAG_CONSUMED = "Consumed";
+    /** 仅存在于空白笔记(未生成前)上,铁砧调制后写入。玩家右键派生时被读取并强制覆盖随机 goal。 */
+    public static final String TAG_FORCED_GOAL = "ForcedGoal";
+
+    public static boolean isBlank(ItemStack stack) {
+        CompoundTag tag = ItemStackTagSupport.getTagCopy(stack);
+        return !tag.contains(TAG_GOAL, Tag.TAG_STRING);
+    }
+
+    public static @Nullable RitualGoal readForcedGoal(ItemStack stack) {
+        CompoundTag tag = ItemStackTagSupport.getTagCopy(stack);
+        if (!tag.contains(TAG_FORCED_GOAL, Tag.TAG_STRING)) {
+            return null;
+        }
+        return RitualGoal.fromName(tag.getString(TAG_FORCED_GOAL));
+    }
+
+    public static void writeForcedGoal(ItemStack stack, RitualGoal goal) {
+        ItemStackTagSupport.updateTag(stack, tag -> tag.putString(TAG_FORCED_GOAL, goal.name()));
+    }
+
     public static boolean isConsumed(ItemStack stack) {
         ResearchNoteData data = read(stack);
         return data != null && data.consumed();
     }
 
     public static @Nullable ResearchNoteData read(ItemStack stack) {
-        CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+        CompoundTag tag = ItemStackTagSupport.getTagCopy(stack);
         if (!tag.contains(TAG_GOAL, Tag.TAG_STRING)) {
             return null;
         }
@@ -62,7 +82,7 @@ public record ResearchNoteData(
     }
 
     public void writeTo(ItemStack stack) {
-        CustomData.update(DataComponents.CUSTOM_DATA, stack, tag -> {
+        ItemStackTagSupport.updateTag(stack, tag -> {
             tag.putString(TAG_RITUAL_SEED, ritualSeed.toString());
             tag.putString(TAG_GOAL, goal.name());
             tag.put(TAG_RECIPE_ITEMS, writeResourceLocationList(recipeItems));

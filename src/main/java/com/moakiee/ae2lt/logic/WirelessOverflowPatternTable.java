@@ -190,3 +190,4 @@ final class WirelessOverflowPatternTable {
         void setPatternId(short patternId);
     }
 }
+

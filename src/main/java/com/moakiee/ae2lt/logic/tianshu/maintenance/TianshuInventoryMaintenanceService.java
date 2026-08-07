@@ -23,10 +23,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Future;
-import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
+import net.minecraft.core.RegistryAccess;
 
 public final class TianshuInventoryMaintenanceService
         implements ICraftingRequester, ICraftingSimulationRequester {
@@ -353,16 +353,16 @@ public final class TianshuInventoryMaintenanceService
                 iterator.remove();
                 pending.future().cancel(false);
                 InventoryMaintenanceCalculationClaims.release(
-                        pending.grid(), pending.key(), entry.getKey());
-                statuses.put(entry.getKey(), InventoryMaintenanceStatus.IDLE);
+                        pending.grid(), pending.key(), entry.getId() /* TODO: verify getKey->getId */);
+                statuses.put(entry.getId() /* TODO: verify getKey->getId */, InventoryMaintenanceStatus.IDLE);
                 continue;
             }
             if (!pending.future().isDone()) continue;
             iterator.remove();
             InventoryMaintenanceCalculationClaims.release(
-                    pending.grid(), pending.key(), entry.getKey());
+                    pending.grid(), pending.key(), entry.getId() /* TODO: verify getKey->getId */);
             var rule = repository.get(pending.key());
-            if (rule == null || !rule.id().equals(entry.getKey()) || !rule.enabled()
+            if (rule == null || !rule.id().equals(entry.getId() /* TODO: verify getKey->getId */) || !rule.enabled()
                     || !activeRuleIds.contains(rule.id())) continue;
             try {
                 var plan = pending.future().get();
@@ -413,14 +413,14 @@ public final class TianshuInventoryMaintenanceService
         var available = inventory.getAvailableStacks();
         for (var used : plan.usedItems()) {
             if (used.getLongValue() <= 0L) continue;
-            var key = used.getKey();
+            var key = used.getId() /* TODO: verify getKey->getId */;
             long current = Math.max(0L, available.get(key));
             long usable;
             if (policy.groupsSecondaryVariants(key)) {
                 var group = new HashMap<AEKey, Long>();
                 for (var entry : available) {
-                    if (entry.getKey().dropSecondary().equals(key.dropSecondary())) {
-                        group.put(entry.getKey(), Math.max(0L, entry.getLongValue()));
+                    if (entry.getId() /* TODO: verify getKey->getId */.dropSecondary().equals(key.dropSecondary())) {
+                        group.put(entry.getId() /* TODO: verify getKey->getId */, Math.max(0L, entry.getLongValue()));
                     }
                 }
                 usable = policy.usablePreexistingStock(key, current, group);
@@ -450,7 +450,7 @@ public final class TianshuInventoryMaintenanceService
         for (var entry : calculations.entrySet()) {
             entry.getValue().future().cancel(false);
             InventoryMaintenanceCalculationClaims.release(
-                    entry.getValue().grid(), entry.getValue().key(), entry.getKey());
+                    entry.getValue().grid(), entry.getValue().key(), entry.getId() /* TODO: verify getKey->getId */);
         }
         calculations.clear();
     }
@@ -512,7 +512,7 @@ public final class TianshuInventoryMaintenanceService
     @Override public IGridNode getActionableNode() { return host.getActionableNode(); }
     @Override public IActionSource getActionSource() { return host.getActionSource(); }
 
-    public void writeTo(CompoundTag parent, HolderLookup.Provider registries) {
+    public void writeTo(CompoundTag parent, RegistryAccess registries) {
         var repoTag = new CompoundTag();
         repository.writeTo(repoTag, registries);
         parent.put(TAG_REPOSITORY, repoTag);
@@ -523,7 +523,7 @@ public final class TianshuInventoryMaintenanceService
         for (var entry : ruleReservedStock.entrySet()) {
             if (entry.getValue().size() <= 0) continue;
             var tag = new CompoundTag();
-            tag.putUUID("RuleId", entry.getKey());
+            tag.putUUID("RuleId", entry.getId() /* TODO: verify getKey->getId */);
             entry.getValue().writeTo(tag, registries);
             ruleReserves.add(tag);
         }
@@ -537,7 +537,7 @@ public final class TianshuInventoryMaintenanceService
         parent.put(TAG_LINKS, linkTags);
     }
 
-    public void readFrom(CompoundTag parent, HolderLookup.Provider registries) {
+    public void readFrom(CompoundTag parent, RegistryAccess registries) {
         shutdownCalculations();
         statuses.clear();
         retryAfter.clear();
@@ -599,3 +599,4 @@ public final class TianshuInventoryMaintenanceService
         }
     }
 }
+

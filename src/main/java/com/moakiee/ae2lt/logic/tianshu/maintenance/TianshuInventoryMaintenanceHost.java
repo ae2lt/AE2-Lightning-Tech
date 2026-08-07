@@ -34,3 +34,4 @@ public interface TianshuInventoryMaintenanceHost {
 
     void maintenanceStateChanged();
 }
+

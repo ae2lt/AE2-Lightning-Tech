@@ -8,8 +8,10 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.capabilities.Capabilities;
-import net.neoforged.neoforge.energy.IEnergyStorage;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraftforge.common.capabilities.Capability;
+import net.minecraftforge.common.capabilities.ForgeCapabilities;
+import net.minecraftforge.energy.IEnergyStorage;
 
 import appeng.api.config.Actionable;
 import appeng.api.networking.IGrid;
@@ -21,18 +23,17 @@ import appeng.api.storage.StorageCells;
 
 import com.glodblock.github.appflux.api.IFluxCell;
 import com.glodblock.github.appflux.common.me.cell.FluxCellInventory;
-import com.glodblock.github.appflux.common.me.energy.EnergyCapCache;
 import com.glodblock.github.appflux.common.me.key.FluxKey;
 import com.glodblock.github.appflux.common.me.key.type.EnergyType;
 import com.glodblock.github.appflux.config.AFConfig;
-import com.glodblock.github.appflux.xmod.fluxnetwork.FluxNetworkCap;
-import com.glodblock.github.appflux.xmod.mek.MekEnergyCap;
-import com.glodblock.github.appflux.xmod.mi.LongEnergyCap;
 
-import dev.technici4n.grandpower.api.ILongEnergyStorage;
 import mekanism.api.Action;
 import mekanism.api.energy.IStrictEnergyHandler;
+import mekanism.api.math.FloatingLong;
+import mekanism.common.capabilities.Capabilities;
+import mekanism.common.config.MekanismConfig;
 import mekanism.common.util.UnitDisplayUtils;
+import sonar.fluxnetworks.api.FluxCapabilities;
 import sonar.fluxnetworks.api.energy.IFNEnergyStorage;
 
 /**
@@ -47,16 +48,14 @@ final class AppFluxAccess {
     static final AEKey FE_KEY = FluxKey.of(EnergyType.FE);
 
     static final long TRANSFER_RATE;
-    private static final boolean GRAND_POWER_LOADED;
     private static final boolean FLUX_NETWORKS_LOADED;
     private static final boolean MEKANISM_LOADED;
 
     static {
         long rate = AFConfig.getFluxAccessorIO();
         TRANSFER_RATE = rate == 0L ? Long.MAX_VALUE : Math.max(0L, rate);
-        GRAND_POWER_LOADED = isClassPresent("dev.technici4n.grandpower.api.ILongEnergyStorage");
         FLUX_NETWORKS_LOADED = isClassPresent("sonar.fluxnetworks.api.energy.IFNEnergyStorage");
-        MEKANISM_LOADED = isClassPresent("mekanism.api.energy.IStrictEnergyHandler");
+        MEKANISM_LOADED = isClassPresent("mekanism.common.capabilities.Capabilities");
     }
 
     static boolean isFluxCell(ItemStack stack) {
@@ -66,20 +65,16 @@ final class AppFluxAccess {
     @Nullable
     static Object createCapCache(ServerLevel level, BlockPos pos,
                                  Supplier<IGrid> gridSupplier) {
-        return new EnergyCapCache(level, pos, gridSupplier);
+        return new CapabilityTargetCache(level, pos);
     }
 
     @Nullable
     static TargetAccess resolveEnergyTarget(Object energyCapCache, Direction side) {
-        if (!(energyCapCache instanceof EnergyCapCache cache)) {
+        if (!(energyCapCache instanceof CapabilityTargetCache cache)) {
             return null;
         }
 
-        TargetAccess target = resolveGrandPowerTarget(cache, side);
-        if (target != null) {
-            return target;
-        }
-        target = resolveFluxNetworkTarget(cache, side);
+        TargetAccess target = resolveFluxNetworkTarget(cache, side);
         if (target != null) {
             return target;
         }
@@ -245,25 +240,12 @@ final class AppFluxAccess {
     private AppFluxAccess() {}
 
     @Nullable
-    private static TargetAccess resolveGrandPowerTarget(EnergyCapCache cache, Direction side) {
-        if (!GRAND_POWER_LOADED) {
-            return null;
-        }
-        try {
-            ILongEnergyStorage target = cache.getEnergyCap(LongEnergyCap.CAP, side);
-            return target != null ? new GrandPowerTarget(target) : null;
-        } catch (LinkageError ignored) {
-            return null;
-        }
-    }
-
-    @Nullable
-    private static TargetAccess resolveFluxNetworkTarget(EnergyCapCache cache, Direction side) {
+    private static TargetAccess resolveFluxNetworkTarget(CapabilityTargetCache cache, Direction side) {
         if (!FLUX_NETWORKS_LOADED) {
             return null;
         }
         try {
-            IFNEnergyStorage target = cache.getEnergyCap(FluxNetworkCap.CAP, side);
+            IFNEnergyStorage target = getTargetCapability(cache, side, FluxCapabilities.FN_ENERGY_STORAGE);
             return target != null ? new FluxNetworkTarget(target) : null;
         } catch (LinkageError ignored) {
             return null;
@@ -271,27 +253,15 @@ final class AppFluxAccess {
     }
 
     @Nullable
-    private static TargetAccess resolveMekanismTarget(EnergyCapCache cache, Direction side) {
+    private static TargetAccess resolveMekanismTarget(CapabilityTargetCache cache, Direction side) {
         if (!MEKANISM_LOADED) {
             return null;
         }
         try {
-            IStrictEnergyHandler target = cache.getEnergyCap(MekEnergyCap.CAP, side);
+            IStrictEnergyHandler target = getTargetCapability(cache, side, Capabilities.STRICT_ENERGY);
             return target != null ? MekanismStrictTarget.create(target) : null;
         } catch (LinkageError ignored) {
             return null;
-        }
-    }
-
-    private record GrandPowerTarget(ILongEnergyStorage target) implements TargetAccess {
-        @Override
-        public long simulateReceive(long maxFe) {
-            return Math.max(0L, target.receive(maxFe, true));
-        }
-
-        @Override
-        public long receive(long amountFe) {
-            return Math.max(0L, target.receive(amountFe, false));
         }
     }
 
@@ -307,72 +277,26 @@ final class AppFluxAccess {
         }
     }
 
-    /**
-     * Mekanism IStrictEnergyHandler facade.
-     *
-     * <p>Caches the FE↔Joule conversion rate at construction so the hot path
-     * does not re-query {@code MekanismConfig.general.forgeConversionRate} on
-     * every receive call. Cap invalidation rebuilds the target instance, which
-     * picks up any in-game config reload at the next resolve. Stale rates only
-     * persist between cap invalidations on a single block — well within
-     * acceptable bounds for a per-tick energy throughput hot path.
-     *
-     * <p>Mekanism's stock conversion is exactly {@code 1 FE = 2.5 J = 5/2 J},
-     * so when no config override is in play we replace
-     * {@code clampToLong((double) x * feToJoules)} with the equivalent
-     * pure-integer {@code (x * 5L) >> 1}, and similarly J→FE becomes
-     * {@code (x << 1) / 5L}. Both directions become a single imul plus a
-     * shift / constant-divisor (HotSpot lowers {@code / 5L} to a magic-number
-     * high-mul on x64), saving the long→double round-trip, the double-mul,
-     * the {@code clampToLong} NaN/range branch tower, and all FPU register
-     * pressure. Custom conversion rates fall back to the original double
-     * path automatically.
-     *
-     * <p>Also short-circuits the J→FE back-conversion when the target accepts
-     * the full amount (the dominant case in OVERLOAD): when {@code remainder}
-     * is zero we simply return the original {@code amountFe} unchanged,
-     * skipping the conversion entirely.
-     */
     private static final class MekanismStrictTarget implements TargetAccess {
-        /** Mekanism stock {@code joulesPerForgeEnergy}. */
-        private static final double DEFAULT_FE_TO_JOULES = 2.5;
-        /** Largest {@code amountFe} that lets {@code amountFe * 5L} stay
-         *  inside {@code Long}. Real machine demands per tick never come
-         *  near this — it exists purely so a misconfigured TRANSFER_RATE
-         *  cannot wrap silently. */
-        private static final long FE_FAST_PATH_LIMIT = Long.MAX_VALUE / 5L;
-        /** Largest {@code acceptedJ} that lets {@code acceptedJ << 1} stay
-         *  inside {@code Long}. Same rationale as above. */
-        private static final long J_FAST_PATH_LIMIT = Long.MAX_VALUE >> 1;
-
         private final IStrictEnergyHandler target;
-        private final double feToJoules;
-        private final double joulesToFe;
-        /** Pre-computed Joule equivalent of {@link #TRANSFER_RATE} (the per-call cap). */
-        private final long maxJoulesPerCall;
-        /** Largest FE request this target can convert without clamping Joules. */
+        private final FloatingLong maxJoulesPerCall;
         private final long maxForgeEnergyPerCall;
-        /** True iff Mekanism is running with the stock 5/2 conversion ratio. */
-        private final boolean defaultConversion;
 
-        private MekanismStrictTarget(IStrictEnergyHandler target, double feToJoules,
-                                     double joulesToFe, long maxJoulesPerCall,
+        private MekanismStrictTarget(IStrictEnergyHandler target, FloatingLong maxJoulesPerCall,
                                      long maxForgeEnergyPerCall) {
             this.target = target;
-            this.feToJoules = feToJoules;
-            this.joulesToFe = joulesToFe;
             this.maxJoulesPerCall = maxJoulesPerCall;
             this.maxForgeEnergyPerCall = maxForgeEnergyPerCall;
-            this.defaultConversion = feToJoules == DEFAULT_FE_TO_JOULES;
         }
 
         static MekanismStrictTarget create(IStrictEnergyHandler target) {
-            double rate = UnitDisplayUtils.EnergyUnit.FORGE_ENERGY.getConversion();
-            double inverse = rate > 0.0 ? 1.0 / rate : 1.0;
+            double rate = MekanismConfig.general.forgeConversionRate.get().doubleValue();
             long maxFe = maxForgeEnergyFor(rate);
             long cappedTransfer = TRANSFER_RATE > 0L ? Math.min(TRANSFER_RATE, maxFe) : 0L;
-            long maxJ = cappedTransfer > 0L ? clampToLong((double) cappedTransfer * rate) : 0L;
-            return new MekanismStrictTarget(target, rate, inverse, maxJ, maxFe);
+            FloatingLong maxJ = cappedTransfer > 0L
+                    ? UnitDisplayUtils.EnergyUnit.FORGE_ENERGY.convertFrom(cappedTransfer)
+                    : FloatingLong.ZERO;
+            return new MekanismStrictTarget(target, maxJ, maxFe);
         }
 
         @Override
@@ -393,41 +317,30 @@ final class AppFluxAccess {
             if (effectiveAmountFe <= 0L) {
                 return 0L;
             }
-            long mekanismAmount;
-            if (amountFe == TRANSFER_RATE) {
-                // Per-call cap: pre-computed at construction, no math at all.
-                mekanismAmount = maxJoulesPerCall;
-            } else if (defaultConversion && effectiveAmountFe <= FE_FAST_PATH_LIMIT) {
-                // 1 FE = 5/2 J → integer-only: imul + shift, no FPU.
-                mekanismAmount = (effectiveAmountFe * 5L) >> 1;
-            } else {
-                mekanismAmount = clampToLong((double) effectiveAmountFe * feToJoules);
-            }
-            if (mekanismAmount <= 0L) {
+            FloatingLong mekanismAmount = amountFe == TRANSFER_RATE
+                    ? maxJoulesPerCall
+                    : UnitDisplayUtils.EnergyUnit.FORGE_ENERGY.convertFrom(effectiveAmountFe);
+            if (mekanismAmount.isZero()) {
                 return 0L;
             }
-            long remainder = target.insertEnergy(mekanismAmount, action);
-            if (remainder <= 0L) {
+            FloatingLong remainder = target.insertEnergy(mekanismAmount, action);
+            if (remainder.isZero()) {
                 return effectiveAmountFe;
             }
-            if (remainder >= mekanismAmount) {
+            if (remainder.greaterOrEqual(mekanismAmount)) {
                 return 0L;
             }
-            long acceptedJ = mekanismAmount - remainder;
-            if (defaultConversion && acceptedJ <= J_FAST_PATH_LIMIT) {
-                // 1 J = 2/5 FE → integer-only: shift + idiv (HotSpot lowers
-                // /5L to a magic-number high-mul, so this is one imul + sar
-                // on x64, no FPU.)
-                return Math.min(effectiveAmountFe, (acceptedJ << 1) / 5L);
-            }
-            return Math.min(effectiveAmountFe, clampToLong((double) acceptedJ * joulesToFe));
+            FloatingLong acceptedJ = mekanismAmount.subtract(remainder);
+            return Math.min(
+                    effectiveAmountFe,
+                    UnitDisplayUtils.EnergyUnit.FORGE_ENERGY.convertToAsLong(acceptedJ));
         }
     }
 
     private record ForgeEnergyTarget(IEnergyStorage target) implements TargetAccess {
         @Nullable
-        static TargetAccess resolve(EnergyCapCache cache, Direction side) {
-            IEnergyStorage target = cache.getEnergyCap(Capabilities.EnergyStorage.BLOCK, side);
+        static TargetAccess resolve(CapabilityTargetCache cache, Direction side) {
+            IEnergyStorage target = getTargetCapability(cache, side, ForgeCapabilities.ENERGY);
             return target != null ? new ForgeEnergyTarget(target) : null;
         }
 
@@ -440,6 +353,27 @@ final class AppFluxAccess {
         public long receive(long amountFe) {
             return Math.max(0, target.receiveEnergy(clampToInt(amountFe), false));
         }
+    }
+
+    private record CapabilityTargetCache(ServerLevel level, BlockPos pos) {
+        private CapabilityTargetCache {
+            pos = pos.immutable();
+        }
+
+        @Nullable
+        private BlockEntity resolveTarget(Direction side) {
+            BlockPos targetPos = pos.relative(side);
+            return level.isLoaded(targetPos) ? level.getBlockEntity(targetPos) : null;
+        }
+    }
+
+    @Nullable
+    private static <T> T getTargetCapability(CapabilityTargetCache cache, Direction side, Capability<T> capability) {
+        BlockEntity target = cache.resolveTarget(side);
+        if (target == null) {
+            return null;
+        }
+        return target.getCapability(capability, side.getOpposite()).resolve().orElse(null);
     }
 
     private static int clampToInt(long value) {
@@ -488,3 +422,4 @@ final class AppFluxAccess {
         }
     }
 }
+

@@ -176,9 +176,9 @@ public final class ClosedLoopPatternAnalyzer {
 
         var net = new LinkedHashMap<AEKey, Long>();
         for (var entry : produced.entrySet()) {
-            net.put(entry.getKey(), entry.getValue() - consumed.getOrDefault(entry.getKey(), 0L));
+            net.put(entry.getId() /* TODO: verify getKey->getId */, entry.getValue() - consumed.getOrDefault(entry.getId() /* TODO: verify getKey->getId */, 0L));
         }
-        for (var entry : consumed.entrySet()) net.putIfAbsent(entry.getKey(), -entry.getValue());
+        for (var entry : consumed.entrySet()) net.putIfAbsent(entry.getId() /* TODO: verify getKey->getId */, -entry.getValue());
         if (net.getOrDefault(requestedOutput, 0L) <= 0) return null;
         for (var key : cycleKeys) if (net.getOrDefault(key, 0L) < 0) return null;
 
@@ -207,10 +207,10 @@ public final class ClosedLoopPatternAnalyzer {
         var external = new LinkedHashMap<AEKey, Long>();
         var outputs = new LinkedHashMap<AEKey, Long>();
         for (var entry : net.entrySet()) {
-            if (entry.getValue() < 0 && !cycleKeys.contains(entry.getKey())) {
-                external.put(entry.getKey(), -entry.getValue());
+            if (entry.getValue() < 0 && !cycleKeys.contains(entry.getId() /* TODO: verify getKey->getId */)) {
+                external.put(entry.getId() /* TODO: verify getKey->getId */, -entry.getValue());
             } else if (entry.getValue() > 0) {
-                outputs.put(entry.getKey(), entry.getValue());
+                outputs.put(entry.getId() /* TODO: verify getKey->getId */, entry.getValue());
             }
         }
         return new ClosedLoopAnalysis(seeds, toStacks(external), toStacks(outputs));
@@ -311,15 +311,15 @@ public final class ClosedLoopPatternAnalyzer {
             var inputSeed = new LinkedHashMap<AEKey, Long>();
             var outputSeed = new LinkedHashMap<AEKey, Long>();
             for (var entry : balance.consumed().entrySet()) {
-                if (cycleKeys.contains(entry.getKey()) && entry.getValue() > 0) {
-                    inputSeed.put(entry.getKey(), entry.getValue());
+                if (cycleKeys.contains(entry.getId() /* TODO: verify getKey->getId */) && entry.getValue() > 0) {
+                    inputSeed.put(entry.getId() /* TODO: verify getKey->getId */, entry.getValue());
                 }
             }
             // A member without a reusable-state input is a producer in a dependency chain, not a
             // closed-loop transition. It cannot be made safe by assigning it a dedicated ledger.
             if (inputSeed.isEmpty()) return List.of();
             for (var entry : balance.produced().entrySet()) {
-                var key = entry.getKey();
+                var key = entry.getId() /* TODO: verify getKey->getId */;
                 long produced = entry.getValue();
                 long seedOutput = 0L;
                 if (cycleKeys.contains(key)) {
@@ -334,7 +334,7 @@ public final class ClosedLoopPatternAnalyzer {
             var inputSeedBySlot = new LinkedHashMap<Integer, AEKey>();
             for (var entry : balance.inputSeedBySlot().entrySet()) {
                 if (cycleKeys.contains(entry.getValue())) {
-                    inputSeedBySlot.put(entry.getKey(), entry.getValue());
+                    inputSeedBySlot.put(entry.getId() /* TODO: verify getKey->getId */, entry.getValue());
                 }
             }
             result.add(new MemberFlow(
@@ -383,7 +383,7 @@ public final class ClosedLoopPatternAnalyzer {
                 var executionInputs = ClosedLoopExpandedPatternDetails.pinReusableSeedInputs(
                         details, flow.inputSeedBySlot());
                 for (var mapped : flow.inputSeedBySlot().entrySet()) {
-                    int slot = mapped.getKey();
+                    int slot = mapped.getId() /* TODO: verify getKey->getId */;
                     if (slot < 0 || slot >= executionInputs.length) return false;
                     var input = executionInputs[slot];
                     var selected = mapped.getValue();
@@ -414,17 +414,17 @@ public final class ClosedLoopPatternAnalyzer {
                 }
 
                 for (var output : flow.outputSeed().entrySet()) {
-                    long exact = exactCapacity.getOrDefault(output.getKey(), 0L);
+                    long exact = exactCapacity.getOrDefault(output.getId() /* TODO: verify getKey->getId */, 0L);
                     if (output.getValue() <= exact) continue;
-                    var domain = dynamicCapacity.get(output.getKey());
+                    var domain = dynamicCapacity.get(output.getId() /* TODO: verify getKey->getId */);
                     if (domain == null) return false;
                     requiredDomains.merge(
-                            output.getKey(), domain.copy(), DynamicSeedDomain::merge);
+                            output.getId() /* TODO: verify getKey->getId */, domain.copy(), DynamicSeedDomain::merge);
                 }
             }
 
             for (var required : requiredDomains.entrySet()) {
-                var planned = required.getKey();
+                var planned = required.getId() /* TODO: verify getKey->getId */;
                 var domain = required.getValue();
                 for (int memberIndex = 0; memberIndex < members.size(); memberIndex++) {
                     var flow = flows.get(memberIndex);
@@ -440,7 +440,7 @@ public final class ClosedLoopPatternAnalyzer {
                     for (var seedSlot : flow.inputSeedBySlot().entrySet()) {
                         if (!planned.equals(seedSlot.getValue())) continue;
                         mapped = true;
-                        int slot = seedSlot.getKey();
+                        int slot = seedSlot.getId() /* TODO: verify getKey->getId */;
                         boolean fuzzy = overload != null && overload.isFuzzyInput(slot);
                         if (domain.fuzzy && !fuzzy) return false;
                         var possible = inputs[slot].getPossibleInputs();
@@ -740,7 +740,7 @@ public final class ClosedLoopPatternAnalyzer {
     private static void mergeScaled(
             Map<AEKey, Long> target, Map<AEKey, Long> source, long copies) {
         for (var entry : source.entrySet()) {
-            target.merge(entry.getKey(), Sat.mul(entry.getValue(), copies), Sat::add);
+            target.merge(entry.getId() /* TODO: verify getKey->getId */, Sat.mul(entry.getValue(), copies), Sat::add);
         }
     }
 
@@ -753,7 +753,7 @@ public final class ClosedLoopPatternAnalyzer {
     private static List<GenericStack> toStacks(Map<AEKey, Long> values) {
         var result = new ArrayList<GenericStack>(values.size());
         for (var entry : values.entrySet()) {
-            if (entry.getValue() > 0) result.add(new GenericStack(entry.getKey(), entry.getValue()));
+            if (entry.getValue() > 0) result.add(new GenericStack(entry.getId() /* TODO: verify getKey->getId */, entry.getValue()));
         }
         return List.copyOf(result);
     }
@@ -862,3 +862,4 @@ public final class ClosedLoopPatternAnalyzer {
     }
     private ClosedLoopPatternAnalyzer() { }
 }
+

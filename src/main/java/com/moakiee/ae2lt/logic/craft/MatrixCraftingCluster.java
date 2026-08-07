@@ -6,7 +6,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.BooleanSupplier;
 
-import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 
@@ -19,6 +18,7 @@ import com.moakiee.thunderbolt.core.craft.CraftingCore;
 import com.moakiee.thunderbolt.core.craft.CraftingCoreHost;
 import com.moakiee.thunderbolt.core.craft.CraftingCoreRegistry;
 import com.moakiee.thunderbolt.ae2.api.crafting.BatchDispatchMode;
+import net.minecraft.core.RegistryAccess;
 
 /**
  * Multiblock-side rate limiter that wraps a shared {@link CraftingCore} engine: it aggregates the
@@ -215,7 +215,7 @@ public final class MatrixCraftingCluster {
         return lastLimiterSnapshot;
     }
 
-    public void writeEngineTo(CompoundTag tag, HolderLookup.Provider registries) {
+    public void writeEngineTo(CompoundTag tag, RegistryAccess registries) {
         engine.writeTo(tag, registries);
         tag.putDouble(NBT_HEAT, heat);
         tag.putLong(NBT_LAST_LIMITER_TICK, lastLimiterTick);
@@ -223,7 +223,7 @@ public final class MatrixCraftingCluster {
         tag.putLong(NBT_LAST_OPERATIONS_PER_TICK, lastOperationsPerTick);
     }
 
-    public void readEngineFrom(CompoundTag tag, HolderLookup.Provider registries) {
+    public void readEngineFrom(CompoundTag tag, RegistryAccess registries) {
         engine.readFrom(tag, registries);
         heat = tag.contains(NBT_HEAT, Tag.TAG_DOUBLE) ? tag.getDouble(NBT_HEAT) : 0.0D;
         lastLimiterTick = tag.contains(NBT_LAST_LIMITER_TICK, Tag.TAG_LONG) ? tag.getLong(NBT_LAST_LIMITER_TICK) : Long.MIN_VALUE;
@@ -335,3 +335,4 @@ public final class MatrixCraftingCluster {
         }
     }
 }
+

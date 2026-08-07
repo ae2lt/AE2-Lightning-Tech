@@ -6,13 +6,12 @@ import appeng.api.config.Actionable;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.AEKeyType;
 import appeng.api.stacks.GenericStack;
-import appeng.api.storage.AEKeySlotFilter;
+import appeng.api.storage.AEKeyFilter;
 import appeng.helpers.patternprovider.PatternProviderReturnInventory;
 
 /**
- * Return inventory (9 slots, or pages*9 for extended providers) with unlimited
- * per-type capacity and automatic same-type merging. Replaces the vanilla
- * 9-slot return inventory.
+ * 18-slot return inventory with unlimited per-type capacity and automatic
+ * same-type merging. Replaces the vanilla 9-slot return inventory.
  * <p>
  * Insert-only: extraction is blocked to prevent players from using it
  * as storage. Items leave via {@link #injectIntoNetwork} (AE2 doWork)
@@ -25,7 +24,7 @@ public class UnlimitedReturnInventory extends PatternProviderReturnInventory {
     }
 
     public static UnlimitedReturnInventory create(Runnable listener,
-                                                  @Nullable AEKeySlotFilter filter) {
+                                                  @Nullable AEKeyFilter filter) {
         var inv = new UnlimitedReturnInventory(listener);
         if (filter != null) {
             inv.setFilter(filter);
@@ -34,22 +33,20 @@ public class UnlimitedReturnInventory extends PatternProviderReturnInventory {
     }
 
     public static UnlimitedReturnInventory create(Runnable listener,
-                                                  @Nullable AEKeySlotFilter filter,
+                                                  @Nullable AEKeyFilter filter,
                                                   int slots) {
-        // AE2 reads this global value from the super constructor. Keep the
-        // mutation window minimal and always restore it, even if construction fails.
-        UnlimitedReturnInventory inv;
         int saved = PatternProviderReturnInventory.NUMBER_OF_SLOTS;
-        try {
-            PatternProviderReturnInventory.NUMBER_OF_SLOTS = slots;
-            inv = new UnlimitedReturnInventory(listener);
-        } finally {
-            PatternProviderReturnInventory.NUMBER_OF_SLOTS = saved;
-        }
+        PatternProviderReturnInventory.NUMBER_OF_SLOTS = slots;
+        var inv = new UnlimitedReturnInventory(listener);
+        PatternProviderReturnInventory.NUMBER_OF_SLOTS = saved;
         if (filter != null) {
             inv.setFilter(filter);
         }
         return inv;
+    }
+
+    public boolean isAllowedIn(int slot, AEKey what) {
+        return isAllowed(what);
     }
 
     /**

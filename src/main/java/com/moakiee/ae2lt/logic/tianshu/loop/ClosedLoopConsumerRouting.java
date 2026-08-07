@@ -133,7 +133,7 @@ public final class ClosedLoopConsumerRouting {
             LinkedHashSet<AEKey> keys) {
         Objects.requireNonNull(amounts, label + " for member " + memberIndex);
         for (var entry : amounts.entrySet()) {
-            var key = Objects.requireNonNull(entry.getKey(),
+            var key = Objects.requireNonNull(entry.getId() /* TODO: verify getKey->getId */,
                     label + " key for member " + memberIndex);
             var boxedAmount = Objects.requireNonNull(entry.getValue(),
                     label + " amount for member " + memberIndex);
@@ -160,7 +160,7 @@ public final class ClosedLoopConsumerRouting {
 
     private static void merge(
             LinkedHashMap<AEKey, Long> target, Map<AEKey, Long> amounts) {
-        for (var entry : amounts.entrySet()) add(target, entry.getKey(), entry.getValue());
+        for (var entry : amounts.entrySet()) add(target, entry.getId() /* TODO: verify getKey->getId */, entry.getValue());
     }
 
     private static void add(
@@ -188,7 +188,7 @@ public final class ClosedLoopConsumerRouting {
             Map<UUID, ? extends Map<AEKey, Long>> source) {
         var copy = new LinkedHashMap<UUID, Map<AEKey, Long>>();
         for (var entry : source.entrySet()) {
-            copy.put(entry.getKey(), immutableMap(entry.getValue()));
+            copy.put(entry.getId() /* TODO: verify getKey->getId */, immutableMap(entry.getValue()));
         }
         return Collections.unmodifiableMap(copy);
     }
@@ -231,3 +231,4 @@ public final class ClosedLoopConsumerRouting {
     private ClosedLoopConsumerRouting() {
     }
 }
+

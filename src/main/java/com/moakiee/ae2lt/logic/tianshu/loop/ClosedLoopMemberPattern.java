@@ -17,3 +17,4 @@ public record ClosedLoopMemberPattern(
         if (copiesPerCycle < 1) throw new IllegalArgumentException("member copies per cycle must be positive");
     }
 }
+

@@ -307,7 +307,7 @@ public class ClosedLoopExpandedPatternDetails
         var source = details.getInputs();
         IInput[] result = java.util.Arrays.copyOf(source, source.length, IInput[].class);
         for (var entry : plannedSeedInputSlots.entrySet()) {
-            int slot = entry.getKey();
+            int slot = entry.getId() /* TODO: verify getKey->getId */;
             if (slot < 0 || slot >= source.length || entry.getValue() == null) {
                 throw new IllegalArgumentException("closed-loop seed slot mapping is invalid");
             }
@@ -443,8 +443,8 @@ public class ClosedLoopExpandedPatternDetails
         var result = new java.util.LinkedHashMap<appeng.api.stacks.AEKey, Long>();
         for (var entry : seedAmounts.entrySet()) {
             long fromOutputs = Math.max(0L,
-                    entry.getValue() - returnedAsRemainder.getOrDefault(entry.getKey(), 0L));
-            if (fromOutputs > 0) result.put(entry.getKey(), fromOutputs);
+                    entry.getValue() - returnedAsRemainder.getOrDefault(entry.getId() /* TODO: verify getKey->getId */, 0L));
+            if (fromOutputs > 0) result.put(entry.getId() /* TODO: verify getKey->getId */, fromOutputs);
         }
         return Map.copyOf(result);
     }
@@ -455,3 +455,4 @@ public class ClosedLoopExpandedPatternDetails
                         .toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
     }
 }
+

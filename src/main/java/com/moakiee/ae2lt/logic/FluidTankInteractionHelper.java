@@ -2,10 +2,10 @@ package com.moakiee.ae2lt.logic;
 
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.fluids.FluidStack;
-import net.neoforged.neoforge.fluids.FluidUtil;
-import net.neoforged.neoforge.fluids.capability.IFluidHandler;
-import net.neoforged.neoforge.fluids.capability.templates.FluidTank;
+import net.minecraftforge.fluids.FluidStack;
+import net.minecraftforge.fluids.FluidUtil;
+import net.minecraftforge.fluids.capability.IFluidHandler;
+import net.minecraftforge.fluids.capability.templates.FluidTank;
 
 /**
  * 玩家 GUI 菜单上"流体槽 ↔ 手持容器"的通用交互:
@@ -75,7 +75,7 @@ public final class FluidTankInteractionHelper {
             ItemStack slotStack = player.getInventory().items.get(selected);
             if (slotStack.isEmpty()) {
                 player.getInventory().items.set(selected, result);
-            } else if (ItemStack.isSameItemSameComponents(slotStack, result)
+            } else if (ItemStack.isSameItemSameTags(slotStack, result)
                     && slotStack.getCount() + result.getCount() <= slotStack.getMaxStackSize()) {
                 slotStack.grow(result.getCount());
             } else if (!player.getInventory().add(result)) {
@@ -118,7 +118,7 @@ public final class FluidTankInteractionHelper {
             return;
         }
 
-        if (ItemStack.isSameItemSameComponents(carried, result)
+        if (ItemStack.isSameItemSameTags(carried, result)
                 && carried.getCount() + result.getCount() <= carried.getMaxStackSize()) {
             carried.grow(result.getCount());
             player.containerMenu.setCarried(carried);
@@ -130,3 +130,4 @@ public final class FluidTankInteractionHelper {
         }
     }
 }
+

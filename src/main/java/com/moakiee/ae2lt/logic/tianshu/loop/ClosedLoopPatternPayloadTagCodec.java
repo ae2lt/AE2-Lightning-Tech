@@ -2,10 +2,10 @@ package com.moakiee.ae2lt.logic.tianshu.loop;
 
 import appeng.api.stacks.GenericStack;
 import java.util.ArrayList;
-import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
+import net.minecraft.core.RegistryAccess;
 
 public final class ClosedLoopPatternPayloadTagCodec {
     private static final String TAG_MEMBERS = "Members";
@@ -21,7 +21,7 @@ public final class ClosedLoopPatternPayloadTagCodec {
     private static final String TAG_STORED_TASK_MULTIPLIER = "StoredTaskMultiplier";
     private static final String TAG_ENABLED = "Enabled";
 
-    public static CompoundTag write(ClosedLoopPatternPayload payload, HolderLookup.Provider registries) {
+    public static CompoundTag write(ClosedLoopPatternPayload payload, RegistryAccess registries) {
         var tag = new CompoundTag();
         var members = new ListTag();
         for (var member : payload.memberPatterns()) {
@@ -45,7 +45,7 @@ public final class ClosedLoopPatternPayloadTagCodec {
         return memberTag;
     }
 
-    public static ClosedLoopPatternPayload read(CompoundTag tag, HolderLookup.Provider registries) {
+    public static ClosedLoopPatternPayload read(CompoundTag tag, RegistryAccess registries) {
         var members = new ArrayList<ClosedLoopMemberPattern>();
         var memberTags = tag.getList(TAG_MEMBERS, Tag.TAG_COMPOUND);
         if (memberTags.size() > ClosedLoopPatternAnalyzer.MAX_MEMBERS) {
@@ -96,13 +96,13 @@ public final class ClosedLoopPatternPayloadTagCodec {
         return tag.contains(key, Tag.TAG_ANY_NUMERIC) ? Math.max(1, tag.getInt(key)) : 1;
     }
 
-    private static ListTag writeStacks(Iterable<GenericStack> stacks, HolderLookup.Provider registries) {
+    private static ListTag writeStacks(Iterable<GenericStack> stacks, RegistryAccess registries) {
         var list = new ListTag();
         for (var stack : stacks) list.add(GenericStack.writeTag(registries, stack));
         return list;
     }
 
-    private static java.util.List<GenericStack> readStacks(ListTag tags, HolderLookup.Provider registries) {
+    private static java.util.List<GenericStack> readStacks(ListTag tags, RegistryAccess registries) {
         var stacks = new ArrayList<GenericStack>(tags.size());
         for (int i = 0; i < tags.size(); i++) {
             var stack = GenericStack.readTag(registries, tags.getCompound(i));
@@ -115,3 +115,4 @@ public final class ClosedLoopPatternPayloadTagCodec {
     private ClosedLoopPatternPayloadTagCodec() {
     }
 }
+

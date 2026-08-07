@@ -50,7 +50,7 @@ final class AE2NativeMachineAdapter implements MachineAdapter {
 
     /**
      * How many ticks a cached wrapper (facade) set stays valid before
-     * being rebuilt from the strategy's {@code BlockCapabilityCache}.
+     * being rebuilt from the strategy's external-storage lookup state.
      * The wrapper holds a handler reference captured at creation time;
      * periodic refresh ensures we pick up handler replacements that
      * don't trigger a block-entity swap (rare, but some mods do this).
@@ -59,15 +59,8 @@ final class AE2NativeMachineAdapter implements MachineAdapter {
 
     private final Map<TargetFaceKey, StorageCacheEntry> storageCache = new HashMap<>();
 
-    /** Ticks an ICraftingMachine probe stays cached. The probe (getBlockEntity +
-     *  capability/instanceof) used to run on every single push; cache it per target. */
-    private static final int MACHINE_CACHE_TTL_TICKS = 20;
-    private final Map<TargetFaceKey, MachineCacheEntry> machineCache = new HashMap<>();
-
-    /** Sweep interval for dropping cache entries whose block entity is gone. */
-    private static final int SWEEP_INTERVAL_TICKS = 600;
-    /** Negative init so the first call sweeps immediately without long overflow. */
-    private long lastSweepTick = -SWEEP_INTERVAL_TICKS;
+    /** Reusable scan buffer — safe because server tick is single-threaded. */
+    private final KeyCounter scanBuffer = new KeyCounter();
 
     private AE2NativeMachineAdapter() {}
 
@@ -75,7 +68,7 @@ final class AE2NativeMachineAdapter implements MachineAdapter {
 
     /**
      * Per-target cache entry.  Caches both the {@link ExternalStorageStrategy}
-     * map (stable, holds internal {@code BlockCapabilityCache}) and the
+     * map (stable, owns AE2's external-storage lookup state) and the
      * MEStorage wrappers (facades) derived from them.
      * <p>
      * Wrappers are lazily created and kept alive until either:
@@ -124,25 +117,6 @@ final class AE2NativeMachineAdapter implements MachineAdapter {
         }
     }
 
-    /** Caches the ICraftingMachine adaptation (null = probed, not a crafting machine)
-     *  for a target, keyed by block-entity identity with a short TTL. */
-    private static final class MachineCacheEntry {
-        private final WeakReference<BlockEntity> beRef;
-        @Nullable
-        private final ICraftingMachine machine;
-        private final long createdTick;
-
-        MachineCacheEntry(BlockEntity be, @Nullable ICraftingMachine machine, long tick) {
-            this.beRef = new WeakReference<>(be);
-            this.machine = machine;
-            this.createdTick = tick;
-        }
-
-        boolean isValid(BlockEntity currentBE, long now) {
-            return beRef.get() == currentBE && now - createdTick < MACHINE_CACHE_TTL_TICKS;
-        }
-    }
-
     // ---- supports ---------------------------------------------------------------
 
     @Override
@@ -155,32 +129,11 @@ final class AE2NativeMachineAdapter implements MachineAdapter {
     @Override
     public boolean canAccept(ServerLevel level, BlockPos pos, Direction face,
                              IPatternDetails pattern) {
-        var machine = ICraftingMachine.of(level, pos, face);
-        if (machine != null && machine.acceptsPlans()) {
-            return true;
+        var machine = findCraftingMachine(level, pos, face);
+        if (machine != null) {
+            return machine.acceptsPlans();
         }
         return pattern.supportsPushInputsToExternalInventory();
-    }
-
-    @Override
-    public boolean canAccept(
-            ServerLevel level,
-            BlockPos pos,
-            Direction face,
-            IPatternDetails pattern,
-            @Nullable PatternProviderTarget cachedTarget) {
-        var machine = ICraftingMachine.of(level, pos, face);
-        if (machine != null && machine.acceptsPlans()) {
-            return true;
-        }
-        return cachedTarget != null
-                && pattern.supportsPushInputsToExternalInventory();
-    }
-
-    @Override
-    public boolean supportsBatch(
-            ServerLevel level, BlockPos pos, Direction face, IPatternDetails pattern) {
-        return ICraftingMachine.of(level, pos, face) == null;
     }
 
     // ---- pushCopies -------------------------------------------------------------
@@ -191,39 +144,8 @@ final class AE2NativeMachineAdapter implements MachineAdapter {
                                  boolean blocking, Set<AEKey> patternInputs,
                                  IActionSource source,
                                  @Nullable PatternProviderTarget cachedTarget) {
-        return pushCopies(
-                level,
-                pos,
-                face,
-                pattern,
-                inputs,
-                maxCopies,
-                PatternInputAcceptance.COMPLETE_BATCH,
-                blocking,
-                patternInputs,
-                source,
-                cachedTarget);
-    }
-
-    @Override
-    public PushResult pushCopies(
-            ServerLevel level,
-            BlockPos pos,
-            Direction face,
-            IPatternDetails pattern,
-            KeyCounter[] inputs,
-            int maxCopies,
-            PatternInputAcceptance inputAcceptance,
-            boolean blocking,
-            Set<AEKey> patternInputs,
-            IActionSource source,
-            @Nullable PatternProviderTarget cachedTarget) {
-        long now = level.getGameTime();
-        sweepStaleEntries(now);
-        var be = level.getBlockEntity(pos);
-
         // 1. ICraftingMachine path — all-or-nothing
-        var machine = (be != null) ? resolveCraftingMachine(level, pos, face, be, now) : null;
+        var machine = findCraftingMachine(level, pos, face);
         if (machine != null && machine.acceptsPlans()) {
             if (machine.pushPattern(pattern, inputs, face)) {
                 return new PushResult(1, List.of());
@@ -236,11 +158,12 @@ final class AE2NativeMachineAdapter implements MachineAdapter {
             return PushResult.REJECTED;
         }
 
-        // 优先用调用方预取的 target，避免重复触发 BlockCapability 查询
+        // 优先用调用方预取的 target，避免重复触发外部存储能力查询
         final PatternProviderTarget target;
         if (cachedTarget != null) {
             target = cachedTarget;
         } else {
+            var be = level.getBlockEntity(pos);
             target = PatternProviderTarget.get(level, pos, be, face, source);
         }
         if (target == null) {
@@ -251,97 +174,36 @@ final class AE2NativeMachineAdapter implements MachineAdapter {
             return PushResult.REJECTED;
         }
 
-        var plannedInputs = planScaledInputs(pattern, inputs, maxCopies);
-        if (plannedInputs == null || plannedInputs.isEmpty()) {
+        if (!adapterAcceptsAll(target, inputs)) {
             return PushResult.REJECTED;
-        }
-
-        return pushPlannedInputs(
-                target, plannedInputs, maxCopies, inputAcceptance);
-    }
-
-    static PushResult pushPlannedInputs(
-            PatternProviderTarget target,
-            List<GenericStack> plannedInputs,
-            int maxCopies,
-            PatternInputAcceptance inputAcceptance) {
-        if (!adapterAcceptsInputs(target, plannedInputs, inputAcceptance)) {
-            return PushResult.REJECTED;
-        }
-
-        if (inputAcceptance == PatternInputAcceptance.VANILLA_SINGLE_COPY) {
-            if (maxCopies != 1) {
-                throw new IllegalArgumentException(
-                        "Vanilla provider dispatch must contain exactly one copy");
-            }
-            var overflow = new ArrayList<GenericStack>();
-            for (var input : plannedInputs) {
-                long inserted = target.insert(
-                        input.what(), input.amount(), Actionable.MODULATE);
-                if (inserted < input.amount()) {
-                    overflow.add(new GenericStack(
-                            input.what(), input.amount() - inserted));
-                }
-            }
-            return new PushResult(1, overflow);
         }
 
         var overflow = new ArrayList<GenericStack>();
-        boolean insertedAny = false;
-        for (int i = 0; i < plannedInputs.size(); i++) {
-            var input = plannedInputs.get(i);
-            long inserted = target.insert(input.what(), input.amount(), Actionable.MODULATE);
-            if (inserted > 0) {
-                insertedAny = true;
+        pattern.pushInputsToExternalInventory(inputs, (what, amount) -> {
+            var inserted = target.insert(what, amount, Actionable.MODULATE);
+            if (inserted < amount) {
+                overflow.add(new GenericStack(what, amount - inserted));
             }
-            if (inserted < input.amount()) {
-                if (!insertedAny) {
-                    // No ownership moved yet. Let the CPU keep the complete
-                    // candidate batch instead of parking it in overflow.
-                    return PushResult.REJECTED;
-                }
-                overflow.add(new GenericStack(input.what(), input.amount() - inserted));
-                for (int remaining = i + 1; remaining < plannedInputs.size(); remaining++) {
-                    overflow.add(plannedInputs.get(remaining));
-                }
-                break;
-            }
-        }
+        });
 
-        return insertedAny ? new PushResult(maxCopies, overflow) : PushResult.REJECTED;
+        return new PushResult(1, overflow);
     }
 
     // ---- extractOutputs ---------------------------------------------------------
 
     @Override
-    public OutputReturnResult extractOutputs(
-            ServerLevel level,
-            BlockPos pos,
-            Direction face,
-            AllowedOutputFilter allowedOutputs,
-            IActionSource source,
-            OutputSink sink) {
+    public List<GenericStack> extractOutputs(ServerLevel level, BlockPos pos, Direction face,
+                                             AllowedOutputFilter allowedOutputs, IActionSource source) {
         var cached = resolveCache(level, pos, face);
-        if (cached == null) return OutputReturnResult.UNAVAILABLE;
+        if (cached == null) return List.of();
 
         var wrappers = cached.getWrappers(level.getGameTime());
-        if (wrappers == null) return OutputReturnResult.UNAVAILABLE;
+        if (wrappers == null) return List.of();
 
-        boolean extractedAny = false;
-        boolean matchingOutputBlocked = false;
+        var extracted = new ArrayList<GenericStack>();
 
         for (var wrapper : wrappers.values()) {
-            // TODO(perf): A 512-target Spark sample put getAvailableStacks at only
-            // about 0.1 ms/t, so a discovery cache is not worth its state cost yet.
-            // If this becomes material, keep a 100-tick cumulative key window,
-            // refresh it every 20 ticks, and disable accumulation in fast mode.
-            // Known keys can then be extracted with MODULATE/Long.MAX_VALUE
-            // (16_384 for configured rate-limited targets), after maxAccept has
-            // bounded the request so a full sink cannot force compensation inserts.
-            // Fresh counter per scan: KeyCounter.reset() keeps zeroed keys forever,
-            // so a reused buffer accumulates every key ever scanned and makes
-            // reset/iteration cost grow unboundedly (was 77% of server tick).
-            var scanBuffer = new KeyCounter();
+            scanBuffer.reset();
             wrapper.getAvailableStacks(scanBuffer);
 
             for (var entry : scanBuffer) {
@@ -349,93 +211,32 @@ final class AE2NativeMachineAdapter implements MachineAdapter {
                 long amount = entry.getLongValue();
                 if (amount <= 0 || !allowedOutputs.matches(key)) continue;
 
-                // Cap before extracting: an uncapped extract-then-store used to
-                // void items whenever power or sink capacity ran out mid-transfer.
-                long cap = sink.maxAccept(key, amount);
-                if (cap <= 0) {
-                    matchingOutputBlocked = true;
-                    continue;
-                }
-
-                long taken = wrapper.extract(key, Math.min(cap, amount), Actionable.MODULATE, source);
-                if (taken <= 0) {
-                    matchingOutputBlocked = true;
-                    continue;
-                }
-                extractedAny = true;
-
-                long leftover = taken - sink.accept(key, taken);
-                if (leftover > 0) {
-                    // Sink state changed between maxAccept and accept; try the
-                    // machine first, then force the rest on the sink — never void.
-                    leftover -= wrapper.insert(key, leftover, Actionable.MODULATE, source);
-                    if (leftover > 0) {
-                        sink.acceptOverflow(key, leftover);
-                    }
+                long taken = wrapper.extract(key, amount, Actionable.MODULATE, source);
+                if (taken > 0) {
+                    extracted.add(new GenericStack(key, taken));
                 }
             }
         }
-        if (extractedAny) {
-            return OutputReturnResult.EXTRACTED;
-        }
-        return matchingOutputBlocked
-                ? OutputReturnResult.BLOCKED
-                : OutputReturnResult.EMPTY;
+        return extracted;
     }
 
     // ---- helpers ----------------------------------------------------------------
 
-    @Nullable
-    private ICraftingMachine resolveCraftingMachine(ServerLevel level, BlockPos pos,
-                                                    Direction face, BlockEntity be, long now) {
-        var key = new TargetFaceKey(level.dimension(), pos.asLong(), face);
-        var cached = machineCache.get(key);
-        if (cached != null && cached.isValid(be, now)) {
-            return cached.machine;
-        }
-        var machine = ICraftingMachine.of(level, pos, face);
-        machineCache.put(key, new MachineCacheEntry(be, machine, now));
-        return machine;
-    }
-
-    @Nullable
-    private static List<GenericStack> planScaledInputs(
-            IPatternDetails pattern, KeyCounter[] inputHolder, int copies) {
-        if (copies <= 0) {
-            return null;
-        }
-
-        var planned = new ArrayList<GenericStack>();
-        try {
-            pattern.pushInputsToExternalInventory(inputHolder, (what, amount) -> {
-                long scaled = Math.multiplyExact(amount, (long) copies);
-                if (scaled > 0) {
-                    planned.add(new GenericStack(what, scaled));
+    private static boolean adapterAcceptsAll(PatternProviderTarget target, KeyCounter[] inputHolder) {
+        for (var inputList : inputHolder) {
+            for (var input : inputList) {
+                if (target.insert(input.getKey(), input.getLongValue(), Actionable.SIMULATE) == 0) {
+                    return false;
                 }
-            });
-        } catch (ArithmeticException ignored) {
-            // Scaling must be proven safe before the first external mutation.
-            return null;
-        }
-        return planned;
-    }
-
-    private static boolean adapterAcceptsInputs(
-            PatternProviderTarget target,
-            List<GenericStack> plannedInputs,
-            PatternInputAcceptance inputAcceptance) {
-        for (var input : plannedInputs) {
-            long simulated = target.insert(
-                    input.what(), input.amount(), Actionable.SIMULATE);
-            boolean accepted = inputAcceptance
-                            == PatternInputAcceptance.VANILLA_SINGLE_COPY
-                    ? simulated > 0L
-                    : input.amount() > 0L && simulated >= input.amount();
-            if (!accepted) {
-                return false;
             }
         }
         return true;
+    }
+
+    @Nullable
+    private static ICraftingMachine findCraftingMachine(ServerLevel level, BlockPos pos, Direction face) {
+        var blockEntity = level.getBlockEntity(pos);
+        return blockEntity != null ? ICraftingMachine.of(level, pos, face, blockEntity) : null;
     }
 
     /**
@@ -445,15 +246,13 @@ final class AE2NativeMachineAdapter implements MachineAdapter {
      */
     @Nullable
     private StorageCacheEntry resolveCache(ServerLevel level, BlockPos pos, Direction face) {
-        sweepStaleEntries(level.getGameTime());
-
-        var cacheKey = new TargetFaceKey(level.dimension(), pos.asLong(), face);
         BlockEntity blockEntity = level.getBlockEntity(pos);
         if (blockEntity == null) {
-            storageCache.remove(cacheKey);
+            storageCache.remove(new TargetFaceKey(level.dimension(), pos.asLong(), face));
             return null;
         }
 
+        var cacheKey = new TargetFaceKey(level.dimension(), pos.asLong(), face);
         var cached = storageCache.get(cacheKey);
 
         if (cached == null || !cached.isValid(blockEntity)) {
@@ -467,24 +266,5 @@ final class AE2NativeMachineAdapter implements MachineAdapter {
         }
 
         return cached;
-    }
-
-    /**
-     * Periodically drop cache entries whose target block entity was removed
-     * or unloaded; otherwise stale strategies (and their capability caches)
-     * for dismantled machines would be retained forever.
-     */
-    private void sweepStaleEntries(long gameTick) {
-        // gameTick may move backwards (singleton outlives world reloads); sweep immediately then.
-        if (gameTick >= lastSweepTick && gameTick - lastSweepTick < SWEEP_INTERVAL_TICKS) return;
-        lastSweepTick = gameTick;
-        storageCache.values().removeIf(entry -> {
-            var be = entry.blockEntityRef.get();
-            return be == null || be.isRemoved();
-        });
-        machineCache.values().removeIf(entry -> {
-            var be = entry.beRef.get();
-            return be == null || be.isRemoved();
-        });
     }
 }

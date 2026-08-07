@@ -2,7 +2,6 @@ package com.moakiee.ae2lt.logic;
 
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 
-import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
@@ -25,18 +24,15 @@ public class PatternStorageSavedData extends SavedData {
 
     private final Long2ObjectOpenHashMap<ItemStack[]> storage = new Long2ObjectOpenHashMap<>();
 
-    public static final Factory<PatternStorageSavedData> FACTORY = new Factory<>(
-            PatternStorageSavedData::new,
-            PatternStorageSavedData::load,
-            null
-    );
-
     public PatternStorageSavedData() {
         super();
     }
 
     public static PatternStorageSavedData get(ServerLevel level) {
-        return level.getDataStorage().computeIfAbsent(FACTORY, DATA_NAME);
+        return level.getDataStorage().computeIfAbsent(
+                PatternStorageSavedData::load,
+                PatternStorageSavedData::new,
+                DATA_NAME);
     }
 
     /**
@@ -66,7 +62,7 @@ public class PatternStorageSavedData extends SavedData {
     }
 
     @Override
-    public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
+    public CompoundTag save(CompoundTag tag) {
         var entries = new ListTag();
         for (var entry : storage.entrySet()) {
             var entryTag = new CompoundTag();
@@ -78,7 +74,7 @@ public class PatternStorageSavedData extends SavedData {
                 if (patterns[i] != null && !patterns[i].isEmpty()) {
                     var slotTag = new CompoundTag();
                     slotTag.putInt(TAG_SLOT, i);
-                    slotTag.put(TAG_ITEM, patterns[i].save(registries));
+                    slotTag.put(TAG_ITEM, patterns[i].save(new CompoundTag()));
                     slotsTag.add(slotTag);
                 }
             }
@@ -89,7 +85,7 @@ public class PatternStorageSavedData extends SavedData {
         return tag;
     }
 
-    private static PatternStorageSavedData load(CompoundTag tag, HolderLookup.Provider registries) {
+    private static PatternStorageSavedData load(CompoundTag tag) {
         var data = new PatternStorageSavedData();
         if (tag.contains(TAG_ENTRIES, Tag.TAG_LIST)) {
             var entries = tag.getList(TAG_ENTRIES, Tag.TAG_COMPOUND);
@@ -109,7 +105,7 @@ public class PatternStorageSavedData extends SavedData {
                 for (int j = 0; j < slotsTag.size(); j++) {
                     var slotTag = slotsTag.getCompound(j);
                     int slot = slotTag.getInt(TAG_SLOT);
-                    patterns[slot] = ItemStack.parseOptional(registries, slotTag.getCompound(TAG_ITEM));
+                    patterns[slot] = ItemStack.of(slotTag.getCompound(TAG_ITEM));
                 }
                 data.storage.put(pos, patterns);
             }
