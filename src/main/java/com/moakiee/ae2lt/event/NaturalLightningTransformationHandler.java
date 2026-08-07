@@ -1,11 +1,11 @@
 package com.moakiee.ae2lt.event;
 
-import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.blockentity.LightningCollectorBlockEntity;
 import com.moakiee.ae2lt.lightning.strike.LightningStrikeRecipe;
 import com.moakiee.ae2lt.lightning.strike.StructureRequirement;
 import com.moakiee.ae2lt.registry.ModBlocks;
 import com.moakiee.ae2lt.registry.ModRecipeTypes;
+import com.moakiee.ae2lt.util.RecipeManagerByTypeAccess;
 import com.mojang.logging.LogUtils;
 import java.util.List;
 import net.minecraft.core.BlockPos;
@@ -13,18 +13,13 @@ import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.LightningBolt;
-import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.event.tick.EntityTickEvent;
 import org.joml.Vector3f;
 import org.slf4j.Logger;
 
-@EventBusSubscriber(modid = AE2LightningTech.MODID)
 public final class NaturalLightningTransformationHandler {
     public static final String NATURAL_WEATHER_LIGHTNING_TAG = "ae2lt.natural_weather_lightning";
     private static final String TRANSFORMATION_CHECKED_TAG = "ae2lt.natural_transform_checked";
@@ -50,17 +45,15 @@ public final class NaturalLightningTransformationHandler {
     private NaturalLightningTransformationHandler() {
     }
 
-    @SubscribeEvent
-    public static void onLightningTick(EntityTickEvent.Pre event) {
-        if (!(event.getEntity() instanceof LightningBolt lightningBolt)
-                || !(lightningBolt.level() instanceof ServerLevel serverLevel)) {
+    public static void handleLightningTick(LightningBolt lightningBolt) {
+        if (!(lightningBolt.level() instanceof ServerLevel serverLevel)) {
             return;
         }
 
         var data = lightningBolt.getPersistentData();
         if (data.getBoolean(TRANSFORMATION_CHECKED_TAG)) {
             // The transformation_checked tag is set but our own marker isn't — another
-            // mod (e.g. Thunderbolt Core) intercepted the lightning at higher priority
+            // mod (e.g. Thunderbolt_lib) intercepted the lightning at higher priority
             // and ran its own pipeline. The collector's captureLightning() will not be
             // called for this strike, which means LightningCollectedEvent will not
             // fire either. Warn once so server operators can correlate missing
@@ -104,8 +97,9 @@ public final class NaturalLightningTransformationHandler {
 
     private static void tryTransformFromNearbyLightningRod(
             ServerLevel level, BlockPos lightningPos, boolean naturalWeather) {
-        List<RecipeHolder<LightningStrikeRecipe>> allRecipes = level.getRecipeManager()
-                .getAllRecipesFor(ModRecipeTypes.LIGHTNING_STRIKE_TYPE.get());
+        List<LightningStrikeRecipe> allRecipes = new java.util.ArrayList<>(
+                RecipeManagerByTypeAccess.byType(level.getRecipeManager(), ModRecipeTypes.LIGHTNING_STRIKE_TYPE.get())
+                        .values());
         if (allRecipes.isEmpty()) {
             return;
         }
@@ -121,8 +115,7 @@ public final class NaturalLightningTransformationHandler {
             // is always the block directly below it. Recipes therefore only describe the
             // surrounding structure, never the rod itself.
             BlockPos centerPos = rodPos.below();
-            for (RecipeHolder<LightningStrikeRecipe> holder : allRecipes) {
-                LightningStrikeRecipe recipe = holder.value();
+            for (LightningStrikeRecipe recipe : allRecipes) {
                 if (recipe.requiresNaturalLightning() && !naturalWeather) {
                     continue;
                 }
@@ -277,3 +270,4 @@ public final class NaturalLightningTransformationHandler {
         level.sendParticles(ParticleTypes.ENCHANT, centerVec.x, centerVec.y + 0.25D, centerVec.z, 32, 0.35D, 0.25D, 0.35D, 0.12D);
     }
 }
+

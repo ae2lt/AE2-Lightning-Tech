@@ -5,12 +5,12 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.LightningBolt;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
@@ -26,16 +26,12 @@ public final class LightningTransformService {
      */
     private static final int MAX_ROUNDS_PER_STRIKE = 32;
 
-    private static final Comparator<RecipeHolder<LightningTransformRecipe>> RECIPE_ORDER = Comparator
-            .<RecipeHolder<LightningTransformRecipe>>comparingInt(holder -> holder.value().priority())
+    private static final Comparator<LightningTransformRecipe> RECIPE_ORDER = Comparator
+            .comparingInt(LightningTransformRecipe::priority)
             .reversed()
-            .thenComparing(Comparator.comparingInt(
-                            (RecipeHolder<LightningTransformRecipe> holder) -> holder.value().ingredientCount())
-                    .reversed())
-            .thenComparing(Comparator.comparingInt(
-                            (RecipeHolder<LightningTransformRecipe> holder) -> holder.value().totalInputCount())
-                    .reversed())
-            .thenComparing(holder -> holder.id().toString());
+            .thenComparing(Comparator.comparingInt(LightningTransformRecipe::ingredientCount).reversed())
+            .thenComparing(Comparator.comparingInt(LightningTransformRecipe::totalInputCount).reversed())
+            .thenComparing(recipe -> recipe.getId().toString());
 
     private LightningTransformService() {
     }
@@ -51,7 +47,7 @@ public final class LightningTransformService {
             return;
         }
 
-        List<RecipeHolder<LightningTransformRecipe>> sortedRecipes = getSortedRecipes(level);
+        List<LightningTransformRecipe> sortedRecipes = getSortedRecipes(level);
         if (sortedRecipes.isEmpty()) {
             return;
         }
@@ -81,7 +77,7 @@ public final class LightningTransformService {
             }
 
             pendingOutputs.add(new PendingOutput(
-                    matchedRecipe.get().recipe().value().getResultItem(level.registryAccess()),
+                    matchedRecipe.get().recipe().getResultItem(level.registryAccess()),
                     plan.spawnPosition()));
             executedPlans.add(plan);
         }
@@ -120,19 +116,19 @@ public final class LightningTransformService {
         return result;
     }
 
-    private static List<RecipeHolder<LightningTransformRecipe>> getSortedRecipes(ServerLevel level) {
-        List<RecipeHolder<LightningTransformRecipe>> recipes =
+    private static List<LightningTransformRecipe> getSortedRecipes(ServerLevel level) {
+        List<LightningTransformRecipe> recipes =
                 new ArrayList<>(level.getRecipeManager().getAllRecipesFor(ModRecipeTypes.LIGHTNING_TRANSFORM_TYPE.get()));
         recipes.sort(RECIPE_ORDER);
         return recipes;
     }
 
     private static Optional<MatchedRecipe> selectRecipe(
-            List<RecipeHolder<LightningTransformRecipe>> sortedRecipes, LightningTransformRecipeInput input) {
-        for (RecipeHolder<LightningTransformRecipe> recipeHolder : sortedRecipes) {
-            Optional<LightningTransformPlan> plan = recipeHolder.value().planMatch(input);
+            List<LightningTransformRecipe> sortedRecipes, LightningTransformRecipeInput input) {
+        for (LightningTransformRecipe recipe : sortedRecipes) {
+            Optional<LightningTransformPlan> plan = recipe.planMatch(input);
             if (plan.isPresent()) {
-                return Optional.of(new MatchedRecipe(recipeHolder, plan.get()));
+                return Optional.of(new MatchedRecipe(recipe, plan.get()));
             }
         }
 
@@ -150,7 +146,7 @@ public final class LightningTransformService {
                 continue;
             }
             ItemStackKey key = new ItemStackKey(pending.result);
-            accumulated.computeIfAbsent(key, k -> new AccumulatedOutput(pending.result))
+            accumulated.computeIfAbsent(key, ignored -> new AccumulatedOutput(pending.result))
                     .add(pending.result.getCount(), pending.position);
         }
 
@@ -174,7 +170,7 @@ public final class LightningTransformService {
     private record PendingOutput(ItemStack result, Vec3 position) {
     }
 
-    private record MatchedRecipe(RecipeHolder<LightningTransformRecipe> recipe, LightningTransformPlan plan) {
+    private record MatchedRecipe(LightningTransformRecipe recipe, LightningTransformPlan plan) {
     }
 
     private static final class ItemStackKey {
@@ -183,14 +179,20 @@ public final class LightningTransformService {
 
         private ItemStackKey(ItemStack stack) {
             this.stack = stack.copyWithCount(1);
-            this.hash = ItemStack.hashItemAndComponents(this.stack);
+            this.hash = Objects.hash(this.stack.getItem(), this.stack.getTag());
         }
 
         @Override
         public boolean equals(Object other) {
-            if (this == other) return true;
-            if (!(other instanceof ItemStackKey key)) return false;
-            return ItemStack.isSameItemSameComponents(this.stack, key.stack);
+            if (this == other) {
+                return true;
+            }
+
+            if (!(other instanceof ItemStackKey itemStackKey)) {
+                return false;
+            }
+
+            return ItemStack.isSameItemSameTags(this.stack, itemStackKey.stack);
         }
 
         @Override

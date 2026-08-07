@@ -34,7 +34,6 @@ import java.util.UUID;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
@@ -53,6 +52,7 @@ import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
+import net.minecraft.core.RegistryAccess;
 
 public final class WirelessLinkRegistry extends SavedData {
     private static final Logger LOG = LogUtils.getLogger();
@@ -229,7 +229,7 @@ public final class WirelessLinkRegistry extends SavedData {
     public WirelessLinkRegistry() {
     }
 
-    private WirelessLinkRegistry(CompoundTag root, HolderLookup.Provider registries) {
+    private WirelessLinkRegistry(CompoundTag root, RegistryAccess registries) {
         read(root);
     }
 
@@ -641,7 +641,7 @@ public final class WirelessLinkRegistry extends SavedData {
         var sourceIds = new LinkedHashSet<UUID>();
 
         for (var pending : pendingChanges) {
-            var dim = ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(pending.dimensionId));
+            var dim = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(pending.dimensionId));
             var level = server.getLevel(dim);
             if (level == null) {
                 continue;
@@ -835,7 +835,7 @@ public final class WirelessLinkRegistry extends SavedData {
             IGridNode transmitterNode) {
         boolean pruned = false;
         for (var entry : new ArrayList<>(runtime.entries())) {
-            var anchor = entry.getKey();
+            var anchor = entry.getId() /* TODO: verify getKey->getId */;
             var connection = entry.getValue();
             if (physicalCluster.contains(anchor)
                     && WirelessLinkOps.isConnectedTo(connection, anchor, transmitterNode)) {
@@ -1012,7 +1012,7 @@ public final class WirelessLinkRegistry extends SavedData {
             return;
         }
 
-        var dim = ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(pending.dimensionId()));
+        var dim = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(pending.dimensionId()));
         var level = server.getLevel(dim);
         if (level == null) {
             return;
@@ -1275,7 +1275,7 @@ public final class WirelessLinkRegistry extends SavedData {
     }
 
     private PersistedTarget resolvePersistedTarget(WirelessLink link, MinecraftServer server) {
-        var dim = ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(link.dimensionId()));
+        var dim = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(link.dimensionId()));
         var level = server.getLevel(dim);
         if (level == null) {
             return PersistedTarget.state(WirelessLinkState.PENDING_TARGET_CHUNK);
@@ -1394,7 +1394,7 @@ public final class WirelessLinkRegistry extends SavedData {
         }
 
         for (var entry : new ArrayList<>(runtime.entries())) {
-            var anchor = entry.getKey();
+            var anchor = entry.getId() /* TODO: verify getKey->getId */;
             unregisterRuntimeAnchor(link.linkId(), anchor);
             WirelessLinkOps.destroy(entry.getValue(), anchor);
             MultiblockLinkReadiness.refreshAfterVirtualConnectionRemoved(anchor);
@@ -1475,7 +1475,7 @@ public final class WirelessLinkRegistry extends SavedData {
 
     @Nullable
     private IGridNode resolveRuntimeTargetNode(WirelessLink link) {
-        var server = net.neoforged.neoforge.server.ServerLifecycleHooks.getCurrentServer();
+        var server = net.minecraftforge.server.ServerLifecycleHooks.getCurrentServer();
         if (server == null) return null;
         var target = resolvePersistedTarget(link, server);
         return target.target() == null ? null : target.target().node();
@@ -1705,7 +1705,7 @@ public final class WirelessLinkRegistry extends SavedData {
 
     @Nullable
     private LocatedTarget resolveLocator(TargetLocator locator, MinecraftServer server) {
-        var dim = ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(locator.dimensionId()));
+        var dim = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(locator.dimensionId()));
         var level = server.getLevel(dim);
         if (level == null) {
             return null;
@@ -1807,7 +1807,7 @@ public final class WirelessLinkRegistry extends SavedData {
     private void registerDevice(WirelessLink link) {
         var manager = WirelessFrequencyManager.get();
         if (manager == null) return;
-        var dim = ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(link.dimensionId()));
+        var dim = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(link.dimensionId()));
         manager.registerDevice(link.frequencyId(), new WirelessFrequencyManager.DeviceEntry(
                 dim,
                 BlockPos.of(link.posLong()),
@@ -1819,7 +1819,7 @@ public final class WirelessLinkRegistry extends SavedData {
     private void unregisterDevice(WirelessLink link) {
         var manager = WirelessFrequencyManager.get();
         if (manager == null) return;
-        var dim = ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(link.dimensionId()));
+        var dim = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(link.dimensionId()));
         manager.unregisterDevice(link.frequencyId(), dim, BlockPos.of(link.posLong()));
     }
 
@@ -1850,7 +1850,7 @@ public final class WirelessLinkRegistry extends SavedData {
     }
 
     @Override
-    public CompoundTag save(CompoundTag root, HolderLookup.Provider registries) {
+    public CompoundTag save(CompoundTag root, RegistryAccess registries) {
         var list = new ListTag();
         for (var link : links.values()) {
             list.add(saveLink(link));
@@ -1862,7 +1862,7 @@ public final class WirelessLinkRegistry extends SavedData {
     private static CompoundTag saveLink(WirelessLink link) {
         var tag = new CompoundTag();
         for (var entry : link.toPersistentSnapshot().entrySet()) {
-            tag.putString(entry.getKey(), entry.getValue());
+            tag.putString(entry.getId() /* TODO: verify getKey->getId */, entry.getValue());
         }
         return tag;
     }
@@ -1875,3 +1875,4 @@ public final class WirelessLinkRegistry extends SavedData {
         return WirelessLink.fromPersistentSnapshot(map);
     }
 }
+

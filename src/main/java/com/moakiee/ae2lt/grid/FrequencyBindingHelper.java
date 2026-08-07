@@ -1,25 +1,21 @@
 package com.moakiee.ae2lt.grid;
 
 import java.util.function.IntConsumer;
-import java.util.function.Consumer;
 
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import appeng.api.networking.IGridConnection;
 import appeng.api.networking.IGrid;
+import appeng.api.networking.IGridConnection;
 import appeng.api.networking.IGridNode;
 import appeng.api.networking.IGridNodeListener;
+import appeng.me.GridConnection;
 import appeng.util.SettingsFrom;
-import net.minecraft.core.component.DataComponentMap;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 
-import com.moakiee.thunderbolt.ae2.channel.OverloadedChannelOwnerHelper;
 import com.moakiee.ae2lt.blockentity.OverloadedControllerBlockEntity;
-import com.moakiee.ae2lt.grid.wirelesslink.MultiblockLinkReadiness;
-import com.moakiee.ae2lt.grid.wirelesslink.WirelessLinkOps;
 import com.moakiee.ae2lt.logic.MemoryCardConfigSupport;
 
 /**
@@ -113,7 +109,7 @@ public final class FrequencyBindingHelper
             return;
         }
 
-        if (be.getMainNode().getNode() == null) {
+        if (host.getFrequencyBindingBlockEntity().getMainNode().getNode() == null) {
             scheduleRetry();
             return;
         }
@@ -181,34 +177,12 @@ public final class FrequencyBindingHelper
         return true;
     }
 
-    public static void exportMemorySettings(SettingsFrom mode, DataComponentMap.Builder builder, int frequencyId) {
-        MemoryCardConfigSupport.exportMemoryCardSettings(mode, builder, tag -> writeMemoryFrequency(tag, frequencyId));
+    public static void exportMemorySettings(SettingsFrom mode, CompoundTag output, int frequencyId) {
+        MemoryCardConfigSupport.exportMemoryCardSettings(mode, output, tag -> writeMemoryFrequency(tag, frequencyId));
     }
 
-    public static void importMemorySettings(SettingsFrom mode, DataComponentMap input, IntConsumer setter) {
+    public static void importMemorySettings(SettingsFrom mode, CompoundTag input, IntConsumer setter) {
         MemoryCardConfigSupport.importMemoryCardSettings(mode, input, tag -> importMemoryFrequency(tag, setter));
-    }
-
-    @Override
-    public void exportMemorySettings(
-            SettingsFrom mode,
-            DataComponentMap.Builder builder,
-            Consumer<CompoundTag> additionalWriter) {
-        MemoryCardConfigSupport.exportMemoryCardSettings(mode, builder, tag -> {
-            additionalWriter.accept(tag);
-            writeMemoryFrequency(tag, frequencyId);
-        });
-    }
-
-    @Override
-    public void importMemorySettings(
-            SettingsFrom mode,
-            DataComponentMap input,
-            Consumer<CompoundTag> additionalReader) {
-        MemoryCardConfigSupport.importMemoryCardSettings(mode, input, tag -> {
-            additionalReader.accept(tag);
-            importMemoryFrequency(tag, this::setFrequency);
-        });
     }
 
     public int getGridUsedChannels() {
@@ -362,11 +336,6 @@ public final class FrequencyBindingHelper
             scheduleRetry();
             return;
         }
-        if (!MultiblockLinkReadiness.canKeepVirtualConnection(myNode)) {
-            MultiblockLinkReadiness.refreshAfterVirtualConnectionRemoved(myNode);
-            scheduleRetry();
-            return;
-        }
 
         var manager = WirelessFrequencyManager.get();
         if (manager == null) return;  // The server registry is not ready; retrying would not help.
@@ -400,7 +369,7 @@ public final class FrequencyBindingHelper
         }
 
         try {
-            virtualConnection = WirelessLinkOps.createVirtualConnection(myNode, remoteNode);
+            virtualConnection = GridConnection.create(myNode, remoteNode, null);
             LOG.debug("Virtual connection established: device@{} -> freq={}", be.getBlockPos(), frequencyId);
         } catch (IllegalStateException e) {
             LOG.warn("Virtual connection FAILED: device@{} -> freq={}: {}",
@@ -414,12 +383,12 @@ public final class FrequencyBindingHelper
 
         IGridNode myNode = host.getFrequencyBindingBlockEntity().getMainNode().getNode();
         if (myNode != null) {
-            WirelessLinkOps.destroy(virtualConnection, myNode);
-            MultiblockLinkReadiness.refreshAfterVirtualConnectionRemoved(myNode);
-        } else {
-            // Still drop the identity-tracking entry if AE2 already detached the
-            // node and destroyed the connection as part of block removal.
-            WirelessLinkOps.destroy(virtualConnection, null);
+            for (var conn : myNode.getConnections()) {
+                if (conn == virtualConnection) {
+                    virtualConnection.destroy();
+                    break;
+                }
+            }
         }
         virtualConnection = null;
     }
@@ -431,11 +400,6 @@ public final class FrequencyBindingHelper
 
         IGridNode myNode = be.getMainNode().getNode();
         if (myNode == null) return;
-        if (!MultiblockLinkReadiness.canKeepVirtualConnection(myNode)) {
-            destroyVirtualConnection();
-            scheduleRetry();
-            return;
-        }
 
         boolean connectionAlive = false;
         IGridNode connectedTarget = null;

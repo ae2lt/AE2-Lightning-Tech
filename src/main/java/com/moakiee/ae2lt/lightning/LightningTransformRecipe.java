@@ -1,19 +1,17 @@
 package com.moakiee.ae2lt.lightning;
 
-import com.mojang.serialization.Codec;
-import com.mojang.serialization.DataResult;
-import com.mojang.serialization.MapCodec;
-import com.mojang.serialization.codecs.RecordCodecBuilder;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
-import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.network.codec.ByteBufCodecs;
-import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.core.RegistryAccess;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.GsonHelper;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
@@ -23,21 +21,17 @@ import net.minecraft.world.level.Level;
 
 import com.moakiee.ae2lt.registry.ModRecipeTypes;
 
-public final class LightningTransformRecipe implements Recipe<LightningTransformRecipeInput> {
-    private static final Codec<List<CountedIngredient>> INPUTS_CODEC = CountedIngredient.CODEC.codec()
-            .listOf()
-            .validate(inputs -> inputs.isEmpty()
-                    ? DataResult.error(() -> "Lightning transform recipe inputs cannot be empty")
-                    : DataResult.success(List.copyOf(inputs)));
-    private static final StreamCodec<RegistryFriendlyByteBuf, List<CountedIngredient>> INPUTS_STREAM_CODEC =
-            CountedIngredient.STREAM_CODEC.apply(ByteBufCodecs.list());
+import com.moakiee.ae2lt.util.RecipeSerializationHelper;
 
+public final class LightningTransformRecipe implements Recipe<LightningTransformRecipeInput> {
+    private final ResourceLocation id;
     private final int priority;
     private final List<CountedIngredient> inputs;
     private final ItemStack result;
     private final int totalInputCount;
 
-    public LightningTransformRecipe(int priority, List<CountedIngredient> inputs, ItemStack result) {
+    public LightningTransformRecipe(ResourceLocation id, int priority, List<CountedIngredient> inputs, ItemStack result) {
+        this.id = Objects.requireNonNull(id, "id");
         Objects.requireNonNull(inputs, "inputs");
         Objects.requireNonNull(result, "result");
         if (inputs.isEmpty()) {
@@ -67,6 +61,11 @@ public final class LightningTransformRecipe implements Recipe<LightningTransform
 
     public int totalInputCount() {
         return totalInputCount;
+    }
+
+    @Override
+    public ResourceLocation getId() {
+        return id;
     }
 
     @Override
@@ -135,7 +134,7 @@ public final class LightningTransformRecipe implements Recipe<LightningTransform
     }
 
     @Override
-    public ItemStack assemble(LightningTransformRecipeInput input, HolderLookup.Provider registries) {
+    public ItemStack assemble(LightningTransformRecipeInput input, RegistryAccess registries) {
         return result.copy();
     }
 
@@ -145,7 +144,7 @@ public final class LightningTransformRecipe implements Recipe<LightningTransform
     }
 
     @Override
-    public ItemStack getResultItem(HolderLookup.Provider registries) {
+    public ItemStack getResultItem(RegistryAccess registries) {
         return result.copy();
     }
 
@@ -169,10 +168,15 @@ public final class LightningTransformRecipe implements Recipe<LightningTransform
     }
 
     @Override
+    public boolean isSpecial() {
+        return true;
+    }
+
+    @Override
     public boolean isIncomplete() {
         return inputs.isEmpty()
                 || result.isEmpty()
-                || inputs.stream().anyMatch(input -> input.ingredient().hasNoItems());
+                || inputs.stream().anyMatch(input -> input.ingredient().getItems().length == 0);
     }
 
     private ItemStack rawResult() {
@@ -275,28 +279,42 @@ public final class LightningTransformRecipe implements Recipe<LightningTransform
     }
 
     public static final class Serializer implements RecipeSerializer<LightningTransformRecipe> {
-        private static final MapCodec<LightningTransformRecipe> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
-                        Codec.INT.optionalFieldOf("priority", 0).forGetter(LightningTransformRecipe::priority),
-                        INPUTS_CODEC.fieldOf("inputs").forGetter(LightningTransformRecipe::inputs),
-                        ItemStack.STRICT_CODEC.fieldOf("result").forGetter(LightningTransformRecipe::rawResult))
-                .apply(instance, LightningTransformRecipe::new));
-        private static final StreamCodec<RegistryFriendlyByteBuf, LightningTransformRecipe> STREAM_CODEC = StreamCodec.composite(
-                ByteBufCodecs.VAR_INT,
-                LightningTransformRecipe::priority,
-                INPUTS_STREAM_CODEC,
-                LightningTransformRecipe::inputs,
-                ItemStack.STREAM_CODEC,
-                LightningTransformRecipe::rawResult,
-                LightningTransformRecipe::new);
-
         @Override
-        public MapCodec<LightningTransformRecipe> codec() {
-            return CODEC;
+        public LightningTransformRecipe fromJson(ResourceLocation recipeId, JsonObject json) {
+            int priority = GsonHelper.getAsInt(json, "priority", 0);
+            JsonArray inputsJson = GsonHelper.getAsJsonArray(json, "inputs");
+            List<CountedIngredient> inputs = new ArrayList<>(inputsJson.size());
+            for (var element : inputsJson) {
+                inputs.add(CountedIngredient.fromJson(GsonHelper.convertToJsonObject(element, "inputs[]")));
+            }
+
+            return new LightningTransformRecipe(
+                    recipeId,
+                    priority,
+                    inputs,
+                    RecipeSerializationHelper.itemStackFromJson(json, "result"));
         }
 
         @Override
-        public StreamCodec<RegistryFriendlyByteBuf, LightningTransformRecipe> streamCodec() {
-            return STREAM_CODEC;
+        public LightningTransformRecipe fromNetwork(ResourceLocation recipeId, FriendlyByteBuf buffer) {
+            int priority = buffer.readInt();
+            int inputCount = buffer.readInt();
+            List<CountedIngredient> inputs = new ArrayList<>(inputCount);
+            for (int i = 0; i < inputCount; i++) {
+                inputs.add(CountedIngredient.fromNetwork(buffer));
+            }
+
+            return new LightningTransformRecipe(recipeId, priority, inputs, buffer.readItem());
+        }
+
+        @Override
+        public void toNetwork(FriendlyByteBuf buffer, LightningTransformRecipe recipe) {
+            buffer.writeInt(recipe.priority());
+            buffer.writeInt(recipe.inputs().size());
+            for (CountedIngredient input : recipe.inputs()) {
+                input.toNetwork(buffer);
+            }
+            buffer.writeItem(recipe.rawResult());
         }
     }
 }

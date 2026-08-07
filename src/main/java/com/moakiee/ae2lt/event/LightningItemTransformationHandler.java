@@ -5,6 +5,7 @@ import com.moakiee.ae2lt.lightning.LightningTransformService;
 import com.moakiee.ae2lt.lightning.ProtectedItemEntityHelper;
 import com.moakiee.ae2lt.logic.research.ResearchRitualService;
 import com.moakiee.ae2lt.network.EasterEggPacket;
+import com.moakiee.ae2lt.network.NetworkInit;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
@@ -13,27 +14,23 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LightningBolt;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.level.block.Block;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.event.entity.EntityInvulnerabilityCheckEvent;
-import net.neoforged.neoforge.event.entity.EntityStruckByLightningEvent;
-import net.neoforged.neoforge.event.tick.EntityTickEvent;
-import net.neoforged.neoforge.network.PacketDistributor;
+import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.event.entity.EntityStruckByLightningEvent;
+import net.minecraftforge.fml.common.Mod;
 
-@EventBusSubscriber(modid = AE2LightningTech.MODID)
+@Mod.EventBusSubscriber(modid = AE2LightningTech.MODID)
 public final class LightningItemTransformationHandler {
     private static final String TRANSFORMATION_CHECKED_TAG = "ae2lt.lightning_item_transform_checked";
     private static final ResourceLocation FUMO_BLOCK_ID =
-            ResourceLocation.fromNamespaceAndPath("appliedcreate", "whichball_skin_doll");
+            new ResourceLocation("appliedcreate", "whichball_skin_doll");
     private static final int EASTER_EGG_SEARCH_RADIUS = 3;
 
     private LightningItemTransformationHandler() {
     }
 
-    @SubscribeEvent
-    public static void onLightningTick(EntityTickEvent.Pre event) {
-        if (!(event.getEntity() instanceof LightningBolt lightningBolt)
-                || !(lightningBolt.level() instanceof ServerLevel serverLevel)) {
+    public static void handleLightningTick(LightningBolt lightningBolt) {
+        if (!(lightningBolt.level() instanceof ServerLevel serverLevel)) {
             return;
         }
 
@@ -58,17 +55,15 @@ public final class LightningItemTransformationHandler {
     }
 
     @SubscribeEvent
-    public static void onEntityInvulnerabilityCheck(EntityInvulnerabilityCheckEvent event) {
-        if (event.getEntity() instanceof ItemEntity itemEntity
-                && ProtectedItemEntityHelper.shouldIgnoreDamage(itemEntity, event.getSource())) {
-            event.setInvulnerable(true);
+    public static void onLevelTick(TickEvent.LevelTickEvent event) {
+        if (event.phase != TickEvent.Phase.END || !(event.level instanceof ServerLevel serverLevel)) {
+            return;
         }
-    }
 
-    @SubscribeEvent
-    public static void onItemTick(EntityTickEvent.Post event) {
-        if (event.getEntity() instanceof ItemEntity itemEntity) {
-            ProtectedItemEntityHelper.tick(itemEntity);
+        for (var entity : serverLevel.getAllEntities()) {
+            if (entity instanceof ItemEntity itemEntity) {
+                ProtectedItemEntityHelper.tick(itemEntity);
+            }
         }
     }
 
@@ -86,7 +81,7 @@ public final class LightningItemTransformationHandler {
             if (level.getBlockState(pos).is(fumoBlock)) {
                 for (ServerPlayer player : level.players()) {
                     if (player.distanceToSqr(pos.getX(), pos.getY(), pos.getZ()) < 64 * 64) {
-                        PacketDistributor.sendToPlayer(player, new EasterEggPacket());
+                        NetworkInit.sendToPlayer(player, new EasterEggPacket());
                     }
                 }
                 return;
@@ -94,3 +89,4 @@ public final class LightningItemTransformationHandler {
         }
     }
 }
+

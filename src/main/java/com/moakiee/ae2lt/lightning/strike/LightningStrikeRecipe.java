@@ -1,20 +1,18 @@
 package com.moakiee.ae2lt.lightning.strike;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import java.util.List;
 import java.util.Objects;
 
-import com.mojang.serialization.Codec;
-import com.mojang.serialization.MapCodec;
-import com.mojang.serialization.codecs.RecordCodecBuilder;
-
 import com.moakiee.ae2lt.registry.ModRecipeTypes;
 
-import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
+import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.network.codec.ByteBufCodecs;
-import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.GsonHelper;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
@@ -36,16 +34,19 @@ import net.minecraft.world.level.block.Block;
  * participates in the vanilla datapack and JEI infrastructure.</p>
  */
 public final class LightningStrikeRecipe implements Recipe<LightningStrikeRecipeInput> {
+    private final ResourceLocation id;
     private final boolean requiresNaturalLightning;
     private final Block centerInput;
     private final Block centerOutput;
     private final List<StructureRequirement> requirements;
 
     public LightningStrikeRecipe(
+            ResourceLocation id,
             boolean requiresNaturalLightning,
             Block centerInput,
             Block centerOutput,
             List<StructureRequirement> requirements) {
+        this.id = Objects.requireNonNull(id, "id");
         this.requiresNaturalLightning = requiresNaturalLightning;
         this.centerInput = Objects.requireNonNull(centerInput, "centerInput");
         this.centerOutput = Objects.requireNonNull(centerOutput, "centerOutput");
@@ -69,12 +70,17 @@ public final class LightningStrikeRecipe implements Recipe<LightningStrikeRecipe
     }
 
     @Override
+    public ResourceLocation getId() {
+        return id;
+    }
+
+    @Override
     public boolean matches(LightningStrikeRecipeInput input, Level level) {
         return false;
     }
 
     @Override
-    public ItemStack assemble(LightningStrikeRecipeInput input, HolderLookup.Provider registries) {
+    public ItemStack assemble(LightningStrikeRecipeInput input, RegistryAccess registries) {
         return new ItemStack(centerOutput);
     }
 
@@ -84,7 +90,7 @@ public final class LightningStrikeRecipe implements Recipe<LightningStrikeRecipe
     }
 
     @Override
-    public ItemStack getResultItem(HolderLookup.Provider registries) {
+    public ItemStack getResultItem(RegistryAccess registries) {
         return new ItemStack(centerOutput);
     }
 
@@ -103,46 +109,55 @@ public final class LightningStrikeRecipe implements Recipe<LightningStrikeRecipe
         return ModRecipeTypes.LIGHTNING_STRIKE_TYPE.get();
     }
 
+    @Override
+    public boolean isSpecial() {
+        return true;
+    }
+
     public static final class Serializer implements RecipeSerializer<LightningStrikeRecipe> {
-        private static final Codec<Block> BLOCK_CODEC = BuiltInRegistries.BLOCK.byNameCodec();
+        @Override
+        public LightningStrikeRecipe fromJson(ResourceLocation recipeId, JsonObject json) {
+            JsonArray requirementsJson = GsonHelper.getAsJsonArray(json, "requirements");
+            List<StructureRequirement> requirements = new java.util.ArrayList<>(requirementsJson.size());
+            for (var element : requirementsJson) {
+                requirements.add(StructureRequirement.fromJson(GsonHelper.convertToJsonObject(element, "requirements[]")));
+            }
 
-        private static final MapCodec<LightningStrikeRecipe> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
-                        Codec.BOOL.optionalFieldOf("requires_natural_lightning", false)
-                                .forGetter(LightningStrikeRecipe::requiresNaturalLightning),
-                        BLOCK_CODEC.fieldOf("center_input").forGetter(LightningStrikeRecipe::centerInput),
-                        BLOCK_CODEC.fieldOf("center_output").forGetter(LightningStrikeRecipe::centerOutput),
-                        StructureRequirement.CODEC.listOf().fieldOf("requirements")
-                                .forGetter(LightningStrikeRecipe::requirements))
-                .apply(instance, LightningStrikeRecipe::new));
-
-        private static final StreamCodec<RegistryFriendlyByteBuf, LightningStrikeRecipe> STREAM_CODEC =
-                StreamCodec.of(Serializer::encode, Serializer::decode);
-
-        private static void encode(RegistryFriendlyByteBuf buf, LightningStrikeRecipe recipe) {
-            ByteBufCodecs.BOOL.encode(buf, recipe.requiresNaturalLightning);
-            ByteBufCodecs.registry(net.minecraft.core.registries.Registries.BLOCK).encode(buf, recipe.centerInput);
-            ByteBufCodecs.registry(net.minecraft.core.registries.Registries.BLOCK).encode(buf, recipe.centerOutput);
-            ByteBufCodecs.collection(java.util.ArrayList::new, StructureRequirement.STREAM_CODEC)
-                    .encode(buf, new java.util.ArrayList<>(recipe.requirements));
-        }
-
-        private static LightningStrikeRecipe decode(RegistryFriendlyByteBuf buf) {
-            boolean requiresNatural = ByteBufCodecs.BOOL.decode(buf);
-            Block centerIn = ByteBufCodecs.registry(net.minecraft.core.registries.Registries.BLOCK).decode(buf);
-            Block centerOut = ByteBufCodecs.registry(net.minecraft.core.registries.Registries.BLOCK).decode(buf);
-            List<StructureRequirement> reqs = ByteBufCodecs.collection(java.util.ArrayList::new, StructureRequirement.STREAM_CODEC)
-                    .decode(buf);
-            return new LightningStrikeRecipe(requiresNatural, centerIn, centerOut, reqs);
+            return new LightningStrikeRecipe(
+                    recipeId,
+                    GsonHelper.getAsBoolean(json, "requires_natural_lightning", false),
+                    BuiltInRegistries.BLOCK.getOptional(new ResourceLocation(GsonHelper.getAsString(json, "center_input")))
+                            .orElseThrow(() -> new IllegalArgumentException("Unknown block id for center_input")),
+                    BuiltInRegistries.BLOCK.getOptional(new ResourceLocation(GsonHelper.getAsString(json, "center_output")))
+                            .orElseThrow(() -> new IllegalArgumentException("Unknown block id for center_output")),
+                    requirements);
         }
 
         @Override
-        public MapCodec<LightningStrikeRecipe> codec() {
-            return CODEC;
+        public LightningStrikeRecipe fromNetwork(ResourceLocation recipeId, FriendlyByteBuf buffer) {
+            boolean requiresNatural = buffer.readBoolean();
+            Block centerInput = BuiltInRegistries.BLOCK.getOptional(buffer.readResourceLocation())
+                    .orElseThrow(() -> new IllegalStateException("Received unknown center_input block id"));
+            Block centerOutput = BuiltInRegistries.BLOCK.getOptional(buffer.readResourceLocation())
+                    .orElseThrow(() -> new IllegalStateException("Received unknown center_output block id"));
+            int requirementCount = buffer.readInt();
+            List<StructureRequirement> requirements = new java.util.ArrayList<>(requirementCount);
+            for (int i = 0; i < requirementCount; i++) {
+                requirements.add(StructureRequirement.fromNetwork(buffer));
+            }
+
+            return new LightningStrikeRecipe(recipeId, requiresNatural, centerInput, centerOutput, requirements);
         }
 
         @Override
-        public StreamCodec<RegistryFriendlyByteBuf, LightningStrikeRecipe> streamCodec() {
-            return STREAM_CODEC;
+        public void toNetwork(FriendlyByteBuf buffer, LightningStrikeRecipe recipe) {
+            buffer.writeBoolean(recipe.requiresNaturalLightning());
+            buffer.writeResourceLocation(BuiltInRegistries.BLOCK.getKey(recipe.centerInput()));
+            buffer.writeResourceLocation(BuiltInRegistries.BLOCK.getKey(recipe.centerOutput()));
+            buffer.writeInt(recipe.requirements().size());
+            for (StructureRequirement requirement : recipe.requirements()) {
+                requirement.toNetwork(buffer);
+            }
         }
     }
 }

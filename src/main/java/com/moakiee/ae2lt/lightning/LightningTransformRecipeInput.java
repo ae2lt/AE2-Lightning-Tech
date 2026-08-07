@@ -8,10 +8,11 @@ import java.util.Map;
 import java.util.Objects;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.crafting.RecipeInput;
 import net.minecraft.world.phys.Vec3;
 
-public final class LightningTransformRecipeInput implements RecipeInput {
+import com.moakiee.ae2lt.recipe.RecipeContainerInput;
+
+public final class LightningTransformRecipeInput extends RecipeContainerInput {
     private final List<GroupedStack> groupedStacks;
     private final List<ItemStack> displayStacks;
 
@@ -42,6 +43,11 @@ public final class LightningTransformRecipeInput implements RecipeInput {
 
     public List<GroupedStack> groupedStacks() {
         return groupedStacks;
+    }
+
+    @Override
+    public boolean isEmpty() {
+        return groupedStacks.isEmpty();
     }
 
     @Override
@@ -131,7 +137,7 @@ public final class LightningTransformRecipeInput implements RecipeInput {
 
         private ItemStackKey(ItemStack stack) {
             this.stack = stack.copyWithCount(1);
-            this.hash = ItemStack.hashItemAndComponents(this.stack);
+            this.hash = Objects.hash(this.stack.getItem(), this.stack.getTag());
         }
 
         @Override
@@ -144,7 +150,7 @@ public final class LightningTransformRecipeInput implements RecipeInput {
                 return false;
             }
 
-            return ItemStack.isSameItemSameComponents(this.stack, itemStackKey.stack);
+            return ItemStack.isSameItemSameTags(this.stack, itemStackKey.stack);
         }
 
         @Override

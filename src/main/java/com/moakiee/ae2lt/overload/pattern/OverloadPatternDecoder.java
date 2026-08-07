@@ -11,11 +11,6 @@ import appeng.api.crafting.PatternDetailsHelper;
 import appeng.api.stacks.AEItemKey;
 
 import com.moakiee.ae2lt.item.OverloadPatternItem;
-import com.moakiee.thunderbolt.ae2.overload.pattern.Ae2OverloadPatternDetails;
-import com.moakiee.thunderbolt.ae2.overload.pattern.OverloadPatternDetails;
-import com.moakiee.thunderbolt.ae2.overload.pattern.OverloadPatternSupport;
-import com.moakiee.thunderbolt.ae2.overload.pattern.OverloadedProviderOnlyPatternDetails;
-import com.moakiee.thunderbolt.ae2.overload.pattern.PatternExecutionHostKind;
 
 /**
  * Decoder that exposes overload patterns to AE2's crafting system.
@@ -33,6 +28,14 @@ public final class OverloadPatternDecoder implements IPatternDetailsDecoder {
     }
 
     @Override
+    public @Nullable IPatternDetails decodePattern(ItemStack stack, Level level, boolean tryRecovery) {
+        if (stack.isEmpty() || !(stack.getItem() instanceof OverloadPatternItem)) {
+            return null;
+        }
+        return decodePattern(AEItemKey.of(stack), level);
+    }
+
+    @Override
     public @Nullable IPatternDetails decodePattern(AEItemKey what, Level level) {
         if (what == null || !(what.getItem() instanceof OverloadPatternItem overloadPatternItem)) {
             return null;
@@ -43,13 +46,13 @@ public final class OverloadPatternDecoder implements IPatternDetailsDecoder {
             return null;
         }
 
-        var sourceStack = payload.sourcePattern().toItemStack(level.registryAccess());
+        var sourceStack = payload.sourcePattern().toItemStack();
         var sourceDetails = PatternDetailsHelper.decodePattern(sourceStack, level);
         if (sourceDetails == null || sourceDetails instanceof OverloadedProviderOnlyPatternDetails) {
             return null;
         }
 
-        var parsed = OverloadPatternSupport.toParsedDefinition(sourceStack, sourceDetails, level.registryAccess());
+        var parsed = OverloadPatternSupport.toParsedDefinition(sourceStack, sourceDetails);
         var overloadDetails = new OverloadPatternDetails(parsed, payload.encodedPattern());
         return new Ae2OverloadPatternDetails(what, overloadDetails, sourceDetails);
     }

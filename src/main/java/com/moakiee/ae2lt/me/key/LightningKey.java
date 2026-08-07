@@ -2,14 +2,11 @@ package com.moakiee.ae2lt.me.key;
 
 import java.util.List;
 
-import com.mojang.serialization.MapCodec;
-
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.AEKeyType;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.StringRepresentable;
@@ -21,20 +18,15 @@ import com.moakiee.ae2lt.api.lightning.LightningTier;
 
 public final class LightningKey extends AEKey {
     public static final ResourceLocation TYPE_ID =
-            ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "lightning");
+            new ResourceLocation(AE2LightningTech.MODID, "lightning");
     public static final ResourceLocation ID = TYPE_ID;
     public static final ResourceLocation HIGH_VOLTAGE_ID =
-            ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "high_voltage_lightning");
+            new ResourceLocation(AE2LightningTech.MODID, "high_voltage_lightning");
     public static final ResourceLocation EXTREME_HIGH_VOLTAGE_ID =
-            ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "extreme_high_voltage_lightning");
+            new ResourceLocation(AE2LightningTech.MODID, "extreme_high_voltage_lightning");
 
     public static final LightningKey HIGH_VOLTAGE = new LightningKey(Tier.HIGH_VOLTAGE);
     public static final LightningKey EXTREME_HIGH_VOLTAGE = new LightningKey(Tier.EXTREME_HIGH_VOLTAGE);
-    // Be permissive when decoding persisted data: if "tier" is missing, fall back to
-    // HIGH_VOLTAGE instead of failing hard and risking broken cell/network data migration.
-    public static final MapCodec<LightningKey> MAP_CODEC =
-            Tier.CODEC.optionalFieldOf("tier", Tier.HIGH_VOLTAGE)
-                .xmap(LightningKey::of, LightningKey::tier);
 
     private final Tier tier;
 
@@ -140,7 +132,7 @@ public final class LightningKey extends AEKey {
     }
 
     @Override
-    public CompoundTag toTag(HolderLookup.Provider registries) {
+    public CompoundTag toTag() {
         CompoundTag tag = new CompoundTag();
         tag.putString("tier", this.tier.getSerializedName());
         return tag;
@@ -157,7 +149,7 @@ public final class LightningKey extends AEKey {
     }
 
     @Override
-    public void writeToPacket(RegistryFriendlyByteBuf data) {
+    public void writeToPacket(FriendlyByteBuf data) {
         data.writeByte(this.tier.ordinal());
     }
 
@@ -170,11 +162,6 @@ public final class LightningKey extends AEKey {
 
     @Override
     public void addDrops(long amount, List<ItemStack> drops, Level level, BlockPos pos) {
-    }
-
-    @Override
-    public boolean hasComponents() {
-        return false;
     }
 
     @Override
@@ -192,3 +179,4 @@ public final class LightningKey extends AEKey {
         return getId().toString();
     }
 }
+
