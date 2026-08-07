@@ -76,7 +76,7 @@ public final class FirmamentConversionLockedRecipe {
     }
 
     public ItemStack result() {
-        return results.getFirst().copy();
+        return results.get(0).copy();
     }
 
     public List<ItemStack> results() {

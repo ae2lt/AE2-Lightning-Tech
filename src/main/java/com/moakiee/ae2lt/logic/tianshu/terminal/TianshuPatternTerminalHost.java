@@ -47,7 +47,7 @@ public interface TianshuPatternTerminalHost extends IPatternTerminalMenuHost, IA
     @Nullable
     default TianshuTerminalTarget selectTianshuTarget() {
         var available = getAvailableTianshu();
-        return available.isEmpty() ? null : TianshuTerminalTarget.from(available.getFirst());
+        return available.isEmpty() ? null : TianshuTerminalTarget.from(available.get(0));
     }
 
     /** Resolves a captured identity without falling back to another machine. */

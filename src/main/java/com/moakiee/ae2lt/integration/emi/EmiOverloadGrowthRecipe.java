@@ -86,23 +86,23 @@ final class EmiOverloadGrowthRecipe extends BasicEmiRecipe {
         switch (page) {
             case BUD_GROWTH -> {
                 title(widgets, "jei.ae2lt.overload_growth.bud_growth", 5);
-                EmiRecipeWidgets.addSlot(widgets, catalysts.getFirst(), CENTER_X - 40, 25);
+                EmiRecipeWidgets.addSlot(widgets, catalysts.get(0), CENTER_X - 40, 25);
                 widgets.addFillingArrow(CENTER_X - 12, 25, 2_000);
                 EmiRecipeWidgets.addSlot(widgets, EmiIngredient.of(BUD_STAGES), CENTER_X + 22, 25)
                         .recipeContext(this);
             }
             case BUD_LOOT -> {
                 title(widgets, "jei.ae2lt.overload_growth.bud_loot", 5);
-                EmiRecipeWidgets.addSlot(widgets, inputs.getFirst(), CENTER_X - 40, 25);
+                EmiRecipeWidgets.addSlot(widgets, inputs.get(0), CENTER_X - 40, 25);
                 widgets.addFillingArrow(CENTER_X - 12, 25, 2_000);
-                EmiRecipeWidgets.addSlot(widgets, outputs.getFirst(), CENTER_X + 22, 25)
+                EmiRecipeWidgets.addSlot(widgets, outputs.get(0), CENTER_X + 22, 25)
                         .recipeContext(this);
             }
             case CLUSTER_LOOT -> {
                 title(widgets, "jei.ae2lt.overload_growth.cluster_loot", 5);
-                EmiRecipeWidgets.addSlot(widgets, inputs.getFirst(), CENTER_X - 40, 25);
+                EmiRecipeWidgets.addSlot(widgets, inputs.get(0), CENTER_X - 40, 25);
                 widgets.addFillingArrow(CENTER_X - 12, 25, 2_000);
-                EmiRecipeWidgets.addSlot(widgets, outputs.getFirst(), CENTER_X + 22, 25)
+                EmiRecipeWidgets.addSlot(widgets, outputs.get(0), CENTER_X + 22, 25)
                         .recipeContext(this);
                 title(widgets, "jei.ae2lt.overload_growth.cluster_loot_fortune", 50);
             }
@@ -140,10 +140,10 @@ final class EmiOverloadGrowthRecipe extends BasicEmiRecipe {
             }
             case ACCELERATION -> {
                 title(widgets, "jei.ae2lt.overload_growth.acceleration", 4);
-                EmiRecipeWidgets.addSlot(widgets, inputs.getFirst(), CENTER_X - 24, 40);
+                EmiRecipeWidgets.addSlot(widgets, inputs.get(0), CENTER_X - 24, 40);
                 widgets.addText(Component.literal("+"), CENTER_X, 44, 0xFFFFFFFF, true)
                         .horizontalAlign(dev.emi.emi.api.widget.TextWidget.Alignment.CENTER);
-                EmiRecipeWidgets.addSlot(widgets, catalysts.getFirst(), CENTER_X + 8, 40)
+                EmiRecipeWidgets.addSlot(widgets, catalysts.get(0), CENTER_X + 8, 40)
                         .catalyst(true);
             }
         }

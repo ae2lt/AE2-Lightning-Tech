@@ -209,7 +209,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
             MenuType<?> type, int id, Inventory inventory, TianshuPatternTerminalHost host) {
         super(type, id, inventory, host, true);
         this.tianshuHost = host;
-        var inheritedBlankPatternSlot = (AppEngSlot) getSlots(SlotSemantics.BLANK_PATTERN).getFirst();
+        var inheritedBlankPatternSlot = (AppEngSlot) getSlots(SlotSemantics.BLANK_PATTERN).get(0);
         inheritedBlankPatternSlot.setSlotEnabled(false);
         this.closedLoopMemberInventory = new AppEngInternalInventory(new InternalInventoryHost() {
             @Override
@@ -674,7 +674,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
                 || GenericStack.fromItemStack(stack) == null) {
             return false;
         }
-        ((ClosedLoopOutputSlot) closedLoopOutputSlots.getFirst()).setFilterTo(stack);
+        ((ClosedLoopOutputSlot) closedLoopOutputSlots.get(0)).setFilterTo(stack);
         return true;
     }
 
@@ -989,7 +989,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         if (resolved != null || boundTianshuTarget != null) return resolved;
         var available = tianshuHost.getAvailableTianshu();
         if (available.isEmpty()) return null;
-        var selected = available.getFirst();
+        var selected = available.get(0);
         boundTianshuTarget = TianshuTerminalTarget.from(selected);
         tianshuSelectionRevision++;
         maintenanceEditorData = null;
@@ -1153,7 +1153,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         }
         uploadTargetGroups = groups.entrySet().stream()
                 .map(entry -> new TianshuUploadTargetData(
-                        entry.getId() /* TODO: verify getKey->getId */, entry.getValue().providers, entry.getValue().availableSlots))
+                        entry.getKey(), entry.getValue().providers, entry.getValue().availableSlots))
                 .toList();
     }
 
@@ -1501,7 +1501,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
                 closedLoopOutputRoles[i] = i == 0 ? 1 : 2;
             }
             closedLoopMainOutput = payload.netOutputs().isEmpty()
-                    ? null : payload.netOutputs().getFirst().what();
+                    ? null : payload.netOutputs().get(0).what();
             closedLoopDraftMembers = List.copyOf(payload.memberPatterns());
         } finally {
             closedLoopBulkUpdating = false;
@@ -1606,7 +1606,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         var remaining = new LinkedHashMap<AEKey, GenericStack>();
         for (var output : analyzedOutputs) remaining.put(output.what(), output);
         var ordered = new ArrayList<GenericStack>(analyzedOutputs.size());
-        var primary = analyzedOutputs.getFirst();
+        var primary = analyzedOutputs.get(0);
         ordered.add(primary);
         remaining.remove(primary.what());
         for (var key : preferredOrder) {
@@ -1628,7 +1628,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
                 closedLoopOutputInventory.setItemDirect(i, GenericStack.wrapInItemStack(output));
                 closedLoopOutputRoles[i] = i == 0 ? 1 : 2;
             }
-            closedLoopMainOutput = count == 0 ? null : outputs.getFirst().what();
+            closedLoopMainOutput = count == 0 ? null : outputs.get(0).what();
         } finally {
             closedLoopBulkUpdating = false;
         }
@@ -1717,7 +1717,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
                     break;
                 }
             }
-            if (primaryIndex < 0 && !draft.outputs().getFirst().isEmpty()) primaryIndex = 0;
+            if (primaryIndex < 0 && !draft.outputs().get(0).isEmpty()) primaryIndex = 0;
             clearInventory(closedLoopOutputInventory);
             java.util.Arrays.fill(closedLoopOutputRoles, 0);
             int outputSlot = 0;

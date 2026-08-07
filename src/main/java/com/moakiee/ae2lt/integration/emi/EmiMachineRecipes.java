@@ -55,7 +55,7 @@ final class EmiLightningAssemblyRecipe extends EmiBackedRecipe<LightningAssembly
             int y = 21 + index / 3 * 18;
             EmiRecipeWidgets.addLargeStackSlot(widgets, inputs.get(index), x, y).drawBack(false);
         }
-        EmiRecipeWidgets.addLargeStackSlot(widgets, outputs.getFirst(), 107, 39)
+        EmiRecipeWidgets.addLargeStackSlot(widgets, outputs.get(0), 107, 39)
                 .drawBack(false)
                 .recipeContext(this);
         EmiRecipeWidgets.centeredText(
@@ -94,7 +94,7 @@ final class EmiLightningSimulationRecipe extends EmiBackedRecipe<LightningSimula
             EmiRecipeWidgets.addLargeStackSlot(widgets, inputs.get(index), 34, 8 + index * 18)
                     .drawBack(false);
         }
-        EmiRecipeWidgets.addLargeStackSlot(widgets, outputs.getFirst(), 114, 27)
+        EmiRecipeWidgets.addLargeStackSlot(widgets, outputs.get(0), 114, 27)
                 .drawBack(false)
                 .recipeContext(this);
         EmiRecipeWidgets.centeredText(
@@ -154,7 +154,7 @@ final class EmiLightningTransformRecipe extends EmiBackedRecipe<LightningTransfo
         widgets.addFillingArrow(81, 24, 2_000);
         widgets.addDrawable(57, 26, 16, 16, (graphics, mouseX, mouseY, delta) ->
                 LIGHTNING.render(graphics, 0, 0, delta));
-        EmiRecipeWidgets.addLargeStackSlot(widgets, outputs.getFirst(), 111, 26)
+        EmiRecipeWidgets.addLargeStackSlot(widgets, outputs.get(0), 111, 26)
                 .recipeContext(this);
         EmiRecipeWidgets.centeredText(
                 widgets,

@@ -45,7 +45,7 @@ public final class ClosedLoopPatternValidator {
             return invalid(ClosedLoopValidationResult.Status.STRUCTURE_CHECK_FAILED);
         }
 
-        var primary = payload.netOutputs().getFirst();
+        var primary = payload.netOutputs().get(0);
         var analysis = ClosedLoopPatternAnalyzer.analyze(members, primary.what());
         if (analysis == null) {
             return invalid(ClosedLoopValidationResult.Status.NO_VALID_NET_OUTPUT);

@@ -167,7 +167,7 @@ public final class TianshuMultiblockScanner {
         var functionProfile = new TianshuFunctionProfile(
                 patternStorages.size(), seedStorages.size());
         return new TianshuMultiblockScanAttempt(new TianshuMultiblockScanResult(
-                controllerPos.immutable(), orientation, min, max, ports.getFirst(),
+                controllerPos.immutable(), orientation, min, max, ports.get(0),
                 List.copyOf(members), List.copyOf(cores), List.copyOf(patternStorages),
                 List.copyOf(seedStorages),
                 profile, functionProfile), List.of());

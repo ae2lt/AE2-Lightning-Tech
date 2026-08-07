@@ -41,7 +41,7 @@ final class EmiTeslaCoilRecipe extends BasicEmiRecipe {
     @Override
     public void addWidgets(WidgetHolder widgets) {
         if (!inputs.isEmpty()) {
-            EmiRecipeWidgets.addLargeStackSlot(widgets, inputs.getFirst(), 12, 8);
+            EmiRecipeWidgets.addLargeStackSlot(widgets, inputs.get(0), 12, 8);
         }
         widgets.addAnimatedTexture(
                 ARROW_TEXTURE,

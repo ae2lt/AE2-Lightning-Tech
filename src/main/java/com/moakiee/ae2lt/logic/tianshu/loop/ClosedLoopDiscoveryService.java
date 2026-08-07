@@ -479,9 +479,9 @@ public final class ClosedLoopDiscoveryService {
         var overload = providerDetails instanceof OverloadedProviderOnlyPatternDetails value
                 ? value : null;
         var outputs = details.getOutputs();
-        var result = new ArrayList<PatternOutput>(outputs.size());
-        for (int slot = 0; slot < outputs.size(); slot++) {
-            var output = outputs.get(slot);
+        var result = new ArrayList<PatternOutput>(outputs.length);
+        for (int slot = 0; slot < outputs.length; slot++) {
+            var output = outputs[slot];
             if (output == null || output.what() == null || output.amount() <= 0) continue;
             result.add(new PatternOutput(
                     output.what(), overload != null && overload.isFuzzyOutput(slot)));
@@ -541,8 +541,8 @@ public final class ClosedLoopDiscoveryService {
         }
 
         @Override
-        public List<GenericStack> getOutputs() {
-            return delegate.closedLoopPayload().netOutputs();
+        public GenericStack[] getOutputs() {
+            return delegate.closedLoopPayload().netOutputs().toArray(new GenericStack[0]);
         }
 
         @Override

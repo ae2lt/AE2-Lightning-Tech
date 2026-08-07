@@ -63,7 +63,7 @@ final class EmiOverloadProcessingRecipe extends EmiBackedRecipe<OverloadProcessi
         if (!recipe.itemResults().isEmpty()) {
             EmiRecipeWidgets.addLargeStackSlot(
                             widgets,
-                            EmiStack.of(recipe.itemResults().getFirst()),
+                            EmiStack.of(recipe.itemResults().get(0)),
                             114,
                             28)
                     .drawBack(false)

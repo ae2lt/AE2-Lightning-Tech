@@ -176,7 +176,7 @@ public final class ClosedLoopPatternAuthoringService {
             return new Result(Status.INVALID_MARKING, null);
         }
         var authored = createFromDraft(
-                draftMembers, declaredOutputs.getFirst(), executionSeedMultiplier,
+                draftMembers, declaredOutputs.get(0), executionSeedMultiplier,
                 storedTaskMultiplier, level);
         if (!authored.valid()) return authored;
 

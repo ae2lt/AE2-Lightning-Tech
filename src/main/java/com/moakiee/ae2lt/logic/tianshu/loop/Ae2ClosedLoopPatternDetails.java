@@ -190,8 +190,8 @@ public final class Ae2ClosedLoopPatternDetails
     }
 
     @Override
-    public List<GenericStack> getOutputs() {
-        return payload.netOutputs();
+    public GenericStack[] getOutputs() {
+        return payload.netOutputs().toArray(new GenericStack[0]);
     }
 
     @Override
@@ -294,10 +294,10 @@ public final class Ae2ClosedLoopPatternDetails
                     memberFlows.get(memberIndex), copies, producer.targets())) {
                 for (var input : slice.inputSeed().entrySet()) {
                     if (input.getValue() <= 0) continue;
-                    var previous = units.putIfAbsent(input.getId() /* TODO: verify getKey->getId */, input.getValue());
+                    var previous = units.putIfAbsent(input.getKey(), input.getValue());
                     if (previous != null && previous.longValue() != input.getValue()) {
                         // This is the same fail-closed sentinel used by the runtime ledger.
-                        units.put(input.getId() /* TODO: verify getKey->getId */, 0L);
+                        units.put(input.getKey(), 0L);
                     }
                 }
             }
@@ -308,8 +308,8 @@ public final class Ae2ClosedLoopPatternDetails
             var units = bundleUnitsByConsumer.getOrDefault(consumer.consumerId(), Map.of());
             for (var bootstrap : consumer.bootstrapSeed().entrySet()) {
                 if (bootstrap.getValue() > 0
-                        && units.getOrDefault(bootstrap.getId() /* TODO: verify getKey->getId */, 0L) != 1L) {
-                    result.add(bootstrap.getId() /* TODO: verify getKey->getId */);
+                        && units.getOrDefault(bootstrap.getKey(), 0L) != 1L) {
+                    result.add(bootstrap.getKey());
                 }
             }
         }
@@ -363,7 +363,7 @@ public final class Ae2ClosedLoopPatternDetails
             var inputs = ClosedLoopExpandedPatternDetails.pinReusableSeedInputs(
                     details, memberFlows.get(memberIndex).inputSeedBySlot());
             for (var mapped : memberFlows.get(memberIndex).inputSeedBySlot().entrySet()) {
-                int slot = mapped.getId() /* TODO: verify getKey->getId */;
+                int slot = mapped.getKey();
                 var seed = mapped.getValue();
                 if (!seeds.contains(seed) || slot < 0 || slot >= inputs.length) continue;
                 boolean fuzzy = overload != null && overload.isFuzzyInput(slot);
@@ -534,7 +534,7 @@ public final class Ae2ClosedLoopPatternDetails
             if (total <= 0) continue;
             long amount = total / copiesPerCycle;
             if (copyIndex < total % copiesPerCycle) amount = Sat.add(amount, 1L);
-            if (amount > 0) result.put(entry.getId() /* TODO: verify getKey->getId */, amount);
+            if (amount > 0) result.put(entry.getKey(), amount);
         }
         return Collections.unmodifiableMap(result);
     }
@@ -542,7 +542,7 @@ public final class Ae2ClosedLoopPatternDetails
     private static appeng.api.stacks.KeyCounter counter(Map<AEKey, Long> values) {
         var result = new appeng.api.stacks.KeyCounter();
         for (var entry : values.entrySet()) {
-            if (entry.getValue() > 0) result.add(entry.getId() /* TODO: verify getKey->getId */, entry.getValue());
+            if (entry.getValue() > 0) result.add(entry.getKey(), entry.getValue());
         }
         return result;
     }
@@ -562,7 +562,7 @@ public final class Ae2ClosedLoopPatternDetails
         var result = new appeng.api.stacks.KeyCounter();
         for (var entry : values.entrySet()) {
             long amount = Sat.mul(entry.getValue(), scale);
-            if (amount > 0) result.add(entry.getId() /* TODO: verify getKey->getId */, amount);
+            if (amount > 0) result.add(entry.getKey(), amount);
         }
         return result;
     }
@@ -572,7 +572,7 @@ public final class Ae2ClosedLoopPatternDetails
         var result = new LinkedHashMap<UUID, appeng.api.stacks.KeyCounter>();
         for (var entry : values.entrySet()) {
             var counter = counter(entry.getValue());
-            if (!counter.isEmpty()) result.put(entry.getId() /* TODO: verify getKey->getId */, counter);
+            if (!counter.isEmpty()) result.put(entry.getKey(), counter);
         }
         return Collections.unmodifiableMap(result);
     }
@@ -591,22 +591,22 @@ public final class Ae2ClosedLoopPatternDetails
             long targetStart = 0L;
             for (var target : values.entrySet()) {
                 long targetAmount = Math.max(
-                        0L, target.getValue().getOrDefault(output.getId() /* TODO: verify getKey->getId */, 0L));
+                        0L, target.getValue().getOrDefault(output.getKey(), 0L));
                 long targetEnd = Sat.add(targetStart, targetAmount);
                 long overlapStart = Math.max(copyStart, targetStart);
                 long overlapEnd = Math.min(copyEnd, targetEnd);
                 if (overlapEnd > overlapStart) {
                     var targetCredits = new LinkedHashMap<>(
-                            result.getOrDefault(target.getId() /* TODO: verify getKey->getId */, Map.of()));
-                    targetCredits.put(output.getId() /* TODO: verify getKey->getId */, overlapEnd - overlapStart);
-                    result.put(target.getId() /* TODO: verify getKey->getId */, Collections.unmodifiableMap(targetCredits));
+                            result.getOrDefault(target.getKey(), Map.of()));
+                    targetCredits.put(output.getKey(), overlapEnd - overlapStart);
+                    result.put(target.getKey(), Collections.unmodifiableMap(targetCredits));
                 }
                 targetStart = targetEnd;
             }
             if (targetStart != total) {
                 throw new IllegalArgumentException(
                         "consumer credits do not match member seed output for "
-                                + output.getId() /* TODO: verify getKey->getId */);
+                                + output.getKey());
             }
         }
         return Collections.unmodifiableMap(result);
@@ -619,13 +619,13 @@ public final class Ae2ClosedLoopPatternDetails
         var result = new LinkedHashMap<UUID, Map<AEKey, Long>>();
         for (var target : credits.entrySet()) {
             var selected = new LinkedHashMap<AEKey, Long>();
-            var wrappedForTarget = wrappedCredits.getOrDefault(target.getId() /* TODO: verify getKey->getId */, Map.of());
+            var wrappedForTarget = wrappedCredits.getOrDefault(target.getKey(), Map.of());
             for (var entry : target.getValue().entrySet()) {
-                boolean wrapped = wrappedForTarget.getOrDefault(entry.getId() /* TODO: verify getKey->getId */, 0L) > 0;
-                if (wrapped == selectWrapped) selected.put(entry.getId() /* TODO: verify getKey->getId */, entry.getValue());
+                boolean wrapped = wrappedForTarget.getOrDefault(entry.getKey(), 0L) > 0;
+                if (wrapped == selectWrapped) selected.put(entry.getKey(), entry.getValue());
             }
             if (!selected.isEmpty()) {
-                result.put(target.getId() /* TODO: verify getKey->getId */, Collections.unmodifiableMap(selected));
+                result.put(target.getKey(), Collections.unmodifiableMap(selected));
             }
         }
         return Collections.unmodifiableMap(result);
@@ -644,7 +644,7 @@ public final class Ae2ClosedLoopPatternDetails
         for (var target : credits.values()) {
             for (var entry : target.entrySet()) {
                 if (entry.getValue() != null && entry.getValue() > 0) {
-                    creditedKeys.add(entry.getId() /* TODO: verify getKey->getId */);
+                    creditedKeys.add(entry.getKey());
                 }
             }
         }
@@ -660,14 +660,14 @@ public final class Ae2ClosedLoopPatternDetails
             if (total <= 0) continue;
             long cursor = 0L;
             for (var target : credits.values()) {
-                long amount = Math.max(0L, target.getOrDefault(output.getId() /* TODO: verify getKey->getId */, 0L));
+                long amount = Math.max(0L, target.getOrDefault(output.getKey(), 0L));
                 cursor = Sat.add(cursor, amount);
                 addCreditBoundary(boundaries, total, copiesPerCycle, cursor);
             }
             if (cursor != total) {
                 throw new IllegalArgumentException(
                         "consumer credits do not match member seed output for "
-                                + output.getId() /* TODO: verify getKey->getId */);
+                                + output.getKey());
             }
         }
     }
@@ -719,7 +719,7 @@ public final class Ae2ClosedLoopPatternDetails
             outputSeed = Collections.unmodifiableMap(new LinkedHashMap<>(outputSeed));
             var copiedCredits = new LinkedHashMap<UUID, Map<AEKey, Long>>();
             for (var entry : outputSeedCredits.entrySet()) {
-                copiedCredits.put(entry.getId() /* TODO: verify getKey->getId */,
+                copiedCredits.put(entry.getKey(),
                         Collections.unmodifiableMap(new LinkedHashMap<>(entry.getValue())));
             }
             outputSeedCredits = Collections.unmodifiableMap(copiedCredits);

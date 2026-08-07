@@ -74,8 +74,12 @@ public abstract class EmiEncodePatternTransferMixin {
                     TianshuRecipeTransferContext.addDefaultAlias(
                             defaultAliases, category.getName().getString());
                 }
-                for (var workstation : EmiApi.getRecipeManager().getWorkstations(category).reversed()) {
-                    for (var stack : workstation.getEmiStacks().reversed()) {
+                var workstations = EmiApi.getRecipeManager().getWorkstations(category);
+                for (int w = workstations.size() - 1; w >= 0; w--) {
+                    var workstation = workstations.get(w);
+                    var workstationStacks = workstation.getEmiStacks();
+                    for (int s = workstationStacks.size() - 1; s >= 0; s--) {
+                        var stack = workstationStacks.get(s);
                         if (stack.getName() != null) {
                             TianshuRecipeTransferContext.addDefaultAlias(
                                     workstationAliases, stack.getName().getString());

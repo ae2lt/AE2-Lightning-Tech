@@ -744,7 +744,7 @@ public class MatrixControllerBlockEntity extends BlockEntity
 
     private MatrixMultiblockScanAttempt scanCurrent() {
         var attempt = MatrixMultiblockScanner.scan(level, worldPosition, getOrientation());
-        primaryScanIssue = attempt.issues().isEmpty() ? null : attempt.issues().getFirst();
+        primaryScanIssue = attempt.issues().isEmpty() ? null : attempt.issues().get(0);
         return attempt;
     }
 
@@ -1101,9 +1101,9 @@ public class MatrixControllerBlockEntity extends BlockEntity
     private java.util.Map<Item, Integer> findMissingRequirements(Player player, java.util.Map<Item, Integer> requirements) {
         var missing = new java.util.LinkedHashMap<Item, Integer>();
         for (var entry : requirements.entrySet()) {
-            int available = countItem(player, entry.getId() /* TODO: verify getKey->getId */);
+            int available = countItem(player, entry.getKey());
             if (available < entry.getValue()) {
-                missing.put(entry.getId() /* TODO: verify getKey->getId */, entry.getValue() - available);
+                missing.put(entry.getKey(), entry.getValue() - available);
             }
         }
         return missing;
@@ -1181,7 +1181,7 @@ public class MatrixControllerBlockEntity extends BlockEntity
                     missingPatternStorages, visibleEntries++);
         }
         for (var entry : missing.entrySet()) {
-            appendMissingEntry(result, entry.getId() /* TODO: verify getKey->getId */.getDescription(), entry.getValue(), visibleEntries++);
+            appendMissingEntry(result, entry.getKey().getDescription(), entry.getValue(), visibleEntries++);
             if (visibleEntries >= 4 && totalEntries > visibleEntries) {
                 result.append(", ...");
                 break;

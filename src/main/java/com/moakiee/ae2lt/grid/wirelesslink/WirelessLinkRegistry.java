@@ -835,7 +835,7 @@ public final class WirelessLinkRegistry extends SavedData {
             IGridNode transmitterNode) {
         boolean pruned = false;
         for (var entry : new ArrayList<>(runtime.entries())) {
-            var anchor = entry.getId() /* TODO: verify getKey->getId */;
+            var anchor = entry.getKey();
             var connection = entry.getValue();
             if (physicalCluster.contains(anchor)
                     && WirelessLinkOps.isConnectedTo(connection, anchor, transmitterNode)) {
@@ -1394,7 +1394,7 @@ public final class WirelessLinkRegistry extends SavedData {
         }
 
         for (var entry : new ArrayList<>(runtime.entries())) {
-            var anchor = entry.getId() /* TODO: verify getKey->getId */;
+            var anchor = entry.getKey();
             unregisterRuntimeAnchor(link.linkId(), anchor);
             WirelessLinkOps.destroy(entry.getValue(), anchor);
             MultiblockLinkReadiness.refreshAfterVirtualConnectionRemoved(anchor);
@@ -1862,7 +1862,7 @@ public final class WirelessLinkRegistry extends SavedData {
     private static CompoundTag saveLink(WirelessLink link) {
         var tag = new CompoundTag();
         for (var entry : link.toPersistentSnapshot().entrySet()) {
-            tag.putString(entry.getId() /* TODO: verify getKey->getId */, entry.getValue());
+            tag.putString(entry.getKey(), entry.getValue());
         }
         return tag;
     }

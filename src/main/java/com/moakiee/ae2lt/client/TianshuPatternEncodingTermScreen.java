@@ -146,7 +146,7 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
         super.init();
         var blankPatternSlots = menu.getSlots(SlotSemantics.BLANK_PATTERN);
         if (!blankPatternSlots.isEmpty()) {
-            var disabledSlot = blankPatternSlots.getFirst();
+            var disabledSlot = blankPatternSlots.get(0);
             networkBlankPatternSlot.x = disabledSlot.x;
             networkBlankPatternSlot.y = disabledSlot.y;
             menu.slots.add(networkBlankPatternSlot);

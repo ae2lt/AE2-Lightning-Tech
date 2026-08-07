@@ -116,7 +116,7 @@ public final class MultiblockStructureRecipes {
                     if (pos.equals(MatrixMultiblockTemplate.CRAFTING_CENTER_LOCAL)) {
                         cells.add(cell(
                                 pos,
-                                mainCores.getFirst(),
+                                mainCores.get(0),
                                 mainCoreRole,
                                 mainCores,
                                 List.of(mainCoreRule),
@@ -142,7 +142,7 @@ public final class MultiblockStructureRecipes {
                 material(controller),
                 material(port, portRule),
                 material(patternT1, patternRule),
-                material(mainCores.getFirst(), mainCoreRule),
+                material(mainCores.get(0), mainCoreRule),
                 material(blank, peripheralUnitRule),
                 material(threadT1, peripheralUnitRule));
 
@@ -229,7 +229,7 @@ public final class MultiblockStructureRecipes {
                             if (pos.equals(new BlockPos(3, 3, 3))) {
                                 cells.add(cell(
                                         pos,
-                                        mainCores.getFirst(),
+                                        mainCores.get(0),
                                         mainCoreRole,
                                         mainCores,
                                         List.of(mainCoreRule),
@@ -256,7 +256,7 @@ public final class MultiblockStructureRecipes {
                 material(glass),
                 material(controller),
                 material(port, portRule),
-                material(mainCores.getFirst(), mainCoreRule),
+                material(mainCores.get(0), mainCoreRule),
                 material(blank, peripheralRule),
                 material(parallel, peripheralRule));
 

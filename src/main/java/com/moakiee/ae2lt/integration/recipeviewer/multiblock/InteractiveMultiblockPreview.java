@@ -505,7 +505,7 @@ public final class InteractiveMultiblockPreview {
 
         if (!selectedCell.rules().isEmpty()) {
             int ruleY = panelContentBottom() - font.lineHeight - 2;
-            drawTrimmed(guiGraphics, font, selectedCell.rules().getFirst(), panelX + 4, ruleY,
+            drawTrimmed(guiGraphics, font, selectedCell.rules().get(0), panelX + 4, ruleY,
                     PANEL_WIDTH - 8, MUTED_TEXT_COLOR);
         }
     }

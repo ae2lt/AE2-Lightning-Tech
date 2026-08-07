@@ -136,7 +136,7 @@ public class OverloadProcessingCategory implements IRecipeCategory<OverloadProce
         }
 
         if (!recipe.itemResults().isEmpty()) {
-            var result = recipe.itemResults().getFirst();
+            var result = recipe.itemResults().get(0);
             builder.addSlot(RecipeIngredientRole.OUTPUT, OUTPUT_X, OUTPUT_Y)
                     .setCustomRenderer(VanillaTypes.ITEM_STACK, LargeStackJeiItemRenderer.INSTANCE)
                     .addItemStack(result)

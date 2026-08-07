@@ -70,7 +70,7 @@ final class EmiLightningStrikeRecipe extends EmiBackedRecipe<LightningStrikeReci
 
         EmiRecipeWidgets.addSlot(widgets, EmiStack.of(recipe.centerInput()), 104, 14);
         widgets.addFillingArrow(124, 15, 2_000);
-        EmiRecipeWidgets.addSlot(widgets, outputs.getFirst(), 156, 14).recipeContext(this);
+        EmiRecipeWidgets.addSlot(widgets, outputs.get(0), 156, 14).recipeContext(this);
 
         int index = 0;
         for (Map.Entry<Block, Integer> entry : blockCounts.entrySet()) {

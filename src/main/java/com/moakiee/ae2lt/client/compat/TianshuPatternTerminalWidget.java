@@ -18,7 +18,7 @@ final class TianshuPatternTerminalWidget extends PlayerRecipesWidget {
     private final TianshuPatternEncodingTermScreen<?> screen;
 
     TianshuPatternTerminalWidget(TianshuPatternEncodingTermScreen<?> screen) {
-        super(screen, screen.getMenu().getSlots(SlotSemantics.CRAFTING_RESULT).getFirst());
+        super(screen, screen.getMenu().getSlots(SlotSemantics.CRAFTING_RESULT).get(0));
         this.screen = screen;
     }
 

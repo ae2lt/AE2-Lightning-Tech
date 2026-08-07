@@ -353,16 +353,16 @@ public final class TianshuInventoryMaintenanceService
                 iterator.remove();
                 pending.future().cancel(false);
                 InventoryMaintenanceCalculationClaims.release(
-                        pending.grid(), pending.key(), entry.getId() /* TODO: verify getKey->getId */);
-                statuses.put(entry.getId() /* TODO: verify getKey->getId */, InventoryMaintenanceStatus.IDLE);
+                        pending.grid(), pending.key(), entry.getKey());
+                statuses.put(entry.getKey(), InventoryMaintenanceStatus.IDLE);
                 continue;
             }
             if (!pending.future().isDone()) continue;
             iterator.remove();
             InventoryMaintenanceCalculationClaims.release(
-                    pending.grid(), pending.key(), entry.getId() /* TODO: verify getKey->getId */);
+                    pending.grid(), pending.key(), entry.getKey());
             var rule = repository.get(pending.key());
-            if (rule == null || !rule.id().equals(entry.getId() /* TODO: verify getKey->getId */) || !rule.enabled()
+            if (rule == null || !rule.id().equals(entry.getKey()) || !rule.enabled()
                     || !activeRuleIds.contains(rule.id())) continue;
             try {
                 var plan = pending.future().get();
@@ -413,14 +413,14 @@ public final class TianshuInventoryMaintenanceService
         var available = inventory.getAvailableStacks();
         for (var used : plan.usedItems()) {
             if (used.getLongValue() <= 0L) continue;
-            var key = used.getId() /* TODO: verify getKey->getId */;
+            var key = used.getKey();
             long current = Math.max(0L, available.get(key));
             long usable;
             if (policy.groupsSecondaryVariants(key)) {
                 var group = new HashMap<AEKey, Long>();
                 for (var entry : available) {
-                    if (entry.getId() /* TODO: verify getKey->getId */.dropSecondary().equals(key.dropSecondary())) {
-                        group.put(entry.getId() /* TODO: verify getKey->getId */, Math.max(0L, entry.getLongValue()));
+                    if (entry.getKey().dropSecondary().equals(key.dropSecondary())) {
+                        group.put(entry.getKey(), Math.max(0L, entry.getLongValue()));
                     }
                 }
                 usable = policy.usablePreexistingStock(key, current, group);
@@ -450,7 +450,7 @@ public final class TianshuInventoryMaintenanceService
         for (var entry : calculations.entrySet()) {
             entry.getValue().future().cancel(false);
             InventoryMaintenanceCalculationClaims.release(
-                    entry.getValue().grid(), entry.getValue().key(), entry.getId() /* TODO: verify getKey->getId */);
+                    entry.getValue().grid(), entry.getValue().key(), entry.getKey());
         }
         calculations.clear();
     }
@@ -523,7 +523,7 @@ public final class TianshuInventoryMaintenanceService
         for (var entry : ruleReservedStock.entrySet()) {
             if (entry.getValue().size() <= 0) continue;
             var tag = new CompoundTag();
-            tag.putUUID("RuleId", entry.getId() /* TODO: verify getKey->getId */);
+            tag.putUUID("RuleId", entry.getKey());
             entry.getValue().writeTo(tag, registries);
             ruleReserves.add(tag);
         }

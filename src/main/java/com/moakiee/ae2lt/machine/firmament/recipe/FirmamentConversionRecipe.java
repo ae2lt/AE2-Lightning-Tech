@@ -108,7 +108,7 @@ public final class FirmamentConversionRecipe implements Recipe<FirmamentConversi
     }
 
     public ItemStack getResultStack() {
-        return results.getFirst().copy();
+        return results.get(0).copy();
     }
 
     public List<ItemStack> getResultStacks() {

@@ -117,7 +117,7 @@ public final class RailgunChainResolver {
                 level, source, start, ctx.chainRadius(), visited, ctx.pvp(), 1);
         if (seeds.isEmpty()) return out;
 
-        LivingEntity seed = seeds.getFirst();
+        LivingEntity seed = seeds.get(0);
         visited.add(seed.getId());
         out.addAll(walkBranch(level, source, seed, ctx, visited, start));
         return out;

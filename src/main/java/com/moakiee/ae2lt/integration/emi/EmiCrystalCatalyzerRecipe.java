@@ -50,7 +50,7 @@ final class EmiCrystalCatalyzerRecipe extends EmiBackedRecipe<CrystalCatalyzerRe
         int baseCount = recipe.getOutputTemplate().getCount();
         int matrixMultiplier = CrystalCatalyzerBlockEntity.MATRIX_OUTPUT_MULTIPLIER;
         int catalystPerInstance = Math.max(1, recipe.catalystCount());
-        EmiRecipeWidgets.addLargeStackSlot(widgets, outputs.getFirst(), 95, 16)
+        EmiRecipeWidgets.addLargeStackSlot(widgets, outputs.get(0), 95, 16)
                 .drawBack(false)
                 .recipeContext(this)
                 .appendTooltip(Component.translatable(

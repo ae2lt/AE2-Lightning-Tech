@@ -19,7 +19,7 @@ public final class TianshuSeedRefillService {
             for (var entry : requirements(payload).entrySet()) {
                 // The storage is shared and seeds are allocated to jobs only when they start.
                 // A seed already present for one pattern can also start another pattern later.
-                required.merge(entry.getId() /* TODO: verify getKey->getId */, entry.getValue(), Math::max);
+                required.merge(entry.getKey(), entry.getValue(), Math::max);
             }
         }
         return refill(target, required);
@@ -47,22 +47,22 @@ public final class TianshuSeedRefillService {
         var missing = new LinkedHashMap<AEKey, Long>();
         var network = grid.getStorageService().getInventory();
         for (var entry : required.entrySet()) {
-            long need = Math.max(0L, entry.getValue() - target.reusableSeedAmount(entry.getId() /* TODO: verify getKey->getId */));
+            long need = Math.max(0L, entry.getValue() - target.reusableSeedAmount(entry.getKey()));
             if (need <= 0) continue;
-            long canStore = target.insertReusableSeed(entry.getId() /* TODO: verify getKey->getId */, need, Actionable.SIMULATE);
+            long canStore = target.insertReusableSeed(entry.getKey(), need, Actionable.SIMULATE);
             long extracted = canStore > 0
-                    ? network.extract(entry.getId() /* TODO: verify getKey->getId */, canStore, Actionable.MODULATE, target.getActionSource())
+                    ? network.extract(entry.getKey(), canStore, Actionable.MODULATE, target.getActionSource())
                     : 0L;
             long inserted = extracted > 0
-                    ? target.insertReusableSeed(entry.getId() /* TODO: verify getKey->getId */, extracted, Actionable.MODULATE)
+                    ? target.insertReusableSeed(entry.getKey(), extracted, Actionable.MODULATE)
                     : 0L;
             if (inserted < extracted) {
-                network.insert(entry.getId() /* TODO: verify getKey->getId */, extracted - inserted, Actionable.MODULATE,
+                network.insert(entry.getKey(), extracted - inserted, Actionable.MODULATE,
                         target.getActionSource());
             }
-            if (inserted > 0) moved.put(entry.getId() /* TODO: verify getKey->getId */, inserted);
+            if (inserted > 0) moved.put(entry.getKey(), inserted);
             long left = need - inserted;
-            if (left > 0) missing.put(entry.getId() /* TODO: verify getKey->getId */, left);
+            if (left > 0) missing.put(entry.getKey(), left);
         }
         return new RefillResult(true, Map.copyOf(moved), Map.copyOf(missing));
     }

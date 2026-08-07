@@ -41,7 +41,7 @@ final class TianshuUploadSourceSelection {
             String saved = savedAlias();
             if (!saved.isBlank()) return saved;
             return selectFirstDefault && !defaultAliases.isEmpty()
-                    ? defaultAliases.getFirst()
+                    ? defaultAliases.get(0)
                     : "";
         }
     }

@@ -231,7 +231,7 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
 
     public int getPrimaryIssueOrdinal() {
         if (lastIssues.isEmpty()) return -1;
-        return lastIssues.getFirst().ordinal();
+        return lastIssues.get(0).ordinal();
     }
 
     public int memberCount() {
@@ -464,8 +464,8 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
     private Map<Item, Integer> findMissingRequirements(Player player, Map<Item, Integer> requirements) {
         var missing = new java.util.LinkedHashMap<Item, Integer>();
         for (var entry : requirements.entrySet()) {
-            int available = countItem(player, entry.getId() /* TODO: verify getKey->getId */);
-            if (available < entry.getValue()) missing.put(entry.getId() /* TODO: verify getKey->getId */, entry.getValue() - available);
+            int available = countItem(player, entry.getKey());
+            if (available < entry.getValue()) missing.put(entry.getKey(), entry.getValue() - available);
         }
         return missing;
     }
@@ -511,7 +511,7 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
         int index = 0;
         for (var entry : missing.entrySet()) {
             if (index > 0) result.append(", ");
-            result.append(entry.getId() /* TODO: verify getKey->getId */.getDescription()).append(" x").append(Integer.toString(entry.getValue()));
+            result.append(entry.getKey().getDescription()).append(" x").append(Integer.toString(entry.getValue()));
             index++;
         }
         return result;
@@ -812,10 +812,10 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
         var candidates = new java.util.ArrayList<AEKey>();
         if (available.get(planned) > 0 && acceptsVariant.test(planned)) candidates.add(planned);
         for (var entry : available) {
-            if (!entry.getId() /* TODO: verify getKey->getId */.equals(planned)
+            if (!entry.getKey().equals(planned)
                     && entry.getLongValue() > 0
-                    && acceptsVariant.test(entry.getId() /* TODO: verify getKey->getId */)) {
-                candidates.add(entry.getId() /* TODO: verify getKey->getId */);
+                    && acceptsVariant.test(entry.getKey())) {
+                candidates.add(entry.getKey());
             }
         }
         candidates.sort(java.util.Comparator
@@ -942,7 +942,7 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
         var variants = new java.util.LinkedHashMap<AEKey, Long>();
         for (var candidate : available) {
             if (candidate.getLongValue() > 0) {
-                variants.put(candidate.getId() /* TODO: verify getKey->getId */, candidate.getLongValue());
+                variants.put(candidate.getKey(), candidate.getLongValue());
             }
         }
         return Map.copyOf(variants);
