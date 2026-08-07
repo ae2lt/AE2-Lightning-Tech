@@ -114,7 +114,7 @@ public final class MatrixCraftingCluster {
         long capacity = availableCapacity();
         capacity = Math.min(capacity,
                 Math.max(0L, energy.affordableOperations(capacity)));
-        if (details instanceof com.moakiee.thunderbolt.api.crafting.batch.BatchCopyLimitPattern limited) {
+        if (details instanceof com.moakiee.thunderbolt.core.crafting.batch.BatchCopyLimitPattern limited) {
             capacity = Math.min(capacity, Math.max(1, limited.maxBatchCopies()));
         }
         return capacity;

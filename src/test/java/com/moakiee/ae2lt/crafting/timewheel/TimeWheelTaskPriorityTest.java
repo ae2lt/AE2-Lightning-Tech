@@ -3,7 +3,7 @@ package com.moakiee.ae2lt.crafting.timewheel;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.moakiee.ae2lt.crafting.runtime.api.CraftingTaskPriorities;
-import com.moakiee.ae2lt.crafting.runtime.api.IPrioritizedCraftingTask;
+import com.moakiee.thunderbolt.core.crafting.loop.IPrioritizedCraftingTask;
 import org.junit.jupiter.api.Test;
 
 class TimeWheelTaskPriorityTest {

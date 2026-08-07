@@ -13,7 +13,7 @@ import appeng.crafting.pattern.AEProcessingPattern;
 import appeng.api.crafting.PatternDetailsHelper;
 import com.moakiee.ae2lt.overload.runtime.model.MatchMode;
 import com.moakiee.ae2lt.overload.runtime.pattern.OverloadedProviderOnlyPatternDetails;
-import com.moakiee.ae2lt.overload.runtime.pattern.WrappedPatternDetails;
+import com.moakiee.thunderbolt.core.crafting.pattern.IWrappedPatternDetails;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -94,7 +94,7 @@ public final class AdvancedAECompat {
 
     private static IPatternDetails unwrap(IPatternDetails pattern) {
         var current = pattern;
-        for (int depth = 0; depth < 8 && current instanceof WrappedPatternDetails wrapped; depth++) {
+        for (int depth = 0; depth < 8 && current instanceof IWrappedPatternDetails wrapped; depth++) {
             var next = wrapped.wrappedPatternDetails();
             if (next == null || next == current) {
                 break;

@@ -1,20 +1,29 @@
 package com.moakiee.ae2lt.menu;
 
+import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.blockentity.TianshuSupercomputerControllerBlockEntity;
 import com.moakiee.ae2lt.logic.tianshu.CpuMainCoreTier;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.DataSlot;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.common.extensions.IMenuTypeExtension;
+import appeng.menu.AEBaseMenu;
+import appeng.menu.implementations.MenuTypeBuilder;
 
-public class TianshuSupercomputerControllerMenu extends AbstractContainerMenu {
-    public static final MenuType<TianshuSupercomputerControllerMenu> TYPE =
-            IMenuTypeExtension.create(TianshuSupercomputerControllerMenu::clientCreate);
+public class TianshuSupercomputerControllerMenu extends AEBaseMenu {
+    public static final MenuType<TianshuSupercomputerControllerMenu> TYPE = MenuTypeBuilder
+            .create(TianshuSupercomputerControllerMenu::new,
+                    TianshuSupercomputerControllerBlockEntity.class)
+            .withMenuTitle(host -> host.getBlockState().getBlock().getName())
+            .withInitialData(
+                    TianshuSupercomputerControllerMenu::writeExtraData,
+                    (host, menu, buf) -> menu.readExtraData(buf))
+            .buildUnregistered(ResourceLocation.fromNamespaceAndPath(
+                    AE2LightningTech.MODID, "tianshu_supercomputer_controller"));
     private final BlockPos blockPos;
     private final TianshuSupercomputerControllerBlockEntity host;
     private final DataSlot formed = DataSlot.standalone();
@@ -26,7 +35,6 @@ public class TianshuSupercomputerControllerMenu extends AbstractContainerMenu {
     private final DataSlot closedLoopSeedStorages = DataSlot.standalone();
     private final DataSlot parallelism = DataSlot.standalone();
     private final DataSlot capped = DataSlot.standalone();
-    private final DataSlot fastPlanning = DataSlot.standalone();
     private final DataSlot issue = DataSlot.standalone();
     private final DataSlot[] storage = {DataSlot.standalone(), DataSlot.standalone(),
             DataSlot.standalone(), DataSlot.standalone()};
@@ -35,47 +43,31 @@ public class TianshuSupercomputerControllerMenu extends AbstractContainerMenu {
 
     public TianshuSupercomputerControllerMenu(int id, Inventory inventory,
                                                TianshuSupercomputerControllerBlockEntity host) {
-        super(TYPE, id);
+        super(TYPE, id, inventory, host);
         this.blockPos = host.getBlockPos();
         this.host = host;
         syncFromHost();
         addSlots();
     }
 
-    private TianshuSupercomputerControllerMenu(int id, BlockPos pos, boolean formed, int tier,
-                                                int capacity, int parallel, int amplifier,
-                                                int patternStorages, int seedStorages,
-                                                long storage, int parallelism, long maxCopiesPerTick,
-                                                boolean capped, boolean fastPlanning, int issue) {
-        super(TYPE, id);
-        this.blockPos = pos;
-        this.host = null;
-        this.formed.set(formed ? 1 : 0);
-        this.tier.set(tier);
-        storageUnits.set(capacity);
-        parallelUnits.set(parallel);
-        amplifierUnits.set(amplifier);
-        closedLoopPatternStorages.set(patternStorages);
-        closedLoopSeedStorages.set(seedStorages);
-        this.parallelism.set(parallelism);
-        this.capped.set(capped ? 1 : 0);
-        this.fastPlanning.set(fastPlanning ? 1 : 0);
-        this.issue.set(issue);
-        setStorage(storage);
-        setMaxCopiesPerTick(maxCopiesPerTick);
-        addSlots();
+    private void readExtraData(FriendlyByteBuf buf) {
+        formed.set(buf.readBoolean() ? 1 : 0);
+        tier.set(buf.readVarInt());
+        storageUnits.set(buf.readVarInt());
+        parallelUnits.set(buf.readVarInt());
+        amplifierUnits.set(buf.readVarInt());
+        closedLoopPatternStorages.set(buf.readVarInt());
+        closedLoopSeedStorages.set(buf.readVarInt());
+        setStorage(buf.readLong());
+        parallelism.set(buf.readVarInt());
+        setMaxCopiesPerTick(buf.readLong());
+        capped.set(buf.readBoolean() ? 1 : 0);
+        issue.set(buf.readVarInt());
     }
 
-    private static TianshuSupercomputerControllerMenu clientCreate(int id, Inventory inventory, FriendlyByteBuf buf) {
-        return new TianshuSupercomputerControllerMenu(id, buf.readBlockPos(), buf.readBoolean(), buf.readVarInt(),
-                buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readVarInt(),
-                buf.readLong(), buf.readVarInt(),
-                buf.readLong(), buf.readBoolean(), buf.readBoolean(), buf.readVarInt());
-    }
-
-    public static void writeExtraData(FriendlyByteBuf buf, TianshuSupercomputerControllerBlockEntity host) {
+    public static void writeExtraData(
+            TianshuSupercomputerControllerBlockEntity host, FriendlyByteBuf buf) {
         var profile = host.getCoreProfile();
-        buf.writeBlockPos(host.getBlockPos());
         buf.writeBoolean(host.isFormed());
         buf.writeVarInt(profile.mainCore() == null ? -1 : profile.mainCore().ordinal());
         buf.writeVarInt(profile.storageUnitCount());
@@ -87,13 +79,12 @@ public class TianshuSupercomputerControllerMenu extends AbstractContainerMenu {
         buf.writeVarInt(profile.parallelism());
         buf.writeLong(profile.maxCopiesPerTick());
         buf.writeBoolean(profile.parallelCapped());
-        buf.writeBoolean(host.isFastPlanningEnabled());
         buf.writeVarInt(host.getPrimaryIssueOrdinal());
     }
 
     @Override
     public void broadcastChanges() {
-        if (host != null) syncFromHost();
+        syncFromHost();
         super.broadcastChanges();
     }
 
@@ -108,7 +99,6 @@ public class TianshuSupercomputerControllerMenu extends AbstractContainerMenu {
         closedLoopSeedStorages.set(host.getFunctionProfile().closedLoopSeedStorageCount());
         parallelism.set(profile.parallelism());
         capped.set(profile.parallelCapped() ? 1 : 0);
-        fastPlanning.set(host.isFastPlanningEnabled() ? 1 : 0);
         issue.set(host.getPrimaryIssueOrdinal());
         setStorage(profile.storageBytes());
         setMaxCopiesPerTick(profile.maxCopiesPerTick());
@@ -118,7 +108,7 @@ public class TianshuSupercomputerControllerMenu extends AbstractContainerMenu {
         addDataSlot(formed); addDataSlot(tier); addDataSlot(storageUnits); addDataSlot(parallelUnits);
         addDataSlot(amplifierUnits);
         addDataSlot(closedLoopPatternStorages); addDataSlot(closedLoopSeedStorages);
-        addDataSlot(parallelism); addDataSlot(capped); addDataSlot(fastPlanning); addDataSlot(issue);
+        addDataSlot(parallelism); addDataSlot(capped); addDataSlot(issue);
         for (var slot : storage) addDataSlot(slot);
         for (var slot : maxCopiesPerTick) addDataSlot(slot);
     }
@@ -145,7 +135,6 @@ public class TianshuSupercomputerControllerMenu extends AbstractContainerMenu {
     public int getClosedLoopSeedStorages() { return closedLoopSeedStorages.get(); }
     public int getSuccessfulDispatchesPerTick() { return parallelism.get(); }
     public boolean isCapped() { return capped.get() != 0; }
-    public boolean isFastPlanningEnabled() { return fastPlanning.get() != 0; }
     public int getIssue() { return issue.get(); }
     public long getStorageBytes() {
         long value = 0L;

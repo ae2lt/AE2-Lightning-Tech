@@ -17,6 +17,7 @@ import appeng.api.stacks.KeyCounter;
 import appeng.crafting.pattern.AEProcessingPattern;
 
 import com.moakiee.ae2lt.overload.runtime.model.MatchMode;
+import com.moakiee.thunderbolt.core.crafting.pattern.IWrappedPatternDetails;
 
 /**
  * AE2-facing runtime implementation of an overload pattern.
@@ -25,7 +26,7 @@ import com.moakiee.ae2lt.overload.runtime.model.MatchMode;
  * matching semantics per slot for planning and crafting extraction.
  */
 public final class Ae2OverloadPatternDetails
-        implements IPatternDetails, OverloadedProviderOnlyPatternDetails, WrappedPatternDetails {
+        implements IPatternDetails, OverloadedProviderOnlyPatternDetails, IWrappedPatternDetails {
     private final AEItemKey definition;
     private final OverloadPatternDetails overloadDetails;
     private final IPatternDetails sourceDetails;

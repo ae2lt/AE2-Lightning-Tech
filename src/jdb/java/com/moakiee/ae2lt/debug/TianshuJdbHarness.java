@@ -16,7 +16,7 @@ import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopMemberPattern;
 import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternPayload;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.InventoryMaintenanceRule;
 import com.moakiee.ae2lt.registry.ModBlocks;
-import com.moakiee.thunderbolt.ae2.overload.pattern.SourcePatternSnapshot;
+import com.moakiee.ae2lt.overload.runtime.pattern.SourcePatternSnapshot;
 import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.core.BlockPos;
@@ -113,8 +113,8 @@ public final class TianshuJdbHarness {
             var waitingFor = new appeng.crafting.inv.ListCraftingInventory(ignored -> {});
             cpuInventory.insert(master, 1, Actionable.MODULATE);
             cpuInventory.insert(inferium, 8, Actionable.MODULATE);
-            var job = new com.moakiee.thunderbolt.ae2.batch.BatchJobView() {
-                @Override public java.util.Iterator<com.moakiee.thunderbolt.ae2.batch.BatchTaskHandle>
+            var job = new com.moakiee.thunderbolt.core.crafting.batch.BatchJobView() {
+                @Override public java.util.Iterator<com.moakiee.thunderbolt.core.crafting.batch.BatchTaskHandle>
                 taskIterator() { return java.util.Collections.emptyIterator(); }
                 @Override public appeng.crafting.inv.ListCraftingInventory waitingFor() {
                     return waitingFor;
@@ -122,7 +122,7 @@ public final class TianshuJdbHarness {
                 @Override public void addContainerMaxItems(long count, appeng.api.stacks.AEKeyType type) {
                 }
             };
-            class ProbeHost implements com.moakiee.thunderbolt.core.craft.CraftingCoreHost {
+            class ProbeHost implements com.moakiee.ae2lt.crafting.matrix.core.CraftingCoreHost {
                 long time;
                 long delivered;
                 @Override public long getGameTime() { return time; }
@@ -141,25 +141,25 @@ public final class TianshuJdbHarness {
                 }
             }
             var host = new ProbeHost();
-            var registry = new com.moakiee.thunderbolt.core.craft.CraftingCoreRegistry();
-            var core = new com.moakiee.thunderbolt.core.craft.CraftingCore(
-                    host, new com.moakiee.thunderbolt.core.craft.MolecularCopyAssembler(level), registry);
+            var registry = new com.moakiee.ae2lt.crafting.matrix.core.CraftingCoreRegistry();
+            var core = new com.moakiee.ae2lt.crafting.matrix.core.CraftingCore(
+                    host, new com.moakiee.ae2lt.crafting.matrix.core.MolecularCopyAssembler(level), registry);
 
-            var bulk = com.moakiee.thunderbolt.ae2.batch.ParallelBatchCpuHelper.bulkExtract(
+            var bulk = com.moakiee.thunderbolt.core.crafting.batch.ParallelBatchCpuHelper.bulkExtract(
                     decoded, cpuInventory, 2L);
             require(bulk != null, "batch could not extract master crystal and essence");
             require(bulk.actualCopies == 2L,
                     "ordinary pattern was limited to " + bulk.actualCopies + " copy");
-            var oneCopy = com.moakiee.thunderbolt.ae2.batch.ParallelBatchCpuHelper
+            var oneCopy = com.moakiee.thunderbolt.core.crafting.batch.ParallelBatchCpuHelper
                     .cloneSingleCopy(bulk);
             require(core.pushBatch(decoded, oneCopy, 2L) == 2L,
                     "matrix did not accept both copies in one push");
-            com.moakiee.thunderbolt.ae2.batch.ParallelBatchCpuHelper.markDispatched(bulk, 2L);
-            com.moakiee.thunderbolt.ae2.batch.ParallelBatchCpuHelper.registerExpectedOutputs(
+            com.moakiee.thunderbolt.core.crafting.batch.ParallelBatchCpuHelper.markDispatched(bulk, 2L);
+            com.moakiee.thunderbolt.core.crafting.batch.ParallelBatchCpuHelper.registerExpectedOutputs(
                     job, decoded, bulk, 2L);
-            com.moakiee.thunderbolt.ae2.batch.ParallelBatchCpuHelper.reinject(
+            com.moakiee.thunderbolt.core.crafting.batch.ParallelBatchCpuHelper.reinject(
                     bulk, bulk.actualCopies - 2L, cpuInventory);
-            host.time = com.moakiee.thunderbolt.core.craft.CraftingCore.FLUSH_INTERVAL_TICKS;
+            host.time = com.moakiee.ae2lt.crafting.matrix.core.CraftingCore.FLUSH_INTERVAL_TICKS;
             core.sweepTick();
             require(host.delivered == 2L, "both target outputs did not return");
             require(cpuInventory.extract(master, Long.MAX_VALUE, Actionable.SIMULATE) == 1L,
@@ -193,7 +193,7 @@ public final class TianshuJdbHarness {
             require(definition != null, "MEGA definition is null");
             var level = server.overworld();
             var decodedDirect = appeng.api.crafting.PatternDetailsHelper.decodePattern(definition, level);
-            var snapshot = com.moakiee.thunderbolt.ae2.overload.pattern.SourcePatternSnapshot
+            var snapshot = com.moakiee.ae2lt.overload.runtime.pattern.SourcePatternSnapshot
                     .fromItemStack(definition.toStack(), level.registryAccess());
             var authoringResult = com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternAuthoringService
                     .createFromDraft(
@@ -276,23 +276,23 @@ public final class TianshuJdbHarness {
         };
         var snapshot = new SourcePatternSnapshot(
                 ResourceLocation.fromNamespaceAndPath("ae2", "encoded_processing_pattern"), null, null);
-        var parsed = new com.moakiee.thunderbolt.ae2.overload.pattern.ParsedPatternDefinition(
+        var parsed = new com.moakiee.ae2lt.overload.runtime.pattern.ParsedPatternDefinition(
                 snapshot,
-                List.of(new com.moakiee.thunderbolt.ae2.overload.pattern.ParsedPatternInput(0, seedStack)),
+                List.of(new com.moakiee.ae2lt.overload.runtime.pattern.ParsedPatternInput(0, seedStack)),
                 List.of(
-                        new com.moakiee.thunderbolt.ae2.overload.pattern.ParsedPatternOutput(
+                        new com.moakiee.ae2lt.overload.runtime.pattern.ParsedPatternOutput(
                                 0, returnedSeedStack, false),
-                        new com.moakiee.thunderbolt.ae2.overload.pattern.ParsedPatternOutput(
+                        new com.moakiee.ae2lt.overload.runtime.pattern.ParsedPatternOutput(
                                 1, outputStack, true)));
-        var strictDefinition = new com.moakiee.thunderbolt.ae2.overload.pattern.OverloadPatternDetails(
-                parsed, com.moakiee.thunderbolt.ae2.overload.model.EncodedOverloadPattern.builder()
-                        .input(0, com.moakiee.thunderbolt.ae2.overload.model.MatchMode.STRICT).build());
-        var fuzzyDefinition = new com.moakiee.thunderbolt.ae2.overload.pattern.OverloadPatternDetails(
-                parsed, com.moakiee.thunderbolt.ae2.overload.model.EncodedOverloadPattern.builder()
-                        .input(0, com.moakiee.thunderbolt.ae2.overload.model.MatchMode.ID_ONLY).build());
-        var strict = new com.moakiee.thunderbolt.ae2.overload.pattern.Ae2OverloadPatternDetails(
+        var strictDefinition = new com.moakiee.ae2lt.overload.runtime.pattern.OverloadPatternDetails(
+                parsed, com.moakiee.ae2lt.overload.runtime.model.EncodedOverloadPattern.builder()
+                        .input(0, com.moakiee.ae2lt.overload.runtime.model.MatchMode.STRICT).build());
+        var fuzzyDefinition = new com.moakiee.ae2lt.overload.runtime.pattern.OverloadPatternDetails(
+                parsed, com.moakiee.ae2lt.overload.runtime.model.EncodedOverloadPattern.builder()
+                        .input(0, com.moakiee.ae2lt.overload.runtime.model.MatchMode.ID_ONLY).build());
+        var strict = new com.moakiee.ae2lt.overload.runtime.pattern.Ae2OverloadPatternDetails(
                 seed, strictDefinition, source);
-        var fuzzy = new com.moakiee.thunderbolt.ae2.overload.pattern.Ae2OverloadPatternDetails(
+        var fuzzy = new com.moakiee.ae2lt.overload.runtime.pattern.Ae2OverloadPatternDetails(
                 seed, fuzzyDefinition, source);
         require(com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternAnalyzer.analyze(
                         List.of(new com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternAnalyzer.Member(strict, 1)),
@@ -309,8 +309,8 @@ public final class TianshuJdbHarness {
         var namedB = new ItemStack(Items.PAPER);
         namedB.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
                 net.minecraft.network.chat.Component.literal("B"));
-        var strictMode = com.moakiee.thunderbolt.ae2.overload.model.MatchMode.STRICT;
-        var idOnlyMode = com.moakiee.thunderbolt.ae2.overload.model.MatchMode.ID_ONLY;
+        var strictMode = com.moakiee.ae2lt.overload.runtime.model.MatchMode.STRICT;
+        var idOnlyMode = com.moakiee.ae2lt.overload.runtime.model.MatchMode.ID_ONLY;
         require(analyzeRealOverloadEdge(namedA, namedA, strictMode, strictMode) != null,
                 "real STRICT output did not enter STRICT input");
         require(analyzeRealOverloadEdge(namedA, namedB, idOnlyMode, strictMode) != null,
@@ -338,8 +338,8 @@ public final class TianshuJdbHarness {
 
     private static com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopAnalysis analyzeRealOverloadEdge(
             ItemStack inputStack, ItemStack returnedStack,
-            com.moakiee.thunderbolt.ae2.overload.model.MatchMode inputMode,
-            com.moakiee.thunderbolt.ae2.overload.model.MatchMode outputMode) {
+            com.moakiee.ae2lt.overload.runtime.model.MatchMode inputMode,
+            com.moakiee.ae2lt.overload.runtime.model.MatchMode outputMode) {
         var inputKey = AEItemKey.of(inputStack);
         var returnedKey = AEItemKey.of(returnedStack);
         var productStack = new ItemStack(Items.EMERALD);
@@ -350,7 +350,7 @@ public final class TianshuJdbHarness {
             }
             @Override public long getMultiplier() { return 1; }
             @Override public boolean isValid(appeng.api.stacks.AEKey key, net.minecraft.world.level.Level ignored) {
-                return inputMode == com.moakiee.thunderbolt.ae2.overload.model.MatchMode.ID_ONLY
+                return inputMode == com.moakiee.ae2lt.overload.runtime.model.MatchMode.ID_ONLY
                         ? inputKey.dropSecondary().equals(key.dropSecondary()) : inputKey.equals(key);
             }
             @Override public appeng.api.stacks.AEKey getRemainingKey(appeng.api.stacks.AEKey key) { return null; }
@@ -363,17 +363,17 @@ public final class TianshuJdbHarness {
                         new appeng.api.stacks.GenericStack(productKey, 1));
             }
         };
-        var parsed = new com.moakiee.thunderbolt.ae2.overload.pattern.ParsedPatternDefinition(
+        var parsed = new com.moakiee.ae2lt.overload.runtime.pattern.ParsedPatternDefinition(
                 new SourcePatternSnapshot(
                         ResourceLocation.fromNamespaceAndPath("ae2", "encoded_processing_pattern"), null, null),
-                List.of(new com.moakiee.thunderbolt.ae2.overload.pattern.ParsedPatternInput(0, inputStack)),
+                List.of(new com.moakiee.ae2lt.overload.runtime.pattern.ParsedPatternInput(0, inputStack)),
                 List.of(
-                        new com.moakiee.thunderbolt.ae2.overload.pattern.ParsedPatternOutput(0, returnedStack, false),
-                        new com.moakiee.thunderbolt.ae2.overload.pattern.ParsedPatternOutput(1, productStack, true)));
-        var definition = new com.moakiee.thunderbolt.ae2.overload.pattern.OverloadPatternDetails(
-                parsed, com.moakiee.thunderbolt.ae2.overload.model.EncodedOverloadPattern.builder()
+                        new com.moakiee.ae2lt.overload.runtime.pattern.ParsedPatternOutput(0, returnedStack, false),
+                        new com.moakiee.ae2lt.overload.runtime.pattern.ParsedPatternOutput(1, productStack, true)));
+        var definition = new com.moakiee.ae2lt.overload.runtime.pattern.OverloadPatternDetails(
+                parsed, com.moakiee.ae2lt.overload.runtime.model.EncodedOverloadPattern.builder()
                         .input(0, inputMode).output(0, outputMode).build());
-        var details = new com.moakiee.thunderbolt.ae2.overload.pattern.Ae2OverloadPatternDetails(
+        var details = new com.moakiee.ae2lt.overload.runtime.pattern.Ae2OverloadPatternDetails(
                 inputKey, definition, source);
         return com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternAnalyzer.analyze(
                 List.of(new com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternAnalyzer.Member(details, 1)),

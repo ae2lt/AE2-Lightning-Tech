@@ -45,7 +45,7 @@ import appeng.crafting.inv.ICraftingInventory;
 import com.moakiee.ae2lt.overload.runtime.pattern.OverloadPatternDetails;
 import com.moakiee.ae2lt.overload.runtime.pattern.OverloadedProviderOnlyPatternDetails;
 import com.moakiee.ae2lt.overload.runtime.pattern.PatternExecutionHostKind;
-import com.moakiee.thunderbolt.core.crafting.support.FastCraftingPlanner;
+import com.moakiee.thunderbolt.core.crafting.planner.FastCraftingPlanner;
 
 import org.junit.jupiter.api.Test;
 

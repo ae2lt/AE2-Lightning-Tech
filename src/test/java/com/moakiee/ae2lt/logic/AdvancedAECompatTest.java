@@ -7,7 +7,7 @@ import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.GenericStack;
 import appeng.api.stacks.KeyCounter;
-import com.moakiee.ae2lt.overload.runtime.pattern.WrappedPatternDetails;
+import com.moakiee.thunderbolt.core.crafting.pattern.IWrappedPatternDetails;
 import java.util.HashMap;
 import java.util.List;
 import net.minecraft.core.Direction;
@@ -22,7 +22,7 @@ class AdvancedAECompatTest {
         assertEquals(Direction.NORTH, AdvancedAECompat.getDirectionForKey(wrapped, null));
     }
 
-    private static final class Wrapper implements IPatternDetails, WrappedPatternDetails {
+    private static final class Wrapper implements IPatternDetails, IWrappedPatternDetails {
         private final IPatternDetails delegate;
 
         private Wrapper(IPatternDetails delegate) {

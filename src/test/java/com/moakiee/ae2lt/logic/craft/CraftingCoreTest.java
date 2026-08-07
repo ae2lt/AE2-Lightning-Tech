@@ -30,7 +30,7 @@ import appeng.api.stacks.AEKeyType;
 import appeng.api.stacks.GenericStack;
 import appeng.api.stacks.KeyCounter;
 import appeng.blockentity.crafting.IMolecularAssemblerSupportedPattern;
-import com.moakiee.thunderbolt.api.crafting.batch.SharedBatchInputPattern;
+import com.moakiee.thunderbolt.core.crafting.batch.SharedBatchInputPattern;
 
 class CraftingCoreTest {
     @Test

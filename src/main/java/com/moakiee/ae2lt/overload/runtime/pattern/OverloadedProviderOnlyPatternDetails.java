@@ -1,12 +1,12 @@
 package com.moakiee.ae2lt.overload.runtime.pattern;
 
-import com.moakiee.thunderbolt.core.crafting.support.FuzzyPatternInputs;
+import com.moakiee.thunderbolt.core.crafting.overload.OverloadedPatternDetails;
 
 /**
  * Marker for pattern definitions that rely on the Overloaded Pattern Provider
  * execution semantics and must not be treated as generic AE2 patterns.
  */
-public interface OverloadedProviderOnlyPatternDetails extends FuzzyPatternInputs {
+public interface OverloadedProviderOnlyPatternDetails extends OverloadedPatternDetails {
     PatternExecutionHostKind requiredHostKind();
 
     /**

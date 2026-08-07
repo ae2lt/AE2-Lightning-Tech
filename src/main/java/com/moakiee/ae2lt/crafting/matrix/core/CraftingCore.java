@@ -84,7 +84,7 @@ public final class CraftingCore implements Sweepable {
             return 0;
         }
 
-        long sharedOutput = details instanceof com.moakiee.thunderbolt.api.crafting.batch.SharedBatchInputPattern shared
+        long sharedOutput = details instanceof com.moakiee.thunderbolt.core.crafting.batch.SharedBatchInputPattern shared
                 ? Math.min(assembled.outputCount(), Math.max(0L,
                         shared.sharedBatchOutputAmount(assembled.output())))
                 : 0L;

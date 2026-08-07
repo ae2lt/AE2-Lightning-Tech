@@ -6,6 +6,8 @@ import java.util.List;
 public final class DataEnergisticsTargetPolicy {
     private static final String DATA_ENERGISTICS_MIXIN_PACKAGE =
             "com.fish_dan_.data_energistics.mixin.";
+    private static final String LEGACY_AE2LT_PATHING_MIXIN =
+            DATA_ENERGISTICS_MIXIN_PACKAGE + "ae2lt.Ae2ltPathingCalculationCompatMixin";
     private static final String OWNED_TARGET_PACKAGE = "com.moakiee.";
 
     private DataEnergisticsTargetPolicy() {}
@@ -13,6 +15,12 @@ public final class DataEnergisticsTargetPolicy {
     public static boolean shouldCancel(List<String> targetClassNames, String mixinClassName) {
         if (mixinClassName == null || !mixinClassName.startsWith(DATA_ENERGISTICS_MIXIN_PACKAGE)) {
             return false;
+        }
+        // This targets AE2's PathingCalculation, but shadows AE2LT's former
+        // ae2lt$useMaxFlow implementation field. It must therefore be treated as an AE2LT-owned
+        // compatibility surface even though the nominal target class is external.
+        if (LEGACY_AE2LT_PATHING_MIXIN.equals(mixinClassName)) {
+            return true;
         }
         if (targetClassNames == null) {
             return false;

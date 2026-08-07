@@ -1,5 +1,7 @@
 package com.moakiee.ae2lt.crafting.runtime.api;
 
+import com.moakiee.thunderbolt.core.crafting.loop.IPrioritizedCraftingTask;
+
 /** Stable comparator shared by TimeWheel schedulers and host-side tests. */
 public final class CraftingTaskPriorities {
     public static int compare(Object left, Object right) {

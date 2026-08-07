@@ -24,8 +24,8 @@ import appeng.api.stacks.AEKeyType;
 import appeng.api.stacks.GenericStack;
 import appeng.api.stacks.KeyCounter;
 
-import com.moakiee.ae2lt.crafting.runtime.api.ISeedPreservingCraftingTask;
-import com.moakiee.ae2lt.crafting.timewheel.TimeWheelTaskPersistenceDefinition;
+import com.moakiee.thunderbolt.core.crafting.loop.ISeedPreservingCraftingTask;
+import com.moakiee.thunderbolt.core.crafting.loop.CraftingTaskPersistenceDefinition;
 
 import org.junit.jupiter.api.Test;
 
@@ -86,14 +86,14 @@ class ExecuteLoopPatternEqualityTest {
 
     private record FakeSeedPattern(String identity, UUID group)
             implements IPatternDetails, ISeedPreservingCraftingTask,
-            TimeWheelTaskPersistenceDefinition {
+            CraftingTaskPersistenceDefinition {
         @Override public AEItemKey getDefinition() { return null; }
         @Override public IInput[] getInputs() { return new IInput[0]; }
         @Override public List<GenericStack> getOutputs() { return List.of(); }
         @Override public UUID reusableSeedGroupId() { return group; }
         @Override public Set<AEKey> reusableSeedCycleKeys() { return Set.of(SEED); }
         @Override public boolean hasSingleSeedInputPerMember() { return true; }
-        @Override public AEItemKey timeWheelPersistenceDefinition() { return null; }
+        @Override public AEItemKey craftingTaskPersistenceDefinition() { return null; }
     }
 
     private static final class TestKey extends AEKey {

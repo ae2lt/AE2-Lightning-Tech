@@ -5,11 +5,11 @@ import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.GenericStack;
 import appeng.api.stacks.KeyCounter;
 import net.minecraft.world.level.Level;
-import com.moakiee.ae2lt.crafting.timewheel.TimeWheelTaskPersistenceDefinition;
-import com.moakiee.ae2lt.crafting.runtime.api.IPrioritizedCraftingTask;
-import com.moakiee.thunderbolt.core.crafting.support.IProviderLookupPattern;
-import com.moakiee.ae2lt.crafting.runtime.api.ISeedPreservingCraftingTask;
-import com.moakiee.ae2lt.crafting.runtime.api.IPlannedSeedSlotPattern;
+import com.moakiee.thunderbolt.core.crafting.loop.CraftingTaskPersistenceDefinition;
+import com.moakiee.thunderbolt.core.crafting.loop.IPrioritizedCraftingTask;
+import com.moakiee.thunderbolt.core.crafting.pattern.IProviderLookupPattern;
+import com.moakiee.thunderbolt.core.crafting.loop.ISeedPreservingCraftingTask;
+import com.moakiee.thunderbolt.core.crafting.loop.IPlannedSeedSlotPattern;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -20,7 +20,7 @@ import appeng.blockentity.crafting.IMolecularAssemblerSupportedPattern;
 
 /** Execution snapshot for one member of an already-planned closed loop. */
 public class ClosedLoopExpandedPatternDetails
-        implements IPatternDetails, TimeWheelTaskPersistenceDefinition, IPrioritizedCraftingTask,
+        implements IPatternDetails, CraftingTaskPersistenceDefinition, IPrioritizedCraftingTask,
         IProviderLookupPattern, ISeedPreservingCraftingTask, IPlannedSeedSlotPattern {
     public static final int CLOSED_LOOP_DISPATCH_PRIORITY = 1_000;
     protected final IPatternDetails delegate;
@@ -174,7 +174,7 @@ public class ClosedLoopExpandedPatternDetails
     }
 
     @Override
-    public AEItemKey timeWheelPersistenceDefinition() {
+    public AEItemKey craftingTaskPersistenceDefinition() {
         return persistenceDefinition;
     }
 

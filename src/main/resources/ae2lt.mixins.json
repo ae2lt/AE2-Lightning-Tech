@@ -23,7 +23,6 @@
     "ServerPayloadContextPhaseTeleportMixin",
     "ServerGamePacketListenerCelestweaveCreativeSyncMixin",
     "compat.DraconicChargeUpPhaseFlightMixin",
-    "thunderbolt.CraftingCalculationPlanBindingMixin",
     "thunderbolt.TimeWheelCraftingCPUMenuMixin",
     "thunderbolt.CraftingCpuLogicMixin",
     "thunderbolt.AdvCraftingCpuLogicMixin",

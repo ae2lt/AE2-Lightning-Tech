@@ -5,14 +5,14 @@ import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.GenericStack;
 import appeng.api.stacks.KeyCounter;
-import com.moakiee.thunderbolt.core.crafting.support.IProviderLookupPattern;
-import com.moakiee.ae2lt.crafting.runtime.api.IPlannedSeedSlotPattern;
-import com.moakiee.ae2lt.crafting.runtime.api.IPrioritizedCraftingTask;
-import com.moakiee.ae2lt.crafting.runtime.api.ISeedPreservingCraftingTask;
+import com.moakiee.thunderbolt.core.crafting.pattern.IProviderLookupPattern;
+import com.moakiee.thunderbolt.core.crafting.loop.IPlannedSeedSlotPattern;
+import com.moakiee.thunderbolt.core.crafting.loop.IPrioritizedCraftingTask;
+import com.moakiee.thunderbolt.core.crafting.loop.ISeedPreservingCraftingTask;
 import com.moakiee.thunderbolt.core.crafting.support.CraftingPatternDelegates;
-import com.moakiee.thunderbolt.api.crafting.batch.SharedBatchInputPattern;
+import com.moakiee.thunderbolt.core.crafting.batch.SharedBatchInputPattern;
 import com.moakiee.ae2lt.overload.runtime.pattern.OverloadedProviderOnlyPatternDetails;
-import com.moakiee.ae2lt.crafting.timewheel.TimeWheelTaskPersistenceDefinition;
+import com.moakiee.thunderbolt.core.crafting.loop.CraftingTaskPersistenceDefinition;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -32,7 +32,7 @@ import java.util.UUID;
  */
 public final class ExecuteLoopPattern implements IPatternDetails, IProviderLookupPattern,
         IPrioritizedCraftingTask, ISeedPreservingCraftingTask,
-        TimeWheelTaskPersistenceDefinition, SharedBatchInputPattern {
+        CraftingTaskPersistenceDefinition, SharedBatchInputPattern {
     /** Runtime account used by fuzzy-output metadata for a safely shareable cycle boundary. */
     public static final UUID SHARED_SEED_ACCOUNT_ID =
             UUID.fromString("ae2ae2ae-51ed-4acc-8000-000000000001");
@@ -75,7 +75,7 @@ public final class ExecuteLoopPattern implements IPatternDetails, IProviderLooku
         if (!(delegate instanceof ISeedPreservingCraftingTask)) {
             throw new IllegalArgumentException("loop execution delegate must identify its seed group");
         }
-        if (!(delegate instanceof TimeWheelTaskPersistenceDefinition)) {
+        if (!(delegate instanceof CraftingTaskPersistenceDefinition)) {
             throw new IllegalArgumentException("loop execution delegate must be persistable");
         }
         this.seedConsumerId = Objects.requireNonNull(seedConsumerId, "seedConsumerId");
@@ -322,8 +322,8 @@ public final class ExecuteLoopPattern implements IPatternDetails, IProviderLooku
     }
 
     @Override public IPatternDetails providerLookupPattern() { return delegate; }
-    @Override public AEItemKey timeWheelPersistenceDefinition() {
-        return ((TimeWheelTaskPersistenceDefinition) delegate).timeWheelPersistenceDefinition();
+    @Override public AEItemKey craftingTaskPersistenceDefinition() {
+        return ((CraftingTaskPersistenceDefinition) delegate).craftingTaskPersistenceDefinition();
     }
     @Override public int dispatchPriority() { return dispatchPriority; }
     @Override public int dispatchOrder() { return dispatchOrder; }

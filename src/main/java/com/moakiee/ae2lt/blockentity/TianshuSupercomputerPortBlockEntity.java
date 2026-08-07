@@ -18,6 +18,11 @@ import com.moakiee.ae2lt.logic.tianshu.TianshuFunctionProfile;
 import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternRepository;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.TianshuInventoryMaintenanceService;
 import com.moakiee.ae2lt.crafting.timewheel.TimeWheelCraftingCpuPoolProvider;
+import com.moakiee.thunderbolt.api.crafting.CraftingAlgorithmProvider;
+import com.moakiee.thunderbolt.api.crafting.CraftingAlgorithmSelection;
+import com.moakiee.thunderbolt.core.crafting.algorithm.ThunderboltV2PlanningEngine;
+import com.moakiee.thunderbolt.core.crafting.algorithm.menu.CraftingAlgorithmProviderMenu;
+import com.moakiee.thunderbolt.core.crafting.algorithm.menu.CraftingAlgorithmProviderMenuHost;
 
 import appeng.api.config.Actionable;
 import appeng.api.crafting.IPatternDetails;
@@ -34,12 +39,20 @@ import appeng.api.stacks.KeyCounter;
 import appeng.api.util.AECableType;
 import appeng.blockentity.grid.AENetworkedBlockEntity;
 import appeng.me.helpers.MachineSource;
+import appeng.menu.ISubMenu;
+import appeng.menu.MenuOpener;
+import appeng.menu.implementations.PriorityMenu;
+import appeng.menu.locator.MenuLocators;
+import com.moakiee.ae2lt.menu.TianshuSupercomputerControllerMenu;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
@@ -49,7 +62,8 @@ import net.minecraft.world.level.block.state.BlockState;
  * controller; this block entity only exposes them to the grid and keeps link/migration metadata.
  */
 public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
-        implements TimeWheelCraftingCpuPoolProvider, ICraftingProvider, ICraftingRequester {
+        implements TimeWheelCraftingCpuPoolProvider, ICraftingProvider, ICraftingRequester,
+        CraftingAlgorithmProviderMenuHost {
     private static final double LINK_IDLE_POWER = 8.0D;
     private static final String TAG_CONTROLLER_POS = "ControllerPos";
     private static final String TAG_FORMED = "Formed";
@@ -95,9 +109,63 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkedBlockEntity
                 .addService(
                         com.moakiee.thunderbolt.api.crafting.cpu.ExtendedCraftingCpuClusterProvider.class,
                         this)
+                .addService(CraftingAlgorithmProvider.class, this)
                 .addService(TimeWheelCraftingCpuPoolProvider.class, this)
                 .addService(ICraftingProvider.class, this)
                 .addService(ICraftingRequester.class, this);
+    }
+
+    @Override
+    public net.minecraft.resources.ResourceLocation getProvidedAlgorithm() {
+        return ThunderboltV2PlanningEngine.ID;
+    }
+
+    @Override
+    public net.minecraft.resources.ResourceLocation getSelectedAlgorithm() {
+        var controller = getController();
+        return controller != null
+                ? controller.getCraftingAlgorithmProvider().getSelectedAlgorithm()
+                : ThunderboltV2PlanningEngine.ID;
+    }
+
+    @Override
+    public int getPriority() {
+        var controller = getController();
+        return controller != null ? controller.getCraftingAlgorithmPriority() : 0;
+    }
+
+    @Override
+    public void setSelection(CraftingAlgorithmSelection selection) {
+        var controller = getController();
+        if (controller != null) {
+            controller.getCraftingAlgorithmProvider().setSelection(selection);
+        }
+    }
+
+    @Override
+    public Component getCraftingAlgorithmMenuTitle() {
+        return Component.translatable("ae2lt.tianshu.gui.algorithm_selection");
+    }
+
+    @Override
+    public void returnToMainMenu(Player player, ISubMenu subMenu) {
+        if (subMenu instanceof PriorityMenu) {
+            MenuOpener.returnTo(
+                    CraftingAlgorithmProviderMenu.TYPE, player, subMenu.getLocator());
+            return;
+        }
+        var controller = getController();
+        if (controller != null) {
+            MenuOpener.returnTo(
+                    TianshuSupercomputerControllerMenu.TYPE,
+                    player,
+                    MenuLocators.forBlockEntity(controller));
+        }
+    }
+
+    @Override
+    public ItemStack getMainMenuIcon() {
+        return new ItemStack(ModBlocks.TIANSHU_SUPERCOMPUTER_CONTROLLER.get());
     }
 
     @Override

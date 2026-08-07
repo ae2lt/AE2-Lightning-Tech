@@ -13,13 +13,13 @@ import appeng.api.stacks.AEKey;
 import appeng.api.stacks.AEKeyType;
 import appeng.api.stacks.GenericStack;
 import appeng.api.stacks.KeyCounter;
-import com.moakiee.ae2lt.crafting.runtime.api.ISeedPreservingCraftingTask;
-import com.moakiee.ae2lt.crafting.runtime.api.IPlannedSeedSlotPattern;
+import com.moakiee.thunderbolt.core.crafting.loop.ISeedPreservingCraftingTask;
+import com.moakiee.thunderbolt.core.crafting.loop.IPlannedSeedSlotPattern;
 import com.moakiee.ae2lt.crafting.runtime.ExecuteLoopPattern;
 import com.moakiee.ae2lt.overload.runtime.pattern.OverloadPatternDetails;
 import com.moakiee.ae2lt.overload.runtime.pattern.OverloadedProviderOnlyPatternDetails;
 import com.moakiee.ae2lt.overload.runtime.pattern.PatternExecutionHostKind;
-import com.moakiee.ae2lt.crafting.timewheel.TimeWheelTaskPersistenceDefinition;
+import com.moakiee.thunderbolt.core.crafting.loop.CraftingTaskPersistenceDefinition;
 import com.mojang.serialization.MapCodec;
 import java.util.List;
 import java.util.Map;
@@ -313,7 +313,7 @@ class ClosedLoopExecutionEdgeCaseTest {
             List<GenericStack> outputs,
             Set<Integer> fuzzyOutputSlots)
             implements IPatternDetails, OverloadedProviderOnlyPatternDetails,
-            ISeedPreservingCraftingTask, TimeWheelTaskPersistenceDefinition,
+            ISeedPreservingCraftingTask, CraftingTaskPersistenceDefinition,
             IPlannedSeedSlotPattern {
         private FakeLoopPattern(
                 IPatternDetails.IInput[] inputs, Set<Integer> fuzzySlots, UUID groupId) {
@@ -342,7 +342,7 @@ class ClosedLoopExecutionEdgeCaseTest {
         @Override public UUID reusableSeedGroupId() { return groupId; }
         @Override public Set<AEKey> reusableSeedCycleKeys() { return Set.of(); }
         @Override public boolean hasSingleSeedInputPerMember() { return true; }
-        @Override public AEItemKey timeWheelPersistenceDefinition() { return null; }
+        @Override public AEItemKey craftingTaskPersistenceDefinition() { return null; }
         @Override public Map<Integer, AEKey> plannedSeedInputSlots() {
             return Map.copyOf(plannedSeedSlots);
         }

@@ -114,7 +114,7 @@ class TianshuPatternEncodingTermMenuSourceContractTest {
         assertTrue(menu.contains("selectInsertedPatternMode(TianshuEncodingMode.PROCESSING)"));
         assertTrue(menu.contains("selectInsertedPatternMode(TianshuEncodingMode.CLOSED_LOOP)"));
         assertTrue(advanced.contains("restoreForEditing("));
-        assertTrue(advanced.contains("current instanceof WrappedPatternDetails"));
+        assertTrue(advanced.contains("current instanceof IWrappedPatternDetails"));
         assertTrue(advanced.contains("advanced.getSparseInputs()"));
         assertTrue(advanced.contains("direction.ordinal() + 1"));
         assertTrue(screen.contains("observeEncodingAck()"));

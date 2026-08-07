@@ -11,12 +11,12 @@ import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.GenericStack;
 import appeng.api.stacks.KeyCounter;
 import appeng.api.crafting.IPatternDetails;
-import com.moakiee.ae2lt.crafting.runtime.api.ISeedPreservingCraftingTask;
+import com.moakiee.thunderbolt.core.crafting.loop.ISeedPreservingCraftingTask;
 import com.moakiee.ae2lt.crafting.runtime.ExecuteLoopPattern;
 import com.moakiee.ae2lt.overload.runtime.pattern.OverloadPatternDetails;
 import com.moakiee.ae2lt.overload.runtime.pattern.OverloadedProviderOnlyPatternDetails;
 import com.moakiee.ae2lt.overload.runtime.pattern.PatternExecutionHostKind;
-import com.moakiee.ae2lt.crafting.timewheel.TimeWheelTaskPersistenceDefinition;
+import com.moakiee.thunderbolt.core.crafting.loop.CraftingTaskPersistenceDefinition;
 import com.mojang.serialization.MapCodec;
 import java.util.List;
 import java.util.Map;
@@ -816,7 +816,7 @@ class LoopSeedLedgerBookEdgeCaseTest {
             boolean singleSeedInputPerMember,
             Set<Integer> fuzzyOutputSlots)
             implements IPatternDetails, ISeedPreservingCraftingTask,
-            TimeWheelTaskPersistenceDefinition, OverloadedProviderOnlyPatternDetails {
+            CraftingTaskPersistenceDefinition, OverloadedProviderOnlyPatternDetails {
         private FakeSeedPattern(IPatternDetails.IInput[] inputs, UUID group) {
             this(inputs, List.of(), group, true, Set.of());
         }
@@ -846,7 +846,7 @@ class LoopSeedLedgerBookEdgeCaseTest {
         @Override public boolean hasSingleSeedInputPerMember() {
             return singleSeedInputPerMember;
         }
-        @Override public AEItemKey timeWheelPersistenceDefinition() { return null; }
+        @Override public AEItemKey craftingTaskPersistenceDefinition() { return null; }
         @Override public PatternExecutionHostKind requiredHostKind() {
             return PatternExecutionHostKind.OVERLOADED_PATTERN_PROVIDER;
         }

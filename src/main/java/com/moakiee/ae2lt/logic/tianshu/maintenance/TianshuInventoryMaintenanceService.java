@@ -13,7 +13,7 @@ import appeng.api.stacks.AEKey;
 import appeng.crafting.CraftingLink;
 import appeng.me.service.CraftingService;
 import com.google.common.collect.ImmutableSet;
-import com.moakiee.ae2lt.crafting.runtime.ReservedStockCraftingRequester;
+import com.moakiee.thunderbolt.core.crafting.pattern.CraftingStockPolicy;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
@@ -573,7 +573,7 @@ public final class TianshuInventoryMaintenanceService
             IGrid grid, AEKey key, long amount, Future<ICraftingPlan> future) { }
 
     private final class RuleCalculationRequester
-            implements ICraftingSimulationRequester, ReservedStockCraftingRequester {
+            implements ICraftingSimulationRequester, CraftingStockPolicy {
         private final UUID ruleId;
         private final IGridNode gridNode;
         private final IActionSource actionSource;

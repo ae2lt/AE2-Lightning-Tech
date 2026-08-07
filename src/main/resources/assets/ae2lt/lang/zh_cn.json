@@ -1070,6 +1070,8 @@
   "ae2lt.tianshu.gui.fast_off": "已关闭",
   "ae2lt.tianshu.gui.capped": " · 已达上限",
   "ae2lt.tianshu.gui.build": "自动搭建外壳",
+  "ae2lt.tianshu.gui.algorithm_selection": "CPU 算法选择",
+  "ae2lt.tianshu.gui.cpu_priority": "CPU 优先级",
   "ae2lt.tianshu.gui.fast_planning.on": "快速计算：开启",
   "ae2lt.tianshu.gui.fast_planning.off": "快速计算：关闭",
   "ae2lt.tianshu.build_blocked": "自动搭建无法继续：%s 个结构位置被占用：%s",

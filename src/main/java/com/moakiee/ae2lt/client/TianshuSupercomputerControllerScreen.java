@@ -12,11 +12,13 @@ import net.minecraft.client.resources.language.I18n;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 import net.neoforged.neoforge.network.PacketDistributor;
+import appeng.client.gui.Icon;
+import appeng.client.gui.widgets.TabButton;
+import appeng.core.network.serverbound.SwitchGuisPacket;
+import appeng.menu.implementations.PriorityMenu;
 
 public class TianshuSupercomputerControllerScreen
         extends MultiblockControllerScreen<TianshuSupercomputerControllerMenu> {
-
-    private TextureToggleButton fastPlanningButton;
 
     public TianshuSupercomputerControllerScreen(
             TianshuSupercomputerControllerMenu menu, Inventory inventory, Component title) {
@@ -29,40 +31,29 @@ public class TianshuSupercomputerControllerScreen
         int x = leftPos - 18;
         int y = topPos;
 
-        var build = new TextureToggleButton(
-                TextureToggleButton.ButtonType.QUICK_BUILD,
-                state -> sendAction(TianshuControllerActionPacket.Action.AUTO_BUILD));
-        build.setTooltip(Tooltip.create(Component.translatable("ae2lt.tianshu.gui.build")));
-        build.setPosition(x, y);
-        addRenderableWidget(build);
+        var selection = new TextureToggleButton(
+                TextureToggleButton.ButtonType.CPU_SELECTION,
+                state -> sendAction(TianshuControllerActionPacket.Action.OPEN_ALGORITHM_SELECTION));
+        selection.setTooltip(Tooltip.create(Component.translatable(
+                "ae2lt.tianshu.gui.algorithm_selection")));
+        selection.setPosition(x, y);
+        addRenderableWidget(selection);
 
-        fastPlanningButton = new TextureToggleButton(
-                TextureToggleButton.ButtonType.QUICK_COMPUTE,
-                state -> sendAction(TianshuControllerActionPacket.Action.TOGGLE_FAST_PLANNING));
-        fastPlanningButton.setPosition(x, y + 22);
-        refreshFastPlanningButton();
-        addRenderableWidget(fastPlanningButton);
+        var cpuPriorityLabel = Component.translatable("ae2lt.tianshu.gui.cpu_priority");
+        var priority = new TabButton(
+                Icon.PRIORITY,
+                cpuPriorityLabel,
+                ignored -> PacketDistributor.sendToServer(
+                        SwitchGuisPacket.openSubMenu(PriorityMenu.TYPE)));
+        priority.setTooltip(Tooltip.create(cpuPriorityLabel));
+        priority.setSize(20, 20);
+        priority.setPosition(leftPos + 185, topPos - 5);
+        addRenderableWidget(priority);
     }
 
     private void sendAction(TianshuControllerActionPacket.Action action) {
         PacketDistributor.sendToServer(
                 new TianshuControllerActionPacket(menu.token(), menu.getBlockPos(), action));
-    }
-
-    @Override
-    protected void containerTick() {
-        super.containerTick();
-        if (fastPlanningButton != null) {
-            refreshFastPlanningButton();
-        }
-    }
-
-    private void refreshFastPlanningButton() {
-        boolean enabled = menu.isFastPlanningEnabled();
-        fastPlanningButton.setState(enabled);
-        fastPlanningButton.setTooltip(Tooltip.create(Component.translatable(enabled
-                ? "ae2lt.tianshu.gui.fast_planning.on"
-                : "ae2lt.tianshu.gui.fast_planning.off")));
     }
 
     @Override
@@ -94,10 +85,6 @@ public class TianshuSupercomputerControllerScreen
                         formatCount(menu.getClosedLoopSeedStorages())),
                 COL_VALUE);
 
-        boolean fast = menu.isFastPlanningEnabled();
-        drawRow(graphics, FOOTER_MID_Y, Component.translatable("ae2lt.tianshu.gui.label_fast"),
-                I18n.get(fast ? "ae2lt.tianshu.gui.fast_on" : "ae2lt.tianshu.gui.fast_off"),
-                fast ? COL_GREEN : COL_MUTED);
     }
 
     private Component issueText() {

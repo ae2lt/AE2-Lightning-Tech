@@ -60,6 +60,11 @@ public interface TimeWheelCraftingCpuHost {
         return CpuSelectionMode.ANY;
     }
 
+    /** Player-configured priority used when AE2 automatically chooses a crafting CPU. */
+    default int getCpuPriority() {
+        return 0;
+    }
+
     /**
      * Display name shown for this CPU (e.g. in the crafting status menu). The concrete
      * multiblock supplies its own translatable name so the lib dispatch engine stays free

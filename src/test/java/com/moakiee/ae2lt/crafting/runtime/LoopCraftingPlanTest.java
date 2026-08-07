@@ -12,10 +12,11 @@ import appeng.api.stacks.AEKeyType;
 import appeng.api.stacks.GenericStack;
 import appeng.api.stacks.KeyCounter;
 import appeng.crafting.CraftingPlan;
-import com.moakiee.ae2lt.crafting.timewheel.ReusableSeedPattern;
+import com.moakiee.thunderbolt.api.crafting.cpu.ExtendedCraftingCpuClusterHost;
+import com.moakiee.thunderbolt.core.crafting.loop.CraftingCpuRestrictedPattern;
+import com.moakiee.thunderbolt.core.crafting.loop.ReusableSeedPattern;
 import com.moakiee.ae2lt.crafting.timewheel.TimeWheelCraftingCpuPool;
-import com.moakiee.ae2lt.crafting.timewheel.TimeWheelCraftingCpuPoolHost;
-import com.moakiee.ae2lt.crafting.timewheel.TimeWheelPoolRestrictedPattern;
+import com.moakiee.thunderbolt.core.crafting.plan.LoopCraftingPlan;
 import com.moakiee.thunderbolt.core.crafting.planner.ReusableBootstrapRoute;
 import com.moakiee.thunderbolt.core.crafting.planner.ReusableStockUsageKey;
 import com.mojang.serialization.MapCodec;
@@ -166,7 +167,7 @@ class LoopCraftingPlanTest {
     }
 
     private static final class TestLoopPattern
-            implements IPatternDetails, TimeWheelPoolRestrictedPattern, ReusableSeedPattern {
+            implements IPatternDetails, CraftingCpuRestrictedPattern, ReusableSeedPattern {
         private final AEKey seed;
         private final UUID groupId;
         private final boolean shared;
@@ -189,7 +190,7 @@ class LoopCraftingPlanTest {
         @Override public List<GenericStack> getOutputs() {
             return List.of(new GenericStack(seed, 1L));
         }
-        @Override public boolean acceptsTimeWheelPool(TimeWheelCraftingCpuPoolHost host) {
+        @Override public boolean acceptsCraftingCpu(ExtendedCraftingCpuClusterHost host) {
             return true;
         }
         @Override public Object reusableSeedStorageScope() { return "host"; }

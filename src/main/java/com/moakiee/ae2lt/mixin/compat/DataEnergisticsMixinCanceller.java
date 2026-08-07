@@ -10,8 +10,9 @@ import com.moakiee.ae2lt.config.EarlyCompatibilityConfig;
  * Prevents Data Energistics from mixing into classes owned by Moakiee projects.
  *
  * <p>Its injections into AE2, Minecraft and its other integrations remain its responsibility and
- * are deliberately left untouched. This boundary only protects implementation classes under the
- * {@code com.moakiee} namespace, which are not a supported third-party Mixin surface.
+ * are deliberately left untouched. This boundary protects implementation classes under the
+ * {@code com.moakiee} namespace, plus explicitly identified legacy compatibility Mixins that
+ * shadow removed AE2LT implementation details.
  */
 public final class DataEnergisticsMixinCanceller implements MixinCanceller {
     @Override

@@ -16,20 +16,20 @@ import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.Nullable;
 import appeng.api.crafting.PatternDetailsHelper;
 import appeng.api.crafting.IPatternDetails;
-import com.moakiee.ae2lt.crafting.runtime.PatternFiringExpander;
+import com.moakiee.thunderbolt.api.crafting.cpu.ExtendedCraftingCpuClusterHost;
+import com.moakiee.thunderbolt.core.crafting.loop.PatternFiringExpander;
 import com.moakiee.ae2lt.crafting.runtime.ExecuteLoopPattern;
 import com.moakiee.thunderbolt.core.crafting.support.CraftingPatternDelegates;
 import com.moakiee.ae2lt.overload.runtime.pattern.OverloadedProviderOnlyPatternDetails;
 import com.moakiee.thunderbolt.core.crafting.planner.Sat;
-import com.moakiee.ae2lt.crafting.timewheel.TimeWheelPoolRestrictedPattern;
-import com.moakiee.ae2lt.crafting.timewheel.TimeWheelCraftingCpuPoolHost;
-import com.moakiee.ae2lt.crafting.timewheel.ReusableSeedPattern;
+import com.moakiee.thunderbolt.core.crafting.loop.CraftingCpuRestrictedPattern;
+import com.moakiee.thunderbolt.core.crafting.loop.ReusableSeedPattern;
 import com.moakiee.ae2lt.logic.tianshu.TianshuCraftingCpuHost;
 import java.util.UUID;
 
 public final class Ae2ClosedLoopPatternDetails
         implements TianshuClosedLoopPatternDetails, PatternFiringExpander,
-        TimeWheelPoolRestrictedPattern, ReusableSeedPattern {
+        CraftingCpuRestrictedPattern, ReusableSeedPattern {
     private final AEItemKey definition;
     private final ClosedLoopPatternPayload payload;
     private final IInput[] inputs;
@@ -224,7 +224,7 @@ public final class Ae2ClosedLoopPatternDetails
     }
 
     @Override
-    public boolean acceptsTimeWheelPool(TimeWheelCraftingCpuPoolHost host) {
+    public boolean acceptsCraftingCpu(ExtendedCraftingCpuClusterHost host) {
         return owningTianshuId != null
                 && host instanceof TianshuCraftingCpuHost tianshu
                 && owningTianshuId.equals(tianshu.getTianshuId());

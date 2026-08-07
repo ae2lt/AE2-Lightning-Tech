@@ -37,7 +37,7 @@ import appeng.me.service.CraftingService;
 import appeng.hooks.ticking.TickHandler;
 
 import com.moakiee.thunderbolt.core.crafting.batch.TickProviderDispatchSchedule;
-import com.moakiee.ae2lt.crafting.runtime.LoopCraftingPlan;
+import com.moakiee.thunderbolt.core.crafting.plan.LoopCraftingPlan;
 import com.moakiee.thunderbolt.api.crafting.cpu.ExtendedCraftingCpuCluster;
 
 /**
@@ -90,6 +90,11 @@ public final class TimeWheelCraftingCpuPool implements ExtendedCraftingCpuCluste
     @Override
     public boolean isFastPlanningEnabled() {
         return fastPlanningEnabled;
+    }
+
+    @Override
+    public int getCpuPriority() {
+        return host == null ? 0 : host.getCpuPriority();
     }
 
     public void setFastPlanningEnabled(boolean enabled) {

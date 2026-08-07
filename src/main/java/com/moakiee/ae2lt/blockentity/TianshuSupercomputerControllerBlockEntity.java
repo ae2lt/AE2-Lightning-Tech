@@ -24,8 +24,11 @@ import com.moakiee.ae2lt.logic.persistence.CompletePhysicalStorageSet;
 import com.moakiee.ae2lt.registry.ModBlockEntities;
 import com.moakiee.ae2lt.registry.ModItems;
 import com.moakiee.ae2lt.registry.ModBlocks;
-import com.moakiee.thunderbolt.mixin.ae2.crafting.support.CraftingProviderChangeTracker;
-import com.moakiee.ae2lt.crafting.timewheel.ReusableSeedPattern;
+import com.moakiee.thunderbolt.core.crafting.support.CraftingProviderChangeTracker;
+import com.moakiee.thunderbolt.core.crafting.loop.ReusableSeedPattern;
+import com.moakiee.thunderbolt.api.crafting.ConfigurableCraftingAlgorithmProvider;
+import com.moakiee.thunderbolt.api.crafting.DefaultCraftingAlgorithmProviderState;
+import com.moakiee.thunderbolt.core.crafting.algorithm.ThunderboltV2PlanningEngine;
 import com.moakiee.ae2lt.crafting.timewheel.TimeWheelCraftingCpuPool;
 import com.moakiee.ae2lt.crafting.timewheel.TimeWheelCraftingCpuPoolHost;
 import java.util.List;
@@ -46,6 +49,10 @@ import appeng.api.stacks.AEKey;
 import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.KeyCounter;
 import appeng.me.service.CraftingService;
+import appeng.helpers.IPriorityHost;
+import appeng.menu.ISubMenu;
+import appeng.menu.MenuOpener;
+import com.moakiee.ae2lt.menu.TianshuSupercomputerControllerMenu;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -67,7 +74,7 @@ import net.minecraft.world.level.block.state.BlockState;
 
 public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
         implements TimeWheelCraftingCpuPoolHost, TianshuInventoryMaintenanceHost,
-        TianshuCraftingCpuHost {
+        TianshuCraftingCpuHost, IPriorityHost {
     private static final long NO_SCAN = Long.MIN_VALUE;
     private static final int AUTO_BUILD_INTERVAL_TICKS = 1;
     private static final int CHUNK_RECHECK_INTERVAL_TICKS = 20;
@@ -84,6 +91,8 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
     private static final String TAG_SEED_STORAGES = "SeedStorages";
     private static final String TAG_MACHINE_ID = "MachineId";
     private static final String TAG_FAST_PLANNING = "FastPlanning";
+    private static final String TAG_CPU_PRIORITY = "CpuPriority";
+    private static final String TAG_ALGORITHM_PROVIDER = "CraftingAlgorithmProvider";
     private static final String TAG_CPU_POOL = "CpuPool";
     private static final String TAG_MAINTENANCE = "InventoryMaintenance";
     private boolean formed;
@@ -111,6 +120,7 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
     private long nextChunkCheckTick;
     private List<TianshuMultiblockScanIssue> lastIssues = List.of();
     private boolean fastPlanningEnabled = true;
+    private int cpuPriority;
     private List<TianshuAutoBuildPlan.Placement> autoBuildPlacements = List.of();
     private UUID autoBuildPlayerId;
     private Direction autoBuildFacing = Direction.NORTH;
@@ -125,6 +135,9 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
     private Set<AEItemKey> publishedClosedLoopPatternDefinitions = Set.of();
     private final CraftingProviderChangeTracker closedLoopDependencyChanges =
             new CraftingProviderChangeTracker();
+    private final DefaultCraftingAlgorithmProviderState algorithmProvider =
+            new DefaultCraftingAlgorithmProviderState(
+                    ThunderboltV2PlanningEngine.ID, 0, this::algorithmProviderChanged);
 
     public TianshuSupercomputerControllerBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.TIANSHU_SUPERCOMPUTER_CONTROLLER.get(), pos, state);
@@ -215,6 +228,47 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
     public void toggleFastPlanning() {
         fastPlanningEnabled = !fastPlanningEnabled;
         cpuPool.setFastPlanningEnabled(fastPlanningEnabled);
+        setChanged();
+    }
+
+    public ConfigurableCraftingAlgorithmProvider getCraftingAlgorithmProvider() {
+        return algorithmProvider;
+    }
+
+    public int getCraftingAlgorithmPriority() {
+        return algorithmProvider.getPriority();
+    }
+
+    @Override
+    public int getPriority() {
+        return cpuPriority;
+    }
+
+    @Override
+    public void setPriority(int priority) {
+        if (cpuPriority != priority) {
+            cpuPriority = priority;
+            setChanged();
+        }
+    }
+
+    @Override
+    public int getCpuPriority() {
+        return cpuPriority;
+    }
+
+    @Override
+    public void returnToMainMenu(Player player, ISubMenu subMenu) {
+        MenuOpener.returnTo(
+                TianshuSupercomputerControllerMenu.TYPE, player, subMenu.getLocator());
+    }
+
+    @Override
+    public ItemStack getMainMenuIcon() {
+        return new ItemStack(ModBlocks.TIANSHU_SUPERCOMPUTER_CONTROLLER.get());
+    }
+
+    private void algorithmProviderChanged() {
         setChanged();
     }
 
@@ -1210,6 +1264,10 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
         if (maxPos != null) tag.putLong(TAG_MAX_POS, maxPos.asLong());
         tag.putInt(TAG_MEMBER_COUNT, memberCount);
         tag.putBoolean(TAG_FAST_PLANNING, fastPlanningEnabled);
+        tag.putInt(TAG_CPU_PRIORITY, cpuPriority);
+        var algorithmProviderTag = new CompoundTag();
+        algorithmProvider.writeToNBT(algorithmProviderTag);
+        tag.put(TAG_ALGORITHM_PROVIDER, algorithmProviderTag);
         if (coreProfile.mainCore() != null) {
             tag.putString(TAG_MAIN_CORE, coreProfile.mainCore().name());
             tag.putInt(TAG_STORAGE_UNITS, coreProfile.storageUnitCount());
@@ -1234,7 +1292,11 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
         memberCount = tag.getInt(TAG_MEMBER_COUNT);
         fastPlanningEnabled = !tag.contains(TAG_FAST_PLANNING, Tag.TAG_BYTE)
                 || tag.getBoolean(TAG_FAST_PLANNING);
+        cpuPriority = tag.getInt(TAG_CPU_PRIORITY);
         cpuPool.setFastPlanningEnabled(fastPlanningEnabled);
+        if (tag.contains(TAG_ALGORITHM_PROVIDER, Tag.TAG_COMPOUND)) {
+            algorithmProvider.readFromNBT(tag.getCompound(TAG_ALGORITHM_PROVIDER));
+        }
         if (tag.contains(TAG_MAIN_CORE, Tag.TAG_STRING)) {
             try {
                 var tier = CpuMainCoreTier.valueOf(tag.getString(TAG_MAIN_CORE));

@@ -18,7 +18,7 @@ import appeng.api.stacks.GenericStack;
 import appeng.api.stacks.KeyCounter;
 import appeng.blockentity.crafting.IMolecularAssemblerSupportedPattern;
 
-import com.moakiee.ae2lt.overload.runtime.pattern.WrappedPatternDetails;
+import com.moakiee.thunderbolt.core.crafting.pattern.IWrappedPatternDetails;
 
 class BatchPatternEligibilityTest {
     @Test
@@ -122,7 +122,7 @@ class BatchPatternEligibilityTest {
         }
     }
 
-    private static class PatternWrapper extends PlainPattern implements WrappedPatternDetails {
+    private static class PatternWrapper extends PlainPattern implements IWrappedPatternDetails {
         private final IPatternDetails wrapped;
 
         private PatternWrapper(IPatternDetails wrapped) {
@@ -136,7 +136,7 @@ class BatchPatternEligibilityTest {
     }
 
     private static final class SelfWrappingPattern extends PlainPattern
-            implements WrappedPatternDetails {
+            implements IWrappedPatternDetails {
         @Override
         public IPatternDetails wrappedPatternDetails() {
             return this;

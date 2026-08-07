@@ -64,7 +64,9 @@ import com.moakiee.thunderbolt.core.crafting.batch.ParallelBatchCpuHelper;
 import com.moakiee.thunderbolt.core.crafting.batch.TickProviderDispatchSchedule;
 import com.moakiee.ae2lt.crafting.runtime.api.CraftingTaskPriorities;
 import com.moakiee.thunderbolt.core.crafting.support.CraftingPatternDelegates;
-import com.moakiee.ae2lt.crafting.runtime.api.ISeedPreservingCraftingTask;
+import com.moakiee.thunderbolt.core.crafting.loop.CraftingTaskPersistenceDefinition;
+import com.moakiee.thunderbolt.core.crafting.loop.ISeedPreservingCraftingTask;
+import com.moakiee.thunderbolt.core.crafting.loop.ReusableSeedPattern;
 import com.moakiee.thunderbolt.mixin.ae2.crafting.ElapsedTimeTrackerAccessor;
 import com.moakiee.ae2lt.overload.runtime.cpu.OverloadClaimResult;
 import com.moakiee.ae2lt.overload.runtime.cpu.OverloadConsumerCredit;
@@ -73,9 +75,9 @@ import com.moakiee.ae2lt.overload.runtime.cpu.OverloadPatternReference;
 import com.moakiee.ae2lt.overload.runtime.cpu.OverloadReusableSeedMetadata;
 import com.moakiee.ae2lt.overload.runtime.model.MatchMode;
 import com.moakiee.ae2lt.overload.runtime.pattern.OverloadedProviderOnlyPatternDetails;
-import com.moakiee.ae2lt.crafting.runtime.PatternFiringExpander;
+import com.moakiee.thunderbolt.core.crafting.loop.PatternFiringExpander;
 import com.moakiee.ae2lt.crafting.runtime.ExecuteLoopPattern;
-import com.moakiee.ae2lt.crafting.runtime.LoopCraftingPlan;
+import com.moakiee.thunderbolt.core.crafting.plan.LoopCraftingPlan;
 import com.moakiee.thunderbolt.core.crafting.planner.Sat;
 
 public final class Ae2LtTimeWheelCraftingCpuLogic {
@@ -597,7 +599,7 @@ public final class Ae2LtTimeWheelCraftingCpuLogic {
             batchedByTask.remove(details);
             boolean sharedSeedBatch = (details instanceof ExecuteLoopPattern loop
                             ? loop.delegate() : details)
-                    instanceof com.moakiee.thunderbolt.api.crafting.batch.SharedBatchInputPattern;
+                    instanceof com.moakiee.thunderbolt.core.crafting.batch.SharedBatchInputPattern;
             recordLoopPatternDispatch(
                     details, result.dispatchedCopies(), sharedSeedBatch);
         }
@@ -3152,8 +3154,8 @@ public final class Ae2LtTimeWheelCraftingCpuLogic {
 
             var list = new ListTag();
             for (var entry : tasks.entrySet()) {
-                var definition = entry.getKey() instanceof TimeWheelTaskPersistenceDefinition persistent
-                        ? persistent.timeWheelPersistenceDefinition()
+                var definition = entry.getKey() instanceof CraftingTaskPersistenceDefinition persistent
+                        ? persistent.craftingTaskPersistenceDefinition()
                         : entry.getKey().getDefinition();
                 var item = definition.toTag(registries);
                 item.putLong(NBT_CRAFTING_PROGRESS, entry.getValue().value);
