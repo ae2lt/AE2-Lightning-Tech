@@ -56,10 +56,6 @@ class ControllerOwnedRuntimeArchitectureTest {
 
         int bindMembers = controller.indexOf(
                 "private void bindMembers(MatrixMultiblockScanResult result)");
-        int waitForPortNode = controller.indexOf(
-                "linkedPort == null || !linkedPort.getMainNode().isReady()", bindMembers);
-        int scheduleRetry = controller.indexOf("scheduleStructureCheck();", waitForPortNode);
-        int abortEarlyPublish = controller.indexOf("return;", scheduleRetry);
         int restoreOwner = controller.indexOf(
                 "storage.setControllerPos(worldPosition);", bindMembers);
         int publishPort = controller.indexOf(
@@ -68,15 +64,28 @@ class ControllerOwnedRuntimeArchitectureTest {
                 "storage.bindToController(worldPosition, linkedPort);", bindMembers);
 
         assertTrue(bindMembers >= 0);
-        assertTrue(waitForPortNode > bindMembers);
-        assertTrue(scheduleRetry > waitForPortNode);
-        assertTrue(abortEarlyPublish > scheduleRetry && abortEarlyPublish < restoreOwner,
-                "An unready AE2 port node must defer the entire pattern publication until the next tick");
         assertTrue(restoreOwner > bindMembers);
         assertTrue(publishPort > restoreOwner,
                 "Every persisted pattern storage must be controller-owned before AE2 refreshes the provider");
         assertTrue(bindTerminalLink > publishPort,
                 "Pattern terminal leaf nodes must be connected after the port is published");
+    }
+
+    @Test
+    void matrixRetriesPatternPublicationOnceItsAe2PortNodeIsReady() throws Exception {
+        String port = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/blockentity/MatrixPortBlockEntity.java"));
+
+        int onReady = port.indexOf("public void onReady()");
+        int readyNode = port.indexOf("super.onReady();", onReady);
+        int resolveController = port.indexOf("var controller = getController();", readyNode);
+        int scheduleRetry = port.indexOf("controller.scheduleStructureCheck();", resolveController);
+
+        assertTrue(onReady >= 0);
+        assertTrue(readyNode > onReady);
+        assertTrue(resolveController > readyNode);
+        assertTrue(scheduleRetry > resolveController,
+                "The matrix must retry pattern publication only after AE2 has readied its port node");
     }
 
     @Test

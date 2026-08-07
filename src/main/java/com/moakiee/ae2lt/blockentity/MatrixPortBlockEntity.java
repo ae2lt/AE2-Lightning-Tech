@@ -342,6 +342,19 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
         nextBindingCheckTick = level != null ? level.getGameTime() : 0L;
     }
 
+    @Override
+    public void onReady() {
+        super.onReady();
+        // AE2 creates this managed node at the end of the server-level tick. If the controller
+        // restored the multiblock earlier in that tick, its first attempt to attach the internal
+        // pattern-container nodes could not succeed. Retry the publication once now that the
+        // port node is ready, without polling or repeatedly scanning a broken structure.
+        var controller = getController();
+        if (controller != null) {
+            controller.scheduleStructureCheck();
+        }
+    }
+
     public CompoundTag copyLegacyClusterState() {
         return legacyClusterState != null ? legacyClusterState.copy() : null;
     }
