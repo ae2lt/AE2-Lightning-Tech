@@ -796,7 +796,7 @@ final class ProviderWirelessDispatch {
                 stableSuccesses = 0;
                 searchHigh = cooldown;
                 cooldown = Math.max(searchLow, (searchLow + searchHigh) / 2);
-                cooldown = Math.clamp(cooldown, COOLDOWN_MIN, COOLDOWN_MAX);
+                cooldown = Math.max(COOLDOWN_MIN, Math.min(COOLDOWN_MAX, cooldown));
             }
             cooldownUntil = -1L;
         }
@@ -823,8 +823,8 @@ final class ProviderWirelessDispatch {
                     cooldown = COOLDOWN_MAX;
                 } else {
                     cooldown = (searchLow + searchHigh) / 2;
-                    cooldown = Math.clamp(
-                            cooldown, COOLDOWN_MIN, COOLDOWN_MAX);
+                    cooldown = Math.max(
+                            COOLDOWN_MIN, Math.min(COOLDOWN_MAX, cooldown));
                 }
             }
             cooldownUntil = gameTick + cooldown;

@@ -143,8 +143,8 @@ final class WirelessBatchCadence<T> {
                     && state.provenChunkRejections == 0) {
                 elapsed = 1L;
             } else if (state.provenChunkRejections > 0) {
-                state.learnedCoverage = (int) Math.clamp(
-                        elapsed, 1L, MAX_COVERAGE_TICKS);
+                state.learnedCoverage = (int) Math.max(
+                        1L, Math.min(MAX_COVERAGE_TICKS, elapsed));
             } else {
                 elapsed = state.learnedCoverage;
             }
@@ -154,10 +154,10 @@ final class WirelessBatchCadence<T> {
                 && state.provenChunkRejections > 0
                 && state.lastOwnedCopies > 0L) {
             long scaledCoverage = ownedCopies * state.learnedCoverage;
-            coverage = (int) Math.clamp(
-                    ceilingDivide(scaledCoverage, state.lastOwnedCopies),
+            coverage = (int) Math.max(
                     1L,
-                    MAX_COVERAGE_TICKS);
+                    Math.min(MAX_COVERAGE_TICKS,
+                            ceilingDivide(scaledCoverage, state.lastOwnedCopies)));
         }
 
         int pressureFloor = pressureFloor(state.failurePressure);
@@ -321,10 +321,9 @@ final class WirelessBatchCadence<T> {
                                 == ProviderTarget.BaselineStatus.PREFIX_COMPLETE)
                 && state.lastSuccessTick != Long.MIN_VALUE
                 && ownedCopies == state.lastOwnedCopies) {
-            state.baselineCoverage = (int) Math.clamp(
-                    gameTick - state.lastSuccessTick,
+            state.baselineCoverage = (int) Math.max(
                     1L,
-                    MAX_COVERAGE_TICKS);
+                    Math.min(MAX_COVERAGE_TICKS, gameTick - state.lastSuccessTick));
         }
         finishBaselineSample(state, gameTick, ownedCopies, true);
         state.nextAttemptExploratory = false;

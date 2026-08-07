@@ -30,9 +30,7 @@ public class PatternStorageSavedData extends SavedData {
 
     public static PatternStorageSavedData get(ServerLevel level) {
         return level.getDataStorage().computeIfAbsent(
-                PatternStorageSavedData::load,
-                PatternStorageSavedData::new,
-                DATA_NAME);
+                PatternStorageSavedData::load, PatternStorageSavedData::new, DATA_NAME);
     }
 
     /**

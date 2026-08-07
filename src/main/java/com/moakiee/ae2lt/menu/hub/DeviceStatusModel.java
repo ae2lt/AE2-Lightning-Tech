@@ -80,7 +80,7 @@ public record DeviceStatusModel(
         }
         int clampedModuleIndex = modules.isEmpty()
                 ? -1
-                : Math.clamp(selectedModuleIndex, 0, modules.size() - 1);
+                : Math.max(0, Math.min(modules.size() - 1, selectedModuleIndex));
         List<ModuleConfigInfo> moduleConfigs = moduleConfigs(armor, player, clampedModuleIndex);
 
         return new DeviceStatusModel(

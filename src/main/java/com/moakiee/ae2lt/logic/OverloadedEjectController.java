@@ -56,7 +56,8 @@ final class OverloadedEjectController {
                             ghostBlockEntity,
                             providerLevel.dimension(),
                             host.getBlockPos()));
-            targetLevel.invalidateCapabilities(adjacentPos);
+            // Forge 1.20.1 has no Level.invalidateCapabilities; capabilities are
+            // re-queried lazily per getCapability call, so no cache busting needed.
         }
     }
 
@@ -73,7 +74,7 @@ final class OverloadedEjectController {
         for (var position : positions) {
             var targetLevel = server.getLevel(position.dimension());
             if (targetLevel != null) {
-                targetLevel.invalidateCapabilities(position.pos());
+                // Forge 1.20.1: no capability cache to invalidate (see refresh()).
             }
         }
     }

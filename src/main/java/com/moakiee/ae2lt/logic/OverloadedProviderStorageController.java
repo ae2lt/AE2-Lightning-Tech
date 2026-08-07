@@ -3,7 +3,6 @@ package com.moakiee.ae2lt.logic;
 import java.util.ArrayList;
 import java.util.List;
 
-import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
@@ -43,28 +42,26 @@ final class OverloadedProviderStorageController {
     }
 
     void writeToNBT(
-            CompoundTag tag, HolderLookup.Provider registries) {
+            CompoundTag tag) {
         if (pendingRestore.isEmpty()) {
             return;
         }
         var list = new ListTag();
         for (var stack : pendingRestore) {
-            list.add(GenericStack.writeTag(registries, stack));
+            list.add(GenericStack.writeTag(stack));
         }
         tag.put(TAG_RESTORE_OVERFLOW, list);
     }
 
     void readFromNBT(
             CompoundTag tag,
-            HolderLookup.Provider registries,
             PatternProviderReturnInventory returnInventory) {
         needsSavedDataLoad = totalCapacity > 36
                 && !hasPatternInventoryContents();
         pendingRestore.clear();
-        salvageTruncatedNbtSlots(tag, registries, returnInventory);
+        salvageTruncatedNbtSlots(tag, returnInventory);
         if (tag.contains(TAG_RESTORE_OVERFLOW, Tag.TAG_LIST)) {
             pendingRestore.addAll(readGenericStackList(
-                    registries,
                     tag.getList(TAG_RESTORE_OVERFLOW, Tag.TAG_COMPOUND)));
         }
     }
@@ -186,7 +183,6 @@ final class OverloadedProviderStorageController {
 
     private void salvageTruncatedNbtSlots(
             CompoundTag tag,
-            HolderLookup.Provider registries,
             PatternProviderReturnInventory returnInventory) {
         int salvaged = 0;
 
@@ -199,7 +195,7 @@ final class OverloadedProviderStorageController {
             if (itemTag.getInt("Slot") < patternInventorySize) {
                 continue;
             }
-            var stack = ItemStack.parseOptional(registries, itemTag);
+            var stack = ItemStack.of(itemTag);
             var key = AEItemKey.of(stack);
             if (key != null && !stack.isEmpty()) {
                 pendingRestore.add(
@@ -212,7 +208,7 @@ final class OverloadedProviderStorageController {
                 PatternProviderLogic.NBT_RETURN_INV, Tag.TAG_COMPOUND);
         for (int i = returnInventory.size(); i < returnTag.size(); i++) {
             var stack = GenericStack.readTag(
-                    registries, returnTag.getCompound(i));
+                    returnTag.getCompound(i));
             if (stack != null && stack.amount() > 0L) {
                 pendingRestore.add(stack);
                 salvaged++;
@@ -227,10 +223,10 @@ final class OverloadedProviderStorageController {
     }
 
     private static List<GenericStack> readGenericStackList(
-            HolderLookup.Provider registries, ListTag list) {
+            ListTag list) {
         var stacks = new ArrayList<GenericStack>(list.size());
         for (int i = 0; i < list.size(); i++) {
-            var stack = GenericStack.readTag(registries, list.getCompound(i));
+            var stack = GenericStack.readTag(list.getCompound(i));
             if (stack != null && stack.amount() > 0L) {
                 stacks.add(stack);
             }

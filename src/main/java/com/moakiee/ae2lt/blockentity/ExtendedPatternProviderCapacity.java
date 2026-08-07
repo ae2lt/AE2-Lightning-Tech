@@ -9,7 +9,7 @@ public final class ExtendedPatternProviderCapacity {
     }
 
     public static int clampPages(int pages) {
-        return Math.clamp(pages, 1, MAX_PAGES);
+        return Math.max(1, Math.min(MAX_PAGES, pages));
     }
 
     public static int slotsForPages(int pages) {

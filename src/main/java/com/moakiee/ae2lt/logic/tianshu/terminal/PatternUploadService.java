@@ -50,7 +50,7 @@ public final class PatternUploadService {
         if (targetSlot < 0) return UploadResult.NO_FREE_SLOT;
 
         var removed = source.extractItem(sourceSlot, 1, false);
-        if (removed.isEmpty() || !ItemStack.isSameItemSameComponents(sourceStack, removed)) {
+        if (removed.isEmpty() || !ItemStack.isSameItemSameTags(sourceStack, removed)) {
             if (!removed.isEmpty()) source.addItems(removed);
             return UploadResult.INVALID_SOURCE;
         }

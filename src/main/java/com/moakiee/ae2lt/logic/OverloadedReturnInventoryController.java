@@ -2,7 +2,6 @@ package com.moakiee.ae2lt.logic;
 
 import java.util.Objects;
 
-import appeng.api.storage.AEKeySlotFilter;
 import appeng.api.stacks.GenericStack;
 
 /** Owns the full return buffer and the nine-slot GUI page projected from it. */
@@ -21,7 +20,7 @@ final class OverloadedReturnInventoryController {
     OverloadedReturnInventoryController(
             int patternCapacity,
             Runnable changeListener,
-            AEKeySlotFilter filter) {
+            ReturnSlotFilter filter) {
         totalPages = Math.max(1,
                 (patternCapacity + PATTERNS_PER_PAGE - 1) / PATTERNS_PER_PAGE);
         int fullSlots = totalPages * RETURN_SLOTS_PER_PAGE;

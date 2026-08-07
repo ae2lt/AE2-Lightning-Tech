@@ -334,7 +334,7 @@ final class WirelessOverflowQueue {
         if (result == OverflowAttemptResult.CLEARED) {
             return 0;
         }
-        int normalized = Math.clamp(currentDelay, RETRY_MIN, RETRY_MAX);
+        int normalized = Math.max(RETRY_MIN, Math.min(RETRY_MAX, currentDelay));
         return Math.min(RETRY_MAX, normalized + RETRY_STEP);
     }
 }

@@ -965,7 +965,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         }
         var sourceInventory = tianshuHost.getLogic().getEncodedPatternInv();
         var removed = sourceInventory.extractItem(0, 1, false);
-        if (removed.isEmpty() || !ItemStack.isSameItemSameComponents(stack, removed)) {
+        if (removed.isEmpty() || !ItemStack.isSameItemSameTags(stack, removed)) {
             if (!removed.isEmpty()) sourceInventory.addItems(removed);
             finishUpload(false);
             return;
@@ -1095,7 +1095,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
                                   int selectedSlot, ItemStack stack) {
         var sourceInventory = tianshuHost.getLogic().getEncodedPatternInv();
         var removed = sourceInventory.extractItem(0, 1, false);
-        if (removed.isEmpty() || !ItemStack.isSameItemSameComponents(stack, removed)) {
+        if (removed.isEmpty() || !ItemStack.isSameItemSameTags(stack, removed)) {
             if (!removed.isEmpty()) sourceInventory.addItems(removed);
             finishProviderUpload(player, false);
             return;
@@ -1114,7 +1114,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
             // insertItem is the provider-owned write path. Only return the source stack if
             // the provider demonstrably did not take ownership, otherwise avoid duplication.
             try {
-                if (!ItemStack.isSameItemSameComponents(
+                if (!ItemStack.isSameItemSameTags(
                         targetInventory.getStackInSlot(selectedSlot), removed)) {
                     sourceInventory.addItems(removed);
                 }

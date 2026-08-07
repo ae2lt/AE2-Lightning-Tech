@@ -32,7 +32,7 @@ final class ProviderBlockingModeButton extends IconButton {
     }
 
     void setState(int state) {
-        this.state = Math.clamp(state, STATE_OFF, STATE_SAME_PATTERN);
+        this.state = Math.max(STATE_OFF, Math.min(STATE_SAME_PATTERN, state));
     }
 
     @Override

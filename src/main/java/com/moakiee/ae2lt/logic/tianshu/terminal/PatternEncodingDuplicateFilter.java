@@ -42,7 +42,7 @@ public final class PatternEncodingDuplicateFilter {
                 }
                 continue;
             }
-            if (ItemStack.isSameItemSameComponents(stored, candidate)) {
+            if (ItemStack.isSameItemSameTags(stored, candidate)) {
                 return true;
             }
 

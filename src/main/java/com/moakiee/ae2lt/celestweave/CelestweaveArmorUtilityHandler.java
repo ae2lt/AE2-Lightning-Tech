@@ -187,8 +187,8 @@ public final class CelestweaveArmorUtilityHandler {
                 continue;
             }
             int intervalTicks = Math.max(1, foodSustain.checkIntervalTicks());
-            int targetFood = Math.clamp(foodSustain.targetFood(), 0, 20);
-            float targetSaturation = Math.clamp(foodSustain.targetSaturation(), 0.0F, 20.0F);
+            int targetFood = Math.max(0, Math.min(20, foodSustain.targetFood()));
+            float targetSaturation = Math.max(0.0F, Math.min(20.0F, foodSustain.targetSaturation()));
             FoodData foodData = player.getFoodData();
             int currentFood = foodData.getFoodLevel();
             float currentSaturation = foodData.getSaturationLevel();

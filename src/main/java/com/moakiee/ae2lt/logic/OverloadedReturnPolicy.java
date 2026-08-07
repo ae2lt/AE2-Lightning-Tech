@@ -16,7 +16,6 @@ import appeng.api.stacks.GenericStack;
 import com.moakiee.thunderbolt.ae2.overload.model.MatchMode;
 import com.moakiee.thunderbolt.ae2.overload.pattern.OverloadedProviderOnlyPatternDetails;
 import com.moakiee.thunderbolt.ae2.overload.pattern.OverloadPatternDetails;
-import net.minecraft.core.RegistryAccess;
 
 /** Output filtering and LOCK_UNTIL_RESULT matching derived from loaded patterns. */
 final class OverloadedReturnPolicy {
@@ -83,16 +82,16 @@ final class OverloadedReturnPolicy {
         unlockTemplate = null;
     }
 
-    void writeToNBT(CompoundTag tag, RegistryAccess registries) {
+    void writeToNBT(CompoundTag tag) {
         if (unlockMatchMode != null) {
             tag.putString(TAG_UNLOCK_MATCH_MODE, unlockMatchMode.name());
         }
         if (unlockTemplate != null && !unlockTemplate.isEmpty()) {
-            tag.put(TAG_UNLOCK_TEMPLATE, unlockTemplate.saveOptional(registries));
+            tag.put(TAG_UNLOCK_TEMPLATE, unlockTemplate.save(new CompoundTag()));
         }
     }
 
-    void readFromNBT(CompoundTag tag, RegistryAccess registries) {
+    void readFromNBT(CompoundTag tag) {
         clearUnlockRule();
         if (tag.contains(TAG_UNLOCK_MATCH_MODE, Tag.TAG_STRING)) {
             try {
@@ -103,8 +102,7 @@ final class OverloadedReturnPolicy {
             }
         }
         if (tag.contains(TAG_UNLOCK_TEMPLATE, Tag.TAG_COMPOUND)) {
-            unlockTemplate = ItemStack.parseOptional(
-                    registries, tag.getCompound(TAG_UNLOCK_TEMPLATE));
+            unlockTemplate = ItemStack.of(tag.getCompound(TAG_UNLOCK_TEMPLATE));
             if (unlockTemplate.isEmpty()) {
                 unlockTemplate = null;
             }
@@ -119,9 +117,9 @@ final class OverloadedReturnPolicy {
             if (pattern instanceof OverloadedProviderOnlyPatternDetails overload) {
                 var ae2Outputs = pattern.getOutputs();
                 var overloadOutputs = overload.overloadPatternDetailsView().outputs();
-                int count = Math.min(ae2Outputs.size(), overloadOutputs.size());
+                int count = Math.min(ae2Outputs.length, overloadOutputs.size());
                 for (int i = 0; i < count; i++) {
-                    var key = ae2Outputs.get(i).what();
+                    var key = ae2Outputs[i].what();
                     if (overloadOutputs.get(i).matchMode() == MatchMode.ID_ONLY) {
                         filter.allowIdOnly(key);
                     } else {
@@ -141,14 +139,14 @@ final class OverloadedReturnPolicy {
             IPatternDetails pattern, OverloadPatternDetails overloadDetails) {
         var actualOutputs = pattern.getOutputs();
         var overloadOutputs = overloadDetails.outputs();
-        int count = Math.min(actualOutputs.size(), overloadOutputs.size());
+        int count = Math.min(actualOutputs.length, overloadOutputs.size());
         if (count <= 0) {
             return -1;
         }
 
         var primaryOutput = pattern.getPrimaryOutput();
         for (int i = 0; i < count; i++) {
-            var candidate = actualOutputs.get(i);
+            var candidate = actualOutputs[i];
             if (candidate.what().equals(primaryOutput.what())
                     && candidate.amount() == primaryOutput.amount()) {
                 return i;
@@ -162,4 +160,3 @@ final class OverloadedReturnPolicy {
         return 0;
     }
 }
-

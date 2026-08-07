@@ -11,7 +11,6 @@ import org.jetbrains.annotations.Nullable;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
@@ -59,7 +58,6 @@ final class AdaptiveBatchStatePersistence {
 
     void write(
             CompoundTag ownerTag,
-            HolderLookup.Provider registries,
             AppEngInternalInventory patternInventory,
             OverloadedProviderPatternCatalog patternCatalog,
             ProviderNormalDispatch normalDispatch,
@@ -107,7 +105,7 @@ final class AdaptiveBatchStatePersistence {
             }
             var patternTag = new CompoundTag();
             patternTag.putInt(TAG_SLOT, slot);
-            patternTag.put(TAG_STACK, stack.save(registries));
+            patternTag.put(TAG_STACK, stack.save(new CompoundTag()));
             patternTags.add(patternTag);
         });
 
@@ -149,7 +147,6 @@ final class AdaptiveBatchStatePersistence {
 
     void read(
             CompoundTag ownerTag,
-            HolderLookup.Provider registries,
             int patternCapacity,
             int wirelessCapacity) {
         pending = null;
@@ -173,8 +170,8 @@ final class AdaptiveBatchStatePersistence {
                 continue;
             }
             try {
-                var stack = ItemStack.parseOptional(
-                        registries, patternTag.getCompound(TAG_STACK));
+                var stack = ItemStack.of(
+                        patternTag.getCompound(TAG_STACK));
                 if (!stack.isEmpty()) {
                     patterns.putIfAbsent(slot, stack);
                 }
@@ -267,7 +264,7 @@ final class AdaptiveBatchStatePersistence {
             var currentStack = patternInventory.getStackInSlot(slot);
             var pattern = patternCatalog.patternAtSlot(slot);
             if (pattern != null
-                    && ItemStack.isSameItemSameComponents(
+                    && ItemStack.isSameItemSameTags(
                             savedStack, currentStack)) {
                 validPatterns.put(slot, pattern);
             }

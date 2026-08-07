@@ -8,7 +8,6 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 import net.minecraft.core.Direction;
-import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
@@ -44,7 +43,6 @@ final class WirelessOverflowPersistence {
 
     void write(
             CompoundTag tag,
-            HolderLookup.Provider registries,
             WirelessOverflowQueue overflow) {
         if (overflow.isEmpty()) {
             return;
@@ -74,7 +72,7 @@ final class WirelessOverflowPersistence {
             patternTag.putShort(TAG_OVERFLOW_PATTERN_ID, writeId);
             patternTag.put(
                     TAG_OVERFLOW_PATTERN,
-                    pattern.getDefinition().toStack().saveOptional(registries));
+                    pattern.getDefinition().toStack().save(new CompoundTag()));
             patternList.add(patternTag);
         }
         overflowTag.put(TAG_OVERFLOW_PATTERNS, patternList);
@@ -100,7 +98,7 @@ final class WirelessOverflowPersistence {
             } else {
                 bucketTag.put(
                         TAG_OVERFLOW_FALLBACK,
-                        writeRoutedOverflow(bucket.fallback, registries));
+                        writeRoutedOverflow(bucket.fallback));
             }
             bucketList.add(bucketTag);
         }
@@ -108,10 +106,10 @@ final class WirelessOverflowPersistence {
         tag.put(TAG_WIRELESS_OVERFLOW, overflowTag);
     }
 
-    void read(CompoundTag tag, HolderLookup.Provider registries) {
+    void read(CompoundTag tag) {
         clear();
         if (!tag.contains(TAG_WIRELESS_OVERFLOW, Tag.TAG_COMPOUND)) {
-            readLegacy(tag, registries);
+            readLegacy(tag);
             return;
         }
 
@@ -122,8 +120,8 @@ final class WirelessOverflowPersistence {
             var patternTag = patterns.getCompound(i);
             int id = Short.toUnsignedInt(
                     patternTag.getShort(TAG_OVERFLOW_PATTERN_ID));
-            var stack = ItemStack.parseOptional(
-                    registries, patternTag.getCompound(TAG_OVERFLOW_PATTERN));
+            var stack = ItemStack.of(
+                    patternTag.getCompound(TAG_OVERFLOW_PATTERN));
             if (!stack.isEmpty()) {
                 pendingPatternDefinitions.put(id, stack);
             }
@@ -150,7 +148,6 @@ final class WirelessOverflowPersistence {
             }
 
             var fallback = readRoutedOverflow(
-                    registries,
                     bucketTag.getList(
                             TAG_OVERFLOW_FALLBACK, Tag.TAG_COMPOUND));
             if (!fallback.isEmpty()) {
@@ -221,11 +218,10 @@ final class WirelessOverflowPersistence {
     }
 
     static ListTag writeRoutedOverflow(
-            RoutedPatternOverflow overflow,
-            HolderLookup.Provider registries) {
+            RoutedPatternOverflow overflow) {
         var list = new ListTag();
         for (var entry : overflow.snapshot()) {
-            var stackTag = GenericStack.writeTag(registries, entry.stack());
+            var stackTag = GenericStack.writeTag(entry.stack());
             if (entry.face() != null) {
                 stackTag.putByte(
                         TAG_OVERFLOW_FACE,
@@ -237,12 +233,11 @@ final class WirelessOverflowPersistence {
     }
 
     static List<RoutedPatternOverflow.Entry> readRoutedOverflow(
-            HolderLookup.Provider registries,
             ListTag list) {
         var entries = new ArrayList<RoutedPatternOverflow.Entry>(list.size());
         for (int i = 0; i < list.size(); i++) {
             var stackTag = list.getCompound(i);
-            var stack = GenericStack.readTag(registries, stackTag);
+            var stack = GenericStack.readTag(stackTag);
             if (stack == null || stack.amount() <= 0L) {
                 continue;
             }
@@ -260,13 +255,12 @@ final class WirelessOverflowPersistence {
     }
 
     private void readLegacy(
-            CompoundTag tag, HolderLookup.Provider registries) {
+            CompoundTag tag) {
         if (!tag.contains(TAG_W_SEND_LIST, Tag.TAG_LIST)
                 || !tag.contains(TAG_W_SEND_CONN, Tag.TAG_COMPOUND)) {
             return;
         }
         var fallback = readGenericStackList(
-                registries,
                 tag.getList(TAG_W_SEND_LIST, Tag.TAG_COMPOUND));
         if (!fallback.isEmpty()) {
             pendingBuckets.add(new PendingBucketLoad(
@@ -290,10 +284,10 @@ final class WirelessOverflowPersistence {
     }
 
     private static List<GenericStack> readGenericStackList(
-            HolderLookup.Provider registries, ListTag list) {
+            ListTag list) {
         var stacks = new ArrayList<GenericStack>(list.size());
         for (int i = 0; i < list.size(); i++) {
-            var stack = GenericStack.readTag(registries, list.getCompound(i));
+            var stack = GenericStack.readTag(list.getCompound(i));
             if (stack != null && stack.amount() > 0L) {
                 stacks.add(stack);
             }

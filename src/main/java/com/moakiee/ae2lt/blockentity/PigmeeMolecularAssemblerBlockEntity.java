@@ -345,7 +345,7 @@ public final class PigmeeMolecularAssemblerBlockEntity extends AENetworkedInvBlo
 
         var patternStack = patternInventory.getStackInSlot(0);
         if (!patternStack.isEmpty()
-                && ItemStack.isSameItemSameComponents(patternStack, savedAutomaticPattern)) {
+                && ItemStack.isSameItemSameTags(patternStack, savedAutomaticPattern)) {
             updateSleepState();
             return;
         }
