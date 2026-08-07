@@ -10,28 +10,27 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.MenuProvider;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.inventory.DataSlot;
 import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.DataSlot;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraft.world.phys.BlockHitResult;
-import net.neoforged.neoforge.common.extensions.IMenuTypeExtension;
-import net.neoforged.neoforge.network.PacketDistributor;
+import net.minecraftforge.common.extensions.IForgeMenuType;
+import net.minecraftforge.network.NetworkHooks;
 
-import appeng.api.implementations.menuobjects.IMenuItem;
+import appeng.api.implementations.menuobjects.ItemMenuHost;
 import appeng.api.storage.ISubMenuHost;
 import appeng.menu.AEBaseMenu;
 import appeng.menu.ISubMenu;
 import appeng.menu.MenuOpener;
-import appeng.menu.locator.ItemMenuHostLocator;
-import appeng.menu.locator.MenuHostLocator;
+import appeng.menu.locator.MenuLocator;
 
 import com.moakiee.ae2lt.api.frequency.FrequencyBindingHost;
 import com.moakiee.ae2lt.blockentity.WirelessOverloadedControllerBlockEntity;
 import com.moakiee.ae2lt.grid.WirelessFrequencyManager;
 import com.moakiee.ae2lt.item.OverloadedFrequencyCardData;
 import com.moakiee.ae2lt.item.TerminalCardAccess;
+import com.moakiee.ae2lt.network.NetworkInit;
 import com.moakiee.ae2lt.network.SyncFrequencyDetailPacket;
 import com.moakiee.ae2lt.network.SyncFrequencyListPacket;
 
@@ -39,10 +38,14 @@ import com.moakiee.ae2lt.network.SyncFrequencyListPacket;
  * Shared menu for wireless controllers and receiver-style frequency-bound devices.
  * Carries the block entity position and device type to the client; the
  * currently bound frequency id is auto-synced via a {@link DataSlot}.
+ *
+ * <p>Forge 1.20.1 form of the 2.0.4 menu: 15.x AE2 has no dedicated
+ * {@code ItemMenuHostLocator}; card mode keeps a generic {@link MenuLocator}
+ * and resolves the terminal via {@code locate(player, ItemMenuHost.class)}.</p>
  */
 public class FrequencyMenu extends AEBaseMenu implements ISubMenu {
 
-    public static final MenuType<FrequencyMenu> TYPE = IMenuTypeExtension.create(FrequencyMenu::clientCreate);
+    public static final MenuType<FrequencyMenu> TYPE = IForgeMenuType.create(FrequencyMenu::clientCreate);
     private static final String ACTION_TOGGLE_AUTO_CONNECT = "toggleAutoConnect";
 
     static {
@@ -65,7 +68,7 @@ public class FrequencyMenu extends AEBaseMenu implements ISubMenu {
      */
     private final boolean cardMode;
     @Nullable
-    private final ItemMenuHostLocator terminalLocator;
+    private final MenuLocator terminalLocator;
     @Nullable
     private final ServerPlayer cardPlayer;
 
@@ -101,7 +104,7 @@ public class FrequencyMenu extends AEBaseMenu implements ISubMenu {
     // frequency config button, parentType/parentLocator point back at that GUI so the
     // back button can reopen it through AE2's native returnToMainMenu contract.
     public FrequencyMenu(int containerId, Inventory playerInv, BlockEntity be,
-                         @Nullable MenuType<?> parentType, @Nullable MenuHostLocator parentLocator) {
+                         @Nullable MenuType<?> parentType, @Nullable MenuLocator parentLocator) {
         super(TYPE, containerId, playerInv, be);
         this.blockPos = be.getBlockPos();
         this.backingBlockEntity = be;
@@ -149,14 +152,14 @@ public class FrequencyMenu extends AEBaseMenu implements ISubMenu {
 
         // initial sync to the player who just opened this menu
         if (playerInv.player instanceof ServerPlayer sp) {
-            PacketDistributor.sendToPlayer(sp, SyncFrequencyListPacket.fromServer());
+            NetworkInit.sendToPlayer(sp, SyncFrequencyListPacket.fromServer());
             SyncFrequencyDetailPacket.sendInitialMembersIfNeeded(sp, freqIdSlot.get());
             SyncFrequencyDetailPacket.sendInitialConnectionsIfNeeded(sp, freqIdSlot.get());
         }
     }
 
     // server constructor (card mode: targets a frequency card in a terminal upgrade slot)
-    public FrequencyMenu(int containerId, Inventory playerInv, ItemMenuHostLocator terminalLocator) {
+    public FrequencyMenu(int containerId, Inventory playerInv, MenuLocator terminalLocator) {
         super(TYPE, containerId, playerInv, null);
         setLocator(terminalLocator);
         this.blockPos = BlockPos.ZERO;
@@ -185,7 +188,7 @@ public class FrequencyMenu extends AEBaseMenu implements ISubMenu {
         registerClientActions();
 
         if (cardPlayer != null) {
-            PacketDistributor.sendToPlayer(cardPlayer, SyncFrequencyListPacket.fromServer());
+            NetworkInit.sendToPlayer(cardPlayer, SyncFrequencyListPacket.fromServer());
             SyncFrequencyDetailPacket.sendInitialMembersIfNeeded(cardPlayer, freqId);
             SyncFrequencyDetailPacket.sendInitialConnectionsIfNeeded(cardPlayer, freqId);
         }
@@ -243,21 +246,23 @@ public class FrequencyMenu extends AEBaseMenu implements ISubMenu {
         registerClientAction(ACTION_TOGGLE_AUTO_CONNECT, this::toggleAutoConnect);
     }
 
-    private static boolean openWithAe2MenuOpener(Player player, MenuHostLocator locator, boolean returning) {
+    private static boolean openWithAe2MenuOpener(Player player, MenuLocator locator, boolean returning) {
         if (!(player instanceof ServerPlayer serverPlayer)) {
             return false;
         }
 
-        if (locator instanceof ItemMenuHostLocator terminalLocator) {
-            ItemStack terminal = terminalLocator.locateItem(serverPlayer);
+        // 15.x has no ItemMenuHostLocator type: probe for an item-backed host.
+        ItemMenuHost terminalHost = locator.locate(serverPlayer, ItemMenuHost.class);
+        if (terminalHost != null) {
+            ItemStack terminal = terminalHost.getItemStack();
             if (!TerminalCardAccess.hasCard(terminal)) {
                 return false;
             }
-            serverPlayer.openMenu(new Ae2StyleFrequencyMenuProvider(
+            NetworkHooks.openScreen(serverPlayer, new Ae2StyleFrequencyMenuProvider(
                     Component.translatable("item.ae2lt.overloaded_frequency_card"),
                     (id, inv) -> {
-                        var menu = new FrequencyMenu(id, inv, terminalLocator);
-                        menu.setLocator(terminalLocator);
+                        var menu = new FrequencyMenu(id, inv, locator);
+                        menu.setLocator(locator);
                         menu.setReturnedFromSubScreen(returning);
                         return menu;
                     },
@@ -273,16 +278,16 @@ public class FrequencyMenu extends AEBaseMenu implements ISubMenu {
         BlockEntity be = bindingHost.getFrequencyBindingBlockEntity();
 
         MenuType<?> parentType = null;
-        MenuHostLocator parentLocator = null;
+        MenuLocator parentLocator = null;
         if (serverPlayer.containerMenu instanceof AEBaseMenu parentMenu) {
             parentType = parentMenu.getType();
             parentLocator = locator;
         }
         final MenuType<?> fParentType = parentType;
-        final MenuHostLocator fParentLocator = parentLocator;
+        final MenuLocator fParentLocator = parentLocator;
         final boolean hasParent = fParentType != null && fParentLocator != null;
 
-        serverPlayer.openMenu(new Ae2StyleFrequencyMenuProvider(
+        NetworkHooks.openScreen(serverPlayer, new Ae2StyleFrequencyMenuProvider(
                 be.getBlockState().getBlock().getName(),
                 (id, inv) -> {
                     var menu = new FrequencyMenu(id, inv, be, fParentType, fParentLocator);
@@ -564,7 +569,8 @@ public class FrequencyMenu extends AEBaseMenu implements ISubMenu {
         if (terminalLocator == null || cardPlayer == null) {
             return ItemStack.EMPTY;
         }
-        return terminalLocator.locateItem(cardPlayer);
+        ItemMenuHost host = terminalLocator.locate(cardPlayer, ItemMenuHost.class);
+        return host != null ? host.getItemStack() : ItemStack.EMPTY;
     }
 
     // --- ISubMenu: card mode is a sub-menu of the wireless terminal (or any
@@ -585,13 +591,9 @@ public class FrequencyMenu extends AEBaseMenu implements ISubMenu {
         if (terminalLocator == null || cardPlayer == null) {
             return null;
         }
-        ItemStack terminal = resolveTerminalStack();
-        if (terminal.getItem() instanceof IMenuItem menuItem
-                && menuItem.getMenuHost(cardPlayer, terminalLocator, (BlockHitResult) null)
-                        instanceof ISubMenuHost subHost) {
-            return subHost;
-        }
-        return null;
+        // 15.x locators resolve hosts through IMenuItem.getMenuHost internally;
+        // wireless terminal hosts implement ISubMenuHost, so probing by type works.
+        return terminalLocator.locate(cardPlayer, ISubMenuHost.class);
     }
 
     /**
@@ -601,7 +603,7 @@ public class FrequencyMenu extends AEBaseMenu implements ISubMenu {
      * {@code MenuTypeBuilder} and opened with a block-entity locator, so
      * reopening them is just {@code MenuOpener.open(type, player, locator)}.
      */
-    private record DeviceMenuReturnHost(ItemStack icon, MenuType<?> parentType, MenuHostLocator parentLocator)
+    private record DeviceMenuReturnHost(ItemStack icon, MenuType<?> parentType, MenuLocator parentLocator)
             implements ISubMenuHost {
         @Override
         public ItemStack getMainMenuIcon() {

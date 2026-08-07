@@ -24,10 +24,11 @@ import com.moakiee.ae2lt.logic.energy.AppFluxBridge;
 
 public class OverloadedPowerSupplyMenu extends AEBaseMenu implements FrequencyBindingMenu {
 
-    public static final MenuType<OverloadedPowerSupplyMenu> TYPE = MenuTypeBuilder
-            .create(OverloadedPowerSupplyMenu::new, OverloadedPowerSupplyBlockEntity.class)
-            .withMenuTitle(host -> Component.translatable("block.ae2lt.overloaded_power_supply"))
-            .buildUnregistered(ResourceLocation.fromNamespaceAndPath(
+    public static final MenuType<OverloadedPowerSupplyMenu> TYPE = Ae2ltMenuBuilder.buildUnregistered(
+            MenuTypeBuilder
+                    .create(OverloadedPowerSupplyMenu::new, OverloadedPowerSupplyBlockEntity.class)
+                    .withMenuTitle(host -> Component.translatable("block.ae2lt.overloaded_power_supply")),
+            new ResourceLocation(
                     AE2LightningTech.MODID, "overloaded_power_supply"));
 
     @GuiSync(0)
@@ -89,7 +90,7 @@ public class OverloadedPowerSupplyMenu extends AEBaseMenu implements FrequencyBi
         ItemStack original = sourceStack.copy();
         ItemStack remainder;
 
-        if (isPlayerSideSlot(sourceSlot)) {
+        if (((com.moakiee.ae2lt.mixin.AEBaseMenuAccessor) (Object) this).ae2lt$isPlayerSideSlot(sourceSlot)) {
             if (!AppFluxBridge.isFluxCell(sourceStack)) {
                 return ItemStack.EMPTY;
             }
@@ -125,6 +126,7 @@ public class OverloadedPowerSupplyMenu extends AEBaseMenu implements FrequencyBi
     public void clientCycleMode() {
         sendClientAction("cycleMode");
     }
+
 
     public Component getModeButtonMessage() {
         return getMode() == OverloadedPowerSupplyBlockEntity.PowerMode.OVERLOAD
@@ -229,3 +231,4 @@ public class OverloadedPowerSupplyMenu extends AEBaseMenu implements FrequencyBi
         return remainder;
     }
 }
+

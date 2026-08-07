@@ -15,7 +15,7 @@ import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.Fluids;
-import net.neoforged.neoforge.fluids.FluidStack;
+import net.minecraftforge.fluids.FluidStack;
 
 import appeng.api.orientation.RelativeSide;
 import appeng.menu.AEBaseMenu;
@@ -30,10 +30,11 @@ import com.moakiee.ae2lt.machine.crystalcatalyzer.CrystalCatalyzerInventory;
 import com.moakiee.ae2lt.machine.crystalcatalyzer.recipe.Mode;
 
 public class CrystalCatalyzerMenu extends AEBaseMenu implements FrequencyBindingMenu {
-    public static final MenuType<CrystalCatalyzerMenu> TYPE = MenuTypeBuilder
-            .create(CrystalCatalyzerMenu::new, CrystalCatalyzerBlockEntity.class)
-            .withMenuTitle(host -> Component.translatable("block.ae2lt.crystal_catalyzer"))
-            .buildUnregistered(ResourceLocation.fromNamespaceAndPath(
+    public static final MenuType<CrystalCatalyzerMenu> TYPE = Ae2ltMenuBuilder.buildUnregistered(
+            MenuTypeBuilder
+                    .create(CrystalCatalyzerMenu::new, CrystalCatalyzerBlockEntity.class)
+                    .withMenuTitle(host -> Component.translatable("block.ae2lt.crystal_catalyzer")),
+            new ResourceLocation(
                     AE2LightningTech.MODID,
                     "crystal_catalyzer"));
 
@@ -135,7 +136,7 @@ public class CrystalCatalyzerMenu extends AEBaseMenu implements FrequencyBinding
         var original = sourceStack.copy();
         ItemStack remainder;
 
-        if (isPlayerSideSlot(sourceSlot)) {
+        if (((com.moakiee.ae2lt.mixin.AEBaseMenuAccessor) (Object) this).ae2lt$isPlayerSideSlot(sourceSlot)) {
             remainder = moveFromPlayerInventory(sourceStack.copy());
         } else {
             remainder = moveIntoSlots(sourceStack.copy(), getPlayerDestinationSlots());
@@ -178,6 +179,7 @@ public class CrystalCatalyzerMenu extends AEBaseMenu implements FrequencyBinding
     public CrystalCatalyzerBlockEntity getHost() {
         return host;
     }
+
 
     public long getStoredEnergy() {
         return storedEnergy;
@@ -383,7 +385,7 @@ public class CrystalCatalyzerMenu extends AEBaseMenu implements FrequencyBinding
         }
 
         var slot = getSlot(slotId);
-        if (!(slot instanceof LargeStackAppEngSlot) || isPlayerSideSlot(slot)) {
+        if (!(slot instanceof LargeStackAppEngSlot) || ((com.moakiee.ae2lt.mixin.AEBaseMenuAccessor) (Object) this).ae2lt$isPlayerSideSlot(slot)) {
             return false;
         }
 
@@ -427,7 +429,7 @@ public class CrystalCatalyzerMenu extends AEBaseMenu implements FrequencyBinding
             return true;
         }
 
-        if (ItemStack.isSameItemSameComponents(slotStack, carried)) {
+        if (ItemStack.isSameItemSameTags(slotStack, carried)) {
             int room = slot.getMaxStackSize(carried) - slotStack.getCount();
             int toMove = Math.min(rightClick ? 1 : carried.getCount(), room);
             if (toMove <= 0) {
@@ -452,3 +454,4 @@ public class CrystalCatalyzerMenu extends AEBaseMenu implements FrequencyBinding
         return true;
     }
 }
+

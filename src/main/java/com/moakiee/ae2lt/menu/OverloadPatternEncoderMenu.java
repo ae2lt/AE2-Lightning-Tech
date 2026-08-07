@@ -11,6 +11,7 @@ import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 
 import appeng.api.crafting.PatternDetailsHelper;
+import appeng.api.inventories.InternalInventory;
 import appeng.blockentity.crafting.IMolecularAssemblerSupportedPattern;
 import appeng.menu.AEBaseMenu;
 import appeng.menu.SlotSemantics;
@@ -21,10 +22,10 @@ import appeng.util.inv.InternalInventoryHost;
 
 import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.item.OverloadPatternItem;
-import com.moakiee.thunderbolt.ae2.overload.pattern.Ae2PlainPatternResolver;
-import com.moakiee.thunderbolt.ae2.overload.pattern.EditableOverloadPatternState;
-import com.moakiee.thunderbolt.ae2.overload.pattern.OverloadPatternEditState;
-import com.moakiee.thunderbolt.ae2.overload.pattern.ParsedPatternDefinition;
+import com.moakiee.ae2lt.overload.pattern.Ae2PlainPatternResolver;
+import com.moakiee.ae2lt.overload.pattern.EditableOverloadPatternState;
+import com.moakiee.ae2lt.overload.pattern.OverloadPatternEditState;
+import com.moakiee.ae2lt.overload.pattern.ParsedPatternDefinition;
 import com.moakiee.ae2lt.overload.pattern.PatternConversionService;
 import com.moakiee.ae2lt.registry.ModItems;
 
@@ -37,9 +38,10 @@ import com.moakiee.ae2lt.registry.ModItems;
 public class OverloadPatternEncoderMenu extends AEBaseMenu {
     private static final int RESULT_SLOT_INDEX = 1;
 
-    public static final MenuType<OverloadPatternEncoderMenu> TYPE = MenuTypeBuilder
-            .create(OverloadPatternEncoderMenu::new, OverloadPatternEncoderHost.class)
-            .buildUnregistered(ResourceLocation.fromNamespaceAndPath(
+    public static final MenuType<OverloadPatternEncoderMenu> TYPE = Ae2ltMenuBuilder.buildUnregistered(
+            MenuTypeBuilder
+                    .create(OverloadPatternEncoderMenu::new, OverloadPatternEncoderHost.class),
+            new ResourceLocation(
                     AE2LightningTech.MODID, "overload_pattern_encoder"));
 
     public static final int MAX_INPUT_SLOTS = 18;
@@ -76,9 +78,13 @@ public class OverloadPatternEncoderMenu extends AEBaseMenu {
 
         this.sourceInventory = new AppEngInternalInventory(new InternalInventoryHost() {
             @Override
-            public void saveChangedInventory(AppEngInternalInventory inv) {
+            public void saveChanges() {
                 sourceDirty = true;
                 clearEncodedResult();
+            }
+
+            @Override
+            public void onChangeInventory(InternalInventory inv, int slot) {
             }
 
             @Override
@@ -223,7 +229,7 @@ public class OverloadPatternEncoderMenu extends AEBaseMenu {
             }
 
             var resolver = new Ae2PlainPatternResolver(getPlayer().level());
-            return conversionService.resolveEditableSource(sourceStack, resolver, registryAccess()).orElse(null);
+            return conversionService.resolveEditableSource(sourceStack, resolver).orElse(null);
         } catch (RuntimeException ignored) {
             return null;
         }
@@ -234,7 +240,7 @@ public class OverloadPatternEncoderMenu extends AEBaseMenu {
         if (sourceStack.getItem() instanceof OverloadPatternItem overloadPatternItem) {
             try {
                 var payload = overloadPatternItem.readPayload(sourceStack).orElse(null);
-                return payload != null ? payload.sourcePattern().toItemStack(registryAccess()) : null;
+                return payload != null ? payload.sourcePattern().toItemStack() : null;
             } catch (RuntimeException ignored) {
                 return null;
             }
@@ -450,3 +456,4 @@ public class OverloadPatternEncoderMenu extends AEBaseMenu {
         }
     }
 }
+

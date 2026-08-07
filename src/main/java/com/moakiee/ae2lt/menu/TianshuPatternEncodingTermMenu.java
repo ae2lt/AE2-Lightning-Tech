@@ -66,7 +66,7 @@ import com.moakiee.thunderbolt.ae2.overload.model.MatchMode;
 import com.moakiee.thunderbolt.ae2.overload.pattern.Ae2PlainPatternResolver;
 import com.moakiee.thunderbolt.ae2.overload.pattern.ParsedPatternDefinition;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.neoforge.network.PacketDistributor;
+import com.moakiee.ae2lt.network.PacketSender;
 import appeng.helpers.patternprovider.PatternProviderLogicHost;
 import appeng.helpers.patternprovider.PatternContainer;
 import appeng.api.implementations.blockentities.PatternContainerGroup;
@@ -86,6 +86,7 @@ import com.moakiee.ae2lt.network.tianshu.TianshuPacketLimits;
 import com.moakiee.thunderbolt.ae2.overload.pattern.SourcePatternSnapshot;
 import net.minecraft.world.entity.player.Player;
 import org.anti_ad.mc.ipn.api.IPNIgnore;
+import net.minecraft.core.RegistryAccess;
 
 @IPNIgnore
 public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
@@ -98,7 +99,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
             TianshuPatternEncodingTermMenu::new;
     public static final MenuType<TianshuPatternEncodingTermMenu> TYPE = MenuTypeBuilder
             .create(FACTORY, TianshuPatternTerminalHost.class)
-            .buildUnregistered(ResourceLocation.fromNamespaceAndPath(
+            .buildUnregistered(new ResourceLocation(
                     AE2LightningTech.MODID, "tianshu_pattern_encoding_terminal"));
 
     @GuiSync(110)
@@ -1006,14 +1007,14 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
 
     public void requestUploadTargets() {
         if (isClientSide()) {
-            PacketDistributor.sendToServer(new RequestUploadTargetsPacket(containerId));
+            PacketSender.sendToServer(new RequestUploadTargetsPacket(containerId));
         }
     }
 
     public void sendUploadTargets(ServerPlayer player) {
         if (!isServerSide() || player == null) return;
         refreshUploadTargetsNow();
-        PacketDistributor.sendToPlayer(player,
+        PacketSender.sendToPlayer(player,
                 new UploadTargetsSyncPacket(containerId, uploadTargetGroups));
     }
 
@@ -1034,7 +1035,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     public void uploadTianshuPatternToTarget(PatternContainerGroup group) {
         if (!isClientSide() || group == null) return;
         uploadState = 2;
-        PacketDistributor.sendToServer(new UploadPatternToTargetPacket(containerId, group));
+        PacketSender.sendToServer(new UploadPatternToTargetPacket(containerId, group));
     }
 
     public void uploadTianshuPatternToTarget(ServerPlayer player, PatternContainerGroup group) {
@@ -1126,7 +1127,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     private void finishProviderUpload(ServerPlayer player, boolean success) {
         uploadState = success ? 1 : 3;
         refreshUploadTargetsNow();
-        PacketDistributor.sendToPlayer(player,
+        PacketSender.sendToPlayer(player,
                 new UploadTargetsSyncPacket(containerId, uploadTargetGroups));
         broadcastChanges();
     }
@@ -1152,7 +1153,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         }
         uploadTargetGroups = groups.entrySet().stream()
                 .map(entry -> new TianshuUploadTargetData(
-                        entry.getKey(), entry.getValue().providers, entry.getValue().availableSlots))
+                        entry.getId() /* TODO: verify getKey->getId */, entry.getValue().providers, entry.getValue().availableSlots))
                 .toList();
     }
 
@@ -1783,7 +1784,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
 
     public void requestMaintenanceEditor(appeng.api.stacks.AEKey key) {
         if (!isClientSide()) return;
-        PacketDistributor.sendToServer(new OpenMaintenanceEditorPacket(
+        PacketSender.sendToServer(new OpenMaintenanceEditorPacket(
                 containerId, tianshuSelectionRevision, key));
     }
 
@@ -1898,7 +1899,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         lastSentMaintenanceSummary = snapshot;
         lastSentMaintenanceSummaryOverflow = overflow;
         maintenanceSummaryRevision++;
-        PacketDistributor.sendToPlayer(player, new MaintenanceSummarySyncPacket(
+        PacketSender.sendToPlayer(player, new MaintenanceSummarySyncPacket(
                 containerId, tianshuSelectionRevision,
                 maintenanceSummaryRevision, overflow, snapshot));
     }
@@ -1954,7 +1955,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
 
     public void sendGlobalReserve(appeng.api.stacks.AEKey key, long amount,
                                   com.moakiee.ae2lt.logic.tianshu.maintenance.ReservedStockMatchMode mode) {
-        if (isClientSide() && key != null && mode != null) PacketDistributor.sendToServer(
+        if (isClientSide() && key != null && mode != null) PacketSender.sendToServer(
                 new SaveGlobalReservePacket(
                         containerId, tianshuSelectionRevision, key, amount, mode));
     }
@@ -2079,7 +2080,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
                 rule == null || rule.enabled(),
                 editorStatus, currentStock, craftable,
                 recoveryPage, List.copyOf(topologyData.values()), variants);
-        PacketDistributor.sendToPlayer(player, new MaintenanceEditorSyncPacket(
+        PacketSender.sendToPlayer(player, new MaintenanceEditorSyncPacket(
                 containerId, tianshuSelectionRevision, data));
     }
 
@@ -2126,7 +2127,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
 
     public void sendMaintenanceSave(SaveMaintenanceRulePacket packet) {
         if (isClientSide() && packet != null) {
-            PacketDistributor.sendToServer(packet);
+            PacketSender.sendToServer(packet);
         }
     }
 
@@ -2565,3 +2566,4 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         }
     }
 }
+

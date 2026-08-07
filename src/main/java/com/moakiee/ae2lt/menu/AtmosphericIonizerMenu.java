@@ -23,10 +23,11 @@ import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 
 public class AtmosphericIonizerMenu extends AEBaseMenu implements FrequencyBindingMenu {
-    public static final MenuType<AtmosphericIonizerMenu> TYPE = MenuTypeBuilder
-            .create(AtmosphericIonizerMenu::new, AtmosphericIonizerBlockEntity.class)
-            .withMenuTitle(host -> Component.translatable("block.ae2lt.atmospheric_ionizer"))
-            .buildUnregistered(ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "atmospheric_ionizer"));
+    public static final MenuType<AtmosphericIonizerMenu> TYPE = Ae2ltMenuBuilder.buildUnregistered(
+            MenuTypeBuilder
+                    .create(AtmosphericIonizerMenu::new, AtmosphericIonizerBlockEntity.class)
+                    .withMenuTitle(host -> Component.translatable("block.ae2lt.atmospheric_ionizer")),
+            new ResourceLocation(AE2LightningTech.MODID, "atmospheric_ionizer"));
 
     @GuiSync(50)
     public long consumedEnergy;
@@ -76,7 +77,7 @@ public class AtmosphericIonizerMenu extends AEBaseMenu implements FrequencyBindi
         ItemStack original = sourceStack.copy();
         ItemStack remainder;
 
-        if (isPlayerSideSlot(sourceSlot)) {
+        if (((com.moakiee.ae2lt.mixin.AEBaseMenuAccessor) (Object) this).ae2lt$isPlayerSideSlot(sourceSlot)) {
             remainder = moveIntoSlots(sourceStack.copy(), List.of(condensateSlot));
         } else {
             remainder = moveIntoSlots(sourceStack.copy(), getPlayerDestinationSlots());
@@ -109,6 +110,7 @@ public class AtmosphericIonizerMenu extends AEBaseMenu implements FrequencyBindi
     public long getConsumedEnergy() {
         return consumedEnergy;
     }
+
 
     public long getTotalEnergyRequired() {
         return totalEnergy;
@@ -182,3 +184,4 @@ public class AtmosphericIonizerMenu extends AEBaseMenu implements FrequencyBindi
         return remainder;
     }
 }
+

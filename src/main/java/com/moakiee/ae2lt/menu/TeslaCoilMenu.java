@@ -23,10 +23,11 @@ import com.moakiee.ae2lt.machine.teslacoil.TeslaCoilMode;
 import com.moakiee.ae2lt.machine.teslacoil.TeslaCoilStatus;
 
 public class TeslaCoilMenu extends AEBaseMenu implements FrequencyBindingMenu {
-    public static final MenuType<TeslaCoilMenu> TYPE = MenuTypeBuilder
-            .create(TeslaCoilMenu::new, TeslaCoilBlockEntity.class)
-            .withMenuTitle(host -> Component.translatable("block.ae2lt.tesla_coil"))
-            .buildUnregistered(ResourceLocation.fromNamespaceAndPath(
+    public static final MenuType<TeslaCoilMenu> TYPE = Ae2ltMenuBuilder.buildUnregistered(
+            MenuTypeBuilder
+                    .create(TeslaCoilMenu::new, TeslaCoilBlockEntity.class)
+                    .withMenuTitle(host -> Component.translatable("block.ae2lt.tesla_coil")),
+            new ResourceLocation(
                     AE2LightningTech.MODID,
                     "tesla_coil"));
 
@@ -110,7 +111,7 @@ public class TeslaCoilMenu extends AEBaseMenu implements FrequencyBindingMenu {
         var original = sourceStack.copy();
         ItemStack remainder;
 
-        if (isPlayerSideSlot(sourceSlot)) {
+        if (((com.moakiee.ae2lt.mixin.AEBaseMenuAccessor) (Object) this).ae2lt$isPlayerSideSlot(sourceSlot)) {
             remainder = moveFromPlayerInventory(sourceStack.copy());
         } else {
             remainder = moveIntoSlots(sourceStack.copy(), getPlayerDestinationSlots());
@@ -228,6 +229,7 @@ public class TeslaCoilMenu extends AEBaseMenu implements FrequencyBindingMenu {
         return host;
     }
 
+
     private void cycleMode() {
         if (!isServerSide()) {
             return;
@@ -288,7 +290,7 @@ public class TeslaCoilMenu extends AEBaseMenu implements FrequencyBindingMenu {
         }
 
         var slot = getSlot(slotId);
-        if (!(slot instanceof LargeStackAppEngSlot) || isPlayerSideSlot(slot)) {
+        if (!(slot instanceof LargeStackAppEngSlot) || ((com.moakiee.ae2lt.mixin.AEBaseMenuAccessor) (Object) this).ae2lt$isPlayerSideSlot(slot)) {
             return false;
         }
 
@@ -332,7 +334,7 @@ public class TeslaCoilMenu extends AEBaseMenu implements FrequencyBindingMenu {
             return true;
         }
 
-        if (ItemStack.isSameItemSameComponents(slotStack, carried)) {
+        if (ItemStack.isSameItemSameTags(slotStack, carried)) {
             int room = slot.getMaxStackSize(carried) - slotStack.getCount();
             int toMove = Math.min(rightClick ? 1 : carried.getCount(), room);
             if (toMove <= 0) {
@@ -357,3 +359,4 @@ public class TeslaCoilMenu extends AEBaseMenu implements FrequencyBindingMenu {
         return true;
     }
 }
+

@@ -27,10 +27,11 @@ import com.moakiee.ae2lt.machine.lightningchamber.recipe.LightningSimulationReci
 import com.moakiee.ae2lt.me.key.LightningKey;
 
 public class LightningSimulationChamberMenu extends AEBaseMenu implements FrequencyBindingMenu {
-    public static final MenuType<LightningSimulationChamberMenu> TYPE = MenuTypeBuilder
-            .create(LightningSimulationChamberMenu::new, LightningSimulationChamberBlockEntity.class)
-            .withMenuTitle(host -> Component.translatable("block.ae2lt.lightning_simulation_room"))
-            .buildUnregistered(ResourceLocation.fromNamespaceAndPath(
+    public static final MenuType<LightningSimulationChamberMenu> TYPE = Ae2ltMenuBuilder.buildUnregistered(
+            MenuTypeBuilder
+                    .create(LightningSimulationChamberMenu::new, LightningSimulationChamberBlockEntity.class)
+                    .withMenuTitle(host -> Component.translatable("block.ae2lt.lightning_simulation_room")),
+            new ResourceLocation(
                     AE2LightningTech.MODID,
                     "lightning_simulation_room"));
 
@@ -86,7 +87,7 @@ public class LightningSimulationChamberMenu extends AEBaseMenu implements Freque
     public LightningSimulationChamberMenu(int id, Inventory playerInventory, LightningSimulationChamberBlockEntity host) {
         super(TYPE, id, playerInventory, host);
         this.host = host;
-        // 网络工具 toolbox：手持网络工具时在 GUI 右侧暴露 9 格升级卡槽
+        // 缃戠粶宸ュ叿 toolbox锛氭墜鎸佺綉缁滃伐鍏锋椂鍦?GUI 鍙充晶鏆撮湶 9 鏍煎崌绾у崱妲?
         this.toolbox = new ToolboxMenu(this);
 
         addMachineSlots();
@@ -134,7 +135,7 @@ public class LightningSimulationChamberMenu extends AEBaseMenu implements Freque
 
             var lockedRecipe = host.getLockedRecipe().orElse(null);
             var processableRecipe = lockedRecipe == null
-                    ? host.findProcessableRecipe().map(candidate -> candidate.recipe().value()).orElse(null)
+                    ? host.findProcessableRecipe().map(candidate -> candidate.recipe()).orElse(null)
                     : null;
             if (lockedRecipe != null) {
                 lightningTierOrdinal = lockedRecipe.lightningTier().ordinal();
@@ -187,7 +188,7 @@ public class LightningSimulationChamberMenu extends AEBaseMenu implements Freque
         var original = sourceStack.copy();
         ItemStack remainder;
 
-        if (isPlayerSideSlot(sourceSlot)) {
+        if (((com.moakiee.ae2lt.mixin.AEBaseMenuAccessor) (Object) this).ae2lt$isPlayerSideSlot(sourceSlot)) {
             remainder = moveFromPlayerInventory(sourceStack.copy());
         } else {
             remainder = moveIntoSlots(sourceStack.copy(), getPlayerDestinationSlots());
@@ -346,6 +347,7 @@ public class LightningSimulationChamberMenu extends AEBaseMenu implements Freque
         return host;
     }
 
+
     public ToolboxMenu getToolbox() {
         return toolbox;
     }
@@ -452,7 +454,7 @@ public class LightningSimulationChamberMenu extends AEBaseMenu implements Freque
         }
 
         var slot = getSlot(slotId);
-        if (!(slot instanceof LargeStackAppEngSlot) || isPlayerSideSlot(slot)) {
+        if (!(slot instanceof LargeStackAppEngSlot) || ((com.moakiee.ae2lt.mixin.AEBaseMenuAccessor) (Object) this).ae2lt$isPlayerSideSlot(slot)) {
             return false;
         }
 
@@ -496,7 +498,7 @@ public class LightningSimulationChamberMenu extends AEBaseMenu implements Freque
             return true;
         }
 
-        if (ItemStack.isSameItemSameComponents(slotStack, carried)) {
+        if (ItemStack.isSameItemSameTags(slotStack, carried)) {
             int room = slot.getMaxStackSize(carried) - slotStack.getCount();
             int toMove = Math.min(rightClick ? 1 : carried.getCount(), room);
             if (toMove <= 0) {
@@ -521,3 +523,4 @@ public class LightningSimulationChamberMenu extends AEBaseMenu implements Freque
         return true;
     }
 }
+

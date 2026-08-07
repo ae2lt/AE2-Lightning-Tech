@@ -14,10 +14,10 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.network.NetworkEvent;
 import java.util.function.Supplier;
 
+import appeng.api.implementations.menuobjects.ItemMenuHost;
 import appeng.menu.AEBaseMenu;
 import appeng.menu.MenuOpener;
-import appeng.menu.locator.ItemMenuHostLocator;
-import appeng.menu.locator.MenuHostLocator;
+import appeng.menu.locator.MenuLocator;
 
 public record OpenFrequencyMenuPacket(boolean cardMode) {
 
@@ -60,7 +60,7 @@ public record OpenFrequencyMenuPacket(boolean cardMode) {
             return;
         }
 
-        MenuHostLocator parentLocator = parentMenu.getLocator();
+        MenuLocator parentLocator = parentMenu.getLocator();
         if (parentLocator == null) {
             reject(player);
             return;
@@ -91,14 +91,22 @@ public record OpenFrequencyMenuPacket(boolean cardMode) {
     }
 
     private static void handleCardMode(ServerPlayer player) {
+        // 15.x has no ItemMenuHostLocator type: probe the parent menu's locator
+        // for an item-backed host to decide whether this is a terminal card menu.
         if (!(player.containerMenu instanceof AEBaseMenu aeMenu)
-                || !(aeMenu.getLocator() instanceof ItemMenuHostLocator locator)
+                || aeMenu.getLocator() == null
                 || !aeMenu.stillValid(player)) {
             reject(player);
             return;
         }
+        MenuLocator locator = aeMenu.getLocator();
+        ItemMenuHost terminalHost = locator.locate(player, ItemMenuHost.class);
+        if (terminalHost == null) {
+            reject(player);
+            return;
+        }
 
-        ItemStack terminal = locator.locateItem(player);
+        ItemStack terminal = terminalHost.getItemStack();
         if (!TerminalCardAccess.hasCard(terminal)) {
             player.displayClientMessage(
                     Component.translatable("ae2lt.frequency_card.terminal_no_card").withStyle(ChatFormatting.RED),

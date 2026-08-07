@@ -25,10 +25,11 @@ import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 
 public class LightningCollectorMenu extends AEBaseMenu implements IProgressProvider, FrequencyBindingMenu {
-    public static final MenuType<LightningCollectorMenu> TYPE = MenuTypeBuilder
-            .create(LightningCollectorMenu::new, LightningCollectorBlockEntity.class)
-            .withMenuTitle(host -> Component.translatable("block.ae2lt.lightning_collector"))
-            .buildUnregistered(ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "lightning_collector"));
+    public static final MenuType<LightningCollectorMenu> TYPE = Ae2ltMenuBuilder.buildUnregistered(
+            MenuTypeBuilder
+                    .create(LightningCollectorMenu::new, LightningCollectorBlockEntity.class)
+                    .withMenuTitle(host -> Component.translatable("block.ae2lt.lightning_collector")),
+            new ResourceLocation(AE2LightningTech.MODID, "lightning_collector"));
 
     @GuiSync(30)
     public int catalysisValue;
@@ -83,7 +84,7 @@ public class LightningCollectorMenu extends AEBaseMenu implements IProgressProvi
         ItemStack original = sourceStack.copy();
         ItemStack remainder;
 
-        if (isPlayerSideSlot(sourceSlot)) {
+        if (((com.moakiee.ae2lt.mixin.AEBaseMenuAccessor) (Object) this).ae2lt$isPlayerSideSlot(sourceSlot)) {
             remainder = moveIntoSlots(sourceStack.copy(), List.of(crystalSlot));
         } else {
             remainder = moveIntoSlots(sourceStack.copy(), getPlayerDestinationSlots());
@@ -116,6 +117,7 @@ public class LightningCollectorMenu extends AEBaseMenu implements IProgressProvi
     public LightningCollectorBlockEntity getHost() {
         return host;
     }
+
 
     @Override
     public int getCurrentProgress() {
@@ -163,3 +165,4 @@ public class LightningCollectorMenu extends AEBaseMenu implements IProgressProvi
         return remainder;
     }
 }
+

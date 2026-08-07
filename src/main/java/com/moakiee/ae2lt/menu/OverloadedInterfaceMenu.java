@@ -43,9 +43,9 @@ public class OverloadedInterfaceMenu extends InterfaceMenu implements FrequencyB
     private static final MenuTypeBuilder.MenuFactory<OverloadedInterfaceMenu, InterfaceLogicHost> FACTORY =
             OverloadedInterfaceMenu::new;
 
-    public static final MenuType<OverloadedInterfaceMenu> TYPE = MenuTypeBuilder
-            .create(FACTORY, InterfaceLogicHost.class)
-            .buildUnregistered(ResourceLocation.fromNamespaceAndPath(
+    public static final MenuType<OverloadedInterfaceMenu> TYPE = Ae2ltMenuBuilder.buildUnregistered(
+            MenuTypeBuilder.create(FACTORY, InterfaceLogicHost.class),
+            new ResourceLocation(
                     AE2LightningTech.MODID, "overloaded_interface"));
 
     private static final int SLOTS_PER_PAGE = 18;
@@ -199,7 +199,7 @@ public class OverloadedInterfaceMenu extends InterfaceMenu implements FrequencyB
         }
     }
 
-    // ── Pagination ───────────────────────────────────────────────────────
+    // 鈹€鈹€ Pagination 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 
     public void showPage(int page) {
         if (page < 0 || page >= totalPages) return;
@@ -236,7 +236,7 @@ public class OverloadedInterfaceMenu extends InterfaceMenu implements FrequencyB
         showPage(currentPage - 1);
     }
 
-    // ── Mode cycles ──────────────────────────────────────────────────────
+    // 鈹€鈹€ Mode cycles 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 
     public void cycleInterfaceMode() {
         if (isClientSide()) { sendClientAction("cycleInterfaceMode"); return; }
@@ -287,8 +287,6 @@ public class OverloadedInterfaceMenu extends InterfaceMenu implements FrequencyB
 
     public void toggleUnlimited(int slot) {
         if (isClientSide()) { sendClientAction("toggleUnlimited", slot); return; }
-        // Client-supplied index; getConfig().getKey would AIOOBE on a bad packet
-        if (slot < 0 || slot >= OverloadedInterfaceBlockEntity.SLOT_COUNT) return;
         if (host instanceof OverloadedInterfaceBlockEntity be) {
             boolean nowUnlimited = !be.isSlotUnlimited(slot);
             be.setSlotUnlimited(slot, nowUnlimited);
@@ -310,10 +308,11 @@ public class OverloadedInterfaceMenu extends InterfaceMenu implements FrequencyB
         return (unlimitedBits & (1L << slot)) != 0;
     }
 
-    // ══════════════════════════════════════════════════════════════════════
+
+    // 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲
     //  ME Terminal-style proxy slot interaction
     //  Storage slots are display-only; all click actions handled here.
-    // ══════════════════════════════════════════════════════════════════════
+    // 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲
 
     @Override
     public void clicked(int slotId, int button, ClickType clickType, Player player) {
@@ -516,7 +515,7 @@ public class OverloadedInterfaceMenu extends InterfaceMenu implements FrequencyB
         return ItemStack.EMPTY;
     }
 
-    // ══════════════════════════════════════════════════════════════════════
+    // 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲
 
     @Override
     public void openSetAmountMenu(int configSlot) {
@@ -524,12 +523,10 @@ public class OverloadedInterfaceMenu extends InterfaceMenu implements FrequencyB
             sendClientAction(ACTION_OPEN_SET_AMOUNT, configSlot);
             return;
         }
-        // Client-supplied index; getConfig().getStack would AIOOBE on a bad packet
-        if (configSlot < 0 || configSlot >= OverloadedInterfaceBlockEntity.SLOT_COUNT) return;
         var stack = getHost().getConfig().getStack(configSlot);
         if (stack != null) {
             SetStockAmountMenu.open((ServerPlayer) getPlayer(), getLocator(), configSlot,
-                    stack.what(), (int) Math.min(stack.amount(), Integer.MAX_VALUE));
+                    stack.what(), (int) stack.amount());
             if (getPlayer().containerMenu instanceof SetStockAmountMenu sam) {
                 long cap = stack.what().getType().getAmountPerByte() * 1024L;
                 try {
@@ -581,3 +578,4 @@ public class OverloadedInterfaceMenu extends InterfaceMenu implements FrequencyB
         }
     }
 }
+
