@@ -966,6 +966,16 @@ public class MatrixControllerBlockEntity extends BlockEntity
             linkedPort = port;
         }
 
+        // AE2 creates the port's managed node from AENetworkedBlockEntity.onReady(), at the
+        // end of the server-level tick. A controller scan can run earlier in that same tick
+        // after a dedicated-server reload. Do not treat the one-shot terminal-link bind as
+        // successful while the target node is still unavailable; retry the complete publish
+        // sequence on the next tick, once the port has been readied.
+        if (linkedPort == null || !linkedPort.getMainNode().isReady()) {
+            scheduleStructureCheck();
+            return;
+        }
+
         // Publishing the port refreshes AE2's crafting provider synchronously. Restore every
         // storage owner first so that the first getAvailablePatterns() call after a reload sees
         // the persisted patterns instead of caching an empty provider.

@@ -56,6 +56,10 @@ class ControllerOwnedRuntimeArchitectureTest {
 
         int bindMembers = controller.indexOf(
                 "private void bindMembers(MatrixMultiblockScanResult result)");
+        int waitForPortNode = controller.indexOf(
+                "linkedPort == null || !linkedPort.getMainNode().isReady()", bindMembers);
+        int scheduleRetry = controller.indexOf("scheduleStructureCheck();", waitForPortNode);
+        int abortEarlyPublish = controller.indexOf("return;", scheduleRetry);
         int restoreOwner = controller.indexOf(
                 "storage.setControllerPos(worldPosition);", bindMembers);
         int publishPort = controller.indexOf(
@@ -64,6 +68,10 @@ class ControllerOwnedRuntimeArchitectureTest {
                 "storage.bindToController(worldPosition, linkedPort);", bindMembers);
 
         assertTrue(bindMembers >= 0);
+        assertTrue(waitForPortNode > bindMembers);
+        assertTrue(scheduleRetry > waitForPortNode);
+        assertTrue(abortEarlyPublish > scheduleRetry && abortEarlyPublish < restoreOwner,
+                "An unready AE2 port node must defer the entire pattern publication until the next tick");
         assertTrue(restoreOwner > bindMembers);
         assertTrue(publishPort > restoreOwner,
                 "Every persisted pattern storage must be controller-owned before AE2 refreshes the provider");
