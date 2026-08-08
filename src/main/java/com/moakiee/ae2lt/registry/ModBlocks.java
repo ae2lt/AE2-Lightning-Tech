@@ -48,13 +48,11 @@ import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.material.MapColor;
 import net.minecraft.world.level.material.PushReaction;
-import net.minecraftforge.fml.ModList;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
 
 public final class ModBlocks {
-    private static final String APPFLUX_MODID = "appflux";
 
     public static final DeferredRegister<Block> BLOCKS = DeferredRegister.create(ForgeRegistries.BLOCKS, AE2LightningTech.MODID);
 
@@ -197,10 +195,7 @@ public final class ModBlocks {
             registerBlock("overloaded_interface", OverloadedInterfaceBlock::new);
 
     public static final RegistryObject<OverloadedPowerSupplyBlock> OVERLOADED_POWER_SUPPLY =
-            registerBlock(
-                    "overloaded_power_supply",
-                    OverloadedPowerSupplyBlock::new,
-                    ModBlocks::isAppFluxLoaded);
+            registerBlock("overloaded_power_supply", OverloadedPowerSupplyBlock::new);
 
     public static final RegistryObject<WirelessReceiverBlock> WIRELESS_RECEIVER =
             registerBlock("wireless_receiver", WirelessReceiverBlock::new);
@@ -376,10 +371,6 @@ public final class ModBlocks {
 
     public static boolean hasOverloadedPowerSupply() {
         return OVERLOADED_POWER_SUPPLY != null;
-    }
-
-    private static boolean isAppFluxLoaded() {
-        return ModList.get().isLoaded(APPFLUX_MODID);
     }
 }
 

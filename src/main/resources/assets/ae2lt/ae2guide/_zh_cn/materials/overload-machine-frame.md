@@ -3,9 +3,6 @@ navigation:
   title: 过载机器框架
   icon: ae2lt:overload_machine_frame
   parent: materials/materials-index.md
-item_ids:
-  - ae2lt:overload_machine_frame
-  - ae2lt:silicon_block
 ---
 
 # 过载机器框架与硅块

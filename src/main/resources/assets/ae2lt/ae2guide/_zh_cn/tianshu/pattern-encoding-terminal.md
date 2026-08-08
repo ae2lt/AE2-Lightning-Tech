@@ -4,9 +4,6 @@ navigation:
   icon: ae2lt:tianshu_pattern_encoding_terminal
   parent: tianshu/tianshu-index.md
   position: 40
-item_ids:
-  - ae2lt:tianshu_pattern_encoding_terminal
-  - ae2lt:closed_loop_pattern
 ---
 
 # 天枢样板编码终端

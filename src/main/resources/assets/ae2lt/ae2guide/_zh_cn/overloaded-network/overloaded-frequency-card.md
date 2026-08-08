@@ -3,8 +3,6 @@ navigation:
   title: 过载频率卡
   icon: ae2lt:overloaded_frequency_card
   parent: overloaded-network/overloaded-network-index.md
-item_ids:
-  - ae2lt:overloaded_frequency_card
 ---
 
 # 过载频率卡

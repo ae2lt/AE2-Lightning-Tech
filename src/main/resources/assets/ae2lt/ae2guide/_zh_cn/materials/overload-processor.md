@@ -3,11 +3,6 @@ navigation:
   title: 过载处理器
   icon: ae2lt:overload_processor
   parent: materials/materials-index.md
-item_ids:
-  - ae2lt:overload_processor
-  - ae2lt:overload_circuit_board
-  - ae2lt:unoverloaded_circuit_board
-  - ae2lt:overload_inscriber_press
 ---
 
 # 过载处理器

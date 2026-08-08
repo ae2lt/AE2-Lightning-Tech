@@ -10,8 +10,5 @@
       "chance": 0.15
     }
   ],
-  "item": {
-    "id": "ae2lt:inactive_firmament_spirit_core",
-    "count": 1
-  }
+  "item": { "id": "ae2lt:inactive_firmament_spirit_core", "Count": 1 }
 }

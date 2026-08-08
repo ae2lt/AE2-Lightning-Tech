@@ -4,17 +4,6 @@ navigation:
   icon: ae2lt:tianshu_baseline_main_core
   parent: tianshu/tianshu-index.md
   position: 20
-item_ids:
-  - ae2lt:tianshu_baseline_main_core
-  - ae2lt:tianshu_quantum_main_core
-  - ae2lt:tianshu_overload_main_core
-  - ae2lt:tianshu_multidimensional_main_core
-  - ae2lt:tianshu_blank_unit
-  - ae2lt:storage_supercomputing_unit
-  - ae2lt:parallel_supercomputing_unit
-  - ae2lt:tianshu_amplifier_unit
-  - ae2lt:closed_loop_pattern_storage
-  - ae2lt:closed_loop_seed_storage
 ---
 
 # 主核心、计算单元与性能

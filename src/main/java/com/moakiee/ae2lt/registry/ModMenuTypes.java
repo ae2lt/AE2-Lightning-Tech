@@ -62,11 +62,9 @@ public final class ModMenuTypes {
                     () -> OverloadedInterfaceMenu.TYPE);
 
     public static final RegistryObject<MenuType<OverloadedPowerSupplyMenu>>
-            OVERLOADED_POWER_SUPPLY = ModBlocks.hasOverloadedPowerSupply()
-                    ? MENU_TYPES.register(
-                            "overloaded_power_supply",
-                            () -> OverloadedPowerSupplyMenu.TYPE)
-                    : null;
+            OVERLOADED_POWER_SUPPLY = MENU_TYPES.register(
+                    "overloaded_power_supply",
+                    () -> OverloadedPowerSupplyMenu.TYPE);
 
     public static final RegistryObject<MenuType<LightningSimulationChamberMenu>>
             LIGHTNING_SIMULATION_CHAMBER = MENU_TYPES.register(

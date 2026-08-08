@@ -4,13 +4,13 @@
   "inputs": [
     {
       "ingredient": {
-        "tag": "c:ender_pearls"
+        "tag": "forge:ender_pearls"
       },
       "count": 1
     },
     {
       "ingredient": {
-        "tag": "c:dusts/fluix"
+        "tag": "forge:dusts/fluix"
       },
       "count": 4
     }

@@ -3,8 +3,6 @@ navigation:
   title: 过载ME控制器
   icon: ae2lt:overloaded_controller
   parent: overloaded-network/overloaded-network-index.md
-item_ids:
-  - ae2lt:overloaded_controller
 ---
 
 # 过载 ME 控制器

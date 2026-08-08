@@ -4,32 +4,6 @@ navigation:
   icon: ae2lt:celestweave_core
   parent: devices-index.md
   position: 20
-item_ids:
-  - ae2lt:celestweave_oculus
-  - ae2lt:celestweave_core
-  - ae2lt:celestweave_conduit
-  - ae2lt:celestweave_stride
-  - ae2lt:energy_module_t1
-  - ae2lt:energy_module_t2
-  - ae2lt:energy_module_t3
-  - ae2lt:railgun_module_core
-  - ae2lt:module_night_vision
-  - ae2lt:module_water_breathing
-  - ae2lt:module_saturation
-  - ae2lt:module_reach_extension
-  - ae2lt:module_matrix_shield
-  - ae2lt:module_phase_shield
-  - ae2lt:module_reflect
-  - ae2lt:module_undying
-  - ae2lt:module_purification
-  - ae2lt:module_radiation_protection
-  - ae2lt:module_laser_protection
-  - ae2lt:module_creative_flight
-  - ae2lt:module_phase_flight
-  - ae2lt:module_phase_lock
-  - ae2lt:module_dash
-  - ae2lt:module_dig_affinity
-  - ae2lt:module_movement_assist
 ---
 
 # 苍穹织雷

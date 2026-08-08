@@ -16,7 +16,7 @@
     },
     {
       "ingredient": {
-        "tag": "c:ingots/copper"
+        "tag": "forge:ingots/copper"
       },
       "count": 16
     },

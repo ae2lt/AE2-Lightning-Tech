@@ -10,19 +10,19 @@
   "inputs": [
     {
       "ingredient": {
-        "tag": "c:dusts/certus_quartz"
+        "tag": "forge:dusts/certus_quartz"
       },
       "count": 4
     },
     {
       "ingredient": {
-        "tag": "c:dusts/fluix"
+        "tag": "forge:dusts/fluix"
       },
       "count": 4
     },
     {
       "ingredient": {
-        "tag": "c:dusts/energized_crystal"
+        "tag": "forge:dusts/energized_crystal"
       },
       "count": 4
     },

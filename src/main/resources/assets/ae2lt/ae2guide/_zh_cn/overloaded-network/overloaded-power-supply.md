@@ -1,10 +1,8 @@
 ---
 navigation:
   title: 过载供电仪
-  icon: ae2lt:overloaded_power_supply
+  icon: ae2lt:overload_crystal
   parent: overloaded-network/overloaded-network-index.md
-item_ids:
-  - ae2lt:overloaded_power_supply
 ---
 
 # 过载供电仪

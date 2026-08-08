@@ -4,8 +4,6 @@ navigation:
   icon: ae2lt:overload_tnt
   parent: lightning/lightning-index.md
   position: 90
-item_ids:
-  - ae2lt:overload_tnt
 ---
 
 # 过载 TNT

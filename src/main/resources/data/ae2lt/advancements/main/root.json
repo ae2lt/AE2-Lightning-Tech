@@ -1,6 +1,6 @@
 {
   "display": {
-    "icon": { "id": "ae2lt:overload_crystal" },
+    "icon": { "item": "ae2lt:overload_crystal" },
     "title": { "translate": "advancements.ae2lt.root.title" },
     "description": { "translate": "advancements.ae2lt.root.description" },
     "background": "ae2:textures/block/sky_stone_brick.png",
@@ -14,7 +14,7 @@
       "trigger": "minecraft:inventory_changed",
       "conditions": {
         "items": [
-          { "items": "ae2lt:overload_crystal" }
+          { "items": [ "ae2lt:overload_crystal" ] }
         ]
       }
     }

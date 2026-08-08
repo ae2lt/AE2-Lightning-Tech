@@ -1,7 +1,7 @@
 {
   "parent": "ae2lt:main/lightning_simulation_room",
   "display": {
-    "icon": { "id": "ae2lt:tesla_coil" },
+    "icon": { "item": "ae2lt:tesla_coil" },
     "title": { "translate": "advancements.ae2lt.tesla_coil.title" },
     "description": { "translate": "advancements.ae2lt.tesla_coil.description" },
     "frame": "task",
@@ -14,7 +14,7 @@
       "trigger": "minecraft:inventory_changed",
       "conditions": {
         "items": [
-          { "items": "ae2lt:tesla_coil" }
+          { "items": [ "ae2lt:tesla_coil" ] }
         ]
       }
     }

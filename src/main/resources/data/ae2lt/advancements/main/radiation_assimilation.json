@@ -1,7 +1,7 @@
 {
   "parent": "ae2lt:main/root",
   "display": {
-    "icon": { "id": "ae2lt:module_radiation_protection" },
+    "icon": { "item": "ae2lt:module_radiation_protection" },
     "title": { "translate": "advancements.ae2lt.radiation_assimilation.title" },
     "description": { "translate": "advancements.ae2lt.radiation_assimilation.description" },
     "frame": "challenge",

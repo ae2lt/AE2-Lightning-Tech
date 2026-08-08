@@ -22,7 +22,7 @@
     },
     {
       "ingredient": {
-        "tag": "c:silicon"
+        "tag": "forge:silicon"
       },
       "count": 1
     },
@@ -34,7 +34,7 @@
     },
     {
       "ingredient": {
-        "tag": "c:dusts/glowstone"
+        "tag": "forge:dusts/glowstone"
       },
       "count": 1
     }

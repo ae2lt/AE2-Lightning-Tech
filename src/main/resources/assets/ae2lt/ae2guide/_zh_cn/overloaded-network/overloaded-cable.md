@@ -3,24 +3,6 @@ navigation:
   title: 过载线缆
   icon: ae2lt:overloaded_cable
   parent: overloaded-network/overloaded-network-index.md
-item_ids:
-  - ae2lt:overloaded_cable
-  - ae2lt:overloaded_cable_white
-  - ae2lt:overloaded_cable_orange
-  - ae2lt:overloaded_cable_magenta
-  - ae2lt:overloaded_cable_light_blue
-  - ae2lt:overloaded_cable_yellow
-  - ae2lt:overloaded_cable_lime
-  - ae2lt:overloaded_cable_pink
-  - ae2lt:overloaded_cable_gray
-  - ae2lt:overloaded_cable_light_gray
-  - ae2lt:overloaded_cable_cyan
-  - ae2lt:overloaded_cable_purple
-  - ae2lt:overloaded_cable_blue
-  - ae2lt:overloaded_cable_brown
-  - ae2lt:overloaded_cable_green
-  - ae2lt:overloaded_cable_red
-  - ae2lt:overloaded_cable_black
 ---
 
 # 过载线缆

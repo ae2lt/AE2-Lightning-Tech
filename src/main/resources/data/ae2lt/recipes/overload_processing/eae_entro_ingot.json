@@ -10,13 +10,13 @@
   "inputs": [
     {
       "ingredient": {
-        "tag": "c:dusts/entro"
+        "tag": "forge:dusts/entro"
       },
       "count": 32
     },
     {
       "ingredient": {
-        "tag": "c:ingots/gold"
+        "tag": "forge:ingots/gold"
       },
       "count": 32
     },

@@ -1,7 +1,7 @@
 {
   "parent": "ae2lt:main/lightning_simulation_room",
   "display": {
-    "icon": { "id": "ae2lt:overload_processing_factory" },
+    "icon": { "item": "ae2lt:overload_processing_factory" },
     "title": { "translate": "advancements.ae2lt.overload_processing_factory.title" },
     "description": { "translate": "advancements.ae2lt.overload_processing_factory.description" },
     "frame": "goal",
@@ -14,7 +14,7 @@
       "trigger": "minecraft:inventory_changed",
       "conditions": {
         "items": [
-          { "items": "ae2lt:overload_processing_factory" }
+          { "items": [ "ae2lt:overload_processing_factory" ] }
         ]
       }
     }

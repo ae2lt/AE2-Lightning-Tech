@@ -3,18 +3,6 @@ navigation:
   title: 闪电存储元件
   icon: ae2lt:lightning_storage_component_i
   parent: lightning/lightning-index.md
-item_ids:
-  - ae2lt:lightning_storage_component_i
-  - ae2lt:lightning_storage_component_ii
-  - ae2lt:lightning_storage_component_iii
-  - ae2lt:lightning_storage_component_iv
-  - ae2lt:lightning_storage_component_v
-  - ae2lt:infinite_storage_cell
-  - ae2lt:lightning_cell_component_i
-  - ae2lt:lightning_cell_component_ii
-  - ae2lt:lightning_cell_component_iii
-  - ae2lt:lightning_cell_component_iv
-  - ae2lt:lightning_cell_component_v
 ---
 
 # 闪电存储元件

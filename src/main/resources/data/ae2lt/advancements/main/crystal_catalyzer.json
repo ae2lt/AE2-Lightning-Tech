@@ -1,7 +1,7 @@
 {
   "parent": "ae2lt:main/lightning_simulation_room",
   "display": {
-    "icon": { "id": "ae2lt:crystal_catalyzer" },
+    "icon": { "item": "ae2lt:crystal_catalyzer" },
     "title": { "translate": "advancements.ae2lt.crystal_catalyzer.title" },
     "description": { "translate": "advancements.ae2lt.crystal_catalyzer.description" },
     "frame": "task",
@@ -14,7 +14,7 @@
       "trigger": "minecraft:inventory_changed",
       "conditions": {
         "items": [
-          { "items": "ae2lt:crystal_catalyzer" }
+          { "items": [ "ae2lt:crystal_catalyzer" ] }
         ]
       }
     }

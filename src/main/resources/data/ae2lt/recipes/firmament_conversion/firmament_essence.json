@@ -9,10 +9,7 @@
     }
   ],
   "results": [
-    {
-      "id": "ae2lt:firmament_essence",
-      "count": 1
-    }
+    { "id": "ae2lt:firmament_essence", "Count": 1 }
   ],
   "processTime": 40
 }

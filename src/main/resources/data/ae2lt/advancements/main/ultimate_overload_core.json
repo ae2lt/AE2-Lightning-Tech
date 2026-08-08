@@ -1,7 +1,7 @@
 {
   "parent": "ae2lt:main/overload_singularity",
   "display": {
-    "icon": { "id": "ae2lt:ultimate_overload_core" },
+    "icon": { "item": "ae2lt:ultimate_overload_core" },
     "title": { "translate": "advancements.ae2lt.ultimate_overload_core.title" },
     "description": { "translate": "advancements.ae2lt.ultimate_overload_core.description" },
     "frame": "goal",
@@ -14,7 +14,7 @@
       "trigger": "minecraft:inventory_changed",
       "conditions": {
         "items": [
-          { "items": "ae2lt:ultimate_overload_core" }
+          { "items": [ "ae2lt:ultimate_overload_core" ] }
         ]
       }
     }

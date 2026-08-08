@@ -1,7 +1,7 @@
 {
   "parent": "ae2lt:main/hyperdimensional_pigmee",
   "display": {
-    "icon": { "id": "ae2lt:lightning_collapse_matrix" },
+    "icon": { "item": "ae2lt:lightning_collapse_matrix" },
     "title": { "translate": "advancements.ae2lt.observable_black_hole.title" },
     "description": { "translate": "advancements.ae2lt.observable_black_hole.description" },
     "frame": "challenge",

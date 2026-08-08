@@ -10,7 +10,7 @@
   "inputs": [
     {
       "ingredient": {
-        "tag": "c:dusts/entro"
+        "tag": "forge:dusts/entro"
       },
       "count": 32
     },

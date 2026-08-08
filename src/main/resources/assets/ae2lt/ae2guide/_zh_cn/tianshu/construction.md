@@ -4,18 +4,6 @@ navigation:
   icon: ae2lt:tianshu_supercomputer_casing
   parent: tianshu/tianshu-index.md
   position: 10
-item_ids:
-  - ae2lt:tianshu_supercomputer_casing
-  - ae2lt:phase_change_cooling_unit
-  - ae2lt:tianshu_supercomputer_glass
-  - ae2lt:tianshu_supercomputer_controller
-  - ae2lt:tianshu_supercomputer_port
-  - ae2lt:tianshu_blank_unit
-  - ae2lt:storage_supercomputing_unit
-  - ae2lt:parallel_supercomputing_unit
-  - ae2lt:tianshu_amplifier_unit
-  - ae2lt:closed_loop_pattern_storage
-  - ae2lt:closed_loop_seed_storage
 ---
 
 # 结构与自动搭建

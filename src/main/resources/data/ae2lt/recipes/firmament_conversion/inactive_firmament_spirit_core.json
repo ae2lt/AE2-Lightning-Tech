@@ -9,22 +9,10 @@
     }
   ],
   "results": [
-    {
-      "id": "ae2lt:firmament_spirit_core_oculus",
-      "count": 1
-    },
-    {
-      "id": "ae2lt:firmament_spirit_core_core",
-      "count": 1
-    },
-    {
-      "id": "ae2lt:firmament_spirit_core_conduit",
-      "count": 1
-    },
-    {
-      "id": "ae2lt:firmament_spirit_core_stride",
-      "count": 1
-    }
+    { "id": "ae2lt:firmament_spirit_core_oculus", "Count": 1 },
+    { "id": "ae2lt:firmament_spirit_core_core", "Count": 1 },
+    { "id": "ae2lt:firmament_spirit_core_conduit", "Count": 1 },
+    { "id": "ae2lt:firmament_spirit_core_stride", "Count": 1 }
   ],
   "processTime": 200
 }

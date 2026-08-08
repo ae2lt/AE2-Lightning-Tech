@@ -3,8 +3,6 @@ navigation:
   title: 漂浮物质
   icon: ae2lt:floating_matter
   parent: materials/materials-index.md
-item_ids:
-  - ae2lt:floating_matter
 ---
 
 # 漂浮物质

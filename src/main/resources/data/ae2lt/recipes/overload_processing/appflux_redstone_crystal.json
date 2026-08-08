@@ -10,19 +10,19 @@
   "inputs": [
     {
       "ingredient": {
-        "tag": "c:storage_blocks/redstone"
+        "tag": "forge:storage_blocks/redstone"
       },
       "count": 16
     },
     {
       "ingredient": {
-        "tag": "c:gems/fluix"
+        "tag": "forge:gems/fluix"
       },
       "count": 16
     },
     {
       "ingredient": {
-        "tag": "c:dusts/glowstone"
+        "tag": "forge:dusts/glowstone"
       },
       "count": 16
     }

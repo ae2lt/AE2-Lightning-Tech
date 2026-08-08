@@ -16,7 +16,7 @@
     },
     {
       "ingredient": {
-        "tag": "c:dusts/energized_crystal"
+        "tag": "forge:dusts/energized_crystal"
       },
       "count": 32
     }

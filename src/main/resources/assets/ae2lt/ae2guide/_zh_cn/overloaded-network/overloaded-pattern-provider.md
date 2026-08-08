@@ -3,12 +3,6 @@ navigation:
   title: 过载样板供应器
   icon: ae2lt:overloaded_pattern_provider
   parent: overloaded-network/overloaded-network-index.md
-item_ids:
-  - ae2lt:overloaded_pattern_provider
-  - ae2lt:overloaded_pattern_provider_upgrade
-  - ae2lt:overload_pattern
-  - ae2lt:overload_pattern_encoder
-  - ae2lt:overloaded_wireless_connect_tool
 ---
 
 # 过载样板供应器

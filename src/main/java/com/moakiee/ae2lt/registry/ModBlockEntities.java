@@ -146,14 +146,12 @@ public final class ModBlockEntities {
                             .build(null));
 
     public static final RegistryObject<BlockEntityType<OverloadedPowerSupplyBlockEntity>>
-            OVERLOADED_POWER_SUPPLY = ModBlocks.hasOverloadedPowerSupply()
-                    ? BLOCK_ENTITY_TYPES.register(
-                            "overloaded_power_supply",
-                            () -> BlockEntityType.Builder.of(
-                                    OverloadedPowerSupplyBlockEntity::new,
-                                    ModBlocks.OVERLOADED_POWER_SUPPLY.get())
-                                    .build(null))
-                    : null;
+            OVERLOADED_POWER_SUPPLY = BLOCK_ENTITY_TYPES.register(
+                    "overloaded_power_supply",
+                    () -> BlockEntityType.Builder.of(
+                            OverloadedPowerSupplyBlockEntity::new,
+                            ModBlocks.OVERLOADED_POWER_SUPPLY.get())
+                            .build(null));
 
     public static final RegistryObject<BlockEntityType<WirelessReceiverBlockEntity>>
             WIRELESS_RECEIVER = BLOCK_ENTITY_TYPES.register(

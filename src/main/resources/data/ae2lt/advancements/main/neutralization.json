@@ -1,7 +1,7 @@
 {
   "parent": "ae2lt:main/lightning_collapse_matrix",
   "display": {
-    "icon": { "id": "ae2lt:mysterious_cell" },
+    "icon": { "item": "ae2lt:mysterious_cell" },
     "title": { "translate": "advancements.ae2lt.neutralization.title" },
     "description": { "translate": "advancements.ae2lt.neutralization.description" },
     "frame": "goal",

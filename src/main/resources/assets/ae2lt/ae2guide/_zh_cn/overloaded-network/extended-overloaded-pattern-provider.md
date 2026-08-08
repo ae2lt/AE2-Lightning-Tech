@@ -3,9 +3,6 @@ navigation:
   title: 扩展过载样板供应器
   icon: ae2lt:extended_overloaded_pattern_provider
   parent: overloaded-network/overloaded-network-index.md
-item_ids:
-  - ae2lt:extended_overloaded_pattern_provider
-  - ae2lt:extended_overloaded_pattern_provider_upgrade
 ---
 
 # 扩展过载样板供应器

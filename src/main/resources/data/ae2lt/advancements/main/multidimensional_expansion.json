@@ -1,7 +1,7 @@
 {
   "parent": "ae2lt:main/hyperdimensional_pigmee",
   "display": {
-    "icon": { "id": "ae2lt:tianshu_multidimensional_main_core" },
+    "icon": { "item": "ae2lt:tianshu_multidimensional_main_core" },
     "title": { "translate": "advancements.ae2lt.multidimensional_expansion.title" },
     "description": { "translate": "advancements.ae2lt.multidimensional_expansion.description" },
     "frame": "challenge",
@@ -14,7 +14,7 @@
       "trigger": "minecraft:inventory_changed",
       "conditions": {
         "items": [
-          { "items": "ae2lt:tianshu_multidimensional_main_core" }
+          { "items": [ "ae2lt:tianshu_multidimensional_main_core" ] }
         ]
       }
     },
@@ -22,7 +22,7 @@
       "trigger": "minecraft:inventory_changed",
       "conditions": {
         "items": [
-          { "items": "ae2lt:matter_warping_matrix_multidimensional_main_core" }
+          { "items": [ "ae2lt:matter_warping_matrix_multidimensional_main_core" ] }
         ]
       }
     }

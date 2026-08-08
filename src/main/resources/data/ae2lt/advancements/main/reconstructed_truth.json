@@ -1,7 +1,7 @@
 {
   "parent": "ae2lt:main/neutralization",
   "display": {
-    "icon": { "id": "ae2lt:research_note" },
+    "icon": { "item": "ae2lt:research_note" },
     "title": { "translate": "advancements.ae2lt.reconstructed_truth.title" },
     "description": { "translate": "advancements.ae2lt.reconstructed_truth.description" },
     "frame": "challenge",
@@ -14,7 +14,7 @@
       "trigger": "minecraft:inventory_changed",
       "conditions": {
         "items": [
-          { "items": "ae2lt:research_note" }
+          { "items": [ "ae2lt:research_note" ] }
         ]
       }
     }

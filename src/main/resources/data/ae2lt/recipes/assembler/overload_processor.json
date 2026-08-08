@@ -1,10 +1,6 @@
 {
   "conditions": [
     {
-      "type": "extendedae:config",
-      "config_id": "assembler_circuit"
-    },
-    {
       "type": "forge:mod_loaded",
       "modid": "extendedae"
     }
@@ -26,12 +22,12 @@
     {
       "amount": 4,
       "ingredient": {
-        "tag": "c:dusts/redstone"
+        "tag": "forge:dusts/redstone"
       }
     }
   ],
   "output": {
     "count": 4,
-    "id": "ae2lt:overload_processor"
+    "item": "ae2lt:overload_processor"
   }
 }

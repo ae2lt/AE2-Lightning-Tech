@@ -3,9 +3,6 @@ navigation:
   title: 过载ME接口
   icon: ae2lt:overloaded_interface
   parent: overloaded-network/overloaded-network-index.md
-item_ids:
-  - ae2lt:overloaded_interface
-  - ae2lt:overloaded_filter_component
 ---
 
 # 过载 ME 接口

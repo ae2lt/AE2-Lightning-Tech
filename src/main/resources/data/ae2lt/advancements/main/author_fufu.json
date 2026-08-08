@@ -1,7 +1,7 @@
 {
   "parent": "ae2lt:main/neutralization",
   "display": {
-    "icon": { "id": "ae2lt:moakiee_fumo" },
+    "icon": { "item": "ae2lt:moakiee_fumo" },
     "title": { "translate": "advancements.ae2lt.author_fufu.title" },
     "description": { "translate": "advancements.ae2lt.author_fufu.description" },
     "frame": "goal",
@@ -14,7 +14,7 @@
       "trigger": "minecraft:inventory_changed",
       "conditions": {
         "items": [
-          { "items": "ae2lt:moakiee_fumo" }
+          { "items": [ "ae2lt:moakiee_fumo" ] }
         ]
       }
     },
@@ -22,7 +22,7 @@
       "trigger": "minecraft:inventory_changed",
       "conditions": {
         "items": [
-          { "items": "ae2lt:cystrysu_fumo" }
+          { "items": [ "ae2lt:cystrysu_fumo" ] }
         ]
       }
     }

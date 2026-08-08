@@ -5,6 +5,10 @@
       "bonus_rolls": 0.0,
       "conditions": [
         {
+          "condition": "forge:mod_loaded",
+          "modid": "appflux"
+        },
+        {
           "condition": "minecraft:survives_explosion"
         }
       ],

@@ -4,8 +4,6 @@ navigation:
   icon: ae2lt:lightning_collapse_matrix
   parent: materials/materials-index.md
   position: 60
-item_ids:
-  - ae2lt:lightning_collapse_matrix
 ---
 
 # 闪电坍缩矩阵

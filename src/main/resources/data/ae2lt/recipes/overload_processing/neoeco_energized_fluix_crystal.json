@@ -10,13 +10,13 @@
   "inputs": [
     {
       "ingredient": {
-        "tag": "c:dusts/energized_crystal"
+        "tag": "forge:dusts/energized_crystal"
       },
       "count": 64
     },
     {
       "ingredient": {
-        "tag": "c:gems/fluix"
+        "tag": "forge:gems/fluix"
       },
       "count": 64
     }

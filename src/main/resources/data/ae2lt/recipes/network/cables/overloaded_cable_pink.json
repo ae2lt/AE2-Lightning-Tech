@@ -6,7 +6,7 @@
       "item": "ae2lt:overloaded_cable"
     },
     "b": {
-      "tag": "c:dyes/pink"
+      "tag": "forge:dyes/pink"
     }
   },
   "pattern": [
@@ -16,6 +16,6 @@
   ],
   "result": {
     "count": 8,
-    "id": "ae2lt:overloaded_cable_pink"
+    "item": "ae2lt:overloaded_cable_pink"
   }
 }

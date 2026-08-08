@@ -3,17 +3,6 @@ navigation:
   title: 苍穹材料
   icon: ae2lt:firmament_alloy_ingot
   parent: materials/materials-index.md
-item_ids:
-  - ae2lt:firmament_dust
-  - ae2lt:firmament_essence
-  - ae2lt:firmament_mixture
-  - ae2lt:firmament_alloy_ingot
-  - ae2lt:firmament_superconducting_wire
-  - ae2lt:inactive_firmament_spirit_core
-  - ae2lt:firmament_spirit_core_oculus
-  - ae2lt:firmament_spirit_core_core
-  - ae2lt:firmament_spirit_core_conduit
-  - ae2lt:firmament_spirit_core_stride
 ---
 
 # 苍穹材料

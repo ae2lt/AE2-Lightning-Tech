@@ -21,10 +21,7 @@
     }
   ],
   "results": [
-    {
-      "id": "ae2lt:overload_module_base",
-      "count": 1
-    }
+    { "id": "ae2lt:overload_module_base", "Count": 1 }
   ],
   "processTime": 100
 }

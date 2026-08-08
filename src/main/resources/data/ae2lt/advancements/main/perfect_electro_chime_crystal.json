@@ -1,7 +1,7 @@
 {
   "parent": "ae2lt:main/electro_chime_crystal",
   "display": {
-    "icon": { "id": "ae2lt:perfect_electro_chime_crystal" },
+    "icon": { "item": "ae2lt:perfect_electro_chime_crystal" },
     "title": { "translate": "advancements.ae2lt.perfect_electro_chime_crystal.title" },
     "description": { "translate": "advancements.ae2lt.perfect_electro_chime_crystal.description" },
     "frame": "task",
@@ -14,7 +14,7 @@
       "trigger": "minecraft:inventory_changed",
       "conditions": {
         "items": [
-          { "items": "ae2lt:perfect_electro_chime_crystal" }
+          { "items": [ "ae2lt:perfect_electro_chime_crystal" ] }
         ]
       }
     }
