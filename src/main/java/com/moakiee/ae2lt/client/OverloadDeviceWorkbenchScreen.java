@@ -15,8 +15,7 @@ import com.moakiee.ae2lt.menu.OverloadDeviceWorkbenchMenu;
 
 public class OverloadDeviceWorkbenchScreen extends AbstractContainerScreen<OverloadDeviceWorkbenchMenu> {
 
-    private static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath(
-            AE2LightningTech.MODID, "textures/gui/overload_workplace_gui.png");
+    private static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "textures/gui/overload_workplace_gui.png");
 
     private static final int TEXTURE_WIDTH = 320;
     private static final int TEXTURE_HEIGHT = 256;
@@ -226,7 +225,7 @@ public class OverloadDeviceWorkbenchScreen extends AbstractContainerScreen<Overl
 
     @Override
     public void render(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
-        renderBackground(gfx, mouseX, mouseY, partialTick);
+        renderBackground(gfx);
         super.render(gfx, mouseX, mouseY, partialTick);
         renderModuleRowTooltip(gfx, mouseX, mouseY);
         renderTooltip(gfx, mouseX, mouseY);
@@ -268,7 +267,7 @@ public class OverloadDeviceWorkbenchScreen extends AbstractContainerScreen<Overl
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
         int listLeft = leftPos + MODULE_ROW_X;
         int listTop = topPos + MODULE_ROW_Y;
         int listRight = leftPos + SCROLLBAR_X + SCROLLBAR_WIDTH;
@@ -278,14 +277,14 @@ public class OverloadDeviceWorkbenchScreen extends AbstractContainerScreen<Overl
                 && mouseY >= listTop
                 && mouseY < listBottom) {
             int max = Math.max(0, menu.getInstalledModuleList().size() - VISIBLE_ROWS);
-            if (scrollY > 0) {
+            if (delta > 0) {
                 scrollOffset = Math.max(0, scrollOffset - 1);
-            } else if (scrollY < 0) {
+            } else if (delta < 0) {
                 scrollOffset = Math.min(max, scrollOffset + 1);
             }
             return true;
         }
-        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+        return super.mouseScrolled(mouseX, mouseY, delta);
     }
 
     private void renderModuleRowTooltip(GuiGraphics gfx, int mouseX, int mouseY) {

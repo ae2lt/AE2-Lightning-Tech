@@ -1,12 +1,12 @@
 package com.moakiee.ae2lt.client;
 
 import com.moakiee.ae2lt.AE2LightningTech;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.EventPriority;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.ModList;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.ScreenEvent;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.eventbus.api.EventPriority;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.ModList;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.client.event.ScreenEvent;
 import org.lwjgl.glfw.GLFW;
 
 /**
@@ -15,7 +15,7 @@ import org.lwjgl.glfw.GLFW;
  * match AE2 package names, so AE2LT's terminal subclasses are missed. Dispatch the click to the
  * Tianshu screen first and consume the outer event when the screen handled it.
  */
-@EventBusSubscriber(modid = AE2LightningTech.MODID, value = Dist.CLIENT)
+@Mod.EventBusSubscriber(modid = AE2LightningTech.MODID, value = Dist.CLIENT)
 public final class TianshuInventoryTweaksCompat {
     private TianshuInventoryTweaksCompat() {
     }

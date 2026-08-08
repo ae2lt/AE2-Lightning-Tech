@@ -126,7 +126,8 @@ public final class RailgunVisuals {
 
     /** Current frame's partial tick from Minecraft's delta tracker. */
     public static float currentPartialTick() {
-        return Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(true);
+        // 1.20.1: Minecraft#getFrameTime replaces the 1.21 getTimer() chain.
+        return Minecraft.getInstance().getFrameTime();
     }
 
     // ── First-person hand-rendering offset ────────────────────────────────

@@ -120,18 +120,18 @@ public final class TianshuPatternStorageBlockEntity extends BlockEntity implemen
     }
 
     @Override
-    protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
-        super.saveAdditional(tag, registries);
+    protected void saveAdditional(CompoundTag tag) {
+        super.saveAdditional(tag);
         var patternTag = new CompoundTag();
-        patterns.writeTo(patternTag, registries);
+        patterns.writeTo(patternTag);
         tag.put(TAG_PATTERNS, patternTag);
         if (portPos != null) tag.putLong(TAG_PORT_POS, portPos.asLong());
     }
 
     @Override
-    protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
-        super.loadAdditional(tag, registries);
-        patterns.readFrom(tag.getCompound(TAG_PATTERNS), registries);
+    public void load(CompoundTag tag) {
+        super.load(tag);
+        patterns.readFrom(tag.getCompound(TAG_PATTERNS));
         portPos = tag.contains(TAG_PORT_POS, Tag.TAG_LONG)
                 ? BlockPos.of(tag.getLong(TAG_PORT_POS)) : null;
     }
@@ -288,7 +288,7 @@ public final class TianshuPatternStorageBlockEntity extends BlockEntity implemen
                 terminalPatternSlots.add(null);
             }
             while (terminalPatternSlots.size() > capacity) {
-                terminalPatternSlots.removeLast();
+                terminalPatternSlots.remove(terminalPatternSlots.size() - 1);
             }
             var active = patterns.activePatterns();
             for (int i = 0; i < terminalPatternSlots.size(); i++) {

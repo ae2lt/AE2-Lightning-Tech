@@ -821,7 +821,7 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
         candidates.sort(java.util.Comparator
                 .comparing((AEKey key) -> key.getId().toString())
                 .thenComparing(Object::toString));
-        if (candidates.remove(planned)) candidates.addFirst(planned);
+        if (candidates.remove(planned)) candidates.add(0, planned);
 
         long remaining = amount;
         for (var actual : candidates) {
@@ -1066,7 +1066,7 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
         var legacyState = port.copyLegacyPatternState();
         if (legacyState != null && level != null) {
             var legacy = new ClosedLoopPatternRepository(() -> Integer.MAX_VALUE);
-            legacy.readFrom(legacyState, level.registryAccess());
+            legacy.readFrom(legacyState);
             var item = (com.moakiee.ae2lt.item.ClosedLoopPatternItem)
                     ModItems.CLOSED_LOOP_PATTERN.get();
             for (var payload : legacy.patterns()) {
@@ -1224,8 +1224,8 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
     }
 
     @Override
-    protected void loadAdditional(CompoundTag tag) {
-        super.loadAdditional(tag);
+    public void load(CompoundTag tag) {
+        super.load(tag);
         formed = tag.getBoolean(TAG_FORMED);
         structureAvailable = false;
         waitingForChunks = false;

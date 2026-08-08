@@ -140,8 +140,8 @@ public final class ArmorEnergyService {
         }
 
         long received = ArmorEnergyBuffer.refillFromNetwork(armor, player, request);
-        long storedAfter = ArmorEnergyBuffer.read(armor, player.registryAccess());
-        long capacity = ArmorEnergyBuffer.capacity(armor, player.registryAccess());
+        long storedAfter = ArmorEnergyBuffer.read(armor, player.level().registryAccess());
+        long capacity = ArmorEnergyBuffer.capacity(armor, player.level().registryAccess());
         if (storedAfter >= capacity) {
             NEXT_NETWORK_RETRY_TICK.remove(armorId);
         } else if (ArmorNetworkRechargePolicy.shouldThrottlePassiveRetry(storedAfter, capacity, received)) {
@@ -158,8 +158,8 @@ public final class ArmorEnergyService {
         }
         ArmorEnergyBuffer.write(
                 armor,
-                player.registryAccess(),
-                ArmorEnergyBuffer.read(armor, player.registryAccess()) + amount);
+                player.level().registryAccess(),
+                ArmorEnergyBuffer.read(armor, player.level().registryAccess()) + amount);
     }
 
     private static void rechargeCandidatesForCost(ServerPlayer player, List<ItemStack> candidates, long amount) {
@@ -168,11 +168,11 @@ public final class ArmorEnergyService {
             if (remaining <= 0L) {
                 return;
             }
-            long stored = ArmorEnergyBuffer.read(candidate, player.registryAccess());
-            long capacity = ArmorEnergyBuffer.capacity(candidate, player.registryAccess());
+            long stored = ArmorEnergyBuffer.read(candidate, player.level().registryAccess());
+            long capacity = ArmorEnergyBuffer.capacity(candidate, player.level().registryAccess());
             long request = ArmorNetworkRechargePolicy.activeRechargeRequest(stored, capacity, remaining);
             rechargeFromNetwork(player, candidate, request, true);
-            remaining -= Math.min(remaining, ArmorEnergyBuffer.read(candidate, player.registryAccess()));
+            remaining -= Math.min(remaining, ArmorEnergyBuffer.read(candidate, player.level().registryAccess()));
         }
     }
 
@@ -185,7 +185,7 @@ public final class ArmorEnergyService {
         for (int i = 0; i < candidates.size(); i++) {
             sources.add(new ArmorEnergySpendPlan.Source(
                     i,
-                    ArmorEnergyBuffer.read(candidates.get(i), player.registryAccess())));
+                    ArmorEnergyBuffer.read(candidates.get(i), player.level().registryAccess())));
         }
         List<NetworkEnergySource> networkSources = includeBoundNetworks
                 ? collectNetworkEnergySources(player, candidates, amount)
@@ -205,8 +205,8 @@ public final class ArmorEnergyService {
         for (ArmorEnergySpendPlan.Debit debit : plan.debits()) {
             if (debit.sourceIndex() < networkSourceOffset) {
                 ItemStack stack = candidates.get(debit.sourceIndex());
-                long current = ArmorEnergyBuffer.read(stack, player.registryAccess());
-                ArmorEnergyBuffer.write(stack, player.registryAccess(), current - debit.amount());
+                long current = ArmorEnergyBuffer.read(stack, player.level().registryAccess());
+                ArmorEnergyBuffer.write(stack, player.level().registryAccess(), current - debit.amount());
                 debits.add(new EnergyDebit(stack, debit.amount()));
                 continue;
             }
@@ -291,7 +291,7 @@ public final class ArmorEnergyService {
         for (ItemStack candidate : collectEnergyCandidates(player, preferredArmor)) {
             long accepted = ArmorEnergyBuffer.receiveFe(
                     candidate,
-                    player.registryAccess(),
+                    player.level().registryAccess(),
                     remaining,
                     false);
             received += accepted;

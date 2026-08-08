@@ -13,8 +13,8 @@ public final class RailgunStructuralCore {
         if (railgun == null || railgun.isEmpty()) {
             return ItemStack.EMPTY;
         }
-        return railgun
-                .getOrDefault(ModDataComponents.RAILGUN_STRUCTURAL_CORE.get(), ItemStack.EMPTY)
+        return ModDataComponents.RAILGUN_STRUCTURAL_CORE
+                .getOrDefault(railgun, ItemStack.EMPTY)
                 .copyWithCount(1);
     }
 
@@ -23,13 +23,13 @@ public final class RailgunStructuralCore {
             return;
         }
         if (core == null || core.isEmpty()) {
-            railgun.remove(ModDataComponents.RAILGUN_STRUCTURAL_CORE.get());
+            ModDataComponents.RAILGUN_STRUCTURAL_CORE.remove(railgun);
             return;
         }
         if (!isValidCore(core)) {
             return;
         }
-        railgun.set(ModDataComponents.RAILGUN_STRUCTURAL_CORE.get(), core.copyWithCount(1));
+        ModDataComponents.RAILGUN_STRUCTURAL_CORE.set(railgun, core.copyWithCount(1));
     }
 
     public static ItemStack removeCore(ItemStack railgun, int amount) {

@@ -86,7 +86,7 @@ public class OverloadedPowerSupplyBlockEntity extends AENetworkBlockEntity
         }
 
         public static WirelessConnection fromTag(CompoundTag tag) {
-            var dim = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(tag.getString(TAG_DIM)));
+            var dim = ResourceKey.create(Registries.DIMENSION, ResourceLocation.tryParse(tag.getString(TAG_DIM)));
             var pos = BlockPos.of(tag.getLong(TAG_POS));
             int rawFace = tag.getInt(TAG_FACE);
             var face = (rawFace >= 0 && rawFace < Direction.values().length)

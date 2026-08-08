@@ -62,13 +62,13 @@ public record DeviceStatusModel(
         boolean gridReachable = resolve.success();
         boolean appFlux = AppFluxBridge.isAvailable();
 
-        long stored = ArmorEnergyBuffer.read(armor, player.registryAccess());
+        long stored = ArmorEnergyBuffer.read(armor, player.level().registryAccess());
 
-        var snapshot = CelestweaveArmorState.snapshot(player, armor, player.registryAccess(), true);
+        var snapshot = CelestweaveArmorState.snapshot(player, armor, player.level().registryAccess(), true);
         boolean powered = DeviceHubDisplayRules.powerAvailable(stored, gridReachable, appFlux);
 
         List<ModuleInfo> modules = new ArrayList<>();
-        for (var stack : CelestweaveArmorState.loadModuleStacks(armor, player.registryAccess())) {
+        for (var stack : CelestweaveArmorState.loadModuleStacks(armor, player.level().registryAccess())) {
             if (!(stack.getItem() instanceof CelestweaveArmorSubmoduleItem provider)) {
                 continue;
             }
@@ -136,7 +136,7 @@ public record DeviceStatusModel(
                     true));
         }
 
-        RailgunSettings settings = railgun.getOrDefault(ModDataComponents.RAILGUN_SETTINGS.get(), RailgunSettings.DEFAULT);
+        RailgunSettings settings = ModDataComponents.RAILGUN_SETTINGS.getOrDefault(railgun, RailgunSettings.DEFAULT);
         boolean terrainAllowed = AE2LTCommonConfig.railgunTerrainDestructionEnabled();
         return new DeviceStatusModel(
                 name, hasStructuralCore, powered, modules, -1, List.of(),
@@ -145,7 +145,7 @@ public record DeviceStatusModel(
     }
 
     private static List<ModuleConfigInfo> moduleConfigs(ItemStack armor, ServerPlayer player, int selectedModuleIndex) {
-        var submodules = CelestweaveArmorState.collectSubmodules(armor, player.registryAccess());
+        var submodules = CelestweaveArmorState.collectSubmodules(armor, player.level().registryAccess());
         if (selectedModuleIndex < 0 || selectedModuleIndex >= submodules.size()) {
             return List.of();
         }

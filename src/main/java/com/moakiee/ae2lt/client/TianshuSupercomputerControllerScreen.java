@@ -1,4 +1,5 @@
 package com.moakiee.ae2lt.client;
+import com.moakiee.ae2lt.network.NetworkInit;
 
 import com.moakiee.ae2lt.logic.tianshu.TianshuMultiblockScanIssue;
 import com.moakiee.ae2lt.menu.TianshuSupercomputerControllerMenu;
@@ -11,7 +12,6 @@ import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.resources.language.I18n;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
-import net.neoforged.neoforge.network.PacketDistributor;
 
 public class TianshuSupercomputerControllerScreen
         extends MultiblockControllerScreen<TianshuSupercomputerControllerMenu> {
@@ -45,7 +45,7 @@ public class TianshuSupercomputerControllerScreen
     }
 
     private void sendAction(TianshuControllerActionPacket.Action action) {
-        PacketDistributor.sendToServer(
+        NetworkInit.sendToServer(
                 new TianshuControllerActionPacket(menu.token(), menu.getBlockPos(), action));
     }
 

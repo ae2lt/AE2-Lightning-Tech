@@ -17,8 +17,8 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.level.material.Fluids;
-import net.neoforged.fml.ModList;
-import net.neoforged.neoforge.fluids.FluidStack;
+import net.minecraftforge.fml.ModList;
+import net.minecraftforge.fluids.FluidStack;
 
 import appeng.client.gui.style.Blitter;
 import appeng.client.gui.style.FluidBlitter;
@@ -166,7 +166,7 @@ public class CrystalCatalyzerFluidWidget extends AbstractWidget implements ITool
             lines.add(Component.translatable("ae2lt.gui.crystal_catalyzer.fluid.tooltip", 0, capacity)
                     .withStyle(Tooltips.NUMBER_TEXT));
         } else {
-            lines.add(fluid.getHoverName());
+            lines.add(fluid.getDisplayName());
             lines.add(Component.empty());
             lines.add(Component.translatable("ae2lt.gui.crystal_catalyzer.fluid.tooltip", fluid.getAmount(), capacity)
                     .withStyle(Tooltips.NUMBER_TEXT));

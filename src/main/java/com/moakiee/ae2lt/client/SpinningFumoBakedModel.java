@@ -7,7 +7,7 @@ import com.mojang.math.Axis;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.world.item.ItemDisplayContext;
-import net.neoforged.neoforge.client.model.BakedModelWrapper;
+import net.minecraftforge.client.model.BakedModelWrapper;
 
 class SpinningFumoBakedModel extends BakedModelWrapper<BakedModel> {
 
@@ -22,7 +22,7 @@ class SpinningFumoBakedModel extends BakedModelWrapper<BakedModel> {
         if (displayContext == ItemDisplayContext.HEAD) {
             Minecraft minecraft = Minecraft.getInstance();
             if (minecraft.level != null) {
-                float partialTick = minecraft.getTimer().getGameTimeDeltaPartialTick(true);
+                float partialTick = minecraft.getFrameTime();
                 float angle = (minecraft.level.getGameTime() % 60L + partialTick)
                         * FumoBlockEntity.SPIN_DEGREES_PER_TICK;
                 poseStack.mulPose(Axis.YP.rotationDegrees(angle));

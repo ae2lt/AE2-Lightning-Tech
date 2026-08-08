@@ -15,6 +15,7 @@ import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.config.AE2LTClientConfig;
 import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuUploadTargetData;
 import com.moakiee.ae2lt.menu.TianshuPatternEncodingTermMenu;
+import com.moakiee.ae2lt.util.SlotPositionAccess;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -34,8 +35,7 @@ import org.lwjgl.glfw.GLFW;
 public final class TianshuUploadTargetScreen<M extends TianshuPatternEncodingTermMenu>
         extends AESubScreen<M, TianshuPatternEncodingTermScreen<M>> {
     private static final String STYLE = "/screens/tianshu_upload_targets.json";
-    private static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath(
-            AE2LightningTech.MODID, "textures/gui/tianshu_upload_targets.png");
+    private static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "textures/gui/tianshu_upload_targets.png");
     private static final int TEXTURE_SIZE = 256;
     private static final int GUI_WIDTH = 190;
     private static final int GUI_HEADER_HEIGHT = 33;
@@ -90,7 +90,7 @@ public final class TianshuUploadTargetScreen<M extends TianshuPatternEncodingTer
 
         addToLeftToolbar(new SettingToggleButton<>(Settings.TERMINAL_STYLE,
                 AEConfig.instance().getTerminalStyle(), this::toggleTerminalStyle));
-        widgets.add("button_back", new TabButton(Icon.BACK,
+        widgets.add("button_back", new TabButton(Icon.ARROW_LEFT,
                 Component.translatable("gui.back"), ignored -> returnToParent()));
         addToLeftToolbar(new AliasActionButton(Icon.ENTER,
                 Component.translatable("ae2lt.tianshu.upload.alias.add"), this::addMapping));
@@ -196,8 +196,7 @@ public final class TianshuUploadTargetScreen<M extends TianshuPatternEncodingTer
 
     private void hideAllMenuSlots() {
         for (var slot : menu.slots) {
-            slot.x = HIDDEN_SLOT_POS;
-            slot.y = HIDDEN_SLOT_POS;
+            SlotPositionAccess.set(slot, HIDDEN_SLOT_POS, HIDDEN_SLOT_POS);
         }
     }
 
@@ -415,14 +414,14 @@ public final class TianshuUploadTargetScreen<M extends TianshuPatternEncodingTer
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double deltaX, double deltaY) {
+    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
         if (defaultAliases.size() > 1 && aliasField.isMouseOver(mouseX, mouseY)) {
             initialAliasSelectionPending = false;
             if (defaultAliasIndex < 0) {
-                defaultAliasIndex = deltaY > 0 ? defaultAliases.size() - 1 : 0;
+                defaultAliasIndex = delta > 0 ? defaultAliases.size() - 1 : 0;
             } else {
                 defaultAliasIndex = Math.floorMod(
-                        defaultAliasIndex + (deltaY > 0 ? -1 : 1), defaultAliases.size());
+                        defaultAliasIndex + (delta > 0 ? -1 : 1), defaultAliases.size());
             }
             updatingAliasField = true;
             aliasField.setValue(defaultAliases.get(defaultAliasIndex));
@@ -433,7 +432,7 @@ public final class TianshuUploadTargetScreen<M extends TianshuPatternEncodingTer
             }
             return true;
         }
-        return super.mouseScrolled(mouseX, mouseY, deltaX, deltaY);
+        return super.mouseScrolled(mouseX, mouseY, delta);
     }
 
     @Override

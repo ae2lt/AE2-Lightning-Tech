@@ -18,7 +18,7 @@ import com.moakiee.ae2lt.blockentity.OverloadedControllerBlockEntity;
  * both overloaded and vanilla controllers.  Overloaded controllers must
  * operate on a dedicated network without vanilla controllers.
  */
-@Mixin(ControllerValidator.class)
+@Mixin(value = ControllerValidator.class, remap = false)
 public abstract class ControllerValidatorMixin {
 
     @Inject(method = "calculateState", at = @At("RETURN"), cancellable = true)

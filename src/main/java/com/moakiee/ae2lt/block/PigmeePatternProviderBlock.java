@@ -10,7 +10,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.ItemInteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
@@ -36,36 +35,21 @@ public final class PigmeePatternProviderBlock extends AEBaseEntityBlock<PigmeePa
     }
 
     @Override
-    protected ItemInteractionResult useItemOn(
-            ItemStack heldItem,
+    public InteractionResult use(
             BlockState state,
             Level level,
             BlockPos pos,
             Player player,
             InteractionHand hand,
             BlockHitResult hit) {
+        // 1.20.1 merges the 1.21 useItemOn/useWithoutItem pair into a single use().
+        // Wrench rotation wins; everything else defers to AE2's menu opening.
+        ItemStack heldItem = player.getItemInHand(hand);
         if (InteractionUtil.canWrenchRotate(heldItem)) {
             setOutputSide(level, pos, hit.getDirection());
-            return ItemInteractionResult.sidedSuccess(level.isClientSide());
+            return InteractionResult.sidedSuccess(level.isClientSide());
         }
-        return super.useItemOn(heldItem, state, level, pos, player, hand, hit);
-    }
-
-    @Override
-    protected InteractionResult useWithoutItem(
-            BlockState state,
-            Level level,
-            BlockPos pos,
-            Player player,
-            BlockHitResult hitResult) {
-        var blockEntity = getBlockEntity(level, pos);
-        if (blockEntity == null) {
-            return InteractionResult.PASS;
-        }
-        if (!level.isClientSide()) {
-            blockEntity.openMenu(player, MenuLocators.forBlockEntity(blockEntity));
-        }
-        return InteractionResult.sidedSuccess(level.isClientSide());
+        return super.use(state, level, pos, player, hand, hit);
     }
 
     private void setOutputSide(Level level, BlockPos pos, Direction clickedSide) {

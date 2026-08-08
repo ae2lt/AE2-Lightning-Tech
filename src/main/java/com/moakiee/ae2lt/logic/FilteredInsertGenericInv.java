@@ -76,13 +76,8 @@ public class FilteredInsertGenericInv implements GenericInternalInventory {
     }
 
     @Override
-    public boolean isSupportedType(AEKeyType type) {
-        return delegate.isSupportedType(type);
-    }
-
-    @Override
-    public boolean isAllowedIn(int slot, AEKey what) {
-        return insertAllowed.test(what) && delegate.isAllowedIn(slot, what);
+    public boolean isAllowed(AEKey what) {
+        return insertAllowed.test(what) && delegate.isAllowed(what);
     }
 
     @Override

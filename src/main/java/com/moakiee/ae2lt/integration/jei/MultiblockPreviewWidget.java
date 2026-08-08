@@ -146,9 +146,7 @@ public final class MultiblockPreviewWidget implements IRecipeWidget {
 
         // Flush the per-block batches before re-enabling GUI lighting so the
         // remainder of the recipe layout renders normally.
-        if (bufferSource instanceof MultiBufferSource.BufferSource bs) {
-            bs.endBatch();
-        }
+        bufferSource.endBatch();
         Lighting.setupFor3DItems();
     }
 

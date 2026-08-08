@@ -1,5 +1,5 @@
 package com.moakiee.ae2lt.network.tianshu;
-
+import java.util.function.Supplier;
 import appeng.api.stacks.AEKey;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.InventoryMaintenanceStatus;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.ReservedStockMatchMode;
@@ -7,33 +7,26 @@ import com.moakiee.ae2lt.menu.TianshuPatternEncodingTermMenu;
 import com.moakiee.ae2lt.network.NetworkInit;
 import java.util.ArrayList;
 import java.util.List;
-import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.minecraftforge.network.NetworkEvent;
+import net.minecraft.client.Minecraft;
+import net.minecraft.network.FriendlyByteBuf;
 
 public record MaintenanceSummarySyncPacket(
         int containerId, int selectionRevision, long revision,
-        boolean overflow, List<Entry> entries)
-        implements CustomPacketPayload {
-    public static final Type<MaintenanceSummarySyncPacket> TYPE =
-            new Type<>(NetworkInit.id("maintenance_summary_sync"));
-    public static final StreamCodec<RegistryFriendlyByteBuf, MaintenanceSummarySyncPacket> STREAM_CODEC =
-            StreamCodec.ofMember(MaintenanceSummarySyncPacket::write, MaintenanceSummarySyncPacket::decode);
-
-    public MaintenanceSummarySyncPacket {
+        boolean overflow, List<Entry> entries) {
+public MaintenanceSummarySyncPacket {
         entries = List.copyOf(entries);
         TianshuPacketLimits.requireListSize("maintenance summary", entries.size());
     }
 
-    private void write(RegistryFriendlyByteBuf buf) {
+    public void write(FriendlyByteBuf buf) {
         buf.writeVarInt(containerId);
         buf.writeVarInt(selectionRevision);
         buf.writeVarLong(revision);
         buf.writeBoolean(overflow);
         buf.writeVarInt(entries.size());
         for (var entry : entries) {
-            AEKey.STREAM_CODEC.encode(buf, entry.key());
+            AEKey.writeKey(buf, entry.key());
             buf.writeBoolean(entry.ruleConfigured());
             buf.writeEnum(entry.status());
             buf.writeVarLong(entry.storedAmount());
@@ -48,7 +41,7 @@ public record MaintenanceSummarySyncPacket(
         }
     }
 
-    private static MaintenanceSummarySyncPacket decode(RegistryFriendlyByteBuf buf) {
+    public static MaintenanceSummarySyncPacket decode(FriendlyByteBuf buf) {
         int container = buf.readVarInt();
         int selectionRevision = buf.readVarInt();
         long revision = buf.readVarLong();
@@ -57,7 +50,7 @@ public record MaintenanceSummarySyncPacket(
                 "maintenance summary", buf.readVarInt());
         var entries = new ArrayList<Entry>(size);
         for (int i = 0; i < size; i++) entries.add(new Entry(
-                AEKey.STREAM_CODEC.decode(buf), buf.readBoolean(),
+                AEKey.readKey(buf), buf.readBoolean(),
                 buf.readEnum(InventoryMaintenanceStatus.class),
                 buf.readVarLong(), buf.readVarLong(), buf.readVarLong(), buf.readVarLong(),
                 buf.readLong(), buf.readEnum(ReservedStockMatchMode.class),
@@ -65,18 +58,22 @@ public record MaintenanceSummarySyncPacket(
         return new MaintenanceSummarySyncPacket(
                 container, selectionRevision, revision, overflow, entries);
     }
-
-    @Override public Type<MaintenanceSummarySyncPacket> type() { return TYPE; }
-
-    public static void handle(MaintenanceSummarySyncPacket packet, IPayloadContext context) {
-        context.enqueueWork(() -> {
-            if (context.player().containerMenu instanceof TianshuPatternEncodingTermMenu menu
-                    && menu.containerId == packet.containerId()) {
-                menu.receiveMaintenanceSummary(
-                        packet.selectionRevision(), packet.revision(),
-                        packet.overflow(), packet.entries());
+    // 1.20.1: this is a server→client sync; the 1.21 handle ran on the client's menu, so the
+    // reception side must be checked and the client player used (ctx.getSender() is null here).
+    public static void handle(MaintenanceSummarySyncPacket packet, Supplier<NetworkEvent.Context> context) {
+        var ctx = context.get();
+        ctx.enqueueWork(() -> {
+            if (ctx.getDirection().getReceptionSide().isClient()) {
+                var player = Minecraft.getInstance().player;
+                if (player != null && player.containerMenu instanceof TianshuPatternEncodingTermMenu menu
+                        && menu.containerId == packet.containerId()) {
+                    menu.receiveMaintenanceSummary(
+                            packet.selectionRevision(), packet.revision(),
+                            packet.overflow(), packet.entries());
+                }
             }
         });
+        ctx.setPacketHandled(true);
     }
 
     /**

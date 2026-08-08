@@ -7,6 +7,7 @@ import com.moakiee.ae2lt.menu.MatrixPortMenu;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.world.entity.player.Player;
@@ -21,6 +22,7 @@ import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.phys.BlockHitResult;
 
 import appeng.block.AEBaseEntityBlock;
+import net.minecraftforge.network.NetworkHooks;
 import org.jetbrains.annotations.Nullable;
 
 public class MatrixPortBlock extends AEBaseEntityBlock<MatrixPortBlockEntity>
@@ -78,17 +80,18 @@ public class MatrixPortBlock extends AEBaseEntityBlock<MatrixPortBlockEntity>
     }
 
     @Override
-    protected InteractionResult useWithoutItem(BlockState state,
-                                               Level level,
-                                               BlockPos pos,
-                                               Player player,
-                                               BlockHitResult hitResult) {
+    public InteractionResult use(BlockState state,
+                                Level level,
+                                BlockPos pos,
+                                Player player,
+                                InteractionHand hand,
+                                BlockHitResult hitResult) {
         if (!(level.getBlockEntity(pos) instanceof MatrixPortBlockEntity port)) {
             return InteractionResult.PASS;
         }
 
         if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) {
-            serverPlayer.openMenu(new SimpleMenuProvider(
+            NetworkHooks.openScreen(serverPlayer, new SimpleMenuProvider(
                     (id, inventory, ignored) -> new MatrixPortMenu(id, inventory, port),
                     state.getBlock().getName()),
                     buffer -> MatrixPortMenu.writeExtraData(buffer, port));

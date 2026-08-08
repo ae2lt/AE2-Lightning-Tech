@@ -138,16 +138,14 @@ public final class RailgunModuleStorage implements DeviceModuleStorage {
     }
 
     public static RailgunModuleEntries entryData(ItemStack device) {
-        return device.getOrDefault(
-                ModDataComponents.RAILGUN_MODULE_ENTRIES.get(),
-                RailgunModuleEntries.EMPTY);
+        return ModDataComponents.RAILGUN_MODULE_ENTRIES.getOrDefault(device, RailgunModuleEntries.EMPTY);
     }
 
     public static void setEntries(ItemStack device, RailgunModuleEntries entries) {
         if (entries == null || entries.entries().isEmpty()) {
-            device.remove(ModDataComponents.RAILGUN_MODULE_ENTRIES.get());
+            ModDataComponents.RAILGUN_MODULE_ENTRIES.remove(device);
         } else {
-            device.set(ModDataComponents.RAILGUN_MODULE_ENTRIES.get(), entries);
+            ModDataComponents.RAILGUN_MODULE_ENTRIES.set(device, entries);
         }
     }
 }

@@ -3,18 +3,18 @@ package com.moakiee.ae2lt.config;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import net.neoforged.neoforge.common.ModConfigSpec;
+import net.minecraftforge.common.ForgeConfigSpec;
 
 public final class AE2LTClientConfig {
-    public static final ModConfigSpec SPEC;
-    private static final ModConfigSpec.EnumValue<TianshuUploadTrigger> TIANSHU_UPLOAD_TRIGGER;
-    private static final ModConfigSpec.BooleanValue TIANSHU_INTERCEPT_DUPLICATE_ENCODING;
-    private static final ModConfigSpec.ConfigValue<List<? extends String>> TIANSHU_UPLOAD_ALIASES;
-    private static final ModConfigSpec.BooleanValue DISABLE_CORE_SHADER_RENDERING;
-    private static final ModConfigSpec.BooleanValue RENDER_MULTIBLOCK_CORE_EFFECTS;
+    public static final ForgeConfigSpec SPEC;
+    private static final ForgeConfigSpec.EnumValue<TianshuUploadTrigger> TIANSHU_UPLOAD_TRIGGER;
+    private static final ForgeConfigSpec.BooleanValue TIANSHU_INTERCEPT_DUPLICATE_ENCODING;
+    private static final ForgeConfigSpec.ConfigValue<List<? extends String>> TIANSHU_UPLOAD_ALIASES;
+    private static final ForgeConfigSpec.BooleanValue DISABLE_CORE_SHADER_RENDERING;
+    private static final ForgeConfigSpec.BooleanValue RENDER_MULTIBLOCK_CORE_EFFECTS;
 
     static {
-        var builder = new ModConfigSpec.Builder();
+        var builder = new ForgeConfigSpec.Builder();
         builder.push("tianshuTerminal");
         TIANSHU_UPLOAD_TRIGGER = builder
                 .comment("Modifier condition that starts pattern upload after encoding")

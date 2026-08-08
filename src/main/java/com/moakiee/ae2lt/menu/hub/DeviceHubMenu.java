@@ -1,4 +1,5 @@
 package com.moakiee.ae2lt.menu.hub;
+import com.moakiee.ae2lt.network.NetworkInit;
 
 import java.util.List;
 
@@ -14,8 +15,8 @@ import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.inventory.SimpleContainerData;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.common.extensions.IMenuTypeExtension;
-import net.neoforged.neoforge.network.PacketDistributor;
+import net.minecraftforge.common.extensions.IForgeMenuType;
+import net.minecraftforge.network.PacketDistributor;
 
 import com.moakiee.ae2lt.config.AE2LTCommonConfig;
 import com.moakiee.ae2lt.item.railgun.ElectromagneticRailgunItem;
@@ -49,7 +50,7 @@ public class DeviceHubMenu extends AbstractContainerMenu {
     public static final int TAB_RAILGUN = 4;
     public static final int TAB_COUNT = 5;
 
-    public static final MenuType<DeviceHubMenu> TYPE = IMenuTypeExtension.create(DeviceHubMenu::new);
+    public static final MenuType<DeviceHubMenu> TYPE = IForgeMenuType.create(DeviceHubMenu::new);
 
     public final ContainerData data;
 
@@ -154,7 +155,7 @@ public class DeviceHubMenu extends AbstractContainerMenu {
         if (selectedTab != lastSyncedTab || !syncPacket.equals(lastSyncPacket)) {
             lastSyncedTab = selectedTab;
             lastSyncPacket = syncPacket;
-            PacketDistributor.sendToPlayer(serverPlayer, syncPacket);
+            NetworkInit.sendToPlayer(serverPlayer, syncPacket);
         }
     }
 
@@ -351,7 +352,7 @@ public class DeviceHubMenu extends AbstractContainerMenu {
             return;
         }
         // Armor: toggle submodule
-        var submodules = CelestweaveArmorState.collectSubmodules(deviceStack, player.registryAccess());
+        var submodules = CelestweaveArmorState.collectSubmodules(deviceStack, player.level().registryAccess());
         if (moduleIndex < 0 || moduleIndex >= submodules.size()) return;
         var sub = submodules.get(moduleIndex);
         boolean current = CelestweaveArmorState.isSubmoduleEnabled(deviceStack, sub);
@@ -366,52 +367,48 @@ public class DeviceHubMenu extends AbstractContainerMenu {
         if (!AE2LTCommonConfig.railgunTerrainDestructionEnabled()) return;
         ItemStack railgun = findDevice(player, TAB_RAILGUN);
         if (railgun.isEmpty()) return;
-        RailgunSettings s = railgun.getOrDefault(ModDataComponents.RAILGUN_SETTINGS.get(), RailgunSettings.DEFAULT);
-        railgun.set(ModDataComponents.RAILGUN_SETTINGS.get(), s.withTerrain(!s.terrainDestruction()));
+        RailgunSettings s = ModDataComponents.RAILGUN_SETTINGS.getOrDefault(railgun, RailgunSettings.DEFAULT);
+        ModDataComponents.RAILGUN_SETTINGS.set(railgun, s.withTerrain(!s.terrainDestruction()));
     }
 
     public void toggleRailgunPvp() {
         if (!(getPlayer() instanceof ServerPlayer player)) return;
         ItemStack railgun = findDevice(player, TAB_RAILGUN);
         if (railgun.isEmpty()) return;
-        RailgunSettings s = railgun.getOrDefault(ModDataComponents.RAILGUN_SETTINGS.get(), RailgunSettings.DEFAULT);
-        railgun.set(ModDataComponents.RAILGUN_SETTINGS.get(), s.withPvp(!s.pvp()));
+        RailgunSettings s = ModDataComponents.RAILGUN_SETTINGS.getOrDefault(railgun, RailgunSettings.DEFAULT);
+        ModDataComponents.RAILGUN_SETTINGS.set(railgun, s.withPvp(!s.pvp()));
     }
 
     public void toggleRailgunSound() {
         if (!(getPlayer() instanceof ServerPlayer player)) return;
         ItemStack railgun = findDevice(player, TAB_RAILGUN);
         if (railgun.isEmpty()) return;
-        RailgunSettings s = railgun.getOrDefault(ModDataComponents.RAILGUN_SETTINGS.get(), RailgunSettings.DEFAULT);
-        railgun.set(ModDataComponents.RAILGUN_SETTINGS.get(), s.withSound(!s.soundEnabled()));
+        RailgunSettings s = ModDataComponents.RAILGUN_SETTINGS.getOrDefault(railgun, RailgunSettings.DEFAULT);
+        ModDataComponents.RAILGUN_SETTINGS.set(railgun, s.withSound(!s.soundEnabled()));
     }
 
     public void toggleRailgunChainDamage() {
         if (!(getPlayer() instanceof ServerPlayer player)) return;
         ItemStack railgun = findDevice(player, TAB_RAILGUN);
         if (railgun.isEmpty()) return;
-        RailgunSettings s = railgun.getOrDefault(ModDataComponents.RAILGUN_SETTINGS.get(), RailgunSettings.DEFAULT);
-        railgun.set(ModDataComponents.RAILGUN_SETTINGS.get(), s.withChainDamage(!s.chainDamage()));
+        RailgunSettings s = ModDataComponents.RAILGUN_SETTINGS.getOrDefault(railgun, RailgunSettings.DEFAULT);
+        ModDataComponents.RAILGUN_SETTINGS.set(railgun, s.withChainDamage(!s.chainDamage()));
     }
 
     public void toggleRailgunOverloadRemovalMode() {
         if (!(getPlayer() instanceof ServerPlayer player)) return;
         ItemStack railgun = findDevice(player, TAB_RAILGUN);
         if (railgun.isEmpty()) return;
-        RailgunSettings s = railgun.getOrDefault(ModDataComponents.RAILGUN_SETTINGS.get(), RailgunSettings.DEFAULT);
-        railgun.set(
-                ModDataComponents.RAILGUN_SETTINGS.get(),
-                s.withForceOverloadRemoval(!s.forceOverloadRemoval()));
+        RailgunSettings s = ModDataComponents.RAILGUN_SETTINGS.getOrDefault(railgun, RailgunSettings.DEFAULT);
+        ModDataComponents.RAILGUN_SETTINGS.set(railgun, s.withForceOverloadRemoval(!s.forceOverloadRemoval()));
     }
 
     public void toggleRailgunChargedSplash() {
         if (!(getPlayer() instanceof ServerPlayer player)) return;
         ItemStack railgun = findDevice(player, TAB_RAILGUN);
         if (railgun.isEmpty()) return;
-        RailgunSettings s = railgun.getOrDefault(ModDataComponents.RAILGUN_SETTINGS.get(), RailgunSettings.DEFAULT);
-        railgun.set(
-                ModDataComponents.RAILGUN_SETTINGS.get(),
-                s.withChargedSplash(!s.chargedSplash()));
+        RailgunSettings s = ModDataComponents.RAILGUN_SETTINGS.getOrDefault(railgun, RailgunSettings.DEFAULT);
+        ModDataComponents.RAILGUN_SETTINGS.set(railgun, s.withChargedSplash(!s.chargedSplash()));
     }
 
     public void cycleSelectedModuleConfig(int optionIndex) {
@@ -421,7 +418,7 @@ public class DeviceHubMenu extends AbstractContainerMenu {
         if (selectedTab == TAB_RAILGUN) {
             return;
         }
-        var submodules = CelestweaveArmorState.collectSubmodules(deviceStack, player.registryAccess());
+        var submodules = CelestweaveArmorState.collectSubmodules(deviceStack, player.level().registryAccess());
         if (selectedModuleIndex < 0 || selectedModuleIndex >= submodules.size()) return;
         var submodule = submodules.get(selectedModuleIndex);
         var configs = submodule.getConfigs(deviceStack);

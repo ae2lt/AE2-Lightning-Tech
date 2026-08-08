@@ -37,7 +37,7 @@ minecraft {
             workingDirectory project.file('run')
             property 'forge.logging.markers', 'REGISTRIES'
             property 'forge.logging.console.level', 'debug'
-            args "-mixin.config=${mod_id}.mixins.json"
+            args "-mixin.config=${mod_id}.mixins.json,ae2lt.mekanism.mixins.json,ae2lt.recipeviewer.mixins.json,ae2lt.ae2wtlib.mixins.json"
 
             mods {
                 "${mod_id}" {
@@ -83,6 +83,7 @@ repositories {
             includeGroup 'org.appliedenergistics'
             includeGroup 'mekanism'
             includeGroup 'dev.technici4n'
+            includeGroup 'de.mari_023'
         }
     }
     maven {
@@ -94,6 +95,27 @@ repositories {
             includeGroup 'curse.maven'
         }
     }
+    maven {
+        name = "Sleeping Town"
+        url = "https://repo.sleeping.town/"
+        content {
+            includeGroup "dev.emi"
+        }
+    }
+    maven {
+        name = "Curios"
+        url = "https://maven.theillusivec4.top/"
+        content {
+            includeGroup "top.theillusivec4.curios"
+        }
+    }
+    maven {
+        name = "Bawnorton"
+        url = "https://maven.bawnorton.com/releases"
+        content {
+            includeGroup "com.github.bawnorton.mixinsquared"
+        }
+    }
 }
 
 dependencies {
@@ -103,7 +125,13 @@ dependencies {
 
     compileOnly fg.deobf("mezz.jei:jei-${minecraft_version}-common-api:${jei_version}")
     compileOnly fg.deobf("mezz.jei:jei-${minecraft_version}-forge-api:${jei_version}")
+    // Full jar needed at compile time for mixin targets inside the JEI GUI
+    // (RecipeTransferButton lives in mezz.jei.gui.recipes, not in the api jars).
+    compileOnly fg.deobf("mezz.jei:jei-${minecraft_version}-forge:${jei_version}")
     runtimeOnly fg.deobf("mezz.jei:jei-${minecraft_version}-forge:${jei_version}")
+
+    compileOnly fg.deobf("dev.emi:emi-forge:${emi_version}:api")
+    runtimeOnly fg.deobf("dev.emi:emi-forge:${emi_version}")
 
     compileOnly fg.deobf("curse.maven:jade-324717:${jade_file_id}")
     runtimeOnly fg.deobf("curse.maven:jade-324717:${jade_file_id}")
@@ -126,6 +154,29 @@ dependencies {
     // Provided at runtime as a separate mod jar in the modpack.
     compileOnly "com.moakiee.thunderbolt:thunderbolt:${thunderbolt_version}"
     runtimeOnly "com.moakiee.thunderbolt:thunderbolt:${thunderbolt_version}"
+
+    // Curios integration — frequency card / armor charm slots.
+    compileOnly fg.deobf("top.theillusivec4.curios:curios-forge:${curios_version}:api")
+    runtimeOnly fg.deobf("top.theillusivec4.curios:curios-forge:${curios_version}")
+
+    // Optional Polymorph integration for the Tianshu pattern terminal recipe selector.
+    // Runtime jar is supplied by the modpack; only the API is needed at compile time.
+    compileOnly fg.deobf("curse.maven:polymorph-388800:6450982")
+
+    // Data Energistics injects broadly into AE2 and AE2LT internals. MixinSquared lets AE2LT
+    // cancel those third-party mixins before application while leaving the mod itself loadable.
+    compileOnly(annotationProcessor(
+            "com.github.bawnorton.mixinsquared:mixinsquared-common:${mixinsquared_version}"))
+    implementation fg.deobf("com.github.bawnorton.mixinsquared:mixinsquared-forge:${mixinsquared_version}")
+
+    // Machine-local optional mod jars (AdvancedAE for the Tianshu advanced pattern config UI,
+    // InventoryProfilesNext for terminal encoding screens, AE2WTLib for the wireless
+    // universal terminal / frequency-card integration).
+    compileOnly files("libs/AdvancedAE-1.3.6-1.20.1.jar")
+    compileOnly files("libs/InventoryProfilesNext-forge-1.20-1.10.20.jar")
+    compileOnly files("libs/ae2wtlib-15.3.3-forge.jar")
+
+    compileOnly "org.jetbrains:annotations:${jetbrains_annotations_version}"
 
     annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
     compileOnly(annotationProcessor("io.github.llamalad7:mixinextras-common:${mixinextras_version}"))
@@ -169,7 +220,7 @@ tasks.named('jar', Jar).configure {
                 'Implementation-Timestamp': new Date().format("yyyy-MM-dd'T'HH:mm:ssZ"),
                 'TweakClass'              : 'org.spongepowered.asm.launch.MixinTweaker',
                 'TweakOrder'              : 0,
-                'MixinConfigs'            : "${mod_id}.mixins.json"
+                'MixinConfigs'            : "${mod_id}.mixins.json,ae2lt.mekanism.mixins.json,ae2lt.recipeviewer.mixins.json,ae2lt.ae2wtlib.mixins.json"
         ])
     }
 
@@ -190,4 +241,6 @@ afterEvaluate {
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
     options.compilerArgs << '-Xmaxerrs' << '5000'
+    // Force English javac output so logs are stable across locales.
+    options.forkOptions.jvmArgs += ['-Duser.language=en', '-Duser.country=US']
 }

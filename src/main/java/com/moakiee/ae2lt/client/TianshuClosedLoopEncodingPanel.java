@@ -13,12 +13,13 @@ import appeng.client.gui.ICompositeWidget;
 import appeng.client.gui.Icon;
 import appeng.client.gui.WidgetContainer;
 import appeng.client.gui.style.Blitter;
-import appeng.client.gui.widgets.AE2Button;
+import com.moakiee.ae2lt.client.gui.AE2Button;
 import appeng.client.gui.widgets.AETextField;
 import appeng.client.gui.widgets.ActionButton;
 import appeng.client.gui.widgets.IconButton;
 import appeng.client.gui.widgets.Scrollbar;
 import com.moakiee.ae2lt.item.ClosedLoopPatternItem;
+import com.moakiee.ae2lt.util.SlotPositionAccess;
 import com.moakiee.ae2lt.logic.tianshu.terminal.SeedRefillSync;
 import com.moakiee.ae2lt.menu.Ae2ltSlotSemantics;
 import com.moakiee.ae2lt.menu.TianshuPatternEncodingTermMenu;
@@ -86,20 +87,22 @@ final class TianshuClosedLoopEncodingPanel implements ICompositeWidget {
                 TianshuPatternEncodingTermMenu.CLOSED_LOOP_MEMBER_SLOTS / 3 - VISIBLE_ROWS, 3);
         scrollbar.setCaptureMouseWheel(false);
 
-        detailButton = widgets.addButton("closedLoopDetail",
-                Component.translatable("ae2lt.tianshu.closed_loop.detail"), openDetail);
+        detailButton = new AE2Button(
+                Component.translatable("ae2lt.tianshu.closed_loop.detail"), btn -> openDetail.run());
+        widgets.add("closedLoopDetail", detailButton);
         detailButton.setTooltip(Tooltip.create(Component.translatable(
                 "ae2lt.tianshu.closed_loop.detail.tooltip")));
-        autoFillButton = widgets.addButton("closedLoopAutoFill",
+        autoFillButton = new AE2Button(
                 Component.translatable("ae2lt.tianshu.closed_loop.auto_fill"),
-                menu::autoFillClosedLoop);
-        clearButton = new ActionButton(ActionItems.S_CLOSE, menu::clearClosedLoopDraft);
+                btn -> menu.autoFillClosedLoop());
+        widgets.add("closedLoopAutoFill", autoFillButton);
+        clearButton = new ActionButton(ActionItems.CLOSE, menu::clearClosedLoopDraft);
         clearButton.setHalfSize(true);
         clearButton.setDisableBackground(true);
         widgets.add("closedLoopClear", clearButton);
 
         cycleOutputButton = new ActionButton(
-                ActionItems.S_CYCLE_PROCESSING_OUTPUT,
+                ActionItems.CYCLE_PROCESSING_OUTPUT,
                 ignored -> menu.cycleClosedLoopOutput());
         cycleOutputButton.setHalfSize(true);
         cycleOutputButton.setDisableBackground(true);
@@ -108,7 +111,7 @@ final class TianshuClosedLoopEncodingPanel implements ICompositeWidget {
         refillButton = new IconButton(btn -> menu.refillClosedLoopSeeds()) {
             @Override
             protected Icon getIcon() {
-                return Icon.S_ARROW_DOWN;
+                return Icon.ARROW_DOWN;
             }
 
             @Override
@@ -178,8 +181,7 @@ final class TianshuClosedLoopEncodingPanel implements ICompositeWidget {
             int effectiveRow = i / 3 - scroll;
             boolean active = effectiveRow >= 0 && effectiveRow < VISIBLE_ROWS;
             slot.setActive(active);
-            slot.x = x + MEMBER_X + i % 3 * 18;
-            slot.y = y + SLOT_Y + effectiveRow * 18;
+            SlotPositionAccess.set(slot, x + MEMBER_X + i % 3 * 18, y + SLOT_Y + effectiveRow * 18);
         }
         var outputSlots = menu.getClosedLoopOutputSlots();
         for (int i = 0; i < outputSlots.size(); i++) {
@@ -187,8 +189,7 @@ final class TianshuClosedLoopEncodingPanel implements ICompositeWidget {
             int effectiveRow = i - scroll;
             boolean active = effectiveRow >= 0 && effectiveRow < VISIBLE_ROWS;
             slot.setActive(active);
-            slot.x = x + OUTPUT_X;
-            slot.y = y + SLOT_Y + effectiveRow * 18;
+            SlotPositionAccess.set(slot, x + OUTPUT_X, y + SLOT_Y + effectiveRow * 18);
         }
 
         autoFillButton.active = menu.closedLoopCandidateCount > 0

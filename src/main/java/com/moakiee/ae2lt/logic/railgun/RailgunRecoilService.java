@@ -1,11 +1,12 @@
 package com.moakiee.ae2lt.logic.railgun;
+import com.moakiee.ae2lt.network.NetworkInit;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.neoforge.network.PacketDistributor;
+import net.minecraftforge.network.PacketDistributor;
 
 import com.moakiee.ae2lt.config.RailgunDefaults;
 import com.moakiee.ae2lt.celestweave.PhaseFlightMovementGuard;
@@ -69,7 +70,7 @@ public final class RailgunRecoilService {
         player.fallDistance = 0.0F;
         player.getPersistentData().putLong(RECOIL_GRACE_TAG, level.getGameTime() + 60L);
 
-        PacketDistributor.sendToPlayer(player, new RailgunRecoilFxPacket(pitchUp, tier.ordinal()));
+        NetworkInit.sendToPlayer(player, new RailgunRecoilFxPacket(pitchUp, tier.ordinal()));
     }
 
     private static boolean wearingFullCelestweaveSet(ServerPlayer player) {

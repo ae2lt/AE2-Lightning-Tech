@@ -18,10 +18,10 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.CollisionContext;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.client.event.RenderLevelStageEvent;
 
 import com.moakiee.ae2lt.AE2LightningTech;
 
@@ -31,7 +31,7 @@ import com.moakiee.ae2lt.AE2LightningTech;
  * impact point of charged shots. Cheap: a flat quad ring on the ground for
  * the wave + a camera-billboarded quad for the flash core. Additive-blended.
  */
-@EventBusSubscriber(modid = AE2LightningTech.MODID, value = Dist.CLIENT)
+@Mod.EventBusSubscriber(modid = AE2LightningTech.MODID, value = Dist.CLIENT)
 public final class RailgunShockwaveRenderer {
 
     private static final int RING_SEGMENTS = 64;
@@ -104,7 +104,8 @@ public final class RailgunShockwaveRenderer {
                 com.mojang.blaze3d.platform.GlStateManager.DestFactor.ZERO);
         RenderSystem.setShader(GameRenderer::getPositionColorShader);
 
-        BufferBuilder bb = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
+        BufferBuilder bb = Tesselator.getInstance().getBuilder();
+        bb.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
         var matrix = stack.last().pose();
         for (Burst burst : ACTIVE) {
             float t = 1.0F - (float) burst.remaining / (float) burst.totalLifetime;
@@ -118,7 +119,7 @@ public final class RailgunShockwaveRenderer {
             addRing(bb, matrix, burst, radius, ringWidth, t,
                     burst.r, burst.g, burst.b, 0.85F * ringFade);
         }
-        var built = bb.build();
+        var built = bb.end();
         if (built != null) {
             BufferUploader.drawWithShader(built);
         }
@@ -155,7 +156,7 @@ public final class RailgunShockwaveRenderer {
             HitResult hr = level.clip(new ClipContext(castFrom,
                     new Vec3(mx, cy, mz),
                     ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE,
-                    CollisionContext.empty()));
+                    null));
             burst.occludedSegments[i] = hr.getType() != HitResult.Type.MISS;
         }
     }
@@ -189,10 +190,10 @@ public final class RailgunShockwaveRenderer {
             float ox1 = (float) (center.x + cos1 * outer1);
             float oz1 = (float) (center.z + sin1 * outer1);
             // Soft outer edge: feather alpha to zero at the very rim.
-            bb.addVertex(matrix, ix0, y, iz0).setColor(r, g, b, alpha);
-            bb.addVertex(matrix, ix1, y, iz1).setColor(r, g, b, alpha);
-            bb.addVertex(matrix, ox1, y, oz1).setColor(r, g, b, alpha * 0.15F);
-            bb.addVertex(matrix, ox0, y, oz0).setColor(r, g, b, alpha * 0.15F);
+            bb.vertex(matrix, ix0, y, iz0).color(r, g, b, alpha);
+            bb.vertex(matrix, ix1, y, iz1).color(r, g, b, alpha);
+            bb.vertex(matrix, ox1, y, oz1).color(r, g, b, alpha * 0.15F);
+            bb.vertex(matrix, ox0, y, oz0).color(r, g, b, alpha * 0.15F);
         }
     }
 

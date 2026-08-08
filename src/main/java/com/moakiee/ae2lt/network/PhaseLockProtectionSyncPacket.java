@@ -1,44 +1,31 @@
 package com.moakiee.ae2lt.network;
+import java.util.function.Supplier;
+import net.minecraftforge.network.NetworkEvent;
 
 import java.util.UUID;
 
-import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.minecraft.network.FriendlyByteBuf;
 
 import com.moakiee.ae2lt.celestweave.CelestweaveArmorState;
 
 /** Clientbound effective movement-protection settings for the active phase-lock module. */
 public record PhaseLockProtectionSyncPacket(
         UUID armorId,
-        boolean blockExternalForces)
-        implements CustomPacketPayload {
-
-    public static final Type<PhaseLockProtectionSyncPacket> TYPE =
-            new Type<>(NetworkInit.id("phase_lock_protection_sync"));
-
-    public static final StreamCodec<RegistryFriendlyByteBuf, PhaseLockProtectionSyncPacket> STREAM_CODEC =
-            StreamCodec.ofMember(PhaseLockProtectionSyncPacket::write, PhaseLockProtectionSyncPacket::decode);
-
-    @Override
-    public Type<PhaseLockProtectionSyncPacket> type() {
-        return TYPE;
-    }
-
-    public static PhaseLockProtectionSyncPacket decode(RegistryFriendlyByteBuf buf) {
+        boolean blockExternalForces) {
+public static PhaseLockProtectionSyncPacket decode(FriendlyByteBuf buf) {
         return new PhaseLockProtectionSyncPacket(
                 buf.readUUID(),
                 buf.readBoolean());
     }
 
-    public void write(RegistryFriendlyByteBuf buf) {
+    public void write(FriendlyByteBuf buf) {
         buf.writeUUID(armorId);
         buf.writeBoolean(blockExternalForces);
     }
 
-    public static void handle(PhaseLockProtectionSyncPacket payload, IPayloadContext context) {
-        context.enqueueWork(() -> CelestweaveArmorState.setClientPhaseLockProtection(
+    public static void handle(PhaseLockProtectionSyncPacket payload, Supplier<NetworkEvent.Context> context) {
+        NetworkEvent.Context ctx = context.get();
+        ctx.enqueueWork(() -> CelestweaveArmorState.setClientPhaseLockProtection(
                 payload.armorId(),
                 payload.blockExternalForces()));
     }

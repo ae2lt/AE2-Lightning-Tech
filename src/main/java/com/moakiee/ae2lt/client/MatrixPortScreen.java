@@ -26,6 +26,7 @@ import appeng.core.localization.GuiText;
 
 import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.menu.MatrixPortMenu;
+import com.moakiee.ae2lt.util.SlotPositionAccess;
 
 /**
  * Searchable, scrollable view of every pattern held by a matter warping matrix.
@@ -35,8 +36,7 @@ import com.moakiee.ae2lt.menu.MatrixPortMenu;
  * Matching patterns are highlighted while the other patterns in that retained row are dimmed.</p>
  */
 public class MatrixPortScreen extends AbstractContainerScreen<MatrixPortMenu> {
-    private static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath(
-            AE2LightningTech.MODID, "textures/guis/matrix_pattern_manager.png");
+    private static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "textures/guis/matrix_pattern_manager.png");
 
     private static final int TEXTURE_SIZE = 256;
     private static final int GUI_WIDTH = 190;
@@ -211,13 +211,12 @@ public class MatrixPortScreen extends AbstractContainerScreen<MatrixPortMenu> {
     @Override
     public boolean mouseScrolled(double mouseX,
                                  double mouseY,
-                                 double scrollX,
-                                 double scrollY) {
-        if (isWithinPatternArea(mouseX, mouseY) && maxScrollRow() > 0 && scrollY != 0.0D) {
-            setScrollRow(scrollRow - (int) Math.signum(scrollY));
+                                 double delta) {
+        if (isWithinPatternArea(mouseX, mouseY) && maxScrollRow() > 0 && delta != 0.0D) {
+            setScrollRow(scrollRow - (int) Math.signum(delta));
             return true;
         }
-        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+        return super.mouseScrolled(mouseX, mouseY, delta);
     }
 
     private void refreshList(boolean resetScroll) {
@@ -338,8 +337,7 @@ public class MatrixPortScreen extends AbstractContainerScreen<MatrixPortMenu> {
         var slots = menu.getPatternSlots();
         for (var slot : visiblePatternSlots) {
             slot.setActive(false);
-            slot.x = OFFSCREEN_SLOT;
-            slot.y = OFFSCREEN_SLOT;
+            SlotPositionAccess.set(slot, OFFSCREEN_SLOT, OFFSCREEN_SLOT);
         }
         visiblePatternSlots.clear();
 
@@ -352,8 +350,10 @@ public class MatrixPortScreen extends AbstractContainerScreen<MatrixPortMenu> {
             for (int slotIndex = firstSlot; slotIndex < lastSlot; slotIndex++) {
                 int column = slotIndex - firstSlot;
                 var slot = slots.get(slotIndex);
-                slot.x = MatrixPortMenu.PATTERN_X + column * SLOT_SPACING;
-                slot.y = MatrixPortMenu.PATTERN_Y + visibleRow * SLOT_SPACING;
+                SlotPositionAccess.set(
+                        slot,
+                        MatrixPortMenu.PATTERN_X + column * SLOT_SPACING,
+                        MatrixPortMenu.PATTERN_Y + visibleRow * SLOT_SPACING);
                 slot.setActive(true);
                 visiblePatternSlots.add(slot);
             }

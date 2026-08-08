@@ -1,6 +1,7 @@
 package com.moakiee.ae2lt.block;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
@@ -21,11 +22,12 @@ public class OverloadDeviceWorkbenchBlock extends AEBaseEntityBlock<OverloadDevi
     }
 
     @Override
-    protected InteractionResult useWithoutItem(
+    public InteractionResult use(
             BlockState state,
             Level level,
             BlockPos pos,
             Player player,
+            InteractionHand hand,
             BlockHitResult hitResult
     ) {
         var blockEntity = getBlockEntity(level, pos);

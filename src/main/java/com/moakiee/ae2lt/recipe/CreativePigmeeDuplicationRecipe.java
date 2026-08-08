@@ -3,11 +3,12 @@ package com.moakiee.ae2lt.recipe;
 import com.moakiee.ae2lt.registry.ModFumos;
 import com.moakiee.ae2lt.registry.ModRecipeTypes;
 
-import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
+import net.minecraft.core.RegistryAccess;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.inventory.CraftingContainer;
 import net.minecraft.world.item.crafting.CraftingBookCategory;
-import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.CustomRecipe;
 import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.level.Level;
@@ -20,17 +21,17 @@ import net.minecraft.world.level.Level;
 public final class CreativePigmeeDuplicationRecipe extends CustomRecipe {
     private static final int OUTPUT_COUNT = 64;
 
-    public CreativePigmeeDuplicationRecipe(CraftingBookCategory category) {
-        super(category);
+    public CreativePigmeeDuplicationRecipe(ResourceLocation id, CraftingBookCategory category) {
+        super(id, category);
     }
 
     @Override
-    public boolean matches(CraftingInput input, Level level) {
+    public boolean matches(CraftingContainer input, Level level) {
         return !findTarget(input).isEmpty();
     }
 
     @Override
-    public ItemStack assemble(CraftingInput input, HolderLookup.Provider registries) {
+    public ItemStack assemble(CraftingContainer input, RegistryAccess registryAccess) {
         ItemStack target = findTarget(input);
         if (target.isEmpty()) {
             return ItemStack.EMPTY;
@@ -45,9 +46,9 @@ public final class CreativePigmeeDuplicationRecipe extends CustomRecipe {
     }
 
     @Override
-    public NonNullList<ItemStack> getRemainingItems(CraftingInput input) {
-        var remaining = NonNullList.withSize(input.size(), ItemStack.EMPTY);
-        for (int slot = 0; slot < input.size(); slot++) {
+    public NonNullList<ItemStack> getRemainingItems(CraftingContainer input) {
+        var remaining = NonNullList.withSize(input.getContainerSize(), ItemStack.EMPTY);
+        for (int slot = 0; slot < input.getContainerSize(); slot++) {
             ItemStack stack = input.getItem(slot);
             if (stack.is(ModFumos.CREATIVE_PIGMEE_FUMO_ITEM.get())) {
                 remaining.set(slot, stack.copyWithCount(1));
@@ -67,11 +68,11 @@ public final class CreativePigmeeDuplicationRecipe extends CustomRecipe {
         return ModRecipeTypes.CREATIVE_PIGMEE_DUPLICATION_SERIALIZER.get();
     }
 
-    private static ItemStack findTarget(CraftingInput input) {
+    private static ItemStack findTarget(CraftingContainer input) {
         ItemStack target = ItemStack.EMPTY;
         boolean foundCatalyst = false;
 
-        for (int slot = 0; slot < input.size(); slot++) {
+        for (int slot = 0; slot < input.getContainerSize(); slot++) {
             ItemStack stack = input.getItem(slot);
             if (stack.isEmpty()) {
                 continue;

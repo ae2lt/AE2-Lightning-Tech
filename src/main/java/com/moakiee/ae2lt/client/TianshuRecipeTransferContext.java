@@ -9,7 +9,6 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Recipe;
-import net.minecraft.world.item.crafting.RecipeHolder;
 
 /**
  * One-screen recipe-viewer context carrying recipe/category identity into the provider picker.
@@ -60,14 +59,9 @@ public final class TianshuRecipeTransferContext {
             Object recipeBase,
             String fallbackSourceKey,
             Iterable<String> additionalAliases) {
-        Recipe<?> recipe;
-        if (recipeBase instanceof RecipeHolder<?> holder) {
-            recipe = holder.value();
-        } else if (recipeBase instanceof Recipe<?> direct) {
-            recipe = direct;
-        } else {
-            recipe = null;
-        }
+        // 1.20.1 recipes carry no RecipeHolder wrapper, so only direct Recipe
+        // instances (as handed over by JEI/EMI transfers) are accepted here.
+        Recipe<?> recipe = recipeBase instanceof Recipe<?> direct ? direct : null;
         String sourceKey = "";
         String recipeId = "";
         var defaultAliases = new ArrayList<String>();
@@ -76,12 +70,6 @@ public final class TianshuRecipeTransferContext {
             sourceKey = typeId == null ? "" : typeId.toString();
         }
         if (sourceKey.isBlank() && fallbackSourceKey != null) sourceKey = fallbackSourceKey;
-        if (recipeBase instanceof RecipeHolder<?> holder) {
-            recipeId = holder.id().toString();
-            addDefaultAlias(defaultAliases, firstPathSegment(holder.id().getPath()));
-            addDefaultAlias(defaultAliases,
-                    TianshuUploadAliasRules.namespaceGlob(holder.id().getNamespace()));
-        }
         if (additionalAliases != null) {
             additionalAliases.forEach(value -> addDefaultAlias(defaultAliases, value));
         }

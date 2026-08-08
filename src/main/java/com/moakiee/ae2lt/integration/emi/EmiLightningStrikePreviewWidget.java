@@ -119,9 +119,7 @@ final class EmiLightningStrikePreviewWidget extends Widget {
             });
             pose.popPose();
         }
-        if (bufferSource instanceof MultiBufferSource.BufferSource source) {
-            source.endBatch();
-        }
+        bufferSource.endBatch();
         Lighting.setupFor3DItems();
     }
 

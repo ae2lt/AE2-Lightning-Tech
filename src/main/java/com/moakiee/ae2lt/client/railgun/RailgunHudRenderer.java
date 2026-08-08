@@ -5,10 +5,10 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.RenderGuiEvent;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.client.event.RenderGuiEvent;
 
 import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.config.RailgunDefaults;
@@ -23,13 +23,11 @@ import com.moakiee.ae2lt.registry.ModDataComponents;
  * the crosshair. The empty texture is drawn as the background; the full
  * texture is revealed progressively from the bottom up as charge builds.
  */
-@EventBusSubscriber(modid = AE2LightningTech.MODID, value = Dist.CLIENT)
+@Mod.EventBusSubscriber(modid = AE2LightningTech.MODID, value = Dist.CLIENT)
 public final class RailgunHudRenderer {
 
-    private static final ResourceLocation EMPTY_TEX = ResourceLocation.fromNamespaceAndPath(
-            AE2LightningTech.MODID, "textures/gui/hud/lightning_charging_bar.png");
-    private static final ResourceLocation FULL_TEX = ResourceLocation.fromNamespaceAndPath(
-            AE2LightningTech.MODID, "textures/gui/hud/lightning_charging_bar_full.png");
+    private static final ResourceLocation EMPTY_TEX = ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "textures/gui/hud/lightning_charging_bar.png");
+    private static final ResourceLocation FULL_TEX = ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "textures/gui/hud/lightning_charging_bar_full.png");
 
     private static final int ICON_W = 13;
     private static final int ICON_H = 19;
@@ -48,7 +46,7 @@ public final class RailgunHudRenderer {
         ItemStack stack = mc.player.getUseItem();
         if (!(stack.getItem() instanceof ElectromagneticRailgunItem)) return;
 
-        long ticks = stack.getOrDefault(ModDataComponents.RAILGUN_CHARGE_TICKS.get(), 0L);
+        long ticks = ModDataComponents.RAILGUN_CHARGE_TICKS.getOrDefault(stack, 0L);
         int t3 = RailgunDefaults.CHARGE_TICKS_TIER3;
         float progress = Math.min(1.0f, (float) ticks / (float) t3);
 

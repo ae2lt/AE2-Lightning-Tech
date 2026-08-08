@@ -19,7 +19,7 @@ import appeng.parts.automation.AnnihilationPlanePart;
 import com.moakiee.ae2lt.logic.FirmamentDustGenerationRules;
 import com.moakiee.ae2lt.registry.ModItems;
 
-@Mixin(AnnihilationPlanePart.class)
+@Mixin(value = AnnihilationPlanePart.class, remap = false)
 public abstract class AnnihilationPlaneFirmamentDustMixin {
     @Unique
     private int ae2lt$firmamentGenerationTicks;

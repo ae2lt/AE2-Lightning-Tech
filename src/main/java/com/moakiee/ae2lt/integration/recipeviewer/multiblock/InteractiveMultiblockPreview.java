@@ -26,7 +26,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.RenderShape;
-import net.neoforged.neoforge.client.model.data.ModelData;
+import net.minecraftforge.client.model.data.ModelData;
 
 import appeng.client.render.overlay.OverlayRenderType;
 
@@ -325,14 +325,14 @@ public final class InteractiveMultiblockPreview {
             float x3, float y3, float z3,
             float x4, float y4, float z4,
             float normalX, float normalY, float normalZ) {
-        consumer.addVertex(matrix, x1, y1, z1).setColor(255, 220, 0, alpha)
-                .setNormal(normalX, normalY, normalZ);
-        consumer.addVertex(matrix, x2, y2, z2).setColor(255, 220, 0, alpha)
-                .setNormal(normalX, normalY, normalZ);
-        consumer.addVertex(matrix, x3, y3, z3).setColor(255, 220, 0, alpha)
-                .setNormal(normalX, normalY, normalZ);
-        consumer.addVertex(matrix, x4, y4, z4).setColor(255, 220, 0, alpha)
-                .setNormal(normalX, normalY, normalZ);
+        consumer.vertex(matrix, x1, y1, z1).color(255, 220, 0, alpha)
+                .normal(normalX, normalY, normalZ);
+        consumer.vertex(matrix, x2, y2, z2).color(255, 220, 0, alpha)
+                .normal(normalX, normalY, normalZ);
+        consumer.vertex(matrix, x3, y3, z3).color(255, 220, 0, alpha)
+                .normal(normalX, normalY, normalZ);
+        consumer.vertex(matrix, x4, y4, z4).color(255, 220, 0, alpha)
+                .normal(normalX, normalY, normalZ);
     }
 
     private void drawPanel(GuiGraphics guiGraphics, Font font, double mouseX, double mouseY) {

@@ -18,6 +18,7 @@ import com.moakiee.ae2lt.menu.OverloadedPatternProviderMenu;
 import com.moakiee.ae2lt.mixin.client.AEBaseScreenAccessor;
 import com.moakiee.ae2lt.mixin.client.PatternProviderScreenAccessor;
 import com.moakiee.ae2lt.mixin.client.VerticalButtonBarAccessor;
+import com.moakiee.ae2lt.util.SlotPositionAccess;
 
 public class OverloadedPatternProviderScreen<M extends OverloadedPatternProviderMenu> extends PatternProviderScreen<M> {
 
@@ -73,7 +74,7 @@ public class OverloadedPatternProviderScreen<M extends OverloadedPatternProvider
         addToLeftToolbar(this.adaptiveBatchButton);
 
         this.advancedSettingsButton = new ActionButton(
-                ActionItems.COG,
+                ActionItems.TERMINAL_SETTINGS,
                 () -> switchToScreen(new OverloadedPatternProviderAdvancedScreen<>(this)));
         this.advancedSettingsButton.setMessage(
                 Component.translatable("ae2lt.gui.provider_advanced.open"));
@@ -100,8 +101,7 @@ public class OverloadedPatternProviderScreen<M extends OverloadedPatternProvider
 
         for (int i = SLOTS_PER_PAGE; i < total; i++) {
             int ref = i % SLOTS_PER_PAGE;
-            patternSlots.get(i).x = patternSlots.get(ref).x;
-            patternSlots.get(i).y = patternSlots.get(ref).y;
+            SlotPositionAccess.set(patternSlots.get(i), patternSlots.get(ref).x, patternSlots.get(ref).y);
         }
     }
 
@@ -144,9 +144,9 @@ public class OverloadedPatternProviderScreen<M extends OverloadedPatternProvider
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
         if (this.menu.getTotalPages() > 1) {
-            var direction = PatternProviderPageScroll.directionForDelta(scrollY);
+            var direction = PatternProviderPageScroll.directionForDelta(delta);
             if (direction == PatternProviderPageScroll.Direction.PREVIOUS) {
                 this.menu.clientPrevPage();
                 return true;
@@ -156,7 +156,7 @@ public class OverloadedPatternProviderScreen<M extends OverloadedPatternProvider
                 return true;
             }
         }
-        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+        return super.mouseScrolled(mouseX, mouseY, delta);
     }
 
     private void removeVanillaBlockingModeButton() {

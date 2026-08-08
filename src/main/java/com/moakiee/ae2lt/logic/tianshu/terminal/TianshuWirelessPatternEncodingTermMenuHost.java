@@ -8,33 +8,39 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 
 import appeng.api.implementations.blockentities.IViewCellStorage;
 import appeng.helpers.IPatternTerminalLogicHost;
+import appeng.helpers.WirelessTerminalMenuHost;
 import appeng.menu.ISubMenu;
-import appeng.menu.locator.ItemMenuHostLocator;
 import appeng.parts.encoding.PatternEncodingLogic;
 import appeng.util.inv.AppEngInternalInventory;
-
-import de.mari_023.ae2wtlib.api.AE2wtlibComponents;
-import de.mari_023.ae2wtlib.api.terminal.ItemWT;
-import de.mari_023.ae2wtlib.api.terminal.WTMenuHost;
 
 /**
  * Wireless host for the Tianshu terminal.
  *
- * <p>AE2's pattern logic and Tianshu's authoring state are stored in the terminal's
- * {@code PATTERN_ENCODING_LOGIC} component, so closing and reopening the wireless item keeps the
+ * <p>Built on AE2's own {@link WirelessTerminalMenuHost} so the host works
+ * without ae2wtlib. When ae2wtlib is loaded, the registered item dispatches to
+ * {@code com.moakiee.ae2lt.integration.ae2wtlib.TianshuWTMenuHost} instead, which
+ * extends ae2wtlib's {@code WTMenuHost} and carries the same state logic for the
+ * frequency-card remote link.
+ *
+ * <p>AE2's pattern logic and Tianshu's authoring state are stored in the terminal item's NBT
+ * (under {@value #TAG_PATTERN_LOGIC}), so closing and reopening the wireless item keeps the
  * same draft as the part version.</p>
  */
-public final class TianshuWirelessPatternEncodingTermMenuHost extends WTMenuHost
+public class TianshuWirelessPatternEncodingTermMenuHost extends WirelessTerminalMenuHost
         implements TianshuPatternTerminalHost, IPatternTerminalLogicHost, IViewCellStorage {
+    private static final String TAG_PATTERN_LOGIC = "patternEncodingLogic";
     private static final String TAG_TIANSHU_MODE = "tianshuMode";
     private static final String TAG_CLOSED_LOOP_DRAFT = "tianshuClosedLoopDraft";
     private static final String TAG_PROCESSING_DRAFT = "tianshuProcessingDraft";
+    private static final String TAG_VIEW_CELLS = "viewcells";
 
     private final PatternEncodingLogic logic = new PatternEncodingLogic(this);
+    private final AppEngInternalInventory viewCells = new AppEngInternalInventory(null, 5);
     private TianshuEncodingMode tianshuMode = TianshuEncodingMode.CRAFTING;
     @Nullable
     private ClosedLoopTerminalDraft closedLoopDraft;
@@ -42,16 +48,18 @@ public final class TianshuWirelessPatternEncodingTermMenuHost extends WTMenuHost
     private ProcessingPatternTerminalDraft processingDraft;
 
     public TianshuWirelessPatternEncodingTermMenuHost(
-            ItemWT item,
             Player player,
-            ItemMenuHostLocator locator,
+            int inventorySlot,
+            ItemStack stack,
             BiConsumer<Player, ISubMenu> returnToMainMenu) {
-        super(item, player, locator, returnToMainMenu);
+        super(player, inventorySlot, stack, returnToMainMenu);
 
-        CompoundTag data = getItemStack().getOrDefault(
-                AE2wtlibComponents.PATTERN_ENCODING_LOGIC, new CompoundTag());
-        logic.readFromNBT(data, player.registryAccess());
-        readTianshuState(data, player.registryAccess());
+        CompoundTag data = getItemStack().getTagElement(TAG_PATTERN_LOGIC);
+        if (data != null) {
+            logic.readFromNBT(data);
+            viewCells.readFromNBT(data, TAG_VIEW_CELLS);
+            readTianshuState(data);
+        }
 
         // Tianshu pulls blank patterns from ME storage and stages only the pattern being encoded.
         // Keep the inherited physical blank-pattern slot unavailable, just like the wired part.
@@ -72,22 +80,25 @@ public final class TianshuWirelessPatternEncodingTermMenuHost extends WTMenuHost
 
     @Override
     public void markForSave() {
-        CompoundTag data = getItemStack().getOrDefault(
-                AE2wtlibComponents.PATTERN_ENCODING_LOGIC, new CompoundTag());
-        HolderLookup.Provider registries = getPlayer().registryAccess();
-        logic.writeToNBT(data, registries);
+        CompoundTag data = getItemStack().getOrCreateTagElement(TAG_PATTERN_LOGIC);
+        logic.writeToNBT(data);
+        viewCells.writeToNBT(data, TAG_VIEW_CELLS);
         data.putString(TAG_TIANSHU_MODE, tianshuMode.name());
         if (closedLoopDraft != null) {
-            data.put(TAG_CLOSED_LOOP_DRAFT, closedLoopDraft.write(registries));
+            data.put(TAG_CLOSED_LOOP_DRAFT, closedLoopDraft.write());
         } else {
             data.remove(TAG_CLOSED_LOOP_DRAFT);
         }
         if (processingDraft != null) {
-            data.put(TAG_PROCESSING_DRAFT, processingDraft.write(registries));
+            data.put(TAG_PROCESSING_DRAFT, processingDraft.write());
         } else {
             data.remove(TAG_PROCESSING_DRAFT);
         }
-        getItemStack().set(AE2wtlibComponents.PATTERN_ENCODING_LOGIC, data);
+    }
+
+    @Override
+    public AppEngInternalInventory getViewCellStorage() {
+        return viewCells;
     }
 
     @Override
@@ -131,17 +142,17 @@ public final class TianshuWirelessPatternEncodingTermMenuHost extends WTMenuHost
         markForSave();
     }
 
-    private void readTianshuState(CompoundTag data, HolderLookup.Provider registries) {
+    private void readTianshuState(CompoundTag data) {
         try {
             tianshuMode = TianshuEncodingMode.valueOf(data.getString(TAG_TIANSHU_MODE));
         } catch (IllegalArgumentException ignored) {
             tianshuMode = TianshuEncodingMode.CRAFTING;
         }
         closedLoopDraft = data.contains(TAG_CLOSED_LOOP_DRAFT, Tag.TAG_COMPOUND)
-                ? ClosedLoopTerminalDraft.read(data.getCompound(TAG_CLOSED_LOOP_DRAFT), registries)
+                ? ClosedLoopTerminalDraft.read(data.getCompound(TAG_CLOSED_LOOP_DRAFT))
                 : null;
         processingDraft = data.contains(TAG_PROCESSING_DRAFT, Tag.TAG_COMPOUND)
-                ? ProcessingPatternTerminalDraft.read(data.getCompound(TAG_PROCESSING_DRAFT), registries)
+                ? ProcessingPatternTerminalDraft.read(data.getCompound(TAG_PROCESSING_DRAFT))
                 : null;
     }
 }

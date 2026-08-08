@@ -6,7 +6,6 @@ import appeng.api.stacks.GenericStack;
 import appeng.api.client.AEKeyRendering;
 import appeng.client.gui.AESubScreen;
 import appeng.client.gui.Icon;
-import appeng.client.gui.widgets.AE2Button;
 import appeng.client.gui.widgets.AETextField;
 import appeng.client.gui.widgets.Scrollbar;
 import appeng.client.gui.widgets.TabButton;
@@ -26,6 +25,7 @@ import java.util.List;
 import java.util.Locale;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.Button;
 import net.minecraft.network.chat.Component;
 import org.lwjgl.glfw.GLFW;
 
@@ -45,10 +45,10 @@ public final class TianshuGlobalReserveScreen<M extends TianshuPatternEncodingTe
 
     private final AETextField search;
     private final Scrollbar scrollbar;
-    private final AE2Button rulesButton;
-    private final AE2Button reservesButton;
+    private final Button rulesButton;
+    private final Button reservesButton;
     private final AETextField reserveAmount;
-    private final AE2Button addReserveButton;
+    private final Button addReserveButton;
     private final boolean restoreMaintainableView;
     private View view = View.RULES;
     private boolean awaitingRuleEditor;
@@ -76,7 +76,7 @@ public final class TianshuGlobalReserveScreen<M extends TianshuPatternEncodingTe
         addReserveButton = widgets.addButton("addReserve",
                 Component.translatable("ae2lt.tianshu.reserve.add"), this::addMarkedReserve);
         widgets.add("back", new TabButton(
-                Icon.BACK, Component.translatable("gui.back"), ignored -> returnToParent()));
+                Icon.ARROW_LEFT, Component.translatable("gui.back"), ignored -> returnToParent()));
     }
 
     @Override
@@ -347,14 +347,14 @@ public final class TianshuGlobalReserveScreen<M extends TianshuPatternEncodingTe
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
         if (mouseX >= leftPos + LIST_LEFT && mouseX < leftPos + LIST_RIGHT
                 && mouseY >= topPos + FIRST_ROW
                 && mouseY < topPos + FIRST_ROW + VISIBLE_ROWS * ROW_HEIGHT) {
-            scrollbar.setCurrentScroll(scrollbar.getCurrentScroll() - (int) Math.signum(scrollY));
+            scrollbar.setCurrentScroll(scrollbar.getCurrentScroll() - (int) Math.signum(delta));
             return true;
         }
-        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+        return super.mouseScrolled(mouseX, mouseY, delta);
     }
 
     @Override
@@ -491,9 +491,9 @@ public final class TianshuGlobalReserveScreen<M extends TianshuPatternEncodingTe
         private final MaintenanceSummarySyncPacket.Entry entry;
         private final List<ReserveVariant> variants;
         private final AETextField amount;
-        private final AE2Button modeButton;
-        private final AE2Button deleteButton;
-        private final AE2Button saveButton;
+        private final Button modeButton;
+        private final Button deleteButton;
+        private final Button saveButton;
         private final Scrollbar scrollbar;
         private ReservedStockMatchMode mode;
 
@@ -535,7 +535,7 @@ public final class TianshuGlobalReserveScreen<M extends TianshuPatternEncodingTe
             saveButton = widgets.addButton("save", Component.translatable("gui.done"), this::save);
             widgets.addButton("cancel", Component.translatable("gui.cancel"), this::returnToParent);
             widgets.add("back", new TabButton(
-                    Icon.BACK, Component.translatable("gui.back"), ignored -> returnToParent()));
+                    Icon.ARROW_LEFT, Component.translatable("gui.back"), ignored -> returnToParent()));
         }
 
         private static boolean validDraft(String value) {
@@ -660,15 +660,15 @@ public final class TianshuGlobalReserveScreen<M extends TianshuPatternEncodingTe
         }
 
         @Override
-        public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
             if (mode == ReservedStockMatchMode.IGNORE_SECONDARY
                     && !variants.isEmpty()
                     && mouseY >= topPos + VARIANT_FIRST_ROW
                     && mouseY < topPos + VARIANT_FIRST_ROW + VISIBLE_VARIANTS * VARIANT_ROW_HEIGHT) {
-                scrollbar.setCurrentScroll(scrollbar.getCurrentScroll() - (int) Math.signum(scrollY));
+                scrollbar.setCurrentScroll(scrollbar.getCurrentScroll() - (int) Math.signum(delta));
                 return true;
             }
-            return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+            return super.mouseScrolled(mouseX, mouseY, delta);
         }
 
         @Override

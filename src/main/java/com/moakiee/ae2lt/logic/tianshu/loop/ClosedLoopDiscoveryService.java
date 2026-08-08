@@ -66,8 +66,7 @@ public final class ClosedLoopDiscoveryService {
                     break;
                 }
                 storedMembers.add(new ClosedLoopMemberPattern(
-                        SourcePatternSnapshot.fromItemStack(
-                                definition.toStack(), level.registryAccess()),
+                        SourcePatternSnapshot.fromItemStack(definition.toStack()),
                         resolved.coefficients()[i]));
             }
             if (!valid) continue;

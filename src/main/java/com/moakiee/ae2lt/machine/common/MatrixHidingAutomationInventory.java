@@ -3,7 +3,7 @@ package com.moakiee.ae2lt.machine.common;
 import java.util.Objects;
 
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.items.IItemHandlerModifiable;
+import net.minecraftforge.items.IItemHandlerModifiable;
 
 /**
  * Common automation view for machines with a dedicated Lightning Collapse

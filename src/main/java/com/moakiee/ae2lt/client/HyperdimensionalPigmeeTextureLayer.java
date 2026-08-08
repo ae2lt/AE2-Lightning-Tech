@@ -24,10 +24,10 @@ import net.minecraft.world.level.block.state.BlockState;
  * Draws the sparse Hyperdimensional Pigmee markings over the portal shell.
  */
 final class HyperdimensionalPigmeeTextureLayer {
-    static final ModelResourceLocation MODEL = ModelResourceLocation.standalone(
-            ResourceLocation.fromNamespaceAndPath(
-                    AE2LightningTech.MODID,
-                    "block/hyperdimensional_pigmee_fumo_overlay"));
+    static final ModelResourceLocation MODEL = new ModelResourceLocation(
+            AE2LightningTech.MODID,
+            "block/hyperdimensional_pigmee_fumo_overlay",
+            "normal");
 
     private static final long MODEL_SEED = 42L;
     private static final float SURFACE_OFFSET = 0.004F;
@@ -109,7 +109,8 @@ final class HyperdimensionalPigmeeTextureLayer {
                     1.0F,
                     1.0F,
                     LightTexture.FULL_BRIGHT,
-                    packedOverlay);
+                    packedOverlay,
+                    true);
         }
         poseStack.popPose();
     }

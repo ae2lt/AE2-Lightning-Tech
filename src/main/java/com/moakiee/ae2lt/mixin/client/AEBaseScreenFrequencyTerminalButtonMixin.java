@@ -15,7 +15,7 @@ import com.moakiee.ae2lt.client.ae2wtlib.FrequencyTerminalButton;
  * screen widgets. This matches how native toolbar buttons are created: add them
  * to {@code VerticalButtonBar} before {@code WidgetContainer.populateScreen}.
  */
-@Mixin(AEBaseScreen.class)
+@Mixin(value = AEBaseScreen.class, remap = false)
 public abstract class AEBaseScreenFrequencyTerminalButtonMixin {
     @Unique
     private boolean ae2lt$frequencyTerminalButtonAdded;

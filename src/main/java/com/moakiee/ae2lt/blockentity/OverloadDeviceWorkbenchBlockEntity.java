@@ -12,16 +12,17 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
-import net.neoforged.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.Dist;
 
 import appeng.api.implementations.blockentities.IWirelessAccessPoint;
 import appeng.api.networking.IGrid;
 import appeng.api.networking.IGridNode;
 import appeng.api.util.DimensionalBlockPos;
-import appeng.blockentity.grid.AENetworkedBlockEntity;
+import appeng.blockentity.grid.AENetworkBlockEntity;
 import appeng.menu.MenuOpener;
-import appeng.menu.locator.MenuHostLocator;
+import appeng.menu.locator.MenuLocator;
 import appeng.util.inv.AppEngInternalInventory;
+import appeng.api.inventories.InternalInventory;
 import appeng.util.inv.InternalInventoryHost;
 
 import com.moakiee.ae2lt.blockentity.workbench.DeviceWorkbenchAdapter;
@@ -32,7 +33,7 @@ import com.moakiee.ae2lt.menu.OverloadDeviceWorkbenchMenu;
 import com.moakiee.ae2lt.registry.ModBlockEntities;
 import com.moakiee.ae2lt.registry.ModBlocks;
 
-public class OverloadDeviceWorkbenchBlockEntity extends AENetworkedBlockEntity
+public class OverloadDeviceWorkbenchBlockEntity extends AENetworkBlockEntity
         implements InternalInventoryHost, IWirelessAccessPoint {
     private static final String TAG_DEVICE_INV = "DeviceInv";
 
@@ -191,18 +192,17 @@ public class OverloadDeviceWorkbenchBlockEntity extends AENetworkedBlockEntity
         return adapter == null ? 0 : adapter.maxInstallAmount(stack);
     }
 
-    public void openMenu(Player player, MenuHostLocator locator) {
+    public void openMenu(Player player, MenuLocator locator) {
         MenuOpener.open(OverloadDeviceWorkbenchMenu.TYPE, player, locator);
     }
 
-    @Override
     public void saveChangedInventory(AppEngInternalInventory inv) {
         saveChanges();
-        markForClientUpdate();
+        markForUpdate();
     }
 
     @Override
-    public void onChangeInventory(AppEngInternalInventory inv, int slot) {
+    public void onChangeInventory(InternalInventory inv, int slot) {
         if (inv == deviceInventory) {
             bindInsertedDevice();
             saveChanges();
@@ -215,15 +215,15 @@ public class OverloadDeviceWorkbenchBlockEntity extends AENetworkedBlockEntity
     }
 
     @Override
-    public void saveAdditional(CompoundTag data, HolderLookup.Provider registries) {
-        super.saveAdditional(data, registries);
-        deviceInventory.writeToNBT(data, TAG_DEVICE_INV, registries);
+    public void saveAdditional(CompoundTag data) {
+        super.saveAdditional(data);
+        deviceInventory.writeToNBT(data, TAG_DEVICE_INV);
     }
 
     @Override
-    public void loadTag(CompoundTag data, HolderLookup.Provider registries) {
-        super.loadTag(data, registries);
-        deviceInventory.readFromNBT(data, TAG_DEVICE_INV, registries);
+    public void loadTag(CompoundTag data) {
+        super.loadTag(data);
+        deviceInventory.readFromNBT(data, TAG_DEVICE_INV);
         bindInsertedDevice();
     }
 

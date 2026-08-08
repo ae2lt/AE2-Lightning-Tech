@@ -1,4 +1,5 @@
 package com.moakiee.ae2lt.blockentity;
+import com.moakiee.ae2lt.network.NetworkInit;
 
 import appeng.api.config.Actionable;
 import appeng.api.config.PowerMultiplier;
@@ -17,7 +18,7 @@ import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.KeyCounter;
 import appeng.api.util.AECableType;
 import appeng.blockentity.crafting.IMolecularAssemblerSupportedPattern;
-import appeng.blockentity.grid.AENetworkedInvBlockEntity;
+import appeng.blockentity.grid.AENetworkInvBlockEntity;
 import appeng.client.render.crafting.AssemblerAnimationStatus;
 import appeng.core.AELog;
 import appeng.crafting.CraftingEvent;
@@ -35,19 +36,23 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.inventory.CraftingContainer;
 import net.minecraft.world.inventory.TransientCraftingContainer;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
-import net.neoforged.neoforge.network.PacketDistributor;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
+import net.minecraftforge.network.PacketDistributor;
 import org.jetbrains.annotations.Nullable;
+import net.minecraftforge.common.capabilities.Capability;
+import net.minecraftforge.common.capabilities.ForgeCapabilities;
+import net.minecraftforge.common.util.LazyOptional;
 
 /**
  * Independent, fixed-speed crafting machine for Pigmee Tech.
@@ -55,10 +60,9 @@ import org.jetbrains.annotations.Nullable;
  * <p>This intentionally does not extend AE2's molecular assembler and therefore
  * has no upgrade inventory at all.</p>
  */
-public final class PigmeeMolecularAssemblerBlockEntity extends AENetworkedInvBlockEntity
+public final class PigmeeMolecularAssemblerBlockEntity extends AENetworkInvBlockEntity
         implements IGridTickable, ICraftingMachine, IPowerChannelState {
-    public static final ResourceLocation INV_MAIN = ResourceLocation.fromNamespaceAndPath(
-            AE2LightningTech.MODID, "pigmee_molecular_assembler");
+    public static final ResourceLocation INV_MAIN = ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "pigmee_molecular_assembler");
 
     private static final String TAG_AUTOMATIC_PATTERN = "automaticPattern";
     private static final String TAG_PUSH_DIRECTION = "pushDirection";
@@ -164,7 +168,7 @@ public final class PigmeeMolecularAssemblerBlockEntity extends AENetworkedInvBlo
     }
 
     @Override
-    public void onChangeInventory(AppEngInternalInventory inventory, int slot) {
+    public void onChangeInventory(InternalInventory inventory, int slot) {
         if (inventory == itemInventory || inventory == patternInventory) {
             recalculatePattern();
             saveChanges();
@@ -190,7 +194,7 @@ public final class PigmeeMolecularAssemblerBlockEntity extends AENetworkedInvBlo
     public TickingRequest getTickingRequest(IGridNode node) {
         recalculatePattern();
         updateSleepState();
-        return new TickingRequest(1, 1, !awake);
+        return new TickingRequest(1, 1, !awake, true);
     }
 
     @Override
@@ -219,9 +223,7 @@ public final class PigmeeMolecularAssemblerBlockEntity extends AENetworkedInvBlo
         }
 
         populateTransientCraftingGrid();
-        var positionedInput = craftingGrid.asPositionedCraftInput();
-        var compactInput = positionedInput.input();
-        var output = activePattern.assemble(compactInput, level);
+        var output = activePattern.assemble(craftingGrid, level);
         progress = 0;
 
         if (output.isEmpty()) {
@@ -229,28 +231,16 @@ public final class PigmeeMolecularAssemblerBlockEntity extends AENetworkedInvBlo
             return TickRateModulation.IDLE;
         }
 
-        output.onCraftedBySystem(level);
+        output.onCraftedBy(level, null, 1);
         CraftingEvent.fireAutoCraftingEvent(level, activePattern, output, craftingGrid);
-        var remainders = activePattern.getRemainingItems(compactInput);
+        var remainders = activePattern.getRemainingItems(craftingGrid);
 
         pushOutput(output.copy());
 
-        int inputLeft = positionedInput.left();
-        int inputTop = positionedInput.top();
         for (int y = 0; y < craftingGrid.getHeight(); y++) {
             for (int x = 0; x < craftingGrid.getWidth(); x++) {
-                if (y < inputTop || x < inputLeft) {
-                    itemInventory.setItemDirect(x + y * craftingGrid.getWidth(), ItemStack.EMPTY);
-                }
-            }
-        }
-        for (int y = 0; y < compactInput.height(); y++) {
-            for (int x = 0; x < compactInput.width(); x++) {
-                int inventorySlot =
-                        x + inputLeft + (y + inputTop) * craftingGrid.getWidth();
-                itemInventory.setItemDirect(
-                        inventorySlot,
-                        remainders.get(x + y * compactInput.width()));
+                int inventorySlot = x + y * craftingGrid.getWidth();
+                itemInventory.setItemDirect(inventorySlot, remainders.get(inventorySlot));
             }
         }
 
@@ -286,7 +276,7 @@ public final class PigmeeMolecularAssemblerBlockEntity extends AENetworkedInvBlo
             return false;
         }
         populateTransientCraftingGrid();
-        return !activePattern.assemble(craftingGrid.asCraftInput(), level).isEmpty();
+        return !activePattern.assemble(craftingGrid, level).isEmpty();
     }
 
     private void pushOutput(ItemStack output) {
@@ -401,17 +391,19 @@ public final class PigmeeMolecularAssemblerBlockEntity extends AENetworkedInvBlo
     }
 
     private void sendCraftingAnimation(IGridNode node, ItemStack output) {
-        PacketDistributor.sendToPlayersNear(
-                node.getLevel(),
-                null,
-                worldPosition.getX(),
-                worldPosition.getY(),
-                worldPosition.getZ(),
-                32.0D,
-                new PigmeeAssemblerAnimationPacket(
-                        worldPosition,
-                        (byte) ENERGY_PER_TICK,
-                        output.copy()));
+        var serverLevel = node.getLevel();
+        if (serverLevel != null) {
+            com.moakiee.ae2lt.network.NetworkInit.sendToPlayersNear(
+                    serverLevel,
+                    worldPosition.getX(),
+                    worldPosition.getY(),
+                    worldPosition.getZ(),
+                    32.0D,
+                    new PigmeeAssemblerAnimationPacket(
+                            worldPosition,
+                            (byte) ENERGY_PER_TICK,
+                            output.copy()));
+        }
     }
 
     @Override
@@ -450,7 +442,7 @@ public final class PigmeeMolecularAssemblerBlockEntity extends AENetworkedInvBlo
     }
 
     @Override
-    protected boolean readFromStream(RegistryFriendlyByteBuf data) {
+    protected boolean readFromStream(FriendlyByteBuf data) {
         boolean changed = super.readFromStream(data);
         boolean newPowered = data.readBoolean();
         if (newPowered != powered) {
@@ -461,20 +453,20 @@ public final class PigmeeMolecularAssemblerBlockEntity extends AENetworkedInvBlo
     }
 
     @Override
-    protected void writeToStream(RegistryFriendlyByteBuf data) {
+    protected void writeToStream(FriendlyByteBuf data) {
         super.writeToStream(data);
         data.writeBoolean(powered);
     }
 
     @Override
-    public void saveAdditional(CompoundTag data, HolderLookup.Provider registries) {
-        super.saveAdditional(data, registries);
+    public void saveAdditional(CompoundTag data) {
+        super.saveAdditional(data);
         if (automaticJob) {
             var patternStack = activePattern != null
                     ? activePattern.getDefinition().toStack()
                     : savedAutomaticPattern;
             if (!patternStack.isEmpty()) {
-                data.put(TAG_AUTOMATIC_PATTERN, patternStack.save(registries));
+                data.put(TAG_AUTOMATIC_PATTERN, patternStack.save(new CompoundTag()));
                 if (pushDirection != null) {
                     data.putInt(TAG_PUSH_DIRECTION, pushDirection.get3DDataValue());
                 }
@@ -483,13 +475,11 @@ public final class PigmeeMolecularAssemblerBlockEntity extends AENetworkedInvBlo
     }
 
     @Override
-    public void loadTag(CompoundTag data, HolderLookup.Provider registries) {
-        super.loadTag(data, registries);
+    public void loadTag(CompoundTag data) {
+        super.loadTag(data);
         clearAutomaticJob();
         if (data.contains(TAG_AUTOMATIC_PATTERN)) {
-            var patternStack = ItemStack.parseOptional(
-                    registries,
-                    data.getCompound(TAG_AUTOMATIC_PATTERN));
+            var patternStack = ItemStack.of(data.getCompound(TAG_AUTOMATIC_PATTERN));
             if (!patternStack.isEmpty()) {
                 automaticJob = true;
                 savedAutomaticPattern = patternStack;
@@ -514,6 +504,14 @@ public final class PigmeeMolecularAssemblerBlockEntity extends AENetworkedInvBlo
     @Override
     protected Item getItemFromBlockEntity() {
         return ModBlocks.PIGMEE_MOLECULAR_ASSEMBLER.get().asItem();
+    }
+
+    @Override
+    public <T> LazyOptional<T> getCapability(Capability<T> cap, @Nullable Direction side) {
+        if (cap == ForgeCapabilities.ITEM_HANDLER) {
+            return LazyOptional.of(() -> exposedInventory.toItemHandler()).cast();
+        }
+        return super.getCapability(cap, side);
     }
 
     private final class CraftingGridFilter implements IAEItemFilter {

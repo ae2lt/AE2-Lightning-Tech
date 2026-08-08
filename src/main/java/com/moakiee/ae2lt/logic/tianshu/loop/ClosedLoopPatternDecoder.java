@@ -91,6 +91,13 @@ public final class ClosedLoopPatternDecoder implements IPatternDetailsDecoder {
         }
     }
 
+    @Override
+    public @Nullable IPatternDetails decodePattern(ItemStack stack, Level level, boolean trySort) {
+        if (stack == null || stack.isEmpty()) return null;
+        var key = AEItemKey.of(stack);
+        return key != null ? decodePattern(key, level) : null;
+    }
+
     /** Decodes and validates all ordinary members once for every downstream closed-loop stage. */
     public static DecodedPayload decodePayload(ClosedLoopPatternPayload payload, Level level) {
         if (payload == null || level == null) {
@@ -112,7 +119,7 @@ public final class ClosedLoopPatternDecoder implements IPatternDetailsDecoder {
         for (var stored : payload.memberPatterns()) {
             final ItemStack memberStack;
             try {
-                memberStack = stored.pattern().toItemStack(level.registryAccess());
+                memberStack = stored.pattern().toItemStack();
             } catch (RuntimeException ignored) {
                 return MemberDecoding.invalid(
                         ClosedLoopValidationResult.Status.MEMBER_UNDECODABLE);

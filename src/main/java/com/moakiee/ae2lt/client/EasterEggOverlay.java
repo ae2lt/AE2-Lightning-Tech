@@ -1,13 +1,12 @@
 package com.moakiee.ae2lt.client;
 
 import com.moakiee.ae2lt.AE2LightningTech;
-import net.minecraft.client.DeltaTracker;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.LayeredDraw;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraftforge.client.gui.overlay.ForgeGui;
+import net.minecraftforge.client.gui.overlay.IGuiOverlay;
 
-public final class EasterEggOverlay implements LayeredDraw.Layer {
+public final class EasterEggOverlay implements IGuiOverlay {
     public static final EasterEggOverlay INSTANCE = new EasterEggOverlay();
 
     private static final ResourceLocation TEXTURE =
@@ -43,23 +42,17 @@ public final class EasterEggOverlay implements LayeredDraw.Layer {
         ticksRemaining = 0;
     }
 
+    // 1.20.1 IGuiOverlay passes a GuiGraphics (GuiComponent was removed); alpha is applied via setColor.
     @Override
-    public void render(GuiGraphics guiGraphics, DeltaTracker deltaTracker) {
+    public void render(
+            ForgeGui gui,
+            GuiGraphics guiGraphics,
+            float partialTick,
+            int screenWidth,
+            int screenHeight) {
         if (ticksRemaining <= 0) {
             return;
         }
-
-        int elapsed = DISPLAY_TICKS - ticksRemaining;
-        float alpha;
-        if (elapsed < 2) {
-            alpha = 0.0f;
-        } else {
-            alpha = 1.0f;
-        }
-
-        var mc = Minecraft.getInstance();
-        int screenWidth = mc.getWindow().getGuiScaledWidth();
-        int screenHeight = mc.getWindow().getGuiScaledHeight();
 
         int imgWidth = 512;
         int imgHeight = 436;
@@ -77,6 +70,9 @@ public final class EasterEggOverlay implements LayeredDraw.Layer {
         }
         int x = (screenWidth - drawW) / 2;
         int y = (screenHeight - drawH) / 2;
+
+        // Fade out over the last 10 ticks.
+        float alpha = Math.min(1.0F, ticksRemaining / 10.0F);
 
         guiGraphics.pose().pushPose();
         guiGraphics.setColor(1.0f, 1.0f, 1.0f, alpha);

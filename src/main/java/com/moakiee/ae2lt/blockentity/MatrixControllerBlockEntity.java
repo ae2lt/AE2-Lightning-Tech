@@ -1305,8 +1305,8 @@ public class MatrixControllerBlockEntity extends BlockEntity
     }
 
     @Override
-    protected void loadAdditional(CompoundTag tag) {
-        super.loadAdditional(tag);
+    public void load(CompoundTag tag) {
+        super.load(tag);
         formed = tag.getBoolean(TAG_FORMED);
         structureCacheValid = false;
         structureCacheValidationRequired = true;

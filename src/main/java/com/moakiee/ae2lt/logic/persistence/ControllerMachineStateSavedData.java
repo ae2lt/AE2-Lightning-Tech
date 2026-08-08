@@ -6,7 +6,6 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Supplier;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
@@ -25,11 +24,14 @@ public final class ControllerMachineStateSavedData extends SavedData {
     private static final String TAG_ID = "Id";
     private static final String TAG_STATE = "State";
 
-    public static final Factory<ControllerMachineStateSavedData> FACTORY = new Factory<>(
-            ControllerMachineStateSavedData::new,
-            ControllerMachineStateSavedData::load,
-            null);
-
+    public static ControllerMachineStateSavedData get(ServerLevel level) {
+        // 1.20.1 has no SavedData.Factory; computeIfAbsent takes
+        // (Function<CompoundTag,T> load, Supplier<T> create, String name).
+        return level.getServer().overworld().getDataStorage().computeIfAbsent(
+                ControllerMachineStateSavedData::load,
+                ControllerMachineStateSavedData::new,
+                DATA_NAME);
+    }
     private final Map<MachineKey, CompoundTag> states = new HashMap<>();
     private final Map<MachineKey, Supplier<CompoundTag>> deferredStateSnapshots = new HashMap<>();
     private final Map<MachineKey, Owner> owners = new HashMap<>();
@@ -47,10 +49,6 @@ public final class ControllerMachineStateSavedData extends SavedData {
     }
 
     private record Owner(String dimension, long position) {
-    }
-
-    public static ControllerMachineStateSavedData get(ServerLevel level) {
-        return level.getServer().overworld().getDataStorage().computeIfAbsent(FACTORY, DATA_NAME);
     }
 
     public boolean hasState(MachineType type, UUID id) {
@@ -143,7 +141,7 @@ public final class ControllerMachineStateSavedData extends SavedData {
     }
 
     @Override
-    public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
+    public CompoundTag save(CompoundTag tag) {
         materializeDeferredStateSnapshots();
         var entries = new ListTag();
         for (var entry : states.entrySet()) {
@@ -157,8 +155,7 @@ public final class ControllerMachineStateSavedData extends SavedData {
         return tag;
     }
 
-    public static ControllerMachineStateSavedData load(
-            CompoundTag tag, HolderLookup.Provider registries) {
+    public static ControllerMachineStateSavedData load(CompoundTag tag) {
         var data = new ControllerMachineStateSavedData();
         var entries = tag.getList(TAG_ENTRIES, Tag.TAG_COMPOUND);
         for (int i = 0; i < entries.size(); i++) {

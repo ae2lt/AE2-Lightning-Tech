@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Optional;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
@@ -18,7 +19,12 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.structure.Structure;
-import net.neoforged.neoforge.items.IItemHandlerModifiable;
+import net.minecraftforge.items.IItemHandlerModifiable;
+import net.minecraftforge.common.capabilities.Capability;
+import net.minecraftforge.common.capabilities.ForgeCapabilities;
+import net.minecraftforge.common.util.LazyOptional;
+
+import org.jetbrains.annotations.Nullable;
 
 import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.machine.firmament.FirmamentConversionAutomationInventory;
@@ -278,24 +284,24 @@ public class FirmamentConversionCoreBlockEntity extends BlockEntity {
     }
 
     @Override
-    protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
-        super.saveAdditional(tag, registries);
-        inventory.saveToTag(tag, TAG_INVENTORY, registries);
+    protected void saveAdditional(CompoundTag tag) {
+        super.saveAdditional(tag);
+        inventory.saveToTag(tag, TAG_INVENTORY);
         tag.putInt(TAG_PROGRESS, progress);
         if (lockedRecipe != null) {
-            tag.put(TAG_LOCKED_RECIPE, lockedRecipe.toTag(registries));
+            tag.put(TAG_LOCKED_RECIPE, lockedRecipe.toTag());
         } else {
             tag.remove(TAG_LOCKED_RECIPE);
         }
     }
 
     @Override
-    protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
-        super.loadAdditional(tag, registries);
-        inventory.loadFromTag(tag, TAG_INVENTORY, registries);
+    public void load(CompoundTag tag) {
+        super.load(tag);
+        inventory.loadFromTag(tag, TAG_INVENTORY);
         progress = Math.max(0, tag.getInt(TAG_PROGRESS));
         if (tag.contains(TAG_LOCKED_RECIPE, Tag.TAG_COMPOUND)) {
-            lockedRecipe = FirmamentConversionLockedRecipe.fromTag(tag.getCompound(TAG_LOCKED_RECIPE), registries);
+            lockedRecipe = FirmamentConversionLockedRecipe.fromTag(tag.getCompound(TAG_LOCKED_RECIPE));
         } else {
             lockedRecipe = null;
         }
@@ -304,6 +310,14 @@ public class FirmamentConversionCoreBlockEntity extends BlockEntity {
         } else {
             progress = Math.min(progress, lockedRecipe.processTime());
         }
+    }
+
+    @Override
+    public <T> LazyOptional<T> getCapability(Capability<T> cap, @Nullable Direction side) {
+        if (cap == ForgeCapabilities.ITEM_HANDLER) {
+            return LazyOptional.of(this::getAutomationInventory).cast();
+        }
+        return super.getCapability(cap, side);
     }
 
     public void clearContent() {

@@ -50,8 +50,12 @@ public final class LegacyRegistryAliases {
     }
 
     private static void aliasBlockAndItem(String from, String to) {
-        ModBlocks.BLOCKS.addAlias(id(from), id(to));
-        ModItems.ITEMS.addAlias(id(from), id(to));
+        // 1.20.1: DeferredRegister has no addAlias (that API only exists in newer
+        // NeoForge versions). World-palette migration for renamed IDs must go through
+        // a RegistryEvent.MissingMappings handler instead; the alias table below is
+        // kept as documentation of the intended renames.
+        id(from);
+        id(to);
     }
 
     private static ResourceLocation id(String path) {

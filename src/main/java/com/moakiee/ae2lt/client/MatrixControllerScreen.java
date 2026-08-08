@@ -1,4 +1,5 @@
 package com.moakiee.ae2lt.client;
+import com.moakiee.ae2lt.network.NetworkInit;
 
 import com.moakiee.ae2lt.logic.craft.MatrixCoreMode;
 import com.moakiee.ae2lt.logic.craft.MatrixMultiblockScanIssue;
@@ -12,7 +13,6 @@ import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.resources.language.I18n;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
-import net.neoforged.neoforge.network.PacketDistributor;
 
 public class MatrixControllerScreen extends MultiblockControllerScreen<MatrixControllerMenu> {
 
@@ -42,7 +42,7 @@ public class MatrixControllerScreen extends MultiblockControllerScreen<MatrixCon
     }
 
     private void sendAction(MatrixControllerActionPacket.Action action) {
-        PacketDistributor.sendToServer(
+        NetworkInit.sendToServer(
                 new MatrixControllerActionPacket(menu.token(), menu.getBlockPos(), action));
     }
 

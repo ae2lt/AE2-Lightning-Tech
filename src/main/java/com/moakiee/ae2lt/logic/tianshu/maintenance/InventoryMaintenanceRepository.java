@@ -63,7 +63,7 @@ public final class InventoryMaintenanceRepository {
         for (var rule : rules.values()) {
             var tag = new CompoundTag();
             tag.putUUID("Id", rule.id());
-            tag.put("Key", GenericStack.writeTag(registries, new GenericStack(rule.key(), 1)));
+            tag.put("Key", GenericStack.writeTag(new GenericStack(rule.key(), 1)));
             tag.putLong("Lower", rule.lowerThreshold());
             tag.putLong("Upper", rule.upperThreshold());
             tag.putLong("PerJob", rule.amountPerJob());
@@ -81,7 +81,7 @@ public final class InventoryMaintenanceRepository {
         for (int i = 0; i < list.size(); i++) {
             try {
                 var tag = list.getCompound(i);
-                var keyStack = GenericStack.readTag(registries, tag.getCompound("Key"));
+                var keyStack = GenericStack.readTag(tag.getCompound("Key"));
                 if (keyStack == null || !tag.hasUUID("Id")) continue;
                 var rule = new InventoryMaintenanceRule(
                         tag.getUUID("Id"), keyStack.what(), tag.getLong("Lower"), tag.getLong("Upper"),

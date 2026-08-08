@@ -10,11 +10,11 @@ import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.DataSlot;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.common.extensions.IMenuTypeExtension;
+import net.minecraftforge.common.extensions.IForgeMenuType;
 
 public class TianshuSupercomputerControllerMenu extends AbstractContainerMenu {
     public static final MenuType<TianshuSupercomputerControllerMenu> TYPE =
-            IMenuTypeExtension.create(TianshuSupercomputerControllerMenu::clientCreate);
+            IForgeMenuType.create(TianshuSupercomputerControllerMenu::clientCreate);
     private final BlockPos blockPos;
     private final TianshuSupercomputerControllerBlockEntity host;
     private final DataSlot formed = DataSlot.standalone();

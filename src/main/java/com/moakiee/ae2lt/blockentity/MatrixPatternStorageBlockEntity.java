@@ -25,7 +25,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.neoforged.neoforge.items.IItemHandlerModifiable;
+import net.minecraftforge.items.IItemHandlerModifiable;
 
 import appeng.api.crafting.IPatternDetails;
 import appeng.api.crafting.PatternDetailsHelper;
@@ -244,8 +244,8 @@ public class MatrixPatternStorageBlockEntity extends BlockEntity
     }
 
     @Override
-    protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
-        super.saveAdditional(tag, registries);
+    protected void saveAdditional(CompoundTag tag) {
+        super.saveAdditional(tag);
         var items = new ListTag();
         for (int slot = 0; slot < capacity(); slot++) {
             var stack = inventory.getStackInSlot(slot);
@@ -254,15 +254,15 @@ public class MatrixPatternStorageBlockEntity extends BlockEntity
             }
             var itemTag = new CompoundTag();
             itemTag.putInt(TAG_SLOT, slot);
-            itemTag.put(TAG_STACK, stack.save(registries, new CompoundTag()));
+            itemTag.put(TAG_STACK, stack.save(new CompoundTag()));
             items.add(itemTag);
         }
         tag.put(TAG_ITEMS, items);
     }
 
     @Override
-    protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
-        super.loadAdditional(tag, registries);
+    public void load(CompoundTag tag) {
+        super.load(tag);
         controllerPos = null;
 
         inventory.clear();
@@ -277,13 +277,13 @@ public class MatrixPatternStorageBlockEntity extends BlockEntity
             if (slot < 0 || slot >= capacity() || !itemTag.contains(TAG_STACK, Tag.TAG_COMPOUND)) {
                 continue;
             }
-            var stack = ItemStack.parseOptional(registries, itemTag.getCompound(TAG_STACK));
+            var stack = ItemStack.of(itemTag.getCompound(TAG_STACK));
             inventory.setStackInSlotInternal(slot, stack, false);
         }
     }
 
     @Override
-    public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
+    public CompoundTag getUpdateTag() {
         return new CompoundTag();
     }
 

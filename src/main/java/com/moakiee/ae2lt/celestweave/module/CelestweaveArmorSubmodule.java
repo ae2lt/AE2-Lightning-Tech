@@ -10,7 +10,7 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.Dist;
 
 import com.moakiee.ae2lt.device.module.OverloadDeviceSubmodule;
 import com.moakiee.ae2lt.celestweave.CelestweaveArmorState;

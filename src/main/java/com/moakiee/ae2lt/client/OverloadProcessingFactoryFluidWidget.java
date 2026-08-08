@@ -19,9 +19,9 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.inventory.InventoryMenu;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.Fluids;
-import net.neoforged.neoforge.client.extensions.common.IClientFluidTypeExtensions;
-import net.neoforged.neoforge.fluids.FluidStack;
-import net.neoforged.fml.ModList;
+import net.minecraftforge.client.extensions.common.IClientFluidTypeExtensions;
+import net.minecraftforge.fluids.FluidStack;
+import net.minecraftforge.fml.ModList;
 
 import appeng.client.gui.style.Blitter;
 import appeng.core.localization.Tooltips;
@@ -143,7 +143,7 @@ public class OverloadProcessingFactoryFluidWidget extends AbstractWidget impleme
             lines.add(Component.translatable("ae2lt.gui.overload_factory.fluid.tooltip", 0, capacity)
                     .withStyle(Tooltips.NUMBER_TEXT));
         } else {
-            lines.add(fluid.getHoverName());
+            lines.add(fluid.getDisplayName());
             lines.add(Component.empty());
             lines.add(Component.translatable("ae2lt.gui.overload_factory.fluid.tooltip", fluid.getAmount(), capacity)
                     .withStyle(Tooltips.NUMBER_TEXT));

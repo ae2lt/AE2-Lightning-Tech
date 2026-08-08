@@ -1,36 +1,47 @@
 package com.moakiee.ae2lt.item;
 
+import java.util.Optional;
+
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+
 import appeng.api.crafting.IPatternDetails;
+import appeng.api.stacks.AEItemKey;
 import appeng.crafting.pattern.EncodedPatternItem;
+
 import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternDecoder;
 import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternPayload;
 import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternPayloadTagCodec;
-import java.util.Optional;
-import net.minecraft.core.component.DataComponents;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.component.CustomData;
-import net.minecraft.world.level.Level;
+import com.moakiee.ae2lt.util.ItemStackTagSupport;
 
-public final class ClosedLoopPatternItem extends EncodedPatternItem<IPatternDetails> {
+/**
+ * Tianshu closed-loop pattern item.
+ *
+ * <p>1.20.1 port notes: AE2's EncodedPatternItem is not generic here, and the
+ * item payload lives in a plain ItemStack CompoundTag instead of the 1.21
+ * DataComponents.CUSTOM_DATA component. All tag access goes through
+ * {@link ItemStackTagSupport} so empty tags stay null on the stack.
+ */
+public final class ClosedLoopPatternItem extends EncodedPatternItem {
     private static final String TAG_PAYLOAD = "ClosedLoopPattern";
     private static final String TAG_EXECUTION_MEMBER = "ExecutionMember";
 
     public ClosedLoopPatternItem(Properties properties) {
-        super(properties.stacksTo(1), ClosedLoopPatternDecoder.INSTANCE::decodePattern, null);
+        super(properties.stacksTo(1));
     }
 
     public boolean hasPayload(ItemStack stack) {
-        return stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY)
-                .copyTag().contains(TAG_PAYLOAD, net.minecraft.nbt.Tag.TAG_COMPOUND);
+        return ItemStackTagSupport.getTagCopy(stack).contains(TAG_PAYLOAD, CompoundTag.TAG_COMPOUND);
     }
 
     public Optional<ClosedLoopPatternPayload> readPayload(ItemStack stack, Level level) {
         if (stack == null || level == null || stack.getItem() != this) return Optional.empty();
-        var root = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
-        if (!root.contains(TAG_PAYLOAD, net.minecraft.nbt.Tag.TAG_COMPOUND)) return Optional.empty();
+        var root = ItemStackTagSupport.getTagCopy(stack);
+        if (!root.contains(TAG_PAYLOAD, CompoundTag.TAG_COMPOUND)) return Optional.empty();
         try {
             return Optional.of(ClosedLoopPatternPayloadTagCodec.read(
-                    root.getCompound(TAG_PAYLOAD), level.registryAccess()));
+                    root.getCompound(TAG_PAYLOAD)));
         } catch (RuntimeException ignored) {
             return Optional.empty();
         }
@@ -38,8 +49,8 @@ public final class ClosedLoopPatternItem extends EncodedPatternItem<IPatternDeta
 
     public int readExecutionMember(ItemStack stack) {
         if (stack == null || stack.getItem() != this) return -1;
-        var root = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
-        return root.contains(TAG_EXECUTION_MEMBER, net.minecraft.nbt.Tag.TAG_INT)
+        var root = ItemStackTagSupport.getTagCopy(stack);
+        return root.contains(TAG_EXECUTION_MEMBER, CompoundTag.TAG_INT)
                 ? root.getInt(TAG_EXECUTION_MEMBER) : -1;
     }
 
@@ -48,8 +59,8 @@ public final class ClosedLoopPatternItem extends EncodedPatternItem<IPatternDeta
         if (stack == null || stack.getItem() != this) {
             throw new IllegalArgumentException("payload target must be a closed-loop pattern item");
         }
-        CustomData.update(DataComponents.CUSTOM_DATA, stack, root -> root.put(
-                TAG_PAYLOAD, ClosedLoopPatternPayloadTagCodec.write(payload, registries)));
+        ItemStackTagSupport.updateTag(stack, root -> root.put(
+                TAG_PAYLOAD, ClosedLoopPatternPayloadTagCodec.write(payload)));
     }
 
     public ItemStack createStack(ClosedLoopPatternPayload payload,
@@ -67,13 +78,19 @@ public final class ClosedLoopPatternItem extends EncodedPatternItem<IPatternDeta
             throw new IllegalArgumentException("closed-loop execution member index is out of bounds");
         }
         var stack = createStack(payload, registries);
-        CustomData.update(DataComponents.CUSTOM_DATA, stack,
+        ItemStackTagSupport.updateTag(stack,
                 root -> root.putInt(TAG_EXECUTION_MEMBER, memberIndex));
         return stack;
     }
 
     @Override
-    public IPatternDetails decode(ItemStack stack, Level level) {
-        return stack.getItem() == this ? ClosedLoopPatternDecoder.INSTANCE.decodePattern(stack, level) : null;
+    public IPatternDetails decode(ItemStack stack, Level level, boolean tryRecovery) {
+        return stack.getItem() == this ? ClosedLoopPatternDecoder.INSTANCE.decodePattern(AEItemKey.of(stack), level) : null;
+    }
+
+    @Override
+    public IPatternDetails decode(AEItemKey what, Level level) {
+        return what != null && what.getItem() == this
+                ? ClosedLoopPatternDecoder.INSTANCE.decodePattern(what, level) : null;
     }
 }

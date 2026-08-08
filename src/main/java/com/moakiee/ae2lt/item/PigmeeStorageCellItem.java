@@ -4,6 +4,8 @@ import appeng.api.stacks.AEKeyType;
 import appeng.items.storage.BasicStorageCell;
 import net.minecraft.world.item.ItemStack;
 
+import com.moakiee.ae2lt.registry.ModItems;
+
 /**
  * A tiny Pigmee-themed item storage cell.
  *
@@ -18,9 +20,13 @@ public final class PigmeeStorageCellItem extends BasicStorageCell {
 
     public PigmeeStorageCellItem(Properties properties) {
         // BasicStorageCell accepts capacity in KiB, so use its smallest valid value and
-        // override getBytes below to expose the intended 256-byte capacity.
+        // override getBytes below to expose the intended 256-byte capacity. The core/housing
+        // pair is required by 1.20.1 and drives the built-in disassembly (the 1.21 JSON
+        // recipe type ae2:storage_cell_disassembly does not exist here).
         super(
                 properties.stacksTo(1),
+                ModItems.PIGMEE_STORAGE_COMPONENT.get(),
+                ModItems.PIGMEE_ITEM_CELL_HOUSING.get(),
                 IDLE_DRAIN,
                 1,
                 BYTES_PER_TYPE,

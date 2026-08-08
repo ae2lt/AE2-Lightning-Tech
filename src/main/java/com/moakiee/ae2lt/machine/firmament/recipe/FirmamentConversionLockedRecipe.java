@@ -14,7 +14,6 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.crafting.RecipeHolder;
 
 import com.moakiee.ae2lt.machine.firmament.FirmamentConversionInventory;
 
@@ -63,11 +62,11 @@ public final class FirmamentConversionLockedRecipe {
     }
 
     public static FirmamentConversionLockedRecipe fromCandidate(FirmamentConversionRecipeCandidate candidate) {
-        RecipeHolder<FirmamentConversionRecipe> holder = candidate.recipe();
+        // 1.20.1 recipes carry no RecipeHolder; the id travels inside the candidate.
         return new FirmamentConversionLockedRecipe(
-                holder.id(),
-                holder.value().getResultStacks(),
-                holder.value().processTime(),
+                candidate.recipeId(),
+                candidate.recipe().getResultStacks(),
+                candidate.recipe().processTime(),
                 candidate.match().inputConsumptions());
     }
 
@@ -95,12 +94,12 @@ public final class FirmamentConversionLockedRecipe {
         return inputConsumptions[slot];
     }
 
-    public CompoundTag toTag(HolderLookup.Provider registries) {
+    public CompoundTag toTag() {
         CompoundTag tag = new CompoundTag();
         tag.putString(TAG_RECIPE_ID, recipeId.toString());
         ListTag resultTags = new ListTag();
         for (ItemStack result : results) {
-            resultTags.add(result.save(registries, new CompoundTag()));
+            resultTags.add(result.save(new CompoundTag()));
         }
         tag.put(TAG_RESULTS, resultTags);
         tag.putInt(TAG_PROCESS_TIME, processTime);
@@ -109,12 +108,12 @@ public final class FirmamentConversionLockedRecipe {
     }
 
     @Nullable
-    public static FirmamentConversionLockedRecipe fromTag(CompoundTag tag, HolderLookup.Provider registries) {
+    public static FirmamentConversionLockedRecipe fromTag(CompoundTag tag) {
         if (!tag.contains(TAG_RECIPE_ID)) {
             return null;
         }
 
-        List<ItemStack> results = readResults(tag, registries);
+        List<ItemStack> results = readResults(tag);
         if (results.isEmpty()) {
             return null;
         }
@@ -126,13 +125,13 @@ public final class FirmamentConversionLockedRecipe {
         }
 
         return new FirmamentConversionLockedRecipe(
-                ResourceLocation.parse(tag.getString(TAG_RECIPE_ID)),
+                ResourceLocation.tryParse(tag.getString(TAG_RECIPE_ID)),
                 results,
                 processTime,
                 inputConsumptions);
     }
 
-    private static List<ItemStack> readResults(CompoundTag tag, HolderLookup.Provider registries) {
+    private static List<ItemStack> readResults(CompoundTag tag) {
         if (tag.contains(TAG_RESULTS, Tag.TAG_LIST)) {
             ListTag resultTags = tag.getList(TAG_RESULTS, Tag.TAG_COMPOUND);
             if (resultTags.isEmpty() || resultTags.size() > FirmamentConversionInventory.OUTPUT_SLOT_COUNT) {
@@ -141,7 +140,7 @@ public final class FirmamentConversionLockedRecipe {
 
             List<ItemStack> results = new ArrayList<>(resultTags.size());
             for (int index = 0; index < resultTags.size(); index++) {
-                ItemStack result = ItemStack.parseOptional(registries, resultTags.getCompound(index));
+                ItemStack result = ItemStack.of(resultTags.getCompound(index));
                 if (result.isEmpty()) {
                     return List.of();
                 }
@@ -151,7 +150,7 @@ public final class FirmamentConversionLockedRecipe {
         }
 
         if (tag.contains(TAG_RESULT, Tag.TAG_COMPOUND)) {
-            ItemStack result = ItemStack.parseOptional(registries, tag.getCompound(TAG_RESULT));
+            ItemStack result = ItemStack.of(tag.getCompound(TAG_RESULT));
             return result.isEmpty() ? List.of() : List.of(result);
         }
 

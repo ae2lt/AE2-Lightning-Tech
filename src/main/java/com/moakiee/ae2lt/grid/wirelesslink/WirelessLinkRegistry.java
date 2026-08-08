@@ -52,7 +52,6 @@ import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
-import net.minecraft.core.RegistryAccess;
 
 public final class WirelessLinkRegistry extends SavedData {
     private static final Logger LOG = LogUtils.getLogger();
@@ -229,14 +228,15 @@ public final class WirelessLinkRegistry extends SavedData {
     public WirelessLinkRegistry() {
     }
 
-    private WirelessLinkRegistry(CompoundTag root, RegistryAccess registries) {
+    private WirelessLinkRegistry(CompoundTag root) {
         read(root);
     }
 
     public static void onServerStart(MinecraftServer server) {
+        // 1.20.1 has no SavedData.Factory; computeIfAbsent takes
+        // (Function<CompoundTag,T> load, Supplier<T> create, String name).
         instance = server.overworld().getDataStorage().computeIfAbsent(
-                new SavedData.Factory<>(WirelessLinkRegistry::new, WirelessLinkRegistry::new),
-                DATA_NAME);
+                WirelessLinkRegistry::new, WirelessLinkRegistry::new, DATA_NAME);
         for (var link : instance.links.values()) {
             instance.registerDevice(link);
         }
@@ -641,7 +641,7 @@ public final class WirelessLinkRegistry extends SavedData {
         var sourceIds = new LinkedHashSet<UUID>();
 
         for (var pending : pendingChanges) {
-            var dim = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(pending.dimensionId));
+            var dim = ResourceKey.create(Registries.DIMENSION, ResourceLocation.tryParse(pending.dimensionId));
             var level = server.getLevel(dim);
             if (level == null) {
                 continue;
@@ -1012,7 +1012,7 @@ public final class WirelessLinkRegistry extends SavedData {
             return;
         }
 
-        var dim = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(pending.dimensionId()));
+        var dim = ResourceKey.create(Registries.DIMENSION, ResourceLocation.tryParse(pending.dimensionId()));
         var level = server.getLevel(dim);
         if (level == null) {
             return;
@@ -1275,7 +1275,7 @@ public final class WirelessLinkRegistry extends SavedData {
     }
 
     private PersistedTarget resolvePersistedTarget(WirelessLink link, MinecraftServer server) {
-        var dim = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(link.dimensionId()));
+        var dim = ResourceKey.create(Registries.DIMENSION, ResourceLocation.tryParse(link.dimensionId()));
         var level = server.getLevel(dim);
         if (level == null) {
             return PersistedTarget.state(WirelessLinkState.PENDING_TARGET_CHUNK);
@@ -1705,7 +1705,7 @@ public final class WirelessLinkRegistry extends SavedData {
 
     @Nullable
     private LocatedTarget resolveLocator(TargetLocator locator, MinecraftServer server) {
-        var dim = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(locator.dimensionId()));
+        var dim = ResourceKey.create(Registries.DIMENSION, ResourceLocation.tryParse(locator.dimensionId()));
         var level = server.getLevel(dim);
         if (level == null) {
             return null;
@@ -1807,7 +1807,7 @@ public final class WirelessLinkRegistry extends SavedData {
     private void registerDevice(WirelessLink link) {
         var manager = WirelessFrequencyManager.get();
         if (manager == null) return;
-        var dim = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(link.dimensionId()));
+        var dim = ResourceKey.create(Registries.DIMENSION, ResourceLocation.tryParse(link.dimensionId()));
         manager.registerDevice(link.frequencyId(), new WirelessFrequencyManager.DeviceEntry(
                 dim,
                 BlockPos.of(link.posLong()),
@@ -1819,7 +1819,7 @@ public final class WirelessLinkRegistry extends SavedData {
     private void unregisterDevice(WirelessLink link) {
         var manager = WirelessFrequencyManager.get();
         if (manager == null) return;
-        var dim = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(link.dimensionId()));
+        var dim = ResourceKey.create(Registries.DIMENSION, ResourceLocation.tryParse(link.dimensionId()));
         manager.unregisterDevice(link.frequencyId(), dim, BlockPos.of(link.posLong()));
     }
 
@@ -1850,7 +1850,7 @@ public final class WirelessLinkRegistry extends SavedData {
     }
 
     @Override
-    public CompoundTag save(CompoundTag root, RegistryAccess registries) {
+    public CompoundTag save(CompoundTag root) {
         var list = new ListTag();
         for (var link : links.values()) {
             list.add(saveLink(link));

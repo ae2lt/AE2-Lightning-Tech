@@ -4,7 +4,7 @@ import appeng.api.stacks.GenericStack;
 import appeng.client.gui.AESubScreen;
 import appeng.client.gui.Icon;
 import appeng.client.gui.style.PaletteColor;
-import appeng.client.gui.widgets.AE2Button;
+import com.moakiee.ae2lt.client.gui.AE2Button;
 import appeng.client.gui.widgets.Scrollbar;
 import appeng.client.gui.widgets.TabButton;
 import appeng.menu.SlotSemantics;
@@ -37,7 +37,7 @@ final class TianshuOverloadPatternConfigScreen<M extends TianshuPatternEncodingT
         imageWidth = TianshuPatternConfigLayout.GUI_WIDTH;
         imageHeight = TianshuPatternConfigLayout.GUI_HEIGHT;
 
-        widgets.add("button_back", new TabButton(Icon.BACK,
+        widgets.add("button_back", new TabButton(Icon.ARROW_LEFT,
                 Component.translatable("gui.back"), ignored -> returnToParent()));
         widgets.addButton("save",
                 Component.translatable("ae2lt.tianshu.pattern_config.done"), this::confirm);
@@ -178,12 +178,12 @@ final class TianshuOverloadPatternConfigScreen<M extends TianshuPatternEncodingT
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double deltaX, double deltaY) {
-        if (deltaY != 0 && rows.size() > TianshuPatternConfigLayout.VISIBLE_ROWS) {
-            scrollbar.setCurrentScroll(scrollbar.getCurrentScroll() + (deltaY > 0 ? -1 : 1));
+    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
+        if (delta != 0 && rows.size() > TianshuPatternConfigLayout.VISIBLE_ROWS) {
+            scrollbar.setCurrentScroll(scrollbar.getCurrentScroll() + (delta > 0 ? -1 : 1));
             return true;
         }
-        return super.mouseScrolled(mouseX, mouseY, deltaX, deltaY);
+        return super.mouseScrolled(mouseX, mouseY, delta);
     }
 
     @Override

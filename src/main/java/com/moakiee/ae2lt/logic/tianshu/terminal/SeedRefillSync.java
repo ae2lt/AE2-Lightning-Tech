@@ -5,7 +5,7 @@ import appeng.menu.guisync.PacketWritable;
 import com.moakiee.ae2lt.logic.tianshu.loop.TianshuSeedRefillService;
 import java.util.ArrayList;
 import java.util.List;
-import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.FriendlyByteBuf;
 
 /** Outcome of the last manual closed-loop seed refill, shown in the terminal status area. */
 public record SeedRefillSync(int state, List<Entry> missing) implements PacketWritable {
@@ -27,7 +27,7 @@ public record SeedRefillSync(int state, List<Entry> missing) implements PacketWr
         }
     }
 
-    public SeedRefillSync(RegistryFriendlyByteBuf data) {
+    public SeedRefillSync(FriendlyByteBuf data) {
         this(data.readVarInt(), readMissing(data));
     }
 
@@ -47,7 +47,7 @@ public record SeedRefillSync(int state, List<Entry> missing) implements PacketWr
     }
 
     @Override
-    public void writeToPacket(RegistryFriendlyByteBuf data) {
+    public void writeToPacket(FriendlyByteBuf data) {
         data.writeVarInt(state);
         data.writeVarInt(missing.size());
         for (var entry : missing) {
@@ -56,7 +56,7 @@ public record SeedRefillSync(int state, List<Entry> missing) implements PacketWr
         }
     }
 
-    private static List<Entry> readMissing(RegistryFriendlyByteBuf data) {
+    private static List<Entry> readMissing(FriendlyByteBuf data) {
         int size = data.readVarInt();
         var result = new ArrayList<Entry>(size);
         for (int i = 0; i < size; i++) {

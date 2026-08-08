@@ -8,6 +8,7 @@ import appeng.menu.slot.RestrictedInputSlot;
 import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.blockentity.PigmeePatternProviderBlockEntity;
 import com.moakiee.ae2lt.logic.PigmeePatternProviderReturnInventory;
+import com.moakiee.ae2lt.util.SlotPositionAccess;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
@@ -15,11 +16,12 @@ import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.inventory.Slot;
 
 public final class PigmeePatternProviderMenu extends AEBaseMenu {
-    public static final MenuType<PigmeePatternProviderMenu> TYPE = MenuTypeBuilder
-            .create(PigmeePatternProviderMenu::new, PigmeePatternProviderBlockEntity.class)
-            .withMenuTitle(host -> Component.translatable("block.ae2lt.pigmee_pattern_provider"))
-            .buildUnregistered(ResourceLocation.fromNamespaceAndPath(
-                    AE2LightningTech.MODID, "pigmee_pattern_provider"));
+    public static final MenuType<PigmeePatternProviderMenu> TYPE = Ae2ltMenuBuilder
+            .buildUnregistered(
+                    MenuTypeBuilder
+                            .create(PigmeePatternProviderMenu::new, PigmeePatternProviderBlockEntity.class)
+                            .withMenuTitle(host -> Component.translatable("block.ae2lt.pigmee_pattern_provider")),
+                    ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "pigmee_pattern_provider"));
 
     private static final int PATTERN_X = 62;
     private static final int PATTERN_Y = 49;
@@ -39,22 +41,20 @@ public final class PigmeePatternProviderMenu extends AEBaseMenu {
         var patternInventory = host.getPatternInventory();
         for (int slot = 0; slot < PigmeePatternProviderBlockEntity.PATTERN_SLOT_COUNT; slot++) {
             var patternSlot = new RestrictedInputSlot(
-                    RestrictedInputSlot.PlacableItemType.PROVIDER_PATTERN,
+                    RestrictedInputSlot.PlacableItemType.ENCODED_PATTERN,
                     patternInventory,
                     slot);
             // Keep the Pigmee screen's existing slot artwork while retaining AE2's
             // provider behavior that renders encoded patterns as their output.
             patternSlot.setIcon(null);
-            patternSlot.x = PATTERN_X + slot * SLOT_SPACING;
-            patternSlot.y = PATTERN_Y;
+            SlotPositionAccess.set(patternSlot, PATTERN_X + slot * SLOT_SPACING, PATTERN_Y);
             addSlot(patternSlot, SlotSemantics.ENCODED_PATTERN);
         }
 
         var returnMenuInventory = host.getReturnInventory().createMenuWrapper();
         for (int slot = 0; slot < PigmeePatternProviderReturnInventory.SLOT_COUNT; slot++) {
             var returnSlot = new AppEngSlot(returnMenuInventory, slot);
-            returnSlot.x = RETURN_X + slot * SLOT_SPACING;
-            returnSlot.y = RETURN_Y;
+            SlotPositionAccess.set(returnSlot, RETURN_X + slot * SLOT_SPACING, RETURN_Y);
             addSlot(returnSlot, SlotSemantics.STORAGE);
         }
 

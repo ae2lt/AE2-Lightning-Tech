@@ -123,7 +123,7 @@ public final class ReservedStockRepository {
     public void writeTo(CompoundTag parent, HolderLookup.Provider registries) {
         var list = new ListTag();
         for (var entry : reserves.values()) {
-            var tag = GenericStack.writeTag(registries, new GenericStack(entry.key(), 1));
+            var tag = GenericStack.writeTag(new GenericStack(entry.key(), 1));
             tag.putLong("Reserve", entry.amount());
             tag.putString("Mode", entry.mode().name());
             list.add(tag);
@@ -136,7 +136,7 @@ public final class ReservedStockRepository {
         var list = parent.getList(TAG_ENTRIES, Tag.TAG_COMPOUND);
         for (int i = 0; i < list.size(); i++) {
             var tag = list.getCompound(i);
-            var stack = GenericStack.readTag(registries, tag);
+            var stack = GenericStack.readTag(tag);
             long amount = tag.getLong("Reserve");
             ReservedStockMatchMode mode;
             try { mode = ReservedStockMatchMode.valueOf(tag.getString("Mode")); }

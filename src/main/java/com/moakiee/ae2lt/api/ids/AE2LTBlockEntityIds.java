@@ -20,22 +20,22 @@ public final class AE2LTBlockEntityIds {
     public static final String MOD_ID = "ae2lt";
 
     public static final ResourceLocation LIGHTNING_COLLECTOR =
-            new ResourceLocation(MOD_ID, "lightning_collector");
+            ResourceLocation.fromNamespaceAndPath(MOD_ID, "lightning_collector");
 
     public static final ResourceLocation LIGHTNING_SIMULATION_ROOM =
-            new ResourceLocation(MOD_ID, "lightning_simulation_room");
+            ResourceLocation.fromNamespaceAndPath(MOD_ID, "lightning_simulation_room");
 
     public static final ResourceLocation LIGHTNING_ASSEMBLY_CHAMBER =
-            new ResourceLocation(MOD_ID, "lightning_assembly_chamber");
+            ResourceLocation.fromNamespaceAndPath(MOD_ID, "lightning_assembly_chamber");
 
     public static final ResourceLocation OVERLOAD_PROCESSING_FACTORY =
-            new ResourceLocation(MOD_ID, "overload_processing_factory");
+            ResourceLocation.fromNamespaceAndPath(MOD_ID, "overload_processing_factory");
 
     public static final ResourceLocation TESLA_COIL =
-            new ResourceLocation(MOD_ID, "tesla_coil");
+            ResourceLocation.fromNamespaceAndPath(MOD_ID, "tesla_coil");
 
     public static final ResourceLocation CRYSTAL_CATALYZER =
-            new ResourceLocation(MOD_ID, "crystal_catalyzer");
+            ResourceLocation.fromNamespaceAndPath(MOD_ID, "crystal_catalyzer");
 
     private AE2LTBlockEntityIds() {
     }

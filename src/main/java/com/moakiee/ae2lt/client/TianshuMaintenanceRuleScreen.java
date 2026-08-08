@@ -6,7 +6,7 @@ import appeng.api.client.AEKeyRendering;
 import appeng.client.gui.AEBaseScreen;
 import appeng.client.gui.AESubScreen;
 import appeng.client.gui.Icon;
-import appeng.client.gui.widgets.AE2Button;
+import com.moakiee.ae2lt.client.gui.AE2Button;
 import appeng.client.gui.widgets.AECheckbox;
 import appeng.client.gui.widgets.AETextField;
 import appeng.client.gui.widgets.Scrollbar;
@@ -63,16 +63,20 @@ public final class TianshuMaintenanceRuleScreen<M extends TianshuPatternEncoding
 
         scrollbar = widgets.addScrollBar("scrollbar", Scrollbar.SMALL);
         scrollbar.setCaptureMouseWheel(false);
-        checkButton = widgets.addButton("check",
-                Component.translatable("ae2lt.tianshu.maintenance.check_now"), this::checkNow);
-        cancelJobButton = widgets.addButton("cancelJob",
-                Component.translatable("ae2lt.tianshu.maintenance.cancel_job"), this::cancelJob);
-        deleteButton = widgets.addButton("delete",
-                Component.translatable("ae2lt.tianshu.maintenance.delete"), this::delete);
+        checkButton = new AE2Button(
+                Component.translatable("ae2lt.tianshu.maintenance.check_now"), btn -> checkNow());
+        widgets.add("check", checkButton);
+        cancelJobButton = new AE2Button(
+                Component.translatable("ae2lt.tianshu.maintenance.cancel_job"), btn -> cancelJob());
+        widgets.add("cancelJob", cancelJobButton);
+        deleteButton = new AE2Button(
+                Component.translatable("ae2lt.tianshu.maintenance.delete"), btn -> delete());
+        widgets.add("delete", deleteButton);
         widgets.addButton("cancel", Component.translatable("gui.cancel"), this::returnToParent);
-        saveButton = widgets.addButton("save", Component.translatable("gui.done"), this::save);
+        saveButton = new AE2Button(Component.translatable("gui.done"), btn -> save());
+        widgets.add("save", saveButton);
         widgets.add("back", new TabButton(
-                Icon.BACK, Component.translatable("gui.back"), ignored -> returnToParent()));
+                Icon.ARROW_LEFT, Component.translatable("gui.back"), ignored -> returnToParent()));
     }
 
     @Override
@@ -253,14 +257,14 @@ public final class TianshuMaintenanceRuleScreen<M extends TianshuPatternEncoding
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
         if (mouseX >= leftPos + LIST_LEFT && mouseX < leftPos + LIST_RIGHT
                 && mouseY >= topPos + FIRST_ROW_Y
                 && mouseY < topPos + FIRST_ROW_Y + VISIBLE_ROWS * ROW_HEIGHT) {
-            scrollbar.setCurrentScroll(scrollbar.getCurrentScroll() - (int) Math.signum(scrollY));
+            scrollbar.setCurrentScroll(scrollbar.getCurrentScroll() - (int) Math.signum(delta));
             return true;
         }
-        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+        return super.mouseScrolled(mouseX, mouseY, delta);
     }
 
     @Override
@@ -471,17 +475,21 @@ public final class TianshuMaintenanceRuleScreen<M extends TianshuPatternEncoding
             amount.setMaxLength(19);
             amount.setFilter(ReserveEditorScreen::validDraft);
             amount.setValue(formatReserve(globalAmount).replace("∞", "-1"));
-            scopeButton = widgets.addButton("scope", scopeLabel(), this::toggleScope);
-            modeButton = widgets.addButton("mode", modeLabel(), this::toggleMode);
+            scopeButton = new AE2Button(scopeLabel(), btn -> toggleScope());
+            widgets.add("scope", scopeButton);
+            modeButton = new AE2Button(modeLabel(), btn -> toggleMode());
+            widgets.add("mode", modeButton);
             widgets.addButton("zero", Component.literal("0"), () -> amount.setValue("0"));
             widgets.addButton("stack", Component.literal("64"), () -> amount.setValue("64"));
             widgets.addButton("infinite", Component.literal("∞"), () -> amount.setValue("-1"));
-            deleteButton = widgets.addButton("delete",
-                    Component.translatable("ae2lt.tianshu.reserve.delete"), this::delete);
+            deleteButton = new AE2Button(
+                    Component.translatable("ae2lt.tianshu.reserve.delete"), btn -> delete());
+            widgets.add("delete", deleteButton);
             widgets.addButton("cancel", Component.translatable("gui.cancel"), this::returnToParent);
-            saveButton = widgets.addButton("save", Component.translatable("gui.done"), this::save);
+            saveButton = new AE2Button(Component.translatable("gui.done"), btn -> save());
+            widgets.add("save", saveButton);
             widgets.add("back", new TabButton(
-                    Icon.BACK, Component.translatable("gui.back"), ignored -> returnToParent()));
+                    Icon.ARROW_LEFT, Component.translatable("gui.back"), ignored -> returnToParent()));
         }
 
         @Override
@@ -632,16 +640,16 @@ public final class TianshuMaintenanceRuleScreen<M extends TianshuPatternEncoding
         }
 
         @Override
-        public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
             var selectedMode = global ? globalMode : ruleMode;
             if (selectedMode == ReservedStockMatchMode.IGNORE_SECONDARY
                     && !variants.isEmpty()
                     && mouseY >= topPos + VARIANT_FIRST_ROW
                     && mouseY < topPos + VARIANT_FIRST_ROW + VISIBLE_VARIANTS * VARIANT_ROW_HEIGHT) {
-                scrollbar.setCurrentScroll(scrollbar.getCurrentScroll() - (int) Math.signum(scrollY));
+                scrollbar.setCurrentScroll(scrollbar.getCurrentScroll() - (int) Math.signum(delta));
                 return true;
             }
-            return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+            return super.mouseScrolled(mouseX, mouseY, delta);
         }
 
         @Override

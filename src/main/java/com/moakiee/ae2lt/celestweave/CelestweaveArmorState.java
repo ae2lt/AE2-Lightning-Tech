@@ -1,4 +1,5 @@
 package com.moakiee.ae2lt.celestweave;
+import com.moakiee.ae2lt.network.NetworkInit;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -13,8 +14,8 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.neoforge.network.PacketDistributor;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.network.PacketDistributor;
 
 import com.moakiee.ae2lt.celestweave.ArmorEnergyModuleItem;
 import com.moakiee.ae2lt.config.AE2LTCommonConfig;
@@ -381,7 +382,7 @@ public final class CelestweaveArmorState {
                 // force it off when energy runs out. Phase lock uses its dedicated effective-
                 // protection packet below because its real controller stack may live in the vault.
                 if (PhaseFlightSubmodule.INSTANCE.id().equals(submodule.id()) && (changed || forceClientSync)) {
-                    PacketDistributor.sendToPlayer(
+                    NetworkInit.sendToPlayer(
                             serverPlayer,
                             new CelestweaveSubmoduleActivePacket(armorId, submodule.id(), active));
                 }
@@ -498,7 +499,7 @@ public final class CelestweaveArmorState {
 
     // Absent component means powered (common case); only an unpowered piece carries false.
     public static boolean isModulesPowered(ItemStack armor) {
-        return armor != null && armor.getOrDefault(ModDataComponents.CELESTWEAVE_MODULES_POWERED.get(), Boolean.TRUE);
+        return armor != null && ModDataComponents.CELESTWEAVE_MODULES_POWERED.getOrDefault(armor, Boolean.TRUE);
     }
 
     // Server-authoritative; set from the tick loop's passive-drain result (set-when-changed).
@@ -507,9 +508,9 @@ public final class CelestweaveArmorState {
             return;
         }
         if (powered) {
-            armor.remove(ModDataComponents.CELESTWEAVE_MODULES_POWERED.get());
+            ModDataComponents.CELESTWEAVE_MODULES_POWERED.remove(armor);
         } else {
-            armor.set(ModDataComponents.CELESTWEAVE_MODULES_POWERED.get(), Boolean.FALSE);
+            ModDataComponents.CELESTWEAVE_MODULES_POWERED.set(armor, Boolean.FALSE);
         }
     }
 
@@ -680,7 +681,7 @@ public final class CelestweaveArmorState {
                 FlightSubmodule.isInertiaEnabled(armor),
                 phaseFlightActive,
                 PhaseFlightSubmodule.isInertiaEnabled(armor));
-        PacketDistributor.sendToPlayer(player, new FlightInertiaSyncPacket(
+        NetworkInit.sendToPlayer(player, new FlightInertiaSyncPacket(
                 armorId,
                 inertia,
                 phaseFlightActive,
@@ -705,7 +706,7 @@ public final class CelestweaveArmorState {
             ItemStack armor,
             UUID armorId,
             boolean active) {
-        PacketDistributor.sendToPlayer(player, new PhaseLockProtectionSyncPacket(
+        NetworkInit.sendToPlayer(player, new PhaseLockProtectionSyncPacket(
                 armorId,
                 active && PhaseLockSubmodule.blocksExternalForces(armor)));
     }

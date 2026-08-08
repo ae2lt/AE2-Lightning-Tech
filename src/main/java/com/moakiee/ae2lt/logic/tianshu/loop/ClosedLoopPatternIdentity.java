@@ -21,7 +21,7 @@ public final class ClosedLoopPatternIdentity {
             throw new IllegalArgumentException("closed-loop definition and registries are required");
         }
         var fingerprint = SourcePatternSnapshot
-                .fromItemStack(definition.toStack(), registries)
+                .fromItemStack(definition.toStack())
                 .fingerprint();
         return UUID.nameUUIDFromBytes(
                 (DOMAIN + fingerprint).getBytes(StandardCharsets.UTF_8));

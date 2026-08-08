@@ -1,4 +1,5 @@
 package com.moakiee.ae2lt.client.hub;
+import com.moakiee.ae2lt.network.NetworkInit;
 
 import java.util.List;
 
@@ -13,7 +14,6 @@ import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.network.PacketDistributor;
 
 import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.item.railgun.ElectromagneticRailgunItem;
@@ -25,10 +25,8 @@ import com.moakiee.ae2lt.registry.ModItems;
 
 public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
 
-    private static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath(
-            AE2LightningTech.MODID, "textures/gui/armor_settings_gui.png");
-    private static final ResourceLocation CHECKBOX_TEXTURE = ResourceLocation.fromNamespaceAndPath(
-            "ae2", "textures/guis/checkbox.png");
+    private static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "textures/gui/armor_settings_gui.png");
+    private static final ResourceLocation CHECKBOX_TEXTURE = ResourceLocation.fromNamespaceAndPath("ae2", "textures/guis/checkbox.png");
 
     private static final int TEXTURE_SIZE = 256;
     private static final int CHECKBOX_TEXTURE_SIZE = 64;
@@ -152,7 +150,7 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
 
     @Override
     public void render(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
-        renderBackground(gfx, mouseX, mouseY, partialTick);
+        renderBackground(gfx);
         super.render(gfx, mouseX, mouseY, partialTick);
 
         int selectedTab = menu.getSelectedTab();
@@ -461,7 +459,7 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
                     && mouseX <= buttonX + CONFIG_BUTTON_W
                     && mouseY >= rowY - 1
                     && mouseY <= rowY - 1 + CONFIG_BUTTON_H) {
-                PacketDistributor.sendToServer(new DeviceHubActionPacket(
+                NetworkInit.sendToServer(new DeviceHubActionPacket(
                         DeviceHubActionPacket.ACTION_CYCLE_MODULE_CONFIG, configIndex));
                 return true;
             }
@@ -507,7 +505,7 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
             int ty = topPos + TAB_Y;
             if (mouseX >= tx && mouseX <= tx + TAB_WIDTH && mouseY >= ty && mouseY <= ty + TAB_HEIGHT) {
                 if ((tabMask & (1 << i)) != 0 && i != selectedTab) {
-                    PacketDistributor.sendToServer(new DeviceHubActionPacket(
+                    NetworkInit.sendToServer(new DeviceHubActionPacket(
                             DeviceHubActionPacket.ACTION_SELECT_TAB, i));
                     playClick();
                 }
@@ -549,7 +547,7 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
                     && mouseX <= checkboxX + CHECKBOX_WIDTH
                     && mouseY >= rowY + 1
                     && mouseY <= rowY + 1 + CHECKBOX_HEIGHT) {
-                PacketDistributor.sendToServer(new DeviceHubActionPacket(
+                NetworkInit.sendToServer(new DeviceHubActionPacket(
                         DeviceHubActionPacket.ACTION_TOGGLE_MODULE, idx));
                 return true;
             }
@@ -557,7 +555,7 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
                     && mouseX <= leftPos + MODULE_LIST_RIGHT
                     && mouseY >= rowY
                     && mouseY <= rowY + MODULE_ROW_H) {
-                PacketDistributor.sendToServer(new DeviceHubActionPacket(
+                NetworkInit.sendToServer(new DeviceHubActionPacket(
                         DeviceHubActionPacket.ACTION_SELECT_MODULE, idx));
                 return true;
             }
@@ -594,7 +592,7 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
                     default -> -1;
                 };
                 if (action >= 0) {
-                    PacketDistributor.sendToServer(new DeviceHubActionPacket(action, 0));
+                    NetworkInit.sendToServer(new DeviceHubActionPacket(action, 0));
                     return true;
                 }
             }
@@ -621,13 +619,13 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
         if (mouseX >= leftPos + 8
                 && mouseX <= leftPos + 168
                 && mouseY >= topPos + 78
                 && mouseY <= topPos + 142) {
             List<String> moduleNames = menu.getModuleNameKeys();
-            scrollOffset = scroll(scrollOffset, scrollY);
+            scrollOffset = scroll(scrollOffset, delta);
             scrollOffset = DeviceHubDisplayRules.clampScrollOffset(
                     scrollOffset, moduleNames.size(), MODULE_VISIBLE_ROWS);
             return true;
@@ -641,12 +639,12 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
                 && mouseX <= leftPos + 175
                 && mouseY >= topPos + CONFIG_HEADER_Y
                 && mouseY <= topPos + GUI_HEIGHT) {
-            configScrollOffset = scroll(configScrollOffset, scrollY);
+            configScrollOffset = scroll(configScrollOffset, delta);
             configScrollOffset = DeviceHubDisplayRules.clampScrollOffset(
                     configScrollOffset, configCount, CONFIG_VISIBLE_ROWS);
             return true;
         }
-        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+        return super.mouseScrolled(mouseX, mouseY, delta);
     }
 
     private void renderConfigScrollBar(GuiGraphics gfx, int configCount, int mouseX, int mouseY) {
@@ -740,7 +738,7 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
         for (int attempt = 0; attempt < TAB_COUNT; attempt++) {
             current = (current + dir + TAB_COUNT) % TAB_COUNT;
             if ((tabMask & (1 << current)) != 0) {
-                PacketDistributor.sendToServer(new DeviceHubActionPacket(
+                NetworkInit.sendToServer(new DeviceHubActionPacket(
                         DeviceHubActionPacket.ACTION_SELECT_TAB, current));
                 playClick();
                 return;

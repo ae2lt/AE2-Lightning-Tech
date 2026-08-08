@@ -3,12 +3,19 @@ package com.moakiee.ae2lt.machine.firmament.recipe;
 import java.util.ArrayList;
 import java.util.List;
 
+import net.minecraft.world.Container;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.crafting.RecipeInput;
 
 import com.moakiee.ae2lt.machine.firmament.FirmamentConversionInventory;
 
-public final class FirmamentConversionRecipeInput implements RecipeInput {
+/**
+ * Read-only recipe input for firmament conversion. 1.20.1 has no
+ * {@code net.minecraft.world.item.crafting.RecipeInput} (added in 1.21), so this
+ * implements {@link Container} to satisfy {@code Recipe<C extends Container>};
+ * mutation methods are no-ops by design.
+ */
+public final class FirmamentConversionRecipeInput implements Container {
     private final List<SlotStack> slotStacks;
     private final List<ItemStack> displayStacks;
 
@@ -46,8 +53,35 @@ public final class FirmamentConversionRecipeInput implements RecipeInput {
     }
 
     @Override
-    public int size() {
+    public int getContainerSize() {
         return displayStacks.size();
+    }
+
+    @Override
+    public ItemStack removeItem(int index, int count) {
+        return ItemStack.EMPTY;
+    }
+
+    @Override
+    public ItemStack removeItemNoUpdate(int index) {
+        return ItemStack.EMPTY;
+    }
+
+    @Override
+    public void setItem(int index, ItemStack stack) {
+    }
+
+    @Override
+    public void setChanged() {
+    }
+
+    @Override
+    public boolean stillValid(Player player) {
+        return true;
+    }
+
+    @Override
+    public void clearContent() {
     }
 
     public record SlotStack(int slot, ItemStack stack) {

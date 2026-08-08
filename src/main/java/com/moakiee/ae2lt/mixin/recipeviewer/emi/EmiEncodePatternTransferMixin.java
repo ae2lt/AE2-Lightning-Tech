@@ -18,7 +18,7 @@ import dev.emi.emi.api.recipe.EmiRecipe;
 import java.util.ArrayList;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.world.item.crafting.RecipeHolder;
+import net.minecraft.world.item.crafting.Recipe;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -33,14 +33,14 @@ public abstract class EmiEncodePatternTransferMixin {
 
     @Inject(
             method = "transferRecipe(Lappeng/menu/AEBaseMenu;"
-                    + "Lnet/minecraft/world/item/crafting/RecipeHolder;"
+                    + "Lnet/minecraft/world/item/crafting/Recipe;"
                     + "Ldev/emi/emi/api/recipe/EmiRecipe;Z)"
                     + "Lappeng/integration/modules/emi/AbstractRecipeHandler$Result;",
             at = @At("HEAD"),
             require = 0)
     private static void ae2lt$onTransfer(
             AEBaseMenu menu,
-            RecipeHolder<?> holder,
+            Recipe<?> recipe,
             EmiRecipe emiRecipe,
             boolean doTransfer,
             CallbackInfoReturnable<Object> cir) {
@@ -100,11 +100,11 @@ public abstract class EmiEncodePatternTransferMixin {
             workstationAliases.forEach(alias ->
                     TianshuRecipeTransferContext.addDefaultAlias(defaultAliases, alias));
         }
-        if (holder != null) {
+        if (recipe != null) {
             // A real recipe type is more stable and semantically precise than an EMI category.
             // Preserve category/workstation strings only as aliases for the right-hand field.
             TianshuRecipeTransferContext.captureVanillaRecipe(
-                    tianshuMenu, holder, sourceKey, defaultAliases);
+                    tianshuMenu, recipe, sourceKey, defaultAliases);
         } else {
             TianshuRecipeTransferContext.publish(
                     tianshuMenu, sourceKey, recipeId, defaultAliases);
@@ -113,14 +113,14 @@ public abstract class EmiEncodePatternTransferMixin {
 
     @Inject(
             method = "transferRecipe(Lappeng/menu/AEBaseMenu;"
-                    + "Lnet/minecraft/world/item/crafting/RecipeHolder;"
+                    + "Lnet/minecraft/world/item/crafting/Recipe;"
                     + "Ldev/emi/emi/api/recipe/EmiRecipe;Z)"
                     + "Lappeng/integration/modules/emi/AbstractRecipeHandler$Result;",
             at = @At("RETURN"),
             require = 0)
     private static void ae2lt$restoreClosedLoopMode(
             AEBaseMenu menu,
-            RecipeHolder<?> holder,
+            Recipe<?> recipe,
             EmiRecipe emiRecipe,
             boolean doTransfer,
             CallbackInfoReturnable<Object> cir) {

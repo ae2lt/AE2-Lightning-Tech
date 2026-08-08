@@ -2,7 +2,7 @@ package com.moakiee.ae2lt.logic.railgun;
 
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.energy.IEnergyStorage;
+import net.minecraftforge.energy.IEnergyStorage;
 
 import appeng.api.config.Actionable;
 import appeng.api.networking.IGrid;
@@ -27,7 +27,7 @@ public final class RailgunEnergyBuffer {
 
     /** Read the current buffered FE on this stack. */
     public static long read(ItemStack stack) {
-        Long v = stack.get(ModDataComponents.RAILGUN_ENERGY_BUFFER.get());
+        Long v = ModDataComponents.RAILGUN_ENERGY_BUFFER.get(stack);
         return Math.max(0L, Math.min(capacity(stack), v == null ? 0L : v));
     }
 
@@ -41,7 +41,7 @@ public final class RailgunEnergyBuffer {
     /** Write the new buffer level, clamping to [0, capacity]. */
     public static void write(ItemStack stack, long value) {
         long clamped = Math.max(0L, Math.min(capacity(stack), value));
-        stack.set(ModDataComponents.RAILGUN_ENERGY_BUFFER.get(), clamped);
+        ModDataComponents.RAILGUN_ENERGY_BUFFER.set(stack, clamped);
     }
 
     public static void clamp(ItemStack stack) {

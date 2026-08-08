@@ -21,13 +21,13 @@ public class ElectromagneticParalysisEffect extends MobEffect {
     }
 
     @Override
-    public boolean shouldApplyEffectTickThisTick(int duration, int amplifier) {
+    public boolean isDurationEffectTick(int duration, int amplifier) {
         // Spawn sparks every 4 ticks for stronger visual feedback.
         return duration % 4 == 0;
     }
 
     @Override
-    public boolean applyEffectTick(LivingEntity entity, int amplifier) {
+    public void applyEffectTick(LivingEntity entity, int amplifier) {
         if (entity.level() instanceof ServerLevel level) {
             double w = entity.getBbWidth() * 0.4;
             double h = entity.getBbHeight() * 0.4;
@@ -39,6 +39,5 @@ public class ElectromagneticParalysisEffect extends MobEffect {
                     4,
                     w, h, w, 0.07);
         }
-        return true;
     }
 }

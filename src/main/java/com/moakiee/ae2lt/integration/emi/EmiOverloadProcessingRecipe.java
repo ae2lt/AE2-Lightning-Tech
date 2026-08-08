@@ -6,7 +6,6 @@ import dev.emi.emi.api.stack.EmiStack;
 import dev.emi.emi.api.widget.WidgetHolder;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.item.crafting.RecipeHolder;
 
 final class EmiOverloadProcessingRecipe extends EmiBackedRecipe<OverloadProcessingRecipe> {
     private static final ResourceLocation TEXTURE =
@@ -18,8 +17,8 @@ final class EmiOverloadProcessingRecipe extends EmiBackedRecipe<OverloadProcessi
     private final EmiStack fluidInput;
     private final EmiStack fluidOutput;
 
-    EmiOverloadProcessingRecipe(RecipeHolder<OverloadProcessingRecipe> holder) {
-        super(AE2LTEmiCategories.OVERLOAD_PROCESSING, holder, WIDTH, 90);
+    EmiOverloadProcessingRecipe(ResourceLocation id, OverloadProcessingRecipe recipe) {
+        super(AE2LTEmiCategories.OVERLOAD_PROCESSING, id, recipe, WIDTH, 90);
         recipe.itemInputs().forEach(input -> inputs.add(EmiRecipeWidgets.ingredient(input.ingredient(), input.count())));
         fluidInput = recipe.fluidInput().isEmpty()
                 ? EmiStack.EMPTY

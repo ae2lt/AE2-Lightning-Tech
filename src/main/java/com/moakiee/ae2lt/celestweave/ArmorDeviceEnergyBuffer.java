@@ -2,7 +2,7 @@ package com.moakiee.ae2lt.celestweave;
 
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.energy.IEnergyStorage;
+import net.minecraftforge.energy.IEnergyStorage;
 
 import com.moakiee.ae2lt.device.energy.DeviceEnergyBuffer;
 
@@ -33,8 +33,8 @@ public final class ArmorDeviceEnergyBuffer implements DeviceEnergyBuffer {
                 stack,
                 player,
                 Math.max(0L,
-                        ArmorEnergyBuffer.capacity(stack, player.registryAccess())
-                                - ArmorEnergyBuffer.read(stack, player.registryAccess())));
+                        ArmorEnergyBuffer.capacity(stack, player.level().registryAccess())
+                                - ArmorEnergyBuffer.read(stack, player.level().registryAccess())));
     }
 
     @Override

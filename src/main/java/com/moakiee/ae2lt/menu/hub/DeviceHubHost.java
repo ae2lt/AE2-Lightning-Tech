@@ -9,6 +9,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.ItemStack;
 
+import net.minecraftforge.network.NetworkHooks;
 import com.moakiee.ae2lt.item.railgun.ElectromagneticRailgunItem;
 import com.moakiee.ae2lt.celestweave.phase.CelestweaveEquipmentAccess;
 
@@ -38,7 +39,7 @@ public class DeviceHubHost implements MenuProvider {
         if (resolvedTab < 0) {
             return;
         }
-        player.openMenu(new DeviceHubHost(resolvedTab), buf -> buf.writeVarInt(resolvedTab));
+        NetworkHooks.openScreen(player, new DeviceHubHost(resolvedTab), buf -> buf.writeVarInt(resolvedTab));
     }
 
     /** Map an equipment slot to its corresponding hub tab index. */

@@ -15,6 +15,7 @@ import appeng.client.gui.widgets.ActionButton;
 import appeng.client.gui.widgets.Scrollbar;
 import appeng.core.localization.GuiText;
 import appeng.menu.SlotSemantics;
+import com.moakiee.ae2lt.util.SlotPositionAccess;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.network.chat.Component;
@@ -31,13 +32,13 @@ final class TianshuProcessingEncodingPanel extends TianshuEncodingModePanel {
             WidgetContainer widgets) {
         super(screen, widgets);
 
-        clearButton = new ActionButton(ActionItems.S_CLOSE, action -> menu.clear());
+        clearButton = new ActionButton(ActionItems.CLOSE, action -> menu.clear());
         clearButton.setHalfSize(true);
         clearButton.setDisableBackground(true);
         widgets.add("processingClearPattern", clearButton);
 
         cycleOutputButton = new ActionButton(
-                ActionItems.S_CYCLE_PROCESSING_OUTPUT,
+                ActionItems.CYCLE_PROCESSING_OUTPUT,
                 action -> menu.cycleProcessingOutput());
         cycleOutputButton.setHalfSize(true);
         cycleOutputButton.setDisableBackground(true);
@@ -57,13 +58,13 @@ final class TianshuProcessingEncodingPanel extends TianshuEncodingModePanel {
             var slot = menu.getProcessingInputSlots()[i];
             var effectiveRow = i / 3 - scrollbar.getCurrentScroll();
             slot.setActive(effectiveRow >= 0 && effectiveRow < 3);
-            slot.y -= scrollbar.getCurrentScroll() * 18;
+            SlotPositionAccess.set(slot, slot.x, slot.y - scrollbar.getCurrentScroll() * 18);
         }
         for (int i = 0; i < menu.getProcessingOutputSlots().length; i++) {
             var slot = menu.getProcessingOutputSlots()[i];
             var effectiveRow = i - scrollbar.getCurrentScroll();
             slot.setActive(effectiveRow >= 0 && effectiveRow < 3);
-            slot.y -= scrollbar.getCurrentScroll() * 18;
+            SlotPositionAccess.set(slot, slot.x, slot.y - scrollbar.getCurrentScroll() * 18);
         }
 
         updateTooltipVisibility();
@@ -92,7 +93,7 @@ final class TianshuProcessingEncodingPanel extends TianshuEncodingModePanel {
 
     @Override
     Icon getIcon() {
-        return Icon.TAB_PROCESSING;
+        return Icon.HORIZONTAL_TAB_SELECTED;
     }
 
     @Override

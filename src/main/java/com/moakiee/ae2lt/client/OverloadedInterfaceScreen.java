@@ -224,7 +224,8 @@ public class OverloadedInterfaceScreen extends AEBaseScreen<OverloadedInterfaceM
 
         @Override
         protected Icon getIcon() {
-            return isHoveredOrFocused() ? Icon.COG : Icon.COG_DISABLED;
+            // 1.20.1: no COG sprites; reuse the wrench pair.
+            return isHoveredOrFocused() ? Icon.WRENCH : Icon.WRENCH_DISABLED;
         }
     }
 

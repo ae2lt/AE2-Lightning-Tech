@@ -4,8 +4,6 @@ import net.minecraft.core.GlobalPos;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 
-import appeng.api.ids.AEComponents;
-
 import com.moakiee.ae2lt.logic.railgun.RailgunBinding;
 
 public final class RailgunNetworkBinding implements DeviceNetworkBinding {
@@ -20,12 +18,13 @@ public final class RailgunNetworkBinding implements DeviceNetworkBinding {
 
     @Override
     public void bind(ItemStack stack, GlobalPos pos) {
-        stack.set(AEComponents.WIRELESS_LINK_TARGET, pos);
+        // 1.20.1 has no AEComponents: the link is stored in the stack NBT (see RailgunBinding).
+        RailgunBinding.bind(stack, pos);
     }
 
     @Override
     public void unbind(ItemStack stack) {
-        stack.remove(AEComponents.WIRELESS_LINK_TARGET);
+        RailgunBinding.unbind(stack);
     }
 
     @Override

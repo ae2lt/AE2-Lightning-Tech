@@ -1,4 +1,5 @@
 package com.moakiee.ae2lt.client;
+import com.moakiee.ae2lt.network.NetworkInit;
 
 import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.item.OverloadedFrequencyCardItem;
@@ -6,20 +7,19 @@ import com.moakiee.ae2lt.network.ToggleFrequencyCardAutoConnectPacket;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.world.InteractionHand;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.InputEvent;
-import net.neoforged.neoforge.network.PacketDistributor;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.client.event.InputEvent;
 
-@EventBusSubscriber(modid = AE2LightningTech.MODID, value = Dist.CLIENT)
+@Mod.EventBusSubscriber(modid = AE2LightningTech.MODID, value = Dist.CLIENT)
 public final class FrequencyCardScrollHandler {
     private FrequencyCardScrollHandler() {
     }
 
     @SubscribeEvent
     public static void onMouseScroll(InputEvent.MouseScrollingEvent event) {
-        if (event.getScrollDeltaY() == 0.0D || !Screen.hasShiftDown()) {
+        if (event.getScrollDelta() == 0.0D || !Screen.hasShiftDown()) {
             return;
         }
 
@@ -39,7 +39,7 @@ public final class FrequencyCardScrollHandler {
             return;
         }
 
-        PacketDistributor.sendToServer(ToggleFrequencyCardAutoConnectPacket.forHand(hand));
+        NetworkInit.sendToServer(ToggleFrequencyCardAutoConnectPacket.forHand(hand));
         event.setCanceled(true);
     }
 }

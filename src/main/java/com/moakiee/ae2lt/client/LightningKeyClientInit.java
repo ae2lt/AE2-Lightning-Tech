@@ -3,14 +3,13 @@ package com.moakiee.ae2lt.client;
 import net.minecraft.client.renderer.item.ItemProperties;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.FastColor;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
-import net.neoforged.neoforge.client.event.RegisterColorHandlersEvent;
-import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
-import net.neoforged.neoforge.client.extensions.common.RegisterClientExtensionsEvent;
-import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
+import net.minecraftforge.client.event.RegisterColorHandlersEvent;
+import net.minecraftforge.client.event.RegisterGuiOverlaysEvent;
+import net.minecraftforge.client.gui.overlay.VanillaGuiOverlay;
 
 import appeng.api.client.AEKeyRendering;
 import appeng.api.util.AEColor;
@@ -26,7 +25,7 @@ import com.moakiee.ae2lt.me.key.LightningKey;
 import com.moakiee.ae2lt.me.key.LightningKeyType;
 import com.moakiee.ae2lt.registry.ModItems;
 
-@EventBusSubscriber(modid = AE2LightningTech.MODID, bus = EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
+@Mod.EventBusSubscriber(modid = AE2LightningTech.MODID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
 public final class LightningKeyClientInit {
     private LightningKeyClientInit() {
     }
@@ -69,19 +68,13 @@ public final class LightningKeyClientInit {
     }
 
     @SubscribeEvent
-    public static void registerClientExtensions(RegisterClientExtensionsEvent event) {
-        event.registerItem(RailgunClientExtensions.INSTANCE, ModItems.ELECTROMAGNETIC_RAILGUN.get());
-    }
-
-    @SubscribeEvent
     public static void registerItemColors(RegisterColorHandlersEvent.Item event) {
         event.register(
-                (stack, tintIndex) -> FastColor.ARGB32.opaque(
-                        AEColor.TRANSPARENT.getVariantByTintIndex(tintIndex)),
+                (stack, tintIndex) -> AEColor.TRANSPARENT.getVariantByTintIndex(tintIndex) | 0xFF000000,
                 ModItems.TIANSHU_PATTERN_ENCODING_TERMINAL.get());
 
         event.register(
-                (stack, tintIndex) -> FastColor.ARGB32.opaque(BasicStorageCell.getColor(stack, tintIndex)),
+                (stack, tintIndex) -> BasicStorageCell.getColor(stack, tintIndex) | 0xFF000000,
                 ModItems.LIGHTNING_STORAGE_COMPONENT_I.get(),
                 ModItems.LIGHTNING_STORAGE_COMPONENT_II.get(),
                 ModItems.LIGHTNING_STORAGE_COMPONENT_III.get(),
@@ -91,10 +84,10 @@ public final class LightningKeyClientInit {
     }
 
     @SubscribeEvent
-    public static void registerOverlays(RegisterGuiLayersEvent event) {
+    public static void registerOverlays(RegisterGuiOverlaysEvent event) {
         event.registerAbove(
-                VanillaGuiLayers.ARMOR_LEVEL,
-                ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "celestweave_energy_level"),
+                VanillaGuiOverlay.ARMOR_LEVEL.id(),
+                "celestweave_energy_level",
                 CelestweaveArmorEnergyLevel.INSTANCE);
     }
 

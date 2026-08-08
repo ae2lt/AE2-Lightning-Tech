@@ -2,7 +2,7 @@ package com.moakiee.ae2lt.device.energy;
 
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.energy.IEnergyStorage;
+import net.minecraftforge.energy.IEnergyStorage;
 
 import appeng.api.stacks.AEKey;
 

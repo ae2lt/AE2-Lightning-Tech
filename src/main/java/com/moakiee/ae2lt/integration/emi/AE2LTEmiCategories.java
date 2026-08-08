@@ -3,6 +3,7 @@ package com.moakiee.ae2lt.integration.emi;
 import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.registry.ModBlocks;
 import com.moakiee.ae2lt.registry.ModRecipeTypes;
+import com.moakiee.ae2lt.util.RecipeManagerByTypeAccess;
 import dev.emi.emi.api.EmiRegistry;
 import dev.emi.emi.api.recipe.EmiRecipeCategory;
 import dev.emi.emi.api.render.EmiRenderable;
@@ -39,30 +40,36 @@ final class AE2LTEmiCategories {
         addCategory(registry, OVERLOAD_GROWTH);
         addCategory(registry, LIGHTNING_TRANSFORM);
         addCategory(registry, LIGHTNING_STRIKE);
-        addCategory(registry, LIGHTNING_ASSEMBLY, ModBlocks.LIGHTNING_ASSEMBLY_CHAMBER.toStack());
-        addCategory(registry, LIGHTNING_SIMULATION, ModBlocks.LIGHTNING_SIMULATION_CHAMBER.toStack());
-        addCategory(registry, OVERLOAD_PROCESSING, ModBlocks.OVERLOAD_PROCESSING_FACTORY.toStack());
-        addCategory(registry, TESLA_COIL, ModBlocks.TESLA_COIL.toStack());
-        addCategory(registry, CRYSTAL_CATALYZER, ModBlocks.CRYSTAL_CATALYZER.toStack());
-        addCategory(registry, FIRMAMENT_CONVERSION, ModBlocks.FIRMAMENT_CONVERSION_CORE.toStack());
+        addCategory(registry, LIGHTNING_ASSEMBLY, new ItemStack(ModBlocks.LIGHTNING_ASSEMBLY_CHAMBER.get()));
+        addCategory(registry, LIGHTNING_SIMULATION, new ItemStack(ModBlocks.LIGHTNING_SIMULATION_CHAMBER.get()));
+        addCategory(registry, OVERLOAD_PROCESSING, new ItemStack(ModBlocks.OVERLOAD_PROCESSING_FACTORY.get()));
+        addCategory(registry, TESLA_COIL, new ItemStack(ModBlocks.TESLA_COIL.get()));
+        addCategory(registry, CRYSTAL_CATALYZER, new ItemStack(ModBlocks.CRYSTAL_CATALYZER.get()));
+        addCategory(registry, FIRMAMENT_CONVERSION, new ItemStack(ModBlocks.FIRMAMENT_CONVERSION_CORE.get()));
 
         EmiOverloadGrowthRecipe.registerAll(registry);
         EmiTeslaCoilRecipe.registerAll(registry);
-        registry.getRecipeManager().getAllRecipesFor(ModRecipeTypes.LIGHTNING_ASSEMBLY_TYPE.get()).stream()
-                .map(EmiLightningAssemblyRecipe::new).forEach(registry::addRecipe);
-        registry.getRecipeManager().getAllRecipesFor(ModRecipeTypes.LIGHTNING_SIMULATION_TYPE.get()).stream()
-                .map(EmiLightningSimulationRecipe::new).forEach(registry::addRecipe);
-        registry.getRecipeManager().getAllRecipesFor(ModRecipeTypes.LIGHTNING_TRANSFORM_TYPE.get()).stream()
-                .map(EmiLightningTransformRecipe::new).forEach(registry::addRecipe);
-        registry.getRecipeManager().getAllRecipesFor(ModRecipeTypes.LIGHTNING_STRIKE_TYPE.get()).stream()
-                .map(EmiLightningStrikeRecipe::new).forEach(registry::addRecipe);
-        registry.getRecipeManager().getAllRecipesFor(ModRecipeTypes.OVERLOAD_PROCESSING_TYPE.get()).stream()
-                .map(EmiOverloadProcessingRecipe::new).forEach(registry::addRecipe);
-        registry.getRecipeManager().getAllRecipesFor(ModRecipeTypes.CRYSTAL_CATALYZER_TYPE.get()).stream()
-                .filter(holder -> !holder.value().getOutputTemplate().isEmpty())
-                .map(EmiCrystalCatalyzerRecipe::new).forEach(registry::addRecipe);
-        registry.getRecipeManager().getAllRecipesFor(ModRecipeTypes.FIRMAMENT_CONVERSION_TYPE.get()).stream()
-                .map(EmiFirmamentConversionRecipe::new).forEach(registry::addRecipe);
+        // 1.20.1: getAllRecipesFor strips recipe ids; the byType bridge keeps the
+        // id->recipe map so EMI display ids still match the datapack.
+        var recipeManager = registry.getRecipeManager();
+        RecipeManagerByTypeAccess.byType(recipeManager, ModRecipeTypes.LIGHTNING_ASSEMBLY_TYPE.get())
+                .forEach((id, recipe) -> registry.addRecipe(new EmiLightningAssemblyRecipe(id, recipe)));
+        RecipeManagerByTypeAccess.byType(recipeManager, ModRecipeTypes.LIGHTNING_SIMULATION_TYPE.get())
+                .forEach((id, recipe) -> registry.addRecipe(new EmiLightningSimulationRecipe(id, recipe)));
+        RecipeManagerByTypeAccess.byType(recipeManager, ModRecipeTypes.LIGHTNING_TRANSFORM_TYPE.get())
+                .forEach((id, recipe) -> registry.addRecipe(new EmiLightningTransformRecipe(id, recipe)));
+        RecipeManagerByTypeAccess.byType(recipeManager, ModRecipeTypes.LIGHTNING_STRIKE_TYPE.get())
+                .forEach((id, recipe) -> registry.addRecipe(new EmiLightningStrikeRecipe(id, recipe)));
+        RecipeManagerByTypeAccess.byType(recipeManager, ModRecipeTypes.OVERLOAD_PROCESSING_TYPE.get())
+                .forEach((id, recipe) -> registry.addRecipe(new EmiOverloadProcessingRecipe(id, recipe)));
+        RecipeManagerByTypeAccess.byType(recipeManager, ModRecipeTypes.CRYSTAL_CATALYZER_TYPE.get())
+                .forEach((id, recipe) -> {
+                    if (!recipe.getOutputTemplate().isEmpty()) {
+                        registry.addRecipe(new EmiCrystalCatalyzerRecipe(id, recipe));
+                    }
+                });
+        RecipeManagerByTypeAccess.byType(recipeManager, ModRecipeTypes.FIRMAMENT_CONVERSION_TYPE.get())
+                .forEach((id, recipe) -> registry.addRecipe(new EmiFirmamentConversionRecipe(id, recipe)));
     }
 
     private static EmiRecipeCategory category(String path, EmiRenderable icon) {

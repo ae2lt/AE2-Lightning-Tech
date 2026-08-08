@@ -409,7 +409,7 @@ public final class WirelessFrequencyManager extends SavedData {
             CompoundTag entry = txList.getCompound(i);
             int freqId = entry.getInt("freqId");
             var dimKey = ResourceKey.create(Registries.DIMENSION,
-                    new ResourceLocation(entry.getString("dim")));
+                    ResourceLocation.tryParse(entry.getString("dim")));
             BlockPos pos = BlockPos.of(entry.getLong("pos"));
             boolean adv = entry.getBoolean("advanced");
             transmitters.put(freqId, new TransmitterEntry(dimKey, pos, null, adv));
@@ -420,7 +420,7 @@ public final class WirelessFrequencyManager extends SavedData {
             CompoundTag entry = devList.getCompound(i);
             int freqId = entry.getInt("freqId");
             var dimKey = ResourceKey.create(Registries.DIMENSION,
-                    new ResourceLocation(entry.getString("dim")));
+                    ResourceLocation.tryParse(entry.getString("dim")));
             BlockPos pos = BlockPos.of(entry.getLong("pos"));
             boolean ctrl = entry.getBoolean("controller");
             boolean adv = entry.getBoolean("advanced");

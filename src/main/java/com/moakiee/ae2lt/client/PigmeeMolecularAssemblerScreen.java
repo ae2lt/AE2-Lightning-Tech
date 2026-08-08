@@ -12,9 +12,7 @@ import net.minecraft.world.entity.player.Inventory;
 
 public final class PigmeeMolecularAssemblerScreen
         extends AEBaseScreen<PigmeeMolecularAssemblerMenu> {
-    private static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath(
-            AE2LightningTech.MODID,
-            "textures/gui/pigmee_molecular_assembler.png");
+    private static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "textures/gui/pigmee_molecular_assembler.png");
     private static final int CRAFTING_GRID_X = 29;
     private static final int CRAFTING_GRID_Y = 43;
     private static final int CRAFTING_GRID_U = 179;

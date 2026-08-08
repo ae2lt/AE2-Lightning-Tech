@@ -61,7 +61,7 @@ public final class ProgressionAdvancementService {
     }
 
     private static void award(ServerPlayer player, ResourceLocation id, String criterion) {
-        var advancement = player.server.getAdvancements().get(id);
+        var advancement = player.server.getAdvancements().getAdvancement(id);
         if (advancement != null) {
             player.getAdvancements().award(advancement, criterion);
         }

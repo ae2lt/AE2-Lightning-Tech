@@ -5,10 +5,10 @@ import org.jetbrains.annotations.Nullable;
 import com.moakiee.ae2lt.integration.jei.LightningJeiIngredients;
 import com.moakiee.ae2lt.me.key.LightningKey;
 
+import appeng.api.integrations.jei.IngredientConverter;
+import appeng.api.integrations.jei.IngredientConverters;
 import appeng.api.stacks.GenericStack;
 import mezz.jei.api.ingredients.IIngredientType;
-import tamaized.ae2jeiintegration.api.integrations.jei.IngredientConverter;
-import tamaized.ae2jeiintegration.api.integrations.jei.IngredientConverters;
 
 public final class AE2JeiIntegrationCompat {
     private static boolean registered;

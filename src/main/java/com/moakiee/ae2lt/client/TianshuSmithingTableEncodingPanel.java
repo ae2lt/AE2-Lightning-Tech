@@ -24,7 +24,6 @@ import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.RecipeType;
-import net.minecraft.world.item.crafting.SmithingRecipeInput;
 
 final class TianshuSmithingTableEncodingPanel extends TianshuEncodingModePanel {
     private static final Blitter BG = Blitter.texture("guis/pattern_modes.png").src(128, 70, 124, 66);
@@ -38,7 +37,7 @@ final class TianshuSmithingTableEncodingPanel extends TianshuEncodingModePanel {
             WidgetContainer widgets) {
         super(screen, widgets);
 
-        clearButton = new ActionButton(ActionItems.S_CLOSE, action -> menu.clear());
+        clearButton = new ActionButton(ActionItems.CLOSE, action -> menu.clear());
         clearButton.setHalfSize(true);
         clearButton.setDisableBackground(true);
         widgets.add("smithingTableClearPattern", clearButton);
@@ -50,7 +49,7 @@ final class TianshuSmithingTableEncodingPanel extends TianshuEncodingModePanel {
 
     @Override
     Icon getIcon() {
-        return Icon.TAB_SMITHING;
+        return Icon.HORIZONTAL_TAB_SELECTED;
     }
 
     @Override
@@ -60,8 +59,8 @@ final class TianshuSmithingTableEncodingPanel extends TianshuEncodingModePanel {
 
     private ToggleButton createSubstitutionButton() {
         var button = new ToggleButton(
-                Icon.S_SUBSTITUTION_ENABLED,
-                Icon.S_SUBSTITUTION_DISABLED,
+                Icon.SUBSTITUTION_ENABLED,
+                Icon.SUBSTITUTION_DISABLED,
                 menu::setSubstitute);
         button.setHalfSize(true);
         button.setDisableBackground(true);
@@ -84,17 +83,19 @@ final class TianshuSmithingTableEncodingPanel extends TianshuEncodingModePanel {
     public void updateBeforeRender() {
         substitutionsButton.setState(menu.substitute);
 
-        var recipeInput = new SmithingRecipeInput(
-                menu.getSmithingTableTemplateSlot().getItem(),
-                menu.getSmithingTableBaseSlot().getItem(),
-                menu.getSmithingTableAdditionSlot().getItem());
+        // 1.20.1 has no SmithingRecipeInput (1.21); AE2 1.20.1 feeds a 3-slot SimpleContainer
+        // into RecipeManager.getRecipeFor(RecipeType.SMITHING, ...) instead.
+        var recipeInput = new SimpleContainer(3);
+        recipeInput.setItem(0, menu.getSmithingTableTemplateSlot().getItem());
+        recipeInput.setItem(1, menu.getSmithingTableBaseSlot().getItem());
+        recipeInput.setItem(2, menu.getSmithingTableAdditionSlot().getItem());
         var level = menu.getPlayer().level();
         var recipe = level.getRecipeManager()
                 .getRecipeFor(RecipeType.SMITHING, recipeInput, level)
                 .orElse(null);
         resultSlot.set(recipe == null
                 ? ItemStack.EMPTY
-                : recipe.value().assemble(recipeInput, level.registryAccess()));
+                : recipe.assemble(recipeInput, level.registryAccess()));
     }
 
     @Override

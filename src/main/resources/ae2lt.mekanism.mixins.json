@@ -1,0 +1,13 @@
+{
+  "required": false,
+  "minVersion": "0.8",
+  "package": "com.moakiee.ae2lt.mixin.mekanism",
+  "compatibilityLevel": "JAVA_17",
+  "plugin": "com.moakiee.ae2lt.mixin.mekanism.MekanismMixinPlugin",
+  "mixins": [
+    "TileEntityBasicLaserMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 0
+  }
+}

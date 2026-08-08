@@ -1,29 +1,22 @@
 package com.moakiee.ae2lt.network.tianshu;
-
+import java.util.function.Supplier;
 import appeng.api.implementations.blockentities.PatternContainerGroup;
 import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuUploadTargetData;
 import com.moakiee.ae2lt.menu.TianshuPatternEncodingTermMenu;
 import com.moakiee.ae2lt.network.NetworkInit;
 import java.util.ArrayList;
 import java.util.List;
-import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.minecraftforge.network.NetworkEvent;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.server.level.ServerPlayer;
 
-public record UploadTargetsSyncPacket(int containerId, List<TianshuUploadTargetData> targets)
-        implements CustomPacketPayload {
-    public static final Type<UploadTargetsSyncPacket> TYPE =
-            new Type<>(NetworkInit.id("upload_targets_sync"));
-    public static final StreamCodec<RegistryFriendlyByteBuf, UploadTargetsSyncPacket> STREAM_CODEC =
-            StreamCodec.ofMember(UploadTargetsSyncPacket::write, UploadTargetsSyncPacket::decode);
-
-    public UploadTargetsSyncPacket {
+public record UploadTargetsSyncPacket(int containerId, List<TianshuUploadTargetData> targets) {
+public UploadTargetsSyncPacket {
         targets = targets == null ? List.of() : List.copyOf(targets);
         TianshuPacketLimits.requireListSize("upload targets", targets.size());
     }
 
-    private void write(RegistryFriendlyByteBuf buf) {
+    public void write(FriendlyByteBuf buf) {
         buf.writeVarInt(containerId);
         buf.writeVarInt(targets.size());
         for (var target : targets) {
@@ -33,7 +26,7 @@ public record UploadTargetsSyncPacket(int containerId, List<TianshuUploadTargetD
         }
     }
 
-    private static UploadTargetsSyncPacket decode(RegistryFriendlyByteBuf buf) {
+    public static UploadTargetsSyncPacket decode(FriendlyByteBuf buf) {
         int containerId = buf.readVarInt();
         int size = TianshuPacketLimits.requireDecodedListSize(
                 "upload targets", buf.readVarInt());
@@ -44,15 +37,15 @@ public record UploadTargetsSyncPacket(int containerId, List<TianshuUploadTargetD
         }
         return new UploadTargetsSyncPacket(containerId, targets);
     }
-
-    @Override public Type<UploadTargetsSyncPacket> type() { return TYPE; }
-
-    public static void handle(UploadTargetsSyncPacket packet, IPayloadContext context) {
-        context.enqueueWork(() -> {
-            if (context.player().containerMenu instanceof TianshuPatternEncodingTermMenu menu
+public static void handle(UploadTargetsSyncPacket packet, Supplier<NetworkEvent.Context> context) {
+        var ctx = context.get();
+        ctx.enqueueWork(() -> {
+            ServerPlayer player = ctx.getSender();
+        if (player != null && player.containerMenu instanceof TianshuPatternEncodingTermMenu menu
                     && menu.containerId == packet.containerId()) {
                 menu.receiveUploadTargets(packet.targets());
             }
         });
+        ctx.setPacketHandled(true);
     }
 }

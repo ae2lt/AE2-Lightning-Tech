@@ -27,8 +27,7 @@ public final class PigmeeMolecularAssemblerMenu
             .create(PigmeeMolecularAssemblerMenu::new, PigmeeMolecularAssemblerBlockEntity.class)
             .withMenuTitle(host -> Component.translatable(
                     "block.ae2lt.pigmee_molecular_assembler"))
-            .buildUnregistered(ResourceLocation.fromNamespaceAndPath(
-                    AE2LightningTech.MODID, "pigmee_molecular_assembler"));
+            .build("pigmee_molecular_assembler");
 
     private static final int MAX_CRAFT_PROGRESS = 100;
 

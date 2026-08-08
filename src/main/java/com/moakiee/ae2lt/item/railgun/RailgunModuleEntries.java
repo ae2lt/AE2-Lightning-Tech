@@ -6,11 +6,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
-import com.mojang.serialization.Codec;
-
-import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.network.codec.ByteBufCodecs;
-import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.world.item.ItemStack;
 
 import com.moakiee.ae2lt.device.capability.DeviceCapability;
@@ -23,14 +21,28 @@ import com.moakiee.ae2lt.device.module.OverloadDeviceModuleItem;
 public record RailgunModuleEntries(List<ItemStack> entries) {
     public static final RailgunModuleEntries EMPTY = new RailgunModuleEntries(List.of());
 
-    public static final Codec<RailgunModuleEntries> CODEC = ItemStack.OPTIONAL_CODEC.listOf()
-            .xmap(RailgunModuleEntries::new, RailgunModuleEntries::entries);
+    // 1.20.1 移植：无 ItemStack Codec/StreamCodec，改用手动 NBT 往返（ItemStack.save/of 无需 registryAccess）。
+    public CompoundTag save() {
+        CompoundTag tag = new CompoundTag();
+        ListTag list = new ListTag();
+        for (ItemStack stack : entries) {
+            list.add(stack.save(new CompoundTag()));
+        }
+        tag.put("entries", list);
+        return tag;
+    }
 
-    public static final StreamCodec<RegistryFriendlyByteBuf, RailgunModuleEntries> STREAM_CODEC =
-            StreamCodec.composite(
-                    ItemStack.OPTIONAL_STREAM_CODEC.apply(ByteBufCodecs.list()),
-                    RailgunModuleEntries::entries,
-                    RailgunModuleEntries::new);
+    public static RailgunModuleEntries load(CompoundTag tag) {
+        List<ItemStack> stacks = new ArrayList<>();
+        ListTag list = tag.getList("entries", Tag.TAG_COMPOUND);
+        for (int i = 0; i < list.size(); i++) {
+            ItemStack stack = ItemStack.of(list.getCompound(i));
+            if (!stack.isEmpty()) {
+                stacks.add(stack);
+            }
+        }
+        return new RailgunModuleEntries(stacks);
+    }
 
     public RailgunModuleEntries {
         entries = compact(entries);

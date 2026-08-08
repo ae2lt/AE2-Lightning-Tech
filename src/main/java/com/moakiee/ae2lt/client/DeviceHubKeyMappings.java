@@ -1,4 +1,5 @@
 package com.moakiee.ae2lt.client;
+import com.moakiee.ae2lt.network.NetworkInit;
 
 import org.lwjgl.glfw.GLFW;
 
@@ -6,12 +7,11 @@ import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.ClientTickEvent;
-import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
-import net.neoforged.neoforge.network.PacketDistributor;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
 
 import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.menu.hub.DeviceHubMenu;
@@ -21,7 +21,7 @@ import com.moakiee.ae2lt.celestweave.BaseCelestweaveArmorItem;
 import com.moakiee.ae2lt.item.PhaseLockProjectionItem;
 import com.moakiee.ae2lt.item.railgun.ElectromagneticRailgunItem;
 
-@EventBusSubscriber(modid = AE2LightningTech.MODID, bus = EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
+@Mod.EventBusSubscriber(modid = AE2LightningTech.MODID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
 public final class DeviceHubKeyMappings {
     private static final String CATEGORY = "key.categories.ae2lt";
 
@@ -44,20 +44,20 @@ public final class DeviceHubKeyMappings {
         event.register(OPEN_CONFIG);
     }
 
-    @EventBusSubscriber(modid = AE2LightningTech.MODID, bus = EventBusSubscriber.Bus.GAME, value = Dist.CLIENT)
+    @Mod.EventBusSubscriber(modid = AE2LightningTech.MODID, bus = Mod.EventBusSubscriber.Bus.FORGE, value = Dist.CLIENT)
     public static final class RuntimeHandler {
         private RuntimeHandler() {
         }
 
         @SubscribeEvent
-        public static void onClientTick(ClientTickEvent.Post event) {
+        public static void onClientTick(TickEvent.ClientTickEvent event) {
             var minecraft = Minecraft.getInstance();
             if (minecraft.player == null || minecraft.screen != null) {
                 return;
             }
 
             while (DASH.consumeClick()) {
-                PacketDistributor.sendToServer(new DashPacket());
+                NetworkInit.sendToServer(new DashPacket());
             }
 
             while (OPEN_CONFIG.consumeClick()) {
@@ -93,7 +93,7 @@ public final class DeviceHubKeyMappings {
                 }
 
                 if (defaultTab >= 0) {
-                    PacketDistributor.sendToServer(new OpenDeviceHubPacket(defaultTab));
+                    NetworkInit.sendToServer(new OpenDeviceHubPacket(defaultTab));
                 }
             }
         }

@@ -1,39 +1,33 @@
 package com.moakiee.ae2lt.network.tianshu;
-
+import java.util.function.Supplier;
 import com.moakiee.ae2lt.menu.TianshuPatternEncodingTermMenu;
 import com.moakiee.ae2lt.network.NetworkInit;
-import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraftforge.network.NetworkEvent;
+import net.minecraft.network.FriendlyByteBuf;
 import appeng.api.stacks.AEKey;
 
 public record OpenMaintenanceEditorPacket(
-        int containerId, int selectionRevision, AEKey key) implements CustomPacketPayload {
-    public static final Type<OpenMaintenanceEditorPacket> TYPE =
-            new Type<>(NetworkInit.id("open_maintenance_editor"));
-    public static final StreamCodec<RegistryFriendlyByteBuf, OpenMaintenanceEditorPacket> STREAM_CODEC =
-            StreamCodec.ofMember(OpenMaintenanceEditorPacket::write, OpenMaintenanceEditorPacket::decode);
-
-    private void write(RegistryFriendlyByteBuf buf) {
+        int containerId, int selectionRevision, AEKey key) {
+public void write(FriendlyByteBuf buf) {
         buf.writeVarInt(containerId);
         buf.writeVarInt(selectionRevision);
-        AEKey.STREAM_CODEC.encode(buf, key);
+        AEKey.writeKey(buf, key);
     }
 
-    private static OpenMaintenanceEditorPacket decode(RegistryFriendlyByteBuf buf) {
+    public static OpenMaintenanceEditorPacket decode(FriendlyByteBuf buf) {
         return new OpenMaintenanceEditorPacket(
-                buf.readVarInt(), buf.readVarInt(), AEKey.STREAM_CODEC.decode(buf));
+                buf.readVarInt(), buf.readVarInt(), AEKey.readKey(buf));
     }
-
-    @Override public Type<OpenMaintenanceEditorPacket> type() { return TYPE; }
-
-    public static void handle(OpenMaintenanceEditorPacket packet, IPayloadContext context) {
-        context.enqueueWork(() -> {
-            if (context.player().containerMenu instanceof TianshuPatternEncodingTermMenu menu
+public static void handle(OpenMaintenanceEditorPacket packet, Supplier<NetworkEvent.Context> context) {
+        var ctx = context.get();
+        ctx.enqueueWork(() -> {
+            ServerPlayer player = ctx.getSender();
+        if (player != null && player.containerMenu instanceof TianshuPatternEncodingTermMenu menu
                     && menu.containerId == packet.containerId()) {
                 menu.openMaintenanceEditor(packet.selectionRevision(), packet.key());
             }
         });
+        ctx.setPacketHandled(true);
     }
 }

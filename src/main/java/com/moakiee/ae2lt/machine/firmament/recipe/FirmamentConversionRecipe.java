@@ -6,16 +6,16 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
+import com.google.gson.JsonObject;
 import com.mojang.serialization.Codec;
-import com.mojang.serialization.DataResult;
+import com.mojang.serialization.JsonOps;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
-import net.minecraft.core.HolderLookup;
+import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.NonNullList;
-import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.network.codec.ByteBufCodecs;
-import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
@@ -28,36 +28,13 @@ import com.moakiee.ae2lt.registry.ModRecipeTypes;
 
 public final class FirmamentConversionRecipe implements Recipe<FirmamentConversionRecipeInput> {
     private static final Codec<List<FirmamentConversionIngredient>> INPUTS_CODEC =
-            FirmamentConversionIngredient.CODEC.codec()
-                    .listOf()
-                    .validate(inputs -> {
-                        if (inputs.isEmpty()) {
-                            return DataResult.error(() -> "firmament conversion recipe inputs cannot be empty");
-                        }
-                        if (inputs.size() > 3) {
-                            return DataResult.error(() -> "firmament conversion supports at most 3 inputs");
-                        }
-                        return DataResult.success(List.copyOf(inputs));
-                    });
+            FirmamentConversionIngredient.CODEC.codec().listOf();
     private static final Codec<Integer> POSITIVE_PROCESS_TIME_CODEC =
             Codec.intRange(1, Integer.MAX_VALUE);
-    private static final Codec<List<ItemStack>> OUTPUTS_CODEC = ItemStack.STRICT_CODEC.listOf().validate(results -> {
-        if (results.isEmpty()) {
-            return DataResult.error(() -> "firmament conversion recipe results cannot be empty");
-        }
-        if (results.size() > FirmamentConversionInventory.OUTPUT_SLOT_COUNT) {
-            return DataResult.error(() -> "firmament conversion supports at most 4 results");
-        }
-        if (results.stream().anyMatch(ItemStack::isEmpty)) {
-            return DataResult.error(() -> "firmament conversion results cannot contain empty stacks");
-        }
-        return DataResult.success(List.copyOf(results));
-    });
-    private static final StreamCodec<RegistryFriendlyByteBuf, List<FirmamentConversionIngredient>> INPUTS_STREAM_CODEC =
-            FirmamentConversionIngredient.STREAM_CODEC.apply(ByteBufCodecs.list());
-    private static final StreamCodec<RegistryFriendlyByteBuf, List<ItemStack>> OUTPUTS_STREAM_CODEC =
-            ItemStack.STREAM_CODEC.apply(ByteBufCodecs.list());
+    // 1.20.1 has no ItemStack.STRICT_CODEC; the plain CODEC is strict enough for datapack parsing.
+    private static final Codec<List<ItemStack>> OUTPUTS_CODEC = ItemStack.CODEC.listOf();
 
+    private ResourceLocation id;
     private final int priority;
     private final List<FirmamentConversionIngredient> inputs;
     private final List<ItemStack> results;
@@ -187,7 +164,7 @@ public final class FirmamentConversionRecipe implements Recipe<FirmamentConversi
     }
 
     @Override
-    public ItemStack assemble(FirmamentConversionRecipeInput input, HolderLookup.Provider registries) {
+    public ItemStack assemble(FirmamentConversionRecipeInput input, RegistryAccess registries) {
         return getResultStack();
     }
 
@@ -197,8 +174,17 @@ public final class FirmamentConversionRecipe implements Recipe<FirmamentConversi
     }
 
     @Override
-    public ItemStack getResultItem(HolderLookup.Provider registries) {
+    public ItemStack getResultItem(RegistryAccess registries) {
         return getResultStack();
+    }
+
+    @Override
+    public ResourceLocation getId() {
+        return id;
+    }
+
+    public void setId(ResourceLocation id) {
+        this.id = id;
     }
 
     @Override
@@ -226,7 +212,7 @@ public final class FirmamentConversionRecipe implements Recipe<FirmamentConversi
                 || results.isEmpty()
                 || results.stream().anyMatch(ItemStack::isEmpty)
                 || processTime <= 0
-                || inputs.stream().anyMatch(input -> input.ingredient().hasNoItems());
+                || inputs.stream().anyMatch(input -> input.ingredient().isEmpty());
     }
 
     private List<ItemStack> rawResults() {
@@ -339,26 +325,53 @@ public final class FirmamentConversionRecipe implements Recipe<FirmamentConversi
                         POSITIVE_PROCESS_TIME_CODEC.fieldOf("processTime").forGetter(FirmamentConversionRecipe::processTime))
                 .apply(instance, FirmamentConversionRecipe::new));
 
-        private static final StreamCodec<RegistryFriendlyByteBuf, FirmamentConversionRecipe> STREAM_CODEC =
-                StreamCodec.composite(
-                        ByteBufCodecs.VAR_INT,
-                        FirmamentConversionRecipe::priority,
-                        INPUTS_STREAM_CODEC,
-                        FirmamentConversionRecipe::inputs,
-                        OUTPUTS_STREAM_CODEC,
-                        FirmamentConversionRecipe::rawResults,
-                        ByteBufCodecs.VAR_INT,
-                        FirmamentConversionRecipe::processTime,
-                        FirmamentConversionRecipe::new);
-
+        // 1.20.1 RecipeSerializer 无 codec() 抽象方法:仅保留 CODEC 供 fromJson 使用。
         @Override
-        public MapCodec<FirmamentConversionRecipe> codec() {
-            return CODEC;
+        public FirmamentConversionRecipe fromJson(ResourceLocation id, JsonObject json) {
+            FirmamentConversionRecipe recipe = CODEC.codec()
+                    .parse(JsonOps.INSTANCE, json)
+                    .resultOrPartial(error -> {
+                        throw new IllegalArgumentException(
+                                "Failed to parse firmament conversion recipe " + id + ": " + error);
+                    })
+                    .orElseThrow();
+            recipe.setId(id);
+            return recipe;
         }
 
         @Override
-        public StreamCodec<RegistryFriendlyByteBuf, FirmamentConversionRecipe> streamCodec() {
-            return STREAM_CODEC;
+        public FirmamentConversionRecipe fromNetwork(ResourceLocation id, FriendlyByteBuf buf) {
+            int priority = buf.readVarInt();
+            int inputCount = buf.readVarInt();
+            List<FirmamentConversionIngredient> inputs = new ArrayList<>(inputCount);
+            for (int i = 0; i < inputCount; i++) {
+                inputs.add(new FirmamentConversionIngredient(Ingredient.fromNetwork(buf), buf.readVarInt()));
+            }
+            int resultCount = buf.readVarInt();
+            List<ItemStack> results = new ArrayList<>(resultCount);
+            for (int i = 0; i < resultCount; i++) {
+                results.add(buf.readItem());
+            }
+            int processTime = buf.readVarInt();
+            FirmamentConversionRecipe recipe =
+                    new FirmamentConversionRecipe(priority, inputs, results, processTime);
+            recipe.setId(id);
+            return recipe;
+        }
+
+        @Override
+        public void toNetwork(FriendlyByteBuf buf, FirmamentConversionRecipe recipe) {
+            buf.writeVarInt(recipe.priority);
+            buf.writeVarInt(recipe.inputs.size());
+            for (var input : recipe.inputs) {
+                input.ingredient().toNetwork(buf);
+                buf.writeVarInt(input.count());
+            }
+            buf.writeVarInt(recipe.results.size());
+            for (var result : recipe.results) {
+                buf.writeItem(result);
+            }
+            buf.writeVarInt(recipe.processTime);
         }
     }
 }

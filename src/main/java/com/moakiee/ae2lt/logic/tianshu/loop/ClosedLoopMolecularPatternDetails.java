@@ -6,8 +6,9 @@ import appeng.api.stacks.KeyCounter;
 import appeng.blockentity.crafting.IMolecularAssemblerSupportedPattern;
 import java.util.Set;
 import net.minecraft.core.NonNullList;
+import net.minecraft.world.Container;
+import net.minecraft.world.inventory.CraftingContainer;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.level.Level;
 
 class ClosedLoopMolecularPatternDetails extends ClosedLoopExpandedPatternDetails
@@ -27,7 +28,8 @@ class ClosedLoopMolecularPatternDetails extends ClosedLoopExpandedPatternDetails
         this.molecular = molecular;
     }
 
-    @Override public ItemStack assemble(CraftingInput input, Level level) {
+    // 1.20.1 AE2 passes a plain Container to assemble() but a CraftingContainer to getRemainingItems().
+    @Override public ItemStack assemble(Container input, Level level) {
         return molecular.assemble(input, level);
     }
     @Override public boolean isItemValid(int slotIndex, AEItemKey key, Level level) {
@@ -37,7 +39,7 @@ class ClosedLoopMolecularPatternDetails extends ClosedLoopExpandedPatternDetails
     @Override public void fillCraftingGrid(KeyCounter[] inputHolder, CraftingGridAccessor accessor) {
         molecular.fillCraftingGrid(inputHolder, accessor);
     }
-    @Override public NonNullList<ItemStack> getRemainingItems(CraftingInput input) {
+    @Override public NonNullList<ItemStack> getRemainingItems(CraftingContainer input) {
         return molecular.getRemainingItems(input);
     }
 }

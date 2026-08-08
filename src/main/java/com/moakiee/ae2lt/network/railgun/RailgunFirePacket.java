@@ -1,15 +1,13 @@
 package com.moakiee.ae2lt.network.railgun;
+import java.util.function.Supplier;
+import net.minecraftforge.network.NetworkEvent;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.network.codec.ByteBufCodecs;
-import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import com.moakiee.ae2lt.network.NetworkInit;
 
@@ -37,20 +35,8 @@ public record RailgunFirePacket(
         int tier,
         boolean isMax,
         boolean soundEnabled,
-        float impactRadius) implements CustomPacketPayload {
-
-    public static final Type<RailgunFirePacket> TYPE =
-            new Type<>(NetworkInit.id("railgun_fire"));
-
-    public static final StreamCodec<RegistryFriendlyByteBuf, RailgunFirePacket> STREAM_CODEC =
-            StreamCodec.ofMember(RailgunFirePacket::write, RailgunFirePacket::decode);
-
-    @Override
-    public Type<RailgunFirePacket> type() {
-        return TYPE;
-    }
-
-    public void write(RegistryFriendlyByteBuf buf) {
+        float impactRadius) {
+public void write(FriendlyByteBuf buf) {
         buf.writeUUID(shooterId);
         buf.writeDouble(from.x); buf.writeDouble(from.y); buf.writeDouble(from.z);
         buf.writeDouble(firstHit.x); buf.writeDouble(firstHit.y); buf.writeDouble(firstHit.z);
@@ -64,7 +50,7 @@ public record RailgunFirePacket(
         buf.writeFloat(impactRadius);
     }
 
-    public static RailgunFirePacket decode(RegistryFriendlyByteBuf buf) {
+    public static RailgunFirePacket decode(FriendlyByteBuf buf) {
         UUID shooterId = buf.readUUID();
         Vec3 from = new Vec3(buf.readDouble(), buf.readDouble(), buf.readDouble());
         Vec3 first = new Vec3(buf.readDouble(), buf.readDouble(), buf.readDouble());
@@ -80,10 +66,10 @@ public record RailgunFirePacket(
         return new RailgunFirePacket(shooterId, from, first, path, tier, isMax, soundEnabled, impactRadius);
     }
 
-    public static void handle(RailgunFirePacket p, IPayloadContext ctx) {
+    public static void handle(RailgunFirePacket p, Supplier<NetworkEvent.Context> ctxSup) {
+        NetworkEvent.Context ctx = ctxSup.get();
         ctx.enqueueWork(() -> RailgunClientBridge.fire(p));
     }
 
     /** Compile-time guard on unused imports. */
-    @SuppressWarnings("unused") private static final Object _IMPORT_GUARD = ByteBufCodecs.BYTE;
 }

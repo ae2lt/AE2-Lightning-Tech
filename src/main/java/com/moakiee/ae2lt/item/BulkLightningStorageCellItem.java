@@ -2,8 +2,9 @@ package com.moakiee.ae2lt.item;
 
 import java.util.List;
 
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.ChatFormatting;
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
@@ -13,13 +14,14 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
-import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
 
 import appeng.core.localization.PlayerMessages;
-import appeng.recipes.game.StorageCellDisassemblyRecipe;
 import appeng.util.InteractionUtil;
+
+import com.moakiee.ae2lt.registry.ModItems;
+import com.moakiee.ae2lt.util.ItemStackTagSupport;
 
 /**
  * A two-counter storage cell dedicated to the two lightning key variants.
@@ -44,7 +46,7 @@ public final class BulkLightningStorageCellItem extends Item {
     }
 
     public static StoredAmounts readStoredAmounts(ItemStack stack) {
-        CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+        CompoundTag tag = ItemStackTagSupport.getTagCopy(stack);
         return new StoredAmounts(
                 sanitize(tag.getLong(TAG_HIGH_VOLTAGE)),
                 sanitize(tag.getLong(TAG_EXTREME_HIGH_VOLTAGE)));
@@ -54,7 +56,8 @@ public final class BulkLightningStorageCellItem extends Item {
         long sanitizedHighVoltage = sanitize(highVoltage);
         long sanitizedExtremeHighVoltage = sanitize(extremeHighVoltage);
 
-        CustomData.update(DataComponents.CUSTOM_DATA, stack, tag -> {
+        // 1.20.1 keeps cell payloads in the stack NBT; an empty tag is dropped automatically.
+        ItemStackTagSupport.updateTag(stack, tag -> {
             putOrRemove(tag, TAG_HIGH_VOLTAGE, sanitizedHighVoltage);
             putOrRemove(tag, TAG_EXTREME_HIGH_VOLTAGE, sanitizedExtremeHighVoltage);
         });
@@ -76,7 +79,8 @@ public final class BulkLightningStorageCellItem extends Item {
     }
 
     @Override
-    public void appendHoverText(ItemStack stack, TooltipContext context,
+    // 1.20.1 hover text signature: the TooltipContext argument is replaced by a nullable Level.
+    public void appendHoverText(ItemStack stack, @Nullable Level level,
                                 List<Component> tooltipComponents, TooltipFlag tooltipFlag) {
         StoredAmounts amounts = readStoredAmounts(stack);
         tooltipComponents.add(Component.translatable("tooltip.ae2lt.bulk_lightning_storage.capacity")
@@ -96,7 +100,11 @@ public final class BulkLightningStorageCellItem extends Item {
             return false;
         }
 
-        var disassembledStacks = StorageCellDisassemblyRecipe.getDisassemblyResult(level, stack.getItem());
+        // 1.20.1 AE2 has no StorageCellDisassemblyRecipe (added in 1.21); the output is
+        // hard-coded here, mirroring BasicStorageCell's core/housing item pair.
+        var disassembledStacks = List.of(
+                new ItemStack(ModItems.LIGHTNING_ITEM_CELL_HOUSING.get()),
+                new ItemStack(ModItems.BULK_LIGHTNING_CELL_COMPONENT.get()));
         if (disassembledStacks.isEmpty()) {
             return false;
         }

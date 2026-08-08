@@ -1,8 +1,5 @@
 package com.moakiee.ae2lt.item.railgun;
 
-import io.netty.buffer.ByteBuf;
-import net.minecraft.network.codec.ByteBufCodecs;
-import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.util.StringRepresentable;
 
 import com.mojang.serialization.Codec;
@@ -15,8 +12,8 @@ public enum RailgunModuleType implements StringRepresentable {
     RANGE("range");
 
     public static final Codec<RailgunModuleType> CODEC = StringRepresentable.fromEnum(RailgunModuleType::values);
-    public static final StreamCodec<ByteBuf, RailgunModuleType> STREAM_CODEC =
-            ByteBufCodecs.idMapper(i -> values()[i], RailgunModuleType::ordinal);
+    // 1.20.1 has no StreamCodec/ByteBufCodecs (1.21 API); module data crosses the network
+    // as a serialized name inside the stack NBT, so no buffer codec is needed here.
 
     private final String name;
 

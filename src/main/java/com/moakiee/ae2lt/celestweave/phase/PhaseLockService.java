@@ -10,7 +10,7 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.Dist;
 
 import com.moakiee.ae2lt.celestweave.ArmorOverloadRules;
 import com.moakiee.ae2lt.celestweave.ArmorPart;
@@ -109,7 +109,7 @@ public final class PhaseLockService {
                         player,
                         armor,
                         true,
-                        player.registryAccess(),
+                        player.level().registryAccess(),
                         Dist.DEDICATED_SERVER);
                 PhaseLockProjectionSynchronizer.publishArmorChanges(
                         player,
@@ -176,7 +176,7 @@ public final class PhaseLockService {
                     player,
                     armor,
                     true,
-                    player.registryAccess(),
+                    player.level().registryAccess(),
                     Dist.DEDICATED_SERVER);
         }
         // Preserve any future/unknown entries instead of silently deleting them.
@@ -265,10 +265,10 @@ public final class PhaseLockService {
     }
 
     private static boolean shouldRemainLocked(ServerPlayer player, ItemStack anchor) {
-        return CelestweaveArmorState.hasCore(anchor, player.registryAccess())
+        return CelestweaveArmorState.hasCore(anchor, player.level().registryAccess())
                 && CelestweaveArmorState.isSubmoduleInstalled(
                         anchor,
-                        player.registryAccess(),
+                        player.level().registryAccess(),
                         PhaseLockSubmodule.INSTANCE.id())
                 && CelestweaveArmorState.isSubmoduleEnabled(anchor, PhaseLockSubmodule.INSTANCE)
                 && PhaseLockSubmodule.isArmorLockEnabled(anchor);
@@ -397,7 +397,7 @@ public final class PhaseLockService {
                 player.getX(),
                 player.getY(),
                 player.getZ(),
-                SoundEvents.RESPAWN_ANCHOR_DEPLETE,
+                SoundEvents.RESPAWN_ANCHOR_DEPLETE.value(),
                 SoundSource.PLAYERS,
                 0.8F,
                 0.7F);

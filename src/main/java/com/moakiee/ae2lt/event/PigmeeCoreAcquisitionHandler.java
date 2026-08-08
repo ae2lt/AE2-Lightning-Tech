@@ -10,9 +10,9 @@ import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.animal.Pig;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
+import net.minecraftforge.event.entity.living.LivingHurtEvent;
 
 /**
  * Turns an adult pig standing on an Overload Crystal Block and struck by a falling anvil into the
@@ -26,8 +26,9 @@ public final class PigmeeCoreAcquisitionHandler {
     private PigmeeCoreAcquisitionHandler() {
     }
 
+    // 1.20.1 has no LivingIncomingDamageEvent; LivingHurtEvent is its earliest hook (pre-armor).
     @SubscribeEvent
-    public static void onIncomingDamage(LivingIncomingDamageEvent event) {
+    public static void onIncomingDamage(LivingHurtEvent event) {
         if (!(event.getEntity() instanceof Pig pig)
                 || pig.isBaby()
                 || pig.isRemoved()

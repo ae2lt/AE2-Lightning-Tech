@@ -76,12 +76,12 @@ abstract class AbstractPatternProviderUpgradeItem extends Item {
             BlockEntity oldEntity,
             BlockEntity replacementEntity,
             BlockState replacementState) {
-        var savedTag = oldEntity.saveWithFullMetadata(level.registryAccess());
+        var savedTag = oldEntity.saveWithFullMetadata();
         level.removeBlockEntity(pos);
         level.removeBlock(pos, false);
         level.setBlock(pos, replacementState, Block.UPDATE_ALL);
         level.setBlockEntity(replacementEntity);
-        replacementEntity.loadWithComponents(savedTag, level.registryAccess());
+        replacementEntity.load(savedTag);
         if (replacementEntity instanceof AEBaseBlockEntity aeBlockEntity) {
             aeBlockEntity.markForUpdate();
         } else {

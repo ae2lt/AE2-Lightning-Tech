@@ -178,7 +178,7 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         public static WirelessConnection fromTag(CompoundTag tag) {
             var dim = ResourceKey.create(
                     net.minecraft.core.registries.Registries.DIMENSION,
-                    new ResourceLocation(tag.getString(TAG_DIM)));
+                    ResourceLocation.tryParse(tag.getString(TAG_DIM)));
             return new WirelessConnection(
                     dim, BlockPos.of(tag.getLong(TAG_POS)),
                     Direction.from3DDataValue(tag.getInt(TAG_FACE)));

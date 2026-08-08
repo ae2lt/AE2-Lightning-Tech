@@ -155,7 +155,7 @@ final class AE2NativeMachineAdapter implements MachineAdapter {
     @Override
     public boolean canAccept(ServerLevel level, BlockPos pos, Direction face,
                              IPatternDetails pattern) {
-        var machine = ICraftingMachine.of(level, pos, face);
+        var machine = ICraftingMachine.of(level.getBlockEntity(pos), face);
         if (machine != null && machine.acceptsPlans()) {
             return true;
         }
@@ -169,7 +169,7 @@ final class AE2NativeMachineAdapter implements MachineAdapter {
             Direction face,
             IPatternDetails pattern,
             @Nullable PatternProviderTarget cachedTarget) {
-        var machine = ICraftingMachine.of(level, pos, face);
+        var machine = ICraftingMachine.of(level.getBlockEntity(pos), face);
         if (machine != null && machine.acceptsPlans()) {
             return true;
         }
@@ -180,7 +180,7 @@ final class AE2NativeMachineAdapter implements MachineAdapter {
     @Override
     public boolean supportsBatch(
             ServerLevel level, BlockPos pos, Direction face, IPatternDetails pattern) {
-        return ICraftingMachine.of(level, pos, face) == null;
+        return ICraftingMachine.of(level.getBlockEntity(pos), face) == null;
     }
 
     // ---- pushCopies -------------------------------------------------------------
@@ -393,7 +393,7 @@ final class AE2NativeMachineAdapter implements MachineAdapter {
         if (cached != null && cached.isValid(be, now)) {
             return cached.machine;
         }
-        var machine = ICraftingMachine.of(level, pos, face);
+        var machine = ICraftingMachine.of(be, face);
         machineCache.put(key, new MachineCacheEntry(be, machine, now));
         return machine;
     }

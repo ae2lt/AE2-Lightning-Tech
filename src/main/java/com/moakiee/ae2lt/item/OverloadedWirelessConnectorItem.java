@@ -133,7 +133,7 @@ public class OverloadedWirelessConnectorItem extends AE2LTItem {
         if (!tag.contains(TAG_SELECTED)) return true;
         var sel = tag.getCompound(TAG_SELECTED);
         if (!sel.contains(TAG_DIM)) return true;
-        return level.dimension().location().equals(new ResourceLocation(sel.getString(TAG_DIM)));
+        return level.dimension().location().equals(ResourceLocation.tryParse(sel.getString(TAG_DIM)));
     }
 
     public static void clearSelection(ItemStack stack) {
@@ -162,7 +162,7 @@ public class OverloadedWirelessConnectorItem extends AE2LTItem {
         if (!tag.contains(TAG_SELECTED)) return null;
 
         var sel = tag.getCompound(TAG_SELECTED);
-        var dimKey = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(sel.getString(TAG_DIM)));
+        var dimKey = ResourceKey.create(Registries.DIMENSION, ResourceLocation.tryParse(sel.getString(TAG_DIM)));
         var pos = BlockPos.of(sel.getLong(TAG_POS));
 
         if (!level.dimension().equals(dimKey) || !level.isLoaded(pos)) return null;

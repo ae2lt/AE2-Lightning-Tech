@@ -21,7 +21,9 @@ public final class LightningJeiIngredients {
         }
     };
 
-    public static final Codec<LightningKey> CODEC = LightningKey.MAP_CODEC.codec();
+    // 1.20.1: LightningKey has no MAP_CODEC; derive a codec from its Tier enum.
+    public static final Codec<LightningKey> CODEC =
+            LightningKey.Tier.CODEC.xmap(LightningKey::of, LightningKey::tier);
 
     /**
      * Register the type without adding synthetic "lightning entries" to JEI's main ingredient list.

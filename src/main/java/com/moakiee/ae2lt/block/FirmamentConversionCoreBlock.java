@@ -8,7 +8,6 @@ import org.jetbrains.annotations.Nullable;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.ItemInteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
@@ -31,39 +30,32 @@ public class FirmamentConversionCoreBlock extends Block implements EntityBlock {
     }
 
     @Override
-    protected InteractionResult useWithoutItem(
-            BlockState state,
-            Level level,
-            BlockPos pos,
-            Player player,
-            BlockHitResult hitResult) {
-        if (!(level.getBlockEntity(pos) instanceof FirmamentConversionCoreBlockEntity be)) {
-            return InteractionResult.PASS;
-        }
-
-        if (!level.isClientSide()) {
-            be.extractToPlayer(player);
-        }
-        return InteractionResult.sidedSuccess(level.isClientSide());
-    }
-
-    @Override
-    protected ItemInteractionResult useItemOn(
-            ItemStack stack,
+    public InteractionResult use(
             BlockState state,
             Level level,
             BlockPos pos,
             Player player,
             InteractionHand hand,
             BlockHitResult hit) {
-        if (stack.isEmpty() || !(level.getBlockEntity(pos) instanceof FirmamentConversionCoreBlockEntity be)) {
-            return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
+        // 1.20.1 merges the 1.21 useItemOn/useWithoutItem pair into a single use().
+        // An empty hand extracts the finished conversion result; a held item is fed in.
+        ItemStack stack = player.getItemInHand(hand);
+        if (stack.isEmpty()) {
+            if (!(level.getBlockEntity(pos) instanceof FirmamentConversionCoreBlockEntity be)) {
+                return InteractionResult.PASS;
+            }
+            if (!level.isClientSide()) {
+                be.extractToPlayer(player);
+            }
+            return InteractionResult.sidedSuccess(level.isClientSide());
         }
-
+        if (!(level.getBlockEntity(pos) instanceof FirmamentConversionCoreBlockEntity be)) {
+            return InteractionResult.PASS;
+        }
         if (!level.isClientSide() && !be.insertHeldItem(player, hand)) {
-            return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
+            return InteractionResult.PASS;
         }
-        return ItemInteractionResult.sidedSuccess(level.isClientSide());
+        return InteractionResult.sidedSuccess(level.isClientSide());
     }
 
     @Nullable

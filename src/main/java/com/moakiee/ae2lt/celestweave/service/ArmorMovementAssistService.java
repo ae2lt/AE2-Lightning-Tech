@@ -1,28 +1,25 @@
 package com.moakiee.ae2lt.celestweave.service;
 
 import java.util.List;
+import java.util.UUID;
 
-import net.minecraft.core.Holder;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraftforge.common.ForgeMod;
 
-import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.celestweave.MovementAssistRules;
 import com.moakiee.ae2lt.celestweave.module.MovementAssistSubmodule;
 import com.moakiee.ae2lt.celestweave.service.ArmorCapabilityCollector.ActiveCapability;
 import com.moakiee.ae2lt.device.capability.DeviceCapability;
 
 public final class ArmorMovementAssistService {
-    private static final ResourceLocation SPEED_MODIFIER_ID = ResourceLocation.fromNamespaceAndPath(
-            AE2LightningTech.MODID,
-            "celestweave_movement_assist_speed");
-    private static final ResourceLocation STEP_HEIGHT_MODIFIER_ID = ResourceLocation.fromNamespaceAndPath(
-            AE2LightningTech.MODID,
-            "celestweave_movement_assist_step_height");
+    private static final UUID SPEED_MODIFIER_ID =
+            UUID.fromString("a1b2c3d4-5e6f-4a7b-8c9d-0e1f2a3b4c5d");
+    private static final UUID STEP_HEIGHT_MODIFIER_ID =
+            UUID.fromString("b2c3d4e5-6f7a-4b8c-9d0e-1f2a3b4c5d6e");
     private static final double EPSILON = 1.0E-6D;
 
     private ArmorMovementAssistService() {
@@ -63,19 +60,19 @@ public final class ArmorMovementAssistService {
                 Attributes.MOVEMENT_SPEED,
                 SPEED_MODIFIER_ID,
                 active ? MovementAssistRules.speedModifierAmount(movementMultiplier) : 0.0D,
-                AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
+                AttributeModifier.Operation.MULTIPLY_TOTAL);
         updateModifier(
                 player,
-                Attributes.STEP_HEIGHT,
+                ForgeMod.STEP_HEIGHT_ADDITION.get(),
                 STEP_HEIGHT_MODIFIER_ID,
                 active ? MovementAssistRules.stepHeightModifierAmount(stepHeight) : 0.0D,
-                AttributeModifier.Operation.ADD_VALUE);
+                AttributeModifier.Operation.ADDITION);
     }
 
     private static void updateModifier(
             ServerPlayer player,
-            Holder<Attribute> attribute,
-            ResourceLocation id,
+            Attribute attribute,
+            UUID id,
             double amount,
             AttributeModifier.Operation operation) {
         AttributeInstance instance = player.getAttribute(attribute);
@@ -92,11 +89,14 @@ public final class ArmorMovementAssistService {
         }
 
         if (existing != null
-                && Math.abs(existing.amount() - amount) < EPSILON
-                && existing.operation() == operation) {
+                && Math.abs(existing.getAmount() - amount) < EPSILON
+                && existing.getOperation() == operation) {
             return;
         }
 
-        instance.addOrUpdateTransientModifier(new AttributeModifier(id, amount, operation));
+        if (existing != null) {
+            instance.removeModifier(existing);
+        }
+        instance.addTransientModifier(new AttributeModifier(id, "celestweave_movement_assist", amount, operation));
     }
 }

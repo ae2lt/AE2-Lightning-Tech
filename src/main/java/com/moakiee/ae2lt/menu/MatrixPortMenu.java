@@ -16,7 +16,7 @@ import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.neoforged.neoforge.common.extensions.IMenuTypeExtension;
+import net.minecraftforge.common.extensions.IForgeMenuType;
 
 import appeng.api.crafting.PatternDetailsHelper;
 import appeng.api.inventories.InternalInventory;
@@ -25,6 +25,7 @@ import appeng.menu.slot.AppEngSlot;
 import appeng.util.inv.AppEngInternalInventory;
 
 import com.moakiee.ae2lt.blockentity.MatrixPortBlockEntity;
+import com.moakiee.ae2lt.util.SlotPositionAccess;
 
 /**
  * Pattern inventory exposed by a formed matter warping matrix port.
@@ -35,7 +36,7 @@ import com.moakiee.ae2lt.blockentity.MatrixPortBlockEntity;
  */
 public class MatrixPortMenu extends AbstractContainerMenu {
     public static final MenuType<MatrixPortMenu> TYPE =
-            IMenuTypeExtension.create(MatrixPortMenu::clientCreate);
+            IForgeMenuType.create(MatrixPortMenu::clientCreate);
 
     public static final int COLUMNS = 9;
     public static final int VISIBLE_ROWS = 6;
@@ -79,8 +80,8 @@ public class MatrixPortMenu extends AbstractContainerMenu {
 
         for (int slot = 0; slot < patternSlotCount; slot++) {
             var patternSlot = new MatrixPatternSlot(patternInventory, slot);
-            patternSlot.x = OFFSCREEN_SLOT;
-            patternSlot.y = OFFSCREEN_SLOT;
+            // 1.20.1: Slot.x/y are final; shuffle positions via reflection like AE2 does.
+            SlotPositionAccess.set(patternSlot, OFFSCREEN_SLOT, OFFSCREEN_SLOT);
             patternSlots.add(patternSlot);
             addSlot(patternSlot);
         }
@@ -229,7 +230,7 @@ public class MatrixPortMenu extends AbstractContainerMenu {
         @Override
         public ItemStack getDisplayStack() {
             ItemStack pattern = super.getDisplayStack();
-            if (!pattern.isEmpty() && pattern.getItem() instanceof EncodedPatternItem<?> encodedPattern) {
+            if (!pattern.isEmpty() && pattern.getItem() instanceof EncodedPatternItem encodedPattern) {
                 ItemStack output = encodedPattern.getOutput(pattern);
                 if (!output.isEmpty()) {
                     return output;

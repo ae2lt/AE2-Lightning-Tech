@@ -40,9 +40,7 @@ public class OverloadProcessingFactoryMenu extends AEBaseMenu implements Frequen
             MenuTypeBuilder
                     .create(OverloadProcessingFactoryMenu::new, OverloadProcessingFactoryBlockEntity.class)
                     .withMenuTitle(host -> Component.translatable("block.ae2lt.overload_processing_factory")),
-            new ResourceLocation(
-                    AE2LightningTech.MODID,
-                    "overload_processing_factory"));
+            ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "overload_processing_factory"));
 
     private static final List<SlotSemantic> INPUT_SEMANTICS = List.of(
             Ae2ltSlotSemantics.OVERLOAD_FACTORY_INPUT_0,

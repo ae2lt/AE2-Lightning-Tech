@@ -13,10 +13,10 @@ import appeng.api.upgrades.IUpgradeableItem;
  * terminals the player is carrying (hotbar/inventory/offhand) or wearing in a
  * Curios slot.
  *
- * <p>This uses only AE2's {@link IUpgradeableItem} contract, so it does not
- * reference ae2wtlib directly: the frequency card can only be installed into a
- * terminal's upgrade inventory when ae2wtlib registered it there, so any
- * upgradable item that contains the card is, by construction, such a terminal.</p>
+ * <p>This uses only AE2's {@link IUpgradeableItem} contract, so it works for
+ * any terminal whose upgrade inventory can hold the card: the Tianshu
+ * wireless terminal extends AE2's {@code WirelessTerminalItem} and exposes
+ * the card through its native upgrade slots.</p>
  *
  * <p>The returned stacks are read-only snapshots intended for the auto-connect
  * path (which only reads the card's frequency id and auto-connect flag). Writes

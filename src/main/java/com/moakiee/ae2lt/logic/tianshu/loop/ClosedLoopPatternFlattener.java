@@ -59,7 +59,7 @@ public final class ClosedLoopPatternFlattener {
 
     private static ResolvedMember resolve(SourcePatternSnapshot snapshot, Level level) {
         try {
-            var stack = snapshot.toItemStack(level.registryAccess());
+            var stack = snapshot.toItemStack();
             if (stack.isEmpty()) return null;
 
             // Inspect the raw item before decode. Execution-member persistence stacks decode to a

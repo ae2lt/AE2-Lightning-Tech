@@ -1,21 +1,26 @@
 package com.moakiee.ae2lt.network;
-
+import java.util.function.Supplier;
 import com.moakiee.ae2lt.blockentity.AdvancedWirelessOverloadedControllerBlockEntity;
 import com.moakiee.ae2lt.blockentity.WirelessOverloadedControllerBlockEntity;
 import com.moakiee.ae2lt.grid.WirelessFrequencyManager;
 import com.moakiee.ae2lt.grid.wirelesslink.WirelessLinkRegistry;
 import com.moakiee.ae2lt.item.OverloadedFrequencyCardItem;
+import net.minecraftforge.network.NetworkEvent;
 import net.minecraft.ChatFormatting;
+import net.minecraftforge.network.NetworkEvent;
 import net.minecraft.core.BlockPos;
+import net.minecraftforge.network.NetworkEvent;
 import net.minecraft.core.Direction;
-import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraftforge.network.NetworkEvent;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraftforge.network.NetworkEvent;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraftforge.network.NetworkEvent;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraftforge.network.NetworkEvent;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraftforge.network.NetworkEvent;
 import net.minecraft.world.InteractionHand;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 public record FrequencyCardUsePacket(
         InteractionHand hand,
@@ -25,19 +30,8 @@ public record FrequencyCardUsePacket(
         double hitY,
         double hitZ,
         boolean shiftDown
-) implements CustomPacketPayload {
-    public static final Type<FrequencyCardUsePacket> TYPE =
-            new Type<>(NetworkInit.id("frequency_card_use"));
-
-    public static final StreamCodec<RegistryFriendlyByteBuf, FrequencyCardUsePacket> STREAM_CODEC =
-            StreamCodec.ofMember(FrequencyCardUsePacket::write, FrequencyCardUsePacket::decode);
-
-    @Override
-    public Type<FrequencyCardUsePacket> type() {
-        return TYPE;
-    }
-
-    public static FrequencyCardUsePacket decode(RegistryFriendlyByteBuf buf) {
+) {
+public static FrequencyCardUsePacket decode(FriendlyByteBuf buf) {
         return new FrequencyCardUsePacket(
                 buf.readEnum(InteractionHand.class),
                 buf.readBlockPos(),
@@ -48,7 +42,7 @@ public record FrequencyCardUsePacket(
                 buf.readBoolean());
     }
 
-    public void write(RegistryFriendlyByteBuf buf) {
+    public void write(FriendlyByteBuf buf) {
         buf.writeEnum(hand);
         buf.writeBlockPos(pos);
         buf.writeEnum(face);
@@ -58,18 +52,22 @@ public record FrequencyCardUsePacket(
         buf.writeBoolean(shiftDown);
     }
 
-    public static void handle(FrequencyCardUsePacket payload, IPayloadContext context) {
-        context.enqueueWork(() -> {
-            if (context.player() instanceof ServerPlayer player) {
+    public static void handle(FrequencyCardUsePacket payload, Supplier<NetworkEvent.Context> context) {
+        var ctx = context.get();
+        ctx.enqueueWork(() -> {
+            ServerPlayer player = ctx.getSender();
+        if (player != null) {
                 payload.handleOnServer(player);
             }
         });
+        ctx.setPacketHandled(true);
     }
 
     private void handleOnServer(ServerPlayer player) {
         if (!(player.level() instanceof ServerLevel level)) return;
         if (!level.isLoaded(pos)) return;
-        if (!player.canInteractWithBlock(pos, 1.0D)) return;
+        // 1.20.1 has no Player.canInteractWithBlock; enforce the vanilla 6-block reach.
+        if (player.distanceToSqr(pos.getX() + 0.5D, pos.getY() + 0.5D, pos.getZ() + 0.5D) > 36.0D) return;
 
         var stack = player.getItemInHand(hand);
         if (!(stack.getItem() instanceof OverloadedFrequencyCardItem)) return;

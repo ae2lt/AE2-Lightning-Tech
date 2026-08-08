@@ -34,7 +34,7 @@ final class TianshuCraftingEncodingPanel extends TianshuEncodingModePanel {
             WidgetContainer widgets) {
         super(screen, widgets);
 
-        clearButton = new ActionButton(ActionItems.S_CLOSE, action -> menu.clear());
+        clearButton = new ActionButton(ActionItems.CLOSE, action -> menu.clear());
         clearButton.setHalfSize(true);
         clearButton.setDisableBackground(true);
         widgets.add("craftingClearPattern", clearButton);
@@ -45,7 +45,7 @@ final class TianshuCraftingEncodingPanel extends TianshuEncodingModePanel {
 
     @Override
     Icon getIcon() {
-        return Icon.TAB_CRAFTING;
+        return Icon.HORIZONTAL_TAB_SELECTED;
     }
 
     @Override
@@ -55,8 +55,8 @@ final class TianshuCraftingEncodingPanel extends TianshuEncodingModePanel {
 
     private ToggleButton createCraftingSubstitutionButton() {
         var button = new ToggleButton(
-                Icon.S_SUBSTITUTION_ENABLED,
-                Icon.S_SUBSTITUTION_DISABLED,
+                Icon.SUBSTITUTION_ENABLED,
+                Icon.SUBSTITUTION_DISABLED,
                 menu::setSubstitute);
         button.setHalfSize(true);
         button.setDisableBackground(true);
@@ -72,8 +72,8 @@ final class TianshuCraftingEncodingPanel extends TianshuEncodingModePanel {
 
     private ToggleButton createCraftingFluidSubstitutionButton() {
         var button = new ToggleButton(
-                Icon.S_FLUID_SUBSTITUTION_ENABLED,
-                Icon.S_FLUID_SUBSTITUTION_DISABLED,
+                Icon.FLUID_SUBSTITUTION_ENABLED,
+                Icon.FLUID_SUBSTITUTION_DISABLED,
                 menu::setSubstituteFluids);
         button.setHalfSize(true);
         button.setDisableBackground(true);

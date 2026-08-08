@@ -82,7 +82,7 @@ public final class RailgunFireService {
             sendFail(player, "ae2lt.railgun.structural_core_required");
             return;
         }
-        RailgunModuleEntries mods = stack.getOrDefault(ModDataComponents.RAILGUN_MODULE_ENTRIES.get(), RailgunModuleEntries.EMPTY);
+        RailgunModuleEntries mods = ModDataComponents.RAILGUN_MODULE_ENTRIES.getOrDefault(stack, RailgunModuleEntries.EMPTY);
         if (!mods.hasCore()) {
             sendFail(player, "ae2lt.railgun.core_required");
             return;
@@ -94,7 +94,7 @@ public final class RailgunFireService {
         }
         IGrid grid = bound.grid();
 
-        RailgunSettings settings = stack.getOrDefault(ModDataComponents.RAILGUN_SETTINGS.get(), RailgunSettings.DEFAULT);
+        RailgunSettings settings = ModDataComponents.RAILGUN_SETTINGS.getOrDefault(stack, RailgunSettings.DEFAULT);
         boolean allowPlayerTargets = settings.allowsPlayerTargets(AE2LTCommonConfig.railgunDamagePlayers());
         AmmoCost cost = AmmoCost.forCharged(tier, mods);
 
@@ -292,7 +292,7 @@ public final class RailgunFireService {
             target.hurt(ds, (float) finalDamage);
             if (paralysisDur > 0 && (!(target instanceof Player) || paralyzePlayers)) {
                 target.addEffect(new MobEffectInstance(
-                        ModMobEffects.ELECTROMAGNETIC_PARALYSIS,
+                        ModMobEffects.ELECTROMAGNETIC_PARALYSIS.get(),
                         paralysisDur,
                         0,
                         false,

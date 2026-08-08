@@ -57,11 +57,10 @@ public class OverloadProcessingFactoryOutputButton extends IconButton {
         }
 
         var yOffset = isHovered() ? 1 : 0;
-        Icon bgIcon = isHovered() ? Icon.TOOLBAR_BUTTON_BACKGROUND_HOVER
-                : on ? Icon.TOOLBAR_BUTTON_BACKGROUND_FOCUS : Icon.TOOLBAR_BUTTON_BACKGROUND;
+        // 1.20.1: no hover/focus background variants; reuse the plain toolbar background.
+        Icon bgIcon = Icon.TOOLBAR_BUTTON_BACKGROUND;
         bgIcon.getBlitter()
                 .dest(getX() - 1, getY() + yOffset, 18, 20)
-                .zOffset(2)
                 .blit(guiGraphics);
 
         if (!display.isEmpty()) {

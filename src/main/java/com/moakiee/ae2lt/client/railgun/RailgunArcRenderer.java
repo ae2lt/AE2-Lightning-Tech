@@ -16,10 +16,10 @@ import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.client.event.RenderLevelStageEvent;
 
 import com.moakiee.ae2lt.AE2LightningTech;
 
@@ -30,7 +30,7 @@ import com.moakiee.ae2lt.AE2LightningTech;
  * stacked camera-facing billboard quads (outer glow, mid, hot core) with
  * additive-style blending. Arcs auto-fade and self-remove after their lifetime.
  */
-@EventBusSubscriber(modid = AE2LightningTech.MODID, value = Dist.CLIENT)
+@Mod.EventBusSubscriber(modid = AE2LightningTech.MODID, value = Dist.CLIENT)
 public final class RailgunArcRenderer {
 
     /** A single live arc instance. */
@@ -193,7 +193,8 @@ public final class RailgunArcRenderer {
                 com.mojang.blaze3d.platform.GlStateManager.DestFactor.ZERO);
         RenderSystem.setShader(GameRenderer::getPositionColorShader);
 
-        BufferBuilder bb = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
+        BufferBuilder bb = Tesselator.getInstance().getBuilder();
+                bb.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
         var matrix = stack.last().pose();
         for (Arc arc : ACTIVE) {
             float lifeT = (float) arc.remaining / (float) arc.totalLifetime;
@@ -201,7 +202,7 @@ public final class RailgunArcRenderer {
             float alpha = (float) Math.sqrt(Math.max(0.0F, lifeT));
             drawArc(bb, matrix, arc, camPos, alpha);
         }
-        var built = bb.build();
+        var built = bb.end();
         if (built != null) {
             BufferUploader.drawWithShader(built);
         }
@@ -253,9 +254,9 @@ public final class RailgunArcRenderer {
         Vec3 a2 = a.subtract(side);
         Vec3 b1 = b.add(side);
         Vec3 b2 = b.subtract(side);
-        bb.addVertex(matrix, (float) a1.x, (float) a1.y, (float) a1.z).setColor(r, g, bCol, alpha);
-        bb.addVertex(matrix, (float) a2.x, (float) a2.y, (float) a2.z).setColor(r, g, bCol, alpha);
-        bb.addVertex(matrix, (float) b2.x, (float) b2.y, (float) b2.z).setColor(r, g, bCol, alpha);
-        bb.addVertex(matrix, (float) b1.x, (float) b1.y, (float) b1.z).setColor(r, g, bCol, alpha);
+        bb.vertex(matrix, (float) a1.x, (float) a1.y, (float) a1.z).color(r, g, bCol, alpha);
+        bb.vertex(matrix, (float) a2.x, (float) a2.y, (float) a2.z).color(r, g, bCol, alpha);
+        bb.vertex(matrix, (float) b2.x, (float) b2.y, (float) b2.z).color(r, g, bCol, alpha);
+        bb.vertex(matrix, (float) b1.x, (float) b1.y, (float) b1.z).color(r, g, bCol, alpha);
     }
 }

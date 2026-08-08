@@ -13,7 +13,7 @@ public final class CelestweaveEquipmentAccess {
     }
 
     public static ItemStack findArmor(Player player, EquipmentSlot slot) {
-        if (slot.getType() == EquipmentSlot.Type.HUMANOID_ARMOR
+        if (slot.getType() == EquipmentSlot.Type.ARMOR
                 && player instanceof ServerPlayer serverPlayer) {
             ItemStack privateArmor = PhaseLockService.getPrivateArmor(serverPlayer, slot);
             if (isArmor(privateArmor)) {

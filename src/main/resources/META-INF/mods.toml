@@ -74,3 +74,10 @@ mandatory = true
 versionRange = "[1.0.2,)"
 ordering = "AFTER"
 side = "BOTH"
+
+[[dependencies."${mod_id}"]]
+modId = "ae2wtlib"
+mandatory = false
+versionRange = "[15.0.0,)"
+ordering = "AFTER"
+side = "BOTH"

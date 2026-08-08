@@ -43,7 +43,15 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.common.capabilities.Capability;
+import net.minecraftforge.common.capabilities.ForgeCapabilities;
+import net.minecraftforge.common.util.LazyOptional;
 import net.minecraftforge.items.IItemHandlerModifiable;
+
+import org.jetbrains.annotations.Nullable;
+
+import com.moakiee.ae2lt.api.AE2LTCapabilities;
+import com.moakiee.ae2lt.me.GridLightningEnergyHandler;
 
 public class LightningCollectorBlockEntity extends AENetworkBlockEntity
         implements IActionHost, FrequencyBindingHost {
@@ -427,6 +435,17 @@ public class LightningCollectorBlockEntity extends AENetworkBlockEntity
     public void clearRemoved() {
         super.clearRemoved();
         frequencyBinding.clearRemoved();
+    }
+
+    @Override
+    public <T> LazyOptional<T> getCapability(Capability<T> cap, @Nullable Direction side) {
+        if (cap == ForgeCapabilities.ITEM_HANDLER) {
+            return LazyOptional.of(this::getAutomationInventory).cast();
+        }
+        if (cap == AE2LTCapabilities.LIGHTNING_ENERGY_BLOCK) {
+            return LazyOptional.of(() -> new GridLightningEnergyHandler(this)).cast();
+        }
+        return super.getCapability(cap, side);
     }
 
     public record OutputPreview(int min, int max) {

@@ -13,7 +13,7 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
-import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.FriendlyByteBuf;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -68,7 +68,7 @@ public record ProcessingPatternTerminalDraft(
         }
     }
 
-    public ProcessingPatternTerminalDraft(RegistryFriendlyByteBuf data) {
+    public ProcessingPatternTerminalDraft(FriendlyByteBuf data) {
         this(
                 data.readEnum(ProcessingPatternEncodingType.class),
                 readStacks(data, MAX_INPUT_SLOTS, "input size"),
@@ -107,13 +107,13 @@ public record ProcessingPatternTerminalDraft(
         return sameStackKeys(inputs, currentInputs) && sameStackKeys(outputs, currentOutputs);
     }
 
-    public CompoundTag write(HolderLookup.Provider registries) {
+    public CompoundTag write() {
         var tag = new CompoundTag();
         tag.putString(TAG_TYPE, type.name());
         tag.putInt(TAG_INPUT_SIZE, inputs.size());
         tag.putInt(TAG_OUTPUT_SIZE, outputs.size());
-        tag.put(TAG_INPUTS, writeStacks(inputs, registries));
-        tag.put(TAG_OUTPUTS, writeStacks(outputs, registries));
+        tag.put(TAG_INPUTS, writeStacks(inputs));
+        tag.put(TAG_OUTPUTS, writeStacks(outputs));
         if (advancedConfig != null) {
             tag.putIntArray(TAG_DIRECTIONS, advancedConfig.directions());
         }
@@ -126,7 +126,7 @@ public record ProcessingPatternTerminalDraft(
 
     @Nullable
     public static ProcessingPatternTerminalDraft read(
-            CompoundTag tag, HolderLookup.Provider registries) {
+            CompoundTag tag) {
         try {
             var type = ProcessingPatternEncodingType.valueOf(tag.getString(TAG_TYPE));
             if (type == ProcessingPatternEncodingType.NORMAL) return null;
@@ -135,9 +135,9 @@ public record ProcessingPatternTerminalDraft(
             int outputSize = checkedSize(
                     tag.getInt(TAG_OUTPUT_SIZE), MAX_OUTPUT_SLOTS, "output size");
             var inputs = readStacks(
-                    tag.getList(TAG_INPUTS, Tag.TAG_COMPOUND), inputSize, registries);
+                    tag.getList(TAG_INPUTS, Tag.TAG_COMPOUND), inputSize);
             var outputs = readStacks(
-                    tag.getList(TAG_OUTPUTS, Tag.TAG_COMPOUND), outputSize, registries);
+                    tag.getList(TAG_OUTPUTS, Tag.TAG_COMPOUND), outputSize);
             var advanced = type.hasAdvanced()
                     ? new AdvancedConfig(tag.getIntArray(TAG_DIRECTIONS)) : null;
             var overload = type.hasOverload()
@@ -166,7 +166,7 @@ public record ProcessingPatternTerminalDraft(
     }
 
     @Override
-    public void writeToPacket(RegistryFriendlyByteBuf data) {
+    public void writeToPacket(FriendlyByteBuf data) {
         data.writeEnum(type);
         writeStacks(data, inputs);
         writeStacks(data, outputs);
@@ -243,12 +243,12 @@ public record ProcessingPatternTerminalDraft(
     }
 
     private static ListTag writeStacks(
-            List<GenericStack> stacks, HolderLookup.Provider registries) {
+            List<GenericStack> stacks) {
         var result = new ListTag();
         for (int slot = 0; slot < stacks.size(); slot++) {
             var stack = stacks.get(slot);
             if (stack == null) continue;
-            var entry = GenericStack.writeTag(registries, stack);
+            var entry = GenericStack.writeTag(stack);
             entry.putInt(TAG_SLOT, slot);
             result.add(entry);
         }
@@ -256,38 +256,38 @@ public record ProcessingPatternTerminalDraft(
     }
 
     private static List<GenericStack> readStacks(
-            ListTag entries, int size, HolderLookup.Provider registries) {
+            ListTag entries, int size) {
         var result = nullableStackList(size);
         for (int i = 0; i < entries.size(); i++) {
             var entry = entries.getCompound(i);
             int slot = entry.getInt(TAG_SLOT);
             if (slot >= 0 && slot < size) {
-                result.set(slot, GenericStack.readTag(registries, entry));
+                result.set(slot, GenericStack.readTag(entry));
             }
         }
         return result;
     }
 
-    private static void writeStacks(RegistryFriendlyByteBuf data, List<GenericStack> stacks) {
+    private static void writeStacks(FriendlyByteBuf data, List<GenericStack> stacks) {
         data.writeVarInt(stacks.size());
         for (var stack : stacks) GenericStack.writeBuffer(stack, data);
     }
 
     private static List<GenericStack> readStacks(
-            RegistryFriendlyByteBuf data, int maxSize, String name) {
+            FriendlyByteBuf data, int maxSize, String name) {
         int size = checkedSize(data.readVarInt(), maxSize, name);
         var result = new ArrayList<GenericStack>(size);
         for (int i = 0; i < size; i++) result.add(GenericStack.readBuffer(data));
         return result;
     }
 
-    private static void writeIntArray(RegistryFriendlyByteBuf data, int[] values) {
+    private static void writeIntArray(FriendlyByteBuf data, int[] values) {
         data.writeVarInt(values.length);
         for (int value : values) data.writeVarInt(value);
     }
 
     private static int[] readIntArray(
-            RegistryFriendlyByteBuf data, int maxSize, String name) {
+            FriendlyByteBuf data, int maxSize, String name) {
         int size = checkedSize(data.readVarInt(), maxSize, name);
         var result = new int[size];
         for (int i = 0; i < size; i++) result[i] = data.readVarInt();
@@ -295,7 +295,7 @@ public record ProcessingPatternTerminalDraft(
     }
 
     @Nullable
-    private static AdvancedConfig readAdvancedConfig(RegistryFriendlyByteBuf data) {
+    private static AdvancedConfig readAdvancedConfig(FriendlyByteBuf data) {
         return data.readBoolean()
                 ? new AdvancedConfig(readIntArray(
                         data, MAX_INPUT_SLOTS, "advanced direction count"))
@@ -303,7 +303,7 @@ public record ProcessingPatternTerminalDraft(
     }
 
     @Nullable
-    private static OverloadConfig readOverloadConfig(RegistryFriendlyByteBuf data) {
+    private static OverloadConfig readOverloadConfig(FriendlyByteBuf data) {
         return data.readBoolean()
                 ? new OverloadConfig(
                         readIntArray(data, MAX_INPUT_SLOTS, "overload input slot count"),

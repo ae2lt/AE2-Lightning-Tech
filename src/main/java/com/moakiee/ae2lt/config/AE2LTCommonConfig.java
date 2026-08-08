@@ -3,6 +3,7 @@ package com.moakiee.ae2lt.config;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Supplier;
 
@@ -47,7 +48,8 @@ public final class AE2LTCommonConfig {
             "minecraft:slime_ball=4");
     private static final Set<ResourceLocation> DEFAULT_EASTER_EGG_CANDIDATE_IDS = Set.copyOf(
             DEFAULT_EASTER_EGG_WEIGHTS.stream()
-                    .map(entry -> ResourceLocation.of(entry.substring(0, entry.lastIndexOf('=')), ':'))
+                    .map(entry -> ResourceLocation.tryParse(entry.substring(0, entry.lastIndexOf('='))))
+                    .filter(Objects::nonNull)
                     .toList());
     private static final List<String> DEFAULT_BATCH_COPY_LIMITED_BLOCKS = List.of(
             "neoecoae:crafting_pattern_bus",

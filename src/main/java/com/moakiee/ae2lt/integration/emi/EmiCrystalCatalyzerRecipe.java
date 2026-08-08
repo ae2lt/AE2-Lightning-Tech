@@ -9,7 +9,6 @@ import dev.emi.emi.api.widget.WidgetHolder;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.item.crafting.RecipeHolder;
 
 final class EmiCrystalCatalyzerRecipe extends EmiBackedRecipe<CrystalCatalyzerRecipe> {
     private static final ResourceLocation TEXTURE =
@@ -18,8 +17,8 @@ final class EmiCrystalCatalyzerRecipe extends EmiBackedRecipe<CrystalCatalyzerRe
 
     private final EmiStack fluid;
 
-    EmiCrystalCatalyzerRecipe(RecipeHolder<CrystalCatalyzerRecipe> holder) {
-        super(AE2LTEmiCategories.CRYSTAL_CATALYZER, holder, WIDTH, 114);
+    EmiCrystalCatalyzerRecipe(ResourceLocation id, CrystalCatalyzerRecipe recipe) {
+        super(AE2LTEmiCategories.CRYSTAL_CATALYZER, id, recipe, WIDTH, 114);
         fluid = EmiRecipeWidgets.fluid(CrystalCatalyzerBlockEntity.getFixedFluidPerCycle());
         inputs.add(fluid);
         recipe.catalyst().ifPresent(catalyst ->

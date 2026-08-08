@@ -7,7 +7,7 @@ import org.objectweb.asm.tree.ClassNode;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfigPlugin;
 import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
 
-import net.neoforged.fml.loading.LoadingModList;
+import net.minecraftforge.fml.loading.LoadingModList;
 
 /** Gates optional recipe-viewer mixins before their external API types are resolved. */
 public final class RecipeViewerMixinPlugin implements IMixinConfigPlugin {
@@ -17,8 +17,10 @@ public final class RecipeViewerMixinPlugin implements IMixinConfigPlugin {
     @Override
     public void onLoad(String mixinPackage) {
         var mods = LoadingModList.get();
-        jeiPresent = mods.getModFileById("jei") != null
-                && mods.getModFileById("ae2jeiintegration") != null;
+        // 1.20.1: AE2 embeds its JEI integration (EncodePatternTransferHandler and friends)
+        // in the main jar, so only JEI itself is required (the 1.21 standalone
+        // AE2JEIIntegration mod does not exist for 1.20.1).
+        jeiPresent = mods.getModFileById("jei") != null;
         emiPresent = mods.getModFileById("emi") != null;
     }
 

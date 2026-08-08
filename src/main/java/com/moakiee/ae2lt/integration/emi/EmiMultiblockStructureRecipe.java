@@ -13,7 +13,7 @@ import dev.emi.emi.api.stack.EmiIngredient;
 import dev.emi.emi.api.stack.EmiStack;
 import dev.emi.emi.api.widget.WidgetHolder;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.item.crafting.RecipeHolder;
+import net.minecraft.world.item.crafting.Recipe;
 
 /** EMI recipe page backed by the same immutable structure description as JEI. */
 final class EmiMultiblockStructureRecipe implements EmiRecipe {
@@ -38,8 +38,7 @@ final class EmiMultiblockStructureRecipe implements EmiRecipe {
 
     @Override
     public ResourceLocation getId() {
-        return ResourceLocation.fromNamespaceAndPath(
-                structure.id().getNamespace(),
+        return ResourceLocation.fromNamespaceAndPath(structure.id().getNamespace(),
                 "/" + structure.id().getPath());
     }
 
@@ -82,7 +81,7 @@ final class EmiMultiblockStructureRecipe implements EmiRecipe {
     }
 
     @Override
-    public @Nullable RecipeHolder<?> getBackingRecipe() {
+    public @Nullable Recipe<?> getBackingRecipe() {
         return null;
     }
 }

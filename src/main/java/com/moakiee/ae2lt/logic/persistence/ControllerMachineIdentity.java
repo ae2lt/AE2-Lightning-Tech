@@ -1,10 +1,11 @@
 package com.moakiee.ae2lt.logic.persistence;
 
 import java.util.UUID;
-import net.minecraft.core.component.DataComponents;
+
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.component.CustomData;
+
+import com.moakiee.ae2lt.util.ItemStackTagSupport;
 
 /** Item-stack codec for the stable UUID of a movable controller. */
 public final class ControllerMachineIdentity {
@@ -15,13 +16,14 @@ public final class ControllerMachineIdentity {
 
     public static UUID read(ItemStack stack) {
         if (stack == null || stack.isEmpty()) return null;
-        var tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+        // 1.20.1 keeps the machine id in the stack NBT instead of a CUSTOM_DATA component.
+        var tag = ItemStackTagSupport.getTagCopy(stack);
         return read(tag);
     }
 
     public static void write(ItemStack stack, UUID id) {
         if (stack == null || stack.isEmpty() || id == null) return;
-        CustomData.update(DataComponents.CUSTOM_DATA, stack, tag -> write(tag, id));
+        ItemStackTagSupport.updateTag(stack, tag -> write(tag, id));
     }
 
     static UUID read(CompoundTag tag) {

@@ -3,9 +3,6 @@ package com.moakiee.ae2lt.item.railgun;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
-import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.network.codec.ByteBufCodecs;
-import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.world.item.ItemStack;
 
 import com.moakiee.ae2lt.registry.ModDataComponents;
@@ -31,19 +28,12 @@ public record RailgunSettings(
             Codec.BOOL.optionalFieldOf("chain_damage", true).forGetter(RailgunSettings::chainDamage))
             .apply(b, RailgunSettings::new));
 
-    public static final StreamCodec<RegistryFriendlyByteBuf, RailgunSettings> STREAM_CODEC = StreamCodec.composite(
-            ByteBufCodecs.BOOL, RailgunSettings::terrainDestruction,
-            ByteBufCodecs.BOOL, RailgunSettings::pvp,
-            ByteBufCodecs.BOOL, RailgunSettings::soundEnabled,
-            ByteBufCodecs.BOOL, RailgunSettings::forceOverloadRemoval,
-            ByteBufCodecs.BOOL, RailgunSettings::chargedSplash,
-            ByteBufCodecs.BOOL, RailgunSettings::chainDamage,
-            RailgunSettings::new);
+    // 1.20.1 移植：STREAM_CODEC 已删除（1.21 API），客户端同步走 ItemStack NBT 全量同步。
 
     public static boolean soundEnabled(ItemStack stack) {
         return stack == null
                 || stack.isEmpty()
-                || stack.getOrDefault(ModDataComponents.RAILGUN_SETTINGS.get(), DEFAULT).soundEnabled();
+                || ModDataComponents.RAILGUN_SETTINGS.getOrDefault(stack, DEFAULT).soundEnabled();
     }
 
     public RailgunSettings withTerrain(boolean v) {

@@ -6,6 +6,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.ItemLike;
 
+import appeng.api.config.ActionItems;
 import appeng.api.orientation.RelativeSide;
 import appeng.blockentity.AEBaseBlockEntity;
 import appeng.blockentity.networking.CableBusBlockEntity;
@@ -30,9 +31,9 @@ public class OverloadProcessingFactoryOutputConfigScreen
         super(parent, "/screens/overload_processing_output_config.json");
 
         var label = Component.translatable("block.ae2lt.overload_processing_factory");
-        widgets.add("return", new TabButton(Icon.BACK, label, btn -> returnToParent()));
+        widgets.add("return", new TabButton(Icon.ARROW_LEFT, label, btn -> returnToParent()));
 
-        var clear = new ActionButton(appeng.api.config.ActionItems.S_CLOSE, button -> menu.clientClearOutputSides());
+        var clear = new ActionButton(ActionItems.CLOSE, button -> menu.clientClearOutputSides());
         clear.setHalfSize(true);
         clear.setDisableBackground(true);
         clear.setMessage(Component.translatable("ae2lt.gui.overload_factory.output_side.clear"));
@@ -44,11 +45,6 @@ public class OverloadProcessingFactoryOutputConfigScreen
         this.rightButton = addSideButton("right", RelativeSide.RIGHT, "gui.tooltips.ae2.SideRight");
         this.bottomButton = addSideButton("bottom", RelativeSide.BOTTOM, "gui.tooltips.ae2.SideBottom");
         this.leftButton = addSideButton("left", RelativeSide.LEFT, "gui.tooltips.ae2.SideLeft");
-    }
-
-    @Override
-    protected boolean shouldAddToolbar() {
-        return false;
     }
 
     @Override

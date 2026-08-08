@@ -21,16 +21,16 @@ public final class ClosedLoopPatternPayloadTagCodec {
     private static final String TAG_STORED_TASK_MULTIPLIER = "StoredTaskMultiplier";
     private static final String TAG_ENABLED = "Enabled";
 
-    public static CompoundTag write(ClosedLoopPatternPayload payload, RegistryAccess registries) {
+    public static CompoundTag write(ClosedLoopPatternPayload payload) {
         var tag = new CompoundTag();
         var members = new ListTag();
         for (var member : payload.memberPatterns()) {
             members.add(writeMember(member));
         }
         tag.put(TAG_MEMBERS, members);
-        tag.put(TAG_SEEDS, writeStacks(payload.seeds(), registries));
-        tag.put(TAG_INPUTS, writeStacks(payload.externalInputs(), registries));
-        tag.put(TAG_OUTPUTS, writeStacks(payload.netOutputs(), registries));
+        tag.put(TAG_SEEDS, writeStacks(payload.seeds()));
+        tag.put(TAG_INPUTS, writeStacks(payload.externalInputs()));
+        tag.put(TAG_OUTPUTS, writeStacks(payload.netOutputs()));
         tag.putInt(TAG_EXECUTION_SEED_MULTIPLIER, payload.executionSeedMultiplier());
         tag.putInt(TAG_STORED_TASK_MULTIPLIER, payload.storedTaskMultiplier());
         tag.putInt(TAG_SEED_MULTIPLIER, payload.executionSeedMultiplier());
@@ -45,7 +45,7 @@ public final class ClosedLoopPatternPayloadTagCodec {
         return memberTag;
     }
 
-    public static ClosedLoopPatternPayload read(CompoundTag tag, RegistryAccess registries) {
+    public static ClosedLoopPatternPayload read(CompoundTag tag) {
         var members = new ArrayList<ClosedLoopMemberPattern>();
         var memberTags = tag.getList(TAG_MEMBERS, Tag.TAG_COMPOUND);
         if (memberTags.size() > ClosedLoopPatternAnalyzer.MAX_MEMBERS) {
@@ -57,9 +57,9 @@ public final class ClosedLoopPatternPayloadTagCodec {
         var seedMultipliers = readSeedMultipliers(tag);
         return new ClosedLoopPatternPayload(
                 members,
-                readStacks(tag.getList(TAG_SEEDS, Tag.TAG_COMPOUND), registries),
-                readStacks(tag.getList(TAG_INPUTS, Tag.TAG_COMPOUND), registries),
-                readStacks(tag.getList(TAG_OUTPUTS, Tag.TAG_COMPOUND), registries),
+                readStacks(tag.getList(TAG_SEEDS, Tag.TAG_COMPOUND)),
+                readStacks(tag.getList(TAG_INPUTS, Tag.TAG_COMPOUND)),
+                readStacks(tag.getList(TAG_OUTPUTS, Tag.TAG_COMPOUND)),
                 seedMultipliers.executionSeedMultiplier(),
                 seedMultipliers.storedTaskMultiplier(),
                 !tag.contains(TAG_ENABLED, Tag.TAG_BYTE) || tag.getBoolean(TAG_ENABLED));
@@ -96,16 +96,16 @@ public final class ClosedLoopPatternPayloadTagCodec {
         return tag.contains(key, Tag.TAG_ANY_NUMERIC) ? Math.max(1, tag.getInt(key)) : 1;
     }
 
-    private static ListTag writeStacks(Iterable<GenericStack> stacks, RegistryAccess registries) {
+    private static ListTag writeStacks(Iterable<GenericStack> stacks) {
         var list = new ListTag();
-        for (var stack : stacks) list.add(GenericStack.writeTag(registries, stack));
+        for (var stack : stacks) list.add(GenericStack.writeTag(stack));
         return list;
     }
 
-    private static java.util.List<GenericStack> readStacks(ListTag tags, RegistryAccess registries) {
+    private static java.util.List<GenericStack> readStacks(ListTag tags) {
         var stacks = new ArrayList<GenericStack>(tags.size());
         for (int i = 0; i < tags.size(); i++) {
-            var stack = GenericStack.readTag(registries, tags.getCompound(i));
+            var stack = GenericStack.readTag(tags.getCompound(i));
             if (stack == null) throw new IllegalArgumentException("invalid generic stack in closed-loop payload");
             stacks.add(stack);
         }

@@ -21,14 +21,14 @@ import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.GenericStack;
 import appeng.api.stacks.KeyCounter;
 import appeng.api.util.AECableType;
-import appeng.blockentity.grid.AENetworkedBlockEntity;
+import appeng.blockentity.grid.AENetworkBlockEntity;
 import appeng.helpers.InterfaceLogicHost;
 import appeng.helpers.patternprovider.PatternContainer;
 import appeng.helpers.patternprovider.PatternProviderLogicHost;
 import appeng.helpers.patternprovider.PatternProviderTarget;
 import appeng.me.helpers.MachineSource;
 import appeng.menu.MenuOpener;
-import appeng.menu.locator.MenuHostLocator;
+import appeng.menu.locator.MenuLocator;
 import appeng.util.inv.AppEngInternalInventory;
 import appeng.util.inv.InternalInventoryHost;
 import com.moakiee.ae2lt.block.PigmeePatternProviderBlock;
@@ -51,7 +51,7 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
 
-public final class PigmeePatternProviderBlockEntity extends AENetworkedBlockEntity
+public final class PigmeePatternProviderBlockEntity extends AENetworkBlockEntity
         implements InternalInventoryHost, ICraftingProvider, PatternContainer {
     public static final int PATTERN_SLOT_COUNT = 3;
 
@@ -146,7 +146,7 @@ public final class PigmeePatternProviderBlockEntity extends AENetworkedBlockEnti
         for (var direction : getActiveTargetDirections()) {
             BlockPos targetPos = worldPosition.relative(direction);
             Direction targetSide = direction.getOpposite();
-            var craftingMachine = ICraftingMachine.of(level, targetPos, targetSide);
+            var craftingMachine = ICraftingMachine.of(level, targetPos, targetSide, level.getBlockEntity(targetPos));
             if (craftingMachine != null && craftingMachine.acceptsPlans()) {
                 if (craftingMachine.pushPattern(patternDetails, inputHolder, targetSide)) {
                     return true;
@@ -285,13 +285,12 @@ public final class PigmeePatternProviderBlockEntity extends AENetworkedBlockEnti
         saveChanges();
     }
 
-    @Override
     public void saveChangedInventory(AppEngInternalInventory inventory) {
         saveChanges();
     }
 
     @Override
-    public void onChangeInventory(AppEngInternalInventory inventory, int slot) {
+    public void onChangeInventory(InternalInventory inventory, int slot) {
         saveChanges();
         if (inventory == patternInventory) {
             updatePatterns();
@@ -310,14 +309,14 @@ public final class PigmeePatternProviderBlockEntity extends AENetworkedBlockEnti
     }
 
     @Override
-    public void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
-        super.saveAdditional(tag, registries);
-        patternInventory.writeToNBT(tag, TAG_PATTERNS, registries);
-        returnInventory.writeToChildTag(tag, TAG_RETURN_INVENTORY, registries);
+    public void saveAdditional(CompoundTag tag) {
+        super.saveAdditional(tag);
+        patternInventory.writeToNBT(tag, TAG_PATTERNS);
+        returnInventory.writeToChildTag(tag, TAG_RETURN_INVENTORY);
 
         var pendingTag = new ListTag();
         for (var stack : pendingDispatch) {
-            pendingTag.add(GenericStack.writeTag(registries, stack));
+            pendingTag.add(GenericStack.writeTag(stack));
         }
         if (pendingTag.isEmpty()) {
             tag.remove(TAG_PENDING_DISPATCH);
@@ -333,15 +332,15 @@ public final class PigmeePatternProviderBlockEntity extends AENetworkedBlockEnti
     }
 
     @Override
-    public void loadTag(CompoundTag tag, HolderLookup.Provider registries) {
-        super.loadTag(tag, registries);
-        patternInventory.readFromNBT(tag, TAG_PATTERNS, registries);
-        returnInventory.readFromTag(tag.getList(TAG_RETURN_INVENTORY, Tag.TAG_COMPOUND), registries);
+    public void loadTag(CompoundTag tag) {
+        super.loadTag(tag);
+        patternInventory.readFromNBT(tag, TAG_PATTERNS);
+        returnInventory.readFromTag(tag.getList(TAG_RETURN_INVENTORY, Tag.TAG_COMPOUND));
 
         pendingDispatch.clear();
         var pendingTag = tag.getList(TAG_PENDING_DISPATCH, Tag.TAG_COMPOUND);
         for (int i = 0; i < pendingTag.size(); i++) {
-            var stack = GenericStack.readTag(registries, pendingTag.getCompound(i));
+            var stack = GenericStack.readTag(pendingTag.getCompound(i));
             if (stack != null && stack.amount() > 0) {
                 pendingDispatch.add(stack);
             }
@@ -402,7 +401,7 @@ public final class PigmeePatternProviderBlockEntity extends AENetworkedBlockEnti
         return Component.translatable("block.ae2lt.pigmee_pattern_provider");
     }
 
-    public void openMenu(Player player, MenuHostLocator locator) {
+    public void openMenu(Player player, MenuLocator locator) {
         MenuOpener.open(PigmeePatternProviderMenu.TYPE, player, locator);
     }
 

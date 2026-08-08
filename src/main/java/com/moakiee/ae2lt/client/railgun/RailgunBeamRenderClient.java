@@ -18,10 +18,10 @@ import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.client.event.RenderLevelStageEvent;
 
 import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.item.railgun.ElectromagneticRailgunItem;
@@ -53,7 +53,7 @@ import com.moakiee.ae2lt.network.railgun.RailgunBeamUpdatePacket;
  * <p>Stale beam states (no packet for {@value #STALE_TICKS} ticks) self-expire
  * to recover from missed stop signals.
  */
-@EventBusSubscriber(modid = AE2LightningTech.MODID, value = Dist.CLIENT)
+@Mod.EventBusSubscriber(modid = AE2LightningTech.MODID, value = Dist.CLIENT)
 public final class RailgunBeamRenderClient {
 
     private static final Map<UUID, BeamState> ACTIVE = new ConcurrentHashMap<>();
@@ -170,7 +170,7 @@ public final class RailgunBeamRenderClient {
         // Interpolation factor for the current render frame; without this every
         // {@code getEyePosition()}/{@code getYRot()} call snaps in 50 ms steps and the
         // beam visibly stutters during movement.
-        float partialTick = mc.getTimer().getGameTimeDeltaPartialTick(true);
+        float partialTick = mc.getFrameTime();
         refreshLocalBeam(mc, now, partialTick);
         ACTIVE.entrySet().removeIf(en -> now - en.getValue().lastUpdateTick > STALE_TICKS);
         if (ACTIVE.isEmpty()) return;
@@ -204,7 +204,8 @@ public final class RailgunBeamRenderClient {
         double smoothTime = now + partialTick;
         float pulse = 0.95F + 0.10F * (float) Math.sin(smoothTime * PULSE_RATE);
 
-        var bb = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
+        var bb = Tesselator.getInstance().getBuilder();
+        bb.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
         var matrix = stack.last().pose();
         for (BeamState s : ACTIVE.values()) {
             // Per-frame: rebuild origin AND endpoint so the beam stays parallel to the
@@ -213,7 +214,7 @@ public final class RailgunBeamRenderClient {
             addBeam(bb, matrix, g.origin, g.endpoint, pulse, smoothTime);
             addEndpointGlow(bb, matrix, g.endpoint, camPos, pulse);
         }
-        var built = bb.build();
+        var built = bb.end();
         if (built != null) {
             BufferUploader.drawWithShader(built);
         }
@@ -383,10 +384,10 @@ public final class RailgunBeamRenderClient {
                                      double p2x, double p2y, double p2z,
                                      double p3x, double p3y, double p3z,
                                      float r, float g, float b, float a) {
-        bb.addVertex(matrix, (float) p0x, (float) p0y, (float) p0z).setColor(r, g, b, a);
-        bb.addVertex(matrix, (float) p1x, (float) p1y, (float) p1z).setColor(r, g, b, a);
-        bb.addVertex(matrix, (float) p2x, (float) p2y, (float) p2z).setColor(r, g, b, a);
-        bb.addVertex(matrix, (float) p3x, (float) p3y, (float) p3z).setColor(r, g, b, a);
+        bb.vertex(matrix, (float) p0x, (float) p0y, (float) p0z).color(r, g, b, a);
+        bb.vertex(matrix, (float) p1x, (float) p1y, (float) p1z).color(r, g, b, a);
+        bb.vertex(matrix, (float) p2x, (float) p2y, (float) p2z).color(r, g, b, a);
+        bb.vertex(matrix, (float) p3x, (float) p3y, (float) p3z).color(r, g, b, a);
     }
 
     /**
@@ -429,10 +430,10 @@ public final class RailgunBeamRenderClient {
                                  double p3x, double p3y, double p3z,
                                  float r, float g, float b,
                                  float aFrom, float aTo) {
-        bb.addVertex(matrix, (float) p0x, (float) p0y, (float) p0z).setColor(r, g, b, aFrom);
-        bb.addVertex(matrix, (float) p1x, (float) p1y, (float) p1z).setColor(r, g, b, aFrom);
-        bb.addVertex(matrix, (float) p2x, (float) p2y, (float) p2z).setColor(r, g, b, aTo);
-        bb.addVertex(matrix, (float) p3x, (float) p3y, (float) p3z).setColor(r, g, b, aTo);
+        bb.vertex(matrix, (float) p0x, (float) p0y, (float) p0z).color(r, g, b, aFrom);
+        bb.vertex(matrix, (float) p1x, (float) p1y, (float) p1z).color(r, g, b, aFrom);
+        bb.vertex(matrix, (float) p2x, (float) p2y, (float) p2z).color(r, g, b, aTo);
+        bb.vertex(matrix, (float) p3x, (float) p3y, (float) p3z).color(r, g, b, aTo);
     }
 
     /**

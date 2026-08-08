@@ -11,6 +11,11 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.energy.IEnergyStorage;
+import net.minecraftforge.common.capabilities.Capability;
+import net.minecraftforge.common.capabilities.ForgeCapabilities;
+import net.minecraftforge.common.util.LazyOptional;
+
+import org.jetbrains.annotations.Nullable;
 
 import appeng.api.config.Actionable;
 import appeng.api.networking.IManagedGridNode;
@@ -62,6 +67,14 @@ public class OverloadedControllerBlockEntity extends ControllerBlockEntity imple
     @Override
     public AECableType getCableConnectionType(Direction dir) {
         return AECableType.DENSE_SMART;
+    }
+
+    @Override
+    public <T> LazyOptional<T> getCapability(Capability<T> cap, @Nullable Direction side) {
+        if (cap == ForgeCapabilities.ENERGY) {
+            return LazyOptional.of(() -> getEnergyStorageCapability(side)).cast();
+        }
+        return super.getCapability(cap, side);
     }
 
     @Override

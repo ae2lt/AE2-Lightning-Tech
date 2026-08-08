@@ -62,15 +62,6 @@ public final class MatrixCoreEffectRenderer implements BlockEntityRenderer<Matri
         stack.popPose();
     }
 
-    @Override
-    public AABB getRenderBoundingBox(MatrixControllerBlockEntity controller) {
-        BlockPos center = MatrixMultiblockScanner.worldPos(
-                controller.getBlockPos(),
-                MatrixMultiblockTemplate.CRAFTING_CENTER_LOCAL,
-                controller.getOrientation());
-        return new AABB(center).inflate(3.0D).minmax(new AABB(controller.getBlockPos()));
-    }
-
     private static CoreEffectPalette palette(MatrixMultiblockComponent component) {
         return switch (component) {
             case QUANTUM_MAIN_CORE -> new CoreEffectPalette(0.22F, 0.62F, 0.78F, 0.58F, 0.86F, 0.92F);

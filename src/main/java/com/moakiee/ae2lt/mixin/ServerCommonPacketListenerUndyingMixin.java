@@ -8,12 +8,13 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import net.minecraft.network.PacketSendListener;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientboundPlayerCombatKillPacket;
-import net.minecraft.server.network.ServerCommonPacketListenerImpl;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
 
 import com.moakiee.ae2lt.celestweave.CelestweaveArmorUndyingHandler;
 
-@Mixin(ServerCommonPacketListenerImpl.class)
+// Forge 1.20.1 has no ServerCommonPacketListenerImpl (that split arrived in 1.20.5);
+// the send(Packet, PacketSendListener) boundary lives on ServerGamePacketListenerImpl.
+@Mixin(ServerGamePacketListenerImpl.class)
 public abstract class ServerCommonPacketListenerUndyingMixin {
     /**
      * ServerPlayer#die sends this packet before loot, statistics and the death

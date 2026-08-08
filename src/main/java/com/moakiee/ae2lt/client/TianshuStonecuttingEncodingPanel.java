@@ -23,7 +23,6 @@ import net.minecraft.core.RegistryAccess;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.StonecutterRecipe;
 import org.jetbrains.annotations.Nullable;
 
@@ -72,7 +71,9 @@ final class TianshuStonecuttingEncodingPanel extends TianshuEncodingModePanel {
         for (int i = startIndex; i < endIndex && i < recipes.size(); i++) {
             var slotBounds = getRecipeBounds(i - startIndex);
             var recipe = recipes.get(i);
-            boolean selected = selectedRecipe != null && selectedRecipe.equals(recipe.id());
+            // 1.20.1: StonecutterRecipe carries its id via Recipe#getId()
+            // (RecipeHolder wrappers only exist in 1.21).
+            boolean selected = selectedRecipe != null && selectedRecipe.equals(recipe.getId());
 
             Blitter background = selected
                     ? BG_SLOT_SELECTED
@@ -81,7 +82,7 @@ final class TianshuStonecuttingEncodingPanel extends TianshuEncodingModePanel {
             var renderY = bounds.getY() + slotBounds.getY();
             background.dest(renderX, renderY).blit(graphics);
 
-            ItemStack result = recipe.value().getResultItem(getRegistryAccess());
+            ItemStack result = recipe.getResultItem(getRegistryAccess());
             var itemY = renderY + (selected || mouse.isIn(slotBounds) ? 3 : 2);
             graphics.renderItem(result, renderX + 2, itemY);
             graphics.renderItemDecorations(Minecraft.getInstance().font, result, renderX + 2, itemY);
@@ -94,7 +95,7 @@ final class TianshuStonecuttingEncodingPanel extends TianshuEncodingModePanel {
         if (recipe == null) {
             return false;
         }
-        menu.setStonecuttingRecipeId(recipe.id());
+        menu.setStonecuttingRecipeId(recipe.getId());
         Minecraft.getInstance().getSoundManager()
                 .play(SimpleSoundInstance.forUI(SoundEvents.UI_STONECUTTER_SELECT_RECIPE, 1.0F));
         return true;
@@ -107,12 +108,12 @@ final class TianshuStonecuttingEncodingPanel extends TianshuEncodingModePanel {
         if (recipe == null) {
             return null;
         }
-        var result = recipe.value().getResultItem(getRegistryAccess());
+        var result = recipe.getResultItem(getRegistryAccess());
         return new Tooltip(screen.getTooltipFromContainerItem(result));
     }
 
     @Nullable
-    private RecipeHolder<StonecutterRecipe> getRecipeAt(Point point) {
+    private StonecutterRecipe getRecipeAt(Point point) {
         var recipes = menu.getStonecuttingRecipes();
         if (recipes.isEmpty()) {
             return null;
@@ -143,7 +144,7 @@ final class TianshuStonecuttingEncodingPanel extends TianshuEncodingModePanel {
 
     @Override
     Icon getIcon() {
-        return Icon.TAB_STONECUTTING;
+        return Icon.HORIZONTAL_TAB_SELECTED;
     }
 
     @Override

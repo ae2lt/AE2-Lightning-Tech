@@ -1,20 +1,21 @@
 package com.moakiee.ae2lt.client.compat;
 
 import appeng.menu.SlotSemantics;
-import com.illusivesoulworks.polymorph.api.client.widgets.PlayerRecipesWidget;
+import com.illusivesoulworks.polymorph.client.recipe.widget.PlayerRecipesWidget;
 import com.moakiee.ae2lt.client.TianshuPatternEncodingTermScreen;
 import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuEncodingMode;
-import com.mojang.datafixers.util.Pair;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.WidgetSprites;
 import net.minecraft.resources.ResourceLocation;
 
-/** Polymorph recipe selector for the custom Tianshu pattern-terminal screen. */
+/**
+ * Polymorph recipe selector for the custom Tianshu pattern-terminal screen.
+ *
+ * <p>1.20.1: the polymorph client API moved — the widget base now lives in
+ * {@code com.illusivesoulworks.polymorph.client.recipe.widget} (non-API impl)
+ * and the registry entry point is {@code PolymorphClient.get()} instead of the
+ * 1.21 {@code PolymorphWidgets.getInstance()}.</p>
+ */
 final class TianshuPatternTerminalWidget extends PlayerRecipesWidget {
-    private static final WidgetSprites OUTPUT = sprites("output_button");
-    private static final WidgetSprites CURRENT_OUTPUT = sprites("current_output");
-    private static final WidgetSprites SELECTOR = sprites("selector_button");
-
     private final TianshuPatternEncodingTermScreen<?> screen;
 
     TianshuPatternTerminalWidget(TianshuPatternEncodingTermScreen<?> screen) {
@@ -39,23 +40,7 @@ final class TianshuPatternTerminalWidget extends PlayerRecipesWidget {
         return isCraftingMode() && super.mouseClicked(mouseX, mouseY, button);
     }
 
-    @Override
-    public Pair<WidgetSprites, WidgetSprites> getOutputSprites() {
-        return Pair.of(OUTPUT, CURRENT_OUTPUT);
-    }
-
-    @Override
-    public WidgetSprites getSelectorSprites() {
-        return SELECTOR;
-    }
-
     private boolean isCraftingMode() {
         return screen.getMenu().tianshuMode == TianshuEncodingMode.CRAFTING;
-    }
-
-    private static WidgetSprites sprites(String name) {
-        return new WidgetSprites(
-                ResourceLocation.fromNamespaceAndPath("polyeng", name),
-                ResourceLocation.fromNamespaceAndPath("polyeng", name + "_highlighted"));
     }
 }

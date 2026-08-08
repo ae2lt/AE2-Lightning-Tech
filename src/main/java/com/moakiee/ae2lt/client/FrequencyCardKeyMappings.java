@@ -1,4 +1,5 @@
 package com.moakiee.ae2lt.client;
+import com.moakiee.ae2lt.network.NetworkInit;
 
 import org.lwjgl.glfw.GLFW;
 
@@ -6,14 +7,13 @@ import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.network.ToggleFrequencyCardAutoConnectPacket;
 
 import net.minecraft.client.KeyMapping;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.ClientTickEvent;
-import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
-import net.neoforged.neoforge.network.PacketDistributor;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
 
-@EventBusSubscriber(modid = AE2LightningTech.MODID, bus = EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
+@Mod.EventBusSubscriber(modid = AE2LightningTech.MODID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
 public final class FrequencyCardKeyMappings {
     private static final String CATEGORY = "key.categories.ae2lt";
 
@@ -30,15 +30,15 @@ public final class FrequencyCardKeyMappings {
         event.register(TOGGLE_AUTO_CONNECT);
     }
 
-    @EventBusSubscriber(modid = AE2LightningTech.MODID, bus = EventBusSubscriber.Bus.GAME, value = Dist.CLIENT)
+    @Mod.EventBusSubscriber(modid = AE2LightningTech.MODID, bus = Mod.EventBusSubscriber.Bus.FORGE, value = Dist.CLIENT)
     public static final class RuntimeHandler {
         private RuntimeHandler() {
         }
 
         @SubscribeEvent
-        public static void onClientTick(ClientTickEvent.Post event) {
+        public static void onClientTick(TickEvent.ClientTickEvent event) {
             while (TOGGLE_AUTO_CONNECT.consumeClick()) {
-                PacketDistributor.sendToServer(ToggleFrequencyCardAutoConnectPacket.forPreferredCard());
+                NetworkInit.sendToServer(ToggleFrequencyCardAutoConnectPacket.forPreferredCard());
             }
         }
     }

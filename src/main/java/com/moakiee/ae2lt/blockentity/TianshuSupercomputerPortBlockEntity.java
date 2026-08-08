@@ -378,8 +378,8 @@ public class TianshuSupercomputerPortBlockEntity extends AENetworkBlockEntity
     }
 
     @Override
-    public void loadTag(CompoundTag tag, RegistryAccess registries) {
-        super.loadTag(tag, registries);
+    public void loadTag(CompoundTag tag) {
+        super.loadTag(tag);
         controllerPos = tag.contains(TAG_CONTROLLER_POS, Tag.TAG_LONG)
                 ? BlockPos.of(tag.getLong(TAG_CONTROLLER_POS)) : null;
         // A position cache is not authority. Stay disconnected until the loaded controller

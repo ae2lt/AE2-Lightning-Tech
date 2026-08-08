@@ -16,9 +16,10 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.event.tick.ServerTickEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
+import net.minecraftforge.event.TickEvent.ServerTickEvent;
 
 import appeng.api.config.Actionable;
 import appeng.api.networking.IGrid;
@@ -90,7 +91,7 @@ public final class RailgunBeamService {
     }
 
     @SubscribeEvent
-    public static void onServerTick(ServerTickEvent.Post e) {
+    public static void onServerTick(TickEvent.ServerTickEvent e) {
         if (ACTIVE.isEmpty()) return;
         var server = e.getServer();
         Iterator<Map.Entry<UUID, BeamState>> it = ACTIVE.entrySet().iterator();
@@ -137,14 +138,14 @@ public final class RailgunBeamService {
             RailgunFireService.sendFail(player, "ae2lt.railgun.structural_core_required");
             return false;
         }
-        RailgunModuleEntries mods = stack.getOrDefault(ModDataComponents.RAILGUN_MODULE_ENTRIES.get(), RailgunModuleEntries.EMPTY);
+        RailgunModuleEntries mods = ModDataComponents.RAILGUN_MODULE_ENTRIES.getOrDefault(stack, RailgunModuleEntries.EMPTY);
         var bound = RailgunBinding.resolve(stack, player);
         if (!bound.success()) {
             RailgunFireService.sendFail(player, RailgunBinding.failKey(bound.failure()));
             return false;
         }
         IGrid grid = bound.grid();
-        RailgunSettings settings = stack.getOrDefault(ModDataComponents.RAILGUN_SETTINGS.get(), RailgunSettings.DEFAULT);
+        RailgunSettings settings = ModDataComponents.RAILGUN_SETTINGS.getOrDefault(stack, RailgunSettings.DEFAULT);
         boolean allowPlayerTargets = settings.allowsPlayerTargets(AE2LTCommonConfig.railgunDamagePlayers());
 
         long feCost = AmmoCost.beamFeCost(mods);
@@ -208,7 +209,7 @@ public final class RailgunBeamService {
                 primary.hurt(ds, (float) finalDamage);
                 if (primary.isAlive() && RailgunDefaults.PARALYSIS_DURATION_TICKS > 0) {
                     primary.addEffect(new net.minecraft.world.effect.MobEffectInstance(
-                            com.moakiee.ae2lt.registry.ModMobEffects.ELECTROMAGNETIC_PARALYSIS,
+                            com.moakiee.ae2lt.registry.ModMobEffects.ELECTROMAGNETIC_PARALYSIS.get(),
                             RailgunDefaults.PARALYSIS_DURATION_TICKS,
                             0, false, true, true), player);
                 }

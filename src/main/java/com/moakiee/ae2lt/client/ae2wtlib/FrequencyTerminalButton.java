@@ -1,7 +1,7 @@
 package com.moakiee.ae2lt.client.ae2wtlib;
 
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.fml.ModList;
+import net.minecraftforge.fml.ModList;
 
 import appeng.client.gui.AEBaseScreen;
 import appeng.menu.SlotSemantics;
@@ -11,7 +11,7 @@ import com.moakiee.ae2lt.client.TextureToggleButton;
 import com.moakiee.ae2lt.item.OverloadedFrequencyCardItem;
 import com.moakiee.ae2lt.mixin.client.AEBaseScreenAccessor;
 
-import de.mari_023.ae2wtlib.api.terminal.IUniversalTerminalCapable;
+import de.mari_023.ae2wtlib.wut.IUniversalTerminalCapable;
 
 /**
  * Adds a "configure frequency card" button to ae2wtlib wireless terminal

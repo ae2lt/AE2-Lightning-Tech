@@ -24,22 +24,22 @@ public class MatrixGlassBlock extends MatrixFormedBlock {
     }
 
     @Override
-    protected boolean propagatesSkylightDown(BlockState state, BlockGetter level, BlockPos pos) {
+    public boolean propagatesSkylightDown(BlockState state, BlockGetter level, BlockPos pos) {
         return true;
     }
 
     @Override
-    protected int getLightBlock(BlockState state, BlockGetter level, BlockPos pos) {
+    public int getLightBlock(BlockState state, BlockGetter level, BlockPos pos) {
         return 0;
     }
 
     @Override
-    protected float getShadeBrightness(BlockState state, BlockGetter level, BlockPos pos) {
+    public float getShadeBrightness(BlockState state, BlockGetter level, BlockPos pos) {
         return 1.0F;
     }
 
     @Override
-    protected boolean skipRendering(BlockState state, BlockState adjacentState, Direction side) {
+    public boolean skipRendering(BlockState state, BlockState adjacentState, Direction side) {
         boolean facesHiddenCore = state.getValue(FORMED)
                 && adjacentState.hasProperty(MatrixFormedBlock.FORMED)
                 && adjacentState.getValue(MatrixFormedBlock.FORMED)
@@ -50,7 +50,7 @@ public class MatrixGlassBlock extends MatrixFormedBlock {
     }
 
     @Override
-    protected VoxelShape getVisualShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
+    public VoxelShape getVisualShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
         return Shapes.empty();
     }
 }

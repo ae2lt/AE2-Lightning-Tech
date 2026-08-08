@@ -4,15 +4,24 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.EquipmentSlot;
-import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
+import net.minecraft.core.Direction;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraftforge.common.capabilities.Capability;
+import net.minecraftforge.common.capabilities.ICapabilityProvider;
+import net.minecraftforge.common.util.LazyOptional;
+import net.minecraftforge.event.AttachCapabilitiesEvent;
 
 import mekanism.api.lasers.ILaserDissipation;
+import mekanism.api.math.FloatingLong;
 import mekanism.api.radiation.IRadiationManager;
 import mekanism.api.radiation.capability.IRadiationShielding;
 import mekanism.common.capabilities.Capabilities;
-import mekanism.common.lib.radiation.RadiationScale;
+import mekanism.common.lib.radiation.RadiationManager;
 import mekanism.common.util.UnitDisplayUtils;
 
+import org.jetbrains.annotations.Nullable;
+
+import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.celestweave.MekanismProtectionRules;
 import com.moakiee.ae2lt.celestweave.CelestweaveArmorState;
 import com.moakiee.ae2lt.celestweave.module.MekanismProtectionSubmodule;
@@ -54,25 +63,37 @@ public final class MekanismArmorIntegration {
     private MekanismArmorIntegration() {
     }
 
-    public static void registerCapabilities(RegisterCapabilitiesEvent event) {
-        event.registerItem(
-                Capabilities.RADIATION_SHIELDING,
-                (stack, context) -> isProtectionActive(stack, MekanismProtectionSubmodule.RADIATION.id())
-                        ? FULL_RADIATION_SHIELDING
-                        : null,
-                ModItems.CELESTWEAVE_CORE.get(),
-                ModItems.PHASE_LOCK_PROJECTION.get());
-        event.registerItem(
-                Capabilities.LASER_DISSIPATION,
-                (stack, context) -> isProtectionActive(stack, MekanismProtectionSubmodule.LASER.id())
-                        ? FULL_LASER_DISSIPATION
-                        : null,
-                ModItems.CELESTWEAVE_CORE.get(),
-                ModItems.PHASE_LOCK_PROJECTION.get());
+    /**
+     * Forge 1.20.1 has no RegisterCapabilitiesEvent.registerItem; item capabilities
+     * are attached per-stack through AttachCapabilitiesEvent on the game bus.
+     */
+    public static void attachCapabilities(AttachCapabilitiesEvent<ItemStack> event) {
+        ItemStack stack = event.getObject();
+        if (!stack.is(ModItems.CELESTWEAVE_CORE.get())
+                && !stack.is(ModItems.PHASE_LOCK_PROJECTION.get())) {
+            return;
+        }
+        event.addCapability(
+                ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "mekanism_armor_protection"),
+                new ICapabilityProvider() {
+                    @Override
+                    public <T> LazyOptional<T> getCapability(Capability<T> cap, @Nullable Direction side) {
+                        if (cap == Capabilities.RADIATION_SHIELDING
+                                && isProtectionActive(
+                                        stack, MekanismProtectionSubmodule.RADIATION.id())) {
+                            return LazyOptional.of(() -> FULL_RADIATION_SHIELDING).cast();
+                        }
+                        if (cap == Capabilities.LASER_DISSIPATION
+                                && isProtectionActive(stack, MekanismProtectionSubmodule.LASER.id())) {
+                            return LazyOptional.of(() -> FULL_LASER_DISSIPATION).cast();
+                        }
+                        return LazyOptional.empty();
+                    }
+                });
     }
 
     static boolean isProtectionActive(ItemStack stack, String submoduleId) {
-        var projectionLink = stack.get(ModDataComponents.PHASE_LOCK_PROJECTION_LINK.get());
+        var projectionLink = ModDataComponents.PHASE_LOCK_PROJECTION_LINK.get(stack);
         if (projectionLink != null) {
             return ArmorRuntimeRegistry.isSubmoduleRuntimeActive(projectionLink.armorId(), submoduleId);
         }
@@ -82,17 +103,19 @@ public final class MekanismArmorIntegration {
     public static void tickRadiationRegeneration(ServerPlayer player) {
         var radiationManager = IRadiationManager.INSTANCE;
         double radiationLevel = radiationManager.getRadiationLevel(player);
+        // 1.20.1: RadiationScale is a nested enum of RadiationManager and IRadiationManager
+        // has no minRadiationMagnitude(); the threshold lives on RadiationManager.MIN_MAGNITUDE.
         if (!MekanismProtectionRules.shouldRegenerate(
                 player.level().getGameTime(),
                 radiationLevel,
-                radiationManager.minRadiationMagnitude(),
+                RadiationManager.MIN_MAGNITUDE,
                 player.getHealth(),
                 player.getMaxHealth())) {
             return;
         }
         float healthBefore = player.getHealth();
         player.heal(MekanismProtectionRules.radiationHealing(
-                RadiationScale.getScaledDoseSeverity(radiationLevel)));
+                RadiationManager.RadiationScale.getScaledDoseSeverity(radiationLevel)));
         if (player.getHealth() > healthBefore) {
             CelestweaveAdvancementService.awardRadiationAssimilation(player);
         }
@@ -120,9 +143,11 @@ public final class MekanismArmorIntegration {
         long absorbedJoules = MekanismProtectionRules.absorbedJoules(
                 availableJoules,
                 dissipationPercent);
-        long forgeEnergy = MekanismProtectionRules.joulesToForgeEnergy(
-                absorbedJoules,
-                UnitDisplayUtils.EnergyUnit.FORGE_ENERGY.getConversion());
+        long forgeEnergy = absorbedJoules <= 0L
+                ? 0L
+                : UnitDisplayUtils.EnergyUnit.FORGE_ENERGY
+                        .convertFrom(FloatingLong.create(absorbedJoules))
+                        .longValue();
         ArmorEnergyService.receiveExternalEnergy(player, chest, forgeEnergy);
     }
 }

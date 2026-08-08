@@ -7,7 +7,6 @@ import java.util.UUID;
 
 import org.jetbrains.annotations.Nullable;
 
-import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
@@ -30,16 +29,16 @@ public final class PhaseArmorVaultSavedData extends SavedData {
     private static final String TAG_SLOT = "Slot";
     private static final String TAG_ARMOR = "Armor";
 
-    public static final Factory<PhaseArmorVaultSavedData> FACTORY = new Factory<>(
-            PhaseArmorVaultSavedData::new,
-            PhaseArmorVaultSavedData::load,
-            null);
+    public static PhaseArmorVaultSavedData get(MinecraftServer server) {
+        // 1.20.1 has no SavedData.Factory; computeIfAbsent takes
+        // (Function<CompoundTag,T> load, Supplier<T> create, String name).
+        return server.overworld().getDataStorage().computeIfAbsent(
+                PhaseArmorVaultSavedData::load,
+                PhaseArmorVaultSavedData::new,
+                DATA_NAME);
+    }
 
     private final Map<UUID, EnumMap<EquipmentSlot, ItemStack>> armorByPlayer = new HashMap<>();
-
-    public static PhaseArmorVaultSavedData get(MinecraftServer server) {
-        return server.overworld().getDataStorage().computeIfAbsent(FACTORY, DATA_NAME);
-    }
 
     @Nullable
     ItemStack getMutable(UUID playerId, EquipmentSlot slot) {
@@ -103,7 +102,7 @@ public final class PhaseArmorVaultSavedData extends SavedData {
     }
 
     @Override
-    public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
+    public CompoundTag save(CompoundTag tag) {
         var entries = new ListTag();
         for (var playerEntry : armorByPlayer.entrySet()) {
             for (var armorEntry : playerEntry.getValue().entrySet()) {
@@ -114,7 +113,7 @@ public final class PhaseArmorVaultSavedData extends SavedData {
                 var entryTag = new CompoundTag();
                 entryTag.putUUID(TAG_PLAYER, playerEntry.getKey());
                 entryTag.putString(TAG_SLOT, armorEntry.getKey().getName());
-                entryTag.put(TAG_ARMOR, armor.save(registries));
+                entryTag.put(TAG_ARMOR, armor.save(new CompoundTag()));
                 entries.add(entryTag);
             }
         }
@@ -122,7 +121,7 @@ public final class PhaseArmorVaultSavedData extends SavedData {
         return tag;
     }
 
-    static PhaseArmorVaultSavedData load(CompoundTag tag, HolderLookup.Provider registries) {
+    static PhaseArmorVaultSavedData load(CompoundTag tag) {
         var data = new PhaseArmorVaultSavedData();
         if (!tag.contains(TAG_ENTRIES, Tag.TAG_LIST)) {
             return data;
@@ -139,7 +138,8 @@ public final class PhaseArmorVaultSavedData extends SavedData {
             if (slot == null) {
                 continue;
             }
-            ItemStack armor = ItemStack.parseOptional(registries, entryTag.getCompound(TAG_ARMOR));
+            // 1.20.1: ItemStack.of(CompoundTag) parses without a HolderLookup; invalid tags yield EMPTY.
+            ItemStack armor = ItemStack.of(entryTag.getCompound(TAG_ARMOR));
             if (!armor.isEmpty()) {
                 data.armorByPlayer
                         .computeIfAbsent(
@@ -152,7 +152,8 @@ public final class PhaseArmorVaultSavedData extends SavedData {
     }
 
     private static boolean isArmorSlot(EquipmentSlot slot) {
-        return slot != null && slot.getType() == EquipmentSlot.Type.HUMANOID_ARMOR;
+        // 1.20.1 only distinguishes ARMOR vs HAND (HUMANOID_ARMOR was split off in 1.21).
+        return slot != null && slot.getType() == EquipmentSlot.Type.ARMOR;
     }
 
     @Nullable

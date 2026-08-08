@@ -4,10 +4,10 @@ import java.util.concurrent.ThreadLocalRandom;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.ViewportEvent;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.client.event.ViewportEvent;
 
 import com.moakiee.ae2lt.AE2LightningTech;
 
@@ -15,7 +15,7 @@ import com.moakiee.ae2lt.AE2LightningTech;
  * Singleton camera shake state used by recoil. Holds an exponentially-decaying
  * intensity and applies a small randomized rotation offset each render frame.
  */
-@EventBusSubscriber(modid = AE2LightningTech.MODID, value = Dist.CLIENT)
+@Mod.EventBusSubscriber(modid = AE2LightningTech.MODID, value = Dist.CLIENT)
 public final class RailgunCameraShake {
 
     private static float intensity = 0f;

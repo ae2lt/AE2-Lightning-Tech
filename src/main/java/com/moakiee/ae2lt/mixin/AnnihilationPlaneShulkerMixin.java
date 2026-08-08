@@ -6,7 +6,6 @@ import appeng.api.stacks.AEKey;
 import appeng.parts.automation.AnnihilationPlanePart;
 import com.moakiee.ae2lt.config.AE2LTCommonConfig;
 import com.moakiee.ae2lt.registry.ModItems;
-import net.minecraft.core.Holder;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.projectile.ShulkerBullet;
 import net.minecraft.world.item.enchantment.Enchantment;
@@ -24,7 +23,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * without Silk Touch are unaffected, and the player does not need to shoot the
  * bullet down — reaching the plane is enough.
  */
-@Mixin(AnnihilationPlanePart.class)
+@Mixin(value = AnnihilationPlanePart.class, remap = false)
 public abstract class AnnihilationPlaneShulkerMixin {
 
     @Shadow
@@ -55,8 +54,8 @@ public abstract class AnnihilationPlaneShulkerMixin {
     }
 
     private static boolean hasSilkTouch(AnnihilationPlanePart plane) {
-        for (Holder<Enchantment> enchantment : plane.getEnchantments().keySet()) {
-            if (enchantment.is(Enchantments.SILK_TOUCH)) {
+        for (Enchantment enchantment : plane.getEnchantments().keySet()) {
+            if (enchantment == Enchantments.SILK_TOUCH) {
                 return true;
             }
         }

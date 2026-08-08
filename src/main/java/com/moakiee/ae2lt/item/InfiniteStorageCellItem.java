@@ -21,7 +21,7 @@ import com.moakiee.thunderbolt.core.cell.ByteTracker;
 public final class InfiniteStorageCellItem extends AE2LTItem implements IIndexedStorageCellItem {
 
     private static final ResourceLocation STORAGE_TYPE =
-            new ResourceLocation("ae2lt", "infinite_cell");
+            ResourceLocation.fromNamespaceAndPath("ae2lt", "infinite_cell");
 
     private final long capacityLo;
     private final long capacityHi;

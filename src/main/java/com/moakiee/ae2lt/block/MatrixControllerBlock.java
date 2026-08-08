@@ -9,13 +9,14 @@ import com.moakiee.ae2lt.menu.MatrixControllerMenu;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityTicker;
@@ -26,6 +27,7 @@ import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
+import net.minecraftforge.network.NetworkHooks;
 import org.jetbrains.annotations.Nullable;
 
 public class MatrixControllerBlock extends MatrixMultiblockDirectionalBlock implements EntityBlock {
@@ -86,17 +88,18 @@ public class MatrixControllerBlock extends MatrixMultiblockDirectionalBlock impl
     }
 
     @Override
-    protected InteractionResult useWithoutItem(BlockState state,
-                                               Level level,
-                                               BlockPos pos,
-                                               Player player,
-                                               BlockHitResult hitResult) {
+    public InteractionResult use(BlockState state,
+                                Level level,
+                                BlockPos pos,
+                                Player player,
+                                InteractionHand hand,
+                                BlockHitResult hitResult) {
         if (!(level.getBlockEntity(pos) instanceof MatrixControllerBlockEntity be)) {
             return InteractionResult.PASS;
         }
 
         if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) {
-            serverPlayer.openMenu(new SimpleMenuProvider(
+            NetworkHooks.openScreen(serverPlayer, new SimpleMenuProvider(
                     (id, inv, p) -> new MatrixControllerMenu(id, inv, be),
                     state.getBlock().getName()), buf -> MatrixControllerMenu.writeExtraData(buf, be));
         }
@@ -117,7 +120,7 @@ public class MatrixControllerBlock extends MatrixMultiblockDirectionalBlock impl
     }
 
     @Override
-    public ItemStack getCloneItemStack(LevelReader level, BlockPos pos, BlockState state) {
+    public ItemStack getCloneItemStack(BlockGetter level, BlockPos pos, BlockState state) {
         return new ItemStack(asItem());
     }
 }

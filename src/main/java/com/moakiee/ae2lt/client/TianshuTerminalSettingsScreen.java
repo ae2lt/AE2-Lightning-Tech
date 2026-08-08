@@ -3,7 +3,7 @@ package com.moakiee.ae2lt.client;
 import appeng.client.gui.AESubScreen;
 import appeng.client.gui.Icon;
 import appeng.client.gui.me.common.TerminalSettingsScreen;
-import appeng.client.gui.widgets.AE2Button;
+import com.moakiee.ae2lt.client.gui.AE2Button;
 import appeng.client.gui.widgets.TabButton;
 import appeng.menu.SlotSemantics;
 import com.moakiee.ae2lt.config.AE2LTClientConfig;
@@ -23,11 +23,12 @@ public final class TianshuTerminalSettingsScreen<M extends TianshuPatternEncodin
     public TianshuTerminalSettingsScreen(TerminalSettingsScreen<M> parent) {
         super(parent, "/screens/tianshu_terminal_settings.json");
         hideTerminalSlots();
-        widgets.add("back", new TabButton(Icon.BACK,
+        widgets.add("back", new TabButton(Icon.ARROW_LEFT,
                 Component.translatable("gui.back"), ignored -> returnToParent()));
-        triggerButton = widgets.addButton("uploadTrigger", triggerLabel(), this::cycleTrigger);
-        duplicateEncodingButton = widgets.addButton(
-                "duplicateEncoding", duplicateEncodingLabel(), this::toggleDuplicateEncoding);
+        triggerButton = new AE2Button(triggerLabel(), btn -> cycleTrigger());
+        widgets.add("uploadTrigger", triggerButton);
+        duplicateEncodingButton = new AE2Button(duplicateEncodingLabel(), btn -> toggleDuplicateEncoding());
+        widgets.add("duplicateEncoding", duplicateEncodingButton);
     }
 
     private void hideTerminalSlots() {

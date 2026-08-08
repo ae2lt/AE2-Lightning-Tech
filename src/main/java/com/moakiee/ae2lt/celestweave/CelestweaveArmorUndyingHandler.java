@@ -9,13 +9,13 @@ import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.bus.api.EventPriority;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
-import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
-import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
-import net.neoforged.neoforge.event.tick.PlayerTickEvent;
+import net.minecraftforge.eventbus.api.EventPriority;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
+import net.minecraftforge.event.entity.living.LivingDamageEvent;
+import net.minecraftforge.event.entity.living.LivingDeathEvent;
+import net.minecraftforge.event.entity.living.LivingHurtEvent;
+import net.minecraftforge.event.TickEvent.PlayerTickEvent;
 
 import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.config.AE2LTCommonConfig;
@@ -38,8 +38,9 @@ public final class CelestweaveArmorUndyingHandler {
     private CelestweaveArmorUndyingHandler() {
     }
 
+    // 1.20.1 has no LivingIncomingDamageEvent; LivingHurtEvent is its earliest hook (pre-armor).
     @SubscribeEvent(priority = EventPriority.LOWEST)
-    public static void onIncomingFatalDamage(LivingIncomingDamageEvent event) {
+    public static void onIncomingFatalDamage(LivingHurtEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer player) || player.level().isClientSide()) {
             return;
         }
@@ -60,19 +61,19 @@ public final class CelestweaveArmorUndyingHandler {
     }
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
-    public static void onFatalDamage(LivingDamageEvent.Pre event) {
+    public static void onFatalDamage(LivingDamageEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer player) || player.level().isClientSide()) {
             return;
         }
-        float damage = event.getNewDamage();
+        float damage = event.getAmount();
         if (damage <= 0.0F || damage < player.getHealth() + player.getAbsorptionAmount()) {
             return;
         }
         long now = player.level().getGameTime();
         if (tryProtectWithinWindow(player, now)) {
-            event.setNewDamage(0.0F);
+            event.setAmount(0.0F);
         } else if (tryTrigger(player, now)) {
-            event.setNewDamage(0.0F);
+            event.setAmount(0.0F);
         }
     }
 
@@ -87,20 +88,17 @@ public final class CelestweaveArmorUndyingHandler {
     }
 
     @SubscribeEvent
-    public static void onPlayerTickPre(PlayerTickEvent.Pre event) {
-        tryProtectDeadOrDying(event.getEntity());
-    }
-
-    @SubscribeEvent
-    public static void onPlayerTick(PlayerTickEvent.Post event) {
-        tryProtectDeadOrDying(event.getEntity());
+    public static void onPlayerTick(PlayerTickEvent event) {
+        // 1.20.1 fires one PlayerTickEvent per phase instead of the 1.21 Pre/Post pair;
+        // both original handlers ran the same dead/dying rescue, so phases are not filtered.
+        tryProtectDeadOrDying(event.player);
     }
 
     private static void tryProtectDeadOrDying(Player player) {
         if (!(player instanceof ServerPlayer serverPlayer) || serverPlayer.level().isClientSide()) {
             return;
         }
-        if (serverPlayer.dead || serverPlayer.isDeadOrDying() || serverPlayer.getHealth() <= 0.0F) {
+        if (serverPlayer.isDeadOrDying() || serverPlayer.getHealth() <= 0.0F) {
             tryProtectForcedDeath(serverPlayer);
         }
     }
@@ -142,7 +140,7 @@ public final class CelestweaveArmorUndyingHandler {
             restoreSurvivalState(player);
             return true;
         }
-        if (!player.dead && !player.isDeadOrDying() && player.getHealth() > 0.0F) {
+        if (!player.isDeadOrDying() && player.getHealth() > 0.0F) {
             return false;
         }
         return tryProtectForcedDeath(player);
@@ -248,12 +246,11 @@ public final class CelestweaveArmorUndyingHandler {
      */
     static int capComboIndexForWindow(int comboIndex, int comboWindowTicks) {
         int safeWindow = Math.max(1, comboWindowTicks);
-        int maximum = Math.max(1, Math.ceilDiv(safeWindow, PROTECTION_WINDOW_TICKS));
+        int maximum = Math.max(1, (safeWindow + PROTECTION_WINDOW_TICKS - 1) / PROTECTION_WINDOW_TICKS);
         return Math.min(Math.max(1, comboIndex), maximum);
     }
 
     private static void restoreSurvivalState(ServerPlayer player) {
-        player.dead = false;
         player.clearFire();
         player.setRemainingFireTicks(0);
         player.resetFallDistance();

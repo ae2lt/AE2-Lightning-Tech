@@ -3,6 +3,7 @@ package com.moakiee.ae2lt.block;
 import com.moakiee.ae2lt.blockentity.TianshuSeedStorageBlockEntity;
 import com.moakiee.ae2lt.logic.tianshu.TianshuMultiblockComponent;
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
@@ -24,8 +25,8 @@ public final class TianshuSeedStorageBlock extends TianshuSupercomputingUnitBloc
     }
 
     @Override
-    protected InteractionResult useWithoutItem(
-            BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
+    public InteractionResult use(
+            BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hit) {
         var blockEntity = level.getBlockEntity(pos);
         if (blockEntity instanceof TianshuSeedStorageBlockEntity drive) {
             if (!level.isClientSide) drive.openMenu(player);

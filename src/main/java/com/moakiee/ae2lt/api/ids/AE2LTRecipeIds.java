@@ -13,22 +13,22 @@ public final class AE2LTRecipeIds {
     private static final String MOD_ID = AE2LTBlockEntityIds.MOD_ID;
 
     public static final ResourceLocation LIGHTNING_ASSEMBLY =
-            new ResourceLocation(MOD_ID, "lightning_assembly");
+            ResourceLocation.fromNamespaceAndPath(MOD_ID, "lightning_assembly");
 
     public static final ResourceLocation LIGHTNING_TRANSFORM =
-            new ResourceLocation(MOD_ID, "lightning_transform");
+            ResourceLocation.fromNamespaceAndPath(MOD_ID, "lightning_transform");
 
     public static final ResourceLocation LIGHTNING_SIMULATION =
-            new ResourceLocation(MOD_ID, "lightning_simulation");
+            ResourceLocation.fromNamespaceAndPath(MOD_ID, "lightning_simulation");
 
     public static final ResourceLocation OVERLOAD_PROCESSING =
-            new ResourceLocation(MOD_ID, "overload_processing");
+            ResourceLocation.fromNamespaceAndPath(MOD_ID, "overload_processing");
 
     public static final ResourceLocation CRYSTAL_CATALYZER =
-            new ResourceLocation(MOD_ID, "crystal_catalyzer");
+            ResourceLocation.fromNamespaceAndPath(MOD_ID, "crystal_catalyzer");
 
     public static final ResourceLocation LIGHTNING_STRIKE =
-            new ResourceLocation(MOD_ID, "lightning_strike");
+            ResourceLocation.fromNamespaceAndPath(MOD_ID, "lightning_strike");
 
     private AE2LTRecipeIds() {
     }

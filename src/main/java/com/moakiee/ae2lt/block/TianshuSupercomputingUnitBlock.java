@@ -48,22 +48,22 @@ public class TianshuSupercomputingUnitBlock extends Block implements MatrixMulti
     }
 
     @Override
-    protected VoxelShape getOcclusionShape(BlockState state, BlockGetter level, BlockPos pos) {
+    public VoxelShape getOcclusionShape(BlockState state, BlockGetter level, BlockPos pos) {
         return usesHiddenFormedModel(state) ? Shapes.empty() : super.getOcclusionShape(state, level, pos);
     }
 
     @Override
-    protected boolean propagatesSkylightDown(BlockState state, BlockGetter level, BlockPos pos) {
+    public boolean propagatesSkylightDown(BlockState state, BlockGetter level, BlockPos pos) {
         return usesHiddenFormedModel(state) || super.propagatesSkylightDown(state, level, pos);
     }
 
     @Override
-    protected int getLightBlock(BlockState state, BlockGetter level, BlockPos pos) {
+    public int getLightBlock(BlockState state, BlockGetter level, BlockPos pos) {
         return usesHiddenFormedModel(state) ? 0 : super.getLightBlock(state, level, pos);
     }
 
     @Override
-    protected float getShadeBrightness(BlockState state, BlockGetter level, BlockPos pos) {
+    public float getShadeBrightness(BlockState state, BlockGetter level, BlockPos pos) {
         return usesHiddenFormedModel(state) ? 1.0F : super.getShadeBrightness(state, level, pos);
     }
 

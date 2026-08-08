@@ -3,16 +3,16 @@ package com.moakiee.ae2lt.client.railgun;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.InputEvent;
-import net.neoforged.neoforge.event.entity.player.AttackEntityEvent;
-import net.neoforged.neoforge.event.tick.PlayerTickEvent;
-import net.neoforged.neoforge.network.PacketDistributor;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.client.event.InputEvent;
+import net.minecraftforge.event.entity.player.AttackEntityEvent;
+import net.minecraftforge.event.TickEvent;
 
 import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.item.railgun.ElectromagneticRailgunItem;
+import com.moakiee.ae2lt.network.NetworkInit;
 import com.moakiee.ae2lt.network.railgun.RailgunBeamTogglePacket;
 
 /**
@@ -22,7 +22,7 @@ import com.moakiee.ae2lt.network.railgun.RailgunBeamTogglePacket;
  * <p>While held, it also cancels the default attack interaction (so the gun
  * doesn't deal melee damage and doesn't swing the arm).
  */
-@EventBusSubscriber(modid = AE2LightningTech.MODID, value = Dist.CLIENT)
+@Mod.EventBusSubscriber(modid = AE2LightningTech.MODID, value = Dist.CLIENT)
 public final class RailgunBeamInput {
 
     private static boolean firing = false;
@@ -34,15 +34,16 @@ public final class RailgunBeamInput {
     }
 
     @SubscribeEvent
-    public static void onPlayerTick(PlayerTickEvent.Pre e) {
+    public static void onPlayerTick(TickEvent.PlayerTickEvent e) {
+        if (e.phase != TickEvent.Phase.START) return;
         Minecraft mc = Minecraft.getInstance();
-        if (mc.player == null || e.getEntity() != mc.player) return;
+        if (mc.player == null || e.player != mc.player) return;
         boolean holdingGun = mc.player.getMainHandItem().getItem() instanceof ElectromagneticRailgunItem;
         boolean attackPressed = mc.options.keyAttack.isDown() && mc.screen == null && holdingGun;
         if (attackPressed != firing) {
             firing = attackPressed;
             RailgunBeamRenderClient.setLocalRequestedFiring(firing);
-            PacketDistributor.sendToServer(new RailgunBeamTogglePacket(firing, InteractionHand.MAIN_HAND));
+            NetworkInit.sendToServer(new RailgunBeamTogglePacket(firing, InteractionHand.MAIN_HAND));
         }
     }
 

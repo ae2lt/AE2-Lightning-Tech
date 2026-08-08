@@ -322,11 +322,6 @@ public class FrequencyMenu extends AEBaseMenu implements ISubMenu {
         public AbstractContainerMenu createMenu(int containerId, Inventory playerInventory, Player player) {
             return factory.create(containerId, playerInventory);
         }
-
-        @Override
-        public boolean shouldTriggerClientSideContainerClosingOnOpen() {
-            return !openedFromAe2Menu;
-        }
     }
 
     public static void writeExtraData(FriendlyByteBuf buf, BlockEntity be, boolean hasParentMenu) {

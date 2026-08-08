@@ -21,14 +21,14 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.client.model.data.ModelData;
+import net.minecraftforge.client.model.data.ModelData;
 
 public final class PigmeeMolecularAssemblerRenderer
         implements BlockEntityRenderer<PigmeeMolecularAssemblerBlockEntity> {
-    public static final ModelResourceLocation LIGHTS_MODEL = ModelResourceLocation.standalone(
-            ResourceLocation.fromNamespaceAndPath(
-                    AE2LightningTech.MODID,
-                    "block/pigmee_molecular_assembler_lights"));
+    public static final ModelResourceLocation LIGHTS_MODEL = new ModelResourceLocation(
+            AE2LightningTech.MODID,
+            "block/pigmee_molecular_assembler_lights",
+            "normal");
 
     private final RandomSource particleRandom = RandomSource.create();
 

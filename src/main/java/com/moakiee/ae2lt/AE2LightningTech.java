@@ -2,7 +2,6 @@ package com.moakiee.ae2lt;
 
 import com.moakiee.ae2lt.registry.ModBlocks;
 import com.moakiee.ae2lt.registry.ModBlockEntities;
-import com.moakiee.ae2lt.registry.ModDataComponents;
 import com.moakiee.ae2lt.registry.ModEntities;
 import com.moakiee.ae2lt.registry.ModItems;
 import com.moakiee.ae2lt.registry.ModLootModifiers;
@@ -45,28 +44,45 @@ import com.moakiee.ae2lt.config.EarlyCompatibilityConfig;
 import com.moakiee.ae2lt.item.FixedInfiniteCellItem;
 import com.moakiee.ae2lt.item.FixedInfiniteCellItem.CellOutcome;
 import net.minecraft.ChatFormatting;
+import net.minecraft.core.Direction;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.ItemLike;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
-import net.neoforged.bus.api.IEventBus;
-import net.neoforged.fml.ModContainer;
-import net.neoforged.fml.ModList;
-import net.neoforged.fml.common.Mod;
-import net.neoforged.fml.config.ModConfig;
-import net.neoforged.fml.event.config.ModConfigEvent;
-import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
-import net.neoforged.neoforge.capabilities.Capabilities;
-import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
-import net.neoforged.neoforge.items.IItemHandler;
-import net.neoforged.neoforge.registries.DeferredHolder;
-import net.neoforged.neoforge.registries.DeferredRegister;
-import appeng.api.AECapabilities;
+import net.minecraftforge.common.capabilities.Capability;
+import net.minecraftforge.common.capabilities.ForgeCapabilities;
+import net.minecraftforge.common.capabilities.ICapabilityProvider;
+import net.minecraftforge.common.capabilities.RegisterCapabilitiesEvent;
+import net.minecraftforge.common.util.LazyOptional;
+import net.minecraftforge.common.util.NonNullSupplier;
+import net.minecraftforge.event.AttachCapabilitiesEvent;
+import net.minecraftforge.eventbus.api.IEventBus;
+import net.minecraftforge.fml.ModList;
+import net.minecraftforge.fml.ModLoadingContext;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.config.ModConfig;
+import net.minecraftforge.fml.event.config.ModConfigEvent;
+import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
+import net.minecraftforge.items.IItemHandler;
+import net.minecraftforge.items.IItemHandlerModifiable;
+import net.minecraftforge.energy.IEnergyStorage;
+import net.minecraftforge.fluids.capability.IFluidHandler;
+import net.minecraftforge.registries.RegistryObject;
+import net.minecraftforge.registries.DeferredRegister;
+import appeng.capabilities.Capabilities;
+import appeng.api.config.Actionable;
+import appeng.api.behaviors.GenericInternalInventory;
+import appeng.api.implementations.blockentities.ICraftingMachine;
+import appeng.api.implementations.items.IAEItemPowerStorage;
 import appeng.api.crafting.PatternDetailsHelper;
+import java.util.EnumMap;
 import appeng.api.networking.IInWorldGridNodeHost;
 import appeng.api.features.GridLinkables;
 import appeng.api.storage.StorageCells;
@@ -75,9 +91,9 @@ import appeng.block.AEBaseEntityBlock;
 import appeng.blockentity.AEBaseBlockEntity;
 import appeng.core.definitions.AEItems;
 import appeng.items.tools.powered.WirelessTerminalItem;
-import appeng.items.tools.powered.powersink.PoweredItemCapabilities;
 
 import com.moakiee.ae2lt.api.AE2LTCapabilities;
+import com.moakiee.ae2lt.api.lightning.ILightningEnergyHandler;
 import com.moakiee.ae2lt.api.frequency.FrequencyApi;
 import com.moakiee.ae2lt.grid.WirelessFrequencyManager;
 import com.moakiee.ae2lt.grid.wirelesslink.WirelessLinkRegistry;
@@ -100,11 +116,11 @@ import com.moakiee.ae2lt.overload.pattern.OverloadPatternDecoder;
 import com.moakiee.ae2lt.recipe.RecipeConflictScanner;
 import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternDecoder;
 
-import net.neoforged.neoforge.common.NeoForge;
-import net.neoforged.neoforge.event.entity.player.PlayerEvent;
-import net.neoforged.neoforge.event.server.ServerStartingEvent;
-import net.neoforged.neoforge.event.server.ServerStoppedEvent;
-import net.neoforged.neoforge.event.tick.ServerTickEvent;
+import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.entity.player.PlayerEvent;
+import net.minecraftforge.event.server.ServerStartingEvent;
+import net.minecraftforge.event.server.ServerStoppedEvent;
+import net.minecraftforge.event.TickEvent;
 import com.mojang.logging.LogUtils;
 import org.slf4j.Logger;
 
@@ -116,6 +132,10 @@ public class AE2LightningTech {
     private static final Logger LOG = LogUtils.getLogger();
     private static final CraftingCoreRegistry CRAFTING_CORE_REGISTRY = new CraftingCoreRegistry();
 
+    // Forge 1.20.1: capabilities are attached per object with a ResourceLocation id.
+    private static final ResourceLocation BLOCK_ENTITY_CAP_PROVIDER_ID =
+            ResourceLocation.fromNamespaceAndPath(MODID, "block_entity_cap_provider");
+
     public static final DeferredRegister<CreativeModeTab> CREATIVE_MODE_TABS =
             DeferredRegister.create(Registries.CREATIVE_MODE_TAB, MODID);
 
@@ -123,209 +143,209 @@ public class AE2LightningTech {
         return CRAFTING_CORE_REGISTRY;
     }
 
-    public static final DeferredHolder<CreativeModeTab, CreativeModeTab> MAIN_TAB =
+    public static final RegistryObject<CreativeModeTab> MAIN_TAB =
             CREATIVE_MODE_TABS.register("main", () -> CreativeModeTab.builder()
                     .title(Component.translatable("itemGroup.ae2lt"))
                     .withTabsBefore(CreativeModeTabs.SPAWN_EGGS)
                     .icon(() -> ModItems.OVERLOAD_CRYSTAL.get().getDefaultInstance())
                     .displayItems((parameters, output) -> {
                         // 基础方块与水晶生长
-                        output.accept(ModBlocks.SILICON_BLOCK);
-                        output.accept(ModBlocks.OVERLOAD_CRYSTAL_BLOCK);
-                        output.accept(ModBlocks.OVERLOAD_MACHINE_FRAME);
-                        output.accept(ModBlocks.FIRMAMENT_CONVERSION_CORE);
-                        output.accept(ModBlocks.OVERLOAD_TNT);
-                        output.accept(ModBlocks.FLAWLESS_BUDDING_OVERLOAD_CRYSTAL);
-                        output.accept(ModBlocks.FLAWED_BUDDING_OVERLOAD_CRYSTAL);
-                        output.accept(ModBlocks.CRACKED_BUDDING_OVERLOAD_CRYSTAL);
-                        output.accept(ModBlocks.DAMAGED_BUDDING_OVERLOAD_CRYSTAL);
-                        output.accept(ModBlocks.SMALL_OVERLOAD_CRYSTAL_BUD);
-                        output.accept(ModBlocks.MEDIUM_OVERLOAD_CRYSTAL_BUD);
-                        output.accept(ModBlocks.LARGE_OVERLOAD_CRYSTAL_BUD);
-                        output.accept(ModBlocks.OVERLOAD_CRYSTAL_CLUSTER);
+                        acceptCreative(output, ModBlocks.SILICON_BLOCK);
+                        acceptCreative(output, ModBlocks.OVERLOAD_CRYSTAL_BLOCK);
+                        acceptCreative(output, ModBlocks.OVERLOAD_MACHINE_FRAME);
+                        acceptCreative(output, ModBlocks.FIRMAMENT_CONVERSION_CORE);
+                        acceptCreative(output, ModBlocks.OVERLOAD_TNT);
+                        acceptCreative(output, ModBlocks.FLAWLESS_BUDDING_OVERLOAD_CRYSTAL);
+                        acceptCreative(output, ModBlocks.FLAWED_BUDDING_OVERLOAD_CRYSTAL);
+                        acceptCreative(output, ModBlocks.CRACKED_BUDDING_OVERLOAD_CRYSTAL);
+                        acceptCreative(output, ModBlocks.DAMAGED_BUDDING_OVERLOAD_CRYSTAL);
+                        acceptCreative(output, ModBlocks.SMALL_OVERLOAD_CRYSTAL_BUD);
+                        acceptCreative(output, ModBlocks.MEDIUM_OVERLOAD_CRYSTAL_BUD);
+                        acceptCreative(output, ModBlocks.LARGE_OVERLOAD_CRYSTAL_BUD);
+                        acceptCreative(output, ModBlocks.OVERLOAD_CRYSTAL_CLUSTER);
 
                         // 闪电收集与加工机器
-                        output.accept(ModBlocks.LIGHTNING_COLLECTOR);
-                        output.accept(ModBlocks.TESLA_COIL);
-                        output.accept(ModBlocks.ATMOSPHERIC_IONIZER);
-                        output.accept(ModBlocks.CRYSTAL_CATALYZER);
-                        output.accept(ModBlocks.LIGHTNING_SIMULATION_CHAMBER);
-                        output.accept(ModBlocks.LIGHTNING_ASSEMBLY_CHAMBER);
-                        output.accept(ModBlocks.OVERLOAD_PROCESSING_FACTORY);
+                        acceptCreative(output, ModBlocks.LIGHTNING_COLLECTOR);
+                        acceptCreative(output, ModBlocks.TESLA_COIL);
+                        acceptCreative(output, ModBlocks.ATMOSPHERIC_IONIZER);
+                        acceptCreative(output, ModBlocks.CRYSTAL_CATALYZER);
+                        acceptCreative(output, ModBlocks.LIGHTNING_SIMULATION_CHAMBER);
+                        acceptCreative(output, ModBlocks.LIGHTNING_ASSEMBLY_CHAMBER);
+                        acceptCreative(output, ModBlocks.OVERLOAD_PROCESSING_FACTORY);
 
                         // 过载 ME 网络设备
-                        output.accept(ModBlocks.OVERLOADED_CONTROLLER);
-                        output.accept(ModBlocks.OVERLOADED_PATTERN_PROVIDER);
-                        output.accept(ModBlocks.EXTENDED_OVERLOADED_PATTERN_PROVIDER);
-                        output.accept(ModBlocks.OVERLOADED_INTERFACE);
+                        acceptCreative(output, ModBlocks.OVERLOADED_CONTROLLER);
+                        acceptCreative(output, ModBlocks.OVERLOADED_PATTERN_PROVIDER);
+                        acceptCreative(output, ModBlocks.EXTENDED_OVERLOADED_PATTERN_PROVIDER);
+                        acceptCreative(output, ModBlocks.OVERLOADED_INTERFACE);
                         if (ModBlocks.hasOverloadedPowerSupply()) {
-                            output.accept(ModBlocks.OVERLOADED_POWER_SUPPLY);
+                            acceptCreative(output, ModBlocks.OVERLOADED_POWER_SUPPLY);
                         }
-                        output.accept(ModBlocks.WIRELESS_RECEIVER);
-                        output.accept(ModBlocks.WIRELESS_OVERLOADED_CONTROLLER);
-                        output.accept(ModBlocks.ADVANCED_WIRELESS_OVERLOADED_CONTROLLER);
+                        acceptCreative(output, ModBlocks.WIRELESS_RECEIVER);
+                        acceptCreative(output, ModBlocks.WIRELESS_OVERLOADED_CONTROLLER);
+                        acceptCreative(output, ModBlocks.ADVANCED_WIRELESS_OVERLOADED_CONTROLLER);
 
                         // 过载 ME 线缆（默认色、原版染料色顺序）
-                        output.accept(ModItems.OVERLOADED_CABLE);
-                        output.accept(ModItems.OVERLOADED_CABLE_WHITE);
-                        output.accept(ModItems.OVERLOADED_CABLE_ORANGE);
-                        output.accept(ModItems.OVERLOADED_CABLE_MAGENTA);
-                        output.accept(ModItems.OVERLOADED_CABLE_LIGHT_BLUE);
-                        output.accept(ModItems.OVERLOADED_CABLE_YELLOW);
-                        output.accept(ModItems.OVERLOADED_CABLE_LIME);
-                        output.accept(ModItems.OVERLOADED_CABLE_PINK);
-                        output.accept(ModItems.OVERLOADED_CABLE_GRAY);
-                        output.accept(ModItems.OVERLOADED_CABLE_LIGHT_GRAY);
-                        output.accept(ModItems.OVERLOADED_CABLE_CYAN);
-                        output.accept(ModItems.OVERLOADED_CABLE_PURPLE);
-                        output.accept(ModItems.OVERLOADED_CABLE_BLUE);
-                        output.accept(ModItems.OVERLOADED_CABLE_BROWN);
-                        output.accept(ModItems.OVERLOADED_CABLE_GREEN);
-                        output.accept(ModItems.OVERLOADED_CABLE_RED);
-                        output.accept(ModItems.OVERLOADED_CABLE_BLACK);
+                        acceptCreative(output, ModItems.OVERLOADED_CABLE);
+                        acceptCreative(output, ModItems.OVERLOADED_CABLE_WHITE);
+                        acceptCreative(output, ModItems.OVERLOADED_CABLE_ORANGE);
+                        acceptCreative(output, ModItems.OVERLOADED_CABLE_MAGENTA);
+                        acceptCreative(output, ModItems.OVERLOADED_CABLE_LIGHT_BLUE);
+                        acceptCreative(output, ModItems.OVERLOADED_CABLE_YELLOW);
+                        acceptCreative(output, ModItems.OVERLOADED_CABLE_LIME);
+                        acceptCreative(output, ModItems.OVERLOADED_CABLE_PINK);
+                        acceptCreative(output, ModItems.OVERLOADED_CABLE_GRAY);
+                        acceptCreative(output, ModItems.OVERLOADED_CABLE_LIGHT_GRAY);
+                        acceptCreative(output, ModItems.OVERLOADED_CABLE_CYAN);
+                        acceptCreative(output, ModItems.OVERLOADED_CABLE_PURPLE);
+                        acceptCreative(output, ModItems.OVERLOADED_CABLE_BLUE);
+                        acceptCreative(output, ModItems.OVERLOADED_CABLE_BROWN);
+                        acceptCreative(output, ModItems.OVERLOADED_CABLE_GREEN);
+                        acceptCreative(output, ModItems.OVERLOADED_CABLE_RED);
+                        acceptCreative(output, ModItems.OVERLOADED_CABLE_BLACK);
 
                         // 闪电存储（外壳、容量元件、存储组件、成品元件）
-                        output.accept(ModItems.LIGHTNING_ITEM_CELL_HOUSING);
-                        output.accept(ModItems.LIGHTNING_STORAGE_COMPONENT_I);
-                        output.accept(ModItems.LIGHTNING_STORAGE_COMPONENT_II);
-                        output.accept(ModItems.LIGHTNING_STORAGE_COMPONENT_III);
-                        output.accept(ModItems.LIGHTNING_STORAGE_COMPONENT_IV);
-                        output.accept(ModItems.LIGHTNING_STORAGE_COMPONENT_V);
-                        output.accept(ModItems.BULK_LIGHTNING_STORAGE_COMPONENT);
-                        output.accept(ModItems.LIGHTNING_CELL_COMPONENT_I);
-                        output.accept(ModItems.LIGHTNING_CELL_COMPONENT_II);
-                        output.accept(ModItems.LIGHTNING_CELL_COMPONENT_III);
-                        output.accept(ModItems.LIGHTNING_CELL_COMPONENT_IV);
-                        output.accept(ModItems.LIGHTNING_CELL_COMPONENT_V);
-                        output.accept(ModItems.BULK_LIGHTNING_CELL_COMPONENT);
-                        output.accept(ModItems.INFINITE_STORAGE_CELL);
+                        acceptCreative(output, ModItems.LIGHTNING_ITEM_CELL_HOUSING);
+                        acceptCreative(output, ModItems.LIGHTNING_STORAGE_COMPONENT_I);
+                        acceptCreative(output, ModItems.LIGHTNING_STORAGE_COMPONENT_II);
+                        acceptCreative(output, ModItems.LIGHTNING_STORAGE_COMPONENT_III);
+                        acceptCreative(output, ModItems.LIGHTNING_STORAGE_COMPONENT_IV);
+                        acceptCreative(output, ModItems.LIGHTNING_STORAGE_COMPONENT_V);
+                        acceptCreative(output, ModItems.BULK_LIGHTNING_STORAGE_COMPONENT);
+                        acceptCreative(output, ModItems.LIGHTNING_CELL_COMPONENT_I);
+                        acceptCreative(output, ModItems.LIGHTNING_CELL_COMPONENT_II);
+                        acceptCreative(output, ModItems.LIGHTNING_CELL_COMPONENT_III);
+                        acceptCreative(output, ModItems.LIGHTNING_CELL_COMPONENT_IV);
+                        acceptCreative(output, ModItems.LIGHTNING_CELL_COMPONENT_V);
+                        acceptCreative(output, ModItems.BULK_LIGHTNING_CELL_COMPONENT);
+                        acceptCreative(output, ModItems.INFINITE_STORAGE_CELL);
                         output.accept(FixedInfiniteCellItem.createDisplayedResultStack(CellOutcome.HIGH_VOLTAGE));
                         output.accept(FixedInfiniteCellItem.createDisplayedResultStack(CellOutcome.EXTREME_HIGH_VOLTAGE));
 
                         // 天枢超算阵列
-                        output.accept(ModBlocks.TIANSHU_SUPERCOMPUTER_CASING);
-                        output.accept(ModBlocks.PHASE_CHANGE_COOLING_UNIT);
-                        output.accept(ModBlocks.TIANSHU_SUPERCOMPUTER_GLASS);
-                        output.accept(ModBlocks.TIANSHU_SUPERCOMPUTER_CONTROLLER);
-                        output.accept(ModBlocks.TIANSHU_SUPERCOMPUTER_PORT);
-                        output.accept(ModBlocks.BASELINE_SUPERCOMPUTING_UNIT);
-                        output.accept(ModBlocks.QUANTUM_SUPERCOMPUTING_UNIT);
-                        output.accept(ModBlocks.OVERLOAD_SUPERCOMPUTING_UNIT);
-                        output.accept(ModBlocks.MULTIDIMENSIONAL_SUPERCOMPUTING_UNIT);
-                        output.accept(ModBlocks.TIANSHU_BLANK_UNIT);
-                        output.accept(ModBlocks.STORAGE_SUPERCOMPUTING_UNIT);
-                        output.accept(ModBlocks.PARALLEL_SUPERCOMPUTING_UNIT);
-                        output.accept(ModBlocks.TIANSHU_AMPLIFIER_UNIT);
-                        output.accept(ModBlocks.CLOSED_LOOP_PATTERN_STORAGE);
-                        output.accept(ModBlocks.CLOSED_LOOP_SEED_STORAGE);
-                        output.accept(ModItems.TIANSHU_PATTERN_ENCODING_TERMINAL);
-                        output.accept(ModItems.TIANSHU_WIRELESS_PATTERN_ENCODING_TERMINAL);
+                        acceptCreative(output, ModBlocks.TIANSHU_SUPERCOMPUTER_CASING);
+                        acceptCreative(output, ModBlocks.PHASE_CHANGE_COOLING_UNIT);
+                        acceptCreative(output, ModBlocks.TIANSHU_SUPERCOMPUTER_GLASS);
+                        acceptCreative(output, ModBlocks.TIANSHU_SUPERCOMPUTER_CONTROLLER);
+                        acceptCreative(output, ModBlocks.TIANSHU_SUPERCOMPUTER_PORT);
+                        acceptCreative(output, ModBlocks.BASELINE_SUPERCOMPUTING_UNIT);
+                        acceptCreative(output, ModBlocks.QUANTUM_SUPERCOMPUTING_UNIT);
+                        acceptCreative(output, ModBlocks.OVERLOAD_SUPERCOMPUTING_UNIT);
+                        acceptCreative(output, ModBlocks.MULTIDIMENSIONAL_SUPERCOMPUTING_UNIT);
+                        acceptCreative(output, ModBlocks.TIANSHU_BLANK_UNIT);
+                        acceptCreative(output, ModBlocks.STORAGE_SUPERCOMPUTING_UNIT);
+                        acceptCreative(output, ModBlocks.PARALLEL_SUPERCOMPUTING_UNIT);
+                        acceptCreative(output, ModBlocks.TIANSHU_AMPLIFIER_UNIT);
+                        acceptCreative(output, ModBlocks.CLOSED_LOOP_PATTERN_STORAGE);
+                        acceptCreative(output, ModBlocks.CLOSED_LOOP_SEED_STORAGE);
+                        acceptCreative(output, ModItems.TIANSHU_PATTERN_ENCODING_TERMINAL);
+                        acceptCreative(output, ModItems.TIANSHU_WIRELESS_PATTERN_ENCODING_TERMINAL);
 
                         // 天枢物质扭曲矩阵
-                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_CASING);
-                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_CONSTRAINT_FRAME);
-                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_GLASS);
-                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_CONTROLLER);
-                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_PORT);
-                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_STABLE_MAIN_CORE);
-                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_QUANTUM_MAIN_CORE);
-                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_OVERLOAD_MAIN_CORE);
-                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_MULTIDIMENSIONAL_MAIN_CORE);
-                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_THREAD_UNIT_T1);
-                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_THREAD_UNIT_T2);
-                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_THERMAL_CONTROL_UNIT_T1);
-                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_THERMAL_CONTROL_UNIT_T2);
-                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_PATTERN_STORAGE_T1);
-                        output.accept(ModBlocks.MATTER_WARPING_MATRIX_PATTERN_STORAGE_T2);
-                        output.accept(ModItems.MATTER_WARPING_MATRIX_PATTERN_STORAGE_UPGRADE);
+                        acceptCreative(output, ModBlocks.MATTER_WARPING_MATRIX_CASING);
+                        acceptCreative(output, ModBlocks.MATTER_WARPING_MATRIX_CONSTRAINT_FRAME);
+                        acceptCreative(output, ModBlocks.MATTER_WARPING_MATRIX_GLASS);
+                        acceptCreative(output, ModBlocks.MATTER_WARPING_MATRIX_CONTROLLER);
+                        acceptCreative(output, ModBlocks.MATTER_WARPING_MATRIX_PORT);
+                        acceptCreative(output, ModBlocks.MATTER_WARPING_MATRIX_STABLE_MAIN_CORE);
+                        acceptCreative(output, ModBlocks.MATTER_WARPING_MATRIX_QUANTUM_MAIN_CORE);
+                        acceptCreative(output, ModBlocks.MATTER_WARPING_MATRIX_OVERLOAD_MAIN_CORE);
+                        acceptCreative(output, ModBlocks.MATTER_WARPING_MATRIX_MULTIDIMENSIONAL_MAIN_CORE);
+                        acceptCreative(output, ModBlocks.MATTER_WARPING_MATRIX_THREAD_UNIT_T1);
+                        acceptCreative(output, ModBlocks.MATTER_WARPING_MATRIX_THREAD_UNIT_T2);
+                        acceptCreative(output, ModBlocks.MATTER_WARPING_MATRIX_THERMAL_CONTROL_UNIT_T1);
+                        acceptCreative(output, ModBlocks.MATTER_WARPING_MATRIX_THERMAL_CONTROL_UNIT_T2);
+                        acceptCreative(output, ModBlocks.MATTER_WARPING_MATRIX_PATTERN_STORAGE_T1);
+                        acceptCreative(output, ModBlocks.MATTER_WARPING_MATRIX_PATTERN_STORAGE_T2);
+                        acceptCreative(output, ModItems.MATTER_WARPING_MATRIX_PATTERN_STORAGE_UPGRADE);
 
                         // 基础材料与中间产物
-                        output.accept(ModItems.OVERLOAD_CRYSTAL);
-                        output.accept(ModItems.OVERLOAD_CRYSTAL_DUST);
-                        output.accept(ModItems.ELECTRO_CHIME_CRYSTAL);
-                        output.accept(ModItems.PERFECT_ELECTRO_CHIME_CRYSTAL);
-                        output.accept(ModItems.CLEAR_CONDENSATE);
-                        output.accept(ModItems.RAIN_CONDENSATE);
-                        output.accept(ModItems.THUNDERSTORM_CONDENSATE);
-                        output.accept(ModItems.FIRMAMENT_DUST);
-                        output.accept(ModItems.FIRMAMENT_MIXTURE);
-                        output.accept(ModItems.FIRMAMENT_ALLOY_INGOT);
-                        output.accept(ModItems.FIRMAMENT_ESSENCE);
-                        output.accept(ModItems.INACTIVE_FIRMAMENT_SPIRIT_CORE);
-                        output.accept(ModItems.FIRMAMENT_SPIRIT_CORE_OCULUS);
-                        output.accept(ModItems.FIRMAMENT_SPIRIT_CORE_CORE);
-                        output.accept(ModItems.FIRMAMENT_SPIRIT_CORE_CONDUIT);
-                        output.accept(ModItems.FIRMAMENT_SPIRIT_CORE_STRIDE);
-                        output.accept(ModItems.FIRMAMENT_SUPERCONDUCTING_WIRE);
-                        output.accept(ModItems.OVERLOAD_ALLOY_BLANK);
-                        output.accept(ModItems.OVERLOAD_ALLOY);
-                        output.accept(ModItems.OVERLOAD_ALLOY_PLATE);
-                        output.accept(ModItems.OVERLOAD_INSCRIBER_PRESS);
-                        output.accept(ModItems.UNOVERLOADED_CIRCUIT_BOARD);
-                        output.accept(ModItems.OVERLOAD_CIRCUIT_BOARD);
-                        output.accept(ModItems.OVERLOAD_PROCESSOR);
-                        output.accept(ModItems.OVERLOAD_SINGULARITY);
-                        output.accept(ModItems.ULTIMATE_OVERLOAD_CORE);
-                        output.accept(ModItems.BASIC_TOPOLOGICAL_LATTICE);
-                        output.accept(ModItems.DENSE_TOPOLOGICAL_LATTICE);
-                        output.accept(ModItems.ENTANGLED_TOPOLOGICAL_LATTICE);
-                        output.accept(ModItems.HYPERDIMENSIONAL_TOPOLOGICAL_LATTICE);
-                        output.accept(ModItems.LIGHTNING_COLLAPSE_MATRIX);
-                        output.accept(ModItems.FLOATING_MATTER);
+                        acceptCreative(output, ModItems.OVERLOAD_CRYSTAL);
+                        acceptCreative(output, ModItems.OVERLOAD_CRYSTAL_DUST);
+                        acceptCreative(output, ModItems.ELECTRO_CHIME_CRYSTAL);
+                        acceptCreative(output, ModItems.PERFECT_ELECTRO_CHIME_CRYSTAL);
+                        acceptCreative(output, ModItems.CLEAR_CONDENSATE);
+                        acceptCreative(output, ModItems.RAIN_CONDENSATE);
+                        acceptCreative(output, ModItems.THUNDERSTORM_CONDENSATE);
+                        acceptCreative(output, ModItems.FIRMAMENT_DUST);
+                        acceptCreative(output, ModItems.FIRMAMENT_MIXTURE);
+                        acceptCreative(output, ModItems.FIRMAMENT_ALLOY_INGOT);
+                        acceptCreative(output, ModItems.FIRMAMENT_ESSENCE);
+                        acceptCreative(output, ModItems.INACTIVE_FIRMAMENT_SPIRIT_CORE);
+                        acceptCreative(output, ModItems.FIRMAMENT_SPIRIT_CORE_OCULUS);
+                        acceptCreative(output, ModItems.FIRMAMENT_SPIRIT_CORE_CORE);
+                        acceptCreative(output, ModItems.FIRMAMENT_SPIRIT_CORE_CONDUIT);
+                        acceptCreative(output, ModItems.FIRMAMENT_SPIRIT_CORE_STRIDE);
+                        acceptCreative(output, ModItems.FIRMAMENT_SUPERCONDUCTING_WIRE);
+                        acceptCreative(output, ModItems.OVERLOAD_ALLOY_BLANK);
+                        acceptCreative(output, ModItems.OVERLOAD_ALLOY);
+                        acceptCreative(output, ModItems.OVERLOAD_ALLOY_PLATE);
+                        acceptCreative(output, ModItems.OVERLOAD_INSCRIBER_PRESS);
+                        acceptCreative(output, ModItems.UNOVERLOADED_CIRCUIT_BOARD);
+                        acceptCreative(output, ModItems.OVERLOAD_CIRCUIT_BOARD);
+                        acceptCreative(output, ModItems.OVERLOAD_PROCESSOR);
+                        acceptCreative(output, ModItems.OVERLOAD_SINGULARITY);
+                        acceptCreative(output, ModItems.ULTIMATE_OVERLOAD_CORE);
+                        acceptCreative(output, ModItems.BASIC_TOPOLOGICAL_LATTICE);
+                        acceptCreative(output, ModItems.DENSE_TOPOLOGICAL_LATTICE);
+                        acceptCreative(output, ModItems.ENTANGLED_TOPOLOGICAL_LATTICE);
+                        acceptCreative(output, ModItems.HYPERDIMENSIONAL_TOPOLOGICAL_LATTICE);
+                        acceptCreative(output, ModItems.LIGHTNING_COLLAPSE_MATRIX);
+                        acceptCreative(output, ModItems.FLOATING_MATTER);
 
                         // 样板、网络工具与升级件
-                        output.accept(ModItems.OVERLOAD_PATTERN);
-                        output.accept(ModItems.CLOSED_LOOP_PATTERN);
-                        output.accept(ModItems.OVERLOAD_PATTERN_ENCODER);
-                        output.accept(ModItems.OVERLOADED_WIRELESS_CONNECT_TOOL);
-                        output.accept(ModItems.OVERLOADED_FREQUENCY_CARD);
-                        output.accept(ModItems.OVERLOADED_PATTERN_PROVIDER_UPGRADE);
-                        output.accept(ModItems.EXTENDED_OVERLOADED_PATTERN_PROVIDER_UPGRADE);
-                        output.accept(ModItems.OVERLOADED_FILTER_COMPONENT);
+                        acceptCreative(output, ModItems.OVERLOAD_PATTERN);
+                        acceptCreative(output, ModItems.CLOSED_LOOP_PATTERN);
+                        acceptCreative(output, ModItems.OVERLOAD_PATTERN_ENCODER);
+                        acceptCreative(output, ModItems.OVERLOADED_WIRELESS_CONNECT_TOOL);
+                        acceptCreative(output, ModItems.OVERLOADED_FREQUENCY_CARD);
+                        acceptCreative(output, ModItems.OVERLOADED_PATTERN_PROVIDER_UPGRADE);
+                        acceptCreative(output, ModItems.EXTENDED_OVERLOADED_PATTERN_PROVIDER_UPGRADE);
+                        acceptCreative(output, ModItems.OVERLOADED_FILTER_COMPONENT);
 
                         // 苍穹织雷装备、能量模块
-                        output.accept(ModBlocks.OVERLOAD_DEVICE_WORKBENCH);
-                        output.accept(ModItems.OVERLOAD_MODULE_BASE);
-                        output.accept(ModItems.CELESTWEAVE_OCULUS);
-                        output.accept(ModItems.CELESTWEAVE_CORE);
-                        output.accept(ModItems.CELESTWEAVE_CONDUIT);
-                        output.accept(ModItems.CELESTWEAVE_STRIDE);
-                        output.accept(ModItems.ENERGY_MODULE_T1);
-                        output.accept(ModItems.ENERGY_MODULE_T2);
-                        output.accept(ModItems.ENERGY_MODULE_T3);
+                        acceptCreative(output, ModBlocks.OVERLOAD_DEVICE_WORKBENCH);
+                        acceptCreative(output, ModItems.OVERLOAD_MODULE_BASE);
+                        acceptCreative(output, ModItems.CELESTWEAVE_OCULUS);
+                        acceptCreative(output, ModItems.CELESTWEAVE_CORE);
+                        acceptCreative(output, ModItems.CELESTWEAVE_CONDUIT);
+                        acceptCreative(output, ModItems.CELESTWEAVE_STRIDE);
+                        acceptCreative(output, ModItems.ENERGY_MODULE_T1);
+                        acceptCreative(output, ModItems.ENERGY_MODULE_T2);
+                        acceptCreative(output, ModItems.ENERGY_MODULE_T3);
 
                         // 苍穹织雷头部模块
-                        output.accept(ModItems.CELESTWEAVE_SUBMODULE_NIGHT_VISION);
-                        output.accept(ModItems.CELESTWEAVE_SUBMODULE_WATER_BREATHING);
-                        output.accept(ModItems.CELESTWEAVE_SUBMODULE_SATURATION);
+                        acceptCreative(output, ModItems.CELESTWEAVE_SUBMODULE_NIGHT_VISION);
+                        acceptCreative(output, ModItems.CELESTWEAVE_SUBMODULE_WATER_BREATHING);
+                        acceptCreative(output, ModItems.CELESTWEAVE_SUBMODULE_SATURATION);
 
                         // 苍穹织雷胸部模块
-                        output.accept(ModItems.CELESTWEAVE_SUBMODULE_REACH_EXTENSION);
-                        output.accept(ModItems.CELESTWEAVE_SUBMODULE_MATRIX_SHIELD);
-                        output.accept(ModItems.CELESTWEAVE_SUBMODULE_PHASE_SHIELD);
-                        output.accept(ModItems.CELESTWEAVE_SUBMODULE_REFLECT);
-                        output.accept(ModItems.CELESTWEAVE_SUBMODULE_UNDYING);
-                        output.accept(ModItems.CELESTWEAVE_SUBMODULE_PURIFICATION);
-                        output.accept(ModItems.CELESTWEAVE_SUBMODULE_RADIATION_PROTECTION);
-                        output.accept(ModItems.CELESTWEAVE_SUBMODULE_LASER_PROTECTION);
-                        output.accept(ModItems.CELESTWEAVE_SUBMODULE_PHASE_LOCK);
+                        acceptCreative(output, ModItems.CELESTWEAVE_SUBMODULE_REACH_EXTENSION);
+                        acceptCreative(output, ModItems.CELESTWEAVE_SUBMODULE_MATRIX_SHIELD);
+                        acceptCreative(output, ModItems.CELESTWEAVE_SUBMODULE_PHASE_SHIELD);
+                        acceptCreative(output, ModItems.CELESTWEAVE_SUBMODULE_REFLECT);
+                        acceptCreative(output, ModItems.CELESTWEAVE_SUBMODULE_UNDYING);
+                        acceptCreative(output, ModItems.CELESTWEAVE_SUBMODULE_PURIFICATION);
+                        acceptCreative(output, ModItems.CELESTWEAVE_SUBMODULE_RADIATION_PROTECTION);
+                        acceptCreative(output, ModItems.CELESTWEAVE_SUBMODULE_LASER_PROTECTION);
+                        acceptCreative(output, ModItems.CELESTWEAVE_SUBMODULE_PHASE_LOCK);
 
                         // 苍穹织雷腿部模块
-                        output.accept(ModItems.CELESTWEAVE_SUBMODULE_FLIGHT);
-                        output.accept(ModItems.CELESTWEAVE_SUBMODULE_PHASE_FLIGHT);
+                        acceptCreative(output, ModItems.CELESTWEAVE_SUBMODULE_FLIGHT);
+                        acceptCreative(output, ModItems.CELESTWEAVE_SUBMODULE_PHASE_FLIGHT);
 
                         // 苍穹织雷足部模块
-                        output.accept(ModItems.CELESTWEAVE_SUBMODULE_DASH);
-                        output.accept(ModItems.CELESTWEAVE_SUBMODULE_DIG_AFFINITY);
-                        output.accept(ModItems.CELESTWEAVE_SUBMODULE_MOVEMENT_ASSIST);
+                        acceptCreative(output, ModItems.CELESTWEAVE_SUBMODULE_DASH);
+                        acceptCreative(output, ModItems.CELESTWEAVE_SUBMODULE_DIG_AFFINITY);
+                        acceptCreative(output, ModItems.CELESTWEAVE_SUBMODULE_MOVEMENT_ASSIST);
 
                         // 电磁炮与模块
-                        output.accept(ModItems.ELECTROMAGNETIC_RAILGUN);
-                        output.accept(ModItems.RAILGUN_MODULE_CORE);
-                        output.accept(ModItems.RAILGUN_MODULE_COMPUTE);
-                        output.accept(ModItems.RAILGUN_MODULE_ACCELERATION);
-                        output.accept(ModItems.RAILGUN_MODULE_RANGE);
-                        output.accept(ModItems.RAILGUN_MODULE_OVERLOAD_EXECUTION);
+                        acceptCreative(output, ModItems.ELECTROMAGNETIC_RAILGUN);
+                        acceptCreative(output, ModItems.RAILGUN_MODULE_CORE);
+                        acceptCreative(output, ModItems.RAILGUN_MODULE_COMPUTE);
+                        acceptCreative(output, ModItems.RAILGUN_MODULE_ACCELERATION);
+                        acceptCreative(output, ModItems.RAILGUN_MODULE_RANGE);
+                        acceptCreative(output, ModItems.RAILGUN_MODULE_OVERLOAD_EXECUTION);
 
                         // Fumo 收藏品（猪咪系列留在独立物品栏）
                         output.accept(ModFumos.MOAKIEE_FUMO_ITEM.get());
@@ -333,7 +353,7 @@ public class AE2LightningTech {
                     })
                     .build());
 
-    public static final DeferredHolder<CreativeModeTab, CreativeModeTab> PIGMEE_TAB =
+    public static final RegistryObject<CreativeModeTab> PIGMEE_TAB =
             CREATIVE_MODE_TABS.register("pigmee", () -> CreativeModeTab.builder()
                     .title(Component.translatable("itemGroup.ae2lt.pigmee"))
                     .withTabsAfter(MAIN_TAB.getKey())
@@ -341,54 +361,61 @@ public class AE2LightningTech {
                     .displayItems((parameters, output) -> {
                         output.accept(ModFumos.PIGMEE_FUMO_ITEM.get());
                         output.accept(ModFumos.CREATIVE_PIGMEE_FUMO_ITEM.get());
-                        output.accept(ModBlocks.PIGMEE_MENTALMATH_UNIT);
-                        output.accept(ModBlocks.PIGMEE_PATTERN_PROVIDER);
-                        output.accept(ModBlocks.PIGMEE_MOLECULAR_ASSEMBLER);
-                        output.accept(ModItems.PIGMEE_CORE);
-                        output.accept(ModItems.PIGMEE_ITEM_CELL_HOUSING);
-                        output.accept(ModItems.PIGMEE_STORAGE_COMPONENT);
-                        output.accept(ModItems.PIGMEE_STORAGE_CELL);
+                        acceptCreative(output, ModBlocks.PIGMEE_MENTALMATH_UNIT);
+                        acceptCreative(output, ModBlocks.PIGMEE_PATTERN_PROVIDER);
+                        acceptCreative(output, ModBlocks.PIGMEE_MOLECULAR_ASSEMBLER);
+                        acceptCreative(output, ModItems.PIGMEE_CORE);
+                        acceptCreative(output, ModItems.PIGMEE_ITEM_CELL_HOUSING);
+                        acceptCreative(output, ModItems.PIGMEE_STORAGE_COMPONENT);
+                        acceptCreative(output, ModItems.PIGMEE_STORAGE_CELL);
                     })
                     .build());
 
-    public AE2LightningTech(IEventBus modEventBus, ModContainer modContainer) {
+    public AE2LightningTech() {
+        // Forge 1.20.1: the mod bus comes from FMLJavaModLoadingContext; the
+        // NeoForge constructor injection (IEventBus, ModContainer) does not exist.
+        IEventBus modEventBus = net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext.get().getModEventBus();
+
         AE2LTConfigMigration.runIfNeeded();
         WirelessPatternProviderPolicy.setMaxDistanceSupplier(
                 AE2LTCommonConfig::wirelessConnectorMaxDistance);
-        // AddTerminalEvent is consumed during item registration. Install the callback now,
-        // while its ItemWT instance remains deferred until that registry is writable.
-        Ae2wtlibIntegration.registerTerminal();
         ModFumos.register();
         LegacyRegistryAliases.register();
         ModBlocks.BLOCKS.register(modEventBus);
         ModBlockEntities.BLOCK_ENTITY_TYPES.register(modEventBus);
         ModEntities.ENTITY_TYPES.register(modEventBus);
-        CelestweaveArmorMaterials.ARMOR_MATERIALS.register(modEventBus);
         ModItems.ITEMS.register(modEventBus);
         ModMenuTypes.MENU_TYPES.register(modEventBus);
         ModRecipeTypes.RECIPE_SERIALIZERS.register(modEventBus);
         ModRecipeTypes.RECIPE_TYPES.register(modEventBus);
-        ModDataComponents.DATA_COMPONENTS.register(modEventBus);
         ModMobEffects.EFFECTS.register(modEventBus);
         ModSounds.SOUND_EVENTS.register(modEventBus);
         ModStructureTypes.STRUCTURE_TYPES.register(modEventBus);
         ModStructureTypes.STRUCTURE_PIECES.register(modEventBus);
         ModLootModifiers.LOOT_MODIFIER_SERIALIZERS.register(modEventBus);
         CREATIVE_MODE_TABS.register(modEventBus);
+        // ae2wtlib is optional: only touch the integration when it is actually loaded
+        // (the integration class references ae2wtlib types and must not be loaded without it).
+        if (net.minecraftforge.fml.loading.FMLLoader.getLoadingModList()
+                .getModFileById("ae2wtlib") != null) {
+            Ae2wtlibIntegration.registerTerminal();
+        }
         modEventBus.addListener(ModAEKeyTypes::register);
         modEventBus.addListener(this::registerCapabilities);
         modEventBus.addListener(this::commonSetup);
         modEventBus.addListener(this::onConfigChanged);
-        modContainer.registerConfig(ModConfig.Type.COMMON, AE2LTCommonConfig.SPEC);
-        modContainer.registerConfig(ModConfig.Type.CLIENT,
+        ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, AE2LTCommonConfig.SPEC);
+        ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT,
                 com.moakiee.ae2lt.config.AE2LTClientConfig.SPEC, "ae2lt-client.toml");
 
         warnAboutDataEnergistics();
 
-        NeoForge.EVENT_BUS.addListener(this::onServerStarting);
-        NeoForge.EVENT_BUS.addListener(this::onServerStopped);
-        NeoForge.EVENT_BUS.addListener(this::onServerTickPost);
-        NeoForge.EVENT_BUS.addListener(this::onPlayerLoggedIn);
+        MinecraftForge.EVENT_BUS.addListener(this::onServerStarting);
+        MinecraftForge.EVENT_BUS.addListener(this::onServerStopped);
+        MinecraftForge.EVENT_BUS.addListener(this::onServerTick);
+        MinecraftForge.EVENT_BUS.addListener(this::onPlayerLoggedIn);
+        MinecraftForge.EVENT_BUS.addGenericListener(BlockEntity.class, this::attachBlockEntityCapabilities);
+        MinecraftForge.EVENT_BUS.addGenericListener(ItemStack.class, this::attachItemCapabilities);
     }
 
     private void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
@@ -436,356 +463,423 @@ public class AE2LightningTech {
     }
 
     // Prevents automation from accessing the workbench inventory
-    private static final IItemHandler WORKBENCH_REJECTING_ITEM_HANDLER = new IItemHandler() {
+    private static final IItemHandlerModifiable WORKBENCH_REJECTING_ITEM_HANDLER = new IItemHandlerModifiable() {
         @Override public int getSlots() { return 1; }
         @Override public net.minecraft.world.item.ItemStack getStackInSlot(int slot) { return net.minecraft.world.item.ItemStack.EMPTY; }
         @Override public net.minecraft.world.item.ItemStack insertItem(int slot, net.minecraft.world.item.ItemStack stack, boolean simulate) { return stack; }
         @Override public net.minecraft.world.item.ItemStack extractItem(int slot, int amount, boolean simulate) { return net.minecraft.world.item.ItemStack.EMPTY; }
         @Override public int getSlotLimit(int slot) { return 0; }
         @Override public boolean isItemValid(int slot, net.minecraft.world.item.ItemStack stack) { return false; }
+        @Override public void setStackInSlot(int slot, net.minecraft.world.item.ItemStack stack) { }
     };
 
     private void registerCapabilities(RegisterCapabilitiesEvent event) {
-        if (net.neoforged.fml.ModList.get().isLoaded("mekanism")) {
-            MekanismArmorIntegration.registerCapabilities(event);
+        event.register(ILightningEnergyHandler.class);
+        if (ModList.get().isLoaded("mekanism")) {
+            // 1.20.1: Mekanism armor capabilities are attached per ItemStack on the
+            // game bus (RegisterCapabilitiesEvent.registerItem does not exist).
+            MinecraftForge.EVENT_BUS.addListener(MekanismArmorIntegration::attachCapabilities);
         }
-
-        event.registerBlockEntity(
-                Capabilities.ItemHandler.BLOCK,
-                ModBlockEntities.LIGHTNING_COLLECTOR.get(),
-                (blockEntity, side) -> blockEntity.getAutomationInventory());
-
-        event.registerBlockEntity(
-                Capabilities.ItemHandler.BLOCK,
-                ModBlockEntities.FIRMAMENT_CONVERSION_CORE.get(),
-                (blockEntity, side) -> blockEntity.getAutomationInventory());
-
-        event.registerBlockEntity(
-                Capabilities.ItemHandler.BLOCK,
-                ModBlockEntities.LIGHTNING_SIMULATION_CHAMBER.get(),
-                (blockEntity, side) -> blockEntity.getAutomationInventory());
-
-        event.registerBlockEntity(
-                Capabilities.ItemHandler.BLOCK,
-                ModBlockEntities.LIGHTNING_ASSEMBLY_CHAMBER.get(),
-                (blockEntity, side) -> blockEntity.getAutomationInventory());
-
-        event.registerBlockEntity(
-                Capabilities.ItemHandler.BLOCK,
-                ModBlockEntities.TESLA_COIL.get(),
-                (blockEntity, side) -> blockEntity.getAutomationInventory());
-
-        // TeslaCoil 是双格高方块,UPPER 半部分没有 BlockEntity;
-        // 把 UPPER 的 ItemHandler 查询代理到下方 LOWER 的 BE,
-        // 让漏斗/导管从顶面和上半身四面也能输入物品。
-        event.registerBlock(
-                Capabilities.ItemHandler.BLOCK,
-                (level, pos, state, blockEntity, context) -> {
-                    if (state.getValue(TeslaCoilBlock.HALF) != DoubleBlockHalf.UPPER) {
-                        return null;
-                    }
-                    if (level.getBlockEntity(pos.below()) instanceof TeslaCoilBlockEntity be) {
-                        return be.getAutomationInventory();
-                    }
-                    return null;
-                },
-                ModBlocks.TESLA_COIL.get());
-
-        event.registerBlockEntity(
-                Capabilities.ItemHandler.BLOCK,
-                ModBlockEntities.OVERLOAD_PROCESSING_FACTORY.get(),
-                (blockEntity, side) -> blockEntity.getAutomationInventory());
-
-        event.registerBlockEntity(
-                Capabilities.ItemHandler.BLOCK,
-                ModBlockEntities.ATMOSPHERIC_IONIZER.get(),
-                (blockEntity, side) -> blockEntity.getAutomationInventory());
-
-        event.registerBlockEntity(
-                Capabilities.ItemHandler.BLOCK,
-                ModBlockEntities.CRYSTAL_CATALYZER.get(),
-                (blockEntity, side) -> blockEntity.getAutomationInventory());
-
-        event.registerBlockEntity(
-                Capabilities.ItemHandler.BLOCK,
-                ModBlockEntities.PIGMEE_MOLECULAR_ASSEMBLER.get(),
-                (blockEntity, side) -> blockEntity.getExposedItemHandler(side));
-
-        event.registerBlockEntity(
-                Capabilities.ItemHandler.BLOCK,
-                ModBlockEntities.OVERLOAD_DEVICE_WORKBENCH.get(),
-                (blockEntity, side) -> WORKBENCH_REJECTING_ITEM_HANDLER);
-
-        event.registerItem(
-                Capabilities.EnergyStorage.ITEM,
-                (stack, context) -> RailgunEnergyBuffer.asEnergyStorage(stack),
-                ModItems.ELECTROMAGNETIC_RAILGUN.get());
-
-        event.registerItem(
-                Capabilities.EnergyStorage.ITEM,
-                (stack, context) -> ArmorEnergyBuffer.asEnergyStorage(stack),
-                ModItems.CELESTWEAVE_OCULUS.get(),
-                ModItems.CELESTWEAVE_CORE.get(),
-                ModItems.CELESTWEAVE_CONDUIT.get(),
-                ModItems.CELESTWEAVE_STRIDE.get());
-
-        event.registerItem(
-                Capabilities.EnergyStorage.ITEM,
-                (stack, context) -> new PoweredItemCapabilities(
-                        stack, ModItems.TIANSHU_WIRELESS_PATTERN_ENCODING_TERMINAL.get()),
-                ModItems.TIANSHU_WIRELESS_PATTERN_ENCODING_TERMINAL.get());
-
-        event.registerBlockEntity(
-                Capabilities.ItemHandler.BLOCK,
-                ModBlockEntities.MATRIX_PORT.get(),
-                (blockEntity, side) -> blockEntity.getPatternItemHandler());
-
-        event.registerBlockEntity(
-                Capabilities.FluidHandler.BLOCK,
-                ModBlockEntities.OVERLOAD_PROCESSING_FACTORY.get(),
-                (blockEntity, side) -> blockEntity.getFluidHandlerCapability(side));
-
-        event.registerBlockEntity(
-                Capabilities.FluidHandler.BLOCK,
-                ModBlockEntities.CRYSTAL_CATALYZER.get(),
-                (blockEntity, side) -> blockEntity.getFluidHandlerCapability(side));
-
-        event.registerBlockEntity(
-                Capabilities.EnergyStorage.BLOCK,
-                ModBlockEntities.LIGHTNING_SIMULATION_CHAMBER.get(),
-                (blockEntity, side) -> blockEntity.getEnergyStorageCapability(side));
-
-        event.registerBlockEntity(
-                Capabilities.EnergyStorage.BLOCK,
-                ModBlockEntities.LIGHTNING_ASSEMBLY_CHAMBER.get(),
-                (blockEntity, side) -> blockEntity.getEnergyStorageCapability(side));
-
-        event.registerBlockEntity(
-                Capabilities.EnergyStorage.BLOCK,
-                ModBlockEntities.OVERLOAD_PROCESSING_FACTORY.get(),
-                (blockEntity, side) -> blockEntity.getEnergyStorageCapability(side));
-
-        event.registerBlockEntity(
-                Capabilities.EnergyStorage.BLOCK,
-                ModBlockEntities.TESLA_COIL.get(),
-                (blockEntity, side) -> blockEntity.getEnergyStorageCapability(side));
-
-        event.registerBlockEntity(
-                Capabilities.EnergyStorage.BLOCK,
-                ModBlockEntities.CRYSTAL_CATALYZER.get(),
-                (blockEntity, side) -> blockEntity.getEnergyStorageCapability(side));
-
-        event.registerBlockEntity(
-                Capabilities.EnergyStorage.BLOCK,
-                ModBlockEntities.OVERLOADED_CONTROLLER.get(),
-                (blockEntity, side) -> blockEntity.getEnergyStorageCapability(side));
-
-        event.registerBlockEntity(
-                Capabilities.EnergyStorage.BLOCK,
-                ModBlockEntities.WIRELESS_OVERLOADED_CONTROLLER.get(),
-                (blockEntity, side) -> blockEntity.getEnergyStorageCapability(side));
-
-        event.registerBlockEntity(
-                Capabilities.EnergyStorage.BLOCK,
-                ModBlockEntities.ADVANCED_WIRELESS_OVERLOADED_CONTROLLER.get(),
-                (blockEntity, side) -> blockEntity.getEnergyStorageCapability(side));
-
-        // Expose IN_WORLD_GRID_NODE_HOST so ME cables can connect to our block entity
-        event.registerBlockEntity(
-                AECapabilities.IN_WORLD_GRID_NODE_HOST,
-                ModBlockEntities.LIGHTNING_COLLECTOR.get(),
-                (blockEntity, context) -> (IInWorldGridNodeHost) blockEntity);
-
-        event.registerBlockEntity(
-                AECapabilities.IN_WORLD_GRID_NODE_HOST,
-                ModBlockEntities.OVERLOADED_CONTROLLER.get(),
-                (blockEntity, context) -> (IInWorldGridNodeHost) blockEntity);
-
-        event.registerBlockEntity(
-                AECapabilities.IN_WORLD_GRID_NODE_HOST,
-                ModBlockEntities.LIGHTNING_SIMULATION_CHAMBER.get(),
-                (blockEntity, context) -> (IInWorldGridNodeHost) blockEntity);
-
-        event.registerBlockEntity(
-                AECapabilities.IN_WORLD_GRID_NODE_HOST,
-                ModBlockEntities.LIGHTNING_ASSEMBLY_CHAMBER.get(),
-                (blockEntity, context) -> (IInWorldGridNodeHost) blockEntity);
-
-        event.registerBlockEntity(
-                AECapabilities.IN_WORLD_GRID_NODE_HOST,
-                ModBlockEntities.TESLA_COIL.get(),
-                (blockEntity, context) -> (IInWorldGridNodeHost) blockEntity);
-
-        event.registerBlockEntity(
-                AECapabilities.IN_WORLD_GRID_NODE_HOST,
-                ModBlockEntities.OVERLOAD_PROCESSING_FACTORY.get(),
-                (blockEntity, context) -> (IInWorldGridNodeHost) blockEntity);
-
-        event.registerBlockEntity(
-                AECapabilities.IN_WORLD_GRID_NODE_HOST,
-                ModBlockEntities.OVERLOAD_DEVICE_WORKBENCH.get(),
-                (blockEntity, context) -> (IInWorldGridNodeHost) blockEntity);
-
-        event.registerBlockEntity(
-                AECapabilities.IN_WORLD_GRID_NODE_HOST,
-                ModBlockEntities.ATMOSPHERIC_IONIZER.get(),
-                (blockEntity, context) -> (IInWorldGridNodeHost) blockEntity);
-
-        event.registerBlockEntity(
-                AECapabilities.IN_WORLD_GRID_NODE_HOST,
-                ModBlockEntities.CRYSTAL_CATALYZER.get(),
-                (blockEntity, context) -> (IInWorldGridNodeHost) blockEntity);
-
-        event.registerBlockEntity(
-                AECapabilities.IN_WORLD_GRID_NODE_HOST,
-                ModBlockEntities.OVERLOADED_PATTERN_PROVIDER.get(),
-                (blockEntity, context) -> (IInWorldGridNodeHost) blockEntity);
-
-        event.registerBlockEntity(
-                AECapabilities.IN_WORLD_GRID_NODE_HOST,
-                ModBlockEntities.EXTENDED_OVERLOADED_PATTERN_PROVIDER.get(),
-                (blockEntity, context) -> (IInWorldGridNodeHost) blockEntity);
-
-        event.registerBlockEntity(
-                AECapabilities.IN_WORLD_GRID_NODE_HOST,
-                ModBlockEntities.PIGMEE_MENTALMATH_UNIT.get(),
-                (blockEntity, context) -> (IInWorldGridNodeHost) blockEntity);
-
-        event.registerBlockEntity(
-                AECapabilities.IN_WORLD_GRID_NODE_HOST,
-                ModBlockEntities.PIGMEE_PATTERN_PROVIDER.get(),
-                (blockEntity, context) -> (IInWorldGridNodeHost) blockEntity);
-
-        event.registerBlockEntity(
-                AECapabilities.IN_WORLD_GRID_NODE_HOST,
-                ModBlockEntities.PIGMEE_MOLECULAR_ASSEMBLER.get(),
-                (blockEntity, context) -> (IInWorldGridNodeHost) blockEntity);
-
-        event.registerBlockEntity(
-                AECapabilities.CRAFTING_MACHINE,
-                ModBlockEntities.PIGMEE_MOLECULAR_ASSEMBLER.get(),
-                (blockEntity, context) -> blockEntity);
-
-        event.registerBlockEntity(
-                AECapabilities.IN_WORLD_GRID_NODE_HOST,
-                ModBlockEntities.MATRIX_PORT.get(),
-                (blockEntity, context) -> (IInWorldGridNodeHost) blockEntity);
-
-        event.registerBlockEntity(
-                AECapabilities.IN_WORLD_GRID_NODE_HOST,
-                ModBlockEntities.TIANSHU_SUPERCOMPUTER_PORT.get(),
-                (blockEntity, context) -> (IInWorldGridNodeHost) blockEntity);
-
-        event.registerBlockEntity(
-                AECapabilities.IN_WORLD_GRID_NODE_HOST,
-                ModBlockEntities.OVERLOADED_INTERFACE.get(),
-                (blockEntity, context) -> (IInWorldGridNodeHost) blockEntity);
-
-        if (ModBlocks.hasOverloadedPowerSupply()) {
-            event.registerBlockEntity(
-                    AECapabilities.IN_WORLD_GRID_NODE_HOST,
-                    ModBlockEntities.OVERLOADED_POWER_SUPPLY.get(),
-                    (blockEntity, context) -> (IInWorldGridNodeHost) blockEntity);
-        }
-
-        event.registerBlockEntity(
-                AECapabilities.IN_WORLD_GRID_NODE_HOST,
-                ModBlockEntities.WIRELESS_OVERLOADED_CONTROLLER.get(),
-                (blockEntity, context) -> (IInWorldGridNodeHost) blockEntity);
-
-        event.registerBlockEntity(
-                AECapabilities.IN_WORLD_GRID_NODE_HOST,
-                ModBlockEntities.ADVANCED_WIRELESS_OVERLOADED_CONTROLLER.get(),
-                (blockEntity, context) -> (IInWorldGridNodeHost) blockEntity);
-
-        event.registerBlockEntity(
-                AECapabilities.IN_WORLD_GRID_NODE_HOST,
-                ModBlockEntities.WIRELESS_RECEIVER.get(),
-                (blockEntity, context) -> (IInWorldGridNodeHost) blockEntity);
-
-        // Public, addon-facing lightning energy capability. Each registered BE
-        // bridges the AE2 grid's lightning-typed storage through the
-        // ILightningEnergyHandler API so external mods don't have to reflect into
-        // grid internals. CrystalCatalyzer is intentionally not registered: it does
-        // not interact with lightning energy on the grid, so a handler there would
-        // be misleading. See PLAN_public_api_design.md sections 3.1, 5.1.
-        event.registerBlockEntity(
-                AE2LTCapabilities.LIGHTNING_ENERGY_BLOCK,
-                ModBlockEntities.LIGHTNING_COLLECTOR.get(),
-                (blockEntity, side) -> new GridLightningEnergyHandler(blockEntity));
-
-        event.registerBlockEntity(
-                AE2LTCapabilities.LIGHTNING_ENERGY_BLOCK,
-                ModBlockEntities.LIGHTNING_SIMULATION_CHAMBER.get(),
-                (blockEntity, side) -> new GridLightningEnergyHandler(blockEntity));
-
-        event.registerBlockEntity(
-                AE2LTCapabilities.LIGHTNING_ENERGY_BLOCK,
-                ModBlockEntities.LIGHTNING_ASSEMBLY_CHAMBER.get(),
-                (blockEntity, side) -> new GridLightningEnergyHandler(blockEntity));
-
-        event.registerBlockEntity(
-                AE2LTCapabilities.LIGHTNING_ENERGY_BLOCK,
-                ModBlockEntities.OVERLOAD_PROCESSING_FACTORY.get(),
-                (blockEntity, side) -> new GridLightningEnergyHandler(blockEntity));
-
-        // TeslaCoil 是双高方块：UPPER 半部分 newBlockEntity 返回 null，
-        // 单用 registerBlockEntity 会让 UPPER 位置 capability 查询拿到 null，
-        // 与 README 公开契约不符。改用 registerBlock 在 block 层面统一处理：
-        // UPPER 转发到 pos.below() 的 LOWER BE，与 TeslaCoilBlock 自身
-        // useWithoutItem / useItemOn 已采用的 UPPER→LOWER 委托一致。
-        event.registerBlock(
-                AE2LTCapabilities.LIGHTNING_ENERGY_BLOCK,
-                (level, pos, state, blockEntity, side) -> {
-                    if (state.getValue(TeslaCoilBlock.HALF) == DoubleBlockHalf.UPPER) {
-                        var lowerPos = pos.below();
-                        var lowerState = level.getBlockState(lowerPos);
-                        if (lowerState.is(state.getBlock())
-                                && lowerState.getValue(TeslaCoilBlock.HALF) == DoubleBlockHalf.LOWER
-                                && level.getBlockEntity(lowerPos) instanceof TeslaCoilBlockEntity be) {
-                            return new GridLightningEnergyHandler(be);
-                        }
-                        return null;
-                    }
-                    if (blockEntity instanceof TeslaCoilBlockEntity be) {
-                        return new GridLightningEnergyHandler(be);
-                    }
-                    return null;
-                },
-                ModBlocks.TESLA_COIL.get());
-
-        event.registerBlock(
-                AECapabilities.GENERIC_INTERNAL_INV,
-                (level, pos, state, blockEntity, context) -> {
-                    if (blockEntity instanceof OverloadedPatternProviderBlockEntity be) {
-                        var logic = (com.moakiee.ae2lt.logic.OverloadedPatternProviderLogic) be.getLogic();
-                        return new com.moakiee.ae2lt.logic.InsertOnlyReturnInvWrapper(
-                                (com.moakiee.ae2lt.logic.UnlimitedReturnInventory) logic.getInternalReturnInv(),
-                                logic);
-                    }
-                    return null;
-                },
-                ModBlocks.OVERLOADED_PATTERN_PROVIDER.get(),
-                ModBlocks.EXTENDED_OVERLOADED_PATTERN_PROVIDER.get());
-
-        event.registerBlockEntity(
-                AECapabilities.GENERIC_INTERNAL_INV,
-                ModBlockEntities.PIGMEE_PATTERN_PROVIDER.get(),
-                (blockEntity, context) -> blockEntity.getReturnInventory());
-
-        event.registerBlock(
-                AECapabilities.GENERIC_INTERNAL_INV,
-                (level, pos, state, blockEntity, context) -> {
-                    // Filtered wrapper: passive insertions (pipes, eject
-                    // forwarding) respect the filter component
-                    if (blockEntity instanceof OverloadedInterfaceBlockEntity be) {
-                        return be.getExposedGenericInv();
-                    }
-                    return null;
-                },
-                ModBlocks.OVERLOADED_INTERFACE.get());
     }
 
+    /**
+     * Forge 1.20.1 capability attachment: a single provider is attached to every
+     * AE2LT block entity that exposes automation capabilities. The provider
+     * dispatches each Forge/AE2 capability token to the matching getter on the
+     * block entity, caching LazyOptionals per side.
+     */
+    private void attachBlockEntityCapabilities(AttachCapabilitiesEvent<BlockEntity> event) {
+        if (!hasAttachedCapabilitySupport(event.getObject())) {
+            return;
+        }
+
+        var provider = new AttachedBlockEntityCapabilityProvider(event.getObject());
+        event.addCapability(BLOCK_ENTITY_CAP_PROVIDER_ID, provider);
+        event.addListener(provider::invalidate);
+    }
+
+    /**
+     * Item-side capabilities: railgun / celestweave energy storage and the
+     * Tianshu wireless terminal's AE2 power sink. Forge 1.20.1 attaches item
+     * capabilities through AttachCapabilitiesEvent<ItemStack> instead of the
+     * NeoForge registerItem API.
+     */
+    private void attachItemCapabilities(AttachCapabilitiesEvent<ItemStack> event) {
+        var stack = event.getObject();
+        var item = stack.getItem();
+        if (item == ModItems.ELECTROMAGNETIC_RAILGUN.get()) {
+            attachItemEnergy(event, () -> RailgunEnergyBuffer.asEnergyStorage(stack));
+        } else if (item == ModItems.CELESTWEAVE_OCULUS.get()
+                || item == ModItems.CELESTWEAVE_CORE.get()
+                || item == ModItems.CELESTWEAVE_CONDUIT.get()
+                || item == ModItems.CELESTWEAVE_STRIDE.get()) {
+            attachItemEnergy(event, () -> ArmorEnergyBuffer.asEnergyStorage(stack));
+        } else if (item == ModItems.TIANSHU_WIRELESS_PATTERN_ENCODING_TERMINAL.get()) {
+            // PoweredItemCapabilities is package-private in AE2 1.20.1, so bridge the
+            // IAEItemPowerStorage sink with a small IEnergyStorage adapter instead.
+            attachItemEnergy(event,
+                    () -> new ItemPowerSinkEnergyStorage(stack, (IAEItemPowerStorage) item));
+        }
+    }
+
+    private static void attachItemEnergy(AttachCapabilitiesEvent<ItemStack> event,
+            NonNullSupplier<IEnergyStorage> supplier) {
+        event.addCapability(ResourceLocation.fromNamespaceAndPath(MODID, "item_energy"), new ICapabilityProvider() {
+            @Override
+            public <T> LazyOptional<T> getCapability(Capability<T> capability, Direction side) {
+                if (capability == ForgeCapabilities.ENERGY) {
+                    return LazyOptional.of(supplier).cast();
+                }
+                return LazyOptional.empty();
+            }
+        });
+    }
+
+    /**
+     * Forge Energy bridge over an AE2 IAEItemPowerStorage (used by the Tianshu
+     * wireless terminal). AE2 1.20.1 keeps its own PoweredItemCapabilities
+     * package-private, so expose the same surface through this adapter.
+     */
+    private static final class ItemPowerSinkEnergyStorage implements IEnergyStorage {
+        private final ItemStack stack;
+        private final IAEItemPowerStorage sink;
+
+        private ItemPowerSinkEnergyStorage(ItemStack stack, IAEItemPowerStorage sink) {
+            this.stack = stack;
+            this.sink = sink;
+        }
+
+        @Override
+        public int receiveEnergy(int maxReceive, boolean simulate) {
+            return (int) sink.injectAEPower(stack, maxReceive,
+                    Actionable.ofSimulate(simulate));
+        }
+
+        @Override
+        public int extractEnergy(int maxExtract, boolean simulate) {
+            return (int) sink.extractAEPower(stack, maxExtract,
+                    Actionable.ofSimulate(simulate));
+        }
+
+        @Override
+        public int getEnergyStored() {
+            return (int) sink.getAECurrentPower(stack);
+        }
+
+        @Override
+        public int getMaxEnergyStored() {
+            return (int) sink.getAEMaxPower(stack);
+        }
+
+        @Override
+        public boolean canExtract() {
+            return sink.getPowerFlow(stack).isAllowExtraction();
+        }
+
+        @Override
+        public boolean canReceive() {
+            return sink.getPowerFlow(stack).isAllowInsertion();
+        }
+    }
+
+    private static final class AttachedBlockEntityCapabilityProvider implements ICapabilityProvider {
+        private final BlockEntity blockEntity;
+        private final EnumMap<Direction, LazyOptional<IFluidHandler>> fluidHandlers =
+                new EnumMap<>(Direction.class);
+        private final EnumMap<Direction, LazyOptional<IEnergyStorage>> energyHandlers =
+                new EnumMap<>(Direction.class);
+        private LazyOptional<IItemHandlerModifiable> itemHandler;
+        private LazyOptional<IFluidHandler> nullSideFluidHandler;
+        private LazyOptional<IEnergyStorage> nullSideEnergyHandler;
+        private LazyOptional<IInWorldGridNodeHost> gridNodeHost;
+        private LazyOptional<ICraftingMachine> craftingMachine;
+        private LazyOptional<ILightningEnergyHandler> lightningEnergyHandler;
+        private LazyOptional<GenericInternalInventory> genericInternalInventory;
+
+        private AttachedBlockEntityCapabilityProvider(BlockEntity blockEntity) {
+            this.blockEntity = blockEntity;
+        }
+
+        @Override
+        public <T> LazyOptional<T> getCapability(Capability<T> capability, Direction side) {
+            if (capability == ForgeCapabilities.ITEM_HANDLER) {
+                return itemHandler().cast();
+            }
+            if (capability == ForgeCapabilities.FLUID_HANDLER) {
+                return fluidHandler(side).cast();
+            }
+            if (capability == ForgeCapabilities.ENERGY) {
+                return energyHandler(side).cast();
+            }
+            if (capability == Capabilities.IN_WORLD_GRID_NODE_HOST) {
+                return gridNodeHost().cast();
+            }
+            if (capability == Capabilities.CRAFTING_MACHINE) {
+                return craftingMachine().cast();
+            }
+            if (capability == AE2LTCapabilities.LIGHTNING_ENERGY_BLOCK) {
+                return lightningEnergyHandler().cast();
+            }
+            if (capability == Capabilities.GENERIC_INTERNAL_INV) {
+                return genericInternalInventory().cast();
+            }
+            return LazyOptional.empty();
+        }
+
+        private LazyOptional<IItemHandlerModifiable> itemHandler() {
+            if (itemHandler == null) {
+                var handler = getItemHandlerCapability(blockEntity);
+                if (handler != null) {
+                    itemHandler = LazyOptional.of(() -> handler);
+                }
+            }
+            return itemHandler != null ? itemHandler : LazyOptional.empty();
+        }
+
+        private LazyOptional<IFluidHandler> fluidHandler(Direction side) {
+            if (side == null) {
+                if (nullSideFluidHandler == null) {
+                    var handler = getFluidHandlerCapability(blockEntity, null);
+                    if (handler != null) {
+                        nullSideFluidHandler = LazyOptional.of(() -> handler);
+                    }
+                }
+                return nullSideFluidHandler != null ? nullSideFluidHandler : LazyOptional.empty();
+            }
+
+            var cached = fluidHandlers.get(side);
+            if (cached != null) {
+                return cached;
+            }
+
+            var handler = getFluidHandlerCapability(blockEntity, side);
+            if (handler == null) {
+                return LazyOptional.empty();
+            }
+
+            var optional = LazyOptional.of(() -> handler);
+            fluidHandlers.put(side, optional);
+            return optional;
+        }
+
+        private LazyOptional<IEnergyStorage> energyHandler(Direction side) {
+            if (side == null) {
+                if (nullSideEnergyHandler == null) {
+                    var handler = getEnergyCapability(blockEntity, null);
+                    if (handler != null) {
+                        nullSideEnergyHandler = LazyOptional.of(() -> handler);
+                    }
+                }
+                return nullSideEnergyHandler != null ? nullSideEnergyHandler : LazyOptional.empty();
+            }
+
+            var cached = energyHandlers.get(side);
+            if (cached != null) {
+                return cached;
+            }
+
+            var handler = getEnergyCapability(blockEntity, side);
+            if (handler == null) {
+                return LazyOptional.empty();
+            }
+
+            var optional = LazyOptional.of(() -> handler);
+            energyHandlers.put(side, optional);
+            return optional;
+        }
+
+        private LazyOptional<IInWorldGridNodeHost> gridNodeHost() {
+            if (gridNodeHost == null && blockEntity instanceof IInWorldGridNodeHost host) {
+                gridNodeHost = LazyOptional.of(() -> host);
+            }
+            return gridNodeHost != null ? gridNodeHost : LazyOptional.empty();
+        }
+
+        private LazyOptional<ICraftingMachine> craftingMachine() {
+            if (craftingMachine == null && blockEntity instanceof ICraftingMachine machine) {
+                craftingMachine = LazyOptional.of(() -> machine);
+            }
+            return craftingMachine != null ? craftingMachine : LazyOptional.empty();
+        }
+
+        private LazyOptional<ILightningEnergyHandler> lightningEnergyHandler() {
+            if (lightningEnergyHandler == null) {
+                var handler = getLightningEnergyCapability(blockEntity);
+                if (handler != null) {
+                    lightningEnergyHandler = LazyOptional.of(() -> handler);
+                }
+            }
+            return lightningEnergyHandler != null ? lightningEnergyHandler : LazyOptional.empty();
+        }
+
+        private LazyOptional<GenericInternalInventory> genericInternalInventory() {
+            if (genericInternalInventory == null) {
+                var inventory = getGenericInternalInventoryCapability(blockEntity);
+                if (inventory != null) {
+                    genericInternalInventory = LazyOptional.of(() -> inventory);
+                }
+            }
+            return genericInternalInventory != null ? genericInternalInventory : LazyOptional.empty();
+        }
+
+        private void invalidate() {
+            invalidate(itemHandler);
+            invalidate(nullSideFluidHandler);
+            invalidate(nullSideEnergyHandler);
+            invalidate(gridNodeHost);
+            invalidate(craftingMachine);
+            invalidate(lightningEnergyHandler);
+            invalidate(genericInternalInventory);
+            fluidHandlers.values().forEach(AttachedBlockEntityCapabilityProvider::invalidate);
+            energyHandlers.values().forEach(AttachedBlockEntityCapabilityProvider::invalidate);
+            fluidHandlers.clear();
+            energyHandlers.clear();
+        }
+
+        private static void invalidate(LazyOptional<?> optional) {
+            if (optional != null) {
+                optional.invalidate();
+            }
+        }
+    }
+
+    private static boolean hasAttachedCapabilitySupport(BlockEntity blockEntity) {
+        return blockEntity instanceof LightningCollectorBlockEntity
+                || blockEntity instanceof FirmamentConversionCoreBlockEntity
+                || blockEntity instanceof OverloadedControllerBlockEntity
+                || blockEntity instanceof LightningSimulationChamberBlockEntity
+                || blockEntity instanceof LightningAssemblyChamberBlockEntity
+                || blockEntity instanceof TeslaCoilBlockEntity
+                || blockEntity instanceof OverloadProcessingFactoryBlockEntity
+                || blockEntity instanceof AtmosphericIonizerBlockEntity
+                || blockEntity instanceof CrystalCatalyzerBlockEntity
+                || blockEntity instanceof OverloadedPatternProviderBlockEntity
+                || blockEntity instanceof ExtendedOverloadedPatternProviderBlockEntity
+                || blockEntity instanceof OverloadedInterfaceBlockEntity
+                || blockEntity instanceof OverloadedPowerSupplyBlockEntity
+                || blockEntity instanceof WirelessOverloadedControllerBlockEntity
+                || blockEntity instanceof AdvancedWirelessOverloadedControllerBlockEntity
+                || blockEntity instanceof WirelessReceiverBlockEntity
+                || blockEntity instanceof OverloadDeviceWorkbenchBlockEntity
+                || blockEntity instanceof PigmeeMentalmathUnitBlockEntity
+                || blockEntity instanceof PigmeePatternProviderBlockEntity
+                || blockEntity instanceof PigmeeMolecularAssemblerBlockEntity
+                || blockEntity instanceof MatrixPortBlockEntity
+                || blockEntity instanceof TianshuSupercomputerPortBlockEntity;
+    }
+
+    private static IItemHandlerModifiable getItemHandlerCapability(BlockEntity blockEntity) {
+        if (blockEntity instanceof LightningCollectorBlockEntity be) {
+            return be.getAutomationInventory();
+        }
+        if (blockEntity instanceof FirmamentConversionCoreBlockEntity be) {
+            return be.getAutomationInventory();
+        }
+        if (blockEntity instanceof LightningSimulationChamberBlockEntity be) {
+            return be.getAutomationInventory();
+        }
+        if (blockEntity instanceof LightningAssemblyChamberBlockEntity be) {
+            return be.getAutomationInventory();
+        }
+        if (blockEntity instanceof TeslaCoilBlockEntity be) {
+            return be.getAutomationInventory();
+        }
+        if (blockEntity instanceof OverloadProcessingFactoryBlockEntity be) {
+            return be.getAutomationInventory();
+        }
+        if (blockEntity instanceof AtmosphericIonizerBlockEntity be) {
+            return be.getAutomationInventory();
+        }
+        if (blockEntity instanceof CrystalCatalyzerBlockEntity be) {
+            return be.getAutomationInventory();
+        }
+        if (blockEntity instanceof OverloadDeviceWorkbenchBlockEntity) {
+            return WORKBENCH_REJECTING_ITEM_HANDLER;
+        }
+        if (blockEntity instanceof MatrixPortBlockEntity be) {
+            return be.getPatternItemHandler();
+        }
+        return null;
+    }
+
+    private static IFluidHandler getFluidHandlerCapability(BlockEntity blockEntity, Direction side) {
+        if (blockEntity instanceof OverloadProcessingFactoryBlockEntity be) {
+            return be.getFluidHandlerCapability(side);
+        }
+        if (blockEntity instanceof CrystalCatalyzerBlockEntity be) {
+            return be.getFluidHandlerCapability(side);
+        }
+        return null;
+    }
+
+    private static IEnergyStorage getEnergyCapability(BlockEntity blockEntity, Direction side) {
+        if (blockEntity instanceof LightningSimulationChamberBlockEntity be) {
+            return be.getEnergyStorageCapability(side);
+        }
+        if (blockEntity instanceof LightningAssemblyChamberBlockEntity be) {
+            return be.getEnergyStorageCapability(side);
+        }
+        if (blockEntity instanceof OverloadProcessingFactoryBlockEntity be) {
+            return be.getEnergyStorageCapability(side);
+        }
+        if (blockEntity instanceof TeslaCoilBlockEntity be) {
+            return be.getEnergyStorageCapability(side);
+        }
+        if (blockEntity instanceof CrystalCatalyzerBlockEntity be) {
+            return be.getEnergyStorageCapability(side);
+        }
+        if (blockEntity instanceof OverloadedControllerBlockEntity be) {
+            return be.getEnergyStorageCapability(side);
+        }
+        if (blockEntity instanceof WirelessOverloadedControllerBlockEntity be) {
+            return be.getEnergyStorageCapability(side);
+        }
+        if (blockEntity instanceof AdvancedWirelessOverloadedControllerBlockEntity be) {
+            return be.getEnergyStorageCapability(side);
+        }
+        return null;
+    }
+
+    private static ILightningEnergyHandler getLightningEnergyCapability(BlockEntity blockEntity) {
+        if (blockEntity instanceof LightningCollectorBlockEntity be) {
+            return new GridLightningEnergyHandler(be);
+        }
+        if (blockEntity instanceof LightningSimulationChamberBlockEntity be) {
+            return new GridLightningEnergyHandler(be);
+        }
+        if (blockEntity instanceof LightningAssemblyChamberBlockEntity be) {
+            return new GridLightningEnergyHandler(be);
+        }
+        if (blockEntity instanceof OverloadProcessingFactoryBlockEntity be) {
+            return new GridLightningEnergyHandler(be);
+        }
+        if (blockEntity instanceof TeslaCoilBlockEntity be) {
+            return new GridLightningEnergyHandler(be);
+        }
+        return null;
+    }
+
+    private static GenericInternalInventory getGenericInternalInventoryCapability(BlockEntity blockEntity) {
+        if (blockEntity instanceof OverloadedPatternProviderBlockEntity be) {
+            var logic = (com.moakiee.ae2lt.logic.OverloadedPatternProviderLogic) be.getLogic();
+            return new com.moakiee.ae2lt.logic.InsertOnlyReturnInvWrapper(
+                    (com.moakiee.ae2lt.logic.UnlimitedReturnInventory) logic.getInternalReturnInv(),
+                    logic);
+        }
+        if (blockEntity instanceof ExtendedOverloadedPatternProviderBlockEntity be) {
+            var logic = (com.moakiee.ae2lt.logic.OverloadedPatternProviderLogic) be.getLogic();
+            return new com.moakiee.ae2lt.logic.InsertOnlyReturnInvWrapper(
+                    (com.moakiee.ae2lt.logic.UnlimitedReturnInventory) logic.getInternalReturnInv(),
+                    logic);
+        }
+        if (blockEntity instanceof PigmeePatternProviderBlockEntity be) {
+            return be.getReturnInventory();
+        }
+        if (blockEntity instanceof OverloadedInterfaceBlockEntity be) {
+            return be.getExposedGenericInv();
+        }
+        return null;
+    }
     /**
      * After all registries are frozen, bind the AE2 BlockEntityType to the Block.
      * This sets the blockEntityType / class / ticker fields inside AEBaseEntityBlock
@@ -1061,14 +1155,14 @@ public class AE2LightningTech {
             registerAppliedFluxInductionCardCompat();
             registerOverloadTntDispenseBehavior();
 
-            Ae2wtlibIntegration.verifyTerminalRegistration();
             GridLinkables.register(
                     ModItems.TIANSHU_WIRELESS_PATTERN_ENCODING_TERMINAL.get(),
                     WirelessTerminalItem.LINKABLE_HANDLER);
 
-            // Full AE2WTLib integration: make the overloaded frequency card installable
-            // in wireless terminal upgrade slots when the implementation mod is present.
-            if (net.neoforged.fml.ModList.get().isLoaded("ae2wtlib")) {
+            // ae2wtlib is optional: full integration (WUT definition check + overloaded
+            // frequency card upgrade slots) only runs when the implementation mod is present.
+            if (net.minecraftforge.fml.ModList.get().isLoaded("ae2wtlib")) {
+                Ae2wtlibIntegration.verifyTerminalRegistration();
                 Ae2wtlibIntegration.register();
             }
 
@@ -1094,11 +1188,13 @@ public class AE2LightningTech {
                 new net.minecraft.core.dispenser.DefaultDispenseItemBehavior() {
                     @Override
                     protected net.minecraft.world.item.ItemStack execute(
-                            net.minecraft.core.dispenser.BlockSource source,
+                            net.minecraft.core.BlockSource source,
                             net.minecraft.world.item.ItemStack stack) {
-                        var level = source.level();
-                        var pos = source.pos().relative(
-                                source.state().getValue(
+                        // 1.20.1 BlockSource exposes getLevel/getPos/getBlockState; the
+                        // level()/pos()/state() record-style getters are 1.21-only.
+                        var level = source.getLevel();
+                        var pos = source.getPos().relative(
+                                source.getBlockState().getValue(
                                         net.minecraft.world.level.block.DispenserBlock.FACING));
                         var tnt = new com.moakiee.ae2lt.entity.OverloadTntEntity(
                                 level,
@@ -1156,13 +1252,28 @@ public class AE2LightningTech {
         com.moakiee.ae2lt.registry.ModDamageTypes.clearCache();
     }
 
-    private void onServerTickPost(ServerTickEvent.Post event) {
+    /**
+     * Forge 1.20.1 only has the combined ServerTickEvent; the NeoForge
+     * ServerTickEvent.Post subclass does not exist. Filter by phase instead.
+     */
+    private void onServerTick(TickEvent.ServerTickEvent event) {
+        if (event.phase != TickEvent.Phase.END) {
+            return;
+        }
         CRAFTING_CORE_REGISTRY.tickAll();
         WirelessFrequencyManager.flushPendingDeviceNotifications();
         var registry = WirelessLinkRegistry.get();
         if (registry != null) {
             registry.tick(event.getServer());
         }
+    }
+
+    /**
+     * Forge 1.20.1 creative tab helper: RegistryObject is not an ItemLike in
+     * this version, so unwrap the holder before passing it to the tab output.
+     */
+    private static void acceptCreative(CreativeModeTab.Output output, RegistryObject<? extends ItemLike> holder) {
+        output.accept(holder.get());
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})

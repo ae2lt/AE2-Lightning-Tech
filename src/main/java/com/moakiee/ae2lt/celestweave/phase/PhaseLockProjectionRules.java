@@ -9,7 +9,8 @@ public final class PhaseLockProjectionRules {
     }
 
     public static int expectedInventorySlot(EquipmentSlot slot) {
-        if (slot == null || slot.getType() != EquipmentSlot.Type.HUMANOID_ARMOR) {
+        // 1.20.1 only distinguishes ARMOR vs HAND (HUMANOID_ARMOR was split off in 1.21).
+        if (slot == null || slot.getType() != EquipmentSlot.Type.ARMOR) {
             return -1;
         }
         return Inventory.INVENTORY_SIZE + slot.getIndex();

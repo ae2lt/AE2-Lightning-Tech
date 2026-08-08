@@ -15,8 +15,10 @@ import appeng.core.definitions.AEItems;
 import appeng.menu.SlotSemantics;
 import appeng.menu.slot.AppEngSlot;
 import appeng.menu.slot.FakeSlot;
+import appeng.api.inventories.InternalInventory;
 import appeng.util.inv.AppEngInternalInventory;
 import appeng.util.inv.InternalInventoryHost;
+import com.moakiee.ae2lt.util.SlotPositionAccess;
 import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.logic.AdvancedAECompat;
 import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopDiscoveryService;
@@ -61,10 +63,10 @@ import com.moakiee.ae2lt.overload.pattern.PatternConversionService;
 import com.moakiee.ae2lt.registry.ModItems;
 import com.moakiee.ae2lt.item.ClosedLoopPatternItem;
 import com.moakiee.ae2lt.item.OverloadPatternItem;
-import com.moakiee.thunderbolt.ae2.overload.model.EncodedOverloadPattern;
-import com.moakiee.thunderbolt.ae2.overload.model.MatchMode;
-import com.moakiee.thunderbolt.ae2.overload.pattern.Ae2PlainPatternResolver;
-import com.moakiee.thunderbolt.ae2.overload.pattern.ParsedPatternDefinition;
+import com.moakiee.ae2lt.overload.model.EncodedOverloadPattern;
+import com.moakiee.ae2lt.overload.model.MatchMode;
+import com.moakiee.ae2lt.overload.pattern.Ae2PlainPatternResolver;
+import com.moakiee.ae2lt.overload.pattern.ParsedPatternDefinition;
 import net.minecraft.server.level.ServerPlayer;
 import com.moakiee.ae2lt.network.PacketSender;
 import appeng.helpers.patternprovider.PatternProviderLogicHost;
@@ -97,10 +99,10 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     private static final MenuTypeBuilder.MenuFactory<
             TianshuPatternEncodingTermMenu, TianshuPatternTerminalHost> FACTORY =
             TianshuPatternEncodingTermMenu::new;
-    public static final MenuType<TianshuPatternEncodingTermMenu> TYPE = MenuTypeBuilder
-            .create(FACTORY, TianshuPatternTerminalHost.class)
-            .buildUnregistered(new ResourceLocation(
-                    AE2LightningTech.MODID, "tianshu_pattern_encoding_terminal"));
+    public static final MenuType<TianshuPatternEncodingTermMenu> TYPE = Ae2ltMenuBuilder
+            .buildUnregistered(
+                    MenuTypeBuilder.create(FACTORY, TianshuPatternTerminalHost.class),
+                    ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "tianshu_pattern_encoding_terminal"));
 
     @GuiSync(110)
     public TianshuEncodingMode tianshuMode = TianshuEncodingMode.CRAFTING;
@@ -213,7 +215,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         inheritedBlankPatternSlot.setSlotEnabled(false);
         this.closedLoopMemberInventory = new AppEngInternalInventory(new InternalInventoryHost() {
             @Override
-            public void saveChangedInventory(AppEngInternalInventory inv) {
+            public void onChangeInventory(InternalInventory inv, int slot) {
                 if (!closedLoopBulkUpdating) {
                     closedLoopDraftRepresentsEncoded = false;
                     closedLoopDraftDirty = true;
@@ -224,20 +226,22 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
             public boolean isClientSide() {
                 return TianshuPatternEncodingTermMenu.this.isClientSide();
             }
+
+            @Override
+            public void saveChanges() {
+            }
         }, CLOSED_LOOP_MEMBER_SLOTS, 1);
         this.closedLoopOutputInventory = new AppEngInternalInventory(null, CLOSED_LOOP_OUTPUT_SLOTS, 1);
         this.closedLoopExternalInputInventory = new AppEngInternalInventory(null, CLOSED_LOOP_RESULT_SLOTS, 1);
         this.closedLoopSeedInventory = new AppEngInternalInventory(null, CLOSED_LOOP_RESULT_SLOTS, 1);
         this.globalReserveMarkInventory = new AppEngInternalInventory(null, 1, 1);
         this.globalReserveMarkSlot = new FakeSlot(globalReserveMarkInventory, 0);
-        globalReserveMarkSlot.x = CLOSED_LOOP_OFFSCREEN;
-        globalReserveMarkSlot.y = CLOSED_LOOP_OFFSCREEN;
+        SlotPositionAccess.set(globalReserveMarkSlot, CLOSED_LOOP_OFFSCREEN, CLOSED_LOOP_OFFSCREEN);
         globalReserveMarkSlot.setIcon(Icon.BACKGROUND_PRIMARY_OUTPUT);
         addSlot(globalReserveMarkSlot, Ae2ltSlotSemantics.TIANSHU_GLOBAL_RESERVE_MARK);
         for (int i = 0; i < CLOSED_LOOP_MEMBER_SLOTS; i++) {
             var slot = new ClosedLoopMemberSlot(closedLoopMemberInventory, i);
-            slot.x = CLOSED_LOOP_OFFSCREEN;
-            slot.y = CLOSED_LOOP_OFFSCREEN;
+            SlotPositionAccess.set(slot, CLOSED_LOOP_OFFSCREEN, CLOSED_LOOP_OFFSCREEN);
             addSlot(slot, Ae2ltSlotSemantics.TIANSHU_CLOSED_LOOP_MEMBER);
             closedLoopMemberSlots.add(slot);
         }
@@ -253,20 +257,17 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
                 slot.setEmptyTooltip(() -> List.of(net.minecraft.network.chat.Component.translatable(
                         "ae2lt.tianshu.closed_loop.byproduct_output.tooltip")));
             }
-            slot.x = CLOSED_LOOP_OFFSCREEN;
-            slot.y = CLOSED_LOOP_OFFSCREEN;
+            SlotPositionAccess.set(slot, CLOSED_LOOP_OFFSCREEN, CLOSED_LOOP_OFFSCREEN);
             addSlot(slot, Ae2ltSlotSemantics.TIANSHU_CLOSED_LOOP_OUTPUT_MARK);
             closedLoopOutputSlots.add(slot);
         }
         for (int i = 0; i < CLOSED_LOOP_RESULT_SLOTS; i++) {
             var external = new ClosedLoopReadonlySlot(closedLoopExternalInputInventory, i);
-            external.x = CLOSED_LOOP_OFFSCREEN;
-            external.y = CLOSED_LOOP_OFFSCREEN;
+            SlotPositionAccess.set(external, CLOSED_LOOP_OFFSCREEN, CLOSED_LOOP_OFFSCREEN);
             addSlot(external, Ae2ltSlotSemantics.TIANSHU_CLOSED_LOOP_EXTERNAL_INPUT);
             closedLoopExternalInputSlots.add(external);
             var seed = new ClosedLoopReadonlySlot(closedLoopSeedInventory, i);
-            seed.x = CLOSED_LOOP_OFFSCREEN;
-            seed.y = CLOSED_LOOP_OFFSCREEN;
+            SlotPositionAccess.set(seed, CLOSED_LOOP_OFFSCREEN, CLOSED_LOOP_OFFSCREEN);
             addSlot(seed, Ae2ltSlotSemantics.TIANSHU_CLOSED_LOOP_SEED_INPUT);
             closedLoopSeedSlots.add(seed);
         }
@@ -1267,8 +1268,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
                 var restored = conversionService.restoreEditableState(
                         overloadItem,
                         source,
-                        new Ae2PlainPatternResolver(getPlayer().level()),
-                        registryAccess()).orElse(null);
+                        new Ae2PlainPatternResolver(getPlayer().level())).orElse(null);
                 if (restored == null
                         || !replaceProcessingInventories(restored.parsedPattern())) {
                     return;
@@ -1489,7 +1489,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
             int memberCount = Math.min(CLOSED_LOOP_MEMBER_SLOTS, payload.memberPatterns().size());
             for (int i = 0; i < memberCount; i++) {
                 var member = payload.memberPatterns().get(i);
-                var stack = member.pattern().toItemStack(registryAccess());
+                var stack = member.pattern().toItemStack();
                 if (stack.isEmpty()) continue;
                 closedLoopMemberInventory.setItemDirect(i, stack.copyWithCount(1));
                 closedLoopMemberCopies[i] = member.copiesPerCycle();
@@ -1534,7 +1534,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
             closedLoopMemberCopies[i] = copies;
             try {
                 draft.add(new ClosedLoopMemberPattern(
-                        SourcePatternSnapshot.fromItemStack(stack, registryAccess()), copies));
+                        SourcePatternSnapshot.fromItemStack(stack), copies));
             } catch (RuntimeException ignored) {
                 setClosedLoopInvalid(ClosedLoopDraftStatus.MEMBER_UNDECODABLE);
                 return;
@@ -2323,9 +2323,15 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         }
     }
 
+    /** @return whether this menu is attached to an active AE2 grid (1.20.1 API replacement). */
+    private boolean isConnectedToNetwork() {
+        var node = getNetworkNode();
+        return node != null && node.getGrid() != null && node.isActive();
+    }
+
     private boolean stageNetworkBlankPattern() {
         var encodedInventory = tianshuHost.getLogic().getEncodedPatternInv();
-        if (!encodedInventory.getStackInSlot(0).isEmpty() || !getLinkStatus().connected()) return false;
+        if (!encodedInventory.getStackInSlot(0).isEmpty() || !isConnectedToNetwork()) return false;
         var blankPatternKey = AEItemKey.of(AEItems.BLANK_PATTERN.asItem());
         var actionSource = getActionSource();
         long available = storage.extract(
@@ -2335,13 +2341,13 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
             return false;
         }
         long poweredAvailable = StorageHelper.poweredExtraction(
-                energySource, storage, blankPatternKey, 1, actionSource, Actionable.SIMULATE);
+                powerSource, storage, blankPatternKey, 1, actionSource, Actionable.SIMULATE);
         if (poweredAvailable <= 0) {
             notifyEncodingFailure("ae2lt.tianshu.encode.insufficient_power");
             return false;
         }
         long extracted = StorageHelper.poweredExtraction(
-                energySource, storage, blankPatternKey, 1, actionSource);
+                powerSource, storage, blankPatternKey, 1, actionSource);
         if (extracted <= 0) {
             notifyEncodingFailure("ae2lt.tianshu.encode.extraction_failed");
             return false;
@@ -2358,13 +2364,13 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     }
 
     private void returnStagedBlankPatternToNetwork() {
-        if (!isServerSide() || !getLinkStatus().connected()) return;
+        if (!isServerSide() || !isConnectedToNetwork()) return;
         var encodedInventory = tianshuHost.getLogic().getEncodedPatternInv();
         var stack = encodedInventory.getStackInSlot(0);
-        if (!AEItems.BLANK_PATTERN.is(stack)) return;
+        if (!AEItems.BLANK_PATTERN.isSameAs(stack)) return;
         var blankPatternKey = AEItemKey.of(AEItems.BLANK_PATTERN.asItem());
         long inserted = StorageHelper.poweredInsert(
-                energySource, storage, blankPatternKey, stack.getCount(), getActionSource());
+                powerSource, storage, blankPatternKey, stack.getCount(), getActionSource());
         if (inserted <= 0) return;
         var remainder = stack.copy();
         remainder.shrink((int) inserted);
@@ -2373,13 +2379,13 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
 
     /** Clears a blank left by an older menu version that staged it in the hidden input inventory. */
     private void returnLegacyBlankPatternsToNetwork() {
-        if (!isServerSide() || !getLinkStatus().connected()) return;
+        if (!isServerSide() || !isConnectedToNetwork()) return;
         var blankInventory = tianshuHost.getLogic().getBlankPatternInv();
         var stack = blankInventory.getStackInSlot(0);
-        if (!AEItems.BLANK_PATTERN.is(stack)) return;
+        if (!AEItems.BLANK_PATTERN.isSameAs(stack)) return;
         var blankPatternKey = AEItemKey.of(AEItems.BLANK_PATTERN.asItem());
         long inserted = StorageHelper.poweredInsert(
-                energySource, storage, blankPatternKey, stack.getCount(), getActionSource());
+                powerSource, storage, blankPatternKey, stack.getCount(), getActionSource());
         if (inserted <= 0) return;
         var remainder = stack.copy();
         remainder.shrink((int) inserted);
@@ -2440,7 +2446,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         if (config == null) return null;
         try {
             var editable = conversionService.resolveEditableSource(
-                    source, new Ae2PlainPatternResolver(getPlayer().level()), registryAccess())
+                    source, new Ae2PlainPatternResolver(getPlayer().level()))
                     .orElse(null);
             if (editable == null) return null;
             var parsed = editable.parsedPattern();
@@ -2471,7 +2477,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
             return ItemStack.EMPTY;
         }
         return ((ClosedLoopPatternItem) ModItems.CLOSED_LOOP_PATTERN.get()).createStack(
-                closedLoopPreparedPayload, registryAccess());
+                closedLoopPreparedPayload, getPlayer().level().registryAccess());
     }
 
     public record ClosedLoopMemberEdit(int slot, long copies) {

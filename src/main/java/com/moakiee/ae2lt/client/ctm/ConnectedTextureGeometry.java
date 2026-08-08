@@ -11,9 +11,9 @@ import net.minecraft.client.resources.model.Material;
 import net.minecraft.client.resources.model.ModelBaker;
 import net.minecraft.client.resources.model.ModelState;
 import net.minecraft.resources.ResourceLocation;
-import net.neoforged.neoforge.client.ChunkRenderTypeSet;
-import net.neoforged.neoforge.client.model.geometry.IGeometryBakingContext;
-import net.neoforged.neoforge.client.model.geometry.IUnbakedGeometry;
+import net.minecraftforge.client.ChunkRenderTypeSet;
+import net.minecraftforge.client.model.geometry.IGeometryBakingContext;
+import net.minecraftforge.client.model.geometry.IUnbakedGeometry;
 
 /**
  * Unbaked geometry for {@code ae2lt:connected_texture}. Resolves the {@code base}
@@ -39,7 +39,8 @@ public class ConnectedTextureGeometry implements IUnbakedGeometry<ConnectedTextu
 
     @Override
     public BakedModel bake(IGeometryBakingContext context, ModelBaker baker,
-            Function<Material, TextureAtlasSprite> spriteGetter, ModelState modelState, ItemOverrides overrides) {
+            Function<Material, TextureAtlasSprite> spriteGetter, ModelState modelState,
+            ItemOverrides overrides, ResourceLocation modelLocation) {
         TextureAtlasSprite base = spriteGetter.apply(context.getMaterial("base"));
         TextureAtlasSprite ctm = spriteGetter.apply(context.getMaterial("ctm"));
         @Nullable TextureAtlasSprite overlay = context.hasMaterial("overlay")

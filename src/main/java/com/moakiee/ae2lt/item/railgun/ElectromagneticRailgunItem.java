@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.jetbrains.annotations.Nullable;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -19,11 +20,9 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.UseAnim;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.phys.BlockHitResult;
 
 import appeng.api.implementations.menuobjects.IMenuItem;
 import appeng.api.implementations.menuobjects.ItemMenuHost;
-import appeng.menu.locator.ItemMenuHostLocator;
 
 import com.moakiee.ae2lt.config.RailgunDefaults;
 import com.moakiee.ae2lt.device.DeviceItem;
@@ -68,7 +67,7 @@ public class ElectromagneticRailgunItem extends Item implements IMenuItem, Devic
         }
         player.startUsingItem(hand);
         if (!level.isClientSide) {
-            stack.set(ModDataComponents.RAILGUN_CHARGE_TICKS.get(), 0L);
+            ModDataComponents.RAILGUN_CHARGE_TICKS.set(stack, 0L);
         }
         return new InteractionResultHolder<>(InteractionResult.CONSUME, stack);
     }
@@ -79,7 +78,7 @@ public class ElectromagneticRailgunItem extends Item implements IMenuItem, Devic
     }
 
     @Override
-    public int getUseDuration(ItemStack stack, LivingEntity user) {
+    public int getUseDuration(ItemStack stack) {
         return USE_DURATION;
     }
 
@@ -111,17 +110,17 @@ public class ElectromagneticRailgunItem extends Item implements IMenuItem, Devic
             return;
         }
         if (!hasOverloadCoreModule(stack)) {
-            stack.remove(ModDataComponents.RAILGUN_CHARGE_TICKS.get());
+            ModDataComponents.RAILGUN_CHARGE_TICKS.remove(stack);
             player.stopUsingItem();
             player.displayClientMessage(Component.translatable("ae2lt.railgun.core_required"), true);
             return;
         }
-        long current = stack.getOrDefault(ModDataComponents.RAILGUN_CHARGE_TICKS.get(), 0L);
+        long current = ModDataComponents.RAILGUN_CHARGE_TICKS.getOrDefault(stack, 0L);
         RailgunChargeTier chargingTier = chargingCostTier(current);
         long chargeCost = RailgunEnergyRules.chargeCostPerTickFe(chargingTier);
         refillMissingFe(stack, player, chargeCost);
         if (!RailgunEnergyBuffer.tryConsume(stack, player, chargeCost)) {
-            stack.remove(ModDataComponents.RAILGUN_CHARGE_TICKS.get());
+            ModDataComponents.RAILGUN_CHARGE_TICKS.remove(stack);
             player.stopUsingItem();
             player.displayClientMessage(Component.translatable("ae2lt.railgun.fail.no_fe"), true);
             return;
@@ -132,21 +131,20 @@ public class ElectromagneticRailgunItem extends Item implements IMenuItem, Devic
         //   2 modules → +3 / tick (3× speed)
         // Thresholds (RailgunDefaults.CHARGE_TICKS_TIER1/2/3) stay fixed in
         // "charge units"; only the rate of accumulation changes.
-        RailgunModuleEntries mods = stack.getOrDefault(
-                ModDataComponents.RAILGUN_MODULE_ENTRIES.get(), RailgunModuleEntries.EMPTY);
+        RailgunModuleEntries mods = ModDataComponents.RAILGUN_MODULE_ENTRIES.getOrDefault(stack, RailgunModuleEntries.EMPTY);
         long step = 1L + RailgunFireService.countAccelerationModules(mods);
-        stack.set(ModDataComponents.RAILGUN_CHARGE_TICKS.get(), current + step);
+        ModDataComponents.RAILGUN_CHARGE_TICKS.set(stack, current + step);
     }
 
     @Override
     public void releaseUsing(ItemStack stack, Level level, LivingEntity user, int timeLeft) {
         if (level.isClientSide || !(user instanceof ServerPlayer player) || !(level instanceof ServerLevel sl)) {
-            stack.remove(ModDataComponents.RAILGUN_CHARGE_TICKS.get());
+            ModDataComponents.RAILGUN_CHARGE_TICKS.remove(stack);
             return;
         }
-        long charged = stack.getOrDefault(ModDataComponents.RAILGUN_CHARGE_TICKS.get(), 0L);
-        stack.remove(ModDataComponents.RAILGUN_CHARGE_TICKS.get());
-        RailgunModuleEntries mods = stack.getOrDefault(ModDataComponents.RAILGUN_MODULE_ENTRIES.get(), RailgunModuleEntries.EMPTY);
+        long charged = ModDataComponents.RAILGUN_CHARGE_TICKS.getOrDefault(stack, 0L);
+        ModDataComponents.RAILGUN_CHARGE_TICKS.remove(stack);
+        RailgunModuleEntries mods = ModDataComponents.RAILGUN_MODULE_ENTRIES.getOrDefault(stack, RailgunModuleEntries.EMPTY);
         RailgunChargeTier tier = RailgunFireService.tierForCharge(charged, mods);
         if (tier == RailgunChargeTier.HV) {
             return;
@@ -155,15 +153,16 @@ public class ElectromagneticRailgunItem extends Item implements IMenuItem, Devic
     }
 
     @Override
-    public @Nullable ItemMenuHost<?> getMenuHost(
-            Player player, ItemMenuHostLocator locator, @Nullable BlockHitResult hitResult) {
-        return new RailgunHost(this, player, locator);
+    public @Nullable ItemMenuHost getMenuHost(
+            Player player, int inventorySlot, ItemStack stack, @Nullable BlockPos pos) {
+        return new RailgunHost(player, inventorySlot, stack);
     }
 
     @Override
-    public void appendHoverText(ItemStack stack, Item.TooltipContext context,
+    public void appendHoverText(ItemStack stack, @Nullable Level level,
                                 List<Component> tooltip, TooltipFlag tooltipFlag) {
-        super.appendHoverText(stack, context, tooltip, tooltipFlag);
+        // 1.20.1 Item#appendHoverText takes a nullable Level instead of Item.TooltipContext.
+        super.appendHoverText(stack, level, tooltip, tooltipFlag);
         long current = RailgunEnergyBuffer.read(stack);
         long capacity = RailgunEnergyBuffer.capacity(stack);
         tooltip.add(EnergyText.storedFe(current, capacity));
@@ -192,9 +191,7 @@ public class ElectromagneticRailgunItem extends Item implements IMenuItem, Devic
     }
 
     private static boolean hasOverloadCoreModule(ItemStack stack) {
-        return stack.getOrDefault(
-                ModDataComponents.RAILGUN_MODULE_ENTRIES.get(),
-                RailgunModuleEntries.EMPTY).hasCore();
+        return ModDataComponents.RAILGUN_MODULE_ENTRIES.getOrDefault(stack, RailgunModuleEntries.EMPTY).hasCore();
     }
 
     private static RailgunChargeTier chargingCostTier(long current) {

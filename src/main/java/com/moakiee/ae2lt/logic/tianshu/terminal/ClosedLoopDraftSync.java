@@ -3,7 +3,7 @@ package com.moakiee.ae2lt.logic.tianshu.terminal;
 import appeng.menu.guisync.PacketWritable;
 import java.util.Collections;
 import java.util.List;
-import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.FriendlyByteBuf;
 
 /** Quantities and output marks that are not representable by an ItemStack slot alone. */
 public record ClosedLoopDraftSync(
@@ -26,7 +26,7 @@ public record ClosedLoopDraftSync(
         }
     }
 
-    public ClosedLoopDraftSync(RegistryFriendlyByteBuf data) {
+    public ClosedLoopDraftSync(FriendlyByteBuf data) {
         this(readCopies(data), readRoles(data));
     }
 
@@ -45,18 +45,18 @@ public record ClosedLoopDraftSync(
     }
 
     @Override
-    public void writeToPacket(RegistryFriendlyByteBuf data) {
+    public void writeToPacket(FriendlyByteBuf data) {
         for (long copies : memberCopies) data.writeVarLong(copies);
         for (int role : outputRoles) data.writeVarInt(role);
     }
 
-    private static List<Long> readCopies(RegistryFriendlyByteBuf data) {
+    private static List<Long> readCopies(FriendlyByteBuf data) {
         var result = new java.util.ArrayList<Long>(MEMBER_SLOTS);
         for (int i = 0; i < MEMBER_SLOTS; i++) result.add(data.readVarLong());
         return result;
     }
 
-    private static List<Integer> readRoles(RegistryFriendlyByteBuf data) {
+    private static List<Integer> readRoles(FriendlyByteBuf data) {
         var result = new java.util.ArrayList<Integer>(OUTPUT_SLOTS);
         for (int i = 0; i < OUTPUT_SLOTS; i++) result.add(data.readVarInt());
         return result;

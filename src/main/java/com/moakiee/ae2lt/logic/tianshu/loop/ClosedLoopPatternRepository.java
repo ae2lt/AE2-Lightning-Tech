@@ -85,20 +85,20 @@ public final class ClosedLoopPatternRepository {
         patterns.clear();
     }
 
-    public void writeTo(CompoundTag parent, HolderLookup.Provider registries) {
+    public void writeTo(CompoundTag parent) {
         var list = new ListTag();
         for (var pattern : patterns) {
-            list.add(ClosedLoopPatternPayloadTagCodec.write(pattern, registries));
+            list.add(ClosedLoopPatternPayloadTagCodec.write(pattern));
         }
         parent.put(TAG_PATTERNS, list);
     }
 
-    public void readFrom(CompoundTag parent, HolderLookup.Provider registries) {
+    public void readFrom(CompoundTag parent) {
         patterns.clear();
         var list = parent.getList(TAG_PATTERNS, Tag.TAG_COMPOUND);
         for (int i = 0; i < list.size(); i++) {
             try {
-                var payload = ClosedLoopPatternPayloadTagCodec.read(list.getCompound(i), registries);
+                var payload = ClosedLoopPatternPayloadTagCodec.read(list.getCompound(i));
                 patterns.add(payload);
             } catch (RuntimeException ignored) {
                 // Keep other stored patterns usable when one entry was damaged or came from an old format.

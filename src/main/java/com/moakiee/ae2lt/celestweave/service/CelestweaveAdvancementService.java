@@ -14,7 +14,7 @@ public final class CelestweaveAdvancementService {
     }
 
     public static void awardRadiationAssimilation(ServerPlayer player) {
-        var advancement = player.server.getAdvancements().get(RADIATION_ASSIMILATION);
+        var advancement = player.server.getAdvancements().getAdvancement(RADIATION_ASSIMILATION);
         if (advancement != null) {
             player.getAdvancements().award(advancement, RADIATION_HEALING_CRITERION);
         }

@@ -3,11 +3,11 @@ package com.moakiee.ae2lt.client.railgun;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
-import net.neoforged.neoforge.event.tick.PlayerTickEvent;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
+import net.minecraftforge.event.TickEvent;
 
 import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.config.RailgunDefaults;
@@ -24,7 +24,7 @@ import com.moakiee.ae2lt.registry.ModDataComponents;
  * Only one instance of each sound is held at a time. Forced cleanup on
  * disconnect/reconnect.
  */
-@EventBusSubscriber(modid = AE2LightningTech.MODID, value = Dist.CLIENT)
+@Mod.EventBusSubscriber(modid = AE2LightningTech.MODID, value = Dist.CLIENT)
 public final class RailgunSoundController {
 
     private static RailgunBeamLoopSound beamSound;
@@ -34,9 +34,10 @@ public final class RailgunSoundController {
     private RailgunSoundController() {}
 
     @SubscribeEvent
-    public static void onPlayerTick(PlayerTickEvent.Post e) {
+    public static void onPlayerTick(TickEvent.PlayerTickEvent e) {
+        if (e.phase != TickEvent.Phase.END) return;
         Minecraft mc = Minecraft.getInstance();
-        if (mc.player == null || e.getEntity() != mc.player) return;
+        if (mc.player == null || e.player != mc.player) return;
         LocalPlayer player = mc.player;
 
         // -- Beam loop --
@@ -62,7 +63,7 @@ public final class RailgunSoundController {
                 && using.getItem() instanceof ElectromagneticRailgunItem
                 && RailgunSettings.soundEnabled(using);
         if (charging) {
-            long chargeTicks = using.getOrDefault(ModDataComponents.RAILGUN_CHARGE_TICKS.get(), 0L);
+            long chargeTicks = ModDataComponents.RAILGUN_CHARGE_TICKS.getOrDefault(using, 0L);
             RailgunChargeSoundPhase phase = RailgunChargeSoundPhase.fromChargeTicks(
                     chargeTicks, RailgunDefaults.CHARGE_TICKS_TIER3);
             if (phase == RailgunChargeSoundPhase.RAMP) {

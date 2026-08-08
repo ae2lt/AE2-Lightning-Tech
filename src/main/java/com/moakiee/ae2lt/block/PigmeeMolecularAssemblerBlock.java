@@ -6,6 +6,7 @@ import appeng.menu.locator.MenuLocators;
 import com.moakiee.ae2lt.blockentity.PigmeeMolecularAssemblerBlockEntity;
 import com.moakiee.ae2lt.menu.PigmeeMolecularAssemblerMenu;
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
@@ -38,11 +39,12 @@ public final class PigmeeMolecularAssemblerBlock
     }
 
     @Override
-    protected InteractionResult useWithoutItem(
+    public InteractionResult use(
             BlockState state,
             Level level,
             BlockPos pos,
             Player player,
+            InteractionHand hand,
             BlockHitResult hitResult) {
         var blockEntity = getBlockEntity(level, pos);
         if (blockEntity == null) {

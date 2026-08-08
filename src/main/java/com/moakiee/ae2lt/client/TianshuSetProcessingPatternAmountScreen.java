@@ -36,7 +36,7 @@ final class TianshuSetProcessingPatternAmountScreen<M extends TianshuPatternEnco
         widgets.addButton("save", GuiText.Set.text(), this::confirm);
 
         var icon = getMenu().getHost().getMainMenuIcon();
-        var button = new TabButton(Icon.BACK, icon.getHoverName(), ignored -> returnToParent());
+        var button = new TabButton(Icon.ARROW_LEFT, icon.getHoverName(), ignored -> returnToParent());
         widgets.add("back", button);
 
         amount = widgets.addNumberEntryWidget("amountToStock", NumberEntryType.of(currentStack.what()));

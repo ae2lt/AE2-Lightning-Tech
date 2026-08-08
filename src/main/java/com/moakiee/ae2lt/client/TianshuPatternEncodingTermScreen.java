@@ -5,12 +5,13 @@ import appeng.client.gui.me.common.MEStorageScreen;
 import appeng.client.gui.me.common.Repo;
 import appeng.client.gui.me.common.StackSizeRenderer;
 import appeng.client.gui.style.ScreenStyle;
-import appeng.client.gui.widgets.AE2Button;
+import com.moakiee.ae2lt.client.gui.AE2Button;
 import appeng.client.gui.widgets.ActionButton;
 import appeng.client.gui.widgets.IconButton;
 import appeng.client.gui.widgets.SettingToggleButton;
 import appeng.client.gui.widgets.TabButton;
 import appeng.client.gui.widgets.TabButton.Style;
+import com.moakiee.ae2lt.util.SlotPositionAccess;
 import appeng.api.behaviors.ContainerItemStrategies;
 import appeng.api.behaviors.EmptyingAction;
 import appeng.api.config.ActionItems;
@@ -21,8 +22,8 @@ import appeng.api.stacks.GenericStack;
 import appeng.core.localization.ButtonToolTips;
 import appeng.core.localization.Tooltips;
 import appeng.core.definitions.AEItems;
-import appeng.core.network.ServerboundPacket;
-import appeng.core.network.serverbound.InventoryActionPacket;
+import appeng.core.sync.network.NetworkHandler;
+import appeng.core.sync.packets.InventoryActionPacket;
 import appeng.helpers.InventoryAction;
 import appeng.menu.SlotSemantics;
 import appeng.menu.me.common.GridInventoryEntry;
@@ -59,7 +60,6 @@ import com.moakiee.ae2lt.logic.tianshu.maintenance.InventoryMaintenanceBadge;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.network.PacketDistributor;
 import com.moakiee.ae2lt.logic.AdvancedAECompat;
 import org.anti_ad.mc.ipn.api.IPNIgnore;
 import org.jetbrains.annotations.Nullable;
@@ -147,8 +147,7 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
         var blankPatternSlots = menu.getSlots(SlotSemantics.BLANK_PATTERN);
         if (!blankPatternSlots.isEmpty()) {
             var disabledSlot = blankPatternSlots.get(0);
-            networkBlankPatternSlot.x = disabledSlot.x;
-            networkBlankPatternSlot.y = disabledSlot.y;
+            SlotPositionAccess.set(networkBlankPatternSlot, disabledSlot.x, disabledSlot.y);
             menu.slots.add(networkBlankPatternSlot);
         }
     }
@@ -412,9 +411,9 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
                         new GenericStack(key, copies),
                         newStack -> {
                             if (newStack == null) {
-                                ServerboundPacket message = new InventoryActionPacket(
+                                var message = new InventoryActionPacket(
                                         InventoryAction.SET_FILTER, slot.index, ItemStack.EMPTY);
-                                PacketDistributor.sendToServer(message);
+                                NetworkHandler.instance().sendToServer(message);
                             } else {
                                 menu.setClosedLoopMemberCopies(memberIndex, newStack.amount());
                             }
@@ -428,11 +427,11 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
                             this,
                             currentStack,
                             newStack -> {
-                                ServerboundPacket message = new InventoryActionPacket(
+                                var message = new InventoryActionPacket(
                                         InventoryAction.SET_FILTER,
                                         slot.index,
                                         GenericStack.wrapInItemStack(newStack));
-                                PacketDistributor.sendToServer(message);
+                                NetworkHandler.instance().sendToServer(message);
                             }));
                     return true;
                 }
@@ -775,7 +774,7 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
 
         @Override
         public GridInventoryEntry getEntry() {
-            return repo.isEnabled() ? findNetworkBlankPatternEntry() : null;
+            return repo.hasPower() ? findNetworkBlankPatternEntry() : null;
         }
     }
 

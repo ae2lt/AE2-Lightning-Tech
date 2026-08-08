@@ -31,7 +31,7 @@ import appeng.api.storage.MEStorage;
 public final class AppFluxBridge {
 
     private static final ResourceLocation INDUCTION_CARD_ID =
-            new ResourceLocation("appflux", "induction_card");
+            ResourceLocation.fromNamespaceAndPath("appflux", "induction_card");
 
     private static final boolean LOADED;
 

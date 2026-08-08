@@ -61,12 +61,12 @@ public record ClosedLoopTerminalDraft(
         }
     }
 
-    public CompoundTag write(HolderLookup.Provider registries) {
+    public CompoundTag write() {
         var tag = new CompoundTag();
-        tag.put(TAG_SOURCE, source.saveOptional(registries));
-        tag.put(TAG_MEMBERS, writeStacks(members, registries));
+        tag.put(TAG_SOURCE, source.save(new CompoundTag()));
+        tag.put(TAG_MEMBERS, writeStacks(members));
         tag.putLongArray(TAG_MEMBER_COPIES, memberCopies.stream().mapToLong(Long::longValue).toArray());
-        tag.put(TAG_OUTPUTS, writeStacks(outputs, registries));
+        tag.put(TAG_OUTPUTS, writeStacks(outputs));
         tag.putIntArray(TAG_OUTPUT_ROLES, outputRoles.stream().mapToInt(Integer::intValue).toArray());
         tag.putInt(TAG_EXECUTION_MULTIPLIER, executionSeedMultiplier);
         tag.putInt(TAG_STORED_MULTIPLIER, storedTaskMultiplier);
@@ -76,9 +76,9 @@ public record ClosedLoopTerminalDraft(
 
     @Nullable
     public static ClosedLoopTerminalDraft read(
-            CompoundTag tag, HolderLookup.Provider registries) {
+            CompoundTag tag) {
         try {
-            var source = ItemStack.parseOptional(registries, tag.getCompound(TAG_SOURCE));
+            var source = ItemStack.of(tag.getCompound(TAG_SOURCE));
             var copiesArray = tag.getLongArray(TAG_MEMBER_COPIES);
             var rolesArray = tag.getIntArray(TAG_OUTPUT_ROLES);
             if (copiesArray.length != ClosedLoopDraftSync.MEMBER_SLOTS
@@ -92,10 +92,10 @@ public record ClosedLoopTerminalDraft(
             return new ClosedLoopTerminalDraft(
                     source,
                     readStacks(tag.getList(TAG_MEMBERS, Tag.TAG_COMPOUND),
-                            ClosedLoopDraftSync.MEMBER_SLOTS, registries),
+                            ClosedLoopDraftSync.MEMBER_SLOTS),
                     copies,
                     readStacks(tag.getList(TAG_OUTPUTS, Tag.TAG_COMPOUND),
-                            ClosedLoopDraftSync.OUTPUT_SLOTS, registries),
+                            ClosedLoopDraftSync.OUTPUT_SLOTS),
                     roles,
                     Math.max(1, tag.getInt(TAG_EXECUTION_MULTIPLIER)),
                     Math.max(1, tag.getInt(TAG_STORED_MULTIPLIER)),
@@ -133,27 +133,27 @@ public record ClosedLoopTerminalDraft(
     }
 
     private static ListTag writeStacks(
-            List<ItemStack> stacks, HolderLookup.Provider registries) {
+            List<ItemStack> stacks) {
         var result = new ListTag();
         for (int slot = 0; slot < stacks.size(); slot++) {
             var stack = stacks.get(slot);
             if (stack.isEmpty()) continue;
             var entry = new CompoundTag();
             entry.putInt(TAG_SLOT, slot);
-            result.add(stack.save(registries, entry));
+            result.add(stack.save(entry));
         }
         return result;
     }
 
     private static List<ItemStack> readStacks(
-            ListTag entries, int size, HolderLookup.Provider registries) {
+            ListTag entries, int size) {
         var result = new ArrayList<ItemStack>(size);
         for (int i = 0; i < size; i++) result.add(ItemStack.EMPTY);
         for (int i = 0; i < entries.size(); i++) {
             var entry = entries.getCompound(i);
             int slot = entry.getInt(TAG_SLOT);
             if (slot >= 0 && slot < size) {
-                result.set(slot, ItemStack.parseOptional(registries, entry));
+                result.set(slot, ItemStack.of(entry));
             }
         }
         return List.copyOf(result);

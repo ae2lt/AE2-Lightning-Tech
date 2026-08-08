@@ -1,15 +1,13 @@
 package com.moakiee.ae2lt.network.railgun;
+import java.util.function.Supplier;
+import net.minecraftforge.network.NetworkEvent;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.network.codec.ByteBufCodecs;
-import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import com.moakiee.ae2lt.network.NetworkInit;
 
@@ -30,21 +28,8 @@ import com.moakiee.ae2lt.network.NetworkInit;
  *                   origin for the first arc and for impact sparks
  * @param soundEnabled true when railgun-specific sounds should play client-side
  */
-public record RailgunBeamChainFxPacket(UUID shooterId, Vec3 firstHit, List<Vec3> chainPath, boolean soundEnabled)
-        implements CustomPacketPayload {
-
-    public static final Type<RailgunBeamChainFxPacket> TYPE =
-            new Type<>(NetworkInit.id("railgun_beam_chain_fx"));
-
-    public static final StreamCodec<RegistryFriendlyByteBuf, RailgunBeamChainFxPacket> STREAM_CODEC =
-            StreamCodec.ofMember(RailgunBeamChainFxPacket::write, RailgunBeamChainFxPacket::decode);
-
-    @Override
-    public Type<RailgunBeamChainFxPacket> type() {
-        return TYPE;
-    }
-
-    public void write(RegistryFriendlyByteBuf buf) {
+public record RailgunBeamChainFxPacket(UUID shooterId, Vec3 firstHit, List<Vec3> chainPath, boolean soundEnabled) {
+public void write(FriendlyByteBuf buf) {
         buf.writeUUID(shooterId);
         buf.writeDouble(firstHit.x);
         buf.writeDouble(firstHit.y);
@@ -58,7 +43,7 @@ public record RailgunBeamChainFxPacket(UUID shooterId, Vec3 firstHit, List<Vec3>
         buf.writeBoolean(soundEnabled);
     }
 
-    public static RailgunBeamChainFxPacket decode(RegistryFriendlyByteBuf buf) {
+    public static RailgunBeamChainFxPacket decode(FriendlyByteBuf buf) {
         UUID id = buf.readUUID();
         Vec3 first = new Vec3(buf.readDouble(), buf.readDouble(), buf.readDouble());
         int n = buf.readVarInt();
@@ -70,10 +55,10 @@ public record RailgunBeamChainFxPacket(UUID shooterId, Vec3 firstHit, List<Vec3>
         return new RailgunBeamChainFxPacket(id, first, path, soundEnabled);
     }
 
-    public static void handle(RailgunBeamChainFxPacket p, IPayloadContext ctx) {
+    public static void handle(RailgunBeamChainFxPacket p, Supplier<NetworkEvent.Context> ctxSup) {
+        NetworkEvent.Context ctx = ctxSup.get();
         ctx.enqueueWork(() -> RailgunClientBridge.beamChainFx(p));
     }
 
     /** Compile-time guard. */
-    @SuppressWarnings("unused") private static final Object _IMPORT_GUARD = ByteBufCodecs.BYTE;
 }

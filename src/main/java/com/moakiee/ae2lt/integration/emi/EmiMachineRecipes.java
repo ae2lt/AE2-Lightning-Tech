@@ -13,25 +13,25 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.crafting.Recipe;
-import net.minecraft.world.item.crafting.RecipeHolder;
 
 abstract class EmiBackedRecipe<T extends Recipe<?>> extends BasicEmiRecipe {
-    protected final RecipeHolder<T> holder;
     protected final T recipe;
 
     EmiBackedRecipe(
             dev.emi.emi.api.recipe.EmiRecipeCategory category,
-            RecipeHolder<T> holder,
+            ResourceLocation id,
+            T recipe,
             int width,
             int height) {
-        super(category, holder.id(), width, height);
-        this.holder = holder;
-        this.recipe = holder.value();
+        super(category, id, width, height);
+        this.recipe = recipe;
     }
 
+    // 1.20.1 EMI's EmiRecipe#getBackingRecipe returns the vanilla Recipe, not a
+    // RecipeHolder (1.21 API); recipes no longer carry their registry id.
     @Override
-    public RecipeHolder<?> getBackingRecipe() {
-        return holder;
+    public @org.jetbrains.annotations.Nullable Recipe<?> getBackingRecipe() {
+        return recipe;
     }
 }
 
@@ -41,8 +41,8 @@ final class EmiLightningAssemblyRecipe extends EmiBackedRecipe<LightningAssembly
     private static final int WIDTH = 156;
     private static final int BACKGROUND_HEIGHT = 78;
 
-    EmiLightningAssemblyRecipe(RecipeHolder<LightningAssemblyRecipe> holder) {
-        super(AE2LTEmiCategories.LIGHTNING_ASSEMBLY, holder, WIDTH, 100);
+    EmiLightningAssemblyRecipe(ResourceLocation id, LightningAssemblyRecipe recipe) {
+        super(AE2LTEmiCategories.LIGHTNING_ASSEMBLY, id, recipe, WIDTH, 100);
         recipe.inputs().forEach(input -> inputs.add(EmiRecipeWidgets.ingredient(input.ingredient(), input.count())));
         outputs.add(EmiStack.of(recipe.getResultStack()));
     }
@@ -81,8 +81,8 @@ final class EmiLightningSimulationRecipe extends EmiBackedRecipe<LightningSimula
             EmiRecipeWidgets.texture("guis/lightning_simulation_room.png");
     private static final int WIDTH = 168;
 
-    EmiLightningSimulationRecipe(RecipeHolder<LightningSimulationRecipe> holder) {
-        super(AE2LTEmiCategories.LIGHTNING_SIMULATION, holder, WIDTH, 96);
+    EmiLightningSimulationRecipe(ResourceLocation id, LightningSimulationRecipe recipe) {
+        super(AE2LTEmiCategories.LIGHTNING_SIMULATION, id, recipe, WIDTH, 96);
         recipe.inputs().forEach(input -> inputs.add(EmiRecipeWidgets.ingredient(input.ingredient(), input.count())));
         outputs.add(EmiStack.of(recipe.getResultStack()));
     }
@@ -129,8 +129,8 @@ final class EmiLightningTransformRecipe extends EmiBackedRecipe<LightningTransfo
     private static final int WIDTH = 134;
     private static final EmiLightningIcon LIGHTNING = new EmiLightningIcon(false);
 
-    EmiLightningTransformRecipe(RecipeHolder<LightningTransformRecipe> holder) {
-        super(AE2LTEmiCategories.LIGHTNING_TRANSFORM, holder, WIDTH, 66);
+    EmiLightningTransformRecipe(ResourceLocation id, LightningTransformRecipe recipe) {
+        super(AE2LTEmiCategories.LIGHTNING_TRANSFORM, id, recipe, WIDTH, 66);
         recipe.inputs().forEach(input -> inputs.add(EmiRecipeWidgets.ingredient(input.ingredient(), input.count())));
         outputs.add(EmiStack.of(recipe.getResultItem(Minecraft.getInstance().level.registryAccess())));
     }
@@ -169,8 +169,8 @@ final class EmiFirmamentConversionRecipe extends EmiBackedRecipe<FirmamentConver
     private static final int SLOT_AREA_Y = 4;
     private static final int SLOT_AREA_HEIGHT = 54;
 
-    EmiFirmamentConversionRecipe(RecipeHolder<FirmamentConversionRecipe> holder) {
-        super(AE2LTEmiCategories.FIRMAMENT_CONVERSION, holder, WIDTH, 76);
+    EmiFirmamentConversionRecipe(ResourceLocation id, FirmamentConversionRecipe recipe) {
+        super(AE2LTEmiCategories.FIRMAMENT_CONVERSION, id, recipe, WIDTH, 76);
         recipe.inputs().forEach(input -> inputs.add(EmiRecipeWidgets.ingredient(input.ingredient(), input.count())));
         recipe.getResultStacks().forEach(result -> outputs.add(EmiStack.of(result)));
     }

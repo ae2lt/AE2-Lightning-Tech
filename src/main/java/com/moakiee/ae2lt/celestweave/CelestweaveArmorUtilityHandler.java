@@ -11,13 +11,15 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.food.FoodData;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.tags.FluidTags;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.event.entity.living.MobEffectEvent;
-import net.neoforged.neoforge.event.entity.living.LivingEquipmentChangeEvent;
-import net.neoforged.neoforge.event.entity.player.PlayerEvent;
-import net.neoforged.neoforge.event.tick.PlayerTickEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.eventbus.api.Event;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
+import net.minecraftforge.event.entity.living.MobEffectEvent;
+import net.minecraftforge.event.entity.living.LivingEquipmentChangeEvent;
+import net.minecraftforge.event.entity.player.PlayerEvent;
+import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.event.TickEvent.PlayerTickEvent;
 
 import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.device.capability.DeviceCapability;
@@ -35,9 +37,13 @@ public final class CelestweaveArmorUtilityHandler {
     private CelestweaveArmorUtilityHandler() {
     }
 
+    // 1.20.1 fires one PlayerTickEvent per phase instead of the 1.21 Pre/Post pair.
     @SubscribeEvent
-    public static void onPlayerTick(PlayerTickEvent.Post event) {
-        if (!(event.getEntity() instanceof ServerPlayer player)) {
+    public static void onPlayerTick(PlayerTickEvent event) {
+        if (event.phase != TickEvent.Phase.END) {
+            return;
+        }
+        if (!(event.player instanceof ServerPlayer player)) {
             return;
         }
         PhaseLockService.tick(player);
@@ -139,7 +145,8 @@ public final class CelestweaveArmorUtilityHandler {
         }
         for (var active : ArmorCapabilityCollector.collectPerInstalledStack(player)) {
             if (active.capability() instanceof DeviceCapability.PurificationTuning) {
-                event.setResult(MobEffectEvent.Applicable.Result.DO_NOT_APPLY);
+                // 1.20.1 exposes the cancellable result through the forge Event.Result enum.
+                event.setResult(Event.Result.DENY);
                 return;
             }
         }
@@ -244,7 +251,7 @@ public final class CelestweaveArmorUtilityHandler {
             }
             if (CelestweaveArmorState.isSubmoduleInstalled(
                     armor,
-                    player.registryAccess(),
+                    player.level().registryAccess(),
                     PhaseFlightSubmodule.INSTANCE.id())) {
                 return armor;
             }
@@ -265,7 +272,7 @@ public final class CelestweaveArmorUtilityHandler {
         CelestweaveArmorState.syncSubmoduleActiveState(
                 player,
                 armor,
-                player.registryAccess(),
+                player.level().registryAccess(),
                 false,
                 Dist.DEDICATED_SERVER);
     }
@@ -286,7 +293,7 @@ public final class CelestweaveArmorUtilityHandler {
             CelestweaveArmorState.syncSubmoduleActiveState(
                     player,
                     armor,
-                    player.registryAccess(),
+                    player.level().registryAccess(),
                     true,
                     Dist.DEDICATED_SERVER,
                     true);

@@ -41,6 +41,14 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.energy.IEnergyStorage;
 import net.minecraftforge.items.IItemHandlerModifiable;
+import net.minecraftforge.common.capabilities.Capability;
+import net.minecraftforge.common.capabilities.ForgeCapabilities;
+import net.minecraftforge.common.util.LazyOptional;
+
+import org.jetbrains.annotations.Nullable;
+
+import com.moakiee.ae2lt.api.AE2LTCapabilities;
+import com.moakiee.ae2lt.me.GridLightningEnergyHandler;
 
 public class TeslaCoilBlockEntity extends AENetworkBlockEntity
         implements IActionHost, FrequencyBindingHost {
@@ -629,6 +637,20 @@ public class TeslaCoilBlockEntity extends AENetworkBlockEntity
     private long getRequiredHighVoltageForBatch(TeslaCoilMode mode, long batchSize) {
         return Math.multiplyExact(mode.requiredHighVoltage(), batchSize);
     }
+    @Override
+    public <T> LazyOptional<T> getCapability(Capability<T> cap, @Nullable Direction side) {
+        if (cap == ForgeCapabilities.ITEM_HANDLER) {
+            return LazyOptional.of(this::getAutomationInventory).cast();
+        }
+        if (cap == ForgeCapabilities.ENERGY) {
+            return LazyOptional.of(() -> getEnergyStorageCapability(side)).cast();
+        }
+        if (cap == AE2LTCapabilities.LIGHTNING_ENERGY_BLOCK) {
+            return LazyOptional.of(() -> new GridLightningEnergyHandler(this)).cast();
+        }
+        return super.getCapability(cap, side);
+    }
+
     @Override
     public AECableType getCableConnectionType(Direction dir) {
         return AECableType.SMART;

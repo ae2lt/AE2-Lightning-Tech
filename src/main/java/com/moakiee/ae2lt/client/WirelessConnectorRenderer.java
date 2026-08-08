@@ -16,22 +16,20 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
-import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
+import net.minecraftforge.client.event.RenderLevelStageEvent;
 
 import appeng.client.render.overlay.OverlayRenderType;
 
@@ -41,6 +39,7 @@ import com.moakiee.ae2lt.blockentity.OverloadedPowerSupplyBlockEntity;
 import com.moakiee.ae2lt.item.OverloadedWirelessConnectorItem;
 import com.moakiee.ae2lt.logic.WirelessConnectorTargetHelper;
 import com.moakiee.ae2lt.api.patternprovider.WirelessPatternProviderHost;
+import com.moakiee.ae2lt.util.ItemStackTagSupport;
 
 /**
  * Client-side renderer for the Overloaded Wireless Connector.
@@ -53,13 +52,13 @@ import com.moakiee.ae2lt.api.patternprovider.WirelessPatternProviderHost;
  * <ul>
  *   <li>The chunk/BE scan is performed at most once every {@link #RESCAN_INTERVAL_TICKS}
  *       game ticks, not every frame. At 200fps this turns ~200 scans/sec into ~5 scans/sec
- *       while remaining visually instantaneous (≤200ms staleness).</li>
+ *       while remaining visually instantaneous (鈮?00ms staleness).</li>
  *   <li>Hot-path objects ({@link Quaternionf}, scratch {@link HashSet}) are reused across
  *       frames instead of re-allocated, to keep GC pressure flat under high frame rates
  *       (the report flags high-FPS as an amplifier of any per-frame leak path).</li>
  * </ul>
  */
-@EventBusSubscriber(modid = AE2LightningTech.MODID, value = Dist.CLIENT)
+@Mod.EventBusSubscriber(modid = AE2LightningTech.MODID, value = Dist.CLIENT)
 public class WirelessConnectorRenderer {
 
     // Preview color: semi-transparent yellow (ARGB)
@@ -104,14 +103,7 @@ public class WirelessConnectorRenderer {
         }
 
         // Check if player is holding the wireless connector in either hand
-        ItemStack stack = ItemStack.EMPTY;
-        for (var hand : net.minecraft.world.InteractionHand.values()) {
-            var held = player.getItemInHand(hand);
-            if (held.getItem() instanceof OverloadedWirelessConnectorItem) {
-                stack = held;
-                break;
-            }
-        }
+        ItemStack stack = getHeldConnectorStack();
         if (stack.isEmpty()) {
             return;
         }
@@ -396,10 +388,10 @@ public class WirelessConnectorRenderer {
             float x3, float y3, float z3,
             float x4, float y4, float z4,
             float nx, float ny, float nz) {
-        vc.addVertex(mat, x1, y1, z1).setColor(c[1], c[2], c[3], c[0]).setNormal(nx, ny, nz);
-        vc.addVertex(mat, x2, y2, z2).setColor(c[1], c[2], c[3], c[0]).setNormal(nx, ny, nz);
-        vc.addVertex(mat, x3, y3, z3).setColor(c[1], c[2], c[3], c[0]).setNormal(nx, ny, nz);
-        vc.addVertex(mat, x4, y4, z4).setColor(c[1], c[2], c[3], c[0]).setNormal(nx, ny, nz);
+        vc.vertex(mat, x1, y1, z1).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
+        vc.vertex(mat, x2, y2, z2).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
+        vc.vertex(mat, x3, y3, z3).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
+        vc.vertex(mat, x4, y4, z4).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
     }
 
 
@@ -424,40 +416,40 @@ public class WirelessConnectorRenderer {
 
         switch (face) {
             case DOWN -> {
-                vc.addVertex(mat, 0, -offset, 0).setColor(c[1], c[2], c[3], c[0]).setNormal(nx, ny, nz);
-                vc.addVertex(mat, 1, -offset, 0).setColor(c[1], c[2], c[3], c[0]).setNormal(nx, ny, nz);
-                vc.addVertex(mat, 1, -offset, 1).setColor(c[1], c[2], c[3], c[0]).setNormal(nx, ny, nz);
-                vc.addVertex(mat, 0, -offset, 1).setColor(c[1], c[2], c[3], c[0]).setNormal(nx, ny, nz);
+                vc.vertex(mat, 0, -offset, 0).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
+                vc.vertex(mat, 1, -offset, 0).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
+                vc.vertex(mat, 1, -offset, 1).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
+                vc.vertex(mat, 0, -offset, 1).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
             }
             case UP -> {
-                vc.addVertex(mat, 0, 1 + offset, 1).setColor(c[1], c[2], c[3], c[0]).setNormal(nx, ny, nz);
-                vc.addVertex(mat, 1, 1 + offset, 1).setColor(c[1], c[2], c[3], c[0]).setNormal(nx, ny, nz);
-                vc.addVertex(mat, 1, 1 + offset, 0).setColor(c[1], c[2], c[3], c[0]).setNormal(nx, ny, nz);
-                vc.addVertex(mat, 0, 1 + offset, 0).setColor(c[1], c[2], c[3], c[0]).setNormal(nx, ny, nz);
+                vc.vertex(mat, 0, 1 + offset, 1).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
+                vc.vertex(mat, 1, 1 + offset, 1).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
+                vc.vertex(mat, 1, 1 + offset, 0).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
+                vc.vertex(mat, 0, 1 + offset, 0).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
             }
             case NORTH -> {
-                vc.addVertex(mat, 0, 0, -offset).setColor(c[1], c[2], c[3], c[0]).setNormal(nx, ny, nz);
-                vc.addVertex(mat, 0, 1, -offset).setColor(c[1], c[2], c[3], c[0]).setNormal(nx, ny, nz);
-                vc.addVertex(mat, 1, 1, -offset).setColor(c[1], c[2], c[3], c[0]).setNormal(nx, ny, nz);
-                vc.addVertex(mat, 1, 0, -offset).setColor(c[1], c[2], c[3], c[0]).setNormal(nx, ny, nz);
+                vc.vertex(mat, 0, 0, -offset).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
+                vc.vertex(mat, 0, 1, -offset).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
+                vc.vertex(mat, 1, 1, -offset).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
+                vc.vertex(mat, 1, 0, -offset).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
             }
             case SOUTH -> {
-                vc.addVertex(mat, 1, 0, 1 + offset).setColor(c[1], c[2], c[3], c[0]).setNormal(nx, ny, nz);
-                vc.addVertex(mat, 1, 1, 1 + offset).setColor(c[1], c[2], c[3], c[0]).setNormal(nx, ny, nz);
-                vc.addVertex(mat, 0, 1, 1 + offset).setColor(c[1], c[2], c[3], c[0]).setNormal(nx, ny, nz);
-                vc.addVertex(mat, 0, 0, 1 + offset).setColor(c[1], c[2], c[3], c[0]).setNormal(nx, ny, nz);
+                vc.vertex(mat, 1, 0, 1 + offset).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
+                vc.vertex(mat, 1, 1, 1 + offset).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
+                vc.vertex(mat, 0, 1, 1 + offset).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
+                vc.vertex(mat, 0, 0, 1 + offset).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
             }
             case WEST -> {
-                vc.addVertex(mat, -offset, 0, 1).setColor(c[1], c[2], c[3], c[0]).setNormal(nx, ny, nz);
-                vc.addVertex(mat, -offset, 1, 1).setColor(c[1], c[2], c[3], c[0]).setNormal(nx, ny, nz);
-                vc.addVertex(mat, -offset, 1, 0).setColor(c[1], c[2], c[3], c[0]).setNormal(nx, ny, nz);
-                vc.addVertex(mat, -offset, 0, 0).setColor(c[1], c[2], c[3], c[0]).setNormal(nx, ny, nz);
+                vc.vertex(mat, -offset, 0, 1).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
+                vc.vertex(mat, -offset, 1, 1).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
+                vc.vertex(mat, -offset, 1, 0).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
+                vc.vertex(mat, -offset, 0, 0).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
             }
             case EAST -> {
-                vc.addVertex(mat, 1 + offset, 0, 0).setColor(c[1], c[2], c[3], c[0]).setNormal(nx, ny, nz);
-                vc.addVertex(mat, 1 + offset, 1, 0).setColor(c[1], c[2], c[3], c[0]).setNormal(nx, ny, nz);
-                vc.addVertex(mat, 1 + offset, 1, 1).setColor(c[1], c[2], c[3], c[0]).setNormal(nx, ny, nz);
-                vc.addVertex(mat, 1 + offset, 0, 1).setColor(c[1], c[2], c[3], c[0]).setNormal(nx, ny, nz);
+                vc.vertex(mat, 1 + offset, 0, 0).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
+                vc.vertex(mat, 1 + offset, 1, 0).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
+                vc.vertex(mat, 1 + offset, 1, 1).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
+                vc.vertex(mat, 1 + offset, 0, 1).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
             }
         }
 
@@ -489,8 +481,8 @@ public class WirelessConnectorRenderer {
         if (len < 1e-6f) return;
         float nx = dx / len, ny = dy / len, nz = dz / len;
 
-        vc.addVertex(mat, fx, fy, fz).setColor(c[1], c[2], c[3], c[0]).setNormal(nx, ny, nz);
-        vc.addVertex(mat, tx, ty, tz).setColor(c[1], c[2], c[3], c[0]).setNormal(nx, ny, nz);
+        vc.vertex(mat, fx, fy, fz).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
+        vc.vertex(mat, tx, ty, tz).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
     }
 
     // -- Item NBT helpers (client-side read-only) --
@@ -548,8 +540,39 @@ public class WirelessConnectorRenderer {
         }
     }
 
+    /**
+     * Returns the wireless-connector stack currently held by the local player, or EMPTY.
+     * Shared with {@link WirelessConnectorHostRenderer}.
+     */
+    public static ItemStack getHeldConnectorStack() {
+        var player = Minecraft.getInstance().player;
+        if (player == null) {
+            return ItemStack.EMPTY;
+        }
+        for (var hand : net.minecraft.world.InteractionHand.values()) {
+            var held = player.getItemInHand(hand);
+            if (held.getItem() instanceof OverloadedWirelessConnectorItem) {
+                return held;
+            }
+        }
+        return ItemStack.EMPTY;
+    }
+
+    /**
+     * True if the given host position/type is the one selected on the held connector stack.
+     * Shared with {@link WirelessConnectorHostRenderer}.
+     */
+    public static boolean isSelectedHost(ItemStack stack, Level level, BlockPos pos, String hostType) {
+        var selected = getSelectedHost(stack);
+        return selected != null
+                && selected.hostType().equals(hostType)
+                && selected.pos().equals(pos)
+                && level.dimension().equals(selected.dimension());
+    }
+
     private static SelectedHost getSelectedHost(ItemStack stack) {
-        var tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+        // 1.20.1 stores the selection in the stack NBT instead of a CUSTOM_DATA component.
+        var tag = ItemStackTagSupport.getTagCopy(stack);
         if (!tag.contains(TAG_SELECTED, CompoundTag.TAG_COMPOUND)) {
             return null;
         }
@@ -560,7 +583,7 @@ public class WirelessConnectorRenderer {
         }
         return new SelectedHost(
                 BlockPos.of(sel.getLong(TAG_POS)),
-                ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(dimStr)),
+                ResourceKey.create(Registries.DIMENSION, ResourceLocation.tryParse(dimStr)),
                 sel.contains(TAG_HOST_TYPE, CompoundTag.TAG_STRING)
                         ? sel.getString(TAG_HOST_TYPE)
                         : OverloadedWirelessConnectorItem.HOST_PROVIDER);

@@ -5,7 +5,6 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
@@ -18,7 +17,6 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Pose;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.gameevent.GameEvent;
 
 import com.moakiee.ae2lt.config.AE2LTCommonConfig;
@@ -28,6 +26,7 @@ import com.moakiee.ae2lt.item.railgun.RailgunSettings;
 import com.moakiee.ae2lt.celestweave.CelestweaveArmorUndyingHandler;
 import com.moakiee.ae2lt.registry.ModDataComponents;
 import com.moakiee.ae2lt.registry.ModDamageTypes;
+import com.moakiee.ae2lt.util.ItemStackTagSupport;
 
 /**
  * Overload Execution — "I remember you" HP-record model.
@@ -37,7 +36,8 @@ import com.moakiee.ae2lt.registry.ModDamageTypes;
  * caller (currently only EHv3 charged shots in {@code RailgunFireService.applyAll}).
  *
  * <p><b>Model:</b> per railgun ItemStack, a small list of {@code (uuid, recordedHp,
- * lastHitTick)} entries is kept on {@link DataComponents#CUSTOM_DATA}. On each
+ * lastHitTick)} entries is kept in the stack's NBT under {@code OverloadExecutionTargets}.
+ * On each
  * qualifying hit the basis HP is computed as:
  * <pre>
  *   elapsed = now - lastHitTick
@@ -94,12 +94,11 @@ public final class OverloadExecutionService {
                              LivingEntity target, double damage) {
         if (!AE2LTCommonConfig.overloadExecutionEnabled()) return;
 
-        RailgunSettings settings = stack.getOrDefault(
-                ModDataComponents.RAILGUN_SETTINGS.get(), RailgunSettings.DEFAULT);
+        RailgunSettings settings = ModDataComponents.RAILGUN_SETTINGS.getOrDefault(stack, RailgunSettings.DEFAULT);
         boolean allowPlayerTargets = settings.allowsPlayerTargets(AE2LTCommonConfig.railgunDamagePlayers());
         if (!RailgunTargetRules.canAffect(player, target, allowPlayerTargets)) return;
 
-        RailgunModuleEntries mods = stack.getOrDefault(ModDataComponents.RAILGUN_MODULE_ENTRIES.get(), RailgunModuleEntries.EMPTY);
+        RailgunModuleEntries mods = ModDataComponents.RAILGUN_MODULE_ENTRIES.getOrDefault(stack, RailgunModuleEntries.EMPTY);
         if (!mods.hasOverloadExecution()) return;
         int maxTracked = AE2LTCommonConfig.overloadExecutionMaxTracked();
         int decayWindow = AE2LTCommonConfig.overloadExecutionDecayWindowTicks();
@@ -110,7 +109,8 @@ public final class OverloadExecutionService {
         double currentHp = target.getHealth();
         double maxHp = target.getMaxHealth();
 
-        CompoundTag root = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+        // 1.20.1：无 CustomData 组件，直接操作栈 NBT 的副本（saveTargets 时写回）。
+        CompoundTag root = ItemStackTagSupport.getTagCopy(stack);
         ListTag targets = root.getList(TAG_TARGETS, Tag.TAG_COMPOUND);
         int existingIdx = indexOf(targets, targetUuid);
         long feCost = RailgunEnergyRules.overloadExecutionCostFe();
@@ -216,12 +216,10 @@ public final class OverloadExecutionService {
         if (target instanceof LivingEntity) return;
         if (!RailgunTargetRules.canAffect(player, target, allowPlayerTargets)) return;
 
-        RailgunModuleEntries mods = stack.getOrDefault(
-                ModDataComponents.RAILGUN_MODULE_ENTRIES.get(), RailgunModuleEntries.EMPTY);
+        RailgunModuleEntries mods = ModDataComponents.RAILGUN_MODULE_ENTRIES.getOrDefault(stack, RailgunModuleEntries.EMPTY);
         if (!mods.hasOverloadExecution()) return;
 
-        RailgunSettings settings = stack.getOrDefault(
-                ModDataComponents.RAILGUN_SETTINGS.get(), RailgunSettings.DEFAULT);
+        RailgunSettings settings = ModDataComponents.RAILGUN_SETTINGS.getOrDefault(stack, RailgunSettings.DEFAULT);
         if (!settings.forceOverloadRemoval()) return;
 
         long feCost = RailgunEnergyRules.overloadExecutionCostFe();
@@ -380,7 +378,7 @@ public final class OverloadExecutionService {
     }
 
     private static boolean normalDeathCompleted(LivingEntity target, int playerDeathsBefore) {
-        if (target.dead || target.isRemoved()) return true;
+        if (target.isDeadOrDying() || target.isRemoved()) return true;
         return target instanceof ServerPlayer player
                 && player.getStats().getValue(Stats.CUSTOM.get(Stats.DEATHS)) > playerDeathsBefore;
     }
@@ -392,7 +390,7 @@ public final class OverloadExecutionService {
 
         victim.setNoActionTime(0);
         victim.walkAnimation.setSpeed(1.5F);
-        victim.lastHurt = amount;
+        // 1.20.1: lastHurt 为 protected 且无公共 setter,由 hurt() 内部维护,这里不再手动赋值。
         victim.invulnerableTime = 0;
         victim.getCombatTracker().recordDamage(source, amount);
         victim.setHealth(0.0F);
@@ -403,28 +401,18 @@ public final class OverloadExecutionService {
 
     /** Direct normal-settlement fallback used only when the dynamic death callback was canceled. */
     private static void forceDie(LivingEntity victim, DamageSource source) {
-        if (victim.isRemoved() || victim.dead) return;
+        if (victim.isRemoved() || victim.isDeadOrDying()) return;
 
         LivingEntity killer = source.getEntity() instanceof LivingEntity attacker
                 ? attacker
                 : victim.getKillCredit();
-        if (victim.deathScore >= 0 && killer != null) {
-            killer.awardKillScore(victim, victim.deathScore, source);
+        // 1.20.1: deathScore 为 protected 且无 getter,按 0 计分;awardKillScore 签名不变。
+        if (killer != null) {
+            killer.awardKillScore(victim, 0, source);
         }
         if (victim.isSleeping()) victim.stopSleeping();
-
-        victim.dead = true;
-        victim.getCombatTracker().recheckStatus();
-
-        if (victim.level() instanceof ServerLevel sl) {
-            Entity srcEntity = source.getEntity();
-            if (srcEntity == null || srcEntity.killedEntity(sl, victim)) {
-                victim.gameEvent(GameEvent.ENTITY_DIE);
-                victim.dropAllDeathLoot(sl, source);
-            }
-            sl.broadcastEntityEvent(victim, (byte) 3);
-        }
-        victim.setPose(Pose.DYING);
+        // 1.20.1: die() 是 public,内部完成 dead 标记、击杀事件、掉落、广播与 DYING 姿态。
+        victim.die(source);
     }
 
     // ── NBT Helpers ─────────────────────────────────────────────────────────
@@ -438,13 +426,8 @@ public final class OverloadExecutionService {
     }
 
     private static void saveTargets(ItemStack stack, CompoundTag root, ListTag targets) {
-        // Re-attach the list to the working root, then publish via CustomData.update.
-        if (targets.isEmpty()) {
-            root.remove(TAG_TARGETS);
-        } else {
-            root.put(TAG_TARGETS, targets);
-        }
-        CustomData.update(DataComponents.CUSTOM_DATA, stack, tag -> {
+        // 1.20.1：无 CustomData 组件，直接把列表写回栈 NBT（updateTag 在 tag 空时置 null）。
+        ItemStackTagSupport.updateTag(stack, tag -> {
             if (targets.isEmpty()) {
                 tag.remove(TAG_TARGETS);
             } else {

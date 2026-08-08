@@ -1,25 +1,24 @@
 package com.moakiee.ae2lt.celestweave.service;
 
 import java.util.List;
+import java.util.UUID;
 
-import net.minecraft.core.Holder;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
-import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraftforge.common.ForgeMod;
 
-import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.device.capability.DeviceCapability;
 import com.moakiee.ae2lt.celestweave.module.ReachSubmodule;
 import com.moakiee.ae2lt.celestweave.service.ArmorCapabilityCollector.ActiveCapability;
 
 public final class ArmorInteractionRangeService {
-    private static final ResourceLocation BLOCK_RANGE_MODIFIER_ID =
-            ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "celestweave_reach_extension_block");
-    private static final ResourceLocation ENTITY_RANGE_MODIFIER_ID =
-            ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "celestweave_reach_extension_entity");
+    // 1.20.1 attribute modifiers are keyed by UUID, not ResourceLocation.
+    private static final UUID BLOCK_RANGE_MODIFIER_ID =
+            UUID.fromString("7f4b3a2c-1d5e-4a6b-8c9d-0e1f2a3b4c5d");
+    private static final UUID ENTITY_RANGE_MODIFIER_ID =
+            UUID.fromString("8a5c4b3d-2e6f-4b7c-9d0e-1f2a3b4c5d6e");
 
     private ArmorInteractionRangeService() {
     }
@@ -35,14 +34,14 @@ public final class ArmorInteractionRangeService {
             entityBonus = Math.max(entityBonus, ReachSubmodule.entityBonus(active.armor()));
         }
 
-        updateModifier(player, Attributes.BLOCK_INTERACTION_RANGE, BLOCK_RANGE_MODIFIER_ID, blockBonus);
-        updateModifier(player, Attributes.ENTITY_INTERACTION_RANGE, ENTITY_RANGE_MODIFIER_ID, entityBonus);
+        updateModifier(player, ForgeMod.BLOCK_REACH.get(), BLOCK_RANGE_MODIFIER_ID, blockBonus);
+        updateModifier(player, ForgeMod.ENTITY_REACH.get(), ENTITY_RANGE_MODIFIER_ID, entityBonus);
     }
 
     private static void updateModifier(
             ServerPlayer player,
-            Holder<Attribute> attribute,
-            ResourceLocation id,
+            Attribute attribute,
+            UUID id,
             double amount) {
         AttributeInstance instance = player.getAttribute(attribute);
         if (instance == null) {
@@ -58,14 +57,18 @@ public final class ArmorInteractionRangeService {
         }
 
         if (existing != null
-                && Math.abs(existing.amount() - amount) < 1.0E-6D
-                && existing.operation() == AttributeModifier.Operation.ADD_VALUE) {
+                && Math.abs(existing.getAmount() - amount) < 1.0E-6D
+                && existing.getOperation() == AttributeModifier.Operation.ADDITION) {
             return;
         }
 
-        instance.addOrUpdateTransientModifier(new AttributeModifier(
+        if (existing != null) {
+            instance.removeModifier(existing);
+        }
+        instance.addTransientModifier(new AttributeModifier(
                 id,
+                "celestweave_reach_extension",
                 amount,
-                AttributeModifier.Operation.ADD_VALUE));
+                AttributeModifier.Operation.ADDITION));
     }
 }

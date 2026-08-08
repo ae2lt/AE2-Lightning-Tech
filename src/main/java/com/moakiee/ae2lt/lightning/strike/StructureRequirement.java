@@ -17,7 +17,7 @@ public record StructureRequirement(BlockPos offset, Block block, boolean consume
             throw new JsonSyntaxException("Structure requirement offset must contain exactly 3 integers");
         }
 
-        Block block = BuiltInRegistries.BLOCK.getOptional(new ResourceLocation(GsonHelper.getAsString(json, "block")))
+        Block block = BuiltInRegistries.BLOCK.getOptional(ResourceLocation.tryParse(GsonHelper.getAsString(json, "block")))
                 .orElseThrow(() -> new JsonSyntaxException("Unknown block id: " + GsonHelper.getAsString(json, "block")));
 
         return new StructureRequirement(

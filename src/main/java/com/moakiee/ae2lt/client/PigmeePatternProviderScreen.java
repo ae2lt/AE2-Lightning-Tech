@@ -15,8 +15,4 @@ public final class PigmeePatternProviderScreen extends AEBaseScreen<PigmeePatter
         super(menu, playerInventory, title, style);
     }
 
-    @Override
-    protected boolean shouldAddToolbar() {
-        return false;
-    }
 }

@@ -31,9 +31,7 @@ public class LightningSimulationChamberMenu extends AEBaseMenu implements Freque
             MenuTypeBuilder
                     .create(LightningSimulationChamberMenu::new, LightningSimulationChamberBlockEntity.class)
                     .withMenuTitle(host -> Component.translatable("block.ae2lt.lightning_simulation_room")),
-            new ResourceLocation(
-                    AE2LightningTech.MODID,
-                    "lightning_simulation_room"));
+            ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "lightning_simulation_room"));
 
     private static final RelativeSide[] OUTPUT_SIDES = RelativeSide.values();
 

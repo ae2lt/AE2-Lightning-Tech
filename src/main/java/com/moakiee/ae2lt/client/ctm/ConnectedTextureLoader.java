@@ -6,8 +6,8 @@ import com.google.gson.JsonObject;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.GsonHelper;
-import net.neoforged.neoforge.client.ChunkRenderTypeSet;
-import net.neoforged.neoforge.client.model.geometry.IGeometryLoader;
+import net.minecraftforge.client.ChunkRenderTypeSet;
+import net.minecraftforge.client.model.geometry.IGeometryLoader;
 
 /**
  * Loader for {@code "loader": "ae2lt:connected_texture"} models.
@@ -22,7 +22,7 @@ public class ConnectedTextureLoader implements IGeometryLoader<ConnectedTextureG
 
     @Override
     public ConnectedTextureGeometry read(JsonObject json, JsonDeserializationContext context) {
-        ResourceLocation connection = ResourceLocation.parse(
+        ResourceLocation connection = ResourceLocation.tryParse(
                 GsonHelper.getAsString(json, "connection", "ae2lt:same_block"));
         RenderType renderType = parseRenderType(GsonHelper.getAsString(json, "render_type", "minecraft:translucent"));
         boolean ambientOcclusion = GsonHelper.getAsBoolean(json, "ambientocclusion", true);

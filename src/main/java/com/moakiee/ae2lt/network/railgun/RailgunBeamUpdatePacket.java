@@ -1,13 +1,11 @@
 package com.moakiee.ae2lt.network.railgun;
+import java.util.function.Supplier;
+import net.minecraftforge.network.NetworkEvent;
 
 import java.util.UUID;
 
-import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.network.codec.ByteBufCodecs;
-import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import com.moakiee.ae2lt.network.NetworkInit;
 
@@ -15,28 +13,15 @@ import com.moakiee.ae2lt.network.NetworkInit;
  * Server to tracking client: keepalive/update packet for an active beam owned
  * by player {@code shooterId}. {@code active=false} signals beam stop.
  */
-public record RailgunBeamUpdatePacket(UUID shooterId, Vec3 from, Vec3 to, boolean active)
-        implements CustomPacketPayload {
-
-    public static final Type<RailgunBeamUpdatePacket> TYPE =
-            new Type<>(NetworkInit.id("railgun_beam_update"));
-
-    public static final StreamCodec<RegistryFriendlyByteBuf, RailgunBeamUpdatePacket> STREAM_CODEC =
-            StreamCodec.ofMember(RailgunBeamUpdatePacket::write, RailgunBeamUpdatePacket::decode);
-
-    @Override
-    public Type<RailgunBeamUpdatePacket> type() {
-        return TYPE;
-    }
-
-    public void write(RegistryFriendlyByteBuf buf) {
+public record RailgunBeamUpdatePacket(UUID shooterId, Vec3 from, Vec3 to, boolean active) {
+public void write(FriendlyByteBuf buf) {
         buf.writeUUID(shooterId);
         buf.writeDouble(from.x); buf.writeDouble(from.y); buf.writeDouble(from.z);
         buf.writeDouble(to.x); buf.writeDouble(to.y); buf.writeDouble(to.z);
         buf.writeBoolean(active);
     }
 
-    public static RailgunBeamUpdatePacket decode(RegistryFriendlyByteBuf buf) {
+    public static RailgunBeamUpdatePacket decode(FriendlyByteBuf buf) {
         return new RailgunBeamUpdatePacket(
                 buf.readUUID(),
                 new Vec3(buf.readDouble(), buf.readDouble(), buf.readDouble()),
@@ -44,10 +29,10 @@ public record RailgunBeamUpdatePacket(UUID shooterId, Vec3 from, Vec3 to, boolea
                 buf.readBoolean());
     }
 
-    public static void handle(RailgunBeamUpdatePacket p, IPayloadContext ctx) {
+    public static void handle(RailgunBeamUpdatePacket p, Supplier<NetworkEvent.Context> ctxSup) {
+        NetworkEvent.Context ctx = ctxSup.get();
         ctx.enqueueWork(() -> RailgunClientBridge.beamUpdate(p));
     }
 
     /** Compile-time guard. */
-    @SuppressWarnings("unused") private static final Object _IMPORT_GUARD = ByteBufCodecs.BYTE;
 }

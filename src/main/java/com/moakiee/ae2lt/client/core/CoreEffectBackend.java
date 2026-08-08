@@ -1,61 +1,25 @@
 package com.moakiee.ae2lt.client.core;
 
-import com.moakiee.ae2lt.client.core.veil.VeilCoreEffectShaders;
-import com.mojang.logging.LogUtils;
-import net.neoforged.fml.ModList;
-import org.apache.maven.artifact.versioning.DefaultArtifactVersion;
-import org.slf4j.Logger;
-
+/**
+ * Core-effect shader backend selection.
+ *
+ * <p>1.20.1 port note: the NeoForge 1.21 Veil integration (version range [4.3.0,5.0.0),
+ * {@code VeilRenderBridge}) does not exist on Forge 1.20.1 — Veil 1.20.1 is 1.x with a
+ * different API and no local jar is available. The native shader backend
+ * ({@link CoreEffectShaders}) is therefore always used; this class only exists to keep
+ * the previous backend-selection call sites intact.</p>
+ */
 final class CoreEffectBackend {
-    private static final Logger LOGGER = LogUtils.getLogger();
-    private static final DefaultArtifactVersion MINIMUM_VEIL_VERSION =
-            new DefaultArtifactVersion("4.3.0");
-    private static final DefaultArtifactVersion MAXIMUM_VEIL_VERSION =
-            new DefaultArtifactVersion("5.0.0");
-
-    private static volatile boolean veilUsable = detectCompatibleVeil();
 
     private CoreEffectBackend() {
     }
 
+    /** Always false on 1.20.1 Forge — see class comment. */
     static boolean useVeil() {
-        return veilUsable;
+        return false;
     }
 
+    /** Kept for compatibility with call sites; the native backend needs no fallback. */
     static void disableVeil(Throwable cause) {
-        if (veilUsable) {
-            veilUsable = false;
-            LOGGER.warn("Veil core-effect backend failed; falling back to native shaders", cause);
-        }
-    }
-
-    private static boolean detectCompatibleVeil() {
-        if (!ModList.get().isLoaded("veil")) {
-            return false;
-        }
-
-        var installedVersion = ModList.get().getModContainerById("veil")
-                .map(container -> container.getModInfo().getVersion())
-                .orElse(null);
-        if (installedVersion == null
-                || installedVersion.compareTo(MINIMUM_VEIL_VERSION) < 0
-                || installedVersion.compareTo(MAXIMUM_VEIL_VERSION) >= 0) {
-            LOGGER.warn("Unsupported Veil version {} installed; AE2LT supports [4.3.0,5.0.0) "
-                    + "and will use native core-effect shaders", installedVersion);
-            return false;
-        }
-
-        try {
-            boolean compatible = VeilCoreEffectShaders.isApiCompatible();
-            if (!compatible) {
-                LOGGER.warn("Veil is installed but its shader bridge API is incompatible; "
-                        + "using native core-effect shaders");
-            }
-            return compatible;
-        } catch (LinkageError | RuntimeException exception) {
-            LOGGER.warn("Veil is installed but its shader bridge API is unavailable; "
-                    + "using native core-effect shaders", exception);
-            return false;
-        }
     }
 }

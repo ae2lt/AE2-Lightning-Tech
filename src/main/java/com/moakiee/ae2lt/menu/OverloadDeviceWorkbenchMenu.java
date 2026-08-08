@@ -3,6 +3,7 @@ package com.moakiee.ae2lt.menu;
 import java.util.ArrayList;
 import java.util.List;
 
+import net.minecraft.core.RegistryAccess;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.SimpleContainer;
@@ -27,13 +28,13 @@ import com.moakiee.ae2lt.device.DeviceItem;
 import com.moakiee.ae2lt.device.DeviceKind;
 import com.moakiee.ae2lt.device.DeviceSlotType;
 import com.moakiee.ae2lt.menu.hub.DeviceHubDisplayRules;
+import com.moakiee.ae2lt.util.SlotPositionAccess;
 
 public class OverloadDeviceWorkbenchMenu extends AEBaseMenu {
     public static final MenuType<OverloadDeviceWorkbenchMenu> TYPE = MenuTypeBuilder
             .create(OverloadDeviceWorkbenchMenu::new, OverloadDeviceWorkbenchBlockEntity.class)
             .withMenuTitle(host -> Component.translatable("block.ae2lt.overload_device_workbench"))
-            .buildUnregistered(ResourceLocation.fromNamespaceAndPath(
-                    AE2LightningTech.MODID, "overload_device_workbench"));
+            .build("overload_device_workbench");
 
     public static final int DEVICE_X = 13;
     public static final int DEVICE_Y = 20;
@@ -249,6 +250,21 @@ public class OverloadDeviceWorkbenchMenu extends AEBaseMenu {
         }
     }
 
+    /**
+     * 1.20.1: AbstractContainerMenu has no registryAccess(); resolve it from the player.
+     */
+    private RegistryAccess registryAccess() {
+        return getPlayer().level().registryAccess();
+    }
+
+    /**
+     * 1.20.1: AEBaseMenu.isPlayerSideSlot is private; re-implement via slot semantics.
+     */
+    private boolean isPlayerSideSlot(Slot slot) {
+        return getSlots(SlotSemantics.PLAYER_INVENTORY).contains(slot)
+                || getSlots(SlotSemantics.PLAYER_HOTBAR).contains(slot);
+    }
+
     private void giveToPlayer(ItemStack stack) {
         if (stack.isEmpty()) return;
         var player = getPlayer();
@@ -426,8 +442,8 @@ public class OverloadDeviceWorkbenchMenu extends AEBaseMenu {
     private static final class WorkbenchDeviceSlot extends AppEngSlot {
         private WorkbenchDeviceSlot(InternalInventory inventory, int invSlot, int x, int y) {
             super(inventory, invSlot);
-            this.x = x;
-            this.y = y;
+            // 1.20.1: Slot.x/y are final; use the shared reflection accessor.
+            SlotPositionAccess.set(this, x, y);
         }
 
         @Override

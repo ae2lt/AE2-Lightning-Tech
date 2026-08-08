@@ -11,7 +11,7 @@ import dev.emi.emi.api.widget.WidgetHolder;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
-import net.minecraft.world.item.crafting.RecipeHolder;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 
@@ -23,8 +23,8 @@ final class EmiLightningStrikeRecipe extends EmiBackedRecipe<LightningStrikeReci
     private final Map<Block, Integer> blockCounts = new LinkedHashMap<>();
     private final Map<Block, Boolean> blockConsumes = new HashMap<>();
 
-    EmiLightningStrikeRecipe(RecipeHolder<LightningStrikeRecipe> holder) {
-        super(AE2LTEmiCategories.LIGHTNING_STRIKE, holder, WIDTH, 110);
+    EmiLightningStrikeRecipe(ResourceLocation id, LightningStrikeRecipe recipe) {
+        super(AE2LTEmiCategories.LIGHTNING_STRIKE, id, recipe, WIDTH, 110);
         inputs.add(EmiStack.of(recipe.centerInput()));
         outputs.add(EmiStack.of(recipe.centerOutput()));
         for (StructureRequirement requirement : recipe.requirements()) {

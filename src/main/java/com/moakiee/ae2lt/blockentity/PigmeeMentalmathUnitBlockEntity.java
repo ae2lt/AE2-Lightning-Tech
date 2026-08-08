@@ -115,18 +115,18 @@ public final class PigmeeMentalmathUnitBlockEntity extends AENetworkBlockEntity
         tag.remove(TAG_CPU_POOL);
         if (cpuPool.hasPersistentState()) {
             var poolTag = new CompoundTag();
-            cpuPool.writeToNBT(poolTag, registries);
+            cpuPool.writeToNBT(poolTag, level != null ? level.registryAccess() : null);
             if (!poolTag.isEmpty()) tag.put(TAG_CPU_POOL, poolTag);
         }
     }
 
     @Override
-    public void loadTag(CompoundTag tag, RegistryAccess registries) {
-        super.loadTag(tag, registries);
+    public void loadTag(CompoundTag tag) {
+        super.loadTag(tag);
         cpuPool.readFromNBT(
                 tag.contains(TAG_CPU_POOL, Tag.TAG_COMPOUND)
                         ? tag.getCompound(TAG_CPU_POOL) : new CompoundTag(),
-                registries);
+                level != null ? level.registryAccess() : null);
     }
 
     @Override

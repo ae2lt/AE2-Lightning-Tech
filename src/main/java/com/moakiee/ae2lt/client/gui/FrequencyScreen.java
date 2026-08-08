@@ -1,4 +1,5 @@
 package com.moakiee.ae2lt.client.gui;
+import com.moakiee.ae2lt.network.NetworkInit;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -10,10 +11,10 @@ import appeng.client.gui.Icon;
 import appeng.client.gui.style.Color;
 import appeng.client.gui.style.PaletteColor;
 import appeng.client.gui.style.ScreenStyle;
-import appeng.client.gui.widgets.AE2Button;
+import com.moakiee.ae2lt.client.gui.AE2Button;
 import appeng.client.gui.widgets.AETextField;
 import appeng.client.gui.widgets.TabButton;
-import appeng.core.network.serverbound.SwitchGuisPacket;
+import appeng.core.sync.packets.SwitchGuisPacket;
 
 import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.client.ClientFrequencyCache;
@@ -36,7 +37,6 @@ import net.minecraft.network.chat.Style;
 import net.minecraft.network.chat.TextColor;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
-import net.neoforged.neoforge.network.PacketDistributor;
 
 /**
  * Multi-tab frequency management screen, modeled after Flux Networks' GUI.
@@ -132,14 +132,10 @@ public class FrequencyScreen extends AbstractContainerScreen<FrequencyMenu> {
      *   <li>{@code wireless_overloaded_form.png} — clean panel for create / settings.</li>
      * </ul>
      */
-    private static final ResourceLocation BG_HOME = ResourceLocation.fromNamespaceAndPath(
-            AE2LightningTech.MODID, "textures/gui/wireless_overloaded_home.png");
-    private static final ResourceLocation BG_SELECTION = ResourceLocation.fromNamespaceAndPath(
-            AE2LightningTech.MODID, "textures/gui/wireless_overloaded_selection.png");
-    private static final ResourceLocation BG_LIST = ResourceLocation.fromNamespaceAndPath(
-            AE2LightningTech.MODID, "textures/gui/wireless_overloaded_list.png");
-    private static final ResourceLocation BG_FORM = ResourceLocation.fromNamespaceAndPath(
-            AE2LightningTech.MODID, "textures/gui/wireless_overloaded_form.png");
+    private static final ResourceLocation BG_HOME = ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "textures/gui/wireless_overloaded_home.png");
+    private static final ResourceLocation BG_SELECTION = ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "textures/gui/wireless_overloaded_selection.png");
+    private static final ResourceLocation BG_LIST = ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "textures/gui/wireless_overloaded_list.png");
+    private static final ResourceLocation BG_FORM = ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "textures/gui/wireless_overloaded_form.png");
     private static final int TEXTURE_SIZE = 256;
 
     // AE2 standard text tones — matches AE2's own screens such as
@@ -467,8 +463,8 @@ public class FrequencyScreen extends AbstractContainerScreen<FrequencyMenu> {
                             ? "ae2lt.gui.button.return_to_terminal"
                             : "ae2lt.gui.button.back");
             HoverableTabButton backButton = new HoverableTabButton(
-                    Icon.BACK, null, backTooltip,
-                    btn -> PacketDistributor.sendToServer(SwitchGuisPacket.returnToParentMenu()));
+                    Icon.ARROW_LEFT, null, backTooltip,
+                    btn -> NetworkInit.sendToServer(SwitchGuisPacket.returnToParentMenu()));
             backButton.setStyle(TabButton.Style.BOX);
             backButton.setX(x0 - TAB_WIDTH + 6);
             backButton.setY(y0 - TAB_HEIGHT);
@@ -540,7 +536,7 @@ public class FrequencyScreen extends AbstractContainerScreen<FrequencyMenu> {
                 btn -> {
                     int freqId = freqMenu().getCurrentFrequencyId();
                     if (freqId > 0) {
-                        PacketDistributor.sendToServer(new DeleteFrequencyPacket(token(), freqId));
+                        NetworkInit.sendToServer(new DeleteFrequencyPacket(token(), freqId));
                     }
                     deleteConfirmOpen = false;
                     switchTab(FrequencyNavigationTab.TAB_SELECTION);
@@ -625,7 +621,7 @@ public class FrequencyScreen extends AbstractContainerScreen<FrequencyMenu> {
         String pw = passwordPromptField == null ? "" : passwordPromptField.getValue();
         int freqId = passwordPromptFreqId;
         if (freqId <= 0) return;
-        PacketDistributor.sendToServer(new SelectFrequencyPacket(
+        NetworkInit.sendToServer(new SelectFrequencyPacket(
                 token(), freqMenu().getBlockPos(), freqId, pw));
     }
 
@@ -753,7 +749,8 @@ public class FrequencyScreen extends AbstractContainerScreen<FrequencyMenu> {
      */
     private static Icon iconFor(FrequencyNavigationTab tab) {
         return switch (tab) {
-            case TAB_SETTING -> Icon.COG;
+            // 1.20.1: no COG sprite; fall back to the wrench.
+            case TAB_SETTING -> Icon.WRENCH;
             default -> null;
         };
     }
@@ -774,16 +771,11 @@ public class FrequencyScreen extends AbstractContainerScreen<FrequencyMenu> {
         };
     }
 
-    private static final ResourceLocation TAB_ICON_HOME = ResourceLocation.fromNamespaceAndPath(
-            AE2LightningTech.MODID, "textures/gui/buttons/menu.png");
-    private static final ResourceLocation TAB_ICON_SELECTION = ResourceLocation.fromNamespaceAndPath(
-            AE2LightningTech.MODID, "textures/gui/buttons/frequency_select.png");
-    private static final ResourceLocation TAB_ICON_CONNECTION = ResourceLocation.fromNamespaceAndPath(
-            AE2LightningTech.MODID, "textures/gui/buttons/frequency_connect.png");
-    private static final ResourceLocation TAB_ICON_MEMBER = ResourceLocation.fromNamespaceAndPath(
-            AE2LightningTech.MODID, "textures/gui/buttons/frequency_member.png");
-    private static final ResourceLocation TAB_ICON_CREATE = ResourceLocation.fromNamespaceAndPath(
-            AE2LightningTech.MODID, "textures/gui/buttons/frequency_add.png");
+    private static final ResourceLocation TAB_ICON_HOME = ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "textures/gui/buttons/menu.png");
+    private static final ResourceLocation TAB_ICON_SELECTION = ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "textures/gui/buttons/frequency_select.png");
+    private static final ResourceLocation TAB_ICON_CONNECTION = ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "textures/gui/buttons/frequency_connect.png");
+    private static final ResourceLocation TAB_ICON_MEMBER = ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "textures/gui/buttons/frequency_member.png");
+    private static final ResourceLocation TAB_ICON_CREATE = ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "textures/gui/buttons/frequency_add.png");
 
     private void switchTab(FrequencyNavigationTab tab) {
         currentTab = tab;
@@ -829,14 +821,14 @@ public class FrequencyScreen extends AbstractContainerScreen<FrequencyMenu> {
             addRenderableWidget(new AE2Button(
                     x0 + 99, y0 + 124, 88, 18,
                     Component.translatable("ae2lt.gui.button.disconnect"),
-                    btn -> PacketDistributor.sendToServer(
+                    btn -> NetworkInit.sendToServer(
                             new SelectFrequencyPacket(token(), freqMenu().getBlockPos(), -1, ""))));
             return;
         }
         addRenderableWidget(new AE2Button(
                 x0 + (GUI_WIDTH - 96) / 2, y0 + 124, 96, 18,
                 Component.translatable("ae2lt.gui.button.disconnect"),
-                btn -> PacketDistributor.sendToServer(
+                btn -> NetworkInit.sendToServer(
                         new SelectFrequencyPacket(token(), freqMenu().getBlockPos(), -1, ""))));
     }
 
@@ -938,7 +930,7 @@ public class FrequencyScreen extends AbstractContainerScreen<FrequencyMenu> {
                             passwordPromptLocksScreen = false;
                             scheduleRebuild();
                         } else {
-                            PacketDistributor.sendToServer(
+                            NetworkInit.sendToServer(
                                     new SelectFrequencyPacket(token(), freqMenu().getBlockPos(), f.id(), ""));
                         }
                     });
@@ -1216,7 +1208,7 @@ public class FrequencyScreen extends AbstractContainerScreen<FrequencyMenu> {
     private void sendMember(byte type) {
         int currentId = freqMenu().getCurrentFrequencyId();
         if (currentId <= 0 || popupMemberUUID == null) return;
-        PacketDistributor.sendToServer(new ChangeMemberPacket(token(), currentId, popupMemberUUID, type));
+        NetworkInit.sendToServer(new ChangeMemberPacket(token(), currentId, popupMemberUUID, type));
         closePopup();
         scheduleRebuild();
     }
@@ -1265,7 +1257,7 @@ public class FrequencyScreen extends AbstractContainerScreen<FrequencyMenu> {
                 Component.translatable("ae2lt.gui.button.create"),
                 btn -> {
                     if (nameField.getValue().isBlank()) return;
-                    PacketDistributor.sendToServer(new CreateFrequencyPacket(
+                    NetworkInit.sendToServer(new CreateFrequencyPacket(
                             token(),
                             nameField.getValue(), editColor, editSecurity,
                             passwordField.getValue()));
@@ -1353,7 +1345,7 @@ public class FrequencyScreen extends AbstractContainerScreen<FrequencyMenu> {
                     // (see EditFrequencyPacket's "only overwrite when
                     // the payload is non-empty" branch).
                     String pw = settingsPasswordPristine ? "" : passwordField.getValue();
-                    PacketDistributor.sendToServer(new EditFrequencyPacket(
+                    NetworkInit.sendToServer(new EditFrequencyPacket(
                             token(),
                             freq.id(), nameField.getValue(), editColor,
                             editSecurity, pw));
@@ -1383,9 +1375,9 @@ public class FrequencyScreen extends AbstractContainerScreen<FrequencyMenu> {
                     btn -> {
                         var mc = Minecraft.getInstance();
                         if (mc.player == null) return;
-                        PacketDistributor.sendToServer(new SelectFrequencyPacket(
+                        NetworkInit.sendToServer(new SelectFrequencyPacket(
                                 token(), freqMenu().getBlockPos(), -1, ""));
-                        PacketDistributor.sendToServer(new ChangeMemberPacket(
+                        NetworkInit.sendToServer(new ChangeMemberPacket(
                                 token(), freq.id(), mc.player.getUUID(),
                                 WirelessFrequency.MEMBERSHIP_CANCEL));
                         switchTab(FrequencyNavigationTab.TAB_SELECTION);
@@ -1922,7 +1914,7 @@ public class FrequencyScreen extends AbstractContainerScreen<FrequencyMenu> {
 
     @Override
     public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
-        renderBackground(g, mouseX, mouseY, partialTick);
+        renderBackground(g);
         super.render(g, mouseX, mouseY, partialTick);
         renderTooltip(g, mouseX, mouseY);
         renderFittedTextTooltip(g, mouseX, mouseY);
@@ -2097,14 +2089,17 @@ public class FrequencyScreen extends AbstractContainerScreen<FrequencyMenu> {
         @Override
         protected void renderWidget(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
             boolean enabled = maxOffset() > 0;
-            ResourceLocation sprite = enabled
-                    ? ResourceLocation.fromNamespaceAndPath("ae2", "big_scroller")
-                    : ResourceLocation.fromNamespaceAndPath("ae2", "big_scroller_disabled");
+            // 1.20.1 has no GuiGraphics.blitSprite: AE2 1.20.1 draws its scrollbar
+            // handles from the vanilla creative-tabs texture (enabled at 232,0,
+            // disabled at 244,0, each 12x15).
+            ResourceLocation sprite =
+                    ResourceLocation.fromNamespaceAndPath("minecraft", "textures/gui/container/creative_inventory/tabs.png");
+            int srcX = enabled ? 232 : 244;
             int availH = Math.max(0, getHeight() - SCROLLBAR_HANDLE_HEIGHT);
             int handleY = enabled
                     ? getY() + scrollOffset * availH / maxOffset()
                     : getY();
-            g.blitSprite(sprite, getX(), handleY, SCROLLBAR_WIDTH, SCROLLBAR_HANDLE_HEIGHT);
+            g.blit(sprite, getX(), handleY, srcX, 0, SCROLLBAR_WIDTH, SCROLLBAR_HANDLE_HEIGHT, 256, 256);
         }
 
         @Override
@@ -2143,8 +2138,8 @@ public class FrequencyScreen extends AbstractContainerScreen<FrequencyMenu> {
         }
 
         @Override
-        public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
-            return handleScroll(scrollY);
+        public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
+            return handleScroll(delta);
         }
 
         @Override
@@ -2152,15 +2147,15 @@ public class FrequencyScreen extends AbstractContainerScreen<FrequencyMenu> {
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
         // Forward wheel events anywhere over the GUI to the active list-tab
         // scrollbar so the user doesn't have to aim at the 12-px gutter —
         // spinning the wheel while hovering the row buttons or panel chrome
         // still scrolls the list.
-        if (currentScrollbar != null && currentScrollbar.handleScroll(scrollY)) {
+        if (currentScrollbar != null && currentScrollbar.handleScroll(delta)) {
             return true;
         }
-        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+        return super.mouseScrolled(mouseX, mouseY, delta);
     }
 
 }

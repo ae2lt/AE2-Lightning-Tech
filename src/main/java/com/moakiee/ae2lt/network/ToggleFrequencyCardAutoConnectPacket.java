@@ -1,35 +1,27 @@
 package com.moakiee.ae2lt.network;
-
+import java.util.function.Supplier;
 import com.moakiee.ae2lt.item.OverloadedFrequencyCardItem;
 import com.moakiee.ae2lt.item.TerminalCardAccess;
 import java.util.Optional;
+import net.minecraftforge.network.NetworkEvent;
 import net.minecraft.ChatFormatting;
-import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraftforge.network.NetworkEvent;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraftforge.network.NetworkEvent;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraftforge.network.NetworkEvent;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraftforge.network.NetworkEvent;
 import net.minecraft.world.InteractionHand;
+import net.minecraftforge.network.NetworkEvent;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
 
+import appeng.api.implementations.menuobjects.ItemMenuHost;
 import appeng.menu.AEBaseMenu;
-import appeng.menu.locator.ItemMenuHostLocator;
+import appeng.menu.locator.MenuLocator;
 
-public record ToggleFrequencyCardAutoConnectPacket(Optional<InteractionHand> hand, boolean terminalCard)
-        implements CustomPacketPayload {
-    public static final Type<ToggleFrequencyCardAutoConnectPacket> TYPE =
-            new Type<>(NetworkInit.id("toggle_frequency_card_auto_connect"));
-
-    public static final StreamCodec<RegistryFriendlyByteBuf, ToggleFrequencyCardAutoConnectPacket> STREAM_CODEC =
-            StreamCodec.ofMember(ToggleFrequencyCardAutoConnectPacket::write, ToggleFrequencyCardAutoConnectPacket::decode);
-
-    @Override
-    public Type<ToggleFrequencyCardAutoConnectPacket> type() {
-        return TYPE;
-    }
-
-    public static ToggleFrequencyCardAutoConnectPacket forHand(InteractionHand hand) {
+public record ToggleFrequencyCardAutoConnectPacket(Optional<InteractionHand> hand, boolean terminalCard) {
+public static ToggleFrequencyCardAutoConnectPacket forHand(InteractionHand hand) {
         return new ToggleFrequencyCardAutoConnectPacket(Optional.of(hand), false);
     }
 
@@ -41,7 +33,7 @@ public record ToggleFrequencyCardAutoConnectPacket(Optional<InteractionHand> han
         return new ToggleFrequencyCardAutoConnectPacket(Optional.empty(), true);
     }
 
-    public static ToggleFrequencyCardAutoConnectPacket decode(RegistryFriendlyByteBuf buf) {
+    public static ToggleFrequencyCardAutoConnectPacket decode(FriendlyByteBuf buf) {
         boolean terminalCard = buf.readBoolean();
         Optional<InteractionHand> hand = buf.readBoolean()
                 ? Optional.of(buf.readEnum(InteractionHand.class))
@@ -49,18 +41,21 @@ public record ToggleFrequencyCardAutoConnectPacket(Optional<InteractionHand> han
         return new ToggleFrequencyCardAutoConnectPacket(hand, terminalCard);
     }
 
-    public void write(RegistryFriendlyByteBuf buf) {
+    public void write(FriendlyByteBuf buf) {
         buf.writeBoolean(terminalCard);
         buf.writeBoolean(hand.isPresent());
         hand.ifPresent(value -> buf.writeEnum(value));
     }
 
-    public static void handle(ToggleFrequencyCardAutoConnectPacket payload, IPayloadContext context) {
-        context.enqueueWork(() -> {
-            if (context.player() instanceof ServerPlayer player) {
+    public static void handle(ToggleFrequencyCardAutoConnectPacket payload, Supplier<NetworkEvent.Context> context) {
+        var ctx = context.get();
+        ctx.enqueueWork(() -> {
+            ServerPlayer player = ctx.getSender();
+        if (player != null) {
                 payload.handleOnServer(player);
             }
         });
+        ctx.setPacketHandled(true);
     }
 
     private void handleOnServer(ServerPlayer player) {
@@ -106,16 +101,24 @@ public record ToggleFrequencyCardAutoConnectPacket(Optional<InteractionHand> han
     }
 
     private void handleTerminalCard(ServerPlayer player) {
-        if (!(player.containerMenu instanceof AEBaseMenu aeMenu)
-                || !(aeMenu.getLocator() instanceof ItemMenuHostLocator locator)
-                || !aeMenu.stillValid(player)) {
+        if (!(player.containerMenu instanceof AEBaseMenu aeMenu) || !aeMenu.stillValid(player)) {
             player.displayClientMessage(
                     Component.translatable("ae2lt.gui.error.rejected").withStyle(ChatFormatting.RED),
                     true);
             return;
         }
 
-        ItemStack terminal = locator.locateItem(player);
+        // 15.x has no ItemMenuHostLocator type: probe for an item-backed host.
+        MenuLocator locator = aeMenu.getLocator();
+        ItemMenuHost terminalHost = locator.locate(player, ItemMenuHost.class);
+        if (terminalHost == null) {
+            player.displayClientMessage(
+                    Component.translatable("ae2lt.gui.error.rejected").withStyle(ChatFormatting.RED),
+                    true);
+            return;
+        }
+
+        ItemStack terminal = terminalHost.getItemStack();
         if (!TerminalCardAccess.hasCard(terminal)) {
             player.displayClientMessage(
                     Component.translatable("ae2lt.frequency_card.terminal_no_card")

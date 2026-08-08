@@ -57,11 +57,9 @@ public class LightningSimulationOutputButton extends IconButton {
         }
 
         var yOffset = isHovered() ? 1 : 0;
-        Icon bgIcon = isHovered() ? Icon.TOOLBAR_BUTTON_BACKGROUND_HOVER
-                : on ? Icon.TOOLBAR_BUTTON_BACKGROUND_FOCUS : Icon.TOOLBAR_BUTTON_BACKGROUND;
+        Icon bgIcon = Icon.TOOLBAR_BUTTON_BACKGROUND;
         bgIcon.getBlitter()
                 .dest(getX() - 1, getY() + yOffset, 18, 20)
-                .zOffset(2)
                 .blit(guiGraphics);
 
         if (!display.isEmpty()) {

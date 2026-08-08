@@ -6,6 +6,8 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 
+import net.minecraftforge.common.util.FakePlayer;
+
 /** Shared target admission rules for every server-side railgun damage path. */
 public final class RailgunTargetRules {
 
@@ -26,8 +28,9 @@ public final class RailgunTargetRules {
         if (target == null || target == shooter) return false;
 
         if (target instanceof Player targetPlayer) {
+            // 1.20.1: Player has no isFakePlayer(); check the Forge FakePlayer type instead.
             return allowPlayerTargets
-                    && !targetPlayer.isFakePlayer()
+                    && !(targetPlayer instanceof FakePlayer)
                     && !targetPlayer.isSpectator()
                     && !targetPlayer.isCreative()
                     && targetPlayer.isAlive()

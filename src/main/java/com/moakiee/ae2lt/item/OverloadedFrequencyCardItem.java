@@ -1,13 +1,16 @@
 package com.moakiee.ae2lt.item;
+import com.moakiee.ae2lt.network.NetworkInit;
 
 import com.moakiee.ae2lt.network.FrequencyCardUsePacket;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
@@ -17,15 +20,16 @@ import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
-import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.fml.loading.FMLEnvironment;
-import net.neoforged.neoforge.network.PacketDistributor;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.fml.loading.FMLEnvironment;
+import net.minecraftforge.network.PacketDistributor;
 
 import appeng.items.materials.UpgradeCardItem;
+
+import com.moakiee.ae2lt.util.ItemStackTagSupport;
 
 public class OverloadedFrequencyCardItem extends UpgradeCardItem {
     private static final String TAG_FREQUENCY_ID = "FrequencyId";
@@ -57,7 +61,7 @@ public class OverloadedFrequencyCardItem extends UpgradeCardItem {
         var level = context.getLevel();
         if (level.isClientSide()) {
             Vec3 hit = context.getClickLocation();
-            PacketDistributor.sendToServer(new FrequencyCardUsePacket(
+            NetworkInit.sendToServer(new FrequencyCardUsePacket(
                     context.getHand(),
                     context.getClickedPos(),
                     context.getClickedFace(),
@@ -65,7 +69,7 @@ public class OverloadedFrequencyCardItem extends UpgradeCardItem {
                     hit.y,
                     hit.z,
                     net.minecraft.client.gui.screens.Screen.hasShiftDown()));
-            return InteractionResult.SUCCESS_NO_ITEM_USED;
+            return InteractionResult.SUCCESS;
         }
 
         return InteractionResult.SUCCESS;
@@ -96,9 +100,10 @@ public class OverloadedFrequencyCardItem extends UpgradeCardItem {
     }
 
     @Override
+    // 1.20.1 hover text signature: the TooltipContext argument is replaced by a nullable Level.
     public void appendHoverText(
             ItemStack stack,
-            TooltipContext context,
+            @Nullable Level level,
             List<Component> tooltip,
             TooltipFlag tooltipFlag) {
         var data = getData(stack);
@@ -125,21 +130,18 @@ public class OverloadedFrequencyCardItem extends UpgradeCardItem {
         }
         tooltip.add(Component.translatable("tooltip.ae2lt.frequency_card.controls")
                 .withStyle(ChatFormatting.DARK_GRAY));
-        super.appendHoverText(stack, context, tooltip, tooltipFlag);
+        super.appendHoverText(stack, level, tooltip, tooltipFlag);
     }
 
     public static OverloadedFrequencyCardData getData(ItemStack stack) {
-        var tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
-        return fromTag(tag);
+        // 1.20.1 has no DataComponent system: card state lives directly in the stack NBT.
+        CompoundTag tag = stack.getTag();
+        return fromTag(tag == null ? new CompoundTag() : tag);
     }
 
     public static void setData(ItemStack stack, OverloadedFrequencyCardData data) {
-        var tag = toTag(data);
-        if (tag.isEmpty()) {
-            stack.remove(DataComponents.CUSTOM_DATA);
-        } else {
-            stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
-        }
+        // Overwrite the whole tag; an empty result clears it (ItemStackTagSupport handles both).
+        ItemStackTagSupport.setTag(stack, toTag(data));
     }
 
     public static void bindFrequency(

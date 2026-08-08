@@ -10,14 +10,14 @@ import com.moakiee.ae2lt.mixin.client.VerticalButtonBarAccessor;
 import com.moakiee.ae2lt.registry.ModItems;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.ScreenEvent;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.client.event.ScreenEvent;
 
 import java.util.List;
 
-@EventBusSubscriber(modid = AE2LightningTech.MODID, value = Dist.CLIENT)
+@Mod.EventBusSubscriber(modid = AE2LightningTech.MODID, value = Dist.CLIENT)
 public final class TianshuTerminalSettingsHook {
     private TianshuTerminalSettingsHook() {
     }
@@ -38,7 +38,8 @@ public final class TianshuTerminalSettingsHook {
         }
 
         var button = new TianshuSettingsButton(ignored ->
-                settings.switchToScreen(new TianshuTerminalSettingsScreen(settings)));
+                ((AEBaseScreenAccessor) settings).ae2lt$switchToScreen(
+                        new TianshuTerminalSettingsScreen(settings)));
         toolbar.add(button);
         // Init.Post runs after AE2 populated its toolbar. Register the new button
         // for this initialization; later re-initializations populate it normally.

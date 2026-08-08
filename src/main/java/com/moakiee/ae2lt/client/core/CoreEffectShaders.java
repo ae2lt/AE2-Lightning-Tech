@@ -1,7 +1,6 @@
 package com.moakiee.ae2lt.client.core;
 
 import com.moakiee.ae2lt.AE2LightningTech;
-import com.mojang.blaze3d.platform.Window;
 import com.mojang.blaze3d.shaders.Uniform;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.VertexFormat;
@@ -12,14 +11,13 @@ import net.minecraft.client.renderer.RenderStateShard;
 import net.minecraft.client.renderer.ShaderInstance;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.ResourceProvider;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.RegisterShadersEvent;
-import org.joml.Matrix4f;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.client.event.RegisterShadersEvent;
 import org.slf4j.Logger;
 
-@EventBusSubscriber(modid = AE2LightningTech.MODID, bus = EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
+@Mod.EventBusSubscriber(modid = AE2LightningTech.MODID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
 public final class CoreEffectShaders {
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final ResourceLocation TIANSHU_SHADER =
@@ -35,11 +33,8 @@ public final class CoreEffectShaders {
 
     @SubscribeEvent
     public static void registerShaders(RegisterShadersEvent event) throws IOException {
-        if (CoreEffectBackend.useVeil()) {
-            LOGGER.info("Compatible Veil detected; preparing native core-effect shaders as fallback");
-        } else {
-            LOGGER.info("Veil not detected or incompatible; using the native core-effect shader backend");
-        }
+        // 1.20.1: Veil integration removed (see CoreEffectBackend) — always native.
+        LOGGER.info("Registering native core-effect shaders");
 
         registerShader(event, TIANSHU_SHADER, TIANSHU);
         registerShader(event, MATRIX_SHADER, MATRIX);
@@ -96,11 +91,8 @@ public final class CoreEffectShaders {
         }
 
         @Override
-        public void setDefaultUniforms(VertexFormat.Mode mode,
-                                       Matrix4f modelViewMatrix,
-                                       Matrix4f projectionMatrix,
-                                       Window window) {
-            super.setDefaultUniforms(mode, modelViewMatrix, projectionMatrix, window);
+        public void apply() {
+            super.apply();
             if (effectTime != null) {
                 effectTime.set((System.currentTimeMillis() % TIME_WRAP_MILLIS) / 1000.0F);
             }

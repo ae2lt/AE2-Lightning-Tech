@@ -1,37 +1,27 @@
 package com.moakiee.ae2lt.network;
-
-import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import java.util.function.Supplier;
+import net.minecraftforge.network.NetworkEvent;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraftforge.network.NetworkEvent;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-public record DashPacket() implements CustomPacketPayload {
-
-    public static final Type<DashPacket> TYPE =
-            new Type<>(NetworkInit.id("dash"));
-
-    public static final StreamCodec<RegistryFriendlyByteBuf, DashPacket> STREAM_CODEC =
-            StreamCodec.ofMember(DashPacket::write, DashPacket::decode);
-
-    @Override
-    public Type<DashPacket> type() {
-        return TYPE;
-    }
-
-    public static DashPacket decode(RegistryFriendlyByteBuf buf) {
+public record DashPacket() {
+public static DashPacket decode(FriendlyByteBuf buf) {
         return new DashPacket();
     }
 
-    public void write(RegistryFriendlyByteBuf buf) {}
+    public void write(FriendlyByteBuf buf) {}
 
-    public static void handle(DashPacket payload, IPayloadContext context) {
-        context.enqueueWork(() -> {
-            if (context.player() instanceof ServerPlayer player) {
+    public static void handle(DashPacket payload, Supplier<NetworkEvent.Context> context) {
+        var ctx = context.get();
+        ctx.enqueueWork(() -> {
+            ServerPlayer player = ctx.getSender();
+        if (player != null) {
                 com.moakiee.ae2lt.celestweave.module.DashSubmodule.applyDash(
                         player,
                         player.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.FEET));
             }
         });
+        ctx.setPacketHandled(true);
     }
 }

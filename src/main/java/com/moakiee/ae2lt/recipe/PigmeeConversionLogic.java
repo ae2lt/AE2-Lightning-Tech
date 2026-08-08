@@ -32,9 +32,9 @@ final class PigmeeConversionLogic {
                     FixedInfiniteCellItem.CellOutcome.LIGHTNING_COLLAPSE_MATRIX);
             case INFINITE_STORAGE -> new ItemStack(ModItems.INFINITE_STORAGE_CELL.get());
             case MULTIDIMENSIONAL_SUPERCOMPUTER ->
-                    new ItemStack(ModBlocks.MULTIDIMENSIONAL_SUPERCOMPUTING_UNIT.asItem());
+                    new ItemStack(ModBlocks.MULTIDIMENSIONAL_SUPERCOMPUTING_UNIT.get().asItem());
             case MULTIDIMENSIONAL_MATRIX ->
-                    new ItemStack(ModBlocks.MATTER_WARPING_MATRIX_MULTIDIMENSIONAL_MAIN_CORE.asItem());
+                    new ItemStack(ModBlocks.MATTER_WARPING_MATRIX_MULTIDIMENSIONAL_MAIN_CORE.get().asItem());
         };
     }
 
@@ -52,10 +52,10 @@ final class PigmeeConversionLogic {
         if (target.is(ModItems.BULK_LIGHTNING_STORAGE_COMPONENT.get())) {
             return Conversion.INFINITE_STORAGE;
         }
-        if (target.is(ModBlocks.OVERLOAD_SUPERCOMPUTING_UNIT.asItem())) {
+        if (target.is(ModBlocks.OVERLOAD_SUPERCOMPUTING_UNIT.get().asItem())) {
             return Conversion.MULTIDIMENSIONAL_SUPERCOMPUTER;
         }
-        if (target.is(ModBlocks.MATTER_WARPING_MATRIX_OVERLOAD_MAIN_CORE.asItem())) {
+        if (target.is(ModBlocks.MATTER_WARPING_MATRIX_OVERLOAD_MAIN_CORE.get().asItem())) {
             return Conversion.MULTIDIMENSIONAL_MATRIX;
         }
         return null;

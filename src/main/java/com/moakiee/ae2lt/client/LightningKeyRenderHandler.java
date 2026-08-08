@@ -62,30 +62,30 @@ public final class LightningKeyRenderHandler implements AEKeyRenderHandler<Light
         float y1 = -scale / 2f;
 
         var transform = poseStack.last().pose();
-        buffer.addVertex(transform, x0, y1, 0)
-                .setColor(0xFFFFFFFF)
-                .setUv(sprite.getU0(), sprite.getV1())
-                .setOverlay(OverlayTexture.NO_OVERLAY)
-                .setLight(combinedLight)
-                .setNormal(0, 0, 1);
-        buffer.addVertex(transform, x1, y1, 0)
-                .setColor(0xFFFFFFFF)
-                .setUv(sprite.getU1(), sprite.getV1())
-                .setOverlay(OverlayTexture.NO_OVERLAY)
-                .setLight(combinedLight)
-                .setNormal(0, 0, 1);
-        buffer.addVertex(transform, x1, y0, 0)
-                .setColor(0xFFFFFFFF)
-                .setUv(sprite.getU1(), sprite.getV0())
-                .setOverlay(OverlayTexture.NO_OVERLAY)
-                .setLight(combinedLight)
-                .setNormal(0, 0, 1);
-        buffer.addVertex(transform, x0, y0, 0)
-                .setColor(0xFFFFFFFF)
-                .setUv(sprite.getU0(), sprite.getV0())
-                .setOverlay(OverlayTexture.NO_OVERLAY)
-                .setLight(combinedLight)
-                .setNormal(0, 0, 1);
+        buffer.vertex(transform, x0, y1, 0)
+                .color(0xFFFFFFFF)
+                .uv(sprite.getU0(), sprite.getV1())
+                .overlayCoords(OverlayTexture.NO_OVERLAY)
+                .uv2(combinedLight)
+                .normal(0, 0, 1);
+        buffer.vertex(transform, x1, y1, 0)
+                .color(0xFFFFFFFF)
+                .uv(sprite.getU1(), sprite.getV1())
+                .overlayCoords(OverlayTexture.NO_OVERLAY)
+                .uv2(combinedLight)
+                .normal(0, 0, 1);
+        buffer.vertex(transform, x1, y0, 0)
+                .color(0xFFFFFFFF)
+                .uv(sprite.getU1(), sprite.getV0())
+                .overlayCoords(OverlayTexture.NO_OVERLAY)
+                .uv2(combinedLight)
+                .normal(0, 0, 1);
+        buffer.vertex(transform, x0, y0, 0)
+                .color(0xFFFFFFFF)
+                .uv(sprite.getU0(), sprite.getV0())
+                .overlayCoords(OverlayTexture.NO_OVERLAY)
+                .uv2(combinedLight)
+                .normal(0, 0, 1);
 
         poseStack.popPose();
     }

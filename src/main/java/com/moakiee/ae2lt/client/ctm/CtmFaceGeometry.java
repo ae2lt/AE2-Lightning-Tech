@@ -9,7 +9,7 @@ import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Vec3i;
-import net.neoforged.neoforge.client.model.pipeline.QuadBakingVertexConsumer;
+import net.minecraftforge.client.model.pipeline.QuadBakingVertexConsumer;
 
 /**
  * Per-face geometry for Mekanism-style compact CTM.
@@ -108,7 +108,9 @@ public final class CtmFaceGeometry {
 
     private static BakedQuad quad(Direction side, Vector3f tl, Vector3f bl, Vector3f br, Vector3f tr,
             TextureAtlasSprite sprite, float u0, float v0, float u1, float v1) {
-        QuadBakingVertexConsumer builder = new QuadBakingVertexConsumer();
+        // 1.20.1: QuadBakingVertexConsumer takes a Consumer<BakedQuad> and has no bakeQuad().
+        BakedQuad[] holder = new BakedQuad[1];
+        QuadBakingVertexConsumer builder = new QuadBakingVertexConsumer(quad -> holder[0] = quad);
         builder.setSprite(sprite);
         builder.setDirection(side);
         builder.setShade(true);
@@ -117,16 +119,17 @@ public final class CtmFaceGeometry {
         putVertex(builder, n, bl, sprite, u0, v1);
         putVertex(builder, n, br, sprite, u1, v1);
         putVertex(builder, n, tr, sprite, u1, v0);
-        return builder.bakeQuad();
+        return holder[0];
     }
 
     // Vertex element order must match the BLOCK vertex format declaration order.
     private static void putVertex(QuadBakingVertexConsumer builder, Vec3i normal, Vector3f pos,
             TextureAtlasSprite sprite, float u, float v) {
-        builder.addVertex(pos.x, pos.y, pos.z);
-        builder.setColor(1f, 1f, 1f, 1f);
-        builder.setNormal(normal.getX(), normal.getY(), normal.getZ());
-        builder.setUv(sprite.getU(u), sprite.getV(v));
+        builder.vertex(pos.x, pos.y, pos.z);
+        builder.color(255, 255, 255, 255);
+        builder.normal(normal.getX(), normal.getY(), normal.getZ());
+        builder.uv(sprite.getU(u), sprite.getV(v));
+        builder.endVertex();
     }
 
     // Face corners [TL, BL, BR, TR] in texture space (ported from AE2 RenderHelper).

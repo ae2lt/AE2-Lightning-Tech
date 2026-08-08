@@ -21,9 +21,7 @@ final class ProviderBlockingModeButton extends IconButton {
     private static final int STATE_NORMAL = 1;
     private static final int STATE_SAME_PATTERN = 2;
     private static final ResourceLocation SAME_PATTERN_TEXTURE =
-            ResourceLocation.fromNamespaceAndPath(
-                    AE2LightningTech.MODID,
-                    "textures/gui/buttons/same_pattern_blocking_on.png");
+            ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "textures/gui/buttons/same_pattern_blocking_on.png");
 
     private int state;
 
@@ -56,7 +54,6 @@ final class ProviderBlockingModeButton extends IconButton {
                 blitter.opacity(0.5F);
             }
             blitter.dest(getX(), getY() + 1 + yOffset)
-                    .zOffset(3)
                     .blit(guiGraphics);
         }
     }

@@ -61,7 +61,7 @@ public final class ArmorPersistentData {
     }
 
     public static ItemStack structuralCore(ItemStack armor) {
-        return armor.getOrDefault(ModDataComponents.CELESTWEAVE_STRUCTURAL_CORE.get(), ItemStack.EMPTY).copyWithCount(1);
+        return ModDataComponents.CELESTWEAVE_STRUCTURAL_CORE.getOrDefault(armor, ItemStack.EMPTY).copyWithCount(1);
     }
 
     public static void setStructuralCore(ItemStack armor, ItemStack stack) {
@@ -69,9 +69,9 @@ public final class ArmorPersistentData {
             return;
         }
         if (stack == null || stack.isEmpty()) {
-            armor.remove(ModDataComponents.CELESTWEAVE_STRUCTURAL_CORE.get());
+            ModDataComponents.CELESTWEAVE_STRUCTURAL_CORE.remove(armor);
         } else {
-            armor.set(ModDataComponents.CELESTWEAVE_STRUCTURAL_CORE.get(), stack.copyWithCount(1));
+            ModDataComponents.CELESTWEAVE_STRUCTURAL_CORE.set(armor, stack.copyWithCount(1));
         }
     }
 
@@ -178,14 +178,14 @@ public final class ArmorPersistentData {
         if (armor == null || armor.isEmpty()) {
             return CelestweaveModuleContainer.EMPTY;
         }
-        return armor.getOrDefault(ModDataComponents.CELESTWEAVE_MODULES.get(), CelestweaveModuleContainer.EMPTY);
+        return ModDataComponents.CELESTWEAVE_MODULES.getOrDefault(armor, CelestweaveModuleContainer.EMPTY);
     }
 
     private static void setContainer(ItemStack armor, CelestweaveModuleContainer container) {
         if (armor == null || armor.isEmpty()) {
             return;
         }
-        armor.set(ModDataComponents.CELESTWEAVE_MODULES.get(), container);
+        ModDataComponents.CELESTWEAVE_MODULES.set(armor, container);
     }
 
     private static String resolveModuleTypeId(ItemStack stack) {

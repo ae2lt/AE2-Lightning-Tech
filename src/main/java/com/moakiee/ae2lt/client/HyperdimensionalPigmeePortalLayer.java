@@ -12,7 +12,7 @@ import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.core.Direction;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.block.state.BlockState;
-import net.neoforged.neoforge.client.model.data.ModelData;
+import net.minecraftforge.client.model.data.ModelData;
 
 /**
  * Replays the Pigmee model's geometry into vanilla's End Portal render type.
@@ -73,7 +73,7 @@ final class HyperdimensionalPigmeePortalLayer {
             float offsetZ = direction.getStepZ() * SURFACE_OFFSET;
             for (int vertex = 0; vertex < 4; vertex++) {
                 int offset = vertex * stride;
-                consumer.addVertex(
+                consumer.vertex(
                         pose.pose(),
                         Float.intBitsToFloat(vertices[offset]) + offsetX,
                         Float.intBitsToFloat(vertices[offset + 1]) + offsetY,

@@ -1,12 +1,12 @@
 package com.moakiee.ae2lt.network.hub;
+import java.util.function.Supplier;
+import net.minecraftforge.network.NetworkEvent;
+import net.minecraft.client.Minecraft;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.minecraft.network.FriendlyByteBuf;
 
 import com.moakiee.ae2lt.menu.hub.DeviceHubMenu;
 import com.moakiee.ae2lt.network.NetworkInit;
@@ -31,20 +31,8 @@ public record DeviceHubSyncPacket(
         List<String> moduleConfigLabels,
         List<String> moduleConfigValues,
         List<Boolean> moduleConfigEditable
-) implements CustomPacketPayload {
-
-    public static final Type<DeviceHubSyncPacket> TYPE =
-            new Type<>(NetworkInit.id("device_hub_sync"));
-
-    public static final StreamCodec<RegistryFriendlyByteBuf, DeviceHubSyncPacket> STREAM_CODEC =
-            StreamCodec.ofMember(DeviceHubSyncPacket::write, DeviceHubSyncPacket::decode);
-
-    @Override
-    public Type<DeviceHubSyncPacket> type() {
-        return TYPE;
-    }
-
-    public static DeviceHubSyncPacket decode(RegistryFriendlyByteBuf buf) {
+) {
+public static DeviceHubSyncPacket decode(FriendlyByteBuf buf) {
         int containerId = buf.readVarInt();
         String deviceName = buf.readUtf(256);
         boolean hasCore = buf.readBoolean();
@@ -97,7 +85,7 @@ public record DeviceHubSyncPacket(
                 moduleConfigEditable);
     }
 
-    public void write(RegistryFriendlyByteBuf buf) {
+    public void write(FriendlyByteBuf buf) {
         buf.writeVarInt(containerId);
         buf.writeUtf(deviceName, 256);
         buf.writeBoolean(hasCore);
@@ -128,9 +116,10 @@ public record DeviceHubSyncPacket(
         }
     }
 
-    public static void handle(DeviceHubSyncPacket pkt, IPayloadContext ctx) {
+    public static void handle(DeviceHubSyncPacket pkt, Supplier<NetworkEvent.Context> ctxSup) {
+        NetworkEvent.Context ctx = ctxSup.get();
         ctx.enqueueWork(() -> {
-            if (ctx.player().containerMenu instanceof DeviceHubMenu menu
+            if (Minecraft.getInstance().player.containerMenu instanceof DeviceHubMenu menu
                     && menu.containerId == pkt.containerId()) {
                 menu.receiveSync(
                         pkt.deviceName(),
@@ -152,5 +141,6 @@ public record DeviceHubSyncPacket(
                         pkt.moduleConfigEditable());
             }
         });
+        ctx.setPacketHandled(true);
     }
 }

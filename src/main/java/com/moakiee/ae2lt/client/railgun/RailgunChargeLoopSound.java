@@ -65,7 +65,7 @@ public final class RailgunChargeLoopSound extends AbstractTickableSoundInstance 
         if (!player.isUsingItem() || !(using.getItem() instanceof ElectromagneticRailgunItem)) {
             requestStop();
         }
-        long chargeTicks = using.getOrDefault(ModDataComponents.RAILGUN_CHARGE_TICKS.get(), 0L);
+        long chargeTicks = ModDataComponents.RAILGUN_CHARGE_TICKS.getOrDefault(using, 0L);
         if (RailgunChargeSoundPhase.fromChargeTicks(chargeTicks, RailgunDefaults.CHARGE_TICKS_TIER3)
                 == RailgunChargeSoundPhase.RAMP) {
             requestStop();

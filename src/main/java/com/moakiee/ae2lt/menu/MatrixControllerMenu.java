@@ -13,11 +13,11 @@ import net.minecraft.world.inventory.DataSlot;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.neoforged.neoforge.common.extensions.IMenuTypeExtension;
+import net.minecraftforge.common.extensions.IForgeMenuType;
 
 public class MatrixControllerMenu extends AbstractContainerMenu {
     public static final MenuType<MatrixControllerMenu> TYPE =
-            IMenuTypeExtension.create(MatrixControllerMenu::clientCreate);
+            IForgeMenuType.create(MatrixControllerMenu::clientCreate);
 
     private final BlockPos blockPos;
     private final MatrixControllerBlockEntity host;

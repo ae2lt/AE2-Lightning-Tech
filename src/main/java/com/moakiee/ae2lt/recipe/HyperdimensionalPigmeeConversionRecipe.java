@@ -3,11 +3,12 @@ package com.moakiee.ae2lt.recipe;
 import com.moakiee.ae2lt.registry.ModFumos;
 import com.moakiee.ae2lt.registry.ModRecipeTypes;
 
-import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
+import net.minecraft.core.RegistryAccess;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.inventory.CraftingContainer;
 import net.minecraft.world.item.crafting.CraftingBookCategory;
-import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.CustomRecipe;
 import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.level.Level;
@@ -17,17 +18,18 @@ import net.minecraft.world.level.Level;
  * Unlike the Creative Pigmee recipe, this recipe has no arbitrary-item duplication fallback.
  */
 public final class HyperdimensionalPigmeeConversionRecipe extends CustomRecipe {
-    public HyperdimensionalPigmeeConversionRecipe(CraftingBookCategory category) {
-        super(category);
+    public HyperdimensionalPigmeeConversionRecipe(ResourceLocation id, CraftingBookCategory category) {
+        super(id, category);
     }
 
+    // 1.20.1 crafts against a CraftingContainer; assemble() takes a RegistryAccess.
     @Override
-    public boolean matches(CraftingInput input, Level level) {
+    public boolean matches(CraftingContainer input, Level level) {
         return !findTarget(input).isEmpty();
     }
 
     @Override
-    public ItemStack assemble(CraftingInput input, HolderLookup.Provider registries) {
+    public ItemStack assemble(CraftingContainer input, RegistryAccess registryAccess) {
         return PigmeeConversionLogic.createResult(findTarget(input));
     }
 
@@ -42,9 +44,9 @@ public final class HyperdimensionalPigmeeConversionRecipe extends CustomRecipe {
     }
 
     @Override
-    public NonNullList<ItemStack> getRemainingItems(CraftingInput input) {
-        NonNullList<ItemStack> remaining = NonNullList.withSize(input.size(), ItemStack.EMPTY);
-        for (int slot = 0; slot < input.size(); slot++) {
+    public NonNullList<ItemStack> getRemainingItems(CraftingContainer input) {
+        NonNullList<ItemStack> remaining = NonNullList.withSize(input.getContainerSize(), ItemStack.EMPTY);
+        for (int slot = 0; slot < input.getContainerSize(); slot++) {
             if (input.getItem(slot).is(ModFumos.HYPERDIMENSIONAL_PIGMEE_FUMO_ITEM.get())) {
                 remaining.set(slot, new ItemStack(ModFumos.PIGMEE_FUMO_ITEM.get()));
                 break;
@@ -53,11 +55,11 @@ public final class HyperdimensionalPigmeeConversionRecipe extends CustomRecipe {
         return remaining;
     }
 
-    private static ItemStack findTarget(CraftingInput input) {
+    private static ItemStack findTarget(CraftingContainer input) {
         ItemStack target = ItemStack.EMPTY;
         boolean foundCatalyst = false;
 
-        for (int slot = 0; slot < input.size(); slot++) {
+        for (int slot = 0; slot < input.getContainerSize(); slot++) {
             ItemStack stack = input.getItem(slot);
             if (stack.isEmpty()) {
                 continue;

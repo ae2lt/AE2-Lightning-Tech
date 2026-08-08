@@ -51,10 +51,11 @@ public final class RitualHyperdimensionalPigmeeEntity extends ItemEntity {
         entityData.set(DATA_CEREMONY_END, level.getGameTime() + CEREMONY_TICKS);
     }
 
+    // 1.20.1 defineSynchedData() takes no builder; keys register directly on this.entityData.
     @Override
-    protected void defineSynchedData(SynchedEntityData.Builder builder) {
-        super.defineSynchedData(builder);
-        builder.define(DATA_CEREMONY_END, 0L);
+    protected void defineSynchedData() {
+        super.defineSynchedData();
+        this.entityData.define(DATA_CEREMONY_END, 0L);
     }
 
     @Override
@@ -139,7 +140,7 @@ public final class RitualHyperdimensionalPigmeeEntity extends ItemEntity {
     }
 
     private static void awardPickupAdvancement(ServerPlayer player) {
-        var advancement = player.server.getAdvancements().get(PICKUP_ADVANCEMENT);
+        var advancement = player.server.getAdvancements().getAdvancement(PICKUP_ADVANCEMENT);
         if (advancement != null) {
             player.getAdvancements().award(advancement, PICKUP_CRITERION);
         }

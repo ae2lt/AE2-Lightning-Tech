@@ -61,12 +61,4 @@ public final class TianshuCoreEffectRenderer
                 stack, buffers, CORE_PALETTE, animation.primaryPhase(), animation.secondaryPhase());
         stack.popPose();
     }
-
-    @Override
-    public AABB getRenderBoundingBox(TianshuSupercomputerControllerBlockEntity controller) {
-        Direction facing = controller.getBlockState().getValue(TianshuSupercomputerControllerBlock.FACING);
-        BlockPos center = TianshuMultiblockScanner.worldPos(controller.getBlockPos(), CORE_LOCAL, facing);
-        return new AABB(center).inflate(2.5D).minmax(new AABB(controller.getBlockPos()));
-    }
-
 }

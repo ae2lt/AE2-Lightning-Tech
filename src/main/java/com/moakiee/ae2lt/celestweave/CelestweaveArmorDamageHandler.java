@@ -1,4 +1,5 @@
 package com.moakiee.ae2lt.celestweave;
+import com.moakiee.ae2lt.network.NetworkInit;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -9,12 +10,12 @@ import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.bus.api.EventPriority;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
-import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
-import net.neoforged.neoforge.network.PacketDistributor;
+import net.minecraftforge.eventbus.api.EventPriority;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
+import net.minecraftforge.event.entity.living.LivingDamageEvent;
+import net.minecraftforge.event.entity.living.LivingHurtEvent;
+import net.minecraftforge.network.PacketDistributor;
 
 import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.config.AE2LTCommonConfig;
@@ -44,8 +45,9 @@ public final class CelestweaveArmorDamageHandler {
 
     private CelestweaveArmorDamageHandler() {}
 
+    // 1.20.1 has no LivingIncomingDamageEvent; LivingHurtEvent is its earliest hook (pre-armor).
     @SubscribeEvent(priority = EventPriority.HIGHEST)
-    public static void onIncoming(LivingIncomingDamageEvent event) {
+    public static void onIncoming(LivingHurtEvent event) {
         if (!(event.getEntity() instanceof Player player) || player.level().isClientSide()) {
             return;
         }
@@ -60,10 +62,11 @@ public final class CelestweaveArmorDamageHandler {
     }
 
     @SubscribeEvent(priority = EventPriority.HIGH)
-    public static void onPre(LivingDamageEvent.Pre event) {
+    public static void onPre(LivingDamageEvent event) {
         if (!(event.getEntity() instanceof Player player) || player.level().isClientSide()) return;
-        float incoming = event.getNewDamage();
-        float originalIncoming = event.getOriginalDamage();
+        // 1.20.1 has no original/new damage split: read the untouched value up front.
+        float incoming = event.getAmount();
+        float originalIncoming = event.getAmount();
         var capabilities = ArmorCapabilityCollector.collectPerInstalledUnit(player);
         ActiveCapability mitigation = collectMitigation(capabilities);
         if (mitigation != null
@@ -73,7 +76,7 @@ public final class CelestweaveArmorDamageHandler {
                     classifyDamage(event.getSource()),
                     incoming);
             if (payMitigationLightning(player, mitigation, staged, incoming - afterMitigation)) {
-                event.setNewDamage(afterMitigation);
+                event.setAmount(afterMitigation);
                 if (!ResistanceSubmodule.isHitFeedbackEnabled(mitigation.armor(), staged.stage())) {
                     markSuppressShieldHitFeedback(player);
                 }
@@ -241,7 +244,7 @@ public final class CelestweaveArmorDamageHandler {
     private static void markSuppressShieldHitFeedback(LivingEntity entity) {
         SUPPRESSING_SHIELD_HIT_FEEDBACK.get().add(entity.getId());
         if (entity instanceof ServerPlayer serverPlayer) {
-            PacketDistributor.sendToPlayer(
+            NetworkInit.sendToPlayer(
                     serverPlayer,
                     new ShieldHitFeedbackSuppressionPacket(serverPlayer.getId()));
         }

@@ -1,11 +1,11 @@
 package com.moakiee.ae2lt.network;
+import java.util.function.Supplier;
+import net.minecraftforge.network.NetworkEvent;
+import net.minecraft.client.Minecraft;
 
 import java.util.UUID;
 
-import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.minecraft.network.FriendlyByteBuf;
 
 import com.moakiee.ae2lt.celestweave.CelestweaveArmorState;
 import com.moakiee.ae2lt.celestweave.PhaseFlightPlayerState;
@@ -15,21 +15,8 @@ public record FlightInertiaSyncPacket(
         boolean inertiaEnabled,
         boolean phaseFlightActive,
         boolean phaseFlying,
-        boolean phaseModeEnabled)
-        implements CustomPacketPayload {
-
-    public static final Type<FlightInertiaSyncPacket> TYPE =
-            new Type<>(NetworkInit.id("flight_inertia_sync"));
-
-    public static final StreamCodec<RegistryFriendlyByteBuf, FlightInertiaSyncPacket> STREAM_CODEC =
-            StreamCodec.ofMember(FlightInertiaSyncPacket::write, FlightInertiaSyncPacket::decode);
-
-    @Override
-    public Type<FlightInertiaSyncPacket> type() {
-        return TYPE;
-    }
-
-    public static FlightInertiaSyncPacket decode(RegistryFriendlyByteBuf buf) {
+        boolean phaseModeEnabled) {
+public static FlightInertiaSyncPacket decode(FriendlyByteBuf buf) {
         return new FlightInertiaSyncPacket(
                 buf.readUUID(),
                 buf.readBoolean(),
@@ -38,7 +25,7 @@ public record FlightInertiaSyncPacket(
                 buf.readBoolean());
     }
 
-    public void write(RegistryFriendlyByteBuf buf) {
+    public void write(FriendlyByteBuf buf) {
         buf.writeUUID(armorId);
         buf.writeBoolean(inertiaEnabled);
         buf.writeBoolean(phaseFlightActive);
@@ -46,13 +33,14 @@ public record FlightInertiaSyncPacket(
         buf.writeBoolean(phaseModeEnabled);
     }
 
-    public static void handle(FlightInertiaSyncPacket payload, IPayloadContext context) {
-        context.enqueueWork(() -> {
+    public static void handle(FlightInertiaSyncPacket payload, Supplier<NetworkEvent.Context> context) {
+        NetworkEvent.Context ctx = context.get();
+        ctx.enqueueWork(() -> {
             CelestweaveArmorState.setClientFlightSettings(
                     payload.armorId(),
                     payload.inertiaEnabled(),
                     payload.phaseModeEnabled());
-            var player = context.player();
+            var player = Minecraft.getInstance().player;
             if (payload.phaseFlightActive()) {
                 PhaseFlightPlayerState.activate(player);
                 PhaseFlightPlayerState.setFlying(player, payload.phaseFlying());
@@ -60,5 +48,6 @@ public record FlightInertiaSyncPacket(
                 PhaseFlightPlayerState.endControl(player);
             }
         });
+        ctx.setPacketHandled(true);
     }
 }

@@ -212,9 +212,12 @@ public class OverloadGrowthCategory extends AbstractRecipeCategory<OverloadGrowt
             builder.addRecipeArrow().setPosition(centerX - 12, 0);
             builder.addScrollBoxWidget(WIDTH, HEIGHT - 20, 0, 20)
                     .setContents(List.of(
-                            Component.translatable("jei.ae2lt.overload_growth.break_decay").withColor(BODY_COLOR),
-                            Component.translatable("jei.ae2lt.overload_growth.silk_touch").withColor(BODY_COLOR),
-                            Component.translatable("jei.ae2lt.overload_growth.flawless_note").withColor(BODY_COLOR)));
+                            Component.translatable("jei.ae2lt.overload_growth.break_decay")
+                                    .withStyle(style -> style.withColor(BODY_COLOR)),
+                            Component.translatable("jei.ae2lt.overload_growth.silk_touch")
+                                    .withStyle(style -> style.withColor(BODY_COLOR)),
+                            Component.translatable("jei.ae2lt.overload_growth.flawless_note")
+                                    .withStyle(style -> style.withColor(BODY_COLOR))));
         }
 
         @Override

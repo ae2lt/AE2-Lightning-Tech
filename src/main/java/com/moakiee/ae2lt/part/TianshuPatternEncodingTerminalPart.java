@@ -22,11 +22,9 @@ import org.jetbrains.annotations.Nullable;
 public final class TianshuPatternEncodingTerminalPart extends PatternEncodingTerminalPart
         implements TianshuPatternTerminalHost {
     @PartModels
-    private static final ResourceLocation MODEL_OFF = ResourceLocation.fromNamespaceAndPath(
-            AE2LightningTech.MODID, "part/tianshu_pattern_encoding_terminal_off");
+    private static final ResourceLocation MODEL_OFF = ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "part/tianshu_pattern_encoding_terminal_off");
     @PartModels
-    private static final ResourceLocation MODEL_ON = ResourceLocation.fromNamespaceAndPath(
-            AE2LightningTech.MODID, "part/tianshu_pattern_encoding_terminal_on");
+    private static final ResourceLocation MODEL_ON = ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "part/tianshu_pattern_encoding_terminal_on");
 
     private static final IPartModel MODELS_OFF = new PartModel(MODEL_BASE, MODEL_OFF, MODEL_STATUS_OFF);
     private static final IPartModel MODELS_ON = new PartModel(MODEL_BASE, MODEL_ON, MODEL_STATUS_ON);
@@ -104,33 +102,33 @@ public final class TianshuPatternEncodingTerminalPart extends PatternEncodingTer
     }
 
     @Override
-    public void readFromNBT(CompoundTag data, HolderLookup.Provider registries) {
-        super.readFromNBT(data, registries);
+    public void readFromNBT(CompoundTag data) {
+        super.readFromNBT(data);
         try {
             tianshuMode = TianshuEncodingMode.valueOf(data.getString(TAG_MODE));
         } catch (IllegalArgumentException ignored) {
             tianshuMode = TianshuEncodingMode.CRAFTING;
         }
         closedLoopDraft = data.contains(TAG_CLOSED_LOOP_DRAFT, net.minecraft.nbt.Tag.TAG_COMPOUND)
-                ? ClosedLoopTerminalDraft.read(data.getCompound(TAG_CLOSED_LOOP_DRAFT), registries)
+                ? ClosedLoopTerminalDraft.read(data.getCompound(TAG_CLOSED_LOOP_DRAFT))
                 : null;
         processingDraft = data.contains(TAG_PROCESSING_DRAFT, net.minecraft.nbt.Tag.TAG_COMPOUND)
                 ? ProcessingPatternTerminalDraft.read(
-                        data.getCompound(TAG_PROCESSING_DRAFT), registries)
+                        data.getCompound(TAG_PROCESSING_DRAFT))
                 : null;
     }
 
     @Override
-    public void writeToNBT(CompoundTag data, HolderLookup.Provider registries) {
-        super.writeToNBT(data, registries);
+    public void writeToNBT(CompoundTag data) {
+        super.writeToNBT(data);
         data.putString(TAG_MODE, tianshuMode.name());
         if (closedLoopDraft != null) {
-            data.put(TAG_CLOSED_LOOP_DRAFT, closedLoopDraft.write(registries));
+            data.put(TAG_CLOSED_LOOP_DRAFT, closedLoopDraft.write());
         } else {
             data.remove(TAG_CLOSED_LOOP_DRAFT);
         }
         if (processingDraft != null) {
-            data.put(TAG_PROCESSING_DRAFT, processingDraft.write(registries));
+            data.put(TAG_PROCESSING_DRAFT, processingDraft.write());
         } else {
             data.remove(TAG_PROCESSING_DRAFT);
         }

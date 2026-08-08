@@ -2,7 +2,6 @@ package com.moakiee.ae2lt.worldgen;
 
 import com.moakiee.ae2lt.registry.ModStructureTypes;
 import com.mojang.serialization.Codec;
-import com.mojang.serialization.DataResult;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import java.util.Optional;
@@ -27,8 +26,7 @@ public final class FirmamentStarshipStructure extends Structure {
                             Codec.intRange(0, 256).fieldOf("horizontal_offset").forGetter(structure -> structure.horizontalOffset),
                             Codec.intRange(0, 256).fieldOf("min_y_offset").forGetter(structure -> structure.minYOffset),
                             Codec.intRange(0, 256).fieldOf("max_y_offset").forGetter(structure -> structure.maxYOffset))
-                    .apply(instance, FirmamentStarshipStructure::new))
-                    .validate(FirmamentStarshipStructure::validate);
+                    .apply(instance, FirmamentStarshipStructure::new));
 
     private final ResourceLocation template;
     private final int searchRadius;
@@ -55,16 +53,13 @@ public final class FirmamentStarshipStructure extends Structure {
         this.horizontalOffset = horizontalOffset;
         this.minYOffset = minYOffset;
         this.maxYOffset = maxYOffset;
-    }
-
-    private static DataResult<FirmamentStarshipStructure> validate(FirmamentStarshipStructure structure) {
-        if (structure.sampleStep > structure.searchRadius) {
-            return DataResult.error(() -> "sample_step must not be greater than search_radius");
+        // 1.20.1: MapCodec has no validate(); enforce the old DataResult checks here.
+        if (sampleStep > searchRadius) {
+            throw new IllegalArgumentException("sample_step must not be greater than search_radius");
         }
-        if (structure.minYOffset > structure.maxYOffset) {
-            return DataResult.error(() -> "min_y_offset must not be greater than max_y_offset");
+        if (minYOffset > maxYOffset) {
+            throw new IllegalArgumentException("min_y_offset must not be greater than max_y_offset");
         }
-        return DataResult.success(structure);
     }
 
     @Override

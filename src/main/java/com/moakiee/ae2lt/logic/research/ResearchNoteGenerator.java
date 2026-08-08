@@ -236,7 +236,7 @@ public final class ResearchNoteGenerator {
     }
 
     private static ResourceLocation id(String namespace, String path) {
-        return new ResourceLocation(namespace, path);
+        return ResourceLocation.fromNamespaceAndPath(namespace, path);
     }
 
     private record Candidate(ResourceLocation id, Tier tier, int baseWeight, int descriptionVariants) {

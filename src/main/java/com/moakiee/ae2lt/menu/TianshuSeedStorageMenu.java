@@ -21,8 +21,7 @@ public final class TianshuSeedStorageMenu extends AEBaseMenu {
     public static final MenuType<TianshuSeedStorageMenu> TYPE = MenuTypeBuilder
             .create(TianshuSeedStorageMenu::new, TianshuSeedStorageBlockEntity.class)
             .withMenuTitle(host -> Component.translatable("block.ae2lt.closed_loop_seed_storage"))
-            .buildUnregistered(ResourceLocation.fromNamespaceAndPath(
-                    AE2LightningTech.MODID, "closed_loop_seed_storage"));
+            .build("closed_loop_seed_storage");
 
     private final TianshuSeedStorageBlockEntity host;
     private final List<Slot> cellSlots = new ArrayList<>();
@@ -64,6 +63,14 @@ public final class TianshuSeedStorageMenu extends AEBaseMenu {
                 && host.getLevel().getBlockEntity(host.getBlockPos()) == host
                 && player.level() == host.getLevel()
                 && player.distanceToSqr(host.getBlockPos().getCenter()) <= 64.0D;
+    }
+
+    /**
+     * 1.20.1: AEBaseMenu.isPlayerSideSlot is private; re-implement via slot semantics.
+     */
+    private boolean isPlayerSideSlot(Slot slot) {
+        return getSlots(SlotSemantics.PLAYER_INVENTORY).contains(slot)
+                || getSlots(SlotSemantics.PLAYER_HOTBAR).contains(slot);
     }
 
     private List<Slot> getPlayerDestinationSlots() {

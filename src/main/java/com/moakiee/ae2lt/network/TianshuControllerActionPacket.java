@@ -1,43 +1,37 @@
 package com.moakiee.ae2lt.network;
-
+import java.util.function.Supplier;
 import com.moakiee.ae2lt.blockentity.TianshuSupercomputerControllerBlockEntity;
 import com.moakiee.ae2lt.menu.TianshuSupercomputerControllerMenu;
+import net.minecraftforge.network.NetworkEvent;
 import net.minecraft.ChatFormatting;
+import net.minecraftforge.network.NetworkEvent;
 import net.minecraft.core.BlockPos;
+import net.minecraftforge.network.NetworkEvent;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraftforge.network.NetworkEvent;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraftforge.network.NetworkEvent;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-public record TianshuControllerActionPacket(int token, BlockPos pos, Action action) implements CustomPacketPayload {
-    public static final Type<TianshuControllerActionPacket> TYPE =
-            new Type<>(NetworkInit.id("tianshu_controller_action"));
-    public static final StreamCodec<FriendlyByteBuf, TianshuControllerActionPacket> STREAM_CODEC =
-            StreamCodec.of(TianshuControllerActionPacket::encode, TianshuControllerActionPacket::decode);
-
-    private static void encode(FriendlyByteBuf buf, TianshuControllerActionPacket packet) {
+public record TianshuControllerActionPacket(int token, BlockPos pos, Action action) {
+    public static void encode(TianshuControllerActionPacket packet, FriendlyByteBuf buf) {
         buf.writeVarInt(packet.token);
         buf.writeBlockPos(packet.pos);
         buf.writeEnum(packet.action);
     }
 
-    private static TianshuControllerActionPacket decode(FriendlyByteBuf buf) {
+    public static TianshuControllerActionPacket decode(FriendlyByteBuf buf) {
         return new TianshuControllerActionPacket(buf.readVarInt(), buf.readBlockPos(), buf.readEnum(Action.class));
     }
-
-    @Override
-    public Type<? extends CustomPacketPayload> type() {
-        return TYPE;
-    }
-
-    public static void handle(TianshuControllerActionPacket packet, IPayloadContext context) {
-        context.enqueueWork(() -> {
-            if (context.player() instanceof ServerPlayer player) {
+public static void handle(TianshuControllerActionPacket packet, Supplier<NetworkEvent.Context> context) {
+        var ctx = context.get();
+        ctx.enqueueWork(() -> {
+            ServerPlayer player = ctx.getSender();
+        if (player != null) {
                 packet.handleOnServer(player);
             }
         });
+        ctx.setPacketHandled(true);
     }
 
     private void handleOnServer(ServerPlayer player) {

@@ -28,8 +28,7 @@ public class OverloadedPowerSupplyMenu extends AEBaseMenu implements FrequencyBi
             MenuTypeBuilder
                     .create(OverloadedPowerSupplyMenu::new, OverloadedPowerSupplyBlockEntity.class)
                     .withMenuTitle(host -> Component.translatable("block.ae2lt.overloaded_power_supply")),
-            new ResourceLocation(
-                    AE2LightningTech.MODID, "overloaded_power_supply"));
+            ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "overloaded_power_supply"));
 
     @GuiSync(0)
     public long bufferCapacity;

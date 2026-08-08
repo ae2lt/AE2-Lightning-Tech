@@ -24,8 +24,7 @@ import appeng.client.gui.widgets.ITooltip;
  */
 public class LightningStatusIconWidget extends AbstractWidget implements ITooltip {
 
-    public static final ResourceLocation ICON = ResourceLocation.fromNamespaceAndPath(
-            "ae2lt", "textures/gui/buttons/lightning.png");
+    public static final ResourceLocation ICON = ResourceLocation.fromNamespaceAndPath("ae2lt", "textures/gui/buttons/lightning.png");
     public static final int SIZE = 16;
 
     private final Supplier<List<Component>> tooltipSupplier;

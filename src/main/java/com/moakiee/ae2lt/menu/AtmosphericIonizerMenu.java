@@ -27,7 +27,7 @@ public class AtmosphericIonizerMenu extends AEBaseMenu implements FrequencyBindi
             MenuTypeBuilder
                     .create(AtmosphericIonizerMenu::new, AtmosphericIonizerBlockEntity.class)
                     .withMenuTitle(host -> Component.translatable("block.ae2lt.atmospheric_ionizer")),
-            new ResourceLocation(AE2LightningTech.MODID, "atmospheric_ionizer"));
+            ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "atmospheric_ionizer"));
 
     @GuiSync(50)
     public long consumedEnergy;

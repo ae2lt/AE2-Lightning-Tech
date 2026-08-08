@@ -7,7 +7,7 @@ import org.objectweb.asm.tree.ClassNode;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfigPlugin;
 import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
 
-import net.neoforged.fml.loading.LoadingModList;
+import net.minecraftforge.fml.loading.FMLLoader;
 
 /**
  * Gates the ae2wtlib integration mixins so they only apply when ae2wtlib is
@@ -22,7 +22,7 @@ public final class Ae2wtlibMixinPlugin implements IMixinConfigPlugin {
 
     @Override
     public void onLoad(String mixinPackage) {
-        ae2wtlibPresent = LoadingModList.get().getModFileById("ae2wtlib") != null;
+        ae2wtlibPresent = FMLLoader.getLoadingModList().getModFileById("ae2wtlib") != null;
     }
 
     @Override

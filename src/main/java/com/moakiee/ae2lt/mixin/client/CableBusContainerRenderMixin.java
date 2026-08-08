@@ -16,7 +16,7 @@ import appeng.parts.CableBusContainer;
 import com.moakiee.ae2lt.client.render.OverloadedCableRenderStateAccess;
 import com.moakiee.ae2lt.part.OverloadedCablePart;
 
-@Mixin(CableBusContainer.class)
+@Mixin(value = CableBusContainer.class, remap = false)
 public abstract class CableBusContainerRenderMixin {
     @Shadow
     @Nullable

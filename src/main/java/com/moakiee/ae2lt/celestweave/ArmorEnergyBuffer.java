@@ -3,7 +3,7 @@ package com.moakiee.ae2lt.celestweave;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.energy.IEnergyStorage;
+import net.minecraftforge.energy.IEnergyStorage;
 
 import appeng.api.config.Actionable;
 import appeng.api.networking.IGrid;
@@ -22,7 +22,7 @@ public final class ArmorEnergyBuffer {
     }
 
     public static long read(ItemStack stack, HolderLookup.Provider registries) {
-        Long value = stack.get(ModDataComponents.CELESTWEAVE_ENERGY_BUFFER.get());
+        Long value = ModDataComponents.CELESTWEAVE_ENERGY_BUFFER.get(stack);
         return Math.max(0L, Math.min(capacity(stack, registries), value == null ? 0L : value));
     }
 
@@ -42,7 +42,7 @@ public final class ArmorEnergyBuffer {
         if (stack == null || stack.isEmpty()) {
             return;
         }
-        stack.set(ModDataComponents.CELESTWEAVE_ENERGY_BUFFER.get(), Math.max(0L, Math.min(capacity(stack, registries), value)));
+        ModDataComponents.CELESTWEAVE_ENERGY_BUFFER.set(stack, Math.max(0L, Math.min(capacity(stack, registries), value)));
     }
 
     public static void clamp(ItemStack stack) {
@@ -57,7 +57,7 @@ public final class ArmorEnergyBuffer {
         if (amount <= 0L) {
             return true;
         }
-        var registries = player.registryAccess();
+        var registries = player.level().registryAccess();
         long buffered = read(stack, registries);
         if (buffered >= amount) {
             write(stack, registries, buffered - amount);
@@ -70,7 +70,7 @@ public final class ArmorEnergyBuffer {
         if (stack == null || stack.isEmpty() || player == null || maxAmount <= 0L) {
             return 0L;
         }
-        var registries = player.registryAccess();
+        var registries = player.level().registryAccess();
         long room = capacity(stack, registries) - read(stack, registries);
         if (room <= 0L) {
             return 0L;

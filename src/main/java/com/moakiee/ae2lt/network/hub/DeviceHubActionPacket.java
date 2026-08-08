@@ -1,10 +1,10 @@
 package com.moakiee.ae2lt.network.hub;
+import java.util.function.Supplier;
+import net.minecraftforge.network.NetworkEvent;
+import net.minecraft.client.Minecraft;
 
-import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import com.moakiee.ae2lt.menu.hub.DeviceHubMenu;
 import com.moakiee.ae2lt.network.NetworkInit;
@@ -16,7 +16,7 @@ import com.moakiee.ae2lt.network.NetworkInit;
  * 4=SELECT_MODULE, 5=CYCLE_MODULE_CONFIG, 6=TOGGLE_SOUND, 7=TOGGLE_CHAIN_DAMAGE,
  * 8=TOGGLE_OVERLOAD_REMOVAL_MODE, 9=TOGGLE_CHARGED_SPLASH.
  */
-public record DeviceHubActionPacket(int action, int value) implements CustomPacketPayload {
+public record DeviceHubActionPacket(int action, int value) {
 
     public static final int ACTION_SELECT_TAB = 0;
     public static final int ACTION_TOGGLE_MODULE = 1;
@@ -28,30 +28,20 @@ public record DeviceHubActionPacket(int action, int value) implements CustomPack
     public static final int ACTION_TOGGLE_CHAIN_DAMAGE = 7;
     public static final int ACTION_TOGGLE_OVERLOAD_REMOVAL_MODE = 8;
     public static final int ACTION_TOGGLE_CHARGED_SPLASH = 9;
-
-    public static final Type<DeviceHubActionPacket> TYPE =
-            new Type<>(NetworkInit.id("device_hub_action"));
-
-    public static final StreamCodec<RegistryFriendlyByteBuf, DeviceHubActionPacket> STREAM_CODEC =
-            StreamCodec.ofMember(DeviceHubActionPacket::write, DeviceHubActionPacket::decode);
-
-    @Override
-    public Type<DeviceHubActionPacket> type() {
-        return TYPE;
-    }
-
-    public static DeviceHubActionPacket decode(RegistryFriendlyByteBuf buf) {
+public static DeviceHubActionPacket decode(FriendlyByteBuf buf) {
         return new DeviceHubActionPacket(buf.readVarInt(), buf.readVarInt());
     }
 
-    public void write(RegistryFriendlyByteBuf buf) {
+    public void write(FriendlyByteBuf buf) {
         buf.writeVarInt(action);
         buf.writeVarInt(value);
     }
 
-    public static void handle(DeviceHubActionPacket pkt, IPayloadContext ctx) {
+    public static void handle(DeviceHubActionPacket pkt, Supplier<NetworkEvent.Context> ctxSup) {
+        NetworkEvent.Context ctx = ctxSup.get();
         ctx.enqueueWork(() -> {
-            if (!(ctx.player() instanceof ServerPlayer player)) return;
+            ServerPlayer player = ctx.getSender();
+            if (player == null) return;
             if (!(player.containerMenu instanceof DeviceHubMenu menu)) return;
             menu.setPlayer(player);
             switch (pkt.action()) {
@@ -67,5 +57,6 @@ public record DeviceHubActionPacket(int action, int value) implements CustomPack
                 case ACTION_TOGGLE_CHARGED_SPLASH -> menu.toggleRailgunChargedSplash();
             }
         });
+        ctx.setPacketHandled(true);
     }
 }

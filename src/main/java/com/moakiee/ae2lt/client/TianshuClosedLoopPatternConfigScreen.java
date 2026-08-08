@@ -3,7 +3,7 @@ package com.moakiee.ae2lt.client;
 import appeng.api.stacks.GenericStack;
 import appeng.client.gui.AESubScreen;
 import appeng.client.gui.Icon;
-import appeng.client.gui.widgets.AE2Button;
+import com.moakiee.ae2lt.client.gui.AE2Button;
 import appeng.client.gui.widgets.AETextField;
 import appeng.client.gui.widgets.IconButton;
 import appeng.client.gui.widgets.Scrollbar;
@@ -13,6 +13,7 @@ import appeng.menu.slot.AppEngSlot;
 import com.moakiee.ae2lt.logic.tianshu.terminal.ClosedLoopDraftStatus;
 import com.moakiee.ae2lt.menu.Ae2ltSlotSemantics;
 import com.moakiee.ae2lt.menu.TianshuPatternEncodingTermMenu;
+import com.moakiee.ae2lt.util.SlotPositionAccess;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -48,7 +49,7 @@ final class TianshuClosedLoopPatternConfigScreen<M extends TianshuPatternEncodin
             SETTINGS_EXECUTION_ROW_Y + TianshuPatternConfigLayout.ROW_HEIGHT;
 
     private final Scrollbar scrollbar;
-    private final List<AE2Button> pageButtons;
+    private final List<Button> pageButtons;
     private final AETextField[] memberAmounts = new AETextField[TianshuPatternConfigLayout.VISIBLE_ROWS];
     private final int[] memberRows = new int[TianshuPatternConfigLayout.VISIBLE_ROWS];
     private final ArrowButton[] memberUp = new ArrowButton[TianshuPatternConfigLayout.VISIBLE_ROWS];
@@ -66,7 +67,7 @@ final class TianshuClosedLoopPatternConfigScreen<M extends TianshuPatternEncodin
         imageWidth = TianshuPatternConfigLayout.GUI_WIDTH;
         imageHeight = TianshuPatternConfigLayout.GUI_HEIGHT;
 
-        widgets.add("button_back", new TabButton(Icon.BACK,
+        widgets.add("button_back", new TabButton(Icon.ARROW_LEFT,
                 Component.translatable("gui.back"), ignored -> closeEditor()));
         pageButtons = List.of(
                 widgets.addButton("page_members", pageLabel(Page.MEMBERS),
@@ -227,9 +228,8 @@ final class TianshuClosedLoopPatternConfigScreen<M extends TianshuPatternEncodin
             int index = scroll + visible;
             if (index >= available) break;
             var slot = slots.get(index);
-            slot.x = SLOT_X;
-            slot.y = TianshuPatternConfigLayout.HEADER_HEIGHT
-                    + visible * TianshuPatternConfigLayout.ROW_HEIGHT + ROW_SLOT_Y_OFFSET;
+            SlotPositionAccess.set(slot, SLOT_X, TianshuPatternConfigLayout.HEADER_HEIGHT
+                    + visible * TianshuPatternConfigLayout.ROW_HEIGHT + ROW_SLOT_Y_OFFSET);
             slot.setActive(true);
         }
     }
@@ -409,14 +409,14 @@ final class TianshuClosedLoopPatternConfigScreen<M extends TianshuPatternEncodin
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double deltaX, double deltaY) {
-        if (deltaY != 0 && page != Page.SETTINGS) {
-            scrollbar.setCurrentScroll(scrollbar.getCurrentScroll() + (deltaY > 0 ? -1 : 1));
+    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
+        if (delta != 0 && page != Page.SETTINGS) {
+            scrollbar.setCurrentScroll(scrollbar.getCurrentScroll() + (delta > 0 ? -1 : 1));
             updateVisibleSlots();
             updateControls();
             return true;
         }
-        return super.mouseScrolled(mouseX, mouseY, deltaX, deltaY);
+        return super.mouseScrolled(mouseX, mouseY, delta);
     }
 
     @Override
@@ -473,8 +473,7 @@ final class TianshuClosedLoopPatternConfigScreen<M extends TianshuPatternEncodin
     private static void hideSlots(List<? extends AppEngSlot> slots) {
         for (var slot : slots) {
             slot.setActive(false);
-            slot.x = HIDDEN_SLOT;
-            slot.y = HIDDEN_SLOT;
+            SlotPositionAccess.set(slot, HIDDEN_SLOT, HIDDEN_SLOT);
         }
     }
 

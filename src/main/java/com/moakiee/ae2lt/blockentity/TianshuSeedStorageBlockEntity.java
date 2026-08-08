@@ -9,6 +9,7 @@ import appeng.api.stacks.KeyCounter;
 import appeng.blockentity.AEBaseBlockEntity;
 import appeng.menu.MenuOpener;
 import appeng.menu.locator.MenuLocators;
+import appeng.api.inventories.InternalInventory;
 import appeng.util.inv.AppEngInternalInventory;
 import appeng.util.inv.InternalInventoryHost;
 import com.moakiee.ae2lt.menu.TianshuSeedStorageMenu;
@@ -125,14 +126,13 @@ public final class TianshuSeedStorageBlockEntity extends AEBaseBlockEntity
         }
     }
 
-    @Override
     public void saveChangedInventory(AppEngInternalInventory inventory) {
         saveChanges();
         notifyPort();
     }
 
     @Override
-    public void onChangeInventory(AppEngInternalInventory inventory, int slot) {
+    public void onChangeInventory(InternalInventory inventory, int slot) {
         notifyPort();
     }
 
@@ -146,20 +146,20 @@ public final class TianshuSeedStorageBlockEntity extends AEBaseBlockEntity
     @Override public boolean isClientSide() { return level != null && level.isClientSide; }
 
     @Override
-    public void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+    public void saveAdditional(CompoundTag tag) {
         for (int slot = 0; slot < cells.size(); slot++) {
             var cell = cell(slot);
             if (cell != null) cell.persist();
         }
-        super.saveAdditional(tag, registries);
-        cells.writeToNBT(tag, TAG_CELLS, registries);
+        super.saveAdditional(tag);
+        cells.writeToNBT(tag, TAG_CELLS);
         if (portPos != null) tag.putLong(TAG_PORT_POS, portPos.asLong());
     }
 
     @Override
-    public void loadTag(CompoundTag tag, HolderLookup.Provider registries) {
-        super.loadTag(tag, registries);
-        cells.readFromNBT(tag, TAG_CELLS, registries);
+    public void loadTag(CompoundTag tag) {
+        super.loadTag(tag);
+        cells.readFromNBT(tag, TAG_CELLS);
         portPos = tag.contains(TAG_PORT_POS, Tag.TAG_LONG)
                 ? BlockPos.of(tag.getLong(TAG_PORT_POS)) : null;
     }

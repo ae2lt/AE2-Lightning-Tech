@@ -27,7 +27,7 @@ import mezz.jei.api.gui.builder.IRecipeLayoutBuilder;
 import mezz.jei.api.gui.drawable.IDrawable;
 import mezz.jei.api.gui.ingredient.IRecipeSlotsView;
 import mezz.jei.api.helpers.IGuiHelper;
-import mezz.jei.api.neoforge.NeoForgeTypes;
+import mezz.jei.api.forge.ForgeTypes;
 import mezz.jei.api.recipe.IFocusGroup;
 import mezz.jei.api.recipe.RecipeIngredientRole;
 import mezz.jei.api.recipe.RecipeType;
@@ -40,9 +40,9 @@ public class CrystalCatalyzerCategory implements IRecipeCategory<CrystalCatalyze
     private static final ResourceLocation BACKGROUND_TEXTURE =
             ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "textures/guis/crystal_catalyzer.png");
 
-    // 机器 GUI 坐标:流体腔 (26,18)+16×53,催化剂槽 (56,30),矩阵槽 (84,54),
-    // 进度条 (74,33)+22×16,产物槽 (117,30),能量条 (140,30)+6×18。
-    // 从 (22,14) 起裁剪 128×62,保留水箱/电池外框的 1~2px 装饰边。
+    // 鏈哄櫒 GUI 鍧愭爣:娴佷綋鑵?(26,18)+16脳53,鍌寲鍓傛Ы (56,30),鐭╅樀妲?(84,54),
+    // 杩涘害鏉?(74,33)+22脳16,浜х墿妲?(117,30),鑳介噺鏉?(140,30)+6脳18銆?
+    // 浠?(22,14) 璧疯鍓?128脳62,淇濈暀姘寸/鐢垫睜澶栨鐨?1~2px 瑁呴グ杈广€?
     private static final int BACKGROUND_U = 22;
     private static final int BACKGROUND_V = 14;
     private static final int BACKGROUND_WIDTH = 128;
@@ -52,7 +52,7 @@ public class CrystalCatalyzerCategory implements IRecipeCategory<CrystalCatalyze
     private static final int TEXTURE_WIDTH = 256;
     private static final int TEXTURE_HEIGHT = 256;
 
-    // category 坐标 = GUI 坐标 − 背景偏移
+    // category 鍧愭爣 = GUI 鍧愭爣 鈭?鑳屾櫙鍋忕Щ
     private static final int FLUID_X = 26 - BACKGROUND_U;   // 4
     private static final int FLUID_Y = 18 - BACKGROUND_V;   // 4
     private static final int FLUID_WIDTH = 16;
@@ -115,12 +115,12 @@ public class CrystalCatalyzerCategory implements IRecipeCategory<CrystalCatalyze
 
     @Override
     public void setRecipe(IRecipeLayoutBuilder builder, CrystalCatalyzerRecipe recipe, IFocusGroup focuses) {
-        // 水现在是机器级固定开销,所有配方共用一份 1000 mB 的 water。
+        // 姘寸幇鍦ㄦ槸鏈哄櫒绾у浐瀹氬紑閿€,鎵€鏈夐厤鏂瑰叡鐢ㄤ竴浠?1000 mB 鐨?water銆?
         var fluid = CrystalCatalyzerBlockEntity.getFixedFluidPerCycle();
         int fluidDisplayCapacity = Math.max(1, fluid.getAmount());
         builder.addSlot(RecipeIngredientRole.INPUT, FLUID_X, FLUID_Y)
                 .setFluidRenderer(fluidDisplayCapacity, false, FLUID_WIDTH, FLUID_HEIGHT)
-                .addIngredient(NeoForgeTypes.FLUID_STACK, fluid)
+                .addIngredient(ForgeTypes.FLUID_STACK, fluid)
                 .addRichTooltipCallback((slotView, tooltip) -> tooltip.add(
                         Component.translatable(
                                 "jei.ae2lt.crystal_catalyzer.fluid_fixed",

@@ -26,9 +26,10 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.SignBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.event.tick.ServerTickEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
+import net.minecraftforge.event.TickEvent.ServerTickEvent;
 import net.minecraft.tags.BlockTags;
 
 import com.moakiee.ae2lt.AE2LightningTech;
@@ -112,7 +113,7 @@ public final class RailgunTerrainService {
     }
 
     @SubscribeEvent
-    public static void onServerTick(ServerTickEvent.Post e) {
+    public static void onServerTick(TickEvent.ServerTickEvent e) {
         if (PENDING.isEmpty()) return;
         var server = e.getServer();
         int budget = AE2LTCommonConfig.railgunTerrainBlocksPerTick();

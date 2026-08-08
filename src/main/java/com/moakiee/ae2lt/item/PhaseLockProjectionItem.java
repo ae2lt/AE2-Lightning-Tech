@@ -2,6 +2,8 @@ package com.moakiee.ae2lt.item;
 
 import java.util.List;
 
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
@@ -66,7 +68,7 @@ public final class PhaseLockProjectionItem extends ArmorItem {
                     player.getX(),
                     player.getY(),
                     player.getZ(),
-                    SoundEvents.RESPAWN_ANCHOR_DEPLETE,
+                    SoundEvents.RESPAWN_ANCHOR_DEPLETE.value(),
                     SoundSource.PLAYERS,
                     0.8F,
                     0.7F);
@@ -87,9 +89,10 @@ public final class PhaseLockProjectionItem extends ArmorItem {
     }
 
     @Override
+    // 1.20.1 hover text signature: the TooltipContext argument is replaced by a nullable Level.
     public void appendHoverText(
             ItemStack stack,
-            TooltipContext context,
+            @Nullable Level level,
             List<Component> tooltip,
             TooltipFlag flag) {
         tooltip.add(Component.translatable("item.ae2lt.phase_lock_projection.desc"));

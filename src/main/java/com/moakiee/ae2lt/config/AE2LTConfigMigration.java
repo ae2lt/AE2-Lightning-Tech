@@ -7,7 +7,7 @@ import com.electronwill.nightconfig.core.file.CommentedFileConfig;
 import com.mojang.logging.LogUtils;
 import org.slf4j.Logger;
 
-import net.neoforged.fml.loading.FMLPaths;
+import net.minecraftforge.fml.loading.FMLPaths;
 
 public final class AE2LTConfigMigration {
     private static final Logger LOG = LogUtils.getLogger();

@@ -10,7 +10,7 @@ import appeng.client.render.cablebus.CableBusRenderState;
 
 import com.moakiee.ae2lt.client.render.OverloadedCableRenderStateAccess;
 
-@Mixin(CableBusRenderState.class)
+@Mixin(value = CableBusRenderState.class, remap = false)
 public class CableBusRenderStateMixin implements OverloadedCableRenderStateAccess {
     @Unique
     private boolean ae2lt$overloadedCable;

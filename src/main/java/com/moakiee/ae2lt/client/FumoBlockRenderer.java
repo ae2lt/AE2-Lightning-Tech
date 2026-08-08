@@ -19,7 +19,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
-import net.neoforged.neoforge.client.model.data.ModelData;
+import net.minecraftforge.client.model.data.ModelData;
 
 import java.util.List;
 
@@ -130,7 +130,7 @@ public class FumoBlockRenderer implements BlockEntityRenderer<FumoBlockEntity> {
                 qg = shade;
                 qb = shade;
             }
-            consumer.putBulkData(pose, quad, qr, qg, qb, 1.0F, packedLight, packedOverlay);
+            consumer.putBulkData(pose, quad, qr, qg, qb, packedLight, packedOverlay);
         }
     }
 

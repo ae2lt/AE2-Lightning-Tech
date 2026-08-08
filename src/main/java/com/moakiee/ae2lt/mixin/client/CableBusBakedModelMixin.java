@@ -15,7 +15,7 @@ import appeng.client.render.cablebus.CableBusRenderState;
 import com.moakiee.ae2lt.client.render.OverloadedCableRenderHelper;
 import com.moakiee.ae2lt.client.render.OverloadedCableRenderStateAccess;
 
-@Mixin(CableBusBakedModel.class)
+@Mixin(value = CableBusBakedModel.class, remap = false)
 public class CableBusBakedModelMixin {
     @Inject(method = "addCableQuads", at = @At("HEAD"), cancellable = true)
     private void ae2lt$renderOverloadedCable(CableBusRenderState renderState, List<BakedQuad> quadsOut,

@@ -29,7 +29,7 @@ public final class OverloadedPatternProviderAdvancedScreen<M extends OverloadedP
         super(parent, "/screens/overloaded_pattern_provider_advanced.json");
 
         var backLabel = Component.translatable(parent.getMenu().getTitleTranslationKey());
-        widgets.add("return", new TabButton(Icon.BACK, backLabel, btn -> returnToParent()));
+        widgets.add("return", new TabButton(Icon.ARROW_LEFT, backLabel, btn -> returnToParent()));
 
         this.wirelessStrategyButton = new TextureToggleButton(
                 TextureToggleButton.ButtonType.WIRELESS_STRATEGY,
@@ -57,11 +57,6 @@ public final class OverloadedPatternProviderAdvancedScreen<M extends OverloadedP
         this.filteredImportButton.setTooltipOff(
                 List.of(Component.translatable("ae2lt.gui.filtered_import.off")));
         widgets.add("filteredImport", this.filteredImportButton);
-    }
-
-    @Override
-    protected boolean shouldAddToolbar() {
-        return false;
     }
 
     @Override

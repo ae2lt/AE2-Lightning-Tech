@@ -45,6 +45,11 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.items.IItemHandlerModifiable;
+import net.minecraftforge.common.capabilities.Capability;
+import net.minecraftforge.common.capabilities.ForgeCapabilities;
+import net.minecraftforge.common.util.LazyOptional;
+
+import org.jetbrains.annotations.Nullable;
 
 public class AtmosphericIonizerBlockEntity extends AENetworkBlockEntity
         implements IActionHost, FrequencyBindingHost {
@@ -471,6 +476,14 @@ public class AtmosphericIonizerBlockEntity extends AENetworkBlockEntity
         double extracted = grid.getEnergyService().extractAEPower(amount, mode, PowerMultiplier.CONFIG);
         return extracted >= amount - POWER_EPSILON;
     }
+    @Override
+    public <T> LazyOptional<T> getCapability(Capability<T> cap, @Nullable Direction side) {
+        if (cap == ForgeCapabilities.ITEM_HANDLER) {
+            return LazyOptional.of(this::getAutomationInventory).cast();
+        }
+        return super.getCapability(cap, side);
+    }
+
     @Override
     public AECableType getCableConnectionType(Direction dir) {
         return AECableType.SMART;

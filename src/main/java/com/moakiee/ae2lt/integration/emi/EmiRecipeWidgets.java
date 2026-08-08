@@ -10,7 +10,7 @@ import dev.emi.emi.api.widget.WidgetHolder;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.crafting.Ingredient;
-import net.neoforged.neoforge.fluids.FluidStack;
+import net.minecraftforge.fluids.FluidStack;
 
 final class EmiRecipeWidgets {
     static final int TEXT_COLOR = 0x404040;
@@ -31,7 +31,7 @@ final class EmiRecipeWidgets {
     }
 
     static EmiStack fluid(FluidStack stack) {
-        return EmiStack.of(stack.getFluid(), stack.getComponentsPatch(), stack.getAmount());
+        return EmiStack.of(stack.getFluid(), stack.getTag(), stack.getAmount());
     }
 
     static void centeredText(WidgetHolder widgets, Component text, int centerX, int y) {

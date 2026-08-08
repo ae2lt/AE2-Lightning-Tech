@@ -12,14 +12,12 @@ import net.minecraft.world.level.Level;
 /** Shared client/server routing policy for terminal pattern uploads. */
 public final class TianshuPatternUploadRouting {
     private static final ResourceLocation MATTER_WARPING_MATRIX_CONTROLLER_ID =
-            ResourceLocation.fromNamespaceAndPath(
-                    AE2LightningTech.MODID, "matter_warping_matrix_controller");
+            ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "matter_warping_matrix_controller");
     private static final Set<ResourceLocation> CRAFTING_UPLOAD_GROUP_IDS = Set.of(
             ResourceLocation.fromNamespaceAndPath("ae2", "molecular_assembler"),
             ResourceLocation.fromNamespaceAndPath("extendedae", "ex_molecular_assembler"),
             ResourceLocation.fromNamespaceAndPath("extendedae", "assembler_matrix_pattern"),
-            ResourceLocation.fromNamespaceAndPath(
-                    "extendedae_plus", "assembler_matrix_pattern_plus"),
+            ResourceLocation.fromNamespaceAndPath("extendedae_plus", "assembler_matrix_pattern_plus"),
             ResourceLocation.fromNamespaceAndPath("neoecoae", "crafting_system_l4"),
             ResourceLocation.fromNamespaceAndPath("neoecoae", "crafting_system_l6"),
             ResourceLocation.fromNamespaceAndPath("neoecoae", "crafting_system_l9"),

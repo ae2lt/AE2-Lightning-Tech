@@ -101,8 +101,9 @@ public final class InteractiveMultiblockWidget
     }
 
     @Override
-    public boolean handleMouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
-        return preview.handleMouseScrolled(mouseX, mouseY, scrollX, scrollY);
+    public boolean handleMouseScrolled(double mouseX, double mouseY, double mouseV) {
+        // 1.20.1: JEI passes a single scroll value; keep the preview's 4-arg API.
+        return preview.handleMouseScrolled(mouseX, mouseY, 0, mouseV);
     }
 
     @Override
