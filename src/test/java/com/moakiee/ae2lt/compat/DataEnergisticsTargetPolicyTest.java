@@ -21,6 +21,13 @@ final class DataEnergisticsTargetPolicyTest {
     }
 
     @Test
+    void catchesLegacyAe2LtPathingMixinDespiteItsExternalTarget() {
+        assertTrue(DataEnergisticsTargetPolicy.shouldCancel(
+                java.util.List.of("appeng.me.pathfinding.PathingCalculation"),
+                "com.fish_dan_.data_energistics.mixin.ae2lt.Ae2ltPathingCalculationCompatMixin"));
+    }
+
+    @Test
     void leavesDataEnergisticsExternalMixinsAndOtherModsAlone() {
         assertFalse(DataEnergisticsTargetPolicy.shouldCancel(
                 java.util.List.of("appeng.me.service.PathingService"),

@@ -1302,7 +1302,7 @@
   "ae2lt.tianshu.issue.chunks_unloaded": "结构覆盖的区块未完整加载",
   "ae2lt.gui.matrix_port.search": "搜索矩阵样板",
   "ae2lt.gui.matrix_port.title": "样板管理",
-  "ae2lt.compat.data_energistics.unsupported": "[AE2LT] 检测到数据能源学 %s。AE2LT 已采取必要手段尽量修复兼容性，但该组合仍明确不受支持。如需禁用该保护，请在 ae2lt-common.toml 中将 compatibility.dataEnergisticsMixinProtection 设为 false，并完整重启客户端或服务端。",
-  "ae2lt.compat.data_energistics.protection_disabled": "[AE2LT] 检测到数据能源学 %s。兼容保护已被配置禁用，本次启动不会采取保护措施；该组合仍明确不受支持。",
-  "ae2lt.compat.data_energistics.feedback_scope": "请勿向 AE2 Lightning Tech 或 Data Energistics 的 Issue Tracker 反馈该组合下的崩溃、功能异常、兼容性或性能问题；只有移除其中一个模组后仍能复现，才向对应项目反馈。"
+  "ae2lt.compat.data_energistics.unsupported": "[AE2LT] 检测到旧版数据能源学 %s，AE2LT 兼容保护已启用。cee32c9 之后构建的版本（2.4.4+）不再显示此提示。如需禁用保护，请在 ae2lt-common.toml 中将 compatibility.dataEnergisticsMixinProtection 设为 false，并完整重启客户端或服务端。",
+  "ae2lt.compat.data_energistics.protection_disabled": "[AE2LT] 检测到旧版数据能源学 %s。兼容保护已被配置禁用，本次启动不会采取保护措施。",
+  "ae2lt.compat.data_energistics.feedback_scope": "请勿向任一项目反馈由该旧版兼容组合导致的问题；请先将数据能源学更新至 2.4.4 或更高版本，或移除其中一个模组后确认问题仍能复现。"
 }
