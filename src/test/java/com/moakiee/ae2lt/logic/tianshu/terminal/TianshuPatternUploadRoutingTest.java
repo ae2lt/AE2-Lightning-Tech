@@ -116,7 +116,9 @@ class TianshuPatternUploadRoutingTest {
                         + "this::encodeServerWithOptions)"));
         assertTrue(menu.contains("sendClientAction(\"encodeTianshu\","));
         assertTrue(menu.contains("previewAe2EncodingCandidate()"));
-        assertTrue(menu.contains("shouldInterceptDuplicateEncoding(candidate, true)"));
+        assertTrue(menu.contains(
+                "shouldInterceptDuplicateEncoding(candidate, interceptDuplicates)"));
+        assertTrue(menu.contains("commitAe2EncodingCandidate(candidate)"));
         assertTrue(menu.contains(
                 "route == TianshuPatternUploadRouting.Route.INVALID"));
         assertTrue(clientConfig.contains(

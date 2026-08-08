@@ -90,9 +90,13 @@ import com.moakiee.ae2lt.network.tianshu.TianshuPacketLimits;
 import com.moakiee.thunderbolt.ae2.overload.pattern.SourcePatternSnapshot;
 import net.minecraft.world.entity.player.Player;
 import org.anti_ad.mc.ipn.api.IPNIgnore;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @IPNIgnore
 public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
+    private static final Logger DUPLICATE_LOG =
+            LoggerFactory.getLogger("ae2lt/TianshuDuplicate");
     public static final int CLOSED_LOOP_MEMBER_SLOTS = ClosedLoopDraftSync.MEMBER_SLOTS;
     public static final int CLOSED_LOOP_OUTPUT_SLOTS = ClosedLoopDraftSync.OUTPUT_SLOTS;
     public static final int CLOSED_LOOP_RESULT_SLOTS = ClosedLoopResultPage.MAX_RESULTS;
@@ -198,11 +202,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     private int expectedTriggeredUploadAck;
     private boolean directUploadTargetsRequested;
     private int expectedDirectUploadTargetRevision;
-    /**
-     * AE2 synchronously broadcasts the encoded slot while {@code super.encode()} still contains
-     * the temporary vanilla pattern. Do not treat that intermediate stack as a newly inserted
-     * pattern, or it will clear the advanced/overload draft before conversion runs.
-     */
+    /** Prevents a committed encoding result from being mistaken for a manually inserted pattern. */
     private boolean ae2EncodingInProgress;
 
     public TianshuPatternEncodingTermMenu(
@@ -1172,25 +1172,59 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     }
 
     private List<PatternContainer> discoverUploadTargets() {
+        return discoverUploadTargets(false);
+    }
+
+    private List<PatternContainer> discoverUploadTargets(boolean diagnostics) {
         var node = tianshuHost.getActionableNode();
         var grid = node != null ? node.getGrid() : null;
         if (grid == null) {
+            if (diagnostics) {
+                DUPLICATE_LOG.warn("Target scan found no grid (nodePresent={})", node != null);
+            }
             return List.of();
         }
         var found = new ArrayList<PatternContainer>();
+        int machineClasses = 0;
+        int patternContainerClasses = 0;
+        int activeContainers = 0;
+        int hiddenContainers = 0;
+        int foreignGridContainers = 0;
+        int emptyInventories = 0;
         for (var machineClass : grid.getMachineClasses()) {
+            machineClasses++;
             if (!PatternContainer.class.isAssignableFrom(machineClass)) continue;
+            patternContainerClasses++;
             @SuppressWarnings("unchecked")
             var containerClass = (Class<? extends PatternContainer>) machineClass;
             for (var container : grid.getActiveMachines(containerClass)) {
-                if (!container.isVisibleInTerminal() || container.getGrid() != grid) continue;
+                activeContainers++;
+                if (!container.isVisibleInTerminal()) {
+                    hiddenContainers++;
+                    continue;
+                }
+                if (container.getGrid() != grid) {
+                    foreignGridContainers++;
+                    continue;
+                }
                 var inv = container.getTerminalPatternInventory();
-                if (inv != null && inv.size() > 0) found.add(container);
+                if (inv != null && inv.size() > 0) {
+                    found.add(container);
+                } else {
+                    emptyInventories++;
+                }
             }
         }
         found.sort(java.util.Comparator
                 .comparing((PatternContainer host) -> host.getTerminalGroup().name().getString())
                 .thenComparingLong(PatternContainer::getTerminalSortOrder));
+        if (diagnostics) {
+            DUPLICATE_LOG.debug("Target scan: machineClasses={}, patternContainerClasses={}, "
+                            + "activeContainers={}, eligibleTargets={}, hidden={}, foreignGrid={}, "
+                            + "missingOrEmptyInventory={}",
+                    machineClasses, patternContainerClasses, activeContainers, found.size(),
+                    hiddenContainers, foreignGridContainers, emptyInventories);
+        }
         return List.copyOf(found);
     }
 
@@ -2260,22 +2294,20 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         if (!isServerSide()) return;
         boolean interceptDuplicates = Boolean.TRUE.equals(interceptDuplicateEncoding);
         if (tianshuMode.isAe2Mode()) {
-            if (interceptDuplicates) {
-                var candidate = previewAe2EncodingCandidate();
-                if (shouldInterceptDuplicateEncoding(candidate, true)) {
-                    notifyDuplicateEncodingIntercepted();
-                    return;
-                }
+            // Build the candidate exactly once. Some recipe integrations expose transient
+            // encoding state, so a second call can produce a different definition even though
+            // the visible draft has not changed. Duplicate detection must inspect the exact
+            // stack that will be committed to the encoded slot.
+            var candidate = previewAe2EncodingCandidate();
+            if (shouldInterceptDuplicateEncoding(candidate, interceptDuplicates)) {
+                notifyDuplicateEncodingIntercepted();
+                return;
             }
-            boolean stagedNetworkBlank = false;
             ae2EncodingInProgress = true;
             try {
-                stagedNetworkBlank = stageNetworkBlankPattern();
-                super.encode();
-                applyConfiguredProcessingConversion();
+                commitAe2EncodingCandidate(candidate);
             } finally {
                 ae2EncodingInProgress = false;
-                if (stagedNetworkBlank) returnStagedBlankPatternToNetwork();
             }
             var encoded = tianshuHost.getLogic().getEncodedPatternInv().getStackInSlot(0);
             if (TianshuPatternUploadRouting.isValidEncodingResult(encoded, getPlayer().level())) {
@@ -2303,6 +2335,44 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         }
     }
 
+    /**
+     * Applies AE2's encoded-slot and blank-pattern rules to a candidate that has already been
+     * built. Keeping this separate from candidate construction guarantees that duplicate checking
+     * and the committed stack use the same definition.
+     */
+    private void commitAe2EncodingCandidate(ItemStack candidate) {
+        var encodedInventory = tianshuHost.getLogic().getEncodedPatternInv();
+        var current = encodedInventory.getStackInSlot(0);
+        if (candidate == null || candidate.isEmpty()) {
+            if (PatternDetailsHelper.isEncodedPattern(current)) {
+                encodedInventory.setItemDirect(
+                        0, AEItems.BLANK_PATTERN.stack(current.getCount()));
+            }
+            return;
+        }
+        if (!current.isEmpty()
+                && !PatternDetailsHelper.isEncodedPattern(current)
+                && !AEItems.BLANK_PATTERN.is(current)) {
+            return;
+        }
+
+        boolean stagedNetworkBlank = false;
+        try {
+            if (current.isEmpty()) {
+                stagedNetworkBlank = stageNetworkBlankPattern();
+                if (!stagedNetworkBlank) {
+                    return;
+                }
+            }
+            encodedInventory.setItemDirect(0, candidate);
+        } finally {
+            // If committing failed after extraction, return only the still-blank staged stack.
+            if (stagedNetworkBlank) {
+                returnStagedBlankPatternToNetwork();
+            }
+        }
+    }
+
     private ItemStack previewAe2EncodingCandidate() {
         var candidate = ((PatternEncodingTermMenuAccessor) (Object) this)
                 .ae2lt$encodePatternCandidate();
@@ -2324,8 +2394,36 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         if (route == TianshuPatternUploadRouting.Route.INVALID) {
             return false;
         }
-        uploadTargets = discoverUploadTargets();
-        return containsUploadedPattern(candidate);
+        var candidateDescription = PatternEncodingDuplicateFilter.describeStack(candidate);
+        DUPLICATE_LOG.debug("Check start: player={}, route={}, candidate={}",
+                getPlayer().getGameProfile().getName(), route, candidateDescription);
+        uploadTargets = discoverUploadTargets(true);
+        var level = getPlayer().level();
+        for (int targetIndex = 0; targetIndex < uploadTargets.size(); targetIndex++) {
+            var target = uploadTargets.get(targetIndex);
+            var inventory = target.getTerminalPatternInventory();
+            var result = PatternEncodingDuplicateFilter.checkEquivalentPattern(
+                    inventory, candidate, level);
+            if (DUPLICATE_LOG.isDebugEnabled()) {
+                DUPLICATE_LOG.debug("Target {}: type={}, group={}, slots={}, occupiedScanned={}, "
+                                + "undecodable={}, duplicate={}, matchedSlot={}, method={}, stored={}",
+                        targetIndex, target.getClass().getName(),
+                        target.getTerminalGroup().name().getString(), inventory.size(),
+                        result.occupiedSlots(), result.undecodableSlots(), result.duplicate(),
+                        result.matchedSlot(), result.matchMethod(),
+                        result.duplicate() ? "matched"
+                                : PatternEncodingDuplicateFilter.describeOccupiedStacks(inventory, 8));
+            }
+            if (result.duplicate()) {
+                DUPLICATE_LOG.debug("Check result: BLOCK candidate={} target={} slot={} method={}",
+                        candidateDescription, targetIndex, result.matchedSlot(), result.matchMethod());
+                return true;
+            }
+        }
+        DUPLICATE_LOG.debug("Check result: ALLOW candidate={} because no equivalent pattern was "
+                        + "found across {} eligible targets",
+                candidateDescription, uploadTargets.size());
+        return false;
     }
 
     private void notifyDuplicateEncodingIntercepted() {
@@ -2401,22 +2499,6 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     private ItemStack encodeDerivedPattern() {
         if (tianshuMode != TianshuEncodingMode.CLOSED_LOOP) return ItemStack.EMPTY;
         return encodeSelectedClosedLoopCandidate();
-    }
-
-    /** Applies the persistent processing configuration to the freshly encoded pattern. */
-    private void applyConfiguredProcessingConversion() {
-        if (tianshuMode != TianshuEncodingMode.PROCESSING
-                || processingEncodingType == ProcessingPatternEncodingType.NORMAL) return;
-        var advancedConfig = getAdvancedEncodingConfig();
-        var overloadConfig = getOverloadEncodingConfig();
-        var inventory = tianshuHost.getLogic().getEncodedPatternInv();
-        var source = inventory.getStackInSlot(0);
-        if (source.isEmpty()) return;
-        var converted = convertConfiguredProcessingPattern(
-                source, advancedConfig, overloadConfig);
-        if (converted != null && !converted.isEmpty()) {
-            inventory.setItemDirect(0, converted);
-        }
     }
 
     @Nullable

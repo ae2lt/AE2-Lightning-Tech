@@ -9,18 +9,28 @@ import org.junit.jupiter.api.Test;
 
 class TianshuPatternEncodingTermMenuSourceContractTest {
     @Test
-    void ae2EncodingCanReadAndConsumeTheStagedBlankPattern() throws Exception {
+    void ae2EncodingCommitsTheCheckedCandidateAndConsumesTheStagedBlankPattern() throws Exception {
         String menu = Files.readString(Path.of(
                 "src/main/java/com/moakiee/ae2lt/menu/TianshuPatternEncodingTermMenu.java"));
         int encodeStart = menu.indexOf("public void encode()");
-        int stage = menu.indexOf("stageNetworkBlankPattern()", encodeStart);
-        int encode = menu.indexOf("super.encode()", encodeStart);
-        int returnUnused = menu.indexOf("returnStagedBlankPatternToNetwork()", encode);
+        int candidate = menu.indexOf("var candidate = previewAe2EncodingCandidate()", encodeStart);
+        int duplicateCheck = menu.indexOf(
+                "shouldInterceptDuplicateEncoding(candidate, interceptDuplicates)", candidate);
+        int commit = menu.indexOf("commitAe2EncodingCandidate(candidate)", duplicateCheck);
+        int commitMethod = menu.indexOf("private void commitAe2EncodingCandidate(", commit);
+        int stage = menu.indexOf("stageNetworkBlankPattern()", commitMethod);
+        int write = menu.indexOf("encodedInventory.setItemDirect(0, candidate)", stage);
+        int returnUnused = menu.indexOf("returnStagedBlankPatternToNetwork()", write);
 
         assertTrue(encodeStart >= 0);
-        assertTrue(stage > encodeStart);
-        assertTrue(encode > stage);
-        assertTrue(returnUnused > encode);
+        assertTrue(candidate > encodeStart);
+        assertTrue(duplicateCheck > candidate);
+        assertTrue(commit > duplicateCheck);
+        assertTrue(commitMethod > commit);
+        assertTrue(stage > commitMethod);
+        assertTrue(write > stage);
+        assertTrue(returnUnused > write);
+        assertFalse(menu.substring(candidate, commitMethod).contains("super.encode()"));
         assertTrue(menu.contains("getEncodedPatternInv()"));
         assertTrue(menu.contains("encodedInventory.setItemDirect(0, AEItems.BLANK_PATTERN.stack"));
     }
@@ -80,17 +90,16 @@ class TianshuPatternEncodingTermMenuSourceContractTest {
         assertTrue(menu.contains("if (!ae2EncodingInProgress) refreshDerivedConfiguration();"));
         int encodeStart = menu.indexOf("private void encodeServerWithOptions(");
         int guardOn = menu.indexOf("ae2EncodingInProgress = true;", encodeStart);
-        int nativeEncode = menu.indexOf("super.encode();", guardOn);
-        int conversion = menu.indexOf("applyConfiguredProcessingConversion();", nativeEncode);
-        int guardOff = menu.indexOf("ae2EncodingInProgress = false;", conversion);
+        int commit = menu.indexOf("commitAe2EncodingCandidate(candidate);", guardOn);
+        int guardOff = menu.indexOf("ae2EncodingInProgress = false;", commit);
         int finalBroadcast = menu.indexOf("broadcastChanges();", guardOff);
 
         assertTrue(encodeStart >= 0);
         assertTrue(guardOn > encodeStart);
-        assertTrue(nativeEncode > guardOn);
-        assertTrue(conversion > nativeEncode);
-        assertTrue(guardOff > conversion);
+        assertTrue(commit > guardOn);
+        assertTrue(guardOff > commit);
         assertTrue(finalBroadcast > guardOff);
+        assertFalse(menu.substring(guardOn, guardOff).contains("applyConfiguredProcessingConversion()"));
     }
 
     @Test
