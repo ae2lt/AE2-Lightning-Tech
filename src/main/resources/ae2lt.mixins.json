@@ -6,7 +6,6 @@
   "mixins": [
     "ServerLevelMixin",
     "AnnihilationPlaneFirmamentDustMixin",
-    "PatternEncodingTermMenuAccessor",
     "PatternProviderLogicAccessor",
     "PatternProviderLogicMixin",
     "EntityUndyingMixin",

@@ -115,8 +115,13 @@ class TianshuPatternUploadRoutingTest {
                 "registerClientAction(\"encodeTianshu\", Boolean.class, "
                         + "this::encodeServerWithOptions)"));
         assertTrue(menu.contains("sendClientAction(\"encodeTianshu\","));
-        assertTrue(menu.contains("previewAe2EncodingCandidate()"));
-        assertTrue(menu.contains("shouldInterceptDuplicateEncoding(candidate, true)"));
+        assertFalse(menu.contains("previewAe2EncodingCandidate()"));
+        int nativeEncode = menu.indexOf("super.encode();");
+        int actualDuplicateCheck = menu.indexOf(
+                "shouldInterceptDuplicateEncoding(encoded, interceptDuplicates)", nativeEncode);
+        assertTrue(nativeEncode >= 0);
+        assertTrue(actualDuplicateCheck > nativeEncode);
+        assertTrue(menu.contains("rollbackRefundableEncodedPattern();"));
         assertTrue(menu.contains(
                 "route == TianshuPatternUploadRouting.Route.INVALID"));
         assertTrue(clientConfig.contains(
@@ -126,8 +131,9 @@ class TianshuPatternUploadRoutingTest {
         assertTrue(duplicateFilter.contains("readClosedLoopPayload(candidate, level)"));
         assertTrue(duplicateFilter.contains("sameClosedLoopPayload("));
         assertTrue(duplicateFilter.contains("left.pattern().fingerprint()"));
-        assertTrue(duplicateFilter.contains(
-                "Objects.equals(stored.getDefinition(), candidate.getDefinition())"));
+        assertTrue(duplicateFilter.contains("AEComponents.ENCODED_CRAFTING_PATTERN"));
+        assertTrue(duplicateFilter.contains("AEComponents.ENCODED_PROCESSING_PATTERN"));
+        assertFalse(duplicateFilter.contains("stored.getDefinition()"));
 
         int processingUpload = menu.indexOf(
                 "public void uploadTianshuPatternToTarget(ServerPlayer player");

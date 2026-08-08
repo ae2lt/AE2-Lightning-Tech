@@ -94,6 +94,33 @@ class TianshuPatternEncodingTermMenuSourceContractTest {
     }
 
     @Test
+    void ae2EncodingSuppressesEaepUploadAndRollsBackOnlyItsNetworkBlank() throws Exception {
+        String menu = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/menu/TianshuPatternEncodingTermMenu.java"));
+        String eaepCompat = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/logic/tianshu/terminal/"
+                        + "ExtendedAEPlusEncodingCompat.java"));
+
+        int suppression = menu.indexOf(
+                "ExtendedAEPlusEncodingCompat.suppressAutomaticUpload(this)");
+        int nativeEncode = menu.indexOf("super.encode();", suppression);
+        int actualResult = menu.indexOf("var encoded = encodedInventory.getStackInSlot(0)", nativeEncode);
+        int duplicateCheck = menu.indexOf(
+                "shouldInterceptDuplicateEncoding(encoded, interceptDuplicates)", actualResult);
+
+        assertTrue(suppression >= 0);
+        assertTrue(nativeEncode > suppression);
+        assertTrue(actualResult > nativeEncode);
+        assertTrue(duplicateCheck > actualResult);
+        assertTrue(menu.contains("private ItemStack refundableEncodedPattern = ItemStack.EMPTY"));
+        assertTrue(menu.contains("settleNetworkBlankCharge(success);"));
+        assertTrue(menu.contains("StorageHelper.poweredInsert("));
+        assertTrue(menu.contains("encodedInventory.addItems(removed);"));
+        assertTrue(eaepCompat.contains("eap$clientSetShiftUpload"));
+        assertTrue(eaepCompat.contains("eap$consumeShiftUploadFlag"));
+    }
+
+    @Test
     void insertedCustomPatternsRestoreTheirOwnEditingStateInsteadOfReusingTheOldDraft()
             throws Exception {
         String menu = Files.readString(Path.of(

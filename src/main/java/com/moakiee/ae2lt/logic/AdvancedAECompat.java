@@ -54,6 +54,24 @@ public final class AdvancedAECompat {
     }
 
     /**
+     * Compares the recipe-bearing fields of two directional processing patterns while ignoring
+     * unrelated components added to the outer encoded-pattern item.
+     */
+    public static boolean samePatternSemantics(
+            @Nullable IPatternDetails stored, @Nullable IPatternDetails candidate) {
+        if (!isLoaded() || stored == null || candidate == null) return false;
+        var storedUnwrapped = unwrap(stored);
+        var candidateUnwrapped = unwrap(candidate);
+        if (!(storedUnwrapped instanceof AdvProcessingPattern storedAdvanced)
+                || !(candidateUnwrapped instanceof AdvProcessingPattern candidateAdvanced)) {
+            return false;
+        }
+        return storedAdvanced.getSparseInputs().equals(candidateAdvanced.getSparseInputs())
+                && storedAdvanced.getSparseOutputs().equals(candidateAdvanced.getSparseOutputs())
+                && storedAdvanced.getDirectionMap().equals(candidateAdvanced.getDirectionMap());
+    }
+
+    /**
      * @return the target-machine face this key should be inserted into,
      *         or {@code null} for "use the default face".
      */

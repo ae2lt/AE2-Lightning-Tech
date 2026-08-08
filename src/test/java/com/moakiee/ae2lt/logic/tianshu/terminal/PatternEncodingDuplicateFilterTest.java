@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.AEKeyType;
 import appeng.api.stacks.GenericStack;
+import appeng.crafting.pattern.EncodedProcessingPattern;
 import com.mojang.serialization.MapCodec;
 import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopMemberPattern;
 import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternPayload;
@@ -21,6 +22,19 @@ import net.minecraft.world.level.Level;
 import org.junit.jupiter.api.Test;
 
 class PatternEncodingDuplicateFilterTest {
+    @Test
+    void processingIdentityUsesEncodedRecipeDataInsteadOfTheOuterPatternStack() {
+        var input = new GenericStack(new TestKey("input"), 4);
+        var output = new GenericStack(new TestKey("output"), 1);
+        var stored = new EncodedProcessingPattern(List.of(input), List.of(output));
+        var reencoded = new EncodedProcessingPattern(List.of(input), List.of(output));
+        var changed = new EncodedProcessingPattern(
+                List.of(new GenericStack(new TestKey("input"), 5)), List.of(output));
+
+        assertTrue(PatternEncodingDuplicateFilter.sameProcessingPattern(stored, reencoded));
+        assertFalse(PatternEncodingDuplicateFilter.sameProcessingPattern(stored, changed));
+    }
+
     @Test
     void closedLoopRuntimeStateDoesNotBypassDuplicateDetection() {
         var stored = payload("member", 1, 1, 2, false);
