@@ -8,11 +8,14 @@ import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.phys.Vec3;
 
 import com.moakiee.ae2lt.celestweave.PhaseFlightMovementGuard;
 
-/** Authorizes only vanilla's two ground-jump impulses, without opening the rest of aiStep. */
+/**
+ * Authorizes only vanilla's two ground-jump impulses, without opening the rest of aiStep.
+ * <p>1.20.1 note: both impulses (main + sprint) go through {@code setDeltaMovement(DDD)};
+ * the {@code addDeltaMovement(Vec3)} sprint path of newer versions does not exist here.</p>
+ */
 @Mixin(LivingEntity.class)
 public abstract class LivingEntityPhaseJumpMixin {
     @WrapOperation(
@@ -33,23 +36,5 @@ public abstract class LivingEntityPhaseJumpMixin {
             return;
         }
         original.call(entity, x, y, z);
-    }
-
-    @WrapOperation(
-            method = "jumpFromGround",
-            at = @At(
-                    value = "INVOKE",
-                    target = "Lnet/minecraft/world/entity/LivingEntity;addDeltaMovement(Lnet/minecraft/world/phys/Vec3;)V"))
-    private void ae2lt$authorizeSprintingJumpImpulse(
-            LivingEntity entity,
-            Vec3 movement,
-            Operation<Void> original) {
-        if (entity instanceof Player player) {
-            PhaseFlightMovementGuard.runAsSelfMovement(
-                    player,
-                    () -> original.call(entity, movement));
-            return;
-        }
-        original.call(entity, movement);
     }
 }

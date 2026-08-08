@@ -10,8 +10,10 @@ import net.minecraft.world.inventory.Slot;
  * we can shuffle slot positions when sub-screens reuse layout coordinates.
  */
 public final class SlotPositionAccess {
-    private static final Field X = locate("x");
-    private static final Field Y = locate("y");
+    // At runtime Minecraft classes are SRG-remapped (f_40220_/f_40221_), while
+    // dev environments expose the MCP names (x/y), so try both spellings.
+    private static final Field X = locate("x", "f_40220_");
+    private static final Field Y = locate("y", "f_40221_");
 
     private SlotPositionAccess() {
     }
@@ -25,13 +27,17 @@ public final class SlotPositionAccess {
         }
     }
 
-    private static Field locate(String name) {
-        try {
-            Field f = Slot.class.getDeclaredField(name);
-            f.setAccessible(true);
-            return f;
-        } catch (NoSuchFieldException e) {
-            throw new ExceptionInInitializerError(e);
+    private static Field locate(String name, String srgName) {
+        for (var candidate : new String[] { name, srgName }) {
+            try {
+                Field f = Slot.class.getDeclaredField(candidate);
+                f.setAccessible(true);
+                return f;
+            } catch (NoSuchFieldException e) {
+                // Try the next candidate.
+            }
         }
+        throw new ExceptionInInitializerError(
+                new NoSuchFieldException("Slot." + name + " / " + srgName));
     }
 }

@@ -226,11 +226,11 @@
 			"to": [10, 15, 10],
 			"shade": false,
 			"faces": {
-				"north": {"uv": [4, 3, 0, 0], "texture": "#4", "neoforge_data": {"block_light": 15, "sky_light": 15}},
-				"east": {"uv": [0, 3, 4, 0], "texture": "#4", "neoforge_data": {"block_light": 15, "sky_light": 15}},
-				"south": {"uv": [8, 3, 4, 0], "texture": "#4", "neoforge_data": {"block_light": 15, "sky_light": 15}},
-				"west": {"uv": [4, 3, 8, 0], "texture": "#4", "neoforge_data": {"block_light": 15, "sky_light": 15}},
-				"down": {"uv": [8, 0, 12, 4], "texture": "#4", "neoforge_data": {"block_light": 15, "sky_light": 15}}
+				"north": {"uv": [4, 3, 0, 0], "texture": "#4", "forge_data": {"block_light": 15, "sky_light": 15}},
+				"east": {"uv": [0, 3, 4, 0], "texture": "#4", "forge_data": {"block_light": 15, "sky_light": 15}},
+				"south": {"uv": [8, 3, 4, 0], "texture": "#4", "forge_data": {"block_light": 15, "sky_light": 15}},
+				"west": {"uv": [4, 3, 8, 0], "texture": "#4", "forge_data": {"block_light": 15, "sky_light": 15}},
+				"down": {"uv": [8, 0, 12, 4], "texture": "#4", "forge_data": {"block_light": 15, "sky_light": 15}}
 			}
 		},
 		{
@@ -239,11 +239,11 @@
 			"to": [8, 12, 10],
 			"shade": false,
 			"faces": {
-				"north": {"uv": [4, 9, 2, 5], "texture": "#4", "neoforge_data": {"block_light": 15, "sky_light": 15}},
-				"east": {"uv": [2, 9, 4, 5], "texture": "#4", "neoforge_data": {"block_light": 15, "sky_light": 15}},
-				"south": {"uv": [2, 9, 0, 5], "texture": "#4", "neoforge_data": {"block_light": 15, "sky_light": 15}},
-				"west": {"uv": [0, 9, 2, 5], "texture": "#4", "neoforge_data": {"block_light": 15, "sky_light": 15}},
-				"down": {"uv": [2, 5, 0, 3], "rotation": 90, "texture": "#4", "neoforge_data": {"block_light": 15, "sky_light": 15}}
+				"north": {"uv": [4, 9, 2, 5], "texture": "#4", "forge_data": {"block_light": 15, "sky_light": 15}},
+				"east": {"uv": [2, 9, 4, 5], "texture": "#4", "forge_data": {"block_light": 15, "sky_light": 15}},
+				"south": {"uv": [2, 9, 0, 5], "texture": "#4", "forge_data": {"block_light": 15, "sky_light": 15}},
+				"west": {"uv": [0, 9, 2, 5], "texture": "#4", "forge_data": {"block_light": 15, "sky_light": 15}},
+				"down": {"uv": [2, 5, 0, 3], "rotation": 90, "texture": "#4", "forge_data": {"block_light": 15, "sky_light": 15}}
 			}
 		},
 		{
@@ -253,10 +253,10 @@
 			"shade": false,
 			"rotation": {"angle": 0, "axis": "y", "origin": [8, 0, 8]},
 			"faces": {
-				"north": {"uv": [8, 5, 6, 3], "texture": "#4", "neoforge_data": {"block_light": 15, "sky_light": 15}},
-				"east": {"uv": [0, 5, 2, 3], "texture": "#4", "neoforge_data": {"block_light": 15, "sky_light": 15}},
-				"south": {"uv": [2, 5, 4, 3], "texture": "#4", "neoforge_data": {"block_light": 15, "sky_light": 15}},
-				"down": {"uv": [6, 5, 4, 3], "rotation": 90, "texture": "#4", "neoforge_data": {"block_light": 15, "sky_light": 15}}
+				"north": {"uv": [8, 5, 6, 3], "texture": "#4", "forge_data": {"block_light": 15, "sky_light": 15}},
+				"east": {"uv": [0, 5, 2, 3], "texture": "#4", "forge_data": {"block_light": 15, "sky_light": 15}},
+				"south": {"uv": [2, 5, 4, 3], "texture": "#4", "forge_data": {"block_light": 15, "sky_light": 15}},
+				"down": {"uv": [6, 5, 4, 3], "rotation": 90, "texture": "#4", "forge_data": {"block_light": 15, "sky_light": 15}}
 			}
 		},
 		{
@@ -266,10 +266,10 @@
 			"shade": false,
 			"rotation": {"angle": 0, "axis": "y", "origin": [8, 0, 8]},
 			"faces": {
-				"north": {"uv": [0, 5, 2, 3], "texture": "#4", "neoforge_data": {"block_light": 15, "sky_light": 15}},
-				"east": {"uv": [6, 5, 8, 3], "texture": "#4", "neoforge_data": {"block_light": 15, "sky_light": 15}},
-				"west": {"uv": [8, 5, 6, 3], "texture": "#4", "neoforge_data": {"block_light": 15, "sky_light": 15}},
-				"down": {"uv": [6, 5, 4, 3], "rotation": 180, "texture": "#4", "neoforge_data": {"block_light": 15, "sky_light": 15}}
+				"north": {"uv": [0, 5, 2, 3], "texture": "#4", "forge_data": {"block_light": 15, "sky_light": 15}},
+				"east": {"uv": [6, 5, 8, 3], "texture": "#4", "forge_data": {"block_light": 15, "sky_light": 15}},
+				"west": {"uv": [8, 5, 6, 3], "texture": "#4", "forge_data": {"block_light": 15, "sky_light": 15}},
+				"down": {"uv": [6, 5, 4, 3], "rotation": 180, "texture": "#4", "forge_data": {"block_light": 15, "sky_light": 15}}
 			}
 		}
 	],

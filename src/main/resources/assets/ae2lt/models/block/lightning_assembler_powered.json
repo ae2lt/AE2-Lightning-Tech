@@ -1,5 +1,5 @@
 {
-	"loader":"neoforge:composite",
+	"loader":"forge:composite",
 	"parent":"block/block",
 	"textures": {
 		"particle": "ae2lt:block/lightning_assembler/base"
@@ -24,12 +24,12 @@
 					"to": [14, 14, 14],
 					"shade": false,
 					"faces": {
-						"north": {"uv": [2.6, 2.6, 13.4, 13.4], "texture": "#all", "cullface": "north", "neoforge_data": {"block_light": 15, "sky_light": 15}},
-						"east": {"uv": [2.6, 2.6, 13.4, 13.4], "texture": "#all", "cullface": "east", "neoforge_data": {"block_light": 15, "sky_light": 15}},
-						"south": {"uv": [2.6, 2.6, 13.4, 13.4], "texture": "#all", "cullface": "south", "neoforge_data": {"block_light": 15, "sky_light": 15}},
-						"west": {"uv": [2.6, 2.6, 13.4, 13.4], "texture": "#all", "cullface": "west", "neoforge_data": {"block_light": 15, "sky_light": 15}},
-						"up": {"uv": [2.6, 2.6, 13.4, 13.4], "texture": "#all", "cullface": "up", "neoforge_data": {"block_light": 15, "sky_light": 15}},
-						"down": {"uv": [2.6, 2.6, 13.4, 13.4], "texture": "#all", "cullface": "down", "neoforge_data": {"block_light": 15, "sky_light": 15}}
+						"north": {"uv": [2.6, 2.6, 13.4, 13.4], "texture": "#all", "cullface": "north", "forge_data": {"block_light": 15, "sky_light": 15}},
+						"east": {"uv": [2.6, 2.6, 13.4, 13.4], "texture": "#all", "cullface": "east", "forge_data": {"block_light": 15, "sky_light": 15}},
+						"south": {"uv": [2.6, 2.6, 13.4, 13.4], "texture": "#all", "cullface": "south", "forge_data": {"block_light": 15, "sky_light": 15}},
+						"west": {"uv": [2.6, 2.6, 13.4, 13.4], "texture": "#all", "cullface": "west", "forge_data": {"block_light": 15, "sky_light": 15}},
+						"up": {"uv": [2.6, 2.6, 13.4, 13.4], "texture": "#all", "cullface": "up", "forge_data": {"block_light": 15, "sky_light": 15}},
+						"down": {"uv": [2.6, 2.6, 13.4, 13.4], "texture": "#all", "cullface": "down", "forge_data": {"block_light": 15, "sky_light": 15}}
 					}
 				}
 			]

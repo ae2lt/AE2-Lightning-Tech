@@ -5,7 +5,6 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.LivingEntity;
@@ -36,10 +35,11 @@ public abstract class LivingEntityUndyingMixin {
     /**
      * Some weapons inline LivingEntity#die and invoke this protected method directly. Stop
      * inventory clearing and loot emission after the undying module has restored the player.
+     * <p>1.20.1 signature: {@code dropAllDeathLoot(DamageSource)} — the ServerLevel-first
+     * overload arrived in 1.20.5.</p>
      */
     @Inject(method = "dropAllDeathLoot", at = @At("HEAD"), cancellable = true)
     private void ae2lt$protectCelestweaveArmorFromCopiedDeathLoot(
-            ServerLevel level,
             DamageSource source,
             CallbackInfo ci) {
         LivingEntity entity = (LivingEntity) (Object) this;

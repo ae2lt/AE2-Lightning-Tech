@@ -17,9 +17,11 @@ public final class CtmGeometryLoaders {
 
     @SubscribeEvent
     public static void registerGeometryLoaders(ModelEvent.RegisterGeometryLoaders event) {
-        // 1.20.1: register() takes a String id instead of a ResourceLocation.
+        // 1.20.1: register(String) already prepends the mod id as the namespace,
+        // so only the bare path must be passed (a full "modid:path" would be
+        // wrapped again into "modid:modid:path" and rejected).
         event.register(
-                AE2LightningTech.MODID + ":connected_texture",
+                "connected_texture",
                 new ConnectedTextureLoader());
     }
 }

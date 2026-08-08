@@ -3,7 +3,6 @@ package com.moakiee.ae2lt.registry;
 import java.util.function.Function;
 
 import com.moakiee.ae2lt.AE2LightningTech;
-import com.moakiee.ae2lt.integration.ae2wtlib.Ae2wtlibIntegration;
 import com.moakiee.ae2lt.item.DebugLightningRodItem;
 import com.moakiee.ae2lt.item.ElectroChimeCrystalItem;
 import com.moakiee.ae2lt.item.FixedInfiniteCellItem;
@@ -58,7 +57,6 @@ import com.moakiee.ae2lt.part.OverloadedCablePart;
 import com.moakiee.ae2lt.part.TianshuPatternEncodingTerminalPart;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
-import net.minecraftforge.fml.ModList;
 import net.minecraft.world.item.Rarity;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
@@ -299,12 +297,13 @@ public final class ModItems {
                             TianshuPatternEncodingTerminalPart.class,
                             TianshuPatternEncodingTerminalPart::new));
 
+    // Always registers the AE2-only base item. The ae2wtlib-aware TianshuWTItem subclass is
+    // intentionally NOT referenced here: any bytecode-level reference to the ae2wtlib types would
+    // be resolved while this class is being verified, crashing the game when ae2wtlib is absent.
     public static final RegistryObject<TianshuWirelessPatternEncodingTerminalItem>
             TIANSHU_WIRELESS_PATTERN_ENCODING_TERMINAL = ITEMS.register(
                     "wireless_tianshu_pattern_encoding_terminal",
-                    () -> ModList.get().isLoaded("ae2wtlib")
-                            ? Ae2wtlibIntegration.terminal()
-                            : new TianshuWirelessPatternEncodingTerminalItem());
+                    TianshuWirelessPatternEncodingTerminalItem::new);
 
     // ── Celestweave Armor ──────────────────────────────────────────────────────
     public static final RegistryObject<CelestweaveOculusItem> CELESTWEAVE_OCULUS = registerItem(

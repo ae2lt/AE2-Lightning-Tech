@@ -1,6 +1,5 @@
 package com.moakiee.ae2lt.block;
 
-import appeng.block.AEBaseEntityBlock;
 import appeng.block.crafting.PushDirection;
 import appeng.menu.locator.MenuLocators;
 import appeng.util.InteractionUtil;
@@ -19,7 +18,7 @@ import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.phys.BlockHitResult;
 
-public final class PigmeePatternProviderBlock extends AEBaseEntityBlock<PigmeePatternProviderBlockEntity> {
+public final class PigmeePatternProviderBlock extends AE2LTBaseEntityBlock<PigmeePatternProviderBlockEntity> {
     public static final EnumProperty<PushDirection> PUSH_DIRECTION =
             EnumProperty.create("push_direction", PushDirection.class);
 
@@ -35,21 +34,27 @@ public final class PigmeePatternProviderBlock extends AEBaseEntityBlock<PigmeePa
     }
 
     @Override
-    public InteractionResult use(
-            BlockState state,
-            Level level,
-            BlockPos pos,
-            Player player,
-            InteractionHand hand,
-            BlockHitResult hit) {
-        // 1.20.1 merges the 1.21 useItemOn/useWithoutItem pair into a single use().
-        // Wrench rotation wins; everything else defers to AE2's menu opening.
-        ItemStack heldItem = player.getItemInHand(hand);
+    protected InteractionResult useItemOn(ItemStack heldItem, BlockState state, Level level,
+            BlockPos pos, Player player, InteractionHand hand, BlockHitResult hit) {
+        // Wrench rotation wins; everything else defers to the empty-hand menu opening.
         if (InteractionUtil.canWrenchRotate(heldItem)) {
             setOutputSide(level, pos, hit.getDirection());
             return InteractionResult.sidedSuccess(level.isClientSide());
         }
-        return super.use(state, level, pos, player, hand, hit);
+        return super.useItemOn(heldItem, state, level, pos, player, hand, hit);
+    }
+
+    @Override
+    protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos,
+            Player player, BlockHitResult hitResult) {
+        var blockEntity = getBlockEntity(level, pos);
+        if (blockEntity == null) {
+            return InteractionResult.PASS;
+        }
+        if (!level.isClientSide()) {
+            blockEntity.openMenu(player, MenuLocators.forBlockEntity(blockEntity));
+        }
+        return InteractionResult.sidedSuccess(level.isClientSide());
     }
 
     private void setOutputSide(Level level, BlockPos pos, Direction clickedSide) {

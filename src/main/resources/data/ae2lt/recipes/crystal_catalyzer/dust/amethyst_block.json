@@ -1,9 +1,9 @@
 {
-  "neoforge:conditions": [
+  "conditions": [
     {
-      "type": "neoforge:not",
+      "type": "forge:not",
       "value": {
-        "type": "neoforge:tag_empty",
+        "type": "forge:tag_empty",
         "tag": "c:dusts/amethyst"
       }
     }

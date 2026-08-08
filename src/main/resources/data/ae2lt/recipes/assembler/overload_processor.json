@@ -1,11 +1,11 @@
 {
-  "neoforge:conditions": [
+  "conditions": [
     {
       "type": "extendedae:config",
       "config_id": "assembler_circuit"
     },
     {
-      "type": "neoforge:mod_loaded",
+      "type": "forge:mod_loaded",
       "modid": "extendedae"
     }
   ],

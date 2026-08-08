@@ -54,3 +54,8 @@ DevLog/
 
 # Bundled source mirrors / references
 Source Code/
+
+# Port debugging workspace (local only)
+*.ps1
+*.txt
+libs/

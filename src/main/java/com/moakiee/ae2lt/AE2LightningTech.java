@@ -15,6 +15,7 @@ import com.moakiee.ae2lt.registry.ModStructureTypes;
 import com.moakiee.ae2lt.registry.LegacyRegistryAliases;
 import com.moakiee.ae2lt.integration.ae2wtlib.Ae2wtlibIntegration;
 import com.moakiee.ae2lt.integration.mekanism.MekanismArmorIntegration;
+import com.moakiee.ae2lt.network.NetworkInit;
 import com.moakiee.ae2lt.config.AE2LTCommonConfig;
 import com.moakiee.ae2lt.config.AE2LTConfigMigration;
 import com.moakiee.ae2lt.blockentity.AtmosphericIonizerBlockEntity;
@@ -394,6 +395,11 @@ public class AE2LightningTech {
         ModStructureTypes.STRUCTURE_PIECES.register(modEventBus);
         ModLootModifiers.LOOT_MODIFIER_SERIALIZERS.register(modEventBus);
         CREATIVE_MODE_TABS.register(modEventBus);
+        // Forge 1.20.1: the network channel must be created during mod construction
+        // (registry phase). NetworkInit is otherwise loaded lazily on first packet use
+        // (e.g. when the client opens the Lightning Assembly Chamber screen), which
+        // fails with "Registration of impl channels is locked".
+        NetworkInit.register();
         // ae2wtlib is optional: only touch the integration when it is actually loaded
         // (the integration class references ae2wtlib types and must not be loaded without it).
         if (net.minecraftforge.fml.loading.FMLLoader.getLoadingModList()

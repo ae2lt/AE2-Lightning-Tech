@@ -64,7 +64,9 @@ public class WirelessConnectorRenderer {
     // Preview color: semi-transparent yellow (ARGB)
     private static final int COLOR_PREVIEW = 0x60FFFF00;
     // Connected face color: semi-transparent blue (ARGB)
-    private static final int COLOR_CONNECTED = 0x600080FF;
+    private static final int COLOR_CONNECTED = 0x900080FF;
+    // Connected face outline color: bright white (ARGB)
+    private static final int COLOR_CONNECTED_EDGE = 0xE0FFFFFF;
     // Preview line color: bright yellow
     private static final int COLOR_PREVIEW_LINE = 0xC0FFFF00;
     // Host inner cube color (unselected): semi-transparent blue (ARGB)
@@ -252,7 +254,7 @@ public class WirelessConnectorRenderer {
                 for (var lookPos : previewTargets) {
                     if (!existingConnections.contains(lookPos)) {
                         renderFaceOverlay(poseStack, buffer, lookPos, lookFace, COLOR_PREVIEW);
-                        renderLine(poseStack, buffer, selectedPos, lookPos, lookFace, COLOR_PREVIEW_LINE);
+                        renderLine(poseStack, buffer, selectedPos, lookPos, lookFace, COLOR_PREVIEW_LINE, false);
                     }
                 }
             } else if (OverloadedWirelessConnectorItem.HOST_INTERFACE.equals(selectedHostType)
@@ -277,7 +279,7 @@ public class WirelessConnectorRenderer {
                 for (var lookPos : previewTargets) {
                     if (!existingConnections.contains(lookPos)) {
                         renderFaceOverlay(poseStack, buffer, lookPos, lookFace, COLOR_PREVIEW);
-                        renderLine(poseStack, buffer, selectedPos, lookPos, lookFace, COLOR_PREVIEW_LINE);
+                        renderLine(poseStack, buffer, selectedPos, lookPos, lookFace, COLOR_PREVIEW_LINE, false);
                     }
                 }
             } else if (OverloadedWirelessConnectorItem.HOST_POWER_SUPPLY.equals(selectedHostType)
@@ -302,7 +304,7 @@ public class WirelessConnectorRenderer {
                 for (var lookPos : previewTargets) {
                     if (!existingConnections.contains(lookPos)) {
                         renderFaceOverlay(poseStack, buffer, lookPos, lookFace, COLOR_PREVIEW);
-                        renderLine(poseStack, buffer, selectedPos, lookPos, lookFace, COLOR_PREVIEW_LINE);
+                        renderLine(poseStack, buffer, selectedPos, lookPos, lookFace, COLOR_PREVIEW_LINE, false);
                     }
                 }
             }
@@ -312,6 +314,7 @@ public class WirelessConnectorRenderer {
 
         // Flush render batches
         buffer.endBatch(Ae2ltRenderTypes.getFaceSeeThrough());
+        buffer.endBatch(Ae2ltRenderTypes.getLineSeeThrough());
         buffer.endBatch(OverlayRenderType.getBlockHilightFace());
         buffer.endBatch(OverlayRenderType.getBlockHilightLine());
     }
@@ -355,8 +358,8 @@ public class WirelessConnectorRenderer {
 
         for (var conn : provider.getConnections()) {
             if (!conn.dimension().equals(level.dimension())) continue;
-            renderFaceOverlay(poseStack, buffer, conn.pos(), conn.boundFace(), COLOR_CONNECTED);
-            renderLine(poseStack, buffer, hostPos, conn.pos(), conn.boundFace(), COLOR_LINE);
+            renderConnectedFace(poseStack, buffer, conn.pos(), conn.boundFace());
+            renderLine(poseStack, buffer, hostPos, conn.pos(), conn.boundFace(), COLOR_LINE, true);
         }
     }
 
@@ -366,8 +369,8 @@ public class WirelessConnectorRenderer {
 
         for (var conn : iface.getConnections()) {
             if (!conn.dimension().equals(level.dimension())) continue;
-            renderFaceOverlay(poseStack, buffer, conn.pos(), conn.boundFace(), COLOR_CONNECTED);
-            renderLine(poseStack, buffer, hostPos, conn.pos(), conn.boundFace(), COLOR_LINE);
+            renderConnectedFace(poseStack, buffer, conn.pos(), conn.boundFace());
+            renderLine(poseStack, buffer, hostPos, conn.pos(), conn.boundFace(), COLOR_LINE, true);
         }
     }
 
@@ -377,9 +380,20 @@ public class WirelessConnectorRenderer {
 
         for (var conn : powerSupply.getConnections()) {
             if (!conn.dimension().equals(level.dimension())) continue;
-            renderFaceOverlay(poseStack, buffer, conn.pos(), conn.boundFace(), COLOR_CONNECTED);
-            renderLine(poseStack, buffer, hostPos, conn.pos(), conn.boundFace(), COLOR_LINE);
+            renderConnectedFace(poseStack, buffer, conn.pos(), conn.boundFace());
+            renderLine(poseStack, buffer, hostPos, conn.pos(), conn.boundFace(), COLOR_LINE, true);
         }
+    }
+
+    /**
+     * Renders the bound face of an established connection: a see-through blue
+     * quad plus a bright outline, so the connected side stays visible even when
+     * the face is hidden behind opaque blocks (e.g. a machine pushed against a wall).
+     */
+    private static void renderConnectedFace(PoseStack poseStack, MultiBufferSource buffer,
+            BlockPos pos, Direction face) {
+        renderFaceOverlaySeeThrough(poseStack, buffer, pos, face, COLOR_CONNECTED);
+        renderFaceOutline(poseStack, buffer, pos, face, COLOR_CONNECTED_EDGE);
     }
 
     private static void quad(VertexConsumer vc, Matrix4f mat, int[] c,
@@ -400,7 +414,22 @@ public class WirelessConnectorRenderer {
      */
     private static void renderFaceOverlay(PoseStack poseStack, MultiBufferSource buffer,
             BlockPos pos, Direction face, int color) {
-        VertexConsumer vc = buffer.getBuffer(OverlayRenderType.getBlockHilightFace());
+        renderFaceOverlayInternal(poseStack, buffer.getBuffer(OverlayRenderType.getBlockHilightFace()),
+                pos, face, color);
+    }
+
+    /**
+     * Render a face overlay with the see-through (GREATER depth test) render type,
+     * making it visible through opaque blocks.
+     */
+    private static void renderFaceOverlaySeeThrough(PoseStack poseStack, MultiBufferSource buffer,
+            BlockPos pos, Direction face, int color) {
+        renderFaceOverlayInternal(poseStack, buffer.getBuffer(Ae2ltRenderTypes.getFaceSeeThrough()),
+                pos, face, color);
+    }
+
+    private static void renderFaceOverlayInternal(PoseStack poseStack, VertexConsumer vc,
+            BlockPos pos, Direction face, int color) {
         int[] c = OverlayRenderType.decomposeColor(color);
 
         poseStack.pushPose();
@@ -457,11 +486,56 @@ public class WirelessConnectorRenderer {
     }
 
     /**
+     * Render the 4-edge outline of a block face with the see-through line type,
+     * making the exact bound side obvious from any angle.
+     */
+    private static void renderFaceOutline(PoseStack poseStack, MultiBufferSource buffer,
+            BlockPos pos, Direction face, int color) {
+        VertexConsumer vc = buffer.getBuffer(Ae2ltRenderTypes.getLineSeeThrough());
+        int[] c = OverlayRenderType.decomposeColor(color);
+
+        poseStack.pushPose();
+        poseStack.translate(pos.getX(), pos.getY(), pos.getZ());
+        Matrix4f mat = poseStack.last().pose();
+
+        // Slightly outside the see-through quad so the outline is not hidden behind it.
+        float o = 0.004f;
+
+        float nx = face.getStepX();
+        float ny = face.getStepY();
+        float nz = face.getStepZ();
+
+        float[][] corners = switch (face) {
+            case DOWN -> new float[][] {{0, -o, 0}, {1, -o, 0}, {1, -o, 1}, {0, -o, 1}};
+            case UP -> new float[][] {{0, 1 + o, 0}, {1, 1 + o, 0}, {1, 1 + o, 1}, {0, 1 + o, 1}};
+            case NORTH -> new float[][] {{0, 0, -o}, {1, 0, -o}, {1, 1, -o}, {0, 1, -o}};
+            case SOUTH -> new float[][] {{0, 0, 1 + o}, {1, 0, 1 + o}, {1, 1, 1 + o}, {0, 1, 1 + o}};
+            case WEST -> new float[][] {{-o, 0, 0}, {-o, 1, 0}, {-o, 1, 1}, {-o, 0, 1}};
+            case EAST -> new float[][] {{1 + o, 0, 0}, {1 + o, 1, 0}, {1 + o, 1, 1}, {1 + o, 0, 1}};
+        };
+
+        for (int i = 0; i < 4; i++) {
+            float[] a = corners[i];
+            float[] b = corners[(i + 1) % 4];
+            vc.vertex(mat, a[0], a[1], a[2]).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
+            vc.vertex(mat, b[0], b[1], b[2]).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
+        }
+
+        poseStack.popPose();
+    }
+
+    /**
      * Render a line from provider center to the center of the connected face.
+     * Established connections use the see-through line type so the line stays
+     * visible even when it passes behind opaque blocks; preview lines stay on
+     * the normal (non-see-through) hilight type since the player is looking
+     * directly at the target face.
      */
     private static void renderLine(PoseStack poseStack, MultiBufferSource buffer,
-            BlockPos from, BlockPos to, Direction face, int color) {
-        VertexConsumer vc = buffer.getBuffer(OverlayRenderType.getBlockHilightLine());
+            BlockPos from, BlockPos to, Direction face, int color, boolean seeThrough) {
+        VertexConsumer vc = buffer.getBuffer(seeThrough
+                ? Ae2ltRenderTypes.getLineSeeThrough()
+                : OverlayRenderType.getBlockHilightLine());
         int[] c = OverlayRenderType.decomposeColor(color);
 
         Matrix4f mat = poseStack.last().pose();
