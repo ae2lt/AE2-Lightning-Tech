@@ -22,7 +22,7 @@ import appeng.util.inv.AppEngInternalInventory;
  * Mixin accessor exposing private members of {@code PatternProviderLogic}
  * needed by the wireless dispatch path in {@code OverloadedPatternProviderLogic}.
  */
-@Mixin(PatternProviderLogic.class)
+@Mixin(value = PatternProviderLogic.class, remap = false)
 public interface PatternProviderLogicAccessor {
 
     @Invoker("onPushPatternSuccess")

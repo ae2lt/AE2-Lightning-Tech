@@ -12,7 +12,7 @@ import appeng.client.gui.widgets.VerticalButtonBar;
  * (e.g. the frequency-card button on wireless terminals) can be added to the
  * native toolbar instead of floating over the GUI.
  */
-@Mixin(AEBaseScreen.class)
+@Mixin(value = AEBaseScreen.class, remap = false)
 public interface AEBaseScreenAccessor {
     @Accessor("verticalToolbar")
     VerticalButtonBar ae2lt$getVerticalToolbar();

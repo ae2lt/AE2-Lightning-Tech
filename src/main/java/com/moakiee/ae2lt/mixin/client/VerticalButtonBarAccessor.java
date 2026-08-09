@@ -9,7 +9,7 @@ import net.minecraft.client.gui.components.Button;
 
 import appeng.client.gui.widgets.VerticalButtonBar;
 
-@Mixin(VerticalButtonBar.class)
+@Mixin(value = VerticalButtonBar.class, remap = false)
 public interface VerticalButtonBarAccessor {
     @Accessor("buttons")
     List<Button> ae2lt$getButtons();
