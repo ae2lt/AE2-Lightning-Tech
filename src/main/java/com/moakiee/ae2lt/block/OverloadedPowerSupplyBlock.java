@@ -5,6 +5,7 @@ import java.util.List;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -21,13 +22,13 @@ import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import net.minecraft.world.level.storage.loot.LootParams;
-import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 
 import appeng.api.orientation.IOrientationStrategy;
 import appeng.api.orientation.OrientationStrategies;
 import appeng.menu.locator.MenuLocators;
 import appeng.util.InteractionUtil;
 
+import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.blockentity.OverloadedPowerSupplyBlockEntity;
 
 public class OverloadedPowerSupplyBlock extends AE2LTBaseEntityBlock<OverloadedPowerSupplyBlockEntity> {
@@ -46,6 +47,8 @@ public class OverloadedPowerSupplyBlock extends AE2LTBaseEntityBlock<OverloadedP
     public static final BooleanProperty POWERED = BooleanProperty.create("powered");
     public static final BooleanProperty OVERLOADED = BooleanProperty.create("overloaded");
     public static final DirectionProperty FACING = BlockStateProperties.FACING;
+    private static final ResourceLocation BLOCK_ITEM_DROP = ResourceLocation.fromNamespaceAndPath(
+            AE2LightningTech.MODID, "overloaded_power_supply");
 
     /**
      * Tight collision/selection shape that follows the Blockbench model
@@ -65,9 +68,7 @@ public class OverloadedPowerSupplyBlock extends AE2LTBaseEntityBlock<OverloadedP
             BlockShapeHelper.createAllFacingShapes(UP_SHAPE);
 
     public OverloadedPowerSupplyBlock() {
-        // The block is conditionally registered with AppFlux. Keeping its drop in code avoids
-        // loading a loot table that references an intentionally absent item without AppFlux.
-        super(metalProps().noOcclusion().forceSolidOn().noLootTable());
+        super(metalProps().noOcclusion().forceSolidOn());
         registerDefaultState(defaultBlockState()
                 .setValue(POWERED, false)
                 .setValue(OVERLOADED, false)
@@ -107,13 +108,12 @@ public class OverloadedPowerSupplyBlock extends AE2LTBaseEntityBlock<OverloadedP
 
     @Override
     public List<ItemStack> getDrops(BlockState state, LootParams.Builder builder) {
-        Float explosionRadius = builder.getOptionalParameter(LootContextParams.EXPLOSION_RADIUS);
-        if (explosionRadius != null
-                && explosionRadius > 0.0F
-                && builder.getLevel().getRandom().nextFloat() > 1.0F / explosionRadius) {
-            return List.of();
-        }
-        return List.of(new ItemStack(this));
+        // The block item only exists when AppFlux is loaded, so a normal minecraft:item entry
+        // would make this always-loaded loot table fail to deserialize in the no-AppFlux profile.
+        // A vanilla dynamic entry defers item creation until this registered block is actually
+        // broken while retaining explosion conditions, datapack overrides and Forge loot modifiers.
+        builder.withDynamicDrop(BLOCK_ITEM_DROP, output -> output.accept(new ItemStack(this)));
+        return super.getDrops(state, builder);
     }
 
     @Override

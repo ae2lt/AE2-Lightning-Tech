@@ -60,7 +60,9 @@ minecraft {
             // -Pgame_test_runtime_profile=minimum -Penable_appflux_runtime=false ...
             workingDirectory project.file(
                     "run-gametest/${project.findProperty('game_test_runtime_profile') ?: 'default'}")
-            property 'forge.enabledGameTestNamespaces', mod_id
+            // The focused drop test reuses a tiny vanilla structure template, so its template
+            // namespace must be enabled alongside this mod's own GameTest namespace.
+            property 'forge.enabledGameTestNamespaces', "${mod_id},minecraft"
         }
 
         data {
