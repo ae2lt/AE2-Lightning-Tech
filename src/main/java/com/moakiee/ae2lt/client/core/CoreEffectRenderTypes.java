@@ -1,6 +1,7 @@
 package com.moakiee.ae2lt.client.core;
 
 import com.moakiee.ae2lt.AE2LightningTech;
+import com.moakiee.ae2lt.client.core.veil.VeilCoreEffectShaders;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.renderer.RenderStateShard;
@@ -34,7 +35,17 @@ final class CoreEffectRenderTypes extends RenderType {
     }
 
     private static EffectShaders selectShaders() {
-        // 1.20.1: Veil integration removed (see CoreEffectBackend) — always native.
+        if (CoreEffectBackend.useVeil()) {
+            try {
+                // Resolve both shaders as one unit so a partially compatible Veil API cannot
+                // leave the two core effects using different backends.
+                return new EffectShaders(
+                        VeilCoreEffectShaders.tianshu(),
+                        VeilCoreEffectShaders.matrix());
+            } catch (RuntimeException | LinkageError exception) {
+                CoreEffectBackend.disableVeil(exception);
+            }
+        }
         return new EffectShaders(CoreEffectShaders.tianshu(), CoreEffectShaders.matrix());
     }
 

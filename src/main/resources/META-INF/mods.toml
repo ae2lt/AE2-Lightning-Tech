@@ -116,3 +116,11 @@ mandatory = false
 versionRange = "${ae2wtlib_version_range}"
 ordering = "AFTER"
 side = "BOTH"
+
+[[dependencies."${mod_id}"]]
+modId = "veil"
+mandatory = false
+# Runtime API detection preserves the native shader fallback for older or incompatible builds.
+versionRange = "[1.0.0,2)"
+ordering = "AFTER"
+side = "CLIENT"

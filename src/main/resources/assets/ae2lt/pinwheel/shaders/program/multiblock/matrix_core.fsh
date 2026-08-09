@@ -1,4 +1,5 @@
-uniform float VeilRenderTime;
+uniform float GameTime;
+#define VeilRenderTime (GameTime * 1200.0)
 
 in vec4 vertexColor;
 in vec3 effectNormal;
