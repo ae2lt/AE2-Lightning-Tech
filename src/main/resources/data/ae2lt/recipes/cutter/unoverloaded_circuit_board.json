@@ -2,11 +2,12 @@
   "conditions": [
     {
       "type": "forge:mod_loaded",
-      "modid": "extendedae"
+      "modid": "expatternprovider"
     }
   ],
-  "type": "extendedae:circuit_cutter",
-  "input": {
+  "type": "expatternprovider:circuit_cutter",
+  "item_input": {
+    "amount": 1,
     "ingredient": {
       "item": "ae2lt:overload_crystal_block"
     }

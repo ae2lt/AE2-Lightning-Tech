@@ -154,8 +154,8 @@ dependencies {
     runtimeOnly fg.deobf("org.appliedenergistics:guideme:${guideme_version}")
     runtimeOnly fg.deobf("curse.maven:glodium-957920:${glodium_file_id}")
 
-    compileOnly fg.deobf("curse.maven:extendedae-892005:${extendedae_file_id}")
-    runtimeOnly fg.deobf("curse.maven:extendedae-892005:${extendedae_file_id}")
+    compileOnly fg.deobf("curse.maven:ex-pattern-provider-892005:${extendedae_file_id}")
+    runtimeOnly fg.deobf("curse.maven:ex-pattern-provider-892005:${extendedae_file_id}")
 
     compileOnly fg.deobf("curse.maven:flux-networks-248020:${flux_networks_file_id}")
     runtimeOnly fg.deobf("curse.maven:flux-networks-248020:${flux_networks_file_id}")
