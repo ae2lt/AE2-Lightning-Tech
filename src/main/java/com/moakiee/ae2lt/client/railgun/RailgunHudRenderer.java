@@ -3,7 +3,6 @@ package com.moakiee.ae2lt.client.railgun;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -67,11 +66,5 @@ public final class RailgunHudRenderer {
             int emptyTop = ICON_H - filledH;
             gfx.blit(FULL_TEX, x, y + emptyTop, 0, emptyTop, ICON_W, filledH, ICON_W, ICON_H);
         }
-
-        ensureUserStillUsing(mc.player, stack);
-    }
-
-    private static void ensureUserStillUsing(LivingEntity user, ItemStack stack) {
-        // No-op; placeholder hook for future state validation.
     }
 }
