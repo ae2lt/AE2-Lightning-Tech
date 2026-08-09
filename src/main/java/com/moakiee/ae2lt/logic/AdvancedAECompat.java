@@ -32,8 +32,9 @@ import com.moakiee.thunderbolt.ae2.overload.pattern.WrappedPatternDetails;
  * Runtime compatibility layer for AdvancedAE directional processing patterns.
  * All references to AdvancedAE classes are confined to this file so that the
  * rest of the codebase never triggers {@link ClassNotFoundException} when
- * AdvancedAE is absent. AdvancedAE has no Forge 1.20.1 build yet, so every
- * AdvancedAE touchpoint goes through reflection and degrades to no-ops.
+ * AdvancedAE is absent. The supported Forge 1.20.1 release is optional, so
+ * every AdvancedAE touchpoint goes through reflection and degrades to no-ops
+ * when the mod is missing or its integration API is incompatible.
  */
 public final class AdvancedAECompat {
 
