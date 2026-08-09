@@ -56,6 +56,10 @@ minecraft {
         }
 
         gameTestServer {
+            // Keep worlds from different optional-dependency matrices isolated. For example:
+            // -Pgame_test_runtime_profile=minimum -Penable_appflux_runtime=false ...
+            workingDirectory project.file(
+                    "run-gametest/${project.findProperty('game_test_runtime_profile') ?: 'default'}")
             property 'forge.enabledGameTestNamespaces', mod_id
         }
 
@@ -141,27 +145,41 @@ dependencies {
     // Full jar needed at compile time for mixin targets inside the JEI GUI
     // (RecipeTransferButton lives in mezz.jei.gui.recipes, not in the api jars).
     compileOnly fg.deobf("mezz.jei:jei-${minecraft_version}-forge:${jei_version}")
-    runtimeOnly fg.deobf("mezz.jei:jei-${minecraft_version}-forge:${jei_version}")
+    if ((findProperty('enable_jei_runtime') ?: 'true').toBoolean()) {
+        runtimeOnly fg.deobf("mezz.jei:jei-${minecraft_version}-forge:${jei_version}")
+    }
 
     compileOnly fg.deobf("dev.emi:emi-forge:${emi_version}:api")
-    runtimeOnly fg.deobf("dev.emi:emi-forge:${emi_version}")
+    if ((findProperty('enable_emi_runtime') ?: 'true').toBoolean()) {
+        runtimeOnly fg.deobf("dev.emi:emi-forge:${emi_version}")
+    }
 
     compileOnly fg.deobf("curse.maven:jade-324717:${jade_file_id}")
-    runtimeOnly fg.deobf("curse.maven:jade-324717:${jade_file_id}")
+    if ((findProperty('enable_jade_runtime') ?: 'true').toBoolean()) {
+        runtimeOnly fg.deobf("curse.maven:jade-324717:${jade_file_id}")
+    }
 
     compileOnly fg.deobf("curse.maven:applied-flux-965012:${appflux_file_id}")
-    runtimeOnly fg.deobf("curse.maven:applied-flux-965012:${appflux_file_id}")
+    if ((findProperty('enable_appflux_runtime') ?: 'true').toBoolean()) {
+        runtimeOnly fg.deobf("curse.maven:applied-flux-965012:${appflux_file_id}")
+    }
     runtimeOnly fg.deobf("org.appliedenergistics:guideme:${guideme_version}")
     runtimeOnly fg.deobf("curse.maven:glodium-957920:${glodium_file_id}")
 
     compileOnly fg.deobf("curse.maven:ex-pattern-provider-892005:${extendedae_file_id}")
-    runtimeOnly fg.deobf("curse.maven:ex-pattern-provider-892005:${extendedae_file_id}")
+    if ((findProperty('enable_extendedae_runtime') ?: 'true').toBoolean()) {
+        runtimeOnly fg.deobf("curse.maven:ex-pattern-provider-892005:${extendedae_file_id}")
+    }
 
     compileOnly fg.deobf("curse.maven:flux-networks-248020:${flux_networks_file_id}")
-    runtimeOnly fg.deobf("curse.maven:flux-networks-248020:${flux_networks_file_id}")
+    if ((findProperty('enable_flux_networks_runtime') ?: 'true').toBoolean()) {
+        runtimeOnly fg.deobf("curse.maven:flux-networks-248020:${flux_networks_file_id}")
+    }
 
     compileOnly fg.deobf("mekanism:Mekanism:${mekanism_version}:all")
-    runtimeOnly fg.deobf("mekanism:Mekanism:${mekanism_version}:all")
+    if ((findProperty('enable_mekanism_runtime') ?: 'true').toBoolean()) {
+        runtimeOnly fg.deobf("mekanism:Mekanism:${mekanism_version}:all")
+    }
 
     // Thunderbolt Core — AE2 infrastructure layer (fast crafting planner, channel/batch algorithms).
     // Provided at runtime as a separate mod jar in the modpack.
@@ -174,7 +192,9 @@ dependencies {
 
     // Curios integration — frequency card / armor charm slots.
     compileOnly fg.deobf("top.theillusivec4.curios:curios-forge:${curios_version}:api")
-    runtimeOnly fg.deobf("top.theillusivec4.curios:curios-forge:${curios_version}")
+    if ((findProperty('enable_curios_runtime') ?: 'true').toBoolean()) {
+        runtimeOnly fg.deobf("top.theillusivec4.curios:curios-forge:${curios_version}")
+    }
 
     // Optional Polymorph integration for the Tianshu pattern terminal recipe selector.
     // Runtime jar is supplied by the modpack; only the API is needed at compile time.
