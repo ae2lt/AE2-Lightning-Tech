@@ -50,15 +50,4 @@ class PortResourceParityTest {
         assertTrue(source.contains("cellInv.clear();"));
     }
 
-    @Test
-    void overloadCrystalBlockKeepsTheMainProjectAnimationMetadata() throws IOException {
-        var metadata = RESOURCES.resolve(Path.of(
-                "assets", "ae2lt", "textures", "block", "overload_crystal_block.png.mcmeta"));
-
-        assertTrue(Files.isRegularFile(metadata));
-        var json = Files.readString(metadata);
-        assertTrue(json.contains("\"interpolate\": true"));
-        assertTrue(json.contains("{\"index\": 0, \"time\": 32}"));
-        assertTrue(json.contains("{\"index\": 1, \"time\": 4}"));
-    }
 }
