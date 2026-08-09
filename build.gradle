@@ -220,6 +220,13 @@ tasks.named('processResources', ProcessResources).configure {
 }
 
 tasks.named('jar', Jar).configure {
+    // The development resource output contains the generated refmap as well, while
+    // MixinGradle contributes that same file directly to production jars. Keep one
+    // copy without weakening duplicate checks for unrelated archive entries.
+    filesMatching("${mod_id}.refmap.json") {
+        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    }
+
     manifest {
         attributes([
                 'Specification-Title'     : mod_id,
