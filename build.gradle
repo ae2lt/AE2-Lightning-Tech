@@ -284,6 +284,16 @@ tasks.named('processResources', ProcessResources).configure {
 }
 
 tasks.named('jar', Jar).configure {
+    from('LICENSE') {
+        into 'META-INF'
+    }
+    from('LICENSE_ASSETS.md') {
+        into 'META-INF'
+    }
+    from('THIRD_PARTY_NOTICES.md') {
+        into 'META-INF'
+    }
+
     // The development resource output contains the generated refmap as well, while
     // MixinGradle contributes that same file directly to production jars. Keep one
     // copy without weakening duplicate checks for unrelated archive entries.
@@ -311,6 +321,15 @@ tasks.named('jar', Jar).configure {
 
 tasks.named('jarJar', Jar).configure {
     archiveClassifier = ''
+    from('LICENSE') {
+        into 'META-INF'
+    }
+    from('LICENSE_ASSETS.md') {
+        into 'META-INF'
+    }
+    from('THIRD_PARTY_NOTICES.md') {
+        into 'META-INF'
+    }
     finalizedBy 'reobfJar'
 }
 

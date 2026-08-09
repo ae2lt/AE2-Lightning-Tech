@@ -61,6 +61,18 @@ class PortMetadataContractTest {
         assertTrue(loadProperties().containsKey("inventory_profiles_next_version"));
     }
 
+    @Test
+    void publishedArtifactsRetainLicenseAndThirdPartyNotices() throws IOException {
+        for (String file : List.of("LICENSE", "LICENSE_ASSETS.md", "THIRD_PARTY_NOTICES.md")) {
+            assertTrue(Files.size(Path.of(file)) > 0, file);
+        }
+
+        String buildScript = Files.readString(Path.of("build.gradle"));
+        assertTrue(buildScript.contains("from('LICENSE')"));
+        assertTrue(buildScript.contains("from('LICENSE_ASSETS.md')"));
+        assertTrue(buildScript.contains("from('THIRD_PARTY_NOTICES.md')"));
+    }
+
     private static Properties loadProperties() throws IOException {
         Properties properties = new Properties();
         try (var reader = Files.newBufferedReader(PROPERTIES_FILE)) {
