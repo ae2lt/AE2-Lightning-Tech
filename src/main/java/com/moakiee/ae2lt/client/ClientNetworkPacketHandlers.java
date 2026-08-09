@@ -21,6 +21,7 @@ import com.moakiee.ae2lt.network.UpdateFrequencyBasicPacket;
 import com.moakiee.ae2lt.network.hub.DeviceHubSyncPacket;
 import com.moakiee.ae2lt.network.tianshu.MaintenanceEditorSyncPacket;
 import com.moakiee.ae2lt.network.tianshu.MaintenanceSummarySyncPacket;
+import com.moakiee.ae2lt.network.tianshu.ClosedLoopResultPagePacket;
 import com.moakiee.ae2lt.network.tianshu.UploadTargetsSyncPacket;
 import com.moakiee.ae2lt.registry.ModItems;
 import net.minecraft.client.Minecraft;
@@ -196,6 +197,13 @@ public final class ClientNetworkPacketHandlers {
         TianshuPatternEncodingTermMenu menu = getTianshuMenu(packet.containerId());
         if (menu != null) {
             menu.receiveUploadTargets(packet.targets());
+        }
+    }
+
+    public static void handleClosedLoopResultPage(ClosedLoopResultPagePacket packet) {
+        TianshuPatternEncodingTermMenu menu = getTianshuMenu(packet.containerId());
+        if (menu != null) {
+            menu.receiveClosedLoopResultPage(packet.page());
         }
     }
 

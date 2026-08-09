@@ -11,7 +11,9 @@ import com.moakiee.ae2lt.network.railgun.RailgunFirePacket;
 import com.moakiee.ae2lt.network.railgun.RailgunRecoilFxPacket;
 import com.moakiee.ae2lt.network.tianshu.MaintenanceEditorSyncPacket;
 import com.moakiee.ae2lt.network.tianshu.MaintenanceSummarySyncPacket;
+import com.moakiee.ae2lt.network.tianshu.ClosedLoopResultPagePacket;
 import com.moakiee.ae2lt.network.tianshu.OpenMaintenanceEditorPacket;
+import com.moakiee.ae2lt.network.tianshu.RequestClosedLoopResultPagePacket;
 import com.moakiee.ae2lt.network.tianshu.RequestUploadTargetsPacket;
 import com.moakiee.ae2lt.network.tianshu.SaveGlobalReservePacket;
 import com.moakiee.ae2lt.network.tianshu.SaveMaintenanceRulePacket;
@@ -28,7 +30,8 @@ import net.minecraftforge.network.simple.SimpleChannel;
 import java.util.Optional;
 
 public final class NetworkInit {
-    private static final String PROTOCOL_VERSION = "1";
+    // Version 2 adds paged closed-loop result request/response messages.
+    private static final String PROTOCOL_VERSION = "2";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             id("main"),
             () -> PROTOCOL_VERSION,
@@ -310,6 +313,13 @@ public final class NetworkInit {
                 Optional.of(NetworkDirection.PLAY_TO_SERVER));
         CHANNEL.registerMessage(
                 nextPacketId++,
+                RequestClosedLoopResultPagePacket.class,
+                (pkt, buf) -> pkt.write(buf),
+                RequestClosedLoopResultPagePacket::decode,
+                RequestClosedLoopResultPagePacket::handle,
+                Optional.of(NetworkDirection.PLAY_TO_SERVER));
+        CHANNEL.registerMessage(
+                nextPacketId++,
                 UploadPatternToTargetPacket.class,
                 (pkt, buf) -> pkt.write(buf),
                 UploadPatternToTargetPacket::decode,
@@ -337,6 +347,13 @@ public final class NetworkInit {
                 UploadTargetsSyncPacket::decode,
                 UploadTargetsSyncPacket::handle,
                 Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        CHANNEL.registerMessage(
+                nextPacketId++,
+                ClosedLoopResultPagePacket.class,
+                (pkt, buf) -> pkt.write(buf),
+                ClosedLoopResultPagePacket::decode,
+                ClosedLoopResultPagePacket::handle,
+                Optional.of(NetworkDirection.PLAY_TO_CLIENT));
     }
 
     public static ResourceLocation id(String path) {
@@ -357,4 +374,3 @@ public final class NetworkInit {
                 x, y, z, radius, level.dimension())), message);
     }
 }
-
