@@ -165,8 +165,12 @@ dependencies {
 
     // Thunderbolt Core — AE2 infrastructure layer (fast crafting planner, channel/batch algorithms).
     // Provided at runtime as a separate mod jar in the modpack.
-    compileOnly "com.moakiee.thunderbolt:thunderbolt:${thunderbolt_version}"
-    runtimeOnly "com.moakiee.thunderbolt:thunderbolt:${thunderbolt_version}"
+    compileOnly(fg.deobf("com.moakiee.thunderbolt:thunderbolt:${thunderbolt_version}")) {
+        transitive = false
+    }
+    runtimeOnly(fg.deobf("com.moakiee.thunderbolt:thunderbolt:${thunderbolt_version}")) {
+        transitive = false
+    }
 
     // Curios integration — frequency card / armor charm slots.
     compileOnly fg.deobf("top.theillusivec4.curios:curios-forge:${curios_version}:api")
@@ -179,6 +183,14 @@ dependencies {
     // Optional integrations. Resolve their public release jars reproducibly instead of relying
     // on an untracked machine-local libs/ directory.
     compileOnly fg.deobf("maven.modrinth:advancedae:${advancedae_version}")
+    // Keep AdvancedAE optional for players while making its complete Mixin/integration path
+    // reproducible in development: -Penable_advancedae_runtime=true.
+    if ((findProperty('enable_advancedae_runtime') ?: 'false').toBoolean()) {
+        runtimeOnly fg.deobf("maven.modrinth:advancedae:${advancedae_version}")
+        // AdvancedAE instantiates GeoItem implementations but its 1.20.1 metadata does not
+        // declare GeckoLib. Mirror the dependency from its categorized 1.20.1 source project.
+        runtimeOnly fg.deobf("curse.maven:geckolib-388172:${advancedae_geckolib_file_id}")
+    }
     compileOnly fg.deobf("maven.modrinth:inventory-profiles-next:${inventory_profiles_next_version}")
     compileOnly fg.deobf("maven.modrinth:applied-energistics-2-wireless-terminals:${ae2wtlib_version}")
     // Exercise the optional wireless-terminal integration in normal development runs. Pass
