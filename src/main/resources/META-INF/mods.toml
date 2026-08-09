@@ -121,6 +121,6 @@ side = "BOTH"
 modId = "veil"
 mandatory = false
 # Runtime API detection preserves the native shader fallback for older or incompatible builds.
-versionRange = "[1.0.0,2)"
+versionRange = "${veil_version_range}"
 ordering = "AFTER"
 side = "CLIENT"

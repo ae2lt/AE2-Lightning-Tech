@@ -42,12 +42,20 @@ class PortMetadataContractTest {
                 "curios_version_range",
                 "polymorph_version_range",
                 "thunderbolt_version_range",
-                "ae2wtlib_version_range");
+                "ae2wtlib_version_range",
+                "veil_version_range");
 
         for (String property : rangeProperties) {
             assertTrue(metadata.contains("versionRange = \"${" + property + "}\""), property);
         }
         assertFalse(metadata.contains("versionRange = \"[0,)\""));
+    }
+
+    @Test
+    void veilIntegrationMatchesTheVerifiedReleaseFamily() throws IOException {
+        Properties properties = loadProperties();
+
+        assertEquals("[1.0.0,2)", properties.getProperty("veil_version_range"));
     }
 
     @Test
