@@ -40,9 +40,9 @@ public class CrystalCatalyzerCategory implements IRecipeCategory<CrystalCatalyze
     private static final ResourceLocation BACKGROUND_TEXTURE =
             ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "textures/guis/crystal_catalyzer.png");
 
-    // 鏈哄櫒 GUI 鍧愭爣:娴佷綋鑵?(26,18)+16脳53,鍌寲鍓傛Ы (56,30),鐭╅樀妲?(84,54),
-    // 杩涘害鏉?(74,33)+22脳16,浜х墿妲?(117,30),鑳介噺鏉?(140,30)+6脳18銆?
-    // 浠?(22,14) 璧疯鍓?128脳62,淇濈暀姘寸/鐢垫睜澶栨鐨?1~2px 瑁呴グ杈广€?
+    // 机器 GUI 坐标:流体腔 (26,18)+16×53,催化剂槽 (56,30),矩阵槽 (84,54),
+    // 进度条 (74,33)+22×16,产物槽 (117,30),能量条 (140,30)+6×18。
+    // 从 (22,14) 起裁剪 128×62,保留水箱/电池外框的 1~2px 装饰边。
     private static final int BACKGROUND_U = 22;
     private static final int BACKGROUND_V = 14;
     private static final int BACKGROUND_WIDTH = 128;
@@ -115,7 +115,7 @@ public class CrystalCatalyzerCategory implements IRecipeCategory<CrystalCatalyze
 
     @Override
     public void setRecipe(IRecipeLayoutBuilder builder, CrystalCatalyzerRecipe recipe, IFocusGroup focuses) {
-        // 姘寸幇鍦ㄦ槸鏈哄櫒绾у浐瀹氬紑閿€,鎵€鏈夐厤鏂瑰叡鐢ㄤ竴浠?1000 mB 鐨?water銆?
+        // 水现在是机器级固定开销,所有配方共用一份 1000 mB 的 water。
         var fluid = CrystalCatalyzerBlockEntity.getFixedFluidPerCycle();
         int fluidDisplayCapacity = Math.max(1, fluid.getAmount());
         builder.addSlot(RecipeIngredientRole.INPUT, FLUID_X, FLUID_Y)

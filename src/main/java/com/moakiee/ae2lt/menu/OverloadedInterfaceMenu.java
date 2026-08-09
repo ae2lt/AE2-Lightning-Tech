@@ -198,7 +198,7 @@ public class OverloadedInterfaceMenu extends InterfaceMenu implements FrequencyB
         }
     }
 
-    // 鈹€鈹€ Pagination 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+    // ── Pagination ───────────────────────────────────────────────────────
 
     public void showPage(int page) {
         if (page < 0 || page >= totalPages) return;
@@ -235,7 +235,7 @@ public class OverloadedInterfaceMenu extends InterfaceMenu implements FrequencyB
         showPage(currentPage - 1);
     }
 
-    // 鈹€鈹€ Mode cycles 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+    // ── Mode cycles ──────────────────────────────────────────────────────
 
     public void cycleInterfaceMode() {
         if (isClientSide()) { sendClientAction("cycleInterfaceMode"); return; }
@@ -577,4 +577,3 @@ public class OverloadedInterfaceMenu extends InterfaceMenu implements FrequencyB
         }
     }
 }
-

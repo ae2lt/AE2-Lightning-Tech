@@ -425,4 +425,3 @@ public class LightningAssemblyChamberMenu extends AEBaseMenu implements Frequenc
         return true;
     }
 }
-
