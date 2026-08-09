@@ -1,0 +1,13 @@
+{
+  "conditions": [
+    {
+      "type": "forge:mod_loaded",
+      "modid": "ae2wtlib"
+    }
+  ],
+  "type": "ae2wtlib:upgrade",
+  "terminal": {
+    "item": "ae2lt:wireless_tianshu_pattern_encoding_terminal"
+  },
+  "terminalName": "tianshu_pattern_encoding"
+}
