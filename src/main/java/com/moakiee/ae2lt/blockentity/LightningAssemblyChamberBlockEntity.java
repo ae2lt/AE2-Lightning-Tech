@@ -7,7 +7,6 @@ import java.util.Set;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
@@ -45,10 +44,6 @@ import appeng.api.upgrades.IUpgradeInventory;
 import appeng.api.upgrades.IUpgradeableObject;
 import appeng.api.upgrades.UpgradeInventories;
 import appeng.api.util.AECableType;
-import org.slf4j.Logger;
-
-import com.mojang.logging.LogUtils;
-
 import appeng.blockentity.grid.AENetworkBlockEntity;
 import appeng.menu.MenuOpener;
 import appeng.menu.locator.MenuLocator;
@@ -76,7 +71,6 @@ import com.moakiee.ae2lt.util.LargeStackStreamCodecs;
 public class LightningAssemblyChamberBlockEntity extends AENetworkBlockEntity
     implements IUpgradeableObject, FrequencyBindingHost,
         GridRecipeMachineHost<LightningAssemblyLockedRecipe, LightningAssemblyRecipeCandidate> {
-    private static final Logger LOG = LogUtils.getLogger();
     private static final String TAG_INVENTORY = "Inventory";
     private static final String TAG_LOCKED_RECIPE = "LockedRecipe";
     private static final String TAG_UPGRADES = "Upgrades";
@@ -410,11 +404,7 @@ public class LightningAssemblyChamberBlockEntity extends AENetworkBlockEntity
     }
 
     public void openMenu(Player player, MenuLocator locator) {
-        boolean opened = MenuOpener.open(LightningAssemblyChamberMenu.TYPE, player, locator);
-        var registryKey = BuiltInRegistries.MENU.getKey(LightningAssemblyChamberMenu.TYPE);
-        LOG.info("ae2lt: lightning assembly chamber openMenu result={} type={} registryKey={} registryId={}",
-                opened, LightningAssemblyChamberMenu.TYPE, registryKey,
-                registryKey == null ? -1 : BuiltInRegistries.MENU.getId(LightningAssemblyChamberMenu.TYPE));
+        MenuOpener.open(LightningAssemblyChamberMenu.TYPE, player, locator);
     }
 
     @Override

@@ -1,7 +1,6 @@
 package com.moakiee.ae2lt.client;
 
 import net.minecraft.client.gui.screens.MenuScreens;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraftforge.api.distmarker.Dist;
@@ -13,8 +12,6 @@ import appeng.client.gui.style.StyleManager;
 
 import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.client.gui.FrequencyScreen;
-import com.mojang.logging.LogUtils;
-import org.slf4j.Logger;
 import com.moakiee.ae2lt.client.hub.DeviceHubScreen;
 import com.moakiee.ae2lt.integration.ae2wtlib.TianshuWirelessTerminalFactory;
 import com.moakiee.ae2lt.menu.AtmosphericIonizerMenu;
@@ -46,7 +43,6 @@ import com.moakiee.ae2lt.registry.ModBlocks;
  */
 @Mod.EventBusSubscriber(modid = AE2LightningTech.MODID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
 public class ModScreens {
-private static final Logger LOG = LogUtils.getLogger();
 
     @SubscribeEvent
     public static void registerScreens(FMLClientSetupEvent event) {
@@ -62,9 +58,6 @@ private static final Logger LOG = LogUtils.getLogger();
             }
             MenuScreens.register(LightningSimulationChamberMenu.TYPE, ModScreens::createLightningSimulationChamberScreen);
             MenuScreens.register(LightningAssemblyChamberMenu.TYPE, ModScreens::createLightningAssemblyChamberScreen);
-            LOG.info("ae2lt: registered screen for lightning_assembly_chamber type={} registryKey={}",
-                            LightningAssemblyChamberMenu.TYPE,
-                            BuiltInRegistries.MENU.getKey(LightningAssemblyChamberMenu.TYPE));
             MenuScreens.register(LightningCollectorMenu.TYPE, ModScreens::createLightningCollectorScreen);
             MenuScreens.register(OverloadProcessingFactoryMenu.TYPE, ModScreens::createOverloadProcessingFactoryScreen);
             MenuScreens.register(TeslaCoilMenu.TYPE, ModScreens::createTeslaCoilScreen);
