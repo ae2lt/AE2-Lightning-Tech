@@ -15,7 +15,6 @@ import mezz.jei.api.recipe.RecipeIngredientRole;
 import mezz.jei.api.recipe.transfer.IRecipeTransferError;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.fml.ModList;
 import org.spongepowered.asm.mixin.Mixin;
@@ -23,6 +22,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import appeng.integration.modules.jei.transfer.EncodePatternTransferHandler;
+import appeng.menu.me.items.PatternEncodingTermMenu;
 
 /**
  * Captures provider metadata normally and starts closed-loop discovery from recipe outputs.
@@ -32,15 +32,15 @@ import appeng.integration.modules.jei.transfer.EncodePatternTransferHandler;
 @Mixin(value = EncodePatternTransferHandler.class, remap = false)
 public abstract class JeiEncodePatternTransferMixin {
     @Inject(
-            method = "transferRecipe(Lnet/minecraft/world/inventory/AbstractContainerMenu;"
+            method = "transferRecipe(Lappeng/menu/me/items/PatternEncodingTermMenu;"
                     + "Ljava/lang/Object;Lmezz/jei/api/gui/ingredient/IRecipeSlotsView;"
                     + "Lnet/minecraft/world/entity/player/Player;ZZ)"
                     + "Lmezz/jei/api/recipe/transfer/IRecipeTransferError;",
             at = @At("HEAD"),
             cancellable = true,
-            require = 0)
+            require = 1)
     private void ae2lt$onTransfer(
-            AbstractContainerMenu menu,
+            PatternEncodingTermMenu menu,
             Object recipeBase,
             IRecipeSlotsView slotsView,
             Player player,
@@ -69,14 +69,14 @@ public abstract class JeiEncodePatternTransferMixin {
     }
 
     @Inject(
-            method = "transferRecipe(Lnet/minecraft/world/inventory/AbstractContainerMenu;"
+            method = "transferRecipe(Lappeng/menu/me/items/PatternEncodingTermMenu;"
                     + "Ljava/lang/Object;Lmezz/jei/api/gui/ingredient/IRecipeSlotsView;"
                     + "Lnet/minecraft/world/entity/player/Player;ZZ)"
                     + "Lmezz/jei/api/recipe/transfer/IRecipeTransferError;",
             at = @At("RETURN"),
-            require = 0)
+            require = 1)
     private void ae2lt$encodeAndUploadAfterSuccessfulAltTransfer(
-            AbstractContainerMenu menu,
+            PatternEncodingTermMenu menu,
             Object recipeBase,
             IRecipeSlotsView slotsView,
             Player player,

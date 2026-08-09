@@ -1,20 +1,22 @@
 package com.moakiee.ae2lt.network.tianshu;
+
 import java.util.function.Supplier;
+
 import appeng.api.stacks.AEKey;
+import com.moakiee.ae2lt.client.ClientNetworkPacketHandlers;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.InventoryMaintenanceStatus;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.ReservedStockMatchMode;
 import com.moakiee.ae2lt.logic.tianshu.terminal.MaintenanceEditorData;
-import com.moakiee.ae2lt.menu.TianshuPatternEncodingTermMenu;
-import com.moakiee.ae2lt.network.NetworkInit;
 import java.util.ArrayList;
 import java.util.UUID;
-import net.minecraftforge.network.NetworkEvent;
-import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.fml.DistExecutor;
+import net.minecraftforge.network.NetworkEvent;
 
 public record MaintenanceEditorSyncPacket(
         int containerId, int selectionRevision, MaintenanceEditorData data) {
-public MaintenanceEditorSyncPacket {
+    public MaintenanceEditorSyncPacket {
         TianshuPacketLimits.requireListSize("maintenance topology", data.topology().size());
         TianshuPacketLimits.requireListSize("maintenance variants", data.variants().size());
     }
@@ -86,18 +88,11 @@ public MaintenanceEditorSyncPacket {
                 target, ruleId, lower, upper, batch, enabled, status,
                 currentStock, craftable, recoveryPage, topology, variants));
     }
-    // 1.20.1: server→client sync; the 1.21 handle ran on the client's menu (see original repo).
     public static void handle(MaintenanceEditorSyncPacket packet, Supplier<NetworkEvent.Context> context) {
         var ctx = context.get();
-        ctx.enqueueWork(() -> {
-            if (ctx.getDirection().getReceptionSide().isClient()) {
-                var player = Minecraft.getInstance().player;
-                if (player != null && player.containerMenu instanceof TianshuPatternEncodingTermMenu menu
-                        && menu.containerId == packet.containerId()) {
-                    menu.receiveMaintenanceEditorData(packet.selectionRevision(), packet.data());
-                }
-            }
-        });
+        ctx.enqueueWork(() -> DistExecutor.unsafeRunWhenOn(
+                Dist.CLIENT,
+                () -> () -> ClientNetworkPacketHandlers.handleMaintenanceEditorSync(packet)));
         ctx.setPacketHandled(true);
     }
 }

@@ -15,8 +15,8 @@ public final class TianshuPatternUploadRouting {
             ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "matter_warping_matrix_controller");
     private static final Set<ResourceLocation> CRAFTING_UPLOAD_GROUP_IDS = Set.of(
             ResourceLocation.fromNamespaceAndPath("ae2", "molecular_assembler"),
-            ResourceLocation.fromNamespaceAndPath("extendedae", "ex_molecular_assembler"),
-            ResourceLocation.fromNamespaceAndPath("extendedae", "assembler_matrix_pattern"),
+            ResourceLocation.fromNamespaceAndPath("expatternprovider", "ex_molecular_assembler"),
+            ResourceLocation.fromNamespaceAndPath("expatternprovider", "assembler_matrix_pattern"),
             ResourceLocation.fromNamespaceAndPath("extendedae_plus", "assembler_matrix_pattern_plus"),
             ResourceLocation.fromNamespaceAndPath("neoecoae", "crafting_system_l4"),
             ResourceLocation.fromNamespaceAndPath("neoecoae", "crafting_system_l6"),

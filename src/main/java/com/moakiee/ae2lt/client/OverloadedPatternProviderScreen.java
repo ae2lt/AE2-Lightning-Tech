@@ -45,6 +45,9 @@ public class OverloadedPatternProviderScreen<M extends OverloadedPatternProvider
                                            Component title, ScreenStyle style) {
         super(menu, playerInventory, title, style);
 
+        // Forge 1.20.1 ExtendedAE Plus injects its advanced-blocking and smart-doubling
+        // controls as ordinary AE2 SettingToggleButtons. Keep them available: unlike the
+        // 1.21 branch's EAPServerSettingToggleButton, there is no redundant class to hide.
         removeHiddenToolbarButtons();
         removeVanillaBlockingModeButton();
 

@@ -2,17 +2,16 @@ package com.moakiee.ae2lt.integration.ae2wtlib;
 
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraftforge.registries.RegisterEvent;
 
 import appeng.menu.MenuOpener;
 import appeng.menu.locator.MenuLocator;
-import appeng.menu.locator.MenuLocators;
 
-import com.moakiee.ae2lt.item.TianshuWirelessPatternEncodingTerminalItem;
 import com.moakiee.ae2lt.menu.TianshuWirelessPatternEncodingTermMenu;
 import com.moakiee.ae2lt.registry.ModItems;
 
 import de.mari_023.ae2wtlib.UpgradeHelper;
-import de.mari_023.ae2wtlib.terminal.IUniversalWirelessTerminalItem;
 import de.mari_023.ae2wtlib.wut.WUTHandler;
 
 /**
@@ -30,7 +29,7 @@ import de.mari_023.ae2wtlib.wut.WUTHandler;
 public final class Ae2wtlibIntegration {
     public static final String TIANSHU_TERMINAL_NAME = "tianshu_pattern_encoding";
 
-    private static TianshuWirelessPatternEncodingTerminalItem tianshuTerminal;
+    private static TianshuWTItem tianshuTerminal;
     private static boolean terminalRegistrationRequested;
 
     private Ae2wtlibIntegration() {
@@ -41,7 +40,7 @@ public final class Ae2wtlibIntegration {
      * created during mod construction because {@code ItemWT} needs the intrusive item
      * registry to be writable. Only call when ae2wtlib is present.
      */
-    public static synchronized TianshuWirelessPatternEncodingTerminalItem terminal() {
+    public static synchronized TianshuWTItem terminal() {
         if (tianshuTerminal == null) {
             tianshuTerminal = new TianshuWTItem();
         }
@@ -49,11 +48,15 @@ public final class Ae2wtlibIntegration {
     }
 
     /**
-     * Installs the terminal definition into the WUT handler during mod construction.
-     * The menu-host factory mirrors the constructor shape of
-     * {@link TianshuWTMenuHost}; the lambda adapts the boxed
-     * slot parameter to the host's primitive one.
+     * Adds the external terminal when the item registry opens. AE2WTLib has registered its own
+     * terminals by then, so the Tianshu terminal follows them in the universal-terminal selector.
      */
+    public static void onRegister(RegisterEvent event) {
+        if (event.getRegistryKey().equals(ForgeRegistries.ITEMS.getRegistryKey())) {
+            registerTerminal();
+        }
+    }
+
     public static synchronized void registerTerminal() {
         if (terminalRegistrationRequested) {
             return;
@@ -64,18 +67,8 @@ public final class Ae2wtlibIntegration {
                 Ae2wtlibIntegration::tryOpen,
                 TianshuWTMenuHost::new,
                 TianshuWirelessPatternEncodingTermMenu.TYPE,
-                (IUniversalWirelessTerminalItem) terminal());
+                terminal());
         terminalRegistrationRequested = true;
-    }
-
-    /**
-     * Creates the ae2wtlib menu host for the standalone item (used by the item's
-     * {@code getMenuHost} when ae2wtlib is present, so the frequency-card remote
-     * link works for the handheld terminal as well).
-     */
-    public static TianshuWTMenuHost createMenuHost(Player player, int slot, ItemStack stack) {
-        return new TianshuWTMenuHost(player, slot, stack,
-                (p, subMenu) -> tryOpen(player, MenuLocators.forInventorySlot(slot), stack, true));
     }
 
     private static boolean tryOpen(Player player, MenuLocator locator, ItemStack stack,
@@ -90,7 +83,8 @@ public final class Ae2wtlibIntegration {
      */
     public static void verifyTerminalRegistration() {
         var definition = WUTHandler.wirelessTerminals.get(TIANSHU_TERMINAL_NAME);
-        if (definition == null
+        int tianshuIndex = WUTHandler.terminalNames.indexOf(TIANSHU_TERMINAL_NAME);
+        if (definition == null || tianshuIndex < 0
                 || definition.item() != ModItems.TIANSHU_WIRELESS_PATTERN_ENCODING_TERMINAL.get()) {
             throw new IllegalStateException("AE2WTLib did not register the wireless Tianshu terminal");
         }

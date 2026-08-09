@@ -12,7 +12,6 @@ item_ids:
   - ae2lt:energy_module_t1
   - ae2lt:energy_module_t2
   - ae2lt:energy_module_t3
-  - ae2lt:railgun_module_core
   - ae2lt:module_night_vision
   - ae2lt:module_water_breathing
   - ae2lt:module_saturation

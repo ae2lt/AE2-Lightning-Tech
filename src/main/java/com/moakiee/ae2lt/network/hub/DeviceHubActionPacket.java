@@ -1,13 +1,12 @@
 package com.moakiee.ae2lt.network.hub;
+
 import java.util.function.Supplier;
-import net.minecraftforge.network.NetworkEvent;
-import net.minecraft.client.Minecraft;
 
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraftforge.network.NetworkEvent;
 
 import com.moakiee.ae2lt.menu.hub.DeviceHubMenu;
-import com.moakiee.ae2lt.network.NetworkInit;
 
 /**
  * Client → Server: hub UI actions.
@@ -28,7 +27,8 @@ public record DeviceHubActionPacket(int action, int value) {
     public static final int ACTION_TOGGLE_CHAIN_DAMAGE = 7;
     public static final int ACTION_TOGGLE_OVERLOAD_REMOVAL_MODE = 8;
     public static final int ACTION_TOGGLE_CHARGED_SPLASH = 9;
-public static DeviceHubActionPacket decode(FriendlyByteBuf buf) {
+
+    public static DeviceHubActionPacket decode(FriendlyByteBuf buf) {
         return new DeviceHubActionPacket(buf.readVarInt(), buf.readVarInt());
     }
 

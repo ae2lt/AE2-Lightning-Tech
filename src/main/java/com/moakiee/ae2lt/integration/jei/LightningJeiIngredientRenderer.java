@@ -30,6 +30,7 @@ public class LightningJeiIngredientRenderer implements IIngredientRenderer<Light
         AEKeyRendering.drawInGui(Minecraft.getInstance(), guiGraphics, posX, posY, ingredient);
     }
 
+    @SuppressWarnings("removal") // JEI 15.20 still declares this deprecated method abstract.
     @Override
     public List<Component> getTooltip(LightningKey ingredient, TooltipFlag tooltipFlag) {
         return AEKeyRendering.getTooltip(ingredient);

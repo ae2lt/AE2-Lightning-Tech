@@ -1137,9 +1137,14 @@
   "ae2lt.tianshu.closed_loop.refill_seeds": "补种",
   "ae2lt.tianshu.closed_loop.refill_seeds.tooltip": "为天枢所有已启用的闭环样板从 ME 网络补足预存种子",
   "ae2lt.tianshu.closed_loop.refill.status.complete": "种子已备齐",
-  "ae2lt.tianshu.closed_loop.refill.status.missing": "种子不足",
+  "ae2lt.tianshu.closed_loop.refill.status.network_missing": "ME 网络种子不足",
+  "ae2lt.tianshu.closed_loop.refill.status.storage_blocked": "种子仓无法存入",
+  "ae2lt.tianshu.closed_loop.refill.status.mixed": "补种未完成",
   "ae2lt.tianshu.closed_loop.refill.status.unavailable": "补种不可用",
-  "ae2lt.tianshu.closed_loop.refill.missing_entry": "缺 %s x%s",
+  "ae2lt.tianshu.closed_loop.refill.network_missing_entry": "ME 网络缺少：%s ×%s",
+  "ae2lt.tianshu.closed_loop.refill.storage_blocked_entry": "种子仓无法存入：%s ×%s",
+  "ae2lt.tianshu.closed_loop.refill.network_missing_hint": "请将缺少的种子放入当前 ME 网络。",
+  "ae2lt.tianshu.closed_loop.refill.storage_blocked_hint": "请检查存储元件、剩余容量、类型数及分区设置。",
   "ae2lt.tianshu.closed_loop.execution_multiplier.short": "借种倍率",
   "ae2lt.tianshu.closed_loop.stored_multiplier.short": "预存倍率",
   "ae2lt.tianshu.closed_loop.title": "闭环样板",
@@ -1296,8 +1301,5 @@
   "ae2lt.tianshu.reserve.empty": "尚未配置全局保留项",
   "ae2lt.tianshu.issue.chunks_unloaded": "结构覆盖的区块未完整加载",
   "ae2lt.gui.matrix_port.search": "搜索矩阵样板",
-  "ae2lt.gui.matrix_port.title": "样板管理",
-  "ae2lt.compat.data_energistics.unsupported": "[AE2LT] 检测到数据能源学 %s。AE2LT 已采取必要手段尽量修复兼容性，但该组合仍明确不受支持。如需禁用该保护，请在 ae2lt-common.toml 中将 compatibility.dataEnergisticsMixinProtection 设为 false，并完整重启客户端或服务端。",
-  "ae2lt.compat.data_energistics.protection_disabled": "[AE2LT] 检测到数据能源学 %s。兼容保护已被配置禁用，本次启动不会采取保护措施；该组合仍明确不受支持。",
-  "ae2lt.compat.data_energistics.feedback_scope": "请勿向 AE2 Lightning Tech 或 Data Energistics 的 Issue Tracker 反馈该组合下的崩溃、功能异常、兼容性或性能问题；只有移除其中一个模组后仍能复现，才向对应项目反馈。"
+  "ae2lt.gui.matrix_port.title": "样板管理"
 }

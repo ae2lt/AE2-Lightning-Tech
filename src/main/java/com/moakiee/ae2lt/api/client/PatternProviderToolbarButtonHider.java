@@ -11,8 +11,6 @@ import com.moakiee.ae2lt.client.SettingToggleButtonAccess;
  * inject into AE2LT's overloaded pattern provider screens.
  */
 public final class PatternProviderToolbarButtonHider {
-    public static final String EXTENDED_AE_PLUS_SERVER_SETTING_BUTTON =
-            "com.extendedae_plus.client.gui.widgets.EAPServerSettingToggleButton";
     public static final String EXPANDED_AE_MODIFY_PATTERNS_BUTTON =
             "lu.kolja.expandedae.client.gui.widgets.ExpActionButton";
     public static final String EXPANDED_AE_BLOCKING_SETTING = "blocking_type";
@@ -21,7 +19,6 @@ public final class PatternProviderToolbarButtonHider {
     private static final Set<String> HIDDEN_SETTING_NAMES = ConcurrentHashMap.newKeySet();
 
     static {
-        registerHiddenButtonClassName(EXTENDED_AE_PLUS_SERVER_SETTING_BUTTON);
         registerHiddenButtonClassName(EXPANDED_AE_MODIFY_PATTERNS_BUTTON);
         registerHiddenSettingName(EXPANDED_AE_BLOCKING_SETTING);
     }

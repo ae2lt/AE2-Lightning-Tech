@@ -342,6 +342,18 @@ public class MatrixPortBlockEntity extends AENetworkBlockEntity
         nextBindingCheckTick = level != null ? level.getGameTime() : 0L;
     }
 
+    @Override
+    public void onReady() {
+        super.onReady();
+        // AE2 creates this managed node at the end of the server tick. If the controller
+        // restored earlier, its internal pattern nodes could not attach yet. Retry once
+        // when this port is ready instead of polling or repeatedly scanning the structure.
+        var controller = getController();
+        if (controller != null) {
+            controller.scheduleStructureCheck();
+        }
+    }
+
     public CompoundTag copyLegacyClusterState() {
         return legacyClusterState != null ? legacyClusterState.copy() : null;
     }
@@ -589,4 +601,3 @@ public class MatrixPortBlockEntity extends AENetworkBlockEntity
         }
     }
 }
-

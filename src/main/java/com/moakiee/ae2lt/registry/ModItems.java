@@ -43,9 +43,9 @@ import com.moakiee.ae2lt.item.ReflectSubmoduleItem;
 import com.moakiee.ae2lt.item.ResistanceSubmoduleItem;
 import com.moakiee.ae2lt.item.RisingItem;
 import com.moakiee.ae2lt.item.SaturationSubmoduleItem;
-import com.moakiee.ae2lt.item.TianshuWirelessPatternEncodingTerminalItem;
 import com.moakiee.ae2lt.item.UndyingSubmoduleItem;
 import com.moakiee.ae2lt.item.WaterBreathingSubmoduleItem;
+import com.moakiee.ae2lt.integration.ae2wtlib.TianshuWirelessTerminalFactory;
 import com.moakiee.ae2lt.item.railgun.ElectromagneticRailgunItem;
 import com.moakiee.ae2lt.item.railgun.RailgunModuleItem;
 import com.moakiee.ae2lt.item.railgun.RailgunModuleType;
@@ -297,13 +297,18 @@ public final class ModItems {
                             TianshuPatternEncodingTerminalPart.class,
                             TianshuPatternEncodingTerminalPart::new));
 
-    // Always registers the AE2-only base item. The ae2wtlib-aware TianshuWTItem subclass is
-    // intentionally NOT referenced here: any bytecode-level reference to the ae2wtlib types would
-    // be resolved while this class is being verified, crashing the game when ae2wtlib is absent.
-    public static final RegistryObject<TianshuWirelessPatternEncodingTerminalItem>
-            TIANSHU_WIRELESS_PATTERN_ENCODING_TERMINAL = ITEMS.register(
-                    "wireless_tianshu_pattern_encoding_terminal",
-                    TianshuWirelessPatternEncodingTerminalItem::new);
+    // Forge has no conditional DeferredRegister entry. Use a non-bound RegistryObject when
+    // AE2WTLib is absent so the item id genuinely stays out of the item registry.
+    public static final RegistryObject<Item>
+            TIANSHU_WIRELESS_PATTERN_ENCODING_TERMINAL = TianshuWirelessTerminalFactory.isAvailable()
+                    ? ITEMS.register(
+                            "wireless_tianshu_pattern_encoding_terminal",
+                            TianshuWirelessTerminalFactory::create)
+                    : RegistryObject.create(
+                            ResourceLocation.fromNamespaceAndPath(
+                                    AE2LightningTech.MODID,
+                                    "wireless_tianshu_pattern_encoding_terminal"),
+                            ForgeRegistries.ITEMS);
 
     // ── Celestweave Armor ──────────────────────────────────────────────────────
     public static final RegistryObject<CelestweaveOculusItem> CELESTWEAVE_OCULUS = registerItem(
@@ -620,4 +625,3 @@ public final class ModItems {
         return ITEMS.register(id, () -> factory.apply(properties));
     }
 }
-

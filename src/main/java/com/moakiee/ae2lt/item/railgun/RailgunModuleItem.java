@@ -14,14 +14,10 @@ import net.minecraft.world.level.Level;
 import com.moakiee.ae2lt.device.DeviceKind;
 import com.moakiee.ae2lt.device.DeviceSlotType;
 import com.moakiee.ae2lt.device.capability.DeviceCapability;
-import com.moakiee.ae2lt.device.energy.LightningCompensationPolicy;
 import com.moakiee.ae2lt.device.module.ModuleTooltip;
 import com.moakiee.ae2lt.device.module.OverloadDeviceModuleItem;
 
 public class RailgunModuleItem extends Item implements OverloadDeviceModuleItem {
-    private static final Set<DeviceKind> RAILGUN_ONLY = Set.of(DeviceKind.RAILGUN);
-    private static final Set<DeviceKind> CORE_ACCEPTS = Set.of(DeviceKind.RAILGUN, DeviceKind.CELESTWEAVE_CORE);
-
     private final RailgunModuleType type;
 
     public RailgunModuleItem(Properties properties, RailgunModuleType type) {
@@ -38,26 +34,17 @@ public class RailgunModuleItem extends Item implements OverloadDeviceModuleItem 
     }
 
     static int maxInstallAmount(RailgunModuleType type) {
-        return switch (type) {
-            case CORE, OVERLOAD_EXECUTION -> 1;
-            case COMPUTE, ACCELERATION, RANGE -> 2;
-        };
+        return RailgunModuleRules.maxInstallAmount(type);
     }
 
     @Override
     public Set<DeviceKind> acceptableDevices() {
-        return type == RailgunModuleType.CORE ? CORE_ACCEPTS : RAILGUN_ONLY;
+        return RailgunModuleRules.acceptableDevices(type);
     }
 
     @Override
     public DeviceSlotType acceptableSlot() {
-        return switch (type) {
-            case CORE -> DeviceSlotType.CORE;
-            case COMPUTE -> DeviceSlotType.COMPUTE;
-            case ACCELERATION -> DeviceSlotType.ACCELERATION;
-            case RANGE -> DeviceSlotType.RANGE;
-            case OVERLOAD_EXECUTION -> DeviceSlotType.OVERLOAD_EXECUTION;
-        };
+        return RailgunModuleRules.acceptableSlot(type);
     }
 
     @Override
@@ -66,16 +53,7 @@ public class RailgunModuleItem extends Item implements OverloadDeviceModuleItem 
     }
 
     static boolean accepts(RailgunModuleType type, DeviceKind deviceKind, DeviceSlotType slotType) {
-        if (type == RailgunModuleType.CORE && deviceKind == DeviceKind.CELESTWEAVE_CORE) {
-            return slotType == DeviceSlotType.CHEST_MODULE;
-        }
-        return deviceKind == DeviceKind.RAILGUN && slotType == switch (type) {
-            case CORE -> DeviceSlotType.CORE;
-            case COMPUTE -> DeviceSlotType.COMPUTE;
-            case ACCELERATION -> DeviceSlotType.ACCELERATION;
-            case RANGE -> DeviceSlotType.RANGE;
-            case OVERLOAD_EXECUTION -> DeviceSlotType.OVERLOAD_EXECUTION;
-        };
+        return RailgunModuleRules.accepts(type, deviceKind, slotType);
     }
 
     @Override
@@ -91,16 +69,7 @@ public class RailgunModuleItem extends Item implements OverloadDeviceModuleItem 
     static List<DeviceCapability> capabilitiesFor(RailgunModuleType type) {
         // Per-stack contribution. Aggregation (count of N modules) is done by services
         // iterating the resolver output — the same way the legacy *Count() helpers worked.
-        return switch (type) {
-            case CORE -> List.of(new DeviceCapability.LightningCompensation(
-                    LightningCompensationPolicy.DEFAULT_HIGH_VOLTAGE_PER_EXTREME_HIGH_VOLTAGE));
-            case COMPUTE -> List.of(
-                    new DeviceCapability.ChainTuning(2, 1, 0),
-                    new DeviceCapability.PulseTuning(1.5D, 1.0D));
-            case ACCELERATION -> List.of(new DeviceCapability.AccelerationFactor(0.30D));
-            case RANGE -> List.of(new DeviceCapability.RangeMultiplier(2.0D));
-            case OVERLOAD_EXECUTION -> List.of(new DeviceCapability.OverloadExecutionTuning(0.02D, 200, 8));
-        };
+        return RailgunModuleRules.capabilitiesFor(type);
     }
 
     @Override

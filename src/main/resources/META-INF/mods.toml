@@ -29,55 +29,90 @@ side = "BOTH"
 [[dependencies."${mod_id}"]]
 modId = "ae2"
 mandatory = true
-versionRange = "[0,)"
+versionRange = "${ae2_version_range}"
 ordering = "AFTER"
 side = "BOTH"
 
 [[dependencies."${mod_id}"]]
 modId = "jade"
 mandatory = false
-versionRange = "[0,)"
+versionRange = "${jade_version_range}"
 ordering = "AFTER"
 side = "CLIENT"
 
 [[dependencies."${mod_id}"]]
 modId = "jei"
 mandatory = false
-versionRange = "[0,)"
+versionRange = "${jei_version_range}"
+ordering = "AFTER"
+side = "CLIENT"
+
+[[dependencies."${mod_id}"]]
+modId = "emi"
+mandatory = false
+versionRange = "${emi_version_range}"
 ordering = "AFTER"
 side = "CLIENT"
 
 [[dependencies."${mod_id}"]]
 modId = "advanced_ae"
 mandatory = false
-versionRange = "[0,)"
+versionRange = "${advancedae_version_range}"
 ordering = "AFTER"
 side = "BOTH"
 
 [[dependencies."${mod_id}"]]
 modId = "expatternprovider"
 mandatory = false
-versionRange = "[0,)"
+versionRange = "${extendedae_version_range}"
 ordering = "AFTER"
 side = "BOTH"
 
 [[dependencies."${mod_id}"]]
 modId = "appflux"
 mandatory = false
-versionRange = "[0,)"
+versionRange = "${appflux_version_range}"
 ordering = "AFTER"
 side = "BOTH"
 
 [[dependencies."${mod_id}"]]
+modId = "fluxnetworks"
+mandatory = false
+versionRange = "${flux_networks_version_range}"
+ordering = "AFTER"
+side = "BOTH"
+
+[[dependencies."${mod_id}"]]
+modId = "mekanism"
+mandatory = false
+versionRange = "${mekanism_version_range}"
+ordering = "AFTER"
+side = "BOTH"
+
+[[dependencies."${mod_id}"]]
+modId = "curios"
+mandatory = false
+versionRange = "${curios_version_range}"
+ordering = "AFTER"
+side = "BOTH"
+
+[[dependencies."${mod_id}"]]
+modId = "polymorph"
+mandatory = false
+versionRange = "${polymorph_version_range}"
+ordering = "AFTER"
+side = "CLIENT"
+
+[[dependencies."${mod_id}"]]
 modId = "thunderbolt"
 mandatory = true
-versionRange = "[1.0.2,)"
+versionRange = "${thunderbolt_version_range}"
 ordering = "AFTER"
 side = "BOTH"
 
 [[dependencies."${mod_id}"]]
 modId = "ae2wtlib"
 mandatory = false
-versionRange = "[15.0.0,)"
+versionRange = "${ae2wtlib_version_range}"
 ordering = "AFTER"
 side = "BOTH"

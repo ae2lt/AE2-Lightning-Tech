@@ -10,9 +10,9 @@
   "inputs": [
     {
       "ingredient": {
-        "item": "appflux:charged_redstone_block"
+        "item": "appflux:charged_redstone"
       },
-      "count": 4
+      "count": 36
     },
     {
       "ingredient": {

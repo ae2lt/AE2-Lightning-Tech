@@ -32,6 +32,7 @@ import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternUploadService;
 import com.moakiee.ae2lt.logic.tianshu.loop.TianshuSeedRefillService;
 import com.moakiee.ae2lt.logic.tianshu.terminal.ClosedLoopDraftStatus;
 import com.moakiee.ae2lt.logic.tianshu.terminal.ClosedLoopDraftSync;
+import com.moakiee.ae2lt.logic.tianshu.terminal.ClosedLoopResultPage;
 import com.moakiee.ae2lt.logic.tianshu.terminal.ClosedLoopTerminalDraft;
 import com.moakiee.ae2lt.logic.tianshu.terminal.SeedRefillSync;
 import com.moakiee.ae2lt.logic.tianshu.terminal.ProcessingPatternMultiplier;
@@ -77,11 +78,14 @@ import appeng.api.config.ViewItems;
 import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuUploadTargetData;
 import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuPatternUploadRouting;
 import com.moakiee.ae2lt.network.tianshu.MaintenanceSummarySyncPacket;
+import com.moakiee.ae2lt.network.tianshu.ClosedLoopResultPagePacket;
+import com.moakiee.ae2lt.network.tianshu.RequestClosedLoopResultPagePacket;
 import com.moakiee.ae2lt.network.tianshu.RequestUploadTargetsPacket;
 import com.moakiee.ae2lt.network.tianshu.UploadPatternToTargetPacket;
 import com.moakiee.ae2lt.network.tianshu.UploadTargetsSyncPacket;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.EnumMap;
 import java.util.Map;
 import com.moakiee.ae2lt.network.tianshu.SaveGlobalReservePacket;
 import com.moakiee.ae2lt.network.tianshu.TianshuPacketLimits;
@@ -89,12 +93,16 @@ import com.moakiee.thunderbolt.ae2.overload.pattern.SourcePatternSnapshot;
 import net.minecraft.world.entity.player.Player;
 import org.anti_ad.mc.ipn.api.IPNIgnore;
 import net.minecraft.core.RegistryAccess;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @IPNIgnore
 public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
+    private static final Logger DUPLICATE_LOG =
+            LoggerFactory.getLogger("ae2lt/TianshuDuplicate");
     public static final int CLOSED_LOOP_MEMBER_SLOTS = ClosedLoopDraftSync.MEMBER_SLOTS;
     public static final int CLOSED_LOOP_OUTPUT_SLOTS = ClosedLoopDraftSync.OUTPUT_SLOTS;
-    public static final int CLOSED_LOOP_RESULT_SLOTS = ClosedLoopPatternAnalyzer.MAX_MEMBERS * 9;
+    public static final int CLOSED_LOOP_RESULT_SLOTS = ClosedLoopResultPage.MAX_RESULTS;
     private static final int CLOSED_LOOP_OFFSCREEN = -10000;
     private static final MenuTypeBuilder.MenuFactory<
             TianshuPatternEncodingTermMenu, TianshuPatternTerminalHost> FACTORY =
@@ -151,6 +159,8 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     @GuiSync(139)
     public ProcessingPatternTerminalDraft processingDraftSync =
             ProcessingPatternTerminalDraft.empty();
+    @GuiSync(140)
+    public int closedLoopResultRevision;
 
     protected final TianshuPatternTerminalHost tianshuHost;
     @Nullable private TianshuTerminalTarget boundTianshuTarget;
@@ -161,14 +171,14 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     @Nullable private AEKey closedLoopMainOutput;
     private final AppEngInternalInventory closedLoopMemberInventory;
     private final AppEngInternalInventory closedLoopOutputInventory;
-    private final AppEngInternalInventory closedLoopExternalInputInventory;
-    private final AppEngInternalInventory closedLoopSeedInventory;
     private final AppEngInternalInventory globalReserveMarkInventory;
     private final FakeSlot globalReserveMarkSlot;
     private final List<AppEngSlot> closedLoopMemberSlots = new ArrayList<>();
     private final List<AppEngSlot> closedLoopOutputSlots = new ArrayList<>();
-    private final List<AppEngSlot> closedLoopExternalInputSlots = new ArrayList<>();
-    private final List<AppEngSlot> closedLoopSeedSlots = new ArrayList<>();
+    private List<GenericStack> closedLoopExternalInputs = List.of();
+    private List<GenericStack> closedLoopSeeds = List.of();
+    private final Map<ClosedLoopResultPage.Kind, ClosedLoopResultPage> closedLoopResultPages =
+            new EnumMap<>(ClosedLoopResultPage.Kind.class);
     private final long[] closedLoopMemberCopies = new long[CLOSED_LOOP_MEMBER_SLOTS];
     private final int[] closedLoopOutputRoles = new int[CLOSED_LOOP_OUTPUT_SLOTS];
     private boolean closedLoopBulkUpdating;
@@ -195,11 +205,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     private int expectedTriggeredUploadAck;
     private boolean directUploadTargetsRequested;
     private int expectedDirectUploadTargetRevision;
-    /**
-     * AE2 synchronously broadcasts the encoded slot while {@code super.encode()} still contains
-     * the temporary vanilla pattern. Do not treat that intermediate stack as a newly inserted
-     * pattern, or it will clear the advanced/overload draft before conversion runs.
-     */
+    /** Prevents a committed encoding result from being mistaken for a manually inserted pattern. */
     private boolean ae2EncodingInProgress;
 
     public TianshuPatternEncodingTermMenu(
@@ -232,8 +238,6 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
             }
         }, CLOSED_LOOP_MEMBER_SLOTS, 1);
         this.closedLoopOutputInventory = new AppEngInternalInventory(null, CLOSED_LOOP_OUTPUT_SLOTS, 1);
-        this.closedLoopExternalInputInventory = new AppEngInternalInventory(null, CLOSED_LOOP_RESULT_SLOTS, 1);
-        this.closedLoopSeedInventory = new AppEngInternalInventory(null, CLOSED_LOOP_RESULT_SLOTS, 1);
         this.globalReserveMarkInventory = new AppEngInternalInventory(null, 1, 1);
         this.globalReserveMarkSlot = new FakeSlot(globalReserveMarkInventory, 0);
         SlotPositionAccess.set(globalReserveMarkSlot, CLOSED_LOOP_OFFSCREEN, CLOSED_LOOP_OFFSCREEN);
@@ -260,16 +264,6 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
             SlotPositionAccess.set(slot, CLOSED_LOOP_OFFSCREEN, CLOSED_LOOP_OFFSCREEN);
             addSlot(slot, Ae2ltSlotSemantics.TIANSHU_CLOSED_LOOP_OUTPUT_MARK);
             closedLoopOutputSlots.add(slot);
-        }
-        for (int i = 0; i < CLOSED_LOOP_RESULT_SLOTS; i++) {
-            var external = new ClosedLoopReadonlySlot(closedLoopExternalInputInventory, i);
-            SlotPositionAccess.set(external, CLOSED_LOOP_OFFSCREEN, CLOSED_LOOP_OFFSCREEN);
-            addSlot(external, Ae2ltSlotSemantics.TIANSHU_CLOSED_LOOP_EXTERNAL_INPUT);
-            closedLoopExternalInputSlots.add(external);
-            var seed = new ClosedLoopReadonlySlot(closedLoopSeedInventory, i);
-            SlotPositionAccess.set(seed, CLOSED_LOOP_OFFSCREEN, CLOSED_LOOP_OFFSCREEN);
-            addSlot(seed, Ae2ltSlotSemantics.TIANSHU_CLOSED_LOOP_SEED_INPUT);
-            closedLoopSeedSlots.add(seed);
         }
         this.boundTianshuTarget = inventory.player.level().isClientSide
                 ? null : host.selectTianshuTarget();
@@ -683,16 +677,39 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         return getMarkedClosedLoopPrimaryOutput() != null;
     }
 
-    public List<AppEngSlot> getClosedLoopExternalInputSlots() {
-        return closedLoopExternalInputSlots;
-    }
-
-    public List<AppEngSlot> getClosedLoopSeedSlots() {
-        return closedLoopSeedSlots;
-    }
-
     public FakeSlot getGlobalReserveMarkSlot() {
         return globalReserveMarkSlot;
+    }
+
+    public void requestClosedLoopResultPage(ClosedLoopResultPage.Kind kind, int offset) {
+        if (!isClientSide() || kind == null) return;
+        PacketSender.sendToServer(new RequestClosedLoopResultPagePacket(
+                containerId, kind, offset));
+    }
+
+    public void sendClosedLoopResultPage(
+            ServerPlayer player, ClosedLoopResultPage.Kind kind, int offset) {
+        if (!isServerSide() || player == null || kind == null) return;
+        var source = kind == ClosedLoopResultPage.Kind.EXTERNAL_INPUTS
+                ? closedLoopExternalInputs : closedLoopSeeds;
+        PacketSender.sendToPlayer(player, new ClosedLoopResultPagePacket(
+                containerId,
+                ClosedLoopResultPage.from(closedLoopResultRevision, kind, source, offset)));
+    }
+
+    public void receiveClosedLoopResultPage(ClosedLoopResultPage page) {
+        if (!isClientSide() || page == null || page.revision() < closedLoopResultRevision) return;
+        closedLoopResultPages.put(page.kind(), page);
+    }
+
+    @Nullable
+    public ClosedLoopResultPage getClosedLoopResultPage(
+            ClosedLoopResultPage.Kind kind, int offset) {
+        var page = closedLoopResultPages.get(kind);
+        return page != null
+                        && page.revision() == closedLoopResultRevision
+                        && page.offset() == offset
+                ? page : null;
     }
 
     public long getClosedLoopMemberCopies(int slot) {
@@ -1159,40 +1176,60 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     }
 
     private List<PatternContainer> discoverUploadTargets() {
+        return discoverUploadTargets(false);
+    }
+
+    private List<PatternContainer> discoverUploadTargets(boolean diagnostics) {
         var node = tianshuHost.getActionableNode();
         var grid = node != null ? node.getGrid() : null;
         if (grid == null) {
+            if (diagnostics) {
+                DUPLICATE_LOG.warn("Target scan found no grid (nodePresent={})", node != null);
+            }
             return List.of();
         }
         var found = new ArrayList<PatternContainer>();
+        int machineClasses = 0;
+        int patternContainerClasses = 0;
+        int activeContainers = 0;
+        int hiddenContainers = 0;
+        int foreignGridContainers = 0;
+        int emptyInventories = 0;
         for (var machineClass : grid.getMachineClasses()) {
+            machineClasses++;
             if (!PatternContainer.class.isAssignableFrom(machineClass)) continue;
+            patternContainerClasses++;
             @SuppressWarnings("unchecked")
             var containerClass = (Class<? extends PatternContainer>) machineClass;
             for (var container : grid.getActiveMachines(containerClass)) {
-                if (!container.isVisibleInTerminal() || container.getGrid() != grid) continue;
+                activeContainers++;
+                if (!container.isVisibleInTerminal()) {
+                    hiddenContainers++;
+                    continue;
+                }
+                if (container.getGrid() != grid) {
+                    foreignGridContainers++;
+                    continue;
+                }
                 var inv = container.getTerminalPatternInventory();
-                if (inv != null && inv.size() > 0) found.add(container);
+                if (inv != null && inv.size() > 0) {
+                    found.add(container);
+                } else {
+                    emptyInventories++;
+                }
             }
         }
         found.sort(java.util.Comparator
                 .comparing((PatternContainer host) -> host.getTerminalGroup().name().getString())
                 .thenComparingLong(PatternContainer::getTerminalSortOrder));
+        if (diagnostics) {
+            DUPLICATE_LOG.debug("Target scan: machineClasses={}, patternContainerClasses={}, "
+                            + "activeContainers={}, eligibleTargets={}, hidden={}, foreignGrid={}, "
+                            + "missingOrEmptyInventory={}",
+                    machineClasses, patternContainerClasses, activeContainers, found.size(),
+                    hiddenContainers, foreignGridContainers, emptyInventories);
+        }
         return List.copyOf(found);
-    }
-
-    private boolean containsUploadedPattern(ItemStack stack) {
-        if (stack == null || stack.isEmpty()) {
-            return false;
-        }
-        var level = getPlayer().level();
-        for (var target : uploadTargets) {
-            if (PatternEncodingDuplicateFilter.containsEquivalentPattern(
-                    target.getTerminalPatternInventory(), stack, level)) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private static int countFreePatternSlots(
@@ -1454,8 +1491,6 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         try {
             clearInventory(closedLoopMemberInventory);
             clearInventory(closedLoopOutputInventory);
-            clearInventory(closedLoopExternalInputInventory);
-            clearInventory(closedLoopSeedInventory);
         } finally {
             closedLoopBulkUpdating = false;
         }
@@ -1469,8 +1504,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         closedLoopEncodeState = 0;
         closedLoopDraftStatus = ClosedLoopDraftStatus.EMPTY;
         closedLoopPreparedPayload = null;
-        closedLoopExternalInputCount = 0;
-        closedLoopSeedInputCount = 0;
+        setClosedLoopComputedResults(List.of(), List.of());
         closedLoopDraftDirty = false;
         closedLoopDraftRepresentsEncoded = false;
     }
@@ -1482,8 +1516,6 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         try {
             clearInventory(closedLoopMemberInventory);
             clearInventory(closedLoopOutputInventory);
-            clearInventory(closedLoopExternalInputInventory);
-            clearInventory(closedLoopSeedInventory);
             java.util.Arrays.fill(closedLoopMemberCopies, 0L);
             java.util.Arrays.fill(closedLoopOutputRoles, 0);
             int memberCount = Math.min(CLOSED_LOOP_MEMBER_SLOTS, payload.memberPatterns().size());
@@ -1506,6 +1538,8 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         } finally {
             closedLoopBulkUpdating = false;
         }
+        closedLoopPreparedPayload = null;
+        setClosedLoopComputedResults(List.of(), List.of());
         closedLoopDraftDirty = true;
     }
 
@@ -1635,36 +1669,37 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     }
 
     private void fillClosedLoopComputedResults(ClosedLoopPatternPayload payload) {
-        closedLoopBulkUpdating = true;
-        try {
-            clearInventory(closedLoopExternalInputInventory);
-            clearInventory(closedLoopSeedInventory);
-            closedLoopExternalInputCount = payload.externalInputs().size();
-            closedLoopSeedInputCount = payload.seeds().size();
-            for (int i = 0; i < Math.min(CLOSED_LOOP_RESULT_SLOTS, payload.externalInputs().size()); i++) {
-                closedLoopExternalInputInventory.setItemDirect(
-                        i, GenericStack.wrapInItemStack(payload.externalInputs().get(i)));
-            }
-            for (int i = 0; i < Math.min(CLOSED_LOOP_RESULT_SLOTS, payload.seeds().size()); i++) {
-                closedLoopSeedInventory.setItemDirect(
-                        i, GenericStack.wrapInItemStack(payload.seeds().get(i)));
-            }
-        } finally {
-            closedLoopBulkUpdating = false;
-        }
+        setClosedLoopComputedResults(payload.externalInputs(), payload.seeds());
     }
 
     private void clearClosedLoopComputedResults() {
         closedLoopPreparedPayload = null;
-        closedLoopExternalInputCount = 0;
-        closedLoopSeedInputCount = 0;
-        closedLoopBulkUpdating = true;
-        try {
-            clearInventory(closedLoopExternalInputInventory);
-            clearInventory(closedLoopSeedInventory);
-        } finally {
-            closedLoopBulkUpdating = false;
+        setClosedLoopComputedResults(List.of(), List.of());
+    }
+
+    private void setClosedLoopComputedResults(
+            List<GenericStack> externalInputs, List<GenericStack> seeds) {
+        var nextExternalInputs = copyClosedLoopResults(externalInputs);
+        var nextSeeds = copyClosedLoopResults(seeds);
+        boolean changed = !nextExternalInputs.equals(closedLoopExternalInputs)
+                || !nextSeeds.equals(closedLoopSeeds);
+        closedLoopExternalInputs = nextExternalInputs;
+        closedLoopSeeds = nextSeeds;
+        closedLoopExternalInputCount = nextExternalInputs.size();
+        closedLoopSeedInputCount = nextSeeds.size();
+        if (changed) closedLoopResultRevision++;
+    }
+
+    private static List<GenericStack> copyClosedLoopResults(List<GenericStack> source) {
+        if (source == null || source.isEmpty()) return List.of();
+        var result = new ArrayList<GenericStack>(Math.min(CLOSED_LOOP_RESULT_SLOTS, source.size()));
+        for (var entry : source) {
+            if (entry != null && entry.what() != null && entry.amount() > 0L) {
+                result.add(entry);
+                if (result.size() == CLOSED_LOOP_RESULT_SLOTS) break;
+            }
         }
+        return List.copyOf(result);
     }
 
     private void setClosedLoopInvalid(ClosedLoopDraftStatus status) {
@@ -2248,22 +2283,20 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         if (!isServerSide()) return;
         boolean interceptDuplicates = Boolean.TRUE.equals(interceptDuplicateEncoding);
         if (tianshuMode.isAe2Mode()) {
-            if (interceptDuplicates) {
-                var candidate = previewAe2EncodingCandidate();
-                if (shouldInterceptDuplicateEncoding(candidate, true)) {
-                    notifyDuplicateEncodingIntercepted();
-                    return;
-                }
+            // Build the candidate exactly once. Some recipe integrations expose transient
+            // encoding state, so a second call can produce a different definition even though
+            // the visible draft has not changed. Duplicate detection must inspect the exact
+            // stack that will be committed to the encoded slot.
+            var candidate = previewAe2EncodingCandidate();
+            if (shouldInterceptDuplicateEncoding(candidate, interceptDuplicates)) {
+                notifyDuplicateEncodingIntercepted();
+                return;
             }
-            boolean stagedNetworkBlank = false;
             ae2EncodingInProgress = true;
             try {
-                stagedNetworkBlank = stageNetworkBlankPattern();
-                super.encode();
-                applyConfiguredProcessingConversion();
+                commitAe2EncodingCandidate(candidate);
             } finally {
                 ae2EncodingInProgress = false;
-                if (stagedNetworkBlank) returnStagedBlankPatternToNetwork();
             }
             var encoded = tianshuHost.getLogic().getEncodedPatternInv().getStackInSlot(0);
             if (TianshuPatternUploadRouting.isValidEncodingResult(encoded, getPlayer().level())) {
@@ -2291,6 +2324,44 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         }
     }
 
+    /**
+     * Applies AE2's encoded-slot and blank-pattern rules to a candidate that has already been
+     * built. Keeping this separate from candidate construction guarantees that duplicate checking
+     * and the committed stack use the same definition.
+     */
+    private void commitAe2EncodingCandidate(ItemStack candidate) {
+        var encodedInventory = tianshuHost.getLogic().getEncodedPatternInv();
+        var current = encodedInventory.getStackInSlot(0);
+        if (candidate == null || candidate.isEmpty()) {
+            if (PatternDetailsHelper.isEncodedPattern(current)) {
+                encodedInventory.setItemDirect(
+                        0, AEItems.BLANK_PATTERN.stack(current.getCount()));
+            }
+            return;
+        }
+        if (!current.isEmpty()
+                && !PatternDetailsHelper.isEncodedPattern(current)
+                && !AEItems.BLANK_PATTERN.isSameAs(current)) {
+            return;
+        }
+
+        boolean stagedNetworkBlank = false;
+        try {
+            if (current.isEmpty()) {
+                stagedNetworkBlank = stageNetworkBlankPattern();
+                if (!stagedNetworkBlank) {
+                    return;
+                }
+            }
+            encodedInventory.setItemDirect(0, candidate);
+        } finally {
+            // If committing failed after extraction, return only the still-blank staged stack.
+            if (stagedNetworkBlank) {
+                returnStagedBlankPatternToNetwork();
+            }
+        }
+    }
+
     private ItemStack previewAe2EncodingCandidate() {
         var candidate = ((PatternEncodingTermMenuAccessor) (Object) this)
                 .ae2lt$encodePatternCandidate();
@@ -2312,8 +2383,36 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         if (route == TianshuPatternUploadRouting.Route.INVALID) {
             return false;
         }
-        uploadTargets = discoverUploadTargets();
-        return containsUploadedPattern(candidate);
+        var candidateDescription = PatternEncodingDuplicateFilter.describeStack(candidate);
+        DUPLICATE_LOG.debug("Check start: player={}, route={}, candidate={}",
+                getPlayer().getGameProfile().getName(), route, candidateDescription);
+        uploadTargets = discoverUploadTargets(true);
+        var level = getPlayer().level();
+        for (int targetIndex = 0; targetIndex < uploadTargets.size(); targetIndex++) {
+            var target = uploadTargets.get(targetIndex);
+            var inventory = target.getTerminalPatternInventory();
+            var result = PatternEncodingDuplicateFilter.checkEquivalentPattern(
+                    inventory, candidate, level);
+            if (DUPLICATE_LOG.isDebugEnabled()) {
+                DUPLICATE_LOG.debug("Target {}: type={}, group={}, slots={}, occupiedScanned={}, "
+                                + "undecodable={}, duplicate={}, matchedSlot={}, method={}, stored={}",
+                        targetIndex, target.getClass().getName(),
+                        target.getTerminalGroup().name().getString(), inventory.size(),
+                        result.occupiedSlots(), result.undecodableSlots(), result.duplicate(),
+                        result.matchedSlot(), result.matchMethod(),
+                        result.duplicate() ? "matched"
+                                : PatternEncodingDuplicateFilter.describeOccupiedStacks(inventory, 8));
+            }
+            if (result.duplicate()) {
+                DUPLICATE_LOG.debug("Check result: BLOCK candidate={} target={} slot={} method={}",
+                        candidateDescription, targetIndex, result.matchedSlot(), result.matchMethod());
+                return true;
+            }
+        }
+        DUPLICATE_LOG.debug("Check result: ALLOW candidate={} because no equivalent pattern was "
+                        + "found across {} eligible targets",
+                candidateDescription, uploadTargets.size());
+        return false;
     }
 
     private void notifyDuplicateEncodingIntercepted() {
@@ -2395,22 +2494,6 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     private ItemStack encodeDerivedPattern() {
         if (tianshuMode != TianshuEncodingMode.CLOSED_LOOP) return ItemStack.EMPTY;
         return encodeSelectedClosedLoopCandidate();
-    }
-
-    /** Applies the persistent processing configuration to the freshly encoded pattern. */
-    private void applyConfiguredProcessingConversion() {
-        if (tianshuMode != TianshuEncodingMode.PROCESSING
-                || processingEncodingType == ProcessingPatternEncodingType.NORMAL) return;
-        var advancedConfig = getAdvancedEncodingConfig();
-        var overloadConfig = getOverloadEncodingConfig();
-        var inventory = tianshuHost.getLogic().getEncodedPatternInv();
-        var source = inventory.getStackInSlot(0);
-        if (source.isEmpty()) return;
-        var converted = convertConfiguredProcessingPattern(
-                source, advancedConfig, overloadConfig);
-        if (converted != null && !converted.isEmpty()) {
-            inventory.setItemDirect(0, converted);
-        }
     }
 
     @Nullable
@@ -2572,4 +2655,3 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         }
     }
 }
-

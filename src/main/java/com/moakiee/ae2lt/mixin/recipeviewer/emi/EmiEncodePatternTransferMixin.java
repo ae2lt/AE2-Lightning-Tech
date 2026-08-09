@@ -7,7 +7,7 @@ package com.moakiee.ae2lt.mixin.recipeviewer.emi;
 
 import appeng.integration.modules.emi.EmiEncodePatternHandler;
 import appeng.integration.modules.emi.EmiStackHelper;
-import appeng.menu.AEBaseMenu;
+import appeng.menu.me.items.PatternEncodingTermMenu;
 import com.moakiee.ae2lt.client.TianshuDirectUploadClient;
 import com.moakiee.ae2lt.client.TianshuRecipeTransferContext;
 import com.moakiee.ae2lt.client.TianshuUploadAliasRules;
@@ -29,17 +29,17 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(value = EmiEncodePatternHandler.class, remap = false)
 public abstract class EmiEncodePatternTransferMixin {
     @Unique
-    private static boolean ae2lt$restoreClosedLoopMode;
+    private boolean ae2lt$restoreClosedLoopMode;
 
     @Inject(
-            method = "transferRecipe(Lappeng/menu/AEBaseMenu;"
+            method = "transferRecipe(Lappeng/menu/me/items/PatternEncodingTermMenu;"
                     + "Lnet/minecraft/world/item/crafting/Recipe;"
                     + "Ldev/emi/emi/api/recipe/EmiRecipe;Z)"
                     + "Lappeng/integration/modules/emi/AbstractRecipeHandler$Result;",
             at = @At("HEAD"),
-            require = 0)
-    private static void ae2lt$onTransfer(
-            AEBaseMenu menu,
+            require = 1)
+    private void ae2lt$onTransfer(
+            PatternEncodingTermMenu menu,
             Recipe<?> recipe,
             EmiRecipe emiRecipe,
             boolean doTransfer,
@@ -112,14 +112,14 @@ public abstract class EmiEncodePatternTransferMixin {
     }
 
     @Inject(
-            method = "transferRecipe(Lappeng/menu/AEBaseMenu;"
+            method = "transferRecipe(Lappeng/menu/me/items/PatternEncodingTermMenu;"
                     + "Lnet/minecraft/world/item/crafting/Recipe;"
                     + "Ldev/emi/emi/api/recipe/EmiRecipe;Z)"
                     + "Lappeng/integration/modules/emi/AbstractRecipeHandler$Result;",
             at = @At("RETURN"),
-            require = 0)
-    private static void ae2lt$restoreClosedLoopMode(
-            AEBaseMenu menu,
+            require = 1)
+    private void ae2lt$restoreClosedLoopMode(
+            PatternEncodingTermMenu menu,
             Recipe<?> recipe,
             EmiRecipe emiRecipe,
             boolean doTransfer,

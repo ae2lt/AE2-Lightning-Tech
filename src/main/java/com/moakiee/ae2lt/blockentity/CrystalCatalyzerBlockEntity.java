@@ -636,8 +636,10 @@ public class CrystalCatalyzerBlockEntity extends AENetworkBlockEntity
     @Override
     public void setWorking(boolean working) {
         if (level != null) {
-            BlockState state = getBlockState();
-            if (state.hasProperty(CrystalCatalyzerBlock.WORKING)
+            BlockState state = level.getBlockState(worldPosition);
+            if (state.is(ModBlocks.CRYSTAL_CATALYZER.get())
+                    && level.getBlockEntity(worldPosition) == this
+                    && state.hasProperty(CrystalCatalyzerBlock.WORKING)
                     && state.getValue(CrystalCatalyzerBlock.WORKING) != working) {
                 level.setBlock(worldPosition, state.setValue(CrystalCatalyzerBlock.WORKING, working), Block.UPDATE_ALL);
             }
@@ -881,4 +883,3 @@ public class CrystalCatalyzerBlockEntity extends AENetworkBlockEntity
         return AECableType.SMART;
     }
 }
-

@@ -3,7 +3,6 @@ package com.moakiee.ae2lt.logic;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
-import java.lang.reflect.Field;
 import java.util.List;
 
 import org.jetbrains.annotations.Nullable;
@@ -12,8 +11,6 @@ import org.slf4j.LoggerFactory;
 
 import net.minecraftforge.fml.ModList;
 
-import appeng.api.config.Setting;
-import appeng.api.config.YesNo;
 import appeng.api.crafting.IPatternDetails;
 import appeng.helpers.patternprovider.PatternProviderLogic;
 
@@ -44,7 +41,15 @@ public final class SmartDoublingCompat {
     private static final Logger LOGGER = LoggerFactory.getLogger("ae2lt/SmartDoublingCompat");
     private static final String MOD_ID = "extendedae_plus";
 
-    private record Handles(Class<?> awareClass, Setting<YesNo> setting, MethodHandle setAllowScaling) {}
+    private record Handles(
+            Class<?> awareClass,
+            Class<?> holderClass,
+            Class<?> processingPatternClass,
+            MethodHandle getSmartDoubling,
+            MethodHandle getProviderLimit,
+            MethodHandle setAllowScaling,
+            MethodHandle setMultiplierLimit,
+            MethodHandle computeMultiplier) {}
 
     private record ScaledHandles(Class<?> scaledClass, MethodHandle getOriginal) {}
 
@@ -62,16 +67,42 @@ public final class SmartDoublingCompat {
                 if (!ModList.get().isLoaded(MOD_ID)) return null;
                 Class<?> awareClass = Class.forName(
                         "com.extendedae_plus.api.smartDoubling.ISmartDoublingAwarePattern");
-                Class<?> settingsClass = Class.forName(
-                        "com.extendedae_plus.api.config.EAPSettings");
-                Field f = settingsClass.getField("SMART_DOUBLING");
-                @SuppressWarnings("unchecked")
-                Setting<YesNo> setting = (Setting<YesNo>) f.get(null);
-                MethodHandle setter = MethodHandles.publicLookup().findVirtual(
+                Class<?> holderClass = Class.forName(
+                        "com.extendedae_plus.api.smartDoubling.ISmartDoublingHolder");
+                Class<?> processingPatternClass = Class.forName(
+                        "appeng.crafting.pattern.AEProcessingPattern");
+                Class<?> scalerClass = Class.forName(
+                        "com.extendedae_plus.util.smartDoubling.PatternScaler");
+                var lookup = MethodHandles.publicLookup();
+                MethodHandle getSmartDoubling = lookup.findVirtual(
+                        holderClass,
+                        "eap$getSmartDoubling",
+                        MethodType.methodType(boolean.class));
+                MethodHandle getProviderLimit = lookup.findVirtual(
+                        holderClass,
+                        "eap$getProviderSmartDoublingLimit",
+                        MethodType.methodType(int.class));
+                MethodHandle setAllowScaling = lookup.findVirtual(
                         awareClass,
                         "eap$setAllowScaling",
                         MethodType.methodType(void.class, boolean.class));
-                HANDLES = new Handles(awareClass, setting, setter);
+                MethodHandle setMultiplierLimit = lookup.findVirtual(
+                        awareClass,
+                        "eap$setMultiplierLimit",
+                        MethodType.methodType(void.class, int.class));
+                MethodHandle computeMultiplier = lookup.findStatic(
+                        scalerClass,
+                        "getComputedMul",
+                        MethodType.methodType(int.class, processingPatternClass, int.class));
+                HANDLES = new Handles(
+                        awareClass,
+                        holderClass,
+                        processingPatternClass,
+                        getSmartDoubling,
+                        getProviderLimit,
+                        setAllowScaling,
+                        setMultiplierLimit,
+                        computeMultiplier);
                 LOGGER.debug("[ae2lt] ExtendedAE_Plus smart-doubling compat wired.");
                 return HANDLES;
             } catch (Throwable t) {
@@ -92,10 +123,11 @@ public final class SmartDoublingCompat {
                 if (!ModList.get().isLoaded(MOD_ID)) return null;
                 Class<?> scaledClass = Class.forName(
                         "com.extendedae_plus.api.crafting.ScaledProcessingPattern");
-                MethodHandle getOriginal = MethodHandles.publicLookup().findVirtual(
-                        scaledClass,
-                        "getOriginal",
-                        MethodType.methodType(IPatternDetails.class));
+                // Use unreflect so the handle keeps EAEP 1.20.1's concrete
+                // AEProcessingPattern return descriptor. A lookup declared with
+                // IPatternDetails does not match JVM method descriptors covariantly.
+                MethodHandle getOriginal = MethodHandles.publicLookup().unreflect(
+                        scaledClass.getMethod("getOriginal"));
                 SCALED_HANDLES = new ScaledHandles(scaledClass, getOriginal);
                 return SCALED_HANDLES;
             } catch (Throwable t) {
@@ -149,20 +181,26 @@ public final class SmartDoublingCompat {
      */
     public static void applyTo(PatternProviderLogic logic, List<IPatternDetails> patterns) {
         Handles h = handles();
-        if (h == null) return;
+        if (h == null || !h.holderClass.isInstance(logic)) return;
         boolean allowScaling;
+        int providerLimit;
         try {
-            allowScaling = logic.getConfigManager().getSetting(h.setting) == YesNo.YES;
+            allowScaling = (boolean) h.getSmartDoubling.invoke(logic);
+            providerLimit = (int) h.getProviderLimit.invoke(logic);
         } catch (Throwable t) {
-            // Setting not registered (EAP mixin failed to apply on this instance) -- silent no-op.
             return;
         }
         for (IPatternDetails details : patterns) {
-            if (h.awareClass.isInstance(details)) {
+            if (h.processingPatternClass.isInstance(details)
+                    && h.awareClass.isInstance(details)) {
                 try {
                     h.setAllowScaling.invoke(details, allowScaling);
+                    int multiplierLimit = (int) h.computeMultiplier.invoke(
+                            details, providerLimit);
+                    h.setMultiplierLimit.invoke(details, multiplierLimit);
                 } catch (Throwable t) {
-                    LOGGER.debug("[ae2lt] eap$setAllowScaling invocation failed: {}", t.toString());
+                    LOGGER.debug("[ae2lt] Smart-doubling marker propagation failed: {}",
+                            t.toString());
                 }
             }
         }
@@ -170,4 +208,3 @@ public final class SmartDoublingCompat {
 
     private SmartDoublingCompat() {}
 }
-

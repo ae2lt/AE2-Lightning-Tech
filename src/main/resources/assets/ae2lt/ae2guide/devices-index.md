@@ -6,11 +6,6 @@ navigation:
   position: 50
 item_ids:
   - ae2lt:overload_device_workbench
-  - ae2lt:electromagnetic_railgun
-  - ae2lt:celestweave_oculus
-  - ae2lt:celestweave_core
-  - ae2lt:celestweave_conduit
-  - ae2lt:celestweave_stride
 ---
 
 # Overload Devices

@@ -9,7 +9,7 @@ import org.spongepowered.asm.mixin.gen.Invoker;
  * Exposes AE2's side-effect-free pattern candidate builder so duplicate interception can happen
  * before the encoded slot or blank-pattern inventory is mutated.
  */
-@Mixin(PatternEncodingTermMenu.class)
+@Mixin(value = PatternEncodingTermMenu.class, remap = false)
 public interface PatternEncodingTermMenuAccessor {
     @Invoker("encodePattern")
     ItemStack ae2lt$encodePatternCandidate();

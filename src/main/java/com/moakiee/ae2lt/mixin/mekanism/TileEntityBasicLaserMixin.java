@@ -10,15 +10,16 @@ import com.llamalad7.mixinextras.sugar.Local;
 
 import net.minecraft.world.entity.LivingEntity;
 
-import mekanism.api.lasers.ILaserDissipation;
+import mekanism.api.math.FloatingLong;
 
 import com.moakiee.ae2lt.integration.mekanism.MekanismArmorIntegration;
 
 /**
  * Captures the actual Joules present at Mekanism's native armor-dissipation step.
  *
- * <p>The original getter and all subsequent beam bookkeeping remain untouched. This hook only
- * mirrors energy into Celestweave when the queried capability is our own 100% dissipator.
+ * <p>The hook wraps Mekanism's single armor-dissipation mutation and mirrors the actual
+ * before/after energy difference into Celestweave. Targeting the mutation avoids relying on the
+ * ordinal of a local variable in Mekanism's much larger entity-hit loop.
  */
 @Pseudo
 @Mixin(targets = "mekanism.common.tile.laser.TileEntityBasicLaser", remap = false)
@@ -28,19 +29,18 @@ public abstract class TileEntityBasicLaserMixin {
             method = "onUpdateServer",
             at = @At(
                     value = "INVOKE",
-                    target = "Lmekanism/api/lasers/ILaserDissipation;getDissipationPercent()D"),
+                    target = "Lmekanism/api/math/FloatingLong;timesEqual(Lmekanism/api/math/FloatingLong;)Lmekanism/api/math/FloatingLong;"),
             require = 1)
-    private double ae2lt$chargeCelestweaveFromAbsorbedLaser(
-            ILaserDissipation dissipation,
-            Operation<Double> original,
-            @Local(ordinal = 1) long remainingJoules,
+    private FloatingLong ae2lt$chargeCelestweaveFromAbsorbedLaser(
+            FloatingLong remainingEnergy,
+            FloatingLong retainedFraction,
+            Operation<FloatingLong> original,
             @Local LivingEntity target) {
-        double percent = original.call(dissipation);
+        FloatingLong energyBeforeDissipation = remainingEnergy.copy();
+        FloatingLong retainedEnergy = original.call(remainingEnergy, retainedFraction);
         MekanismArmorIntegration.absorbLaserEnergy(
-                dissipation,
                 target,
-                remainingJoules,
-                percent);
-        return percent;
+                energyBeforeDissipation.subtract(retainedEnergy));
+        return retainedEnergy;
     }
 }

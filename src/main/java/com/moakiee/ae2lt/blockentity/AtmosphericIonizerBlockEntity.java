@@ -306,8 +306,10 @@ public class AtmosphericIonizerBlockEntity extends AENetworkBlockEntity
         boolean changed = this.working != working;
         this.working = working;
         if (level != null) {
-            BlockState state = getBlockState();
-            if (state.hasProperty(AtmosphericIonizerBlock.WORKING)
+            BlockState state = level.getBlockState(worldPosition);
+            if (state.is(ModBlocks.ATMOSPHERIC_IONIZER.get())
+                    && level.getBlockEntity(worldPosition) == this
+                    && state.hasProperty(AtmosphericIonizerBlock.WORKING)
                     && state.getValue(AtmosphericIonizerBlock.WORKING) != working) {
                 level.setBlock(worldPosition, state.setValue(AtmosphericIonizerBlock.WORKING, working), Block.UPDATE_ALL);
             } else if (changed) {
@@ -489,4 +491,3 @@ public class AtmosphericIonizerBlockEntity extends AENetworkBlockEntity
         return AECableType.SMART;
     }
 }
-

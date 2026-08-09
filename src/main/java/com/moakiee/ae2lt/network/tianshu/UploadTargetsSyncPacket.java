@@ -1,17 +1,19 @@
 package com.moakiee.ae2lt.network.tianshu;
+
 import java.util.function.Supplier;
+
 import appeng.api.implementations.blockentities.PatternContainerGroup;
+import com.moakiee.ae2lt.client.ClientNetworkPacketHandlers;
 import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuUploadTargetData;
-import com.moakiee.ae2lt.menu.TianshuPatternEncodingTermMenu;
-import com.moakiee.ae2lt.network.NetworkInit;
 import java.util.ArrayList;
 import java.util.List;
-import net.minecraftforge.network.NetworkEvent;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.server.level.ServerPlayer;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.fml.DistExecutor;
+import net.minecraftforge.network.NetworkEvent;
 
 public record UploadTargetsSyncPacket(int containerId, List<TianshuUploadTargetData> targets) {
-public UploadTargetsSyncPacket {
+    public UploadTargetsSyncPacket {
         targets = targets == null ? List.of() : List.copyOf(targets);
         TianshuPacketLimits.requireListSize("upload targets", targets.size());
     }
@@ -37,15 +39,12 @@ public UploadTargetsSyncPacket {
         }
         return new UploadTargetsSyncPacket(containerId, targets);
     }
-public static void handle(UploadTargetsSyncPacket packet, Supplier<NetworkEvent.Context> context) {
+
+    public static void handle(UploadTargetsSyncPacket packet, Supplier<NetworkEvent.Context> context) {
         var ctx = context.get();
-        ctx.enqueueWork(() -> {
-            ServerPlayer player = ctx.getSender();
-        if (player != null && player.containerMenu instanceof TianshuPatternEncodingTermMenu menu
-                    && menu.containerId == packet.containerId()) {
-                menu.receiveUploadTargets(packet.targets());
-            }
-        });
+        ctx.enqueueWork(() -> DistExecutor.unsafeRunWhenOn(
+                Dist.CLIENT,
+                () -> () -> ClientNetworkPacketHandlers.handleUploadTargetsSync(packet)));
         ctx.setPacketHandled(true);
     }
 }

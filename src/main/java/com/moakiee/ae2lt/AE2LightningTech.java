@@ -41,10 +41,8 @@ import com.moakiee.ae2lt.block.TeslaCoilBlock;
 import com.moakiee.ae2lt.blockentity.AdvancedWirelessOverloadedControllerBlockEntity;
 import com.moakiee.ae2lt.blockentity.WirelessOverloadedControllerBlockEntity;
 import com.moakiee.ae2lt.blockentity.WirelessReceiverBlockEntity;
-import com.moakiee.ae2lt.config.EarlyCompatibilityConfig;
 import com.moakiee.ae2lt.item.FixedInfiniteCellItem;
 import com.moakiee.ae2lt.item.FixedInfiniteCellItem.CellOutcome;
-import net.minecraft.ChatFormatting;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
@@ -66,11 +64,11 @@ import net.minecraftforge.common.util.NonNullSupplier;
 import net.minecraftforge.event.AttachCapabilitiesEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.ModList;
-import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.event.config.ModConfigEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
+import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.items.IItemHandlerModifiable;
 import net.minecraftforge.energy.IEnergyStorage;
@@ -118,7 +116,6 @@ import com.moakiee.ae2lt.recipe.RecipeConflictScanner;
 import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternDecoder;
 
 import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.server.ServerStartingEvent;
 import net.minecraftforge.event.server.ServerStoppedEvent;
 import net.minecraftforge.event.TickEvent;
@@ -128,8 +125,6 @@ import org.slf4j.Logger;
 @Mod(AE2LightningTech.MODID)
 public class AE2LightningTech {
     public static final String MODID = "ae2lt";
-    private static final String DATA_ENERGISTICS_COMPATIBILITY_ISSUE =
-            "https://github.com/fish1145/DataEnergistics/issues/144";
     private static final Logger LOG = LogUtils.getLogger();
     private static final CraftingCoreRegistry CRAFTING_CORE_REGISTRY = new CraftingCoreRegistry();
 
@@ -240,7 +235,7 @@ public class AE2LightningTech {
                         acceptCreative(output, ModBlocks.CLOSED_LOOP_PATTERN_STORAGE);
                         acceptCreative(output, ModBlocks.CLOSED_LOOP_SEED_STORAGE);
                         acceptCreative(output, ModItems.TIANSHU_PATTERN_ENCODING_TERMINAL);
-                        acceptCreative(output, ModItems.TIANSHU_WIRELESS_PATTERN_ENCODING_TERMINAL);
+                        ModItems.TIANSHU_WIRELESS_PATTERN_ENCODING_TERMINAL.ifPresent(output::accept);
 
                         // 天枢物质扭曲矩阵
                         acceptCreative(output, ModBlocks.MATTER_WARPING_MATRIX_CASING);
@@ -372,10 +367,11 @@ public class AE2LightningTech {
                     })
                     .build());
 
-    public AE2LightningTech() {
-        // Forge 1.20.1: the mod bus comes from FMLJavaModLoadingContext; the
-        // NeoForge constructor injection (IEventBus, ModContainer) does not exist.
-        IEventBus modEventBus = net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext.get().getModEventBus();
+    public AE2LightningTech(FMLJavaModLoadingContext loadingContext) {
+        // Forge 47.4 injects the active loading context into the mod constructor.
+        // Keeping the event bus and config registration on that injected instance
+        // avoids the deprecated static context lookups and cannot select another mod.
+        IEventBus modEventBus = loadingContext.getModEventBus();
 
         AE2LTConfigMigration.runIfNeeded();
         WirelessPatternProviderPolicy.setMaxDistanceSupplier(
@@ -400,72 +396,25 @@ public class AE2LightningTech {
         // (e.g. when the client opens the Lightning Assembly Chamber screen), which
         // fails with "Registration of impl channels is locked".
         NetworkInit.register();
-        // ae2wtlib is optional: only touch the integration when it is actually loaded
-        // (the integration class references ae2wtlib types and must not be loaded without it).
+        // AE2WTLib is optional. Defer its terminal definition until item registration so its
+        // built-in terminals are created first and the registered item is the shared WUT instance.
         if (net.minecraftforge.fml.loading.FMLLoader.getLoadingModList()
                 .getModFileById("ae2wtlib") != null) {
-            Ae2wtlibIntegration.registerTerminal();
+            modEventBus.addListener(Ae2wtlibIntegration::onRegister);
         }
         modEventBus.addListener(ModAEKeyTypes::register);
         modEventBus.addListener(this::registerCapabilities);
         modEventBus.addListener(this::commonSetup);
         modEventBus.addListener(this::onConfigChanged);
-        ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, AE2LTCommonConfig.SPEC);
-        ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT,
+        loadingContext.registerConfig(ModConfig.Type.COMMON, AE2LTCommonConfig.SPEC);
+        loadingContext.registerConfig(ModConfig.Type.CLIENT,
                 com.moakiee.ae2lt.config.AE2LTClientConfig.SPEC, "ae2lt-client.toml");
-
-        warnAboutDataEnergistics();
 
         MinecraftForge.EVENT_BUS.addListener(this::onServerStarting);
         MinecraftForge.EVENT_BUS.addListener(this::onServerStopped);
         MinecraftForge.EVENT_BUS.addListener(this::onServerTick);
-        MinecraftForge.EVENT_BUS.addListener(this::onPlayerLoggedIn);
         MinecraftForge.EVENT_BUS.addGenericListener(BlockEntity.class, this::attachBlockEntityCapabilities);
         MinecraftForge.EVENT_BUS.addGenericListener(ItemStack.class, this::attachItemCapabilities);
-    }
-
-    private void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
-        if (event.getEntity().level().isClientSide()
-                || !ModList.get().isLoaded("data_energistics")) {
-            return;
-        }
-
-        String version = ModList.get().getModContainerById("data_energistics")
-                .map(container -> container.getModInfo().getVersion().toString())
-                .orElse("unknown");
-        String warningKey = EarlyCompatibilityConfig.dataEnergisticsMixinProtectionEnabled()
-                ? "ae2lt.compat.data_energistics.unsupported"
-                : "ae2lt.compat.data_energistics.protection_disabled";
-        event.getEntity().sendSystemMessage(Component.translatable(
-                        warningKey, version)
-                .withStyle(ChatFormatting.RED, ChatFormatting.BOLD));
-        event.getEntity().sendSystemMessage(Component.translatable(
-                        "ae2lt.compat.data_energistics.feedback_scope")
-                .withStyle(ChatFormatting.YELLOW));
-    }
-
-    private static void warnAboutDataEnergistics() {
-        if (!ModList.get().isLoaded("data_energistics")) {
-            return;
-        }
-        String version = ModList.get().getModContainerById("data_energistics")
-                .map(container -> container.getModInfo().getVersion().toString())
-                .orElse("unknown");
-        if (EarlyCompatibilityConfig.dataEnergisticsMixinProtectionEnabled()) {
-            LOG.error("Data Energistics {} detected. AE2LT has taken the necessary measures to mitigate "
-                    + "compatibility problems where possible, but this combination remains unsupported. "
-                    + "To disable this protection, set compatibility.dataEnergisticsMixinProtection=false "
-                    + "in ae2lt-common.toml and fully restart the client or server. "
-                    + "Do not report crashes, broken features, compatibility failures, or performance "
-                    + "problems from this combination to either the AE2 Lightning Tech or Data Energistics "
-                    + "issue tracker. Compatibility details: {}", version,
-                    DATA_ENERGISTICS_COMPATIBILITY_ISSUE);
-        } else {
-            LOG.error("Data Energistics {} detected. AE2LT compatibility protection is disabled by "
-                    + "configuration, so no startup safeguards are active. This combination remains "
-                    + "unsupported. Do not report resulting problems to either issue tracker. "
-                    + "Compatibility details: {}", version, DATA_ENERGISTICS_COMPATIBILITY_ISSUE);
-        }
     }
 
     // Prevents automation from accessing the workbench inventory
@@ -481,11 +430,6 @@ public class AE2LightningTech {
 
     private void registerCapabilities(RegisterCapabilitiesEvent event) {
         event.register(ILightningEnergyHandler.class);
-        if (ModList.get().isLoaded("mekanism")) {
-            // 1.20.1: Mekanism armor capabilities are attached per ItemStack on the
-            // game bus (RegisterCapabilitiesEvent.registerItem does not exist).
-            MinecraftForge.EVENT_BUS.addListener(MekanismArmorIntegration::attachCapabilities);
-        }
     }
 
     /**
@@ -511,6 +455,13 @@ public class AE2LightningTech {
      * NeoForge registerItem API.
      */
     private void attachItemCapabilities(AttachCapabilitiesEvent<ItemStack> event) {
+        // AttachCapabilitiesEvent is generic and must be registered through addGenericListener.
+        // Reuse this already-registered ItemStack listener for the optional Mekanism providers;
+        // registering a second listener from RegisterCapabilitiesEvent crashes Forge's mod load.
+        if (ModList.get().isLoaded("mekanism")) {
+            MekanismArmorIntegration.attachCapabilities(event);
+        }
+
         var stack = event.getObject();
         var item = stack.getItem();
         if (item == ModItems.ELECTROMAGNETIC_RAILGUN.get()) {
@@ -520,7 +471,8 @@ public class AE2LightningTech {
                 || item == ModItems.CELESTWEAVE_CONDUIT.get()
                 || item == ModItems.CELESTWEAVE_STRIDE.get()) {
             attachItemEnergy(event, () -> ArmorEnergyBuffer.asEnergyStorage(stack));
-        } else if (item == ModItems.TIANSHU_WIRELESS_PATTERN_ENCODING_TERMINAL.get()) {
+        } else if (ModItems.TIANSHU_WIRELESS_PATTERN_ENCODING_TERMINAL.isPresent()
+                && item == ModItems.TIANSHU_WIRELESS_PATTERN_ENCODING_TERMINAL.get()) {
             // PoweredItemCapabilities is package-private in AE2 1.20.1, so bridge the
             // IAEItemPowerStorage sink with a small IEnergyStorage adapter instead.
             attachItemEnergy(event,
@@ -1161,13 +1113,12 @@ public class AE2LightningTech {
             registerAppliedFluxInductionCardCompat();
             registerOverloadTntDispenseBehavior();
 
-            GridLinkables.register(
-                    ModItems.TIANSHU_WIRELESS_PATTERN_ENCODING_TERMINAL.get(),
-                    WirelessTerminalItem.LINKABLE_HANDLER);
-
             // ae2wtlib is optional: full integration (WUT definition check + overloaded
             // frequency card upgrade slots) only runs when the implementation mod is present.
             if (net.minecraftforge.fml.ModList.get().isLoaded("ae2wtlib")) {
+                GridLinkables.register(
+                        ModItems.TIANSHU_WIRELESS_PATTERN_ENCODING_TERMINAL.get(),
+                        WirelessTerminalItem.LINKABLE_HANDLER);
                 Ae2wtlibIntegration.verifyTerminalRegistration();
                 Ae2wtlibIntegration.register();
             }

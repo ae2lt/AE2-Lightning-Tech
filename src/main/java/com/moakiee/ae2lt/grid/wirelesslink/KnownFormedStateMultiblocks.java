@@ -13,6 +13,6 @@ final class KnownFormedStateMultiblocks {
         return ADVANCED_AE_CRAFTING_BLOCK_ENTITY.equals(ownerClassName)
                 || ownerClassName.startsWith(EXTENDED_AE_ASSEMBLER_MATRIX_PREFIX)
                 || ("advanced_ae".equals(blockNamespace) && blockPath.startsWith("quantum_"))
-                || ("extendedae".equals(blockNamespace) && blockPath.startsWith("assembler_matrix_"));
+                || ("expatternprovider".equals(blockNamespace) && blockPath.startsWith("assembler_matrix_"));
     }
 }

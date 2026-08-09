@@ -2,6 +2,7 @@ package com.moakiee.ae2lt.integration.emi;
 
 import appeng.integration.modules.emi.EmiEncodePatternHandler;
 import com.moakiee.ae2lt.AE2LightningTech;
+import com.moakiee.ae2lt.integration.ae2wtlib.TianshuWirelessTerminalFactory;
 import com.moakiee.ae2lt.integration.recipeviewer.multiblock.MultiblockStructureRecipes;
 import com.moakiee.ae2lt.menu.TianshuPatternEncodingTermMenu;
 import com.moakiee.ae2lt.menu.TianshuWirelessPatternEncodingTermMenu;
@@ -33,9 +34,11 @@ public final class AE2LTEmiPlugin implements EmiPlugin {
         registry.addRecipeHandler(
                 TianshuPatternEncodingTermMenu.TYPE,
                 new EmiEncodePatternHandler<>(TianshuPatternEncodingTermMenu.class));
-        registry.addRecipeHandler(
-                TianshuWirelessPatternEncodingTermMenu.TYPE,
-                new EmiEncodePatternHandler<>(TianshuWirelessPatternEncodingTermMenu.class));
+        if (TianshuWirelessTerminalFactory.isAvailable()) {
+            registry.addRecipeHandler(
+                    TianshuWirelessPatternEncodingTermMenu.TYPE,
+                    new EmiEncodePatternHandler<>(TianshuWirelessPatternEncodingTermMenu.class));
+        }
         AE2LTEmiCategories.register(registry);
         registry.addCategory(MULTIBLOCK_STRUCTURE);
         registry.addWorkstation(

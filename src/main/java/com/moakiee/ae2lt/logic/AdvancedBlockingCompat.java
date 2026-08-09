@@ -1,6 +1,8 @@
 package com.moakiee.ae2lt.logic;
 
-import java.lang.reflect.Field;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.util.Collections;
 
 import org.slf4j.Logger;
@@ -8,8 +10,6 @@ import org.slf4j.LoggerFactory;
 
 import net.minecraftforge.fml.ModList;
 
-import appeng.api.config.Setting;
-import appeng.api.config.YesNo;
 import appeng.api.crafting.IPatternDetails;
 import appeng.api.stacks.AEKey;
 import appeng.helpers.patternprovider.PatternProviderLogic;
@@ -33,23 +33,26 @@ public final class AdvancedBlockingCompat {
     private static final Logger LOGGER = LoggerFactory.getLogger("ae2lt/AdvancedBlockingCompat");
     private static final String MOD_ID = "extendedae_plus";
 
-    private static volatile Setting<YesNo> SETTING;
+    private record Handles(Class<?> advancedBlockingClass, MethodHandle getAdvancedBlocking) {}
+
+    private static volatile Handles HANDLES;
     private static volatile boolean INIT_DONE;
 
-    private static Setting<YesNo> setting() {
-        if (INIT_DONE) return SETTING;
+    private static Handles handles() {
+        if (INIT_DONE) return HANDLES;
         synchronized (AdvancedBlockingCompat.class) {
-            if (INIT_DONE) return SETTING;
+            if (INIT_DONE) return HANDLES;
             try {
                 if (!ModList.get().isLoaded(MOD_ID)) return null;
-                Class<?> settingsClass = Class.forName(
-                        "com.extendedae_plus.api.config.EAPSettings");
-                Field f = settingsClass.getField("ADVANCED_BLOCKING");
-                @SuppressWarnings("unchecked")
-                Setting<YesNo> s = (Setting<YesNo>) f.get(null);
-                SETTING = s;
+                Class<?> advancedBlockingClass = Class.forName(
+                        "com.extendedae_plus.api.advancedBlocking.IAdvancedBlocking");
+                MethodHandle getter = MethodHandles.publicLookup().findVirtual(
+                        advancedBlockingClass,
+                        "eap$getAdvancedBlocking",
+                        MethodType.methodType(boolean.class));
+                HANDLES = new Handles(advancedBlockingClass, getter);
                 LOGGER.debug("[ae2lt] ExtendedAE_Plus advanced-blocking compat wired.");
-                return SETTING;
+                return HANDLES;
             } catch (Throwable t) {
                 LOGGER.warn("[ae2lt] Failed to wire ExtendedAE_Plus advanced-blocking compat: {}",
                         t.toString());
@@ -61,7 +64,7 @@ public final class AdvancedBlockingCompat {
     }
 
     /**
-     * @return {@code true} iff EAP's {@code ADVANCED_BLOCKING} is enabled on
+     * @return {@code true} iff EAP's per-provider advanced-blocking state is enabled on
      *         {@code logic} <em>and</em> {@code target} fully matches every
      *         input slot of {@code pattern}. When this returns {@code true},
      *         the caller should treat the push as not blocked even when vanilla
@@ -71,10 +74,10 @@ public final class AdvancedBlockingCompat {
     public static boolean shouldBypassBlocking(PatternProviderLogic logic,
                                                PatternProviderTarget target,
                                                IPatternDetails pattern) {
-        Setting<YesNo> s = setting();
-        if (s == null) return false;
+        Handles h = handles();
+        if (h == null || !h.advancedBlockingClass.isInstance(logic)) return false;
         try {
-            if (logic.getConfigManager().getSetting(s) != YesNo.YES) return false;
+            if (!(boolean) h.getAdvancedBlocking.invoke(logic)) return false;
         } catch (Throwable t) {
             return false;
         }
@@ -104,4 +107,3 @@ public final class AdvancedBlockingCompat {
 
     private AdvancedBlockingCompat() {}
 }
-

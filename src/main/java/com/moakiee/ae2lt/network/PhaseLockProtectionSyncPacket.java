@@ -1,18 +1,19 @@
 package com.moakiee.ae2lt.network;
-import java.util.function.Supplier;
-import net.minecraftforge.network.NetworkEvent;
 
+import java.util.function.Supplier;
 import java.util.UUID;
 
+import com.moakiee.ae2lt.client.ClientNetworkPacketHandlers;
 import net.minecraft.network.FriendlyByteBuf;
-
-import com.moakiee.ae2lt.celestweave.CelestweaveArmorState;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.fml.DistExecutor;
+import net.minecraftforge.network.NetworkEvent;
 
 /** Clientbound effective movement-protection settings for the active phase-lock module. */
 public record PhaseLockProtectionSyncPacket(
         UUID armorId,
         boolean blockExternalForces) {
-public static PhaseLockProtectionSyncPacket decode(FriendlyByteBuf buf) {
+    public static PhaseLockProtectionSyncPacket decode(FriendlyByteBuf buf) {
         return new PhaseLockProtectionSyncPacket(
                 buf.readUUID(),
                 buf.readBoolean());
@@ -25,8 +26,9 @@ public static PhaseLockProtectionSyncPacket decode(FriendlyByteBuf buf) {
 
     public static void handle(PhaseLockProtectionSyncPacket payload, Supplier<NetworkEvent.Context> context) {
         NetworkEvent.Context ctx = context.get();
-        ctx.enqueueWork(() -> CelestweaveArmorState.setClientPhaseLockProtection(
-                payload.armorId(),
-                payload.blockExternalForces()));
+        ctx.enqueueWork(() -> DistExecutor.unsafeRunWhenOn(
+                Dist.CLIENT,
+                () -> () -> ClientNetworkPacketHandlers.handlePhaseLockProtection(payload)));
+        ctx.setPacketHandled(true);
     }
 }

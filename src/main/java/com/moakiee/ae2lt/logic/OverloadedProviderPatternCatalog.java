@@ -92,6 +92,10 @@ final class OverloadedProviderPatternCatalog {
         }
 
         var providerDetails = CraftingPatternDelegates.forProviderLookup(executionDetails);
+        var eapOriginal = SmartDoublingCompat.unwrap(providerDetails);
+        if (eapOriginal != null) {
+            providerDetails = CraftingPatternDelegates.forProviderLookup(eapOriginal);
+        }
         if (providerDetails != executionDetails) {
             direct = resolvedByIdentity.get(providerDetails);
             if (direct != null) {
@@ -190,4 +194,3 @@ final class OverloadedProviderPatternCatalog {
         }
     }
 }
-
