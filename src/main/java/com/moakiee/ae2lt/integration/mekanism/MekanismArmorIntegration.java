@@ -128,7 +128,7 @@ public final class MekanismArmorIntegration {
     public static void absorbLaserEnergy(
             ILaserDissipation dissipation,
             LivingEntity target,
-            long availableJoules,
+            FloatingLong availableEnergy,
             double dissipationPercent) {
         if (dissipation != FULL_LASER_DISSIPATION || !(target instanceof ServerPlayer player)) {
             return;
@@ -140,14 +140,18 @@ public final class MekanismArmorIntegration {
                         MekanismProtectionSubmodule.LASER.id())) {
             return;
         }
-        long absorbedJoules = MekanismProtectionRules.absorbedJoules(
-                availableJoules,
-                dissipationPercent);
-        long forgeEnergy = absorbedJoules <= 0L
-                ? 0L
-                : UnitDisplayUtils.EnergyUnit.FORGE_ENERGY
-                        .convertFrom(FloatingLong.create(absorbedJoules))
-                        .longValue();
+        if (availableEnergy == null
+                || availableEnergy.isZero()
+                || !Double.isFinite(dissipationPercent)
+                || dissipationPercent <= 0.0D) {
+            return;
+        }
+        FloatingLong absorbedEnergy = dissipationPercent >= 1.0D
+                ? availableEnergy
+                : availableEnergy.multiply(dissipationPercent);
+        long forgeEnergy = UnitDisplayUtils.EnergyUnit.FORGE_ENERGY
+                .convertFrom(absorbedEnergy)
+                .longValue();
         ArmorEnergyService.receiveExternalEnergy(player, chest, forgeEnergy);
     }
 }

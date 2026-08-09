@@ -481,11 +481,6 @@ public class AE2LightningTech {
 
     private void registerCapabilities(RegisterCapabilitiesEvent event) {
         event.register(ILightningEnergyHandler.class);
-        if (ModList.get().isLoaded("mekanism")) {
-            // 1.20.1: Mekanism armor capabilities are attached per ItemStack on the
-            // game bus (RegisterCapabilitiesEvent.registerItem does not exist).
-            MinecraftForge.EVENT_BUS.addListener(MekanismArmorIntegration::attachCapabilities);
-        }
     }
 
     /**
@@ -511,6 +506,13 @@ public class AE2LightningTech {
      * NeoForge registerItem API.
      */
     private void attachItemCapabilities(AttachCapabilitiesEvent<ItemStack> event) {
+        // AttachCapabilitiesEvent is generic and must be registered through addGenericListener.
+        // Reuse this already-registered ItemStack listener for the optional Mekanism providers;
+        // registering a second listener from RegisterCapabilitiesEvent crashes Forge's mod load.
+        if (ModList.get().isLoaded("mekanism")) {
+            MekanismArmorIntegration.attachCapabilities(event);
+        }
+
         var stack = event.getObject();
         var item = stack.getItem();
         if (item == ModItems.ELECTROMAGNETIC_RAILGUN.get()) {

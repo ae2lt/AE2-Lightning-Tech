@@ -11,6 +11,7 @@ import com.llamalad7.mixinextras.sugar.Local;
 import net.minecraft.world.entity.LivingEntity;
 
 import mekanism.api.lasers.ILaserDissipation;
+import mekanism.api.math.FloatingLong;
 
 import com.moakiee.ae2lt.integration.mekanism.MekanismArmorIntegration;
 
@@ -33,13 +34,13 @@ public abstract class TileEntityBasicLaserMixin {
     private double ae2lt$chargeCelestweaveFromAbsorbedLaser(
             ILaserDissipation dissipation,
             Operation<Double> original,
-            @Local(ordinal = 1) long remainingJoules,
+            @Local(ordinal = 1) FloatingLong remainingEnergy,
             @Local LivingEntity target) {
         double percent = original.call(dissipation);
         MekanismArmorIntegration.absorbLaserEnergy(
                 dissipation,
                 target,
-                remainingJoules,
+                remainingEnergy,
                 percent);
         return percent;
     }
