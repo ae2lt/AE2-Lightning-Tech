@@ -1,5 +1,6 @@
 package com.moakiee.ae2lt.assets;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -12,14 +13,18 @@ class PortResourceParityTest {
     private static final Path RESOURCES = Path.of("src", "main", "resources");
 
     @Test
-    void overloadedPowerSupplyHasItsRegisteredBlockDrop() throws IOException {
+    void conditionallyRegisteredPowerSupplyUsesItsCodeDefinedDrop() throws IOException {
         var lootTable = RESOURCES.resolve(Path.of(
                 "data", "ae2lt", "loot_tables", "blocks", "overloaded_power_supply.json"));
+        var blockSource = Path.of(
+                "src", "main", "java", "com", "moakiee", "ae2lt", "block",
+                "OverloadedPowerSupplyBlock.java");
 
-        assertTrue(Files.isRegularFile(lootTable));
-        var json = Files.readString(lootTable);
-        assertTrue(json.contains("\"name\": \"ae2lt:overloaded_power_supply\""));
-        assertTrue(json.contains("\"condition\": \"minecraft:survives_explosion\""));
+        assertFalse(Files.exists(lootTable),
+                "A loot table cannot reference the AppFlux-gated item when AppFlux is absent");
+        var source = Files.readString(blockSource);
+        assertTrue(source.contains("noLootTable()"));
+        assertTrue(source.contains("List<ItemStack> getDrops"));
     }
 
     @Test
