@@ -232,6 +232,9 @@ dependencies {
     // Keep portable resource and pure-logic regressions executable on the Forge 1.20.1 port.
     testImplementation platform("org.junit:junit-bom:5.10.2")
     testImplementation "org.junit.jupiter:junit-jupiter"
+    testImplementation(fg.deobf("com.moakiee.thunderbolt:thunderbolt:${thunderbolt_version}")) {
+        transitive = false
+    }
     testRuntimeOnly "org.junit.platform:junit-platform-launcher"
 
     annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
