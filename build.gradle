@@ -109,13 +109,6 @@ repositories {
         }
     }
     maven {
-        name = "Bawnorton"
-        url = "https://maven.bawnorton.com/releases"
-        content {
-            includeGroup "com.github.bawnorton.mixinsquared"
-        }
-    }
-    maven {
         name = "Modrinth"
         url = "https://api.modrinth.com/maven"
         content {
@@ -182,12 +175,6 @@ dependencies {
     // Optional Polymorph integration for the Tianshu pattern terminal recipe selector.
     // Runtime jar is supplied by the modpack; only the API is needed at compile time.
     compileOnly fg.deobf("curse.maven:polymorph-388800:6450982")
-
-    // Data Energistics injects broadly into AE2 and AE2LT internals. MixinSquared lets AE2LT
-    // cancel those third-party mixins before application while leaving the mod itself loadable.
-    compileOnly(annotationProcessor(
-            "com.github.bawnorton.mixinsquared:mixinsquared-common:${mixinsquared_version}"))
-    implementation fg.deobf("com.github.bawnorton.mixinsquared:mixinsquared-forge:${mixinsquared_version}")
 
     // Optional integrations. Resolve their public release jars reproducibly instead of relying
     // on an untracked machine-local libs/ directory.

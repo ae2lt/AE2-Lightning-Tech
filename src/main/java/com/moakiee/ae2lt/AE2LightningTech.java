@@ -41,10 +41,8 @@ import com.moakiee.ae2lt.block.TeslaCoilBlock;
 import com.moakiee.ae2lt.blockentity.AdvancedWirelessOverloadedControllerBlockEntity;
 import com.moakiee.ae2lt.blockentity.WirelessOverloadedControllerBlockEntity;
 import com.moakiee.ae2lt.blockentity.WirelessReceiverBlockEntity;
-import com.moakiee.ae2lt.config.EarlyCompatibilityConfig;
 import com.moakiee.ae2lt.item.FixedInfiniteCellItem;
 import com.moakiee.ae2lt.item.FixedInfiniteCellItem.CellOutcome;
-import net.minecraft.ChatFormatting;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
@@ -118,7 +116,6 @@ import com.moakiee.ae2lt.recipe.RecipeConflictScanner;
 import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternDecoder;
 
 import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.server.ServerStartingEvent;
 import net.minecraftforge.event.server.ServerStoppedEvent;
 import net.minecraftforge.event.TickEvent;
@@ -128,8 +125,6 @@ import org.slf4j.Logger;
 @Mod(AE2LightningTech.MODID)
 public class AE2LightningTech {
     public static final String MODID = "ae2lt";
-    private static final String DATA_ENERGISTICS_COMPATIBILITY_ISSUE =
-            "https://github.com/fish1145/DataEnergistics/issues/144";
     private static final Logger LOG = LogUtils.getLogger();
     private static final CraftingCoreRegistry CRAFTING_CORE_REGISTRY = new CraftingCoreRegistry();
 
@@ -414,58 +409,11 @@ public class AE2LightningTech {
         ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT,
                 com.moakiee.ae2lt.config.AE2LTClientConfig.SPEC, "ae2lt-client.toml");
 
-        warnAboutDataEnergistics();
-
         MinecraftForge.EVENT_BUS.addListener(this::onServerStarting);
         MinecraftForge.EVENT_BUS.addListener(this::onServerStopped);
         MinecraftForge.EVENT_BUS.addListener(this::onServerTick);
-        MinecraftForge.EVENT_BUS.addListener(this::onPlayerLoggedIn);
         MinecraftForge.EVENT_BUS.addGenericListener(BlockEntity.class, this::attachBlockEntityCapabilities);
         MinecraftForge.EVENT_BUS.addGenericListener(ItemStack.class, this::attachItemCapabilities);
-    }
-
-    private void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
-        if (event.getEntity().level().isClientSide()
-                || !ModList.get().isLoaded("data_energistics")) {
-            return;
-        }
-
-        String version = ModList.get().getModContainerById("data_energistics")
-                .map(container -> container.getModInfo().getVersion().toString())
-                .orElse("unknown");
-        String warningKey = EarlyCompatibilityConfig.dataEnergisticsMixinProtectionEnabled()
-                ? "ae2lt.compat.data_energistics.unsupported"
-                : "ae2lt.compat.data_energistics.protection_disabled";
-        event.getEntity().sendSystemMessage(Component.translatable(
-                        warningKey, version)
-                .withStyle(ChatFormatting.RED, ChatFormatting.BOLD));
-        event.getEntity().sendSystemMessage(Component.translatable(
-                        "ae2lt.compat.data_energistics.feedback_scope")
-                .withStyle(ChatFormatting.YELLOW));
-    }
-
-    private static void warnAboutDataEnergistics() {
-        if (!ModList.get().isLoaded("data_energistics")) {
-            return;
-        }
-        String version = ModList.get().getModContainerById("data_energistics")
-                .map(container -> container.getModInfo().getVersion().toString())
-                .orElse("unknown");
-        if (EarlyCompatibilityConfig.dataEnergisticsMixinProtectionEnabled()) {
-            LOG.error("Data Energistics {} detected. AE2LT has taken the necessary measures to mitigate "
-                    + "compatibility problems where possible, but this combination remains unsupported. "
-                    + "To disable this protection, set compatibility.dataEnergisticsMixinProtection=false "
-                    + "in ae2lt-common.toml and fully restart the client or server. "
-                    + "Do not report crashes, broken features, compatibility failures, or performance "
-                    + "problems from this combination to either the AE2 Lightning Tech or Data Energistics "
-                    + "issue tracker. Compatibility details: {}", version,
-                    DATA_ENERGISTICS_COMPATIBILITY_ISSUE);
-        } else {
-            LOG.error("Data Energistics {} detected. AE2LT compatibility protection is disabled by "
-                    + "configuration, so no startup safeguards are active. This combination remains "
-                    + "unsupported. Do not report resulting problems to either issue tracker. "
-                    + "Compatibility details: {}", version, DATA_ENERGISTICS_COMPATIBILITY_ISSUE);
-        }
     }
 
     // Prevents automation from accessing the workbench inventory
