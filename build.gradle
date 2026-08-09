@@ -191,6 +191,12 @@ dependencies {
         // declare GeckoLib. Mirror the dependency from its categorized 1.20.1 source project.
         runtimeOnly fg.deobf("curse.maven:geckolib-388172:${advancedae_geckolib_file_id}")
     }
+    // ExtendedAE Plus is optional in production. Pin and expose its real Forge 1.20.1
+    // artifact for reproducible compatibility smoke tests:
+    // -Penable_extendedae_plus_runtime=true.
+    if ((findProperty('enable_extendedae_plus_runtime') ?: 'false').toBoolean()) {
+        runtimeOnly fg.deobf("maven.modrinth:extendedae-plus:${extendedae_plus_version}")
+    }
     compileOnly fg.deobf("maven.modrinth:inventory-profiles-next:${inventory_profiles_next_version}")
     compileOnly fg.deobf("maven.modrinth:applied-energistics-2-wireless-terminals:${ae2wtlib_version}")
     // Exercise the optional wireless-terminal integration in normal development runs. Pass
