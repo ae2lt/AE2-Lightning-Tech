@@ -64,11 +64,11 @@ import net.minecraftforge.common.util.NonNullSupplier;
 import net.minecraftforge.event.AttachCapabilitiesEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.ModList;
-import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.event.config.ModConfigEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
+import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.items.IItemHandlerModifiable;
 import net.minecraftforge.energy.IEnergyStorage;
@@ -367,10 +367,11 @@ public class AE2LightningTech {
                     })
                     .build());
 
-    public AE2LightningTech() {
-        // Forge 1.20.1: the mod bus comes from FMLJavaModLoadingContext; the
-        // NeoForge constructor injection (IEventBus, ModContainer) does not exist.
-        IEventBus modEventBus = net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext.get().getModEventBus();
+    public AE2LightningTech(FMLJavaModLoadingContext loadingContext) {
+        // Forge 47.4 injects the active loading context into the mod constructor.
+        // Keeping the event bus and config registration on that injected instance
+        // avoids the deprecated static context lookups and cannot select another mod.
+        IEventBus modEventBus = loadingContext.getModEventBus();
 
         AE2LTConfigMigration.runIfNeeded();
         WirelessPatternProviderPolicy.setMaxDistanceSupplier(
@@ -405,8 +406,8 @@ public class AE2LightningTech {
         modEventBus.addListener(this::registerCapabilities);
         modEventBus.addListener(this::commonSetup);
         modEventBus.addListener(this::onConfigChanged);
-        ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, AE2LTCommonConfig.SPEC);
-        ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT,
+        loadingContext.registerConfig(ModConfig.Type.COMMON, AE2LTCommonConfig.SPEC);
+        loadingContext.registerConfig(ModConfig.Type.CLIENT,
                 com.moakiee.ae2lt.config.AE2LTClientConfig.SPEC, "ae2lt-client.toml");
 
         MinecraftForge.EVENT_BUS.addListener(this::onServerStarting);
