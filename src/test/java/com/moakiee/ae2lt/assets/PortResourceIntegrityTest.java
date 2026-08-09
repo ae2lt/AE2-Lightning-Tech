@@ -3,6 +3,7 @@ package com.moakiee.ae2lt.assets;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.Reader;
 import java.nio.file.Files;
@@ -12,6 +13,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Stream;
+
+import javax.imageio.ImageIO;
 
 import org.junit.jupiter.api.Test;
 
@@ -87,6 +90,70 @@ class PortResourceIntegrityTest {
         }
 
         assertTrue(missing.isEmpty(), String.join(System.lineSeparator(), missing));
+    }
+
+    @Test
+    void textureAnimationFramesReferenceExistingSprites() throws IOException {
+        List<String> invalid = new ArrayList<>();
+
+        try (Stream<Path> paths = Files.walk(ASSETS.resolve("textures"))) {
+            for (Path metadata : paths.filter(Files::isRegularFile)
+                    .filter(path -> path.toString().endsWith(".png.mcmeta"))
+                    .toList()) {
+                validateAnimationFrames(metadata, invalid);
+            }
+        }
+
+        assertTrue(invalid.isEmpty(), String.join(System.lineSeparator(), invalid));
+    }
+
+    private static void validateAnimationFrames(Path metadata, List<String> invalid) throws IOException {
+        String metadataName = metadata.getFileName().toString();
+        Path texture = metadata.resolveSibling(metadataName.substring(0, metadataName.length() - ".mcmeta".length()));
+        if (!Files.isRegularFile(texture)) {
+            invalid.add(metadata + " -> missing texture " + texture.getFileName());
+            return;
+        }
+
+        JsonObject root;
+        try (Reader reader = Files.newBufferedReader(metadata)) {
+            root = JsonParser.parseReader(reader).getAsJsonObject();
+        }
+        if (!root.has("animation") || !root.get("animation").isJsonObject()) {
+            return;
+        }
+
+        BufferedImage image = ImageIO.read(texture.toFile());
+        if (image == null) {
+            invalid.add(metadata + " -> unreadable texture " + texture.getFileName());
+            return;
+        }
+
+        JsonObject animation = root.getAsJsonObject("animation");
+        int frameWidth = animation.has("width") ? animation.get("width").getAsInt() : image.getWidth();
+        int frameHeight = animation.has("height") ? animation.get("height").getAsInt() : frameWidth;
+        if (frameWidth <= 0 || frameHeight <= 0
+                || image.getWidth() % frameWidth != 0 || image.getHeight() % frameHeight != 0) {
+            invalid.add(metadata + " -> frame size " + frameWidth + "x" + frameHeight
+                    + " does not divide texture size " + image.getWidth() + "x" + image.getHeight());
+            return;
+        }
+
+        int frameCount = image.getWidth() / frameWidth * (image.getHeight() / frameHeight);
+        if (!animation.has("frames") || !animation.get("frames").isJsonArray()) {
+            return;
+        }
+        for (JsonElement frame : animation.getAsJsonArray("frames")) {
+            JsonElement index = frame.isJsonObject() ? frame.getAsJsonObject().get("index") : frame;
+            if (index == null || !index.isJsonPrimitive() || !index.getAsJsonPrimitive().isNumber()) {
+                invalid.add(metadata + " -> invalid frame declaration " + frame);
+                continue;
+            }
+            int value = index.getAsInt();
+            if (value < 0 || value >= frameCount) {
+                invalid.add(metadata + " -> frame " + value + " outside 0.." + (frameCount - 1));
+            }
+        }
     }
 
     private static void collectModelReferences(Path source, JsonElement element, List<String> missing) {

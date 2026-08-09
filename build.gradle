@@ -229,6 +229,16 @@ dependencies {
         runtimeOnly fg.deobf("me.shedaniel.cloth:cloth-config-forge:${cloth_config_version}")
     }
 
+    // Veil is an optional client rendering backend. Keep its classes out of the native
+    // fallback path; modpacks supply Veil's shaded distribution jar at runtime.
+    // The unclassified artifact is Veil's shaded distribution jar. ForgeGradle flattens it
+    // onto the development module path, where its bundled LWJGL packages conflict with
+    // Minecraft's LWJGL module. The published slim classifier is the correct form for the
+    // deobfuscated compile classpath.
+    compileOnly(fg.deobf("foundry.veil:Veil-forge-${minecraft_version}:${veil_version}:slim")) {
+        transitive = false
+    }
+
     compileOnly "org.jetbrains:annotations:${jetbrains_annotations_version}"
 
     // Keep portable resource and pure-logic regressions executable on the Forge 1.20.1 port.
@@ -279,6 +289,7 @@ tasks.named('processResources', ProcessResources).configure {
             polymorph_version_range: polymorph_version_range,
             thunderbolt_version_range: thunderbolt_version_range,
             ae2wtlib_version_range: ae2wtlib_version_range,
+            veil_version_range: veil_version_range,
     ]
 
     inputs.properties replaceProperties

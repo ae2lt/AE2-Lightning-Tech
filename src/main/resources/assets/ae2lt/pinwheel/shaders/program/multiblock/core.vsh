@@ -4,7 +4,10 @@ layout(location = 2) in vec3 Normal;
 
 uniform mat4 ModelViewMat;
 uniform mat4 ProjMat;
-uniform float VeilRenderTime;
+// Veil 1.20 exposes vanilla GameTime (one unit per Minecraft day) rather than
+// VeilRenderTime. Convert it to seconds so this backend matches the native animation speed.
+uniform float GameTime;
+#define VeilRenderTime (GameTime * 1200.0)
 
 out vec4 vertexColor;
 out vec3 effectNormal;

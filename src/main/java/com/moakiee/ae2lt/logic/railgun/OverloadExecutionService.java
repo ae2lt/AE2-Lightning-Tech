@@ -259,7 +259,7 @@ public final class OverloadExecutionService {
      * dynamic {@code die} override is retained so dungeon cleanup, advancements and
      * other entity-owned completion logic run exactly once.
      */
-    private static void completeNormalDeath(LivingEntity target, DamageSource source, float damage) {
+    static void completeNormalDeath(LivingEntity target, DamageSource source, float damage) {
         int playerDeathsBefore = deathCount(target);
         prepareLethalState(target, source, damage);
 
@@ -378,9 +378,24 @@ public final class OverloadExecutionService {
     }
 
     private static boolean normalDeathCompleted(LivingEntity target, int playerDeathsBefore) {
-        if (target.isDeadOrDying() || target.isRemoved()) return true;
-        return target instanceof ServerPlayer player
-                && player.getStats().getValue(Stats.CUSTOM.get(Stats.DEATHS)) > playerDeathsBefore;
+        int playerDeathsAfter = target instanceof ServerPlayer player
+                ? player.getStats().getValue(Stats.CUSTOM.get(Stats.DEATHS))
+                : -1;
+        return normalDeathCompleted(
+                target.dead,
+                target.isRemoved(),
+                target instanceof ServerPlayer,
+                playerDeathsBefore,
+                playerDeathsAfter);
+    }
+
+    static boolean normalDeathCompleted(
+            boolean deathCommitted,
+            boolean removed,
+            boolean serverPlayer,
+            int playerDeathsBefore,
+            int playerDeathsAfter) {
+        return deathCommitted || removed || (serverPlayer && playerDeathsAfter > playerDeathsBefore);
     }
 
     /** Establishes a lethal combat state without entering the interceptable damage pipeline. */
@@ -390,7 +405,7 @@ public final class OverloadExecutionService {
 
         victim.setNoActionTime(0);
         victim.walkAnimation.setSpeed(1.5F);
-        // 1.20.1: lastHurt 为 protected 且无公共 setter,由 hurt() 内部维护,这里不再手动赋值。
+        victim.lastHurt = amount;
         victim.invulnerableTime = 0;
         victim.getCombatTracker().recordDamage(source, amount);
         victim.setHealth(0.0F);
@@ -401,18 +416,28 @@ public final class OverloadExecutionService {
 
     /** Direct normal-settlement fallback used only when the dynamic death callback was canceled. */
     private static void forceDie(LivingEntity victim, DamageSource source) {
-        if (victim.isRemoved() || victim.isDeadOrDying()) return;
+        if (victim.isRemoved() || victim.dead) return;
 
         LivingEntity killer = source.getEntity() instanceof LivingEntity attacker
                 ? attacker
                 : victim.getKillCredit();
-        // 1.20.1: deathScore 为 protected 且无 getter,按 0 计分;awardKillScore 签名不变。
-        if (killer != null) {
-            killer.awardKillScore(victim, 0, source);
+        if (victim.deathScore >= 0 && killer != null) {
+            killer.awardKillScore(victim, victim.deathScore, source);
         }
         if (victim.isSleeping()) victim.stopSleeping();
-        // 1.20.1: die() 是 public,内部完成 dead 标记、击杀事件、掉落、广播与 DYING 姿态。
-        victim.die(source);
+
+        victim.dead = true;
+        victim.getCombatTracker().recheckStatus();
+
+        if (victim.level() instanceof ServerLevel serverLevel) {
+            Entity sourceEntity = source.getEntity();
+            if (sourceEntity == null || sourceEntity.killedEntity(serverLevel, victim)) {
+                victim.gameEvent(GameEvent.ENTITY_DIE);
+                victim.dropAllDeathLoot(source);
+            }
+            serverLevel.broadcastEntityEvent(victim, (byte) 3);
+        }
+        victim.setPose(Pose.DYING);
     }
 
     // ── NBT Helpers ─────────────────────────────────────────────────────────

@@ -33,8 +33,11 @@ public final class CoreEffectShaders {
 
     @SubscribeEvent
     public static void registerShaders(RegisterShadersEvent event) throws IOException {
-        // 1.20.1: Veil integration removed (see CoreEffectBackend) — always native.
-        LOGGER.info("Registering native core-effect shaders");
+        if (CoreEffectBackend.useVeil()) {
+            LOGGER.info("Compatible Veil detected; preparing native core-effect shaders as fallback");
+        } else {
+            LOGGER.info("Veil not detected or incompatible; using the native core-effect shader backend");
+        }
 
         registerShader(event, TIANSHU_SHADER, TIANSHU);
         registerShader(event, MATRIX_SHADER, MATRIX);
@@ -92,10 +95,11 @@ public final class CoreEffectShaders {
 
         @Override
         public void apply() {
-            super.apply();
             if (effectTime != null) {
                 effectTime.set((System.currentTimeMillis() % TIME_WRAP_MILLIS) / 1000.0F);
             }
+            // ShaderInstance uploads dirty uniforms inside apply(), so update the value first.
+            super.apply();
         }
     }
 }
