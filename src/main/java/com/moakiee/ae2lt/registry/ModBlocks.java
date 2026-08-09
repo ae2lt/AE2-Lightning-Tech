@@ -48,6 +48,7 @@ import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.material.MapColor;
 import net.minecraft.world.level.material.PushReaction;
+import net.minecraftforge.fml.loading.FMLLoader;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
@@ -195,7 +196,10 @@ public final class ModBlocks {
             registerBlock("overloaded_interface", OverloadedInterfaceBlock::new);
 
     public static final RegistryObject<OverloadedPowerSupplyBlock> OVERLOADED_POWER_SUPPLY =
-            registerBlock("overloaded_power_supply", OverloadedPowerSupplyBlock::new);
+            registerBlock(
+                    "overloaded_power_supply",
+                    OverloadedPowerSupplyBlock::new,
+                    ModBlocks::isAppFluxLoaded);
 
     public static final RegistryObject<WirelessReceiverBlock> WIRELESS_RECEIVER =
             registerBlock("wireless_receiver", WirelessReceiverBlock::new);
@@ -372,5 +376,10 @@ public final class ModBlocks {
     public static boolean hasOverloadedPowerSupply() {
         return OVERLOADED_POWER_SUPPLY != null;
     }
-}
 
+    private static boolean isAppFluxLoaded() {
+        // This class is initialized while deferred registrations are assembled, before
+        // ModList is guaranteed to be available. The loading list is already complete here.
+        return FMLLoader.getLoadingModList().getModFileById("appflux") != null;
+    }
+}

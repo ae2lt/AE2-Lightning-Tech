@@ -1,11 +1,13 @@
 package com.moakiee.ae2lt.block;
 
 import java.util.EnumMap;
+import java.util.List;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
@@ -18,6 +20,8 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
+import net.minecraft.world.level.storage.loot.LootParams;
+import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 
 import appeng.api.orientation.IOrientationStrategy;
 import appeng.api.orientation.OrientationStrategies;
@@ -61,7 +65,9 @@ public class OverloadedPowerSupplyBlock extends AE2LTBaseEntityBlock<OverloadedP
             BlockShapeHelper.createAllFacingShapes(UP_SHAPE);
 
     public OverloadedPowerSupplyBlock() {
-        super(metalProps().noOcclusion().forceSolidOn());
+        // The block is conditionally registered with AppFlux. Keeping its drop in code avoids
+        // loading a loot table that references an intentionally absent item without AppFlux.
+        super(metalProps().noOcclusion().forceSolidOn().noLootTable());
         registerDefaultState(defaultBlockState()
                 .setValue(POWERED, false)
                 .setValue(OVERLOADED, false)
@@ -100,6 +106,17 @@ public class OverloadedPowerSupplyBlock extends AE2LTBaseEntityBlock<OverloadedP
     }
 
     @Override
+    public List<ItemStack> getDrops(BlockState state, LootParams.Builder builder) {
+        Float explosionRadius = builder.getOptionalParameter(LootContextParams.EXPLOSION_RADIUS);
+        if (explosionRadius != null
+                && explosionRadius > 0.0F
+                && builder.getLevel().getRandom().nextFloat() > 1.0F / explosionRadius) {
+            return List.of();
+        }
+        return List.of(new ItemStack(this));
+    }
+
+    @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos,
                                                Player player, BlockHitResult hitResult) {
         if (InteractionUtil.isInAlternateUseMode(player)) {
@@ -116,4 +133,3 @@ public class OverloadedPowerSupplyBlock extends AE2LTBaseEntityBlock<OverloadedP
         return InteractionResult.PASS;
     }
 }
-
