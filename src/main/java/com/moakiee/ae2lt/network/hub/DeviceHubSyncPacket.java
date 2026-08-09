@@ -1,15 +1,14 @@
 package com.moakiee.ae2lt.network.hub;
-import java.util.function.Supplier;
-import net.minecraftforge.network.NetworkEvent;
-import net.minecraft.client.Minecraft;
 
+import java.util.function.Supplier;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.moakiee.ae2lt.client.ClientNetworkPacketHandlers;
 import net.minecraft.network.FriendlyByteBuf;
-
-import com.moakiee.ae2lt.menu.hub.DeviceHubMenu;
-import com.moakiee.ae2lt.network.NetworkInit;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.fml.DistExecutor;
+import net.minecraftforge.network.NetworkEvent;
 
 /** Server -> Client: sync full hub display state that cannot safely fit in menu data slots. */
 public record DeviceHubSyncPacket(
@@ -32,7 +31,7 @@ public record DeviceHubSyncPacket(
         List<String> moduleConfigValues,
         List<Boolean> moduleConfigEditable
 ) {
-public static DeviceHubSyncPacket decode(FriendlyByteBuf buf) {
+    public static DeviceHubSyncPacket decode(FriendlyByteBuf buf) {
         int containerId = buf.readVarInt();
         String deviceName = buf.readUtf(256);
         boolean hasCore = buf.readBoolean();
@@ -118,29 +117,9 @@ public static DeviceHubSyncPacket decode(FriendlyByteBuf buf) {
 
     public static void handle(DeviceHubSyncPacket pkt, Supplier<NetworkEvent.Context> ctxSup) {
         NetworkEvent.Context ctx = ctxSup.get();
-        ctx.enqueueWork(() -> {
-            if (Minecraft.getInstance().player.containerMenu instanceof DeviceHubMenu menu
-                    && menu.containerId == pkt.containerId()) {
-                menu.receiveSync(
-                        pkt.deviceName(),
-                        pkt.hasCore(),
-                        pkt.powered(),
-                        pkt.terrainDestruction(),
-                        pkt.pvp(),
-                        pkt.soundEnabled(),
-                        pkt.chainDamage(),
-                        pkt.forceOverloadRemoval(),
-                        pkt.chargedSplash(),
-                        pkt.moduleNameKeys(),
-                        pkt.moduleCounts(),
-                        pkt.moduleEnabled(),
-                        pkt.selectedModuleIndex(),
-                        pkt.moduleConfigKeys(),
-                        pkt.moduleConfigLabels(),
-                        pkt.moduleConfigValues(),
-                        pkt.moduleConfigEditable());
-            }
-        });
+        ctx.enqueueWork(() -> DistExecutor.unsafeRunWhenOn(
+                Dist.CLIENT,
+                () -> () -> ClientNetworkPacketHandlers.handleDeviceHubSync(pkt)));
         ctx.setPacketHandled(true);
     }
 }

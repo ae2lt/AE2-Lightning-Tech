@@ -1,8 +1,12 @@
 package com.moakiee.ae2lt.network;
-import java.util.function.Supplier;
-import net.minecraftforge.network.NetworkEvent;
 
+import java.util.function.Supplier;
+
+import com.moakiee.ae2lt.client.ClientNetworkPacketHandlers;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.fml.DistExecutor;
+import net.minecraftforge.network.NetworkEvent;
 
 /**
  * Server-to-client cue for one stage of the hyperdimensional Pigmee reveal.
@@ -27,6 +31,9 @@ public record RitualItemBurstPacket(int entityId, byte stage) {
 
     public static void handle(RitualItemBurstPacket packet, Supplier<NetworkEvent.Context> context) {
         NetworkEvent.Context ctx = context.get();
-        ctx.enqueueWork(() -> RitualItemBurstClientBridge.show(packet));
+        ctx.enqueueWork(() -> DistExecutor.unsafeRunWhenOn(
+                Dist.CLIENT,
+                () -> () -> ClientNetworkPacketHandlers.handleRitualItemBurst(packet)));
+        ctx.setPacketHandled(true);
     }
 }

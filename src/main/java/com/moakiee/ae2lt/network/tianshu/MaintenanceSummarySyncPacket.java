@@ -1,20 +1,22 @@
 package com.moakiee.ae2lt.network.tianshu;
+
 import java.util.function.Supplier;
+
 import appeng.api.stacks.AEKey;
+import com.moakiee.ae2lt.client.ClientNetworkPacketHandlers;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.InventoryMaintenanceStatus;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.ReservedStockMatchMode;
-import com.moakiee.ae2lt.menu.TianshuPatternEncodingTermMenu;
-import com.moakiee.ae2lt.network.NetworkInit;
 import java.util.ArrayList;
 import java.util.List;
-import net.minecraftforge.network.NetworkEvent;
-import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.fml.DistExecutor;
+import net.minecraftforge.network.NetworkEvent;
 
 public record MaintenanceSummarySyncPacket(
         int containerId, int selectionRevision, long revision,
         boolean overflow, List<Entry> entries) {
-public MaintenanceSummarySyncPacket {
+    public MaintenanceSummarySyncPacket {
         entries = List.copyOf(entries);
         TianshuPacketLimits.requireListSize("maintenance summary", entries.size());
     }
@@ -58,21 +60,11 @@ public MaintenanceSummarySyncPacket {
         return new MaintenanceSummarySyncPacket(
                 container, selectionRevision, revision, overflow, entries);
     }
-    // 1.20.1: this is a server→client sync; the 1.21 handle ran on the client's menu, so the
-    // reception side must be checked and the client player used (ctx.getSender() is null here).
     public static void handle(MaintenanceSummarySyncPacket packet, Supplier<NetworkEvent.Context> context) {
         var ctx = context.get();
-        ctx.enqueueWork(() -> {
-            if (ctx.getDirection().getReceptionSide().isClient()) {
-                var player = Minecraft.getInstance().player;
-                if (player != null && player.containerMenu instanceof TianshuPatternEncodingTermMenu menu
-                        && menu.containerId == packet.containerId()) {
-                    menu.receiveMaintenanceSummary(
-                            packet.selectionRevision(), packet.revision(),
-                            packet.overflow(), packet.entries());
-                }
-            }
-        });
+        ctx.enqueueWork(() -> DistExecutor.unsafeRunWhenOn(
+                Dist.CLIENT,
+                () -> () -> ClientNetworkPacketHandlers.handleMaintenanceSummarySync(packet)));
         ctx.setPacketHandled(true);
     }
 
