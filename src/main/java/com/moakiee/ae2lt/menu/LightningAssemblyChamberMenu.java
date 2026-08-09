@@ -65,7 +65,7 @@ public class LightningAssemblyChamberMenu extends AEBaseMenu implements Frequenc
     public LightningAssemblyChamberMenu(int id, Inventory playerInventory, LightningAssemblyChamberBlockEntity host) {
         super(TYPE, id, playerInventory, host);
         this.host = host;
-        // 缃戠粶宸ュ叿 toolbox锛氭墜鎸佺綉缁滃伐鍏锋椂鍦?GUI 鍙充晶鏆撮湶 9 鏍煎崌绾у崱妲?
+        // 网络工具 toolbox：手持网络工具时在 GUI 右侧暴露 9 格升级卡槽
         this.toolbox = new ToolboxMenu(this);
 
         addMachineSlots();

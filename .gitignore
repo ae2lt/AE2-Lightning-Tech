@@ -59,3 +59,6 @@ Source Code/
 *.ps1
 *.txt
 libs/
+
+# Port debug scratch dirs
+.dbg_tmp*/

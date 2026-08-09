@@ -2,6 +2,6 @@
   "parent": "ae2:block/molecular_assembler",
   "textures": {
     "particle": "ae2lt:block/pigmee_molecular_assembler",
-    "base": "ae2lt:block/pigmee_molecular_assembler"
+    "outside": "ae2lt:block/pigmee_molecular_assembler"
   }
 }

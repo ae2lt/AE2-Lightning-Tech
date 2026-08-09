@@ -15,7 +15,6 @@ import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import net.minecraft.client.renderer.entity.ItemRenderer;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.client.resources.model.BakedModel;
-import net.minecraft.client.resources.model.ModelResourceLocation;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.BlockItem;
@@ -25,10 +24,12 @@ import net.minecraftforge.client.model.data.ModelData;
 
 public final class PigmeeMolecularAssemblerRenderer
         implements BlockEntityRenderer<PigmeeMolecularAssemblerBlockEntity> {
-    public static final ModelResourceLocation LIGHTS_MODEL = new ModelResourceLocation(
+    // Queried via ModelManager.getModel(ResourceLocation) like the AE2 vanilla
+    // MolecularAssemblerRenderer; a ModelResourceLocation with variant "normal"
+    // would miss the baked cache and silently fall back to the missing model.
+    public static final ResourceLocation LIGHTS_MODEL = ResourceLocation.fromNamespaceAndPath(
             AE2LightningTech.MODID,
-            "block/pigmee_molecular_assembler_lights",
-            "normal");
+            "block/pigmee_molecular_assembler_lights");
 
     private final RandomSource particleRandom = RandomSource.create();
 

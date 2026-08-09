@@ -13,12 +13,17 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.phys.BlockHitResult;
 
+import org.slf4j.Logger;
+
+import com.mojang.logging.LogUtils;
+
 import appeng.api.orientation.IOrientationStrategy;
 import appeng.api.orientation.OrientationStrategies;
 import appeng.menu.locator.MenuLocators;
 import appeng.util.InteractionUtil;
 
 public class LightningAssemblyChamberBlock extends AE2LTBaseEntityBlock<LightningAssemblyChamberBlockEntity> {
+    private static final Logger LOG = LogUtils.getLogger();
     public static final BooleanProperty WORKING = BooleanProperty.create("working");
     public static final BooleanProperty POWERED = BooleanProperty.create("powered");
 
@@ -59,6 +64,8 @@ public class LightningAssemblyChamberBlock extends AE2LTBaseEntityBlock<Lightnin
     @Override
     protected InteractionResult useWithoutItem(
             BlockState state, Level level, net.minecraft.core.BlockPos pos, Player player, BlockHitResult hitResult) {
+        LOG.info("ae2lt: lightning assembly chamber useWithoutItem side={} shift={} be={}",
+                level.isClientSide(), player.isShiftKeyDown(), getBlockEntity(level, pos));
         if (InteractionUtil.isInAlternateUseMode(player)) {
             return InteractionResult.PASS;
         }

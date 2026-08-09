@@ -14,7 +14,6 @@ import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.block.model.BakedQuad;
 import net.minecraft.client.renderer.texture.TextureAtlas;
 import net.minecraft.client.resources.model.BakedModel;
-import net.minecraft.client.resources.model.ModelResourceLocation;
 import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.RandomSource;
@@ -24,10 +23,11 @@ import net.minecraft.world.level.block.state.BlockState;
  * Draws the sparse Hyperdimensional Pigmee markings over the portal shell.
  */
 final class HyperdimensionalPigmeeTextureLayer {
-    static final ModelResourceLocation MODEL = new ModelResourceLocation(
+    // Plain ResourceLocation so ModelManager.getModel resolves the baked model
+    // directly; variant-qualified lookups miss and yield the missing model.
+    static final ResourceLocation MODEL = ResourceLocation.fromNamespaceAndPath(
             AE2LightningTech.MODID,
-            "block/hyperdimensional_pigmee_fumo_overlay",
-            "normal");
+            "block/hyperdimensional_pigmee_fumo_overlay");
 
     private static final long MODEL_SEED = 42L;
     private static final float SURFACE_OFFSET = 0.004F;
