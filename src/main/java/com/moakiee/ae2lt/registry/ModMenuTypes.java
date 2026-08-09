@@ -1,6 +1,7 @@
 package com.moakiee.ae2lt.registry;
 
 import com.moakiee.ae2lt.AE2LightningTech;
+import com.moakiee.ae2lt.integration.ae2wtlib.TianshuWirelessTerminalFactory;
 import com.moakiee.ae2lt.menu.AtmosphericIonizerMenu;
 import com.moakiee.ae2lt.menu.CrystalCatalyzerMenu;
 import com.moakiee.ae2lt.menu.LightningAssemblyChamberMenu;
@@ -24,8 +25,10 @@ import com.moakiee.ae2lt.menu.TianshuSeedStorageMenu;
 import com.moakiee.ae2lt.menu.FrequencyMenu;
 import com.moakiee.ae2lt.menu.hub.DeviceHubMenu;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraftforge.registries.DeferredRegister;
+import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
 
 public final class ModMenuTypes {
@@ -139,9 +142,15 @@ public final class ModMenuTypes {
                     () -> TianshuPatternEncodingTermMenu.TYPE);
 
     public static final RegistryObject<MenuType<TianshuWirelessPatternEncodingTermMenu>>
-            TIANSHU_WIRELESS_PATTERN_ENCODING_TERMINAL = MENU_TYPES.register(
-                    "wireless_tianshu_pattern_encoding_terminal",
-                    () -> TianshuWirelessPatternEncodingTermMenu.TYPE);
+            TIANSHU_WIRELESS_PATTERN_ENCODING_TERMINAL = TianshuWirelessTerminalFactory.isAvailable()
+                    ? MENU_TYPES.register(
+                            "wireless_tianshu_pattern_encoding_terminal",
+                            () -> TianshuWirelessPatternEncodingTermMenu.TYPE)
+                    : RegistryObject.create(
+                            ResourceLocation.fromNamespaceAndPath(
+                                    AE2LightningTech.MODID,
+                                    "wireless_tianshu_pattern_encoding_terminal"),
+                            ForgeRegistries.MENU_TYPES);
 
     private ModMenuTypes() {
     }

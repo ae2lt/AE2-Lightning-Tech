@@ -16,6 +16,7 @@ import com.moakiee.ae2lt.client.gui.FrequencyScreen;
 import com.mojang.logging.LogUtils;
 import org.slf4j.Logger;
 import com.moakiee.ae2lt.client.hub.DeviceHubScreen;
+import com.moakiee.ae2lt.integration.ae2wtlib.TianshuWirelessTerminalFactory;
 import com.moakiee.ae2lt.menu.AtmosphericIonizerMenu;
 import com.moakiee.ae2lt.menu.CrystalCatalyzerMenu;
 import com.moakiee.ae2lt.menu.FrequencyMenu;
@@ -75,8 +76,10 @@ private static final Logger LOG = LogUtils.getLogger();
             MenuScreens.register(MatrixPortMenu.TYPE, MatrixPortScreen::new);
             MenuScreens.register(TianshuSupercomputerControllerMenu.TYPE, TianshuSupercomputerControllerScreen::new);
             MenuScreens.register(TianshuPatternEncodingTermMenu.TYPE, ModScreens::createTianshuPatternEncodingTermScreen);
-            MenuScreens.register(TianshuWirelessPatternEncodingTermMenu.TYPE,
-                    ModScreens::createTianshuWirelessPatternEncodingTermScreen);
+            if (TianshuWirelessTerminalFactory.isAvailable()) {
+                MenuScreens.register(TianshuWirelessPatternEncodingTermMenu.TYPE,
+                        ModScreens::createTianshuWirelessPatternEncodingTermScreen);
+            }
             MenuScreens.register(TianshuSeedStorageMenu.TYPE, ModScreens::createTianshuSeedStorageScreen);
         });
     }

@@ -4,6 +4,7 @@ import java.util.Collection;
 import java.util.List;
 
 import com.moakiee.ae2lt.AE2LightningTech;
+import com.moakiee.ae2lt.integration.ae2wtlib.TianshuWirelessTerminalFactory;
 import com.moakiee.ae2lt.client.CrystalCatalyzerScreen;
 import com.moakiee.ae2lt.client.LightningAssemblyChamberScreen;
 import com.moakiee.ae2lt.client.LightningSimulationChamberScreen;
@@ -197,10 +198,12 @@ public class JEIPlugin implements IModPlugin {
                 TianshuPatternEncodingTermMenu.TYPE,
                 TianshuPatternEncodingTermMenu.class,
                 helper));
-        registration.addUniversalRecipeTransferHandler(new EncodePatternTransferHandler<>(
-                TianshuWirelessPatternEncodingTermMenu.TYPE,
-                TianshuWirelessPatternEncodingTermMenu.class,
-                helper));
+        if (TianshuWirelessTerminalFactory.isAvailable()) {
+            registration.addUniversalRecipeTransferHandler(new EncodePatternTransferHandler<>(
+                    TianshuWirelessPatternEncodingTermMenu.TYPE,
+                    TianshuWirelessPatternEncodingTermMenu.class,
+                    helper));
+        }
 
     }
 
