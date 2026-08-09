@@ -53,8 +53,8 @@ public class OverloadPatternEncoderScreen extends AbstractContainerScreen<Overlo
     private static final int ENTRY_TEXT_X = 90;
     private static final int ENTRY_SWITCH_X = 138;
     private static final int ENTRY_ROW_HEIGHT = 22;
-    private static final int ENTRY_SWITCH_WIDTH = 22;
-    private static final int ENTRY_SWITCH_HEIGHT = 12;
+    private static final int ENTRY_SWITCH_WIDTH = 14;
+    private static final int ENTRY_SWITCH_HEIGHT = 14;
     private static final int VISIBLE_ROWS = 3;
 
     private int scrollOffset;
@@ -172,7 +172,7 @@ public class OverloadPatternEncoderScreen extends AbstractContainerScreen<Overlo
     }
 
     private void renderModeSwitch(GuiGraphics graphics, int x, int y, MatchMode mode) {
-        int v = mode.ignoresComponents() ? 40 : 28;
+        int v = mode.ignoresComponents() ? 14 : 0;
         graphics.blit(CHECKBOX_TEXTURE, x, y, 0, v, ENTRY_SWITCH_WIDTH, ENTRY_SWITCH_HEIGHT, CHECKBOX_TEXTURE_SIZE, CHECKBOX_TEXTURE_SIZE);
     }
 
