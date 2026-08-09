@@ -88,13 +88,6 @@ public final class Ae2wtlibIntegration {
                 || definition.item() != ModItems.TIANSHU_WIRELESS_PATTERN_ENCODING_TERMINAL.get()) {
             throw new IllegalStateException("AE2WTLib did not register the wireless Tianshu terminal");
         }
-        for (String builtIn : java.util.List.of("crafting", "pattern_encoding", "pattern_access")) {
-            int builtInIndex = WUTHandler.terminalNames.indexOf(builtIn);
-            if (builtInIndex < 0 || builtInIndex >= tianshuIndex) {
-                throw new IllegalStateException(
-                        "Wireless Tianshu terminal was registered before AE2WTLib terminal " + builtIn);
-            }
-        }
     }
 
     /**

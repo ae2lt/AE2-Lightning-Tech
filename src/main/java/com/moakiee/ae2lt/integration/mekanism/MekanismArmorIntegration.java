@@ -41,6 +41,7 @@ import com.moakiee.ae2lt.registry.ModItems;
  * a final safety net for already accumulated radiation and direct damage calls.
  */
 public final class MekanismArmorIntegration {
+    private static final FloatingLong MAX_SIGNED_LONG = FloatingLong.createConst(Long.MAX_VALUE);
     private static final IRadiationShielding FULL_RADIATION_SHIELDING = () -> 1.0D;
     private static final CelestweaveLaserDissipation FULL_LASER_DISSIPATION =
             new CelestweaveLaserDissipation();
@@ -126,11 +127,9 @@ public final class MekanismArmorIntegration {
      * absorbed Joules are removed from the beam.
      */
     public static void absorbLaserEnergy(
-            ILaserDissipation dissipation,
             LivingEntity target,
-            FloatingLong availableEnergy,
-            double dissipationPercent) {
-        if (dissipation != FULL_LASER_DISSIPATION || !(target instanceof ServerPlayer player)) {
+            FloatingLong absorbedEnergy) {
+        if (!(target instanceof ServerPlayer player)) {
             return;
         }
         ItemStack chest = CelestweaveEquipmentAccess.findArmor(player, EquipmentSlot.CHEST);
@@ -140,18 +139,18 @@ public final class MekanismArmorIntegration {
                         MekanismProtectionSubmodule.LASER.id())) {
             return;
         }
-        if (availableEnergy == null
-                || availableEnergy.isZero()
-                || !Double.isFinite(dissipationPercent)
-                || dissipationPercent <= 0.0D) {
+        var laserDissipation = chest.getCapability(Capabilities.LASER_DISSIPATION).resolve();
+        if (laserDissipation.isEmpty() || laserDissipation.get() != FULL_LASER_DISSIPATION) {
             return;
         }
-        FloatingLong absorbedEnergy = dissipationPercent >= 1.0D
-                ? availableEnergy
-                : availableEnergy.multiply(dissipationPercent);
-        long forgeEnergy = UnitDisplayUtils.EnergyUnit.FORGE_ENERGY
-                .convertFrom(absorbedEnergy)
-                .longValue();
+        if (absorbedEnergy == null || absorbedEnergy.isZero()) {
+            return;
+        }
+        FloatingLong convertedEnergy = UnitDisplayUtils.EnergyUnit.FORGE_ENERGY
+                .convertFrom(absorbedEnergy);
+        long forgeEnergy = convertedEnergy.greaterThan(MAX_SIGNED_LONG)
+                ? Long.MAX_VALUE
+                : Math.max(0L, convertedEnergy.longValue());
         ArmorEnergyService.receiveExternalEnergy(player, chest, forgeEnergy);
     }
 }
