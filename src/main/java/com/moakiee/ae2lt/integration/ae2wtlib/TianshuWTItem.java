@@ -1,45 +1,29 @@
 package com.moakiee.ae2lt.integration.ae2wtlib;
 
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.Level;
 
-import appeng.api.networking.IGrid;
-
-import de.mari_023.ae2wtlib.terminal.IUniversalWirelessTerminalItem;
 import de.mari_023.ae2wtlib.terminal.ItemWT;
 
-import com.moakiee.ae2lt.item.TianshuWirelessPatternEncodingTerminalItem;
 import com.moakiee.ae2lt.menu.TianshuWirelessPatternEncodingTermMenu;
 
 /**
  * ae2wtlib-aware variant of the wireless Tianshu terminal item.
  *
- * <p>Registered instead of the base item when ae2wtlib is present at runtime so
- * {@link Ae2wtlibIntegration#registerTerminal()} can hand the exact registered
- * instance to the WUT handler (which matches items by identity). The AP-link
- * / quantum-bridge grid lookup is delegated to a throwaway {@link ItemWT}
- * instance so the same behaviour as the pre-split implementation is kept.
- * Only loaded when ae2wtlib is on the classpath.</p>
+ * <p>Only loaded and registered when AE2WTLib is present. Extending {@link ItemWT} directly keeps
+ * its access-point and quantum-bridge lookup without constructing an unregistered helper item.</p>
  */
-public final class TianshuWTItem extends TianshuWirelessPatternEncodingTerminalItem
-        implements IUniversalWirelessTerminalItem {
-
-    private final ItemWT linkedGridSupport = new ItemWT() {
-        @Override
-        public MenuType<?> getMenuType(ItemStack stack) {
-            return TianshuWirelessPatternEncodingTermMenu.TYPE;
-        }
-
-        @Override
-        public IGrid getLinkedGrid(ItemStack stack, Level level, Player player) {
-            return null;
-        }
-    };
+public final class TianshuWTItem extends ItemWT {
+    private static final String DESCRIPTION_ID =
+            "item.ae2lt.wireless_tianshu_pattern_encoding_terminal";
 
     public TianshuWTItem() {
         super();
+    }
+
+    @Override
+    public MenuType<?> getMenuType() {
+        return TianshuWirelessPatternEncodingTermMenu.TYPE;
     }
 
     @Override
@@ -48,7 +32,7 @@ public final class TianshuWTItem extends TianshuWirelessPatternEncodingTerminalI
     }
 
     @Override
-    public IGrid getLinkedGrid(ItemStack stack, Level level, Player player) {
-        return linkedGridSupport.getLinkedGrid(stack, level, player);
+    public String getDescriptionId() {
+        return DESCRIPTION_ID;
     }
 }

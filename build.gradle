@@ -122,6 +122,20 @@ repositories {
             includeGroup "maven.modrinth"
         }
     }
+    maven {
+        name = "Architectury"
+        url = "https://maven.architectury.dev/"
+        content {
+            includeGroup "dev.architectury"
+        }
+    }
+    maven {
+        name = "Shedaniel"
+        url = "https://maven.shedaniel.me/"
+        content {
+            includeGroup "me.shedaniel.cloth"
+        }
+    }
 }
 
 dependencies {
@@ -180,6 +194,13 @@ dependencies {
     compileOnly fg.deobf("maven.modrinth:advancedae:${advancedae_version}")
     compileOnly fg.deobf("maven.modrinth:inventory-profiles-next:${inventory_profiles_next_version}")
     compileOnly fg.deobf("maven.modrinth:applied-energistics-2-wireless-terminals:${ae2wtlib_version}")
+    // Exercise the optional wireless-terminal integration in normal development runs. Pass
+    // -Penable_ae2wtlib_runtime=false to verify the no-integration startup path as well.
+    if ((findProperty('enable_ae2wtlib_runtime') ?: 'true').toBoolean()) {
+        runtimeOnly fg.deobf("maven.modrinth:applied-energistics-2-wireless-terminals:${ae2wtlib_version}")
+        runtimeOnly fg.deobf("dev.architectury:architectury-forge:${architectury_version}")
+        runtimeOnly fg.deobf("me.shedaniel.cloth:cloth-config-forge:${cloth_config_version}")
+    }
 
     compileOnly "org.jetbrains:annotations:${jetbrains_annotations_version}"
 
