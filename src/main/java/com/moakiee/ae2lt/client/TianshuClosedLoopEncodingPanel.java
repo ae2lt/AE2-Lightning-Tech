@@ -273,12 +273,32 @@ final class TianshuClosedLoopEncodingPanel implements ICompositeWidget {
     List<Component> buildStatusTooltip() {
         var lines = new ArrayList<Component>();
         lines.add(statusText());
-        if (menu.uploadState == 0
-                && menu.seedRefillSync.state() == SeedRefillSync.STATE_MISSING) {
-            for (var entry : menu.seedRefillSync.missing()) {
-                lines.add(Component.translatable("ae2lt.tianshu.closed_loop.refill.missing_entry",
-                        entry.what().getDisplayName(), entry.amount())
-                        .withStyle(ChatFormatting.RED));
+        if (menu.uploadState == 0 && isRefillProblem(menu.seedRefillSync.state())) {
+            for (var entry : menu.seedRefillSync.problems()) {
+                if (entry.networkMissing() > 0) {
+                    lines.add(Component.translatable(
+                            "ae2lt.tianshu.closed_loop.refill.network_missing_entry",
+                            entry.what().getDisplayName(), entry.networkMissing())
+                            .withStyle(ChatFormatting.GOLD));
+                }
+                if (entry.storageBlocked() > 0) {
+                    lines.add(Component.translatable(
+                            "ae2lt.tianshu.closed_loop.refill.storage_blocked_entry",
+                            entry.what().getDisplayName(), entry.storageBlocked())
+                            .withStyle(ChatFormatting.RED));
+                }
+            }
+            if (menu.seedRefillSync.state() == SeedRefillSync.STATE_NETWORK_MISSING
+                    || menu.seedRefillSync.state() == SeedRefillSync.STATE_MIXED) {
+                lines.add(Component.translatable(
+                        "ae2lt.tianshu.closed_loop.refill.network_missing_hint")
+                        .withStyle(ChatFormatting.GRAY));
+            }
+            if (menu.seedRefillSync.state() == SeedRefillSync.STATE_STORAGE_BLOCKED
+                    || menu.seedRefillSync.state() == SeedRefillSync.STATE_MIXED) {
+                lines.add(Component.translatable(
+                        "ae2lt.tianshu.closed_loop.refill.storage_blocked_hint")
+                        .withStyle(ChatFormatting.GRAY));
             }
         }
         lines.add(Component.translatable("ae2lt.tianshu.terminal.closed_loop.candidate",
@@ -296,8 +316,12 @@ final class TianshuClosedLoopEncodingPanel implements ICompositeWidget {
         return switch (menu.seedRefillSync.state()) {
             case SeedRefillSync.STATE_COMPLETE ->
                 Component.translatable("ae2lt.tianshu.closed_loop.refill.status.complete");
-            case SeedRefillSync.STATE_MISSING ->
-                Component.translatable("ae2lt.tianshu.closed_loop.refill.status.missing");
+            case SeedRefillSync.STATE_NETWORK_MISSING ->
+                Component.translatable("ae2lt.tianshu.closed_loop.refill.status.network_missing");
+            case SeedRefillSync.STATE_STORAGE_BLOCKED ->
+                Component.translatable("ae2lt.tianshu.closed_loop.refill.status.storage_blocked");
+            case SeedRefillSync.STATE_MIXED ->
+                Component.translatable("ae2lt.tianshu.closed_loop.refill.status.mixed");
             case SeedRefillSync.STATE_UNAVAILABLE ->
                 Component.translatable("ae2lt.tianshu.closed_loop.refill.status.unavailable");
             default -> Component.translatable("ae2lt.tianshu.closed_loop.status."
@@ -309,7 +333,8 @@ final class TianshuClosedLoopEncodingPanel implements ICompositeWidget {
         if (menu.uploadState != 0) return menu.uploadState == 1 ? 0x228822 : 0xAA2222;
         return switch (menu.seedRefillSync.state()) {
             case SeedRefillSync.STATE_COMPLETE -> 0x228822;
-            case SeedRefillSync.STATE_MISSING -> 0xAA7700;
+            case SeedRefillSync.STATE_NETWORK_MISSING -> 0xAA7700;
+            case SeedRefillSync.STATE_STORAGE_BLOCKED, SeedRefillSync.STATE_MIXED -> 0xAA2222;
             case SeedRefillSync.STATE_UNAVAILABLE -> 0xAA2222;
             default -> switch (menu.closedLoopDraftStatus) {
                 case VALID, ENCODED -> 0x228822;
@@ -318,6 +343,12 @@ final class TianshuClosedLoopEncodingPanel implements ICompositeWidget {
                 default -> 0xAA2222;
             };
         };
+    }
+
+    private static boolean isRefillProblem(int state) {
+        return state == SeedRefillSync.STATE_NETWORK_MISSING
+                || state == SeedRefillSync.STATE_STORAGE_BLOCKED
+                || state == SeedRefillSync.STATE_MIXED;
     }
 
     private void syncFields() {
