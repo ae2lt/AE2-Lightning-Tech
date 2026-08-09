@@ -37,7 +37,7 @@ minecraft {
             workingDirectory project.file('run')
             property 'forge.logging.markers', 'REGISTRIES'
             property 'forge.logging.console.level', 'debug'
-            args "-mixin.config=${mod_id}.mixins.json,ae2lt.mekanism.mixins.json,ae2lt.recipeviewer.mixins.json,ae2lt.ae2wtlib.mixins.json"
+            property 'thunderbolt.mixinAudit', 'true'
 
             mods {
                 "${mod_id}" {
@@ -68,7 +68,6 @@ minecraft {
 
 mixin {
     add sourceSets.main, "${mod_id}.refmap.json"
-    config "${mod_id}.mixins.json"
 }
 
 sourceSets.main.resources { srcDir 'src/generated/resources' }
@@ -193,6 +192,12 @@ dependencies {
 }
 
 tasks.named('processResources', ProcessResources).configure {
+    // MixinGradle includes the annotation-processor refmap in packaged jars, but ForgeGradle's
+    // exploded development mod only exposes compiled classes and processed resources. Copy the
+    // generated refmap so dev runs exercise the same remapped selectors as a published build.
+    dependsOn compileJava
+    from(layout.buildDirectory.file("tmp/compileJava/${mod_id}.refmap.json"))
+
     var replaceProperties = [
             minecraft_version: minecraft_version,
             minecraft_version_range: minecraft_version_range,
