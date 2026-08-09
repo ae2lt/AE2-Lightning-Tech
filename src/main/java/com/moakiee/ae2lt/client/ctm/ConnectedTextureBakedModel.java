@@ -33,8 +33,6 @@ public class ConnectedTextureBakedModel implements IDynamicBakedModel {
     public static final ModelProperty<CtmConnectionState> CONNECTION = new ModelProperty<>();
     private static final Direction[] DIRECTIONS = Direction.values();
     private static final float OVERLAY_OFFSET = 1.0F / 1024.0F;
-    private static int DEBUG_COUNT = 0;
-
     private final TextureAtlasSprite baseSprite;
     private final TextureAtlasSprite ctmSprite;
     @Nullable
@@ -62,10 +60,6 @@ public class ConnectedTextureBakedModel implements IDynamicBakedModel {
     @Override
     public ModelData getModelData(BlockAndTintGetter level, BlockPos pos, BlockState state, ModelData modelData) {
         if (!predicate.isActive(level, pos, state)) {
-            if (DEBUG_COUNT < 48) {
-                DEBUG_COUNT++;
-                System.out.println("[CTM] " + pos + " active=false");
-            }
             return modelData;
         }
         boolean[] culled = new boolean[DIRECTIONS.length];
@@ -88,17 +82,6 @@ public class ConnectedTextureBakedModel implements IDynamicBakedModel {
                 }
             }
             corners[idx] = cornerMask;
-        }
-        if (DEBUG_COUNT < 48) {
-            DEBUG_COUNT++;
-            StringBuilder sb = new StringBuilder();
-            for (Direction f : DIRECTIONS) {
-                sb.append(f).append("=e").append(edges[f.get3DDataValue()])
-                        .append("/k").append(corners[f.get3DDataValue()])
-                        .append("/c").append(culled[f.get3DDataValue()] ? 1 : 0).append(' ');
-            }
-            System.out.println("[CTM] " + pos + " ctm=" + ctmSprite.contents().width() + "x"
-                    + ctmSprite.contents().height() + " " + sb);
         }
         return modelData.derive().with(CONNECTION, new CtmConnectionState(culled, edges, corners)).build();
     }
