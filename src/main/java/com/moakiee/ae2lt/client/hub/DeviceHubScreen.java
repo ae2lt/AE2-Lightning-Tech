@@ -103,10 +103,10 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
     private static final int RAILGUN_SETTING_CHARGED_SPLASH = 4;
     private static final int RAILGUN_SETTING_EXECUTION_MODE = 5;
 
-    private static final int CHECKBOX_WIDTH = 22;
-    private static final int CHECKBOX_HEIGHT = 12;
-    private static final int CHECKBOX_OFF_SRC_Y = 28;
-    private static final int CHECKBOX_ON_SRC_Y = 40;
+    private static final int CHECKBOX_WIDTH = 14;
+    private static final int CHECKBOX_HEIGHT = 14;
+    private static final int CHECKBOX_OFF_SRC_Y = 0;
+    private static final int CHECKBOX_ON_SRC_Y = 14;
 
     private static final String[] TAB_LABEL_KEYS = {
             "ae2lt.device_hub.tab.helmet",

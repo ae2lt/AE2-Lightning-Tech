@@ -130,7 +130,10 @@ public final class OverloadedCableRenderHelper {
             List<BakedQuad> quadsOut) {
         var cubeBuilder = new CubeBuilder(quadsOut);
         cubeBuilder.setTexture(texture);
-        setStraightCableUVs(cubeBuilder, facing, 3 / 16f, 13 / 16f);
+        // CubeBuilder#setCustomUv uses the vanilla 0..16 sprite coordinate space,
+        // not normalized 0..1 UVs. Normalizing here samples only a fraction of
+        // the transparent top-left texel and makes straight cable runs disappear.
+        setStraightCableUVs(cubeBuilder, facing, 3, 13);
         addStraightDenseCableSizedCube(facing, cubeBuilder);
     }
 

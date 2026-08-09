@@ -8,17 +8,29 @@ import com.moakiee.ae2lt.registry.ModBlockEntities;
 import com.moakiee.ae2lt.registry.ModFumos;
 import net.minecraft.client.resources.model.ModelResourceLocation;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.client.renderer.ItemBlockRenderTypes;
+import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.entity.ItemEntityRenderer;
 import net.minecraft.client.renderer.entity.TntRenderer;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.client.event.EntityRenderersEvent;
 import net.minecraftforge.client.event.ModelEvent;
+
+import com.moakiee.ae2lt.registry.ModBlocks;
 
 @Mod.EventBusSubscriber(modid = AE2LightningTech.MODID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
 public final class ModEntityRenderers {
     private ModEntityRenderers() {
+    }
+
+    @SubscribeEvent
+    public static void registerRenderLayers(FMLClientSetupEvent event) {
+        event.enqueueWork(() -> ItemBlockRenderTypes.setRenderLayer(
+                ModBlocks.PIGMEE_MOLECULAR_ASSEMBLER.get(),
+                RenderType.cutout()));
     }
 
     @SubscribeEvent
