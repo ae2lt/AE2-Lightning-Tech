@@ -296,7 +296,6 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
 
         var level = overloadedHost.getLevel();
         patternCatalog.rebuild(inventory, level, patterns, patternInputs);
-        SmartDoublingCompat.applyTo(this, patterns);
         finishPendingAdaptiveBatchStateLoad();
         returnPolicy.patternsChanged();
         refreshEjectRegistrations();
@@ -662,14 +661,6 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
             IPatternDetails pattern) {
         boolean craftingLocked = getCraftingLockedReason() != LockCraftingMode.NONE;
         boolean blockingEnabled = isBlocking();
-        if (!craftingLocked && blockingEnabled) {
-            var storageTarget = target.resolveStorageTarget(level, wirelessSource);
-            if (storageTarget != null
-                    && AdvancedBlockingCompat.shouldBypassBlocking(
-                            this, storageTarget, pattern)) {
-                return false;
-            }
-        }
         return target.isBlocked(
                 level,
                 wirelessSource,
