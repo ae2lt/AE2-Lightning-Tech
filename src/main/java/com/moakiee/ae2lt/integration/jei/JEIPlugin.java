@@ -27,7 +27,6 @@ import com.moakiee.ae2lt.menu.TianshuWirelessPatternEncodingTermMenu;
 import com.moakiee.ae2lt.registry.ModBlocks;
 import com.moakiee.ae2lt.registry.ModItems;
 import com.moakiee.ae2lt.util.RecipeManagerByTypeAccess;
-import appeng.integration.modules.jei.transfer.EncodePatternTransferHandler;
 import mezz.jei.api.IModPlugin;
 import mezz.jei.api.JeiPlugin;
 import mezz.jei.api.gui.handlers.IGuiClickableArea;
@@ -194,12 +193,12 @@ public class JEIPlugin implements IModPlugin {
         // AE2 1.20.1 ships its own EncodePatternTransferHandler for the vanilla
         // JEI plugin; its constructor takes (MenuType, Class, transfer-helper).
         var helper = registration.getTransferHelper();
-        registration.addUniversalRecipeTransferHandler(new EncodePatternTransferHandler<>(
+        registration.addUniversalRecipeTransferHandler(new UniversalEncodePatternTransferHandler<>(
                 TianshuPatternEncodingTermMenu.TYPE,
                 TianshuPatternEncodingTermMenu.class,
                 helper));
         if (TianshuWirelessTerminalFactory.isAvailable()) {
-            registration.addUniversalRecipeTransferHandler(new EncodePatternTransferHandler<>(
+            registration.addUniversalRecipeTransferHandler(new UniversalEncodePatternTransferHandler<>(
                     TianshuWirelessPatternEncodingTermMenu.TYPE,
                     TianshuWirelessPatternEncodingTermMenu.class,
                     helper));

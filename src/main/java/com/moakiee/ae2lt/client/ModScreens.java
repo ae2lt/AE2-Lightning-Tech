@@ -80,7 +80,7 @@ public class ModScreens {
     private static TianshuPatternEncodingTermScreen<TianshuPatternEncodingTermMenu> createTianshuPatternEncodingTermScreen(
             TianshuPatternEncodingTermMenu menu, Inventory inv, Component title) {
         var style = StyleManager.loadStyleDoc("/screens/terminals/tianshu_pattern_encoding_terminal.json");
-        return new TianshuPatternEncodingTermScreen(menu, inv, title, style);
+        return new TianshuPatternEncodingTermScreen<>(menu, inv, title, style);
     }
 
     private static TianshuWirelessPatternEncodingTermScreen createTianshuWirelessPatternEncodingTermScreen(
@@ -99,7 +99,7 @@ public class ModScreens {
     private static OverloadedPatternProviderScreen<OverloadedPatternProviderMenu> createOverloadedPatternProviderScreen(
             OverloadedPatternProviderMenu menu, Inventory inv, Component title) {
         var style = StyleManager.loadStyleDoc("/screens/overloaded_pattern_provider.json");
-        return new OverloadedPatternProviderScreen(menu, inv, title, style);
+        return new OverloadedPatternProviderScreen<>(menu, inv, title, style);
     }
 
     private static PigmeePatternProviderScreen createPigmeePatternProviderScreen(

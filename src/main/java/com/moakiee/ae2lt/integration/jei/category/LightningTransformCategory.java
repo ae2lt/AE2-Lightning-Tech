@@ -45,12 +45,10 @@ public class LightningTransformCategory implements IRecipeCategory<LightningTran
     private static final int LABEL_Y = 4;
     private static final int TEXT_COLOR = 0x404040;
 
-    private final IDrawable background;
     private final IDrawable icon;
     private final IDrawable lightningDisplay;
 
     public LightningTransformCategory(IGuiHelper guiHelper) {
-        this.background = guiHelper.createBlankDrawable(WIDTH, HEIGHT);
         this.icon = guiHelper.createDrawableIngredient(LightningJeiIngredients.TYPE, LightningKey.HIGH_VOLTAGE);
         this.lightningDisplay = guiHelper.createDrawableIngredient(LightningJeiIngredients.TYPE, LightningKey.HIGH_VOLTAGE);
     }
@@ -66,8 +64,13 @@ public class LightningTransformCategory implements IRecipeCategory<LightningTran
     }
 
     @Override
-    public IDrawable getBackground() {
-        return background;
+    public int getWidth() {
+        return WIDTH;
+    }
+
+    @Override
+    public int getHeight() {
+        return HEIGHT;
     }
 
     @Override
