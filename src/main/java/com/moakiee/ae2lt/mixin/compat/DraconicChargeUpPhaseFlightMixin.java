@@ -14,11 +14,14 @@ import com.moakiee.ae2lt.celestweave.PhaseFlightPlayerState;
  * Draconic Evolution's guardian writes {@link Abilities#flying} directly on both logical sides.
  * Blocking only those two writes removes the one-tick false window without changing its behavior
  * for creative flight or players that are not actively phase-flying.
+ * <p>
+ * Remapping is left enabled (default) so the FIELD target {@code Abilities.flying} is translated
+ * through the refmap to its SRG name ({@code f_35935_}) in production jars; the DE class name and
+ * {@code serverTick}/{@code clientTick} methods are custom names untouched by remapping.
  */
 @Pseudo
 @Mixin(
-        targets = "com.brandon3055.draconicevolution.entity.guardian.control.ChargeUpPhase",
-        remap = false)
+        targets = "com.brandon3055.draconicevolution.entity.guardian.control.ChargeUpPhase")
 public abstract class DraconicChargeUpPhaseFlightMixin {
     @Redirect(
             method = "serverTick",
