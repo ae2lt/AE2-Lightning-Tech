@@ -605,7 +605,6 @@ public class CrystalCatalyzerBlockEntity extends AENetworkedBlockEntity
         }
 
         clearLockedRecipe();
-        setWorking(false);
         pushOutResult();
         return true;
     }

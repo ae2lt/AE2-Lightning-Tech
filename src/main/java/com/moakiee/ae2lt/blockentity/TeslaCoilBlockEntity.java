@@ -328,7 +328,9 @@ public class TeslaCoilBlockEntity extends AENetworkedBlockEntity
         saveChanges();
         markForClientUpdate();
         logic.onStateChanged();
-        setWorking(false);
+        // Keep the active state across the cycle boundary. The urgent grid tick
+        // decides whether another batch can start and marks us idle only when it
+        // confirms that no follow-up work exists.
         return true;
     }
 
