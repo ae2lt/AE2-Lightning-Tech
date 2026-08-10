@@ -1,0 +1,9 @@
+{
+  "remove": [
+    "ae2lt:celestweave_oculus",
+    "ae2lt:celestweave_core",
+    "ae2lt:celestweave_conduit",
+    "ae2lt:celestweave_stride"
+  ],
+  "values": []
+}
