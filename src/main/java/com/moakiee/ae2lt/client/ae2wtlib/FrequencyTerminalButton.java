@@ -5,6 +5,7 @@ import net.minecraftforge.fml.ModList;
 
 import appeng.client.gui.AEBaseScreen;
 import appeng.menu.SlotSemantics;
+import appeng.menu.slot.AppEngSlot;
 
 import com.moakiee.ae2lt.client.FrequencyBindingClient;
 import com.moakiee.ae2lt.client.TextureToggleButton;
@@ -55,7 +56,14 @@ public final class FrequencyTerminalButton {
 
     private static ItemStack findInstalledFrequencyCard(AEBaseScreen<?> screen) {
         for (var slot : screen.getMenu().getSlots(SlotSemantics.UPGRADE)) {
-            var stack = slot.getItem();
+            // AE2WTLib disables upgrade menu slots outside the scrolling panel's
+            // visible window. AppEngSlot#getItem then reports EMPTY even though
+            // the backing upgrade inventory still contains the card, so inspect
+            // the slot inventory rather than its presentation state.
+            if (!(slot instanceof AppEngSlot appEngSlot)) {
+                continue;
+            }
+            var stack = appEngSlot.getSlotInv().getStackInSlot(0);
             if (stack.getItem() instanceof OverloadedFrequencyCardItem) {
                 return stack;
             }
