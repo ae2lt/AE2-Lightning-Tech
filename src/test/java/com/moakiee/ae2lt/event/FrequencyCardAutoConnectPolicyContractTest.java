@@ -10,7 +10,8 @@ class FrequencyCardAutoConnectPolicyContractTest {
     @Test
     void queueRejectsFakePlayersAndPlayersWithoutAnEnabledAutoCard() throws Exception {
         String registry = Files.readString(Path.of(
-                "src/main/java/com/moakiee/ae2lt/grid/wirelesslink/WirelessLinkRegistry.java"));
+                "src/main/java/com/moakiee/ae2lt/grid/wirelesslink/WirelessLinkRegistry.java"))
+                .replace("\r\n", "\n");
 
         assertTrue(registry.contains(
                 "player.isFakePlayer() || OverloadedFrequencyCardItem.findAutoConnectCard(player).isEmpty()"));
@@ -19,7 +20,8 @@ class FrequencyCardAutoConnectPolicyContractTest {
     @Test
     void automaticControllerConflictsAreSilentButManualConflictsRemainVisible() throws Exception {
         String registry = Files.readString(Path.of(
-                "src/main/java/com/moakiee/ae2lt/grid/wirelesslink/WirelessLinkRegistry.java"));
+                "src/main/java/com/moakiee/ae2lt/grid/wirelesslink/WirelessLinkRegistry.java"))
+                .replace("\r\n", "\n");
 
         String automaticSkip = "automatic\n"
                 + "                    ? ActionFeedback.green(\"ae2lt.frequency_card.auto_silent_skip\")\n"
@@ -31,7 +33,8 @@ class FrequencyCardAutoConnectPolicyContractTest {
     @Test
     void delayedPartTasksVerifyThePartThatWasActuallyPlaced() throws Exception {
         String registry = Files.readString(Path.of(
-                "src/main/java/com/moakiee/ae2lt/grid/wirelesslink/WirelessLinkRegistry.java"));
+                "src/main/java/com/moakiee/ae2lt/grid/wirelesslink/WirelessLinkRegistry.java"))
+                .replace("\r\n", "\n");
 
         assertTrue(registry.contains("matchesExpectedPlacedPart(level, BlockPos.of(pending.posLong()), pending)"));
         assertTrue(registry.contains("pending.expectedPartId().equals(partId(part))"));

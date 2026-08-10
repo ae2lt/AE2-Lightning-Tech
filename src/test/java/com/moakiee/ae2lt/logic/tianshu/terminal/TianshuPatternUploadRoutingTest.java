@@ -104,7 +104,8 @@ class TianshuPatternUploadRoutingTest {
     void duplicateFilteringOnlyInterceptsTriggeredUploadsAndCanBeDisabledByTheClient()
             throws Exception {
         String menu = Files.readString(Path.of(
-                "src/main/java/com/moakiee/ae2lt/menu/TianshuPatternEncodingTermMenu.java"));
+                "src/main/java/com/moakiee/ae2lt/menu/TianshuPatternEncodingTermMenu.java"))
+                .replace("\r\n", "\n");
         String duplicateFilter = Files.readString(Path.of(
                 "src/main/java/com/moakiee/ae2lt/logic/tianshu/terminal/"
                         + "PatternEncodingDuplicateFilter.java"));
