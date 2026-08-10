@@ -22,6 +22,7 @@ import com.moakiee.ae2lt.menu.TianshuSupercomputerControllerMenu;
 import com.moakiee.ae2lt.menu.TianshuPatternEncodingTermMenu;
 import com.moakiee.ae2lt.menu.TianshuWirelessPatternEncodingTermMenu;
 import com.moakiee.ae2lt.menu.TianshuSeedStorageMenu;
+import com.moakiee.ae2lt.menu.VoidCellMenu;
 import com.moakiee.ae2lt.menu.FrequencyMenu;
 import com.moakiee.ae2lt.menu.hub.DeviceHubMenu;
 import net.minecraft.core.registries.Registries;
@@ -130,6 +131,9 @@ public final class ModMenuTypes {
             MATRIX_PORT = MENU_TYPES.register(
                     "matter_warping_matrix_port",
                     () -> MatrixPortMenu.TYPE);
+
+    public static final RegistryObject<MenuType<VoidCellMenu>> VOID_CELL =
+            MENU_TYPES.register("void_cell", () -> VoidCellMenu.TYPE);
 
     public static final RegistryObject<MenuType<TianshuSupercomputerControllerMenu>>
             TIANSHU_SUPERCOMPUTER_CONTROLLER = MENU_TYPES.register(

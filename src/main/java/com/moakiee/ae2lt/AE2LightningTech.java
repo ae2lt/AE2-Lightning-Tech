@@ -100,6 +100,7 @@ import com.moakiee.ae2lt.grid.api.FrequencyApiBridge;
 import com.moakiee.ae2lt.me.GridLightningEnergyHandler;
 import com.moakiee.ae2lt.me.cell.BulkLightningCellHandler;
 import com.moakiee.ae2lt.me.cell.FixedInfiniteCellHandler;
+import com.moakiee.ae2lt.me.cell.VoidCellHandler;
 
 import com.moakiee.ae2lt.logic.MachineAdapterRegistry;
 import com.moakiee.ae2lt.logic.craft.BatchPatternEligibility;
@@ -215,6 +216,7 @@ public class AE2LightningTech {
                         acceptCreative(output, ModItems.LIGHTNING_CELL_COMPONENT_V);
                         acceptCreative(output, ModItems.BULK_LIGHTNING_CELL_COMPONENT);
                         acceptCreative(output, ModItems.INFINITE_STORAGE_CELL);
+                        acceptCreative(output, ModItems.VOID_CELL);
                         output.accept(FixedInfiniteCellItem.createDisplayedResultStack(CellOutcome.HIGH_VOLTAGE));
                         output.accept(FixedInfiniteCellItem.createDisplayedResultStack(CellOutcome.EXTREME_HIGH_VOLTAGE));
 
@@ -1097,6 +1099,7 @@ public class AE2LightningTech {
             PatternDetailsHelper.registerDecoder(ClosedLoopPatternDecoder.INSTANCE);
             StorageCells.addCellHandler(BulkLightningCellHandler.INSTANCE);
             StorageCells.addCellHandler(FixedInfiniteCellHandler.INSTANCE);
+            StorageCells.addCellHandler(VoidCellHandler.INSTANCE);
             ModItems.registerStorageCellModels();
             Upgrades.add(AEItems.SPEED_CARD, ModBlocks.LIGHTNING_SIMULATION_CHAMBER.get(),
                     LightningSimulationChamberBlockEntity.SPEED_CARD_SLOTS);
@@ -1107,6 +1110,8 @@ public class AE2LightningTech {
 
             Upgrades.add(AEItems.FUZZY_CARD, ModItems.OVERLOADED_FILTER_COMPONENT.get(), 1);
             Upgrades.add(AEItems.INVERTER_CARD, ModItems.OVERLOADED_FILTER_COMPONENT.get(), 1);
+            Upgrades.add(AEItems.FUZZY_CARD, ModItems.VOID_CELL.get(), 1);
+            Upgrades.add(AEItems.INVERTER_CARD, ModItems.VOID_CELL.get(), 1);
             Upgrades.add(AEItems.CRAFTING_CARD, ModBlocks.OVERLOADED_INTERFACE.get(), 1);
             Upgrades.add(AEItems.FUZZY_CARD, ModBlocks.OVERLOADED_INTERFACE.get(), 1);
 

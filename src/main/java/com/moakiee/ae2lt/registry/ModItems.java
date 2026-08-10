@@ -16,6 +16,7 @@ import com.moakiee.ae2lt.item.OverloadedWirelessConnectorItem;
 import com.moakiee.ae2lt.item.PerfectElectroChimeCrystalItem;
 import com.moakiee.ae2lt.item.ResearchNoteItem;
 import com.moakiee.ae2lt.item.WeatherCondensateItem;
+import com.moakiee.ae2lt.item.VoidStorageCellItem;
 import com.moakiee.ae2lt.item.BulkLightningStorageCellItem;
 import com.moakiee.ae2lt.item.CelestweaveConduitItem;
 import com.moakiee.ae2lt.item.CelestweaveCoreItem;
@@ -263,6 +264,9 @@ public final class ModItems {
             ITEMS.register(
                     "bulk_lightning_storage_component",
                     () -> new BulkLightningStorageCellItem(new Item.Properties(), 32));
+
+    public static final RegistryObject<VoidStorageCellItem> VOID_CELL =
+            ITEMS.register("void_cell", () -> new VoidStorageCellItem(new Item.Properties()));
 
     public static final RegistryObject<Item> BULK_LIGHTNING_CELL_COMPONENT =
             registerSimpleItem("bulk_lightning_cell_component", new Item.Properties());
@@ -558,6 +562,8 @@ public final class ModItems {
         registerStorageCellModel(INFINITE_STORAGE_CELL);
         registerStorageCellModel(MYSTERIOUS_CELL, "256k_item_cell");
         registerStorageCellModel(PIGMEE_STORAGE_CELL);
+        // Temporary AE2 model until the dedicated void-cell artwork is replaced.
+        registerStorageCellModel(VOID_CELL, "16k_item_cell");
     }
 
     public static ColoredPartItem<OverloadedCablePart> getOverloadedCable(AEColor color) {

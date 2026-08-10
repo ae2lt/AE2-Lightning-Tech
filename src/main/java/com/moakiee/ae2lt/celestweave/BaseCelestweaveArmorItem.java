@@ -46,6 +46,13 @@ public abstract class BaseCelestweaveArmorItem extends ArmorItem implements Devi
     }
 
     @Override
+    public boolean isEnchantable(ItemStack stack) {
+        // Celestweave uses FE instead of vanilla durability, so Item's default
+        // MAX_DAMAGE-based enchantability check does not apply.
+        return true;
+    }
+
+    @Override
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         return swapWithEquipmentSlot(this, level, player, hand);
     }

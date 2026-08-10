@@ -21,6 +21,7 @@ public final class TianshuPatternUploadRouting {
             ResourceLocation.fromNamespaceAndPath("neoecoae", "crafting_system_l4"),
             ResourceLocation.fromNamespaceAndPath("neoecoae", "crafting_system_l6"),
             ResourceLocation.fromNamespaceAndPath("neoecoae", "crafting_system_l9"),
+            ResourceLocation.fromNamespaceAndPath("ae2cs", "meteorite_pattern_provider"),
             MATTER_WARPING_MATRIX_CONTROLLER_ID);
 
     public enum Route {
