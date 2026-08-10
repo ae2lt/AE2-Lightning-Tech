@@ -7,6 +7,7 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Supplier;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -17,6 +18,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 
+import appeng.api.AECapabilities;
 import appeng.api.behaviors.ExternalStorageStrategy;
 import appeng.api.config.Actionable;
 import appeng.api.crafting.IPatternDetails;
@@ -321,16 +323,29 @@ final class AE2NativeMachineAdapter implements MachineAdapter {
             AllowedOutputFilter allowedOutputs,
             IActionSource source,
             OutputSink sink) {
-        var cached = resolveCache(level, pos, face);
-        if (cached == null) return OutputReturnResult.UNAVAILABLE;
+        // Match PatternProviderTarget's resolution order: a native MEStorage
+        // capability is the authoritative target. Only adapt platform item/fluid
+        // capabilities when no native storage exists. Scanning both could extract
+        // the same logical inventory twice when a block exposes both views.
+        var directStorage = resolveDirectStorage(level, pos, face);
+        var storages = preferredExtractionStorages(
+                directStorage,
+                () -> resolveExternalStorages(level, pos, face));
+        return extractOutputsFromStorages(
+                storages, allowedOutputs, source, sink);
+    }
 
-        var wrappers = cached.getWrappers(level.getGameTime());
-        if (wrappers == null) return OutputReturnResult.UNAVAILABLE;
+    static OutputReturnResult extractOutputsFromStorages(
+            List<MEStorage> storages,
+            AllowedOutputFilter allowedOutputs,
+            IActionSource source,
+            OutputSink sink) {
+        if (storages.isEmpty()) return OutputReturnResult.UNAVAILABLE;
 
         boolean extractedAny = false;
         boolean matchingOutputBlocked = false;
 
-        for (var wrapper : wrappers.values()) {
+        for (var storage : storages) {
             // TODO(perf): A 512-target Spark sample put getAvailableStacks at only
             // about 0.1 ms/t, so a discovery cache is not worth its state cost yet.
             // If this becomes material, keep a 100-tick cumulative key window,
@@ -342,7 +357,7 @@ final class AE2NativeMachineAdapter implements MachineAdapter {
             // so a reused buffer accumulates every key ever scanned and makes
             // reset/iteration cost grow unboundedly (was 77% of server tick).
             var scanBuffer = new KeyCounter();
-            wrapper.getAvailableStacks(scanBuffer);
+            storage.getAvailableStacks(scanBuffer);
 
             for (var entry : scanBuffer) {
                 var key = entry.getKey();
@@ -357,7 +372,7 @@ final class AE2NativeMachineAdapter implements MachineAdapter {
                     continue;
                 }
 
-                long taken = wrapper.extract(key, Math.min(cap, amount), Actionable.MODULATE, source);
+                long taken = storage.extract(key, Math.min(cap, amount), Actionable.MODULATE, source);
                 if (taken <= 0) {
                     matchingOutputBlocked = true;
                     continue;
@@ -368,7 +383,7 @@ final class AE2NativeMachineAdapter implements MachineAdapter {
                 if (leftover > 0) {
                     // Sink state changed between maxAccept and accept; try the
                     // machine first, then force the rest on the sink — never void.
-                    leftover -= wrapper.insert(key, leftover, Actionable.MODULATE, source);
+                    leftover -= storage.insert(key, leftover, Actionable.MODULATE, source);
                     if (leftover > 0) {
                         sink.acceptOverflow(key, leftover);
                     }
@@ -381,6 +396,44 @@ final class AE2NativeMachineAdapter implements MachineAdapter {
         return matchingOutputBlocked
                 ? OutputReturnResult.BLOCKED
                 : OutputReturnResult.EMPTY;
+    }
+
+    /**
+     * Select the same authoritative storage view AE2 uses for pattern dispatch.
+     * The fallback is deliberately lazy so blocks exposing native ME storage do
+     * not also resolve or scan their item/fluid capability facades.
+     */
+    static List<MEStorage> preferredExtractionStorages(
+            @Nullable MEStorage directStorage,
+            Supplier<List<MEStorage>> externalStorageFallback) {
+        return directStorage != null
+                ? List.of(directStorage)
+                : externalStorageFallback.get();
+    }
+
+    @Nullable
+    private static MEStorage resolveDirectStorage(
+            ServerLevel level, BlockPos pos, Direction face) {
+        var blockEntity = level.getBlockEntity(pos);
+        if (blockEntity == null) {
+            return null;
+        }
+        return level.getCapability(
+                AECapabilities.ME_STORAGE,
+                pos,
+                blockEntity.getBlockState(),
+                blockEntity,
+                face);
+    }
+
+    private List<MEStorage> resolveExternalStorages(
+            ServerLevel level, BlockPos pos, Direction face) {
+        var cached = resolveCache(level, pos, face);
+        if (cached == null) {
+            return List.of();
+        }
+        var wrappers = cached.getWrappers(level.getGameTime());
+        return wrappers == null ? List.of() : List.copyOf(wrappers.values());
     }
 
     // ---- helpers ----------------------------------------------------------------

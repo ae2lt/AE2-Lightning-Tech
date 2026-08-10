@@ -1,11 +1,16 @@
 package com.moakiee.ae2lt.logic;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 import com.mojang.serialization.MapCodec;
 import org.junit.jupiter.api.Test;
@@ -19,9 +24,12 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 
 import appeng.api.config.Actionable;
+import appeng.api.networking.security.IActionSource;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.AEKeyType;
 import appeng.api.stacks.GenericStack;
+import appeng.api.stacks.KeyCounter;
+import appeng.api.storage.MEStorage;
 import appeng.helpers.patternprovider.PatternProviderTarget;
 
 class AE2NativeMachineAdapterTest {
@@ -96,6 +104,83 @@ class AE2NativeMachineAdapterTest {
         assertEquals(0L, target.inserted(STICK));
     }
 
+    @Test
+    void nativeMeStorageIsExtractedWithoutResolvingOrScanningExternalFacades() {
+        var output = new TestKey("output");
+        var direct = new TrackingStorage("direct", output, 4L);
+        var external = new TrackingStorage("external", output, 9L);
+        var fallbackResolved = new AtomicBoolean();
+
+        var selected = AE2NativeMachineAdapter.preferredExtractionStorages(
+                direct,
+                () -> {
+                    fallbackResolved.set(true);
+                    return List.of(external);
+                });
+        var filter = new AllowedOutputFilter();
+        filter.allowStrict(output);
+        var accepted = new AtomicLong();
+
+        var result = AE2NativeMachineAdapter.extractOutputsFromStorages(
+                selected,
+                filter,
+                IActionSource.empty(),
+                acceptingSink(accepted));
+
+        assertSame(OutputReturnResult.EXTRACTED, result);
+        assertEquals(1, selected.size());
+        assertSame(direct, selected.getFirst());
+        assertFalse(fallbackResolved.get());
+        assertEquals(1, direct.scanCount);
+        assertEquals(1, direct.extractCount);
+        assertEquals(0L, direct.amount);
+        assertEquals(0, external.scanCount);
+        assertEquals(0, external.extractCount);
+        assertEquals(9L, external.amount);
+        assertEquals(4L, accepted.get());
+    }
+
+    @Test
+    void externalFacadesRemainTheFallbackWhenNativeStorageIsAbsent() {
+        MEStorage external = storage("external");
+        var fallbackResolved = new AtomicBoolean();
+
+        var selected = AE2NativeMachineAdapter.preferredExtractionStorages(
+                null,
+                () -> {
+                    fallbackResolved.set(true);
+                    return List.of(external);
+                });
+
+        assertTrue(fallbackResolved.get());
+        assertEquals(1, selected.size());
+        assertSame(external, selected.getFirst());
+    }
+
+    private static MEStorage storage(String description) {
+        return () -> Component.literal(description);
+    }
+
+    private static MachineAdapter.OutputSink acceptingSink(AtomicLong accepted) {
+        return new MachineAdapter.OutputSink() {
+            @Override
+            public long maxAccept(AEKey what, long available) {
+                return available;
+            }
+
+            @Override
+            public long accept(AEKey what, long amount) {
+                accepted.addAndGet(amount);
+                return amount;
+            }
+
+            @Override
+            public void acceptOverflow(AEKey what, long amount) {
+                throw new AssertionError("unexpected overflow");
+            }
+        };
+    }
+
     private static final class CapacityTarget implements PatternProviderTarget {
         private final Map<AEKey, Long> remaining;
         private final Map<AEKey, Long> inserted = new HashMap<>();
@@ -123,6 +208,47 @@ class AE2NativeMachineAdapterTest {
 
         private long inserted(AEKey what) {
             return inserted.getOrDefault(what, 0L);
+        }
+    }
+
+    private static final class TrackingStorage implements MEStorage {
+        private final String description;
+        private final AEKey key;
+        private long amount;
+        private int scanCount;
+        private int extractCount;
+
+        private TrackingStorage(String description, AEKey key, long amount) {
+            this.description = description;
+            this.key = key;
+            this.amount = amount;
+        }
+
+        @Override
+        public Component getDescription() {
+            return Component.literal(description);
+        }
+
+        @Override
+        public void getAvailableStacks(KeyCounter out) {
+            scanCount++;
+            if (amount > 0L) {
+                out.add(key, amount);
+            }
+        }
+
+        @Override
+        public long extract(
+                AEKey what, long requested, Actionable mode, IActionSource source) {
+            extractCount++;
+            if (!key.equals(what) || requested <= 0L) {
+                return 0L;
+            }
+            long extracted = Math.min(amount, requested);
+            if (mode == Actionable.MODULATE) {
+                amount -= extracted;
+            }
+            return extracted;
         }
     }
 
