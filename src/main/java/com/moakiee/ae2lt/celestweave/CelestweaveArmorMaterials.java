@@ -14,6 +14,8 @@ import net.minecraft.world.item.crafting.Ingredient;
  * instead of being registered through a DeferredRegister.
  */
 public final class CelestweaveArmorMaterials {
+    private static final int ENCHANTMENT_VALUE = 32;
+
     private static final Map<ArmorItem.Type, Integer> DEFENSE = Map.of(
             ArmorItem.Type.HELMET, 6,
             ArmorItem.Type.CHESTPLATE, 12,
@@ -33,7 +35,7 @@ public final class CelestweaveArmorMaterials {
 
         @Override
         public int getEnchantmentValue() {
-            return 0;
+            return ENCHANTMENT_VALUE;
         }
 
         @Override
