@@ -2261,7 +2261,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
                     com.moakiee.ae2lt.client.TianshuUploadTriggerClient.shouldTrigger(), false);
             return;
         }
-        encodeServerWithOptions(true);
+        encodeServerWithOptions(false);
     }
 
     /** Used only after a recipe viewer confirms that its slot transfer succeeded. */
@@ -2286,13 +2286,16 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         pendingTriggeredUploadUntil = getPlayer().tickCount + 200;
         expectedTriggeredUploadAck = triggeredUploadAck;
         directUploadTargetsRequested = false;
-        sendClientAction("encodeTianshu",
-                com.moakiee.ae2lt.config.AE2LTClientConfig.interceptDuplicatePatternEncoding());
+        // Duplicate interception belongs to the upload flow. In the default NO_SHIFT mode,
+        // holding Shift therefore bypasses both upload and duplicate interception while still
+        // allowing the pattern to be encoded normally.
+        sendClientAction("encodeTianshu", triggerUpload
+                && com.moakiee.ae2lt.config.AE2LTClientConfig.interceptDuplicatePatternEncoding());
     }
 
-    private void encodeServerWithOptions(Boolean interceptDuplicateEncoding) {
+    private void encodeServerWithOptions(Boolean interceptDuplicateUpload) {
         if (!isServerSide()) return;
-        boolean interceptDuplicates = Boolean.TRUE.equals(interceptDuplicateEncoding);
+        boolean interceptDuplicates = Boolean.TRUE.equals(interceptDuplicateUpload);
         if (tianshuMode.isAe2Mode()) {
             // Build the candidate exactly once. Some recipe integrations expose transient
             // encoding state, so a second call can produce a different definition even though
