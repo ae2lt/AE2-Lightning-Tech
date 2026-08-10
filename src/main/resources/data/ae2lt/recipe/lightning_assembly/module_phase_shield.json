@@ -16,6 +16,12 @@
     },
     {
       "ingredient": {
+        "item": "ae2lt:entangled_topological_lattice"
+      },
+      "count": 16
+    },
+    {
+      "ingredient": {
         "item": "ae2lt:lightning_collapse_matrix"
       },
       "count": 16
