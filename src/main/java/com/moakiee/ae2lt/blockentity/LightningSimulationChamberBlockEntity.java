@@ -384,7 +384,6 @@ public class LightningSimulationChamberBlockEntity extends AENetworkedBlockEntit
 
         clearLockedRecipe();
         resetProgressState();
-        setWorking(false);
         pushOutResult();
         return true;
     }

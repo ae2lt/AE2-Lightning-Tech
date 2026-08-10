@@ -25,6 +25,14 @@ public interface GridRecipeMachineHost<L, C> {
 
     int getProcessingTicksSpent();
 
+    /**
+     * Commits one completed cycle and clears its locked recipe/progress.
+     *
+     * <p>The tick driver owns the working-state transition. Implementations must
+     * not mark the machine idle on success: the next urgent grid tick may lock
+     * another recipe, and an eager idle transition would create a one-tick pulse
+     * between otherwise continuous cycles.</p>
+     */
     boolean completeLockedRecipe(L lockedRecipe, C candidate);
 
     long getMachineStoredEnergy();

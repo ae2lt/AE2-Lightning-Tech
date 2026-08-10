@@ -382,7 +382,6 @@ public class LightningAssemblyChamberBlockEntity extends AENetworkedBlockEntity
 
         clearLockedRecipe();
         resetProgressState();
-        setWorking(false);
         pushOutResult();
         return true;
     }
@@ -731,4 +730,3 @@ public class LightningAssemblyChamberBlockEntity extends AENetworkedBlockEntity
                 .insert(key, amount, Actionable.MODULATE, IActionSource.ofMachine(this));
     }
 }
-
