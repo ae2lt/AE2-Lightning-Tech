@@ -220,9 +220,27 @@ public final class WirelessLinkRegistry extends SavedData {
         }
     }
 
-    private record PendingAutoConnect(UUID playerId, String dimensionId, long posLong, String sideName, int delayTicks) {
+    private record PendingAutoConnect(
+            UUID playerId,
+            String dimensionId,
+            long posLong,
+            String sideName,
+            String expectedPartId,
+            String expectedPartSideName,
+            int delayTicks) {
         PendingAutoConnect tickDown() {
-            return new PendingAutoConnect(playerId, dimensionId, posLong, sideName, delayTicks - 1);
+            return new PendingAutoConnect(
+                    playerId,
+                    dimensionId,
+                    posLong,
+                    sideName,
+                    expectedPartId,
+                    expectedPartSideName,
+                    delayTicks - 1);
+        }
+
+        boolean expectsPlacedPart() {
+            return !expectedPartId.isBlank();
         }
     }
 
@@ -267,11 +285,45 @@ public final class WirelessLinkRegistry extends SavedData {
     }
 
     public void queueAutoConnect(ServerPlayer player, ResourceKey<Level> dimension, BlockPos pos, @Nullable Direction side, int delayTicks) {
+        queueAutoConnect(player, dimension, pos, side, "", "", delayTicks);
+    }
+
+    public void queuePartAutoConnect(
+            ServerPlayer player,
+            ResourceKey<Level> dimension,
+            BlockPos pos,
+            Direction side,
+            String expectedPartId,
+            String expectedPartSideName,
+            int delayTicks) {
+        queueAutoConnect(
+                player,
+                dimension,
+                pos,
+                side,
+                expectedPartId,
+                expectedPartSideName,
+                delayTicks);
+    }
+
+    private void queueAutoConnect(
+            ServerPlayer player,
+            ResourceKey<Level> dimension,
+            BlockPos pos,
+            @Nullable Direction side,
+            String expectedPartId,
+            String expectedPartSideName,
+            int delayTicks) {
+        if (player.isFakePlayer() || OverloadedFrequencyCardItem.findAutoConnectCard(player).isEmpty()) {
+            return;
+        }
         pendingAutoConnect.add(new PendingAutoConnect(
                 player.getUUID(),
                 dimension.location().toString(),
                 pos.asLong(),
                 side == null ? "" : side.getName(),
+                expectedPartId,
+                expectedPartSideName,
                 Math.max(1, delayTicks)));
     }
 
@@ -597,7 +649,9 @@ public final class WirelessLinkRegistry extends SavedData {
         }
 
         if (transmitterNode != null && wouldMergeControllerNetworks(target.node().getGrid(), transmitterNode.getGrid())) {
-            return ActionFeedback.red("ae2lt.frequency_card.controller_conflict");
+            return automatic
+                    ? ActionFeedback.green("ae2lt.frequency_card.auto_silent_skip")
+                    : ActionFeedback.red("ae2lt.frequency_card.controller_conflict");
         }
 
         UUID owner = player == null ? new UUID(0L, 0L) : player.getUUID();
@@ -1018,6 +1072,10 @@ public final class WirelessLinkRegistry extends SavedData {
             return;
         }
 
+        if (!matchesExpectedPlacedPart(level, BlockPos.of(pending.posLong()), pending)) {
+            return;
+        }
+
         var stack = OverloadedFrequencyCardItem.findAutoConnectCard(player).orElse(ItemStack.EMPTY);
         if (stack.isEmpty()) {
             if (OverloadedFrequencyCardItem.hasMultipleAutoConnectCandidates(player)) {
@@ -1101,8 +1159,25 @@ public final class WirelessLinkRegistry extends SavedData {
             case ALREADY_IN_FREQUENCY -> automatic
                     ? ActionFeedback.green("ae2lt.frequency_card.auto_silent_skip")
                     : ActionFeedback.yellow("ae2lt.frequency_card.already_in_frequency");
-            case CONTROLLER_CONFLICT -> ActionFeedback.red("ae2lt.frequency_card.controller_conflict");
+            case CONTROLLER_CONFLICT -> automatic
+                    ? ActionFeedback.green("ae2lt.frequency_card.auto_silent_skip")
+                    : ActionFeedback.red("ae2lt.frequency_card.controller_conflict");
         };
+    }
+
+    private static boolean matchesExpectedPlacedPart(
+            ServerLevel level,
+            BlockPos pos,
+            PendingAutoConnect pending) {
+        if (!pending.expectsPlacedPart()) {
+            return true;
+        }
+        var be = level.getBlockEntity(pos);
+        if (!(be instanceof IPartHost host)) {
+            return false;
+        }
+        var part = host.getPart(parseDirection(pending.expectedPartSideName()));
+        return part != null && pending.expectedPartId().equals(partId(part));
     }
 
     private NativeHostSafety evaluateNativeHostSafety(
