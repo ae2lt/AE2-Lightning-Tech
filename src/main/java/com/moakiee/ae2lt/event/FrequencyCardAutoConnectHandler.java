@@ -1,5 +1,6 @@
 package com.moakiee.ae2lt.event;
 
+import appeng.api.implementations.parts.ICablePart;
 import appeng.api.parts.IPartItem;
 import appeng.parts.PartPlacement;
 import appeng.util.InteractionUtil;
@@ -138,7 +139,7 @@ public final class FrequencyCardAutoConnectHandler {
         if (!(event.getEntity() instanceof ServerPlayer player)) {
             return;
         }
-        if (!(event.getItemStack().getItem() instanceof IPartItem<?>)) {
+        if (!(event.getItemStack().getItem() instanceof IPartItem<?> partItem)) {
             return;
         }
         var clickedFace = event.getFace();
@@ -161,7 +162,18 @@ public final class FrequencyCardAutoConnectHandler {
             if (player.level() instanceof ServerLevel level) {
                 registry.queueClusterTopologyChange(level, target.pos());
             }
-            registry.queueAutoConnect(player, player.level().dimension(), target.pos(), target.side(), 2);
+            var partId = IPartItem.getId(partItem);
+            var expectedPartSideName = FrequencyCardAutoConnectTarget.placedPartStorageSideName(
+                    target.side().getName(),
+                    ICablePart.class.isAssignableFrom(partItem.getPartClass()));
+            registry.queuePartAutoConnect(
+                    player,
+                    player.level().dimension(),
+                    target.pos(),
+                    target.side(),
+                    partId.toString(),
+                    expectedPartSideName,
+                    2);
         }
     }
 
