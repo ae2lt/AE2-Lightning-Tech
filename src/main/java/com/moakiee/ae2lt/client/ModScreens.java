@@ -35,6 +35,7 @@ import com.moakiee.ae2lt.menu.TianshuSupercomputerControllerMenu;
 import com.moakiee.ae2lt.menu.TianshuPatternEncodingTermMenu;
 import com.moakiee.ae2lt.menu.TianshuWirelessPatternEncodingTermMenu;
 import com.moakiee.ae2lt.menu.TianshuSeedStorageMenu;
+import com.moakiee.ae2lt.menu.VoidCellMenu;
 import com.moakiee.ae2lt.menu.hub.DeviceHubMenu;
 import com.moakiee.ae2lt.registry.ModBlocks;
 
@@ -74,6 +75,7 @@ public class ModScreens {
                         ModScreens::createTianshuWirelessPatternEncodingTermScreen);
             }
             MenuScreens.register(TianshuSeedStorageMenu.TYPE, ModScreens::createTianshuSeedStorageScreen);
+            MenuScreens.register(VoidCellMenu.TYPE, ModScreens::createVoidCellScreen);
         });
     }
 
@@ -94,6 +96,12 @@ public class ModScreens {
             TianshuSeedStorageMenu menu, Inventory inv, Component title) {
         var style = StyleManager.loadStyleDoc("/screens/tianshu_seed_storage.json");
         return new TianshuSeedStorageScreen(menu, inv, title, style);
+    }
+
+    private static VoidCellScreen createVoidCellScreen(
+            VoidCellMenu menu, Inventory inv, Component title) {
+        var style = StyleManager.loadStyleDoc("/screens/void_cell.json");
+        return new VoidCellScreen(menu, inv, title, style);
     }
 
     private static OverloadedPatternProviderScreen<OverloadedPatternProviderMenu> createOverloadedPatternProviderScreen(

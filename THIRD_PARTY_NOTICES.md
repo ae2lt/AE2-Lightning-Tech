@@ -1,5 +1,20 @@
 # Third-Party Notices
 
+## ExtendedAE — ME Void Cell
+
+The ME Void Cell implementation, mode-selection GUI, recipe, localization, and GuideME entry
+in this project are adapted from ExtendedAE's Minecraft 1.21.1 implementation. The port replaces
+Minecraft 1.21 data components with namespaced, versioned Minecraft 1.20.1 ItemStack NBT and uses
+the Forge 1.20.1 / AE2 15 menu and storage APIs. No ExtendedAE bitmap texture is redistributed;
+the current visuals use Applied Energistics 2 resources as temporary placeholders.
+
+- Upstream repository: https://github.com/GlodBlock/ExtendedAE
+- Upstream release reviewed and adapted: `1.21-2.2.33-neoforge`
+- Upstream revision: `90005ee29839fb9fa83bbe6544919c722f8b0dc6`
+- Void-cell fix revision incorporated: `1623436f45e0696d4b8c695c7d9df1ebb815158e`
+- Upstream author attribution: GlodBlock
+- Upstream license: GNU Lesser General Public License version 3
+
 ## ExtendedAE Plus [ClientPlus]
 
 The JEI/EMI recipe-transfer hooks and recipe keyword priority model in this project include
