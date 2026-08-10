@@ -583,7 +583,6 @@ public class OverloadProcessingFactoryBlockEntity extends AENetworkBlockEntity
 
         clearLockedRecipe();
         resetProgressState();
-        setWorking(false);
         pushOutResult();
         return true;
     }
