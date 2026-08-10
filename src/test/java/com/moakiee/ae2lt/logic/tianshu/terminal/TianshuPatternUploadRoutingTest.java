@@ -101,7 +101,8 @@ class TianshuPatternUploadRoutingTest {
     }
 
     @Test
-    void duplicateFilteringInterceptsEncodingAndCanBeDisabledByTheClient() throws Exception {
+    void duplicateFilteringOnlyInterceptsTriggeredUploadsAndCanBeDisabledByTheClient()
+            throws Exception {
         String menu = Files.readString(Path.of(
                 "src/main/java/com/moakiee/ae2lt/menu/TianshuPatternEncodingTermMenu.java"));
         String duplicateFilter = Files.readString(Path.of(
@@ -115,7 +116,12 @@ class TianshuPatternUploadRoutingTest {
         assertTrue(menu.contains(
                 "registerClientAction(\"encodeTianshu\", Boolean.class, "
                         + "this::encodeServerWithOptions)"));
-        assertTrue(menu.contains("sendClientAction(\"encodeTianshu\","));
+        assertTrue(menu.contains("sendClientAction(\"encodeTianshu\", triggerUpload"));
+        assertTrue(menu.contains(
+                "triggerUpload\n"
+                        + "                && com.moakiee.ae2lt.config.AE2LTClientConfig"
+                        + ".interceptDuplicatePatternEncoding()"));
+        assertTrue(menu.contains("encodeServerWithOptions(false);"));
         assertTrue(menu.contains("previewAe2EncodingCandidate()"));
         assertTrue(menu.contains(
                 "shouldInterceptDuplicateEncoding(candidate, interceptDuplicates)"));
