@@ -15,21 +15,24 @@ import com.moakiee.ae2lt.celestweave.PhaseFlightPlayerState;
  * Blocking only those two writes removes the one-tick false window without changing its behavior
  * for creative flight or players that are not actively phase-flying.
  * <p>
- * Remapping is left enabled (default) so the FIELD target {@code Abilities.flying} is translated
- * through the refmap to its SRG name ({@code f_35935_}) in production jars; the DE class name and
- * {@code serverTick}/{@code clientTick} methods are custom names untouched by remapping.
+ * Remapping is disabled for the DE-owned class and method names, while the FIELD injection points
+ * explicitly enable it so {@code Abilities.flying} is translated through the refmap to its SRG
+ * name ({@code f_35935_}) in production jars.
  */
 @Pseudo
 @Mixin(
-        targets = "com.brandon3055.draconicevolution.entity.guardian.control.ChargeUpPhase")
+        targets = "com.brandon3055.draconicevolution.entity.guardian.control.ChargeUpPhase",
+        remap = false)
 public abstract class DraconicChargeUpPhaseFlightMixin {
     @Redirect(
             method = "serverTick",
             at = @At(
                     value = "FIELD",
                     target = "Lnet/minecraft/world/entity/player/Abilities;flying:Z",
-                    opcode = Opcodes.PUTFIELD),
-            require = 1)
+                    opcode = Opcodes.PUTFIELD,
+                    remap = true),
+            require = 1,
+            remap = false)
     private void ae2lt$preserveServerPhaseFlight(Abilities abilities, boolean flying) {
         writeFlyingUnlessPhaseLocked(abilities, flying);
     }
@@ -39,8 +42,10 @@ public abstract class DraconicChargeUpPhaseFlightMixin {
             at = @At(
                     value = "FIELD",
                     target = "Lnet/minecraft/world/entity/player/Abilities;flying:Z",
-                    opcode = Opcodes.PUTFIELD),
-            require = 1)
+                    opcode = Opcodes.PUTFIELD,
+                    remap = true),
+            require = 1,
+            remap = false)
     private void ae2lt$preserveClientPhaseFlight(Abilities abilities, boolean flying) {
         writeFlyingUnlessPhaseLocked(abilities, flying);
     }
