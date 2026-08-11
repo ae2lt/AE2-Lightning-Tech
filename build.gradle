@@ -277,6 +277,7 @@ tasks.named('processResources', ProcessResources).configure {
             mod_authors: mod_authors,
             mod_description: mod_description,
             ae2_version_range: ae2_version_range,
+            guideme_version_range: guideme_version_range,
             jade_version_range: jade_version_range,
             jei_version_range: jei_version_range,
             emi_version_range: emi_version_range,
