@@ -69,6 +69,7 @@ import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.event.config.ModConfigEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
+import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.items.IItemHandlerModifiable;
 import net.minecraftforge.energy.IEnergyStorage;
@@ -369,9 +370,11 @@ public class AE2LightningTech {
                     })
                     .build());
 
-    public AE2LightningTech(IEventBus modEventBus) {
-        // IEventBus is the constructor argument accepted by every Forge/NeoForge 1.20.1 FML;
-        // the FMLJavaModLoadingContext style is not supported on NeoForge loaders.
+    public AE2LightningTech() {
+        // No-arg @Mod constructor: the only style accepted by every 1.20.1 loader
+        // (Forge 47.2.x requires no-arg; NeoForge 47.1.x tries no-arg first;
+        // Forge 47.4.x falls back to it). Fetch the bus via the static context.
+        var modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
 
         AE2LTConfigMigration.runIfNeeded();
         WirelessPatternProviderPolicy.setMaxDistanceSupplier(

@@ -20,8 +20,9 @@ class PortMetadataContractTest {
     void requiredDependenciesMatchTheVerifiedForgeBaseline() throws IOException {
         Properties properties = loadProperties();
 
+        // Baseline synced with AE2 15.4.10 (AE2 declares forge [47.1.3,) and minecraft [1.20.1,1.20.2)).
         assertEquals("[1.20.1,1.20.2)", properties.getProperty("minecraft_version_range"));
-        assertEquals("[47.4.0,48)", properties.getProperty("forge_version_range"));
+        assertEquals("[47.1.3,)", properties.getProperty("forge_version_range"));
         assertEquals("[15.4.10,16)", properties.getProperty("ae2_version_range"));
         assertEquals("[1.0.7,1.1)", properties.getProperty("thunderbolt_version_range"));
     }
