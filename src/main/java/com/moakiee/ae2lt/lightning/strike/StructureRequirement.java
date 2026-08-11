@@ -30,9 +30,10 @@ public record StructureRequirement(BlockPos offset, Block block, boolean consume
     }
 
     public static StructureRequirement fromNetwork(FriendlyByteBuf buffer) {
+        BlockPos offset = buffer.readBlockPos();
         Block block = BuiltInRegistries.BLOCK.getOptional(buffer.readResourceLocation())
                 .orElseThrow(() -> new IllegalStateException("Received unknown block id in lightning strike recipe"));
-        return new StructureRequirement(buffer.readBlockPos(), block, buffer.readBoolean());
+        return new StructureRequirement(offset, block, buffer.readBoolean());
     }
 
     public void toNetwork(FriendlyByteBuf buffer) {
