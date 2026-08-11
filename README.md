@@ -4,7 +4,7 @@
 
 An [Applied Energistics 2](https://github.com/AppliedEnergistics/Applied-Energistics-2) addon that introduces a lightning energy system, advanced machines, and overloaded network components.
 
-> Requires AE2 and Thunderbolt Core · Built for Minecraft 1.20.1 / Forge 47.4
+> Requires AE2 and Thunderbolt Core · Built for Minecraft 1.20.1 / Forge 47.1.3+
 
 This branch is the maintained Forge 1.20.1 port. The primary project targets newer Minecraft and NeoForge versions; behavior changes are ported back where the 1.20.1 APIs support them.
 
@@ -23,7 +23,7 @@ This branch is the maintained Forge 1.20.1 port. The primary project targets new
 | Mod | Requirement |
 |-----|-------------|
 | Minecraft 1.20.1 | Required |
-| Forge 47.4.x | Required |
+| Forge 47.1.3+ | Required |
 | Applied Energistics 2 15.4.10+ | Required |
 | Thunderbolt Core 1.0.7 | Required |
 | JEI or EMI, Jade | Optional integration |
