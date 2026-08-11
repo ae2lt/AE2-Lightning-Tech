@@ -29,7 +29,7 @@ public class LightningCollectorMenu extends AEBaseMenu implements IProgressProvi
             MenuTypeBuilder
                     .create(LightningCollectorMenu::new, LightningCollectorBlockEntity.class)
                     .withMenuTitle(host -> Component.translatable("block.ae2lt.lightning_collector")),
-            ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "lightning_collector"));
+            new ResourceLocation(AE2LightningTech.MODID, "lightning_collector"));
 
     @GuiSync(30)
     public int catalysisValue;

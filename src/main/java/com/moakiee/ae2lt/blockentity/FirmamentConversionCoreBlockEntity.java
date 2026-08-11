@@ -36,7 +36,7 @@ import com.moakiee.ae2lt.registry.ModBlockEntities;
 
 public class FirmamentConversionCoreBlockEntity extends BlockEntity {
     private static final ResourceLocation FIRMAMENT_STARSHIP_ID =
-            ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "firmament_starship");
+            new ResourceLocation(AE2LightningTech.MODID, "firmament_starship");
     private static final String TAG_INVENTORY = "Inventory";
     private static final String TAG_LOCKED_RECIPE = "LockedRecipe";
     private static final String TAG_PROGRESS = "Progress";

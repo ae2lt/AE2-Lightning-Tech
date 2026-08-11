@@ -31,7 +31,7 @@ public class OverloadedPatternProviderMenu extends PatternProviderMenu implement
             MenuTypeBuilder
                     .create((id, playerInventory, host) ->
                             new OverloadedPatternProviderMenu(id, playerInventory, host), PatternProviderLogicHost.class),
-            ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "overloaded_pattern_provider"));
+            new ResourceLocation(AE2LightningTech.MODID, "overloaded_pattern_provider"));
 
     private static final int SLOTS_PER_PAGE = 36;
     private static final int PROFILE_PACKAGED = 1;

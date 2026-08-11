@@ -20,7 +20,7 @@ public final class VoidCellMenu extends AEBaseMenu {
 
     public static final MenuType<VoidCellMenu> TYPE = Ae2ltMenuBuilder.buildUnregistered(
             MenuTypeBuilder.create(VoidCellMenu::new, ItemMenuHost.class),
-            ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "void_cell"));
+            new ResourceLocation(AE2LightningTech.MODID, "void_cell"));
 
     private final ItemStack stack;
 

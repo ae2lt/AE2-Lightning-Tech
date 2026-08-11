@@ -51,7 +51,7 @@ public class TextureToggleButton extends Button implements ITooltip {
     }
 
     private static ResourceLocation texture(String path) {
-        return ResourceLocation.fromNamespaceAndPath(
+        return new ResourceLocation(
                 AE2LightningTech.MODID, "textures/gui/buttons/" + path + ".png");
     }
 

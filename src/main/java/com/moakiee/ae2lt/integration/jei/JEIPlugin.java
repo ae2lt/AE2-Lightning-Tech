@@ -48,7 +48,7 @@ import net.minecraftforge.fml.ModList;
 @JeiPlugin
 public class JEIPlugin implements IModPlugin {
     private static final ResourceLocation ID =
-            ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "jei_plugin");
+            new ResourceLocation(AE2LightningTech.MODID, "jei_plugin");
     private static final String EMI_MODID = "emi";
 
     public JEIPlugin() {

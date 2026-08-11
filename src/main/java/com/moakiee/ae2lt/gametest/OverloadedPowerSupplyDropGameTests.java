@@ -25,7 +25,7 @@ public final class OverloadedPowerSupplyDropGameTests {
     @GameTest(templateNamespace = "minecraft", template = "bastion/mobs/empty")
     public static void dropsBlockAndInstalledCell(GameTestHelper helper) {
         if (!ModBlocks.hasOverloadedPowerSupply()) {
-            var blockId = ResourceLocation.fromNamespaceAndPath(
+            var blockId = new ResourceLocation(
                     AE2LightningTech.MODID, "overloaded_power_supply");
             helper.assertFalse(ForgeRegistries.BLOCKS.containsKey(blockId),
                     "The AppFlux-only power supply must not be registered without AppFlux");
@@ -42,7 +42,7 @@ public final class OverloadedPowerSupplyDropGameTests {
                 "The placed power supply must create its block entity");
 
         var fluxCell = ForgeRegistries.ITEMS.getValue(
-                ResourceLocation.fromNamespaceAndPath("appflux", "fe_1k_cell"));
+                new ResourceLocation("appflux", "fe_1k_cell"));
         helper.assertTrue(fluxCell != null && fluxCell != Items.AIR,
                 "The AppFlux test profile must provide the 1k FE cell");
         var cellStack = new ItemStack(fluxCell);

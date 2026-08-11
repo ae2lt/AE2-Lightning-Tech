@@ -23,9 +23,9 @@ public final class LightningKeyRenderHandler implements AEKeyRenderHandler<Light
     public static final LightningKeyRenderHandler INSTANCE = new LightningKeyRenderHandler();
 
     private static final ResourceLocation HIGH_VOLTAGE_SPRITE =
-            ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "item/high_voltage_lightning");
+            new ResourceLocation(AE2LightningTech.MODID, "item/high_voltage_lightning");
     private static final ResourceLocation EXTREME_HIGH_VOLTAGE_SPRITE =
-            ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "item/extreme_high_voltage_lightning");
+            new ResourceLocation(AE2LightningTech.MODID, "item/extreme_high_voltage_lightning");
 
     private LightningKeyRenderHandler() {
     }

@@ -151,7 +151,7 @@ public final class ModMenuTypes {
                             "wireless_tianshu_pattern_encoding_terminal",
                             () -> TianshuWirelessPatternEncodingTermMenu.TYPE)
                     : RegistryObject.create(
-                            ResourceLocation.fromNamespaceAndPath(
+                            new ResourceLocation(
                                     AE2LightningTech.MODID,
                                     "wireless_tianshu_pattern_encoding_terminal"),
                             ForgeRegistries.MENU_TYPES);

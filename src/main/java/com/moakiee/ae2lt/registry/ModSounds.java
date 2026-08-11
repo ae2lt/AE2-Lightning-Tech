@@ -48,7 +48,7 @@ public final class ModSounds {
             register("railgun.charge.loop");
 
     private static RegistryObject<SoundEvent> register(String name) {
-        var id = ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, name);
+        var id = new ResourceLocation(AE2LightningTech.MODID, name);
         return SOUND_EVENTS.register(name, () -> SoundEvent.createVariableRangeEvent(id));
     }
 

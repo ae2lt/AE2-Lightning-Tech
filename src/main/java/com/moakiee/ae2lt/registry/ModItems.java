@@ -309,7 +309,7 @@ public final class ModItems {
                             "wireless_tianshu_pattern_encoding_terminal",
                             TianshuWirelessTerminalFactory::create)
                     : RegistryObject.create(
-                            ResourceLocation.fromNamespaceAndPath(
+                            new ResourceLocation(
                                     AE2LightningTech.MODID,
                                     "wireless_tianshu_pattern_encoding_terminal"),
                             ForgeRegistries.ITEMS);
@@ -599,7 +599,7 @@ public final class ModItems {
     private static void registerStorageCellModel(RegistryObject<? extends Item> item) {
         StorageCellModels.registerModel(
                 item.get(),
-                ResourceLocation.fromNamespaceAndPath(
+                new ResourceLocation(
                         AE2LightningTech.MODID,
                         "block/drive/cells/" + item.getId().getPath()));
     }
@@ -607,7 +607,7 @@ public final class ModItems {
     private static void registerStorageCellModel(RegistryObject<? extends Item> item, String modelName) {
         StorageCellModels.registerModel(
                 item.get(),
-                ResourceLocation.fromNamespaceAndPath("ae2", "block/drive/cells/" + modelName));
+                new ResourceLocation("ae2", "block/drive/cells/" + modelName));
     }
 
     private static RegistryObject<ColoredPartItem<OverloadedCablePart>> registerOverloadedCable(String id, AEColor color) {

@@ -35,7 +35,7 @@ import org.lwjgl.glfw.GLFW;
 public final class TianshuUploadTargetScreen<M extends TianshuPatternEncodingTermMenu>
         extends AESubScreen<M, TianshuPatternEncodingTermScreen<M>> {
     private static final String STYLE = "/screens/tianshu_upload_targets.json";
-    private static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "textures/gui/tianshu_upload_targets.png");
+    private static final ResourceLocation TEXTURE = new ResourceLocation(AE2LightningTech.MODID, "textures/gui/tianshu_upload_targets.png");
     private static final int TEXTURE_SIZE = 256;
     private static final int GUI_WIDTH = 190;
     private static final int GUI_HEADER_HEIGHT = 33;

@@ -59,6 +59,6 @@ public final class LegacyRegistryAliases {
     }
 
     private static ResourceLocation id(String path) {
-        return ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, path);
+        return new ResourceLocation(AE2LightningTech.MODID, path);
     }
 }

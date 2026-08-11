@@ -18,12 +18,12 @@ import com.moakiee.ae2lt.api.lightning.LightningTier;
 
 public final class LightningKey extends AEKey {
     public static final ResourceLocation TYPE_ID =
-            ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "lightning");
+            new ResourceLocation(AE2LightningTech.MODID, "lightning");
     public static final ResourceLocation ID = TYPE_ID;
     public static final ResourceLocation HIGH_VOLTAGE_ID =
-            ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "high_voltage_lightning");
+            new ResourceLocation(AE2LightningTech.MODID, "high_voltage_lightning");
     public static final ResourceLocation EXTREME_HIGH_VOLTAGE_ID =
-            ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "extreme_high_voltage_lightning");
+            new ResourceLocation(AE2LightningTech.MODID, "extreme_high_voltage_lightning");
 
     public static final LightningKey HIGH_VOLTAGE = new LightningKey(Tier.HIGH_VOLTAGE);
     public static final LightningKey EXTREME_HIGH_VOLTAGE = new LightningKey(Tier.EXTREME_HIGH_VOLTAGE);

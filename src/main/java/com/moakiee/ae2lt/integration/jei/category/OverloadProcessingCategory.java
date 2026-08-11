@@ -36,7 +36,7 @@ public class OverloadProcessingCategory implements IRecipeCategory<OverloadProce
             RecipeType.create(AE2LightningTech.MODID, "overload_processing", OverloadProcessingRecipe.class);
 
     private static final ResourceLocation BACKGROUND_TEXTURE =
-            ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "textures/guis/overload_processing_factory.png");
+            new ResourceLocation(AE2LightningTech.MODID, "textures/guis/overload_processing_factory.png");
 
     private static final int BACKGROUND_U = 4;
     private static final int BACKGROUND_V = 14;

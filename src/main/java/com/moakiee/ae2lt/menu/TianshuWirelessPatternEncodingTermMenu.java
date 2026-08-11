@@ -17,7 +17,7 @@ public final class TianshuWirelessPatternEncodingTermMenu extends TianshuPattern
             .buildUnregistered(
                     MenuTypeBuilder.create(
                             FACTORY, TianshuPatternTerminalHost.class),
-                    ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "wireless_tianshu_pattern_encoding_terminal"));
+                    new ResourceLocation(AE2LightningTech.MODID, "wireless_tianshu_pattern_encoding_terminal"));
 
     public TianshuWirelessPatternEncodingTermMenu(
             int id, Inventory inventory, TianshuPatternTerminalHost host) {

@@ -132,10 +132,10 @@ public class FrequencyScreen extends AbstractContainerScreen<FrequencyMenu> {
      *   <li>{@code wireless_overloaded_form.png} — clean panel for create / settings.</li>
      * </ul>
      */
-    private static final ResourceLocation BG_HOME = ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "textures/gui/wireless_overloaded_home.png");
-    private static final ResourceLocation BG_SELECTION = ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "textures/gui/wireless_overloaded_selection.png");
-    private static final ResourceLocation BG_LIST = ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "textures/gui/wireless_overloaded_list.png");
-    private static final ResourceLocation BG_FORM = ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "textures/gui/wireless_overloaded_form.png");
+    private static final ResourceLocation BG_HOME = new ResourceLocation(AE2LightningTech.MODID, "textures/gui/wireless_overloaded_home.png");
+    private static final ResourceLocation BG_SELECTION = new ResourceLocation(AE2LightningTech.MODID, "textures/gui/wireless_overloaded_selection.png");
+    private static final ResourceLocation BG_LIST = new ResourceLocation(AE2LightningTech.MODID, "textures/gui/wireless_overloaded_list.png");
+    private static final ResourceLocation BG_FORM = new ResourceLocation(AE2LightningTech.MODID, "textures/gui/wireless_overloaded_form.png");
     private static final int TEXTURE_SIZE = 256;
 
     // AE2 standard text tones — matches AE2's own screens such as
@@ -771,11 +771,11 @@ public class FrequencyScreen extends AbstractContainerScreen<FrequencyMenu> {
         };
     }
 
-    private static final ResourceLocation TAB_ICON_HOME = ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "textures/gui/buttons/menu.png");
-    private static final ResourceLocation TAB_ICON_SELECTION = ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "textures/gui/buttons/frequency_select.png");
-    private static final ResourceLocation TAB_ICON_CONNECTION = ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "textures/gui/buttons/frequency_connect.png");
-    private static final ResourceLocation TAB_ICON_MEMBER = ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "textures/gui/buttons/frequency_member.png");
-    private static final ResourceLocation TAB_ICON_CREATE = ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "textures/gui/buttons/frequency_add.png");
+    private static final ResourceLocation TAB_ICON_HOME = new ResourceLocation(AE2LightningTech.MODID, "textures/gui/buttons/menu.png");
+    private static final ResourceLocation TAB_ICON_SELECTION = new ResourceLocation(AE2LightningTech.MODID, "textures/gui/buttons/frequency_select.png");
+    private static final ResourceLocation TAB_ICON_CONNECTION = new ResourceLocation(AE2LightningTech.MODID, "textures/gui/buttons/frequency_connect.png");
+    private static final ResourceLocation TAB_ICON_MEMBER = new ResourceLocation(AE2LightningTech.MODID, "textures/gui/buttons/frequency_member.png");
+    private static final ResourceLocation TAB_ICON_CREATE = new ResourceLocation(AE2LightningTech.MODID, "textures/gui/buttons/frequency_add.png");
 
     private void switchTab(FrequencyNavigationTab tab) {
         currentTab = tab;
@@ -2093,7 +2093,7 @@ public class FrequencyScreen extends AbstractContainerScreen<FrequencyMenu> {
             // handles from the vanilla creative-tabs texture (enabled at 232,0,
             // disabled at 244,0, each 12x15).
             ResourceLocation sprite =
-                    ResourceLocation.fromNamespaceAndPath("minecraft", "textures/gui/container/creative_inventory/tabs.png");
+                    new ResourceLocation("minecraft", "textures/gui/container/creative_inventory/tabs.png");
             int srcX = enabled ? 232 : 244;
             int availH = Math.max(0, getHeight() - SCROLLBAR_HANDLE_HEIGHT);
             int handleY = enabled

@@ -12,16 +12,16 @@ import net.minecraft.world.level.Level;
 /** Shared client/server routing policy for terminal pattern uploads. */
 public final class TianshuPatternUploadRouting {
     private static final ResourceLocation MATTER_WARPING_MATRIX_CONTROLLER_ID =
-            ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "matter_warping_matrix_controller");
+            new ResourceLocation(AE2LightningTech.MODID, "matter_warping_matrix_controller");
     private static final Set<ResourceLocation> CRAFTING_UPLOAD_GROUP_IDS = Set.of(
-            ResourceLocation.fromNamespaceAndPath("ae2", "molecular_assembler"),
-            ResourceLocation.fromNamespaceAndPath("expatternprovider", "ex_molecular_assembler"),
-            ResourceLocation.fromNamespaceAndPath("expatternprovider", "assembler_matrix_pattern"),
-            ResourceLocation.fromNamespaceAndPath("extendedae_plus", "assembler_matrix_pattern_plus"),
-            ResourceLocation.fromNamespaceAndPath("neoecoae", "crafting_system_l4"),
-            ResourceLocation.fromNamespaceAndPath("neoecoae", "crafting_system_l6"),
-            ResourceLocation.fromNamespaceAndPath("neoecoae", "crafting_system_l9"),
-            ResourceLocation.fromNamespaceAndPath("ae2cs", "meteorite_pattern_provider"),
+            new ResourceLocation("ae2", "molecular_assembler"),
+            new ResourceLocation("expatternprovider", "ex_molecular_assembler"),
+            new ResourceLocation("expatternprovider", "assembler_matrix_pattern"),
+            new ResourceLocation("extendedae_plus", "assembler_matrix_pattern_plus"),
+            new ResourceLocation("neoecoae", "crafting_system_l4"),
+            new ResourceLocation("neoecoae", "crafting_system_l6"),
+            new ResourceLocation("neoecoae", "crafting_system_l9"),
+            new ResourceLocation("ae2cs", "meteorite_pattern_provider"),
             MATTER_WARPING_MATRIX_CONTROLLER_ID);
 
     public enum Route {

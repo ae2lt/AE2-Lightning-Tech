@@ -25,8 +25,8 @@ import com.moakiee.ae2lt.registry.ModDataComponents;
 @Mod.EventBusSubscriber(modid = AE2LightningTech.MODID, value = Dist.CLIENT)
 public final class RailgunHudRenderer {
 
-    private static final ResourceLocation EMPTY_TEX = ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "textures/gui/hud/lightning_charging_bar.png");
-    private static final ResourceLocation FULL_TEX = ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "textures/gui/hud/lightning_charging_bar_full.png");
+    private static final ResourceLocation EMPTY_TEX = new ResourceLocation(AE2LightningTech.MODID, "textures/gui/hud/lightning_charging_bar.png");
+    private static final ResourceLocation FULL_TEX = new ResourceLocation(AE2LightningTech.MODID, "textures/gui/hud/lightning_charging_bar_full.png");
 
     private static final int ICON_W = 13;
     private static final int ICON_H = 19;

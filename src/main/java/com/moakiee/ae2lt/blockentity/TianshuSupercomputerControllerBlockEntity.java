@@ -758,7 +758,7 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
     }
 
     @Override
-    public Component getDisplayName() {
+    public Component getCpuDisplayName() {
         return Component.translatable("ae2lt.tianshu.cpu_name");
     }
 

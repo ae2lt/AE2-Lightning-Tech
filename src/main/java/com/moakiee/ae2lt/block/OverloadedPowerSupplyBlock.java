@@ -47,7 +47,7 @@ public class OverloadedPowerSupplyBlock extends AE2LTBaseEntityBlock<OverloadedP
     public static final BooleanProperty POWERED = BooleanProperty.create("powered");
     public static final BooleanProperty OVERLOADED = BooleanProperty.create("overloaded");
     public static final DirectionProperty FACING = BlockStateProperties.FACING;
-    private static final ResourceLocation BLOCK_ITEM_DROP = ResourceLocation.fromNamespaceAndPath(
+    private static final ResourceLocation BLOCK_ITEM_DROP = new ResourceLocation(
             AE2LightningTech.MODID, "overloaded_power_supply");
 
     /**

@@ -6,7 +6,7 @@ import net.minecraft.resources.ResourceLocation;
 
 /** Shared pixel-atlas layout for the AdvancedAE and overload pattern popups. */
 final class TianshuPatternConfigLayout {
-    static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "textures/gui/tianshu_pattern_config.png");
+    static final ResourceLocation TEXTURE = new ResourceLocation(AE2LightningTech.MODID, "textures/gui/tianshu_pattern_config.png");
     static final int TEXTURE_SIZE = 256;
     static final int GUI_WIDTH = 190;
     static final int HEADER_HEIGHT = 32;

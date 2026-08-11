@@ -268,7 +268,7 @@ class ClosedLoopPatternFlattenerTest {
 
     private static SourcePatternSnapshot snapshot(String id) {
         return new SourcePatternSnapshot(
-                ResourceLocation.fromNamespaceAndPath("ae2lt_flatten_test", id), null, null);
+                new ResourceLocation("ae2lt_flatten_test", id), null, null);
     }
 
     private record FakePattern(String id) implements IPatternDetails {
@@ -320,7 +320,7 @@ class ClosedLoopPatternFlattenerTest {
 
         @Override
         public ResourceLocation getId() {
-            return ResourceLocation.fromNamespaceAndPath("ae2lt_flatten_test", id);
+            return new ResourceLocation("ae2lt_flatten_test", id);
         }
 
         @Override
@@ -349,7 +349,7 @@ class ClosedLoopPatternFlattenerTest {
 
     private static final class TestKeyType extends AEKeyType {
         private TestKeyType() {
-            super(ResourceLocation.fromNamespaceAndPath("ae2lt_flatten_test", "key"),
+            super(new ResourceLocation("ae2lt_flatten_test", "key"),
                     TestKey.class, Component.literal("test key"));
         }
 

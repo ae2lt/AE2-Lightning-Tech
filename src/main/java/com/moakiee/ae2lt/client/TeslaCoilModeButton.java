@@ -15,8 +15,8 @@ import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.machine.teslacoil.TeslaCoilMode;
 
 public class TeslaCoilModeButton extends IconButton {
-    private static final ResourceLocation HV_TEXTURE = ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "textures/gui/buttons/lightning.png");
-    private static final ResourceLocation EHV_TEXTURE = ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "textures/gui/buttons/lightning_high_voltage.png");
+    private static final ResourceLocation HV_TEXTURE = new ResourceLocation(AE2LightningTech.MODID, "textures/gui/buttons/lightning.png");
+    private static final ResourceLocation EHV_TEXTURE = new ResourceLocation(AE2LightningTech.MODID, "textures/gui/buttons/lightning_high_voltage.png");
 
     private TeslaCoilMode mode = TeslaCoilMode.HIGH_VOLTAGE;
 

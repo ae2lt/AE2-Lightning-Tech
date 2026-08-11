@@ -38,7 +38,7 @@ public class CrystalCatalyzerCategory implements IRecipeCategory<CrystalCatalyze
             RecipeType.create(AE2LightningTech.MODID, "crystal_catalyzer", CrystalCatalyzerRecipe.class);
 
     private static final ResourceLocation BACKGROUND_TEXTURE =
-            ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "textures/guis/crystal_catalyzer.png");
+            new ResourceLocation(AE2LightningTech.MODID, "textures/guis/crystal_catalyzer.png");
 
     // 机器 GUI 坐标:流体腔 (26,18)+16×53,催化剂槽 (56,30),矩阵槽 (84,54),
     // 进度条 (74,33)+22×16,产物槽 (117,30),能量条 (140,30)+6×18。

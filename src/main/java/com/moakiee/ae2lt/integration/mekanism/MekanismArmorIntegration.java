@@ -75,7 +75,7 @@ public final class MekanismArmorIntegration {
             return;
         }
         event.addCapability(
-                ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "mekanism_armor_protection"),
+                new ResourceLocation(AE2LightningTech.MODID, "mekanism_armor_protection"),
                 new ICapabilityProvider() {
                     @Override
                     public <T> LazyOptional<T> getCapability(Capability<T> cap, @Nullable Direction side) {

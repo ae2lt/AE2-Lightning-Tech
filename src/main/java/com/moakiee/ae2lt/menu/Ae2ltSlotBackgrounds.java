@@ -24,7 +24,7 @@ public final class Ae2ltSlotBackgrounds {
     public static final ResourceLocation LIGHTNING_COLLAPSE_MATRIX = sprite("lightning_collapse_matrix");
 
     private static ResourceLocation sprite(String name) {
-        return ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "block/slot/" + name);
+        return new ResourceLocation(AE2LightningTech.MODID, "block/slot/" + name);
     }
 
     /** 给一个普通槽位绑定空槽背景图,sprite 必须已被 stitch 进 {@link InventoryMenu#BLOCK_ATLAS}。 */

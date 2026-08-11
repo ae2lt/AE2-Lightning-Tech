@@ -64,11 +64,11 @@ import net.minecraftforge.common.util.NonNullSupplier;
 import net.minecraftforge.event.AttachCapabilitiesEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.ModList;
+import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.event.config.ModConfigEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
-import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.items.IItemHandlerModifiable;
 import net.minecraftforge.energy.IEnergyStorage;
@@ -131,7 +131,7 @@ public class AE2LightningTech {
 
     // Forge 1.20.1: capabilities are attached per object with a ResourceLocation id.
     private static final ResourceLocation BLOCK_ENTITY_CAP_PROVIDER_ID =
-            ResourceLocation.fromNamespaceAndPath(MODID, "block_entity_cap_provider");
+            new ResourceLocation(MODID, "block_entity_cap_provider");
 
     public static final DeferredRegister<CreativeModeTab> CREATIVE_MODE_TABS =
             DeferredRegister.create(Registries.CREATIVE_MODE_TAB, MODID);
@@ -369,11 +369,9 @@ public class AE2LightningTech {
                     })
                     .build());
 
-    public AE2LightningTech(FMLJavaModLoadingContext loadingContext) {
-        // Forge 47.4 injects the active loading context into the mod constructor.
-        // Keeping the event bus and config registration on that injected instance
-        // avoids the deprecated static context lookups and cannot select another mod.
-        IEventBus modEventBus = loadingContext.getModEventBus();
+    public AE2LightningTech(IEventBus modEventBus) {
+        // IEventBus is the constructor argument accepted by every Forge/NeoForge 1.20.1 FML;
+        // the FMLJavaModLoadingContext style is not supported on NeoForge loaders.
 
         AE2LTConfigMigration.runIfNeeded();
         WirelessPatternProviderPolicy.setMaxDistanceSupplier(
@@ -408,8 +406,8 @@ public class AE2LightningTech {
         modEventBus.addListener(this::registerCapabilities);
         modEventBus.addListener(this::commonSetup);
         modEventBus.addListener(this::onConfigChanged);
-        loadingContext.registerConfig(ModConfig.Type.COMMON, AE2LTCommonConfig.SPEC);
-        loadingContext.registerConfig(ModConfig.Type.CLIENT,
+        ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, AE2LTCommonConfig.SPEC);
+        ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT,
                 com.moakiee.ae2lt.config.AE2LTClientConfig.SPEC, "ae2lt-client.toml");
 
         MinecraftForge.EVENT_BUS.addListener(this::onServerStarting);
@@ -484,7 +482,7 @@ public class AE2LightningTech {
 
     private static void attachItemEnergy(AttachCapabilitiesEvent<ItemStack> event,
             NonNullSupplier<IEnergyStorage> supplier) {
-        event.addCapability(ResourceLocation.fromNamespaceAndPath(MODID, "item_energy"), new ICapabilityProvider() {
+        event.addCapability(new ResourceLocation(MODID, "item_energy"), new ICapabilityProvider() {
             @Override
             public <T> LazyOptional<T> getCapability(Capability<T> capability, Direction side) {
                 if (capability == ForgeCapabilities.ENERGY) {
@@ -1182,7 +1180,7 @@ public class AE2LightningTech {
     }
 
     private static void registerAppliedFluxInductionCardCompat() {
-        var inductionId = ResourceLocation.fromNamespaceAndPath("appflux", "induction_card");
+        var inductionId = new ResourceLocation("appflux", "induction_card");
         Item inductionCard = net.minecraft.core.registries.BuiltInRegistries.ITEM.get(inductionId);
         if (inductionCard == null || inductionCard == net.minecraft.world.item.Items.AIR) {
             return;

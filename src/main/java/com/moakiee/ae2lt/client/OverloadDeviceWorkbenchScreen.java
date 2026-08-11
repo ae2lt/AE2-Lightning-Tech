@@ -15,7 +15,7 @@ import com.moakiee.ae2lt.menu.OverloadDeviceWorkbenchMenu;
 
 public class OverloadDeviceWorkbenchScreen extends AbstractContainerScreen<OverloadDeviceWorkbenchMenu> {
 
-    private static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "textures/gui/overload_workplace_gui.png");
+    private static final ResourceLocation TEXTURE = new ResourceLocation(AE2LightningTech.MODID, "textures/gui/overload_workplace_gui.png");
 
     private static final int TEXTURE_WIDTH = 320;
     private static final int TEXTURE_HEIGHT = 256;

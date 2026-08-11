@@ -22,7 +22,7 @@ import net.minecraft.world.damagesource.DamageType;
 public final class ModDamageTypes {
     public static final ResourceKey<DamageType> ELECTROMAGNETIC = ResourceKey.create(
             Registries.DAMAGE_TYPE,
-            ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "electromagnetic"));
+            new ResourceLocation(AE2LightningTech.MODID, "electromagnetic"));
 
     /**
      * Per-{@link ServerLevel} cache of the resolved holder. Damage-type registries

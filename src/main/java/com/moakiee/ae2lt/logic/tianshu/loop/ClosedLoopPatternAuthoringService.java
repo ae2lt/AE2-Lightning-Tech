@@ -16,7 +16,7 @@ import net.minecraft.world.level.Level;
 /** Server-side authoring boundary: players mark only member patterns, quantities and main output. */
 public final class ClosedLoopPatternAuthoringService {
     private static final ResourceLocation CLOSED_LOOP_PATTERN_ITEM_ID =
-            ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "closed_loop_pattern");
+            new ResourceLocation(AE2LightningTech.MODID, "closed_loop_pattern");
 
     public enum Status {
         VALID,

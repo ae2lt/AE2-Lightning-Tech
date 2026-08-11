@@ -22,9 +22,9 @@ import org.jetbrains.annotations.Nullable;
 public final class TianshuPatternEncodingTerminalPart extends PatternEncodingTerminalPart
         implements TianshuPatternTerminalHost {
     @PartModels
-    private static final ResourceLocation MODEL_OFF = ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "part/tianshu_pattern_encoding_terminal_off");
+    private static final ResourceLocation MODEL_OFF = new ResourceLocation(AE2LightningTech.MODID, "part/tianshu_pattern_encoding_terminal_off");
     @PartModels
-    private static final ResourceLocation MODEL_ON = ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "part/tianshu_pattern_encoding_terminal_on");
+    private static final ResourceLocation MODEL_ON = new ResourceLocation(AE2LightningTech.MODID, "part/tianshu_pattern_encoding_terminal_on");
 
     private static final IPartModel MODELS_OFF = new PartModel(MODEL_BASE, MODEL_OFF, MODEL_STATUS_OFF);
     private static final IPartModel MODELS_ON = new PartModel(MODEL_BASE, MODEL_ON, MODEL_STATUS_ON);

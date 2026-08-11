@@ -10,7 +10,7 @@ public final class EasterEggOverlay implements IGuiOverlay {
     public static final EasterEggOverlay INSTANCE = new EasterEggOverlay();
 
     private static final ResourceLocation TEXTURE =
-            ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "textures/gui/easter_egg.png");
+            new ResourceLocation(AE2LightningTech.MODID, "textures/gui/easter_egg.png");
 
     private static final int DISPLAY_TICKS = 40;
 

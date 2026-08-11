@@ -46,7 +46,7 @@ public final class MekanismProtectionSubmodule extends AbstractCelestweaveArmorS
         this.id = id;
         this.damageType = ResourceKey.create(
                 Registries.DAMAGE_TYPE,
-                ResourceLocation.fromNamespaceAndPath("mekanism", mekanismDamageType));
+                new ResourceLocation("mekanism", mekanismDamageType));
         this.nameKey = nameKey;
         this.descriptionKey = descriptionKey;
     }

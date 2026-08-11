@@ -105,7 +105,7 @@ public final class PigmeeMentalmathUnitBlockEntity extends AENetworkBlockEntity
     }
 
     @Override
-    public Component getDisplayName() {
+    public Component getCpuDisplayName() {
         return Component.translatable("block.ae2lt.pigmee_mentalmath_unit");
     }
 

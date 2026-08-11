@@ -20,7 +20,7 @@ import net.minecraft.resources.ResourceLocation;
 @EmiEntrypoint
 public final class AE2LTEmiPlugin implements EmiPlugin {
     public static final EmiRecipeCategory MULTIBLOCK_STRUCTURE = new EmiRecipeCategory(
-            ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "multiblock_structure"),
+            new ResourceLocation(AE2LightningTech.MODID, "multiblock_structure"),
             EmiStack.of(ModBlocks.MATTER_WARPING_MATRIX_CONTROLLER.get())) {
         @Override
         public Component getName() {

@@ -357,7 +357,7 @@ public final class NetworkInit {
     }
 
     public static ResourceLocation id(String path) {
-        return ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, path);
+        return new ResourceLocation(AE2LightningTech.MODID, path);
     }
 
     public static void sendToServer(Object message) {

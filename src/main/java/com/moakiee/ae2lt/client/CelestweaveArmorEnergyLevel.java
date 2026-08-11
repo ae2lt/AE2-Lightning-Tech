@@ -18,8 +18,8 @@ public final class CelestweaveArmorEnergyLevel implements IGuiOverlay {
     private static final int BAR_HEIGHT = 6;
     private static final int INNER_WIDTH = 79;
     private static final int INNER_HEIGHT = 4;
-    private static final ResourceLocation BAR_BASE = ResourceLocation.fromNamespaceAndPath("ae2lt", "textures/gui/hud/hud_bar.png");
-    private static final ResourceLocation BAR_OVERLAY = ResourceLocation.fromNamespaceAndPath("ae2lt", "textures/gui/hud/hud_bar_overlay.png");
+    private static final ResourceLocation BAR_BASE = new ResourceLocation("ae2lt", "textures/gui/hud/hud_bar.png");
+    private static final ResourceLocation BAR_OVERLAY = new ResourceLocation("ae2lt", "textures/gui/hud/hud_bar_overlay.png");
 
     private CelestweaveArmorEnergyLevel() {
     }

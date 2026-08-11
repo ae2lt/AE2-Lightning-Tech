@@ -38,7 +38,7 @@ final class EmiMultiblockStructureRecipe implements EmiRecipe {
 
     @Override
     public ResourceLocation getId() {
-        return ResourceLocation.fromNamespaceAndPath(structure.id().getNamespace(),
+        return new ResourceLocation(structure.id().getNamespace(),
                 "/" + structure.id().getPath());
     }
 

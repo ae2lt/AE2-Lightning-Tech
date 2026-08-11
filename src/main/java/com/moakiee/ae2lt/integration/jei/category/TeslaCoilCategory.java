@@ -52,16 +52,16 @@ public class TeslaCoilCategory implements IRecipeCategory<TeslaCoilCategory.Page
     private static final int[] TEXT_LINES = {34, 46, 58, 70};
 
     private static final ResourceLocation ARROW_TEXTURE =
-            ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "textures/guis/crystal_catalyzer.png");
+            new ResourceLocation(AE2LightningTech.MODID, "textures/guis/crystal_catalyzer.png");
     private static final int ARROW_U = 176;
     private static final int ARROW_V = 18;
     private static final int ARROW_TEX_W = 256;
     private static final int ARROW_TEX_H = 256;
 
     private static final ResourceLocation HV_LIGHTNING_TEXTURE =
-            ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "textures/item/high_voltage_lightning.png");
+            new ResourceLocation(AE2LightningTech.MODID, "textures/item/high_voltage_lightning.png");
     private static final ResourceLocation EHV_LIGHTNING_TEXTURE =
-            ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "textures/item/extreme_high_voltage_lightning.png");
+            new ResourceLocation(AE2LightningTech.MODID, "textures/item/extreme_high_voltage_lightning.png");
 
     private final IDrawable icon;
 

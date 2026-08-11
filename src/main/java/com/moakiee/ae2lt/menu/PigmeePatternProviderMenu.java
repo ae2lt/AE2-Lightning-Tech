@@ -21,7 +21,7 @@ public final class PigmeePatternProviderMenu extends AEBaseMenu {
                     MenuTypeBuilder
                             .create(PigmeePatternProviderMenu::new, PigmeePatternProviderBlockEntity.class)
                             .withMenuTitle(host -> Component.translatable("block.ae2lt.pigmee_pattern_provider")),
-                    ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "pigmee_pattern_provider"));
+                    new ResourceLocation(AE2LightningTech.MODID, "pigmee_pattern_provider"));
 
     private static final int PATTERN_X = 62;
     private static final int PATTERN_Y = 49;

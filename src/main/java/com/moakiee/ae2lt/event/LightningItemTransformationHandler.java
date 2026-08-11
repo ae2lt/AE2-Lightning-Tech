@@ -23,7 +23,7 @@ import net.minecraftforge.fml.common.Mod;
 public final class LightningItemTransformationHandler {
     private static final String TRANSFORMATION_CHECKED_TAG = "ae2lt.lightning_item_transform_checked";
     private static final ResourceLocation FUMO_BLOCK_ID =
-            ResourceLocation.fromNamespaceAndPath("appliedcreate", "whichball_skin_doll");
+            new ResourceLocation("appliedcreate", "whichball_skin_doll");
     private static final int EASTER_EGG_SEARCH_RADIUS = 3;
 
     private LightningItemTransformationHandler() {

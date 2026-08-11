@@ -27,7 +27,7 @@ public final class PigmeeMolecularAssemblerRenderer
     // Queried via ModelManager.getModel(ResourceLocation) like the AE2 vanilla
     // MolecularAssemblerRenderer; a ModelResourceLocation with variant "normal"
     // would miss the baked cache and silently fall back to the missing model.
-    public static final ResourceLocation LIGHTS_MODEL = ResourceLocation.fromNamespaceAndPath(
+    public static final ResourceLocation LIGHTS_MODEL = new ResourceLocation(
             AE2LightningTech.MODID,
             "block/pigmee_molecular_assembler_lights");
 

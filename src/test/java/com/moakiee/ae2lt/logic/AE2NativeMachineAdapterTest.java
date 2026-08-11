@@ -283,7 +283,7 @@ class AE2NativeMachineAdapterTest {
 
         @Override
         public ResourceLocation getId() {
-            return ResourceLocation.fromNamespaceAndPath("ae2lt_test", id);
+            return new ResourceLocation("ae2lt_test", id);
         }
 
         @Override
@@ -313,7 +313,7 @@ class AE2NativeMachineAdapterTest {
     private static final class TestKeyType extends AEKeyType {
         private TestKeyType() {
             super(
-                    ResourceLocation.fromNamespaceAndPath("ae2lt_test", "key"),
+                    new ResourceLocation("ae2lt_test", "key"),
                     TestKey.class,
                     Component.literal("test key"));
         }

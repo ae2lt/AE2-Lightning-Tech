@@ -7,7 +7,7 @@ import com.moakiee.ae2lt.AE2LightningTech;
 
 public final class CelestweaveAdvancementService {
     private static final ResourceLocation RADIATION_ASSIMILATION =
-            ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "main/radiation_assimilation");
+            new ResourceLocation(AE2LightningTech.MODID, "main/radiation_assimilation");
     private static final String RADIATION_HEALING_CRITERION = "radiation_healing";
 
     private CelestweaveAdvancementService() {

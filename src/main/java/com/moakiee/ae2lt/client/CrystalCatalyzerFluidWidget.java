@@ -57,7 +57,7 @@ public class CrystalCatalyzerFluidWidget extends AbstractWidget implements ITool
     private static final int[] MAJOR_TICK_SRC_YS = { 26, 36, 46, 56, 66 };
 
     private static final ResourceLocation BACKGROUND_TEXTURE =
-            ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "textures/guis/crystal_catalyzer.png");
+            new ResourceLocation(AE2LightningTech.MODID, "textures/guis/crystal_catalyzer.png");
 
     private final Supplier<FluidStack> fluidSupplier;
     private final IntSupplier capacitySupplier;

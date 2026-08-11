@@ -50,9 +50,9 @@ class TianshuPatternUploadRoutingTest {
         assertMatrixGroup("matter_warping_matrix_controller");
 
         assertFalse(TianshuPatternUploadRouting.isCraftingUploadGroupId(
-                ResourceLocation.fromNamespaceAndPath("ae2", "pattern_provider")));
+                new ResourceLocation("ae2", "pattern_provider")));
         assertFalse(TianshuPatternUploadRouting.isCraftingUploadGroupId(
-                ResourceLocation.fromNamespaceAndPath("neoecoae", "crafting_pattern_bus")));
+                new ResourceLocation("neoecoae", "crafting_pattern_bus")));
         assertFalse(TianshuPatternUploadRouting.isCraftingUploadGroupId(null));
     }
 
@@ -168,11 +168,11 @@ class TianshuPatternUploadRoutingTest {
 
     private static void assertCraftingGroup(String namespace, String path) {
         assertTrue(TianshuPatternUploadRouting.isCraftingUploadGroupId(
-                ResourceLocation.fromNamespaceAndPath(namespace, path)));
+                new ResourceLocation(namespace, path)));
     }
 
     private static void assertMatrixGroup(String path) {
         assertTrue(TianshuPatternUploadRouting.isMatterWarpingMatrixId(
-                ResourceLocation.fromNamespaceAndPath("ae2lt", path)));
+                new ResourceLocation("ae2lt", path)));
     }
 }

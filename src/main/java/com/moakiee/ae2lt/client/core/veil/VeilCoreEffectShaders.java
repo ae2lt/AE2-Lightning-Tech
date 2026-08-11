@@ -13,9 +13,9 @@ import net.minecraft.resources.ResourceLocation;
  */
 public final class VeilCoreEffectShaders {
     private static final ResourceLocation TIANSHU_SHADER =
-            ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "multiblock/tianshu_core");
+            new ResourceLocation(AE2LightningTech.MODID, "multiblock/tianshu_core");
     private static final ResourceLocation MATRIX_SHADER =
-            ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "multiblock/matrix_core");
+            new ResourceLocation(AE2LightningTech.MODID, "multiblock/matrix_core");
 
     private VeilCoreEffectShaders() {
     }

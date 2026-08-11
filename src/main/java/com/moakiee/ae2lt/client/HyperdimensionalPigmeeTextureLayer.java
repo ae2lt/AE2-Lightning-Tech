@@ -25,7 +25,7 @@ import net.minecraft.world.level.block.state.BlockState;
 final class HyperdimensionalPigmeeTextureLayer {
     // Plain ResourceLocation so ModelManager.getModel resolves the baked model
     // directly; variant-qualified lookups miss and yield the missing model.
-    static final ResourceLocation MODEL = ResourceLocation.fromNamespaceAndPath(
+    static final ResourceLocation MODEL = new ResourceLocation(
             AE2LightningTech.MODID,
             "block/hyperdimensional_pigmee_fumo_overlay");
 

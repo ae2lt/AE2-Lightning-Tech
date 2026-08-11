@@ -45,7 +45,7 @@ public class OverloadedInterfaceMenu extends InterfaceMenu implements FrequencyB
 
     public static final MenuType<OverloadedInterfaceMenu> TYPE = Ae2ltMenuBuilder.buildUnregistered(
             MenuTypeBuilder.create(FACTORY, InterfaceLogicHost.class),
-            ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "overloaded_interface"));
+            new ResourceLocation(AE2LightningTech.MODID, "overloaded_interface"));
 
     private static final int SLOTS_PER_PAGE = 18;
 

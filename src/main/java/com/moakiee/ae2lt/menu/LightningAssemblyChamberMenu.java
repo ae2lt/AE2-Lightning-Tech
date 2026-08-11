@@ -29,7 +29,7 @@ public class LightningAssemblyChamberMenu extends AEBaseMenu implements Frequenc
             MenuTypeBuilder
                     .create(LightningAssemblyChamberMenu::new, LightningAssemblyChamberBlockEntity.class)
                     .withMenuTitle(host -> Component.translatable("block.ae2lt.lightning_assembly_chamber")),
-            ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "lightning_assembly_chamber"));
+            new ResourceLocation(AE2LightningTech.MODID, "lightning_assembly_chamber"));
 
     private static final RelativeSide[] OUTPUT_SIDES = RelativeSide.values();
 

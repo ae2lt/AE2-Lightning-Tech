@@ -15,7 +15,7 @@ import net.minecraft.world.inventory.AbstractContainerMenu;
 public abstract class MultiblockControllerScreen<T extends AbstractContainerMenu>
         extends AbstractContainerScreen<T> {
 
-    protected static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "textures/guis/multiblock_controller.png");
+    protected static final ResourceLocation TEXTURE = new ResourceLocation(AE2LightningTech.MODID, "textures/guis/multiblock_controller.png");
 
     // Texture regions: title 2-14, status recess 18-34, divider 36-46, body recess 50-132, footer 134-162
     protected static final int TEXT_X = 12;

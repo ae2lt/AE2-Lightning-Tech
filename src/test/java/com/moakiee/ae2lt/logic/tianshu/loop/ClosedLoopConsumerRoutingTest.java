@@ -181,7 +181,7 @@ class ClosedLoopConsumerRoutingTest {
         }
         @Override public Object getPrimaryKey() { return id; }
         @Override public ResourceLocation getId() {
-            return ResourceLocation.fromNamespaceAndPath("ae2lt_test", id);
+            return new ResourceLocation("ae2lt_test", id);
         }
         @Override public void writeToPacket(FriendlyByteBuf data) { }
         @Override protected Component computeDisplayName() {
@@ -199,7 +199,7 @@ class ClosedLoopConsumerRoutingTest {
 
     private static final class TestKeyType extends AEKeyType {
         private TestKeyType() {
-            super(ResourceLocation.fromNamespaceAndPath("ae2lt_test", "consumer_routing_key"),
+            super(new ResourceLocation("ae2lt_test", "consumer_routing_key"),
                     TestKey.class, Component.literal("consumer routing key"));
         }
         @Override public AEKey readFromPacket(FriendlyByteBuf input) { return null; }

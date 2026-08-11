@@ -21,9 +21,9 @@ import org.slf4j.Logger;
 public final class CoreEffectShaders {
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final ResourceLocation TIANSHU_SHADER =
-            ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "multiblock/tianshu_core");
+            new ResourceLocation(AE2LightningTech.MODID, "multiblock/tianshu_core");
     private static final ResourceLocation MATRIX_SHADER =
-            ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "multiblock/matrix_core");
+            new ResourceLocation(AE2LightningTech.MODID, "multiblock/matrix_core");
 
     private static final ShaderTracker TIANSHU = new ShaderTracker();
     private static final ShaderTracker MATRIX = new ShaderTracker();

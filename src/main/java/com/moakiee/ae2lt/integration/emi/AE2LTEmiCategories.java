@@ -74,7 +74,7 @@ final class AE2LTEmiCategories {
 
     private static EmiRecipeCategory category(String path, EmiRenderable icon) {
         return new EmiRecipeCategory(
-                ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, path), icon) {
+                new ResourceLocation(AE2LightningTech.MODID, path), icon) {
             @Override
             public Component getName() {
                 return Component.translatable("jei.ae2lt." + path + ".title");

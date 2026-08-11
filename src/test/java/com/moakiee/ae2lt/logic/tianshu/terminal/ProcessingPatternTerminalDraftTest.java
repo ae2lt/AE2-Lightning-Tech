@@ -121,7 +121,7 @@ class ProcessingPatternTerminalDraftTest {
         }
         @Override public Object getPrimaryKey() { return id; }
         @Override public ResourceLocation getId() {
-            return ResourceLocation.fromNamespaceAndPath("ae2lt_test", id);
+            return new ResourceLocation("ae2lt_test", id);
         }
         @Override public void writeToPacket(FriendlyByteBuf data) { }
         @Override protected Component computeDisplayName() { return Component.literal(id); }
@@ -135,7 +135,7 @@ class ProcessingPatternTerminalDraftTest {
 
     private static final class TestKeyType extends AEKeyType {
         private TestKeyType() {
-            super(ResourceLocation.fromNamespaceAndPath("ae2lt_test", "processing_draft"),
+            super(new ResourceLocation("ae2lt_test", "processing_draft"),
                     TestKey.class, Component.literal("test"));
         }
 

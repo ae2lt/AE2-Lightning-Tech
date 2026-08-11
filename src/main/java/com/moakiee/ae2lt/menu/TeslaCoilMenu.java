@@ -27,7 +27,7 @@ public class TeslaCoilMenu extends AEBaseMenu implements FrequencyBindingMenu {
             MenuTypeBuilder
                     .create(TeslaCoilMenu::new, TeslaCoilBlockEntity.class)
                     .withMenuTitle(host -> Component.translatable("block.ae2lt.tesla_coil")),
-            ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "tesla_coil"));
+            new ResourceLocation(AE2LightningTech.MODID, "tesla_coil"));
 
     @GuiSync(40)
     public long storedEnergy;

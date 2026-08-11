@@ -24,7 +24,7 @@ import net.minecraft.world.phys.Vec3;
  */
 public final class RitualHyperdimensionalPigmeeEntity extends ItemEntity {
     private static final ResourceLocation PICKUP_ADVANCEMENT =
-            ResourceLocation.fromNamespaceAndPath("ae2lt", "main/hyperdimensional_pigmee");
+            new ResourceLocation("ae2lt", "main/hyperdimensional_pigmee");
     private static final String PICKUP_CRITERION = "claim_ritual_pigmee";
     private static final String TAG_CEREMONY_END = "CeremonyEndGameTime";
     private static final EntityDataAccessor<Long> DATA_CEREMONY_END =

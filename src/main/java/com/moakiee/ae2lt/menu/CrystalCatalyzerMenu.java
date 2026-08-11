@@ -34,7 +34,7 @@ public class CrystalCatalyzerMenu extends AEBaseMenu implements FrequencyBinding
             MenuTypeBuilder
                     .create(CrystalCatalyzerMenu::new, CrystalCatalyzerBlockEntity.class)
                     .withMenuTitle(host -> Component.translatable("block.ae2lt.crystal_catalyzer")),
-            ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "crystal_catalyzer"));
+            new ResourceLocation(AE2LightningTech.MODID, "crystal_catalyzer"));
 
     @GuiSync(20)
     public long storedEnergy;

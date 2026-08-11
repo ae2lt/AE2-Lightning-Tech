@@ -25,8 +25,8 @@ import com.moakiee.ae2lt.overload.model.MatchMode;
  */
 public class OverloadPatternEncoderScreen extends AbstractContainerScreen<OverloadPatternEncoderMenu> {
     private static final Component SCREEN_TITLE = Component.translatable("item.ae2lt.overload_pattern_encoder");
-    private static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "textures/gui/ae2lt_pattern_encoder.png");
-    private static final ResourceLocation CHECKBOX_TEXTURE = ResourceLocation.fromNamespaceAndPath("ae2", "textures/guis/checkbox.png");
+    private static final ResourceLocation TEXTURE = new ResourceLocation(AE2LightningTech.MODID, "textures/gui/ae2lt_pattern_encoder.png");
+    private static final ResourceLocation CHECKBOX_TEXTURE = new ResourceLocation("ae2", "textures/guis/checkbox.png");
 
     private static final int TEXTURE_SIZE = 256;
     private static final int CHECKBOX_TEXTURE_SIZE = 64;

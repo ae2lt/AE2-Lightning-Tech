@@ -16,10 +16,10 @@ import net.minecraft.world.level.block.state.BlockState;
 
 public final class OverloadedPatternProviderUpgradeItem extends AbstractPatternProviderUpgradeItem {
     private static final Set<ResourceLocation> SUPPORTED_SOURCE_BLOCKS = Set.of(
-            ResourceLocation.fromNamespaceAndPath("ae2", "pattern_provider"),
-            ResourceLocation.fromNamespaceAndPath("expatternprovider", "ex_pattern_provider"),
-            ResourceLocation.fromNamespaceAndPath("advanced_ae", "small_adv_pattern_provider"),
-            ResourceLocation.fromNamespaceAndPath("advanced_ae", "adv_pattern_provider"));
+            new ResourceLocation("ae2", "pattern_provider"),
+            new ResourceLocation("expatternprovider", "ex_pattern_provider"),
+            new ResourceLocation("advanced_ae", "small_adv_pattern_provider"),
+            new ResourceLocation("advanced_ae", "adv_pattern_provider"));
 
     public OverloadedPatternProviderUpgradeItem(Properties properties) {
         super(properties);

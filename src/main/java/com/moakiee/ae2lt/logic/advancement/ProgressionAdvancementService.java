@@ -57,7 +57,7 @@ public final class ProgressionAdvancementService {
     }
 
     private static ResourceLocation advancement(String path) {
-        return ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "main/" + path);
+        return new ResourceLocation(AE2LightningTech.MODID, "main/" + path);
     }
 
     private static void award(ServerPlayer player, ResourceLocation id, String criterion) {

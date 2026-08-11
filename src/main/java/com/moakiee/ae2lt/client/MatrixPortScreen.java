@@ -36,7 +36,7 @@ import com.moakiee.ae2lt.util.SlotPositionAccess;
  * Matching patterns are highlighted while the other patterns in that retained row are dimmed.</p>
  */
 public class MatrixPortScreen extends AbstractContainerScreen<MatrixPortMenu> {
-    private static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "textures/guis/matrix_pattern_manager.png");
+    private static final ResourceLocation TEXTURE = new ResourceLocation(AE2LightningTech.MODID, "textures/guis/matrix_pattern_manager.png");
 
     private static final int TEXTURE_SIZE = 256;
     private static final int GUI_WIDTH = 190;

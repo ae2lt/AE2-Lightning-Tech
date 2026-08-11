@@ -14,7 +14,7 @@ import net.minecraft.world.item.Items;
 public final class PurificationEffectRules {
     public static final TagKey<MobEffect> MEKANISM_SPEED_UP_BLACKLIST = TagKey.create(
             Registries.MOB_EFFECT,
-            ResourceLocation.fromNamespaceAndPath("mekanism", "speed_up_blacklist"));
+            new ResourceLocation("mekanism", "speed_up_blacklist"));
 
     private PurificationEffectRules() {
     }

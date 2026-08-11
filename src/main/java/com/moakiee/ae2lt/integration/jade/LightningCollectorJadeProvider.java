@@ -14,7 +14,7 @@ import snownee.jade.api.config.IPluginConfig;
 
 public class LightningCollectorJadeProvider implements IBlockComponentProvider, IServerDataProvider<BlockAccessor> {
     private static final ResourceLocation UID =
-            ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "lightning_collector");
+            new ResourceLocation(AE2LightningTech.MODID, "lightning_collector");
 
     @Override
     public ResourceLocation getUid() {

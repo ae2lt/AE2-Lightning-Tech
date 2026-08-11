@@ -62,7 +62,7 @@ import net.minecraftforge.common.util.LazyOptional;
  */
 public final class PigmeeMolecularAssemblerBlockEntity extends AENetworkInvBlockEntity
         implements IGridTickable, ICraftingMachine, IPowerChannelState {
-    public static final ResourceLocation INV_MAIN = ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "pigmee_molecular_assembler");
+    public static final ResourceLocation INV_MAIN = new ResourceLocation(AE2LightningTech.MODID, "pigmee_molecular_assembler");
 
     private static final String TAG_AUTOMATIC_PATTERN = "automaticPattern";
     private static final String TAG_PUSH_DIRECTION = "pushDirection";

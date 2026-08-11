@@ -110,7 +110,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     public static final MenuType<TianshuPatternEncodingTermMenu> TYPE = Ae2ltMenuBuilder
             .buildUnregistered(
                     MenuTypeBuilder.create(FACTORY, TianshuPatternTerminalHost.class),
-                    ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "tianshu_pattern_encoding_terminal"));
+                    new ResourceLocation(AE2LightningTech.MODID, "tianshu_pattern_encoding_terminal"));
 
     @GuiSync(110)
     public TianshuEncodingMode tianshuMode = TianshuEncodingMode.CRAFTING;

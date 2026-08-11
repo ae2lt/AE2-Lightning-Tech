@@ -121,7 +121,7 @@ public final class ConnectionPredicates {
     }
 
     private static ResourceLocation rl(String path) {
-        return ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, path);
+        return new ResourceLocation(AE2LightningTech.MODID, path);
     }
 
     private static boolean isFormedMatrixComponent(BlockState state) {

@@ -32,7 +32,7 @@ public class LightningAssemblyCategory implements IRecipeCategory<LightningAssem
             RecipeType.create(AE2LightningTech.MODID, "lightning_assembly", LightningAssemblyRecipe.class);
 
     private static final ResourceLocation BACKGROUND_TEXTURE =
-            ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "textures/guis/lightning_assembly_chamber.png");
+            new ResourceLocation(AE2LightningTech.MODID, "textures/guis/lightning_assembly_chamber.png");
 
     // Crop the machine GUI work area for JEI without clipping the bottom input row or output slot.
     private static final int BACKGROUND_U = 19;

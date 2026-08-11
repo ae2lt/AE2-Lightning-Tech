@@ -79,7 +79,7 @@ public final class ModEntityRenderers {
     }
 
     private static void wrapFumoItemModel(ModelEvent.ModifyBakingResult event, String itemId) {
-        ResourceLocation id = ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, itemId);
+        ResourceLocation id = new ResourceLocation(AE2LightningTech.MODID, itemId);
         ModelResourceLocation modelId = new ModelResourceLocation(id, "inventory");
         event.getModels().computeIfPresent(modelId, (ignored, model) ->
                 itemId.equals("hyperdimensional_pigmee_fumo")

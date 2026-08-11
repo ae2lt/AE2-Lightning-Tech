@@ -15,7 +15,7 @@ import snownee.jade.api.config.IPluginConfig;
 
 public class FirmamentConversionCoreJadeProvider implements IBlockComponentProvider, IServerDataProvider<BlockAccessor> {
     private static final ResourceLocation UID =
-            ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "firmament_conversion_core");
+            new ResourceLocation(AE2LightningTech.MODID, "firmament_conversion_core");
     private static final String TAG_INSIDE_STARSHIP = "InsideStarship";
     private static final String TAG_PROGRESS = "Progress";
     private static final String TAG_PROCESS_TIME = "ProcessTime";

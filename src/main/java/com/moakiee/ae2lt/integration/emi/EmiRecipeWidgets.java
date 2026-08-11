@@ -19,11 +19,11 @@ final class EmiRecipeWidgets {
     }
 
     static ResourceLocation texture(String path) {
-        return ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "textures/" + path);
+        return new ResourceLocation(AE2LightningTech.MODID, "textures/" + path);
     }
 
     static ResourceLocation syntheticId(String path) {
-        return ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "emi/" + path);
+        return new ResourceLocation(AE2LightningTech.MODID, "emi/" + path);
     }
 
     static EmiIngredient ingredient(Ingredient ingredient, long count) {

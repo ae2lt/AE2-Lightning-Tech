@@ -33,7 +33,7 @@ public class LightningSimulationCategory implements IRecipeCategory<LightningSim
             RecipeType.create(AE2LightningTech.MODID, "lightning_simulation", LightningSimulationRecipe.class);
 
     private static final ResourceLocation BACKGROUND_TEXTURE =
-            ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "textures/guis/lightning_simulation_room.png");
+            new ResourceLocation(AE2LightningTech.MODID, "textures/guis/lightning_simulation_room.png");
 
     // Crop the machine GUI work area without clipping the input slots or reaction chamber border.
     private static final int BACKGROUND_U = 5;

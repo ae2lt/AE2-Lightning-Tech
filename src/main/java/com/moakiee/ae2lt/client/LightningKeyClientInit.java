@@ -39,12 +39,12 @@ public final class LightningKeyClientInit {
 
             ItemProperties.register(
                     ModItems.ELECTRO_CHIME_CRYSTAL.get(),
-                    ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "catalysis_stage"),
+                    new ResourceLocation(AE2LightningTech.MODID, "catalysis_stage"),
                     (stack, level, entity, seed) -> ElectroChimeCrystalItem.getCatalysisStage(stack) * 0.25F);
 
             ItemProperties.register(
                     ModItems.MYSTERIOUS_CELL.get(),
-                    ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "cell_type"),
+                    new ResourceLocation(AE2LightningTech.MODID, "cell_type"),
                     (stack, level, entity, seed) -> {
                         if (!FixedInfiniteCellItem.hasType(stack)) {
                             return 0.0F;
@@ -58,7 +58,7 @@ public final class LightningKeyClientInit {
 
             ItemProperties.register(
                     ModItems.ELECTROMAGNETIC_RAILGUN.get(),
-                    ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "ehv_model"),
+                    new ResourceLocation(AE2LightningTech.MODID, "ehv_model"),
                     (stack, level, entity, seed) -> entity != null
                             && entity.isUsingItem()
                             && entity.getUseItem() == stack
