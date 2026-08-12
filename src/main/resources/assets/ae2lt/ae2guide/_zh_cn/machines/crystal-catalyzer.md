@@ -3,6 +3,8 @@ navigation:
   title: 水晶催化器
   icon: ae2lt:crystal_catalyzer
   parent: machines/machines-index.md
+item_ids:
+  - ae2lt:crystal_catalyzer
 ---
 
 # 水晶催化器

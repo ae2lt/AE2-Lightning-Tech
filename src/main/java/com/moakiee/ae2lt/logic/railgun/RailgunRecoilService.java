@@ -6,7 +6,6 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.network.PacketDistributor;
 
 import com.moakiee.ae2lt.config.RailgunDefaults;
 import com.moakiee.ae2lt.celestweave.PhaseFlightMovementGuard;

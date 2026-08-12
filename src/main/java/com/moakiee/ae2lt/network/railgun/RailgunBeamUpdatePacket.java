@@ -7,7 +7,6 @@ import java.util.UUID;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.phys.Vec3;
 
-import com.moakiee.ae2lt.network.NetworkInit;
 
 /**
  * Server to tracking client: keepalive/update packet for an active beam owned

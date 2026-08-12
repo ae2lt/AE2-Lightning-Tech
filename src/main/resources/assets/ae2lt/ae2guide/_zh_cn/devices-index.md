@@ -4,6 +4,8 @@ navigation:
   icon: ae2lt:overload_device_workbench
   parent: index.md
   position: 50
+item_ids:
+  - ae2lt:overload_device_workbench
 ---
 
 # 过载设备

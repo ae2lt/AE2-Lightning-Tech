@@ -4,6 +4,9 @@ navigation:
   icon: ae2lt:tianshu_supercomputer_port
   parent: tianshu/tianshu-index.md
   position: 30
+item_ids:
+  - ae2lt:tianshu_supercomputer_controller
+  - ae2lt:tianshu_supercomputer_port
 ---
 
 # 端口、任务与快速计算

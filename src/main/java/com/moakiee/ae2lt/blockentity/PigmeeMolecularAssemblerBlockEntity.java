@@ -34,7 +34,6 @@ import com.moakiee.ae2lt.registry.ModBlocks;
 import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
@@ -48,7 +47,6 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.network.PacketDistributor;
 import org.jetbrains.annotations.Nullable;
 import net.minecraftforge.common.capabilities.Capability;
 import net.minecraftforge.common.capabilities.ForgeCapabilities;
@@ -68,7 +66,6 @@ public final class PigmeeMolecularAssemblerBlockEntity extends AENetworkInvBlock
     private static final String TAG_PUSH_DIRECTION = "pushDirection";
     private static final int CRAFTING_SLOT_COUNT = 9;
     private static final int OUTPUT_SLOT = 9;
-    private static final int PATTERN_SLOT = 10;
     private static final int MAX_PROGRESS = 100;
     private static final int ENERGY_PER_TICK = 10;
 

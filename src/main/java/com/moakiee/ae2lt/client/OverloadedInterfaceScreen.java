@@ -35,7 +35,6 @@ public class OverloadedInterfaceScreen extends AEBaseScreen<OverloadedInterfaceM
     private static final int SLOTS_PER_PAGE = 18;
     private static final int COLS = 9;
     private static final int SLOT_SPACING = 18;
-    private static final int AMT_BTN_SIZE = 16;
     private static final int AMT_ROW1_Y = 35;
     private static final int AMT_ROW2_Y = 95;
     private static final int AMT_START_X = 8;

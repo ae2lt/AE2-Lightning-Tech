@@ -3,6 +3,10 @@ navigation:
   title: 过载合金
   icon: ae2lt:overload_alloy
   parent: materials/materials-index.md
+item_ids:
+  - ae2lt:overload_alloy
+  - ae2lt:overload_alloy_blank
+  - ae2lt:overload_alloy_plate
 ---
 
 # 过载合金

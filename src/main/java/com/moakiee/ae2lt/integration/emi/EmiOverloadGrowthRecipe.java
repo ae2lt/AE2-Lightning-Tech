@@ -1,6 +1,5 @@
 package com.moakiee.ae2lt.integration.emi;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import appeng.core.definitions.AEBlocks;

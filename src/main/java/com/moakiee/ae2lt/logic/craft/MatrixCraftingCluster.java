@@ -315,8 +315,8 @@ public final class MatrixCraftingCluster {
         }
 
         @Override
-        public boolean isRemoved() {
-            return delegate.isRemoved();
+        public boolean isCraftingHostRemoved() {
+            return delegate.isCraftingHostRemoved();
         }
 
         @Override

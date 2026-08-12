@@ -4,7 +4,6 @@ import net.minecraftforge.network.NetworkEvent;
 
 import net.minecraft.network.FriendlyByteBuf;
 
-import com.moakiee.ae2lt.network.NetworkInit;
 
 /** Server to client: apply visual recoil after a charged shot. */
 public record RailgunRecoilFxPacket(float pitchUp, int tierOrdinal) {

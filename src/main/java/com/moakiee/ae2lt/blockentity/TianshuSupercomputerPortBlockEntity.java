@@ -43,7 +43,6 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.core.RegistryAccess;
 
 /**
  * AE network link for a Tianshu controller. Runtime state and functional services belong to the

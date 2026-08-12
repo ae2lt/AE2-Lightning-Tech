@@ -3,6 +3,10 @@ navigation:
   title: 无线网络
   icon: ae2lt:wireless_overloaded_controller
   parent: overloaded-network/overloaded-network-index.md
+item_ids:
+  - ae2lt:wireless_receiver
+  - ae2lt:wireless_overloaded_controller
+  - ae2lt:advanced_wireless_overloaded_controller
 ---
 
 # 无线网络

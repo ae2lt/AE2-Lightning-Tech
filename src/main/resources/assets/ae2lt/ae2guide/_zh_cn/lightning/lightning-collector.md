@@ -3,6 +3,10 @@ navigation:
   title: 闪电收集器
   icon: ae2lt:lightning_collector
   parent: lightning/lightning-index.md
+item_ids:
+  - ae2lt:lightning_collector
+  - ae2lt:electro_chime_crystal
+  - ae2lt:perfect_electro_chime_crystal
 ---
 
 # 闪电收集器

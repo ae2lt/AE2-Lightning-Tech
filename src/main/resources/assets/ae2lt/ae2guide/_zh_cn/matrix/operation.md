@@ -4,6 +4,10 @@ navigation:
   icon: ae2lt:matter_warping_matrix_pattern_storage_t1
   parent: matrix/matrix-index.md
   position: 30
+item_ids:
+  - ae2lt:matter_warping_matrix_pattern_storage_t1
+  - ae2lt:matter_warping_matrix_pattern_storage_t2
+  - ae2lt:matter_warping_matrix_pattern_storage_upgrade
 ---
 
 # 样板、端口与运行

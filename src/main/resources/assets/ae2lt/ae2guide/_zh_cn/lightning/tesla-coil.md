@@ -3,6 +3,8 @@ navigation:
   title: 特斯拉线圈
   icon: ae2lt:tesla_coil
   parent: lightning/lightning-index.md
+item_ids:
+  - ae2lt:tesla_coil
 ---
 
 # 特斯拉线圈

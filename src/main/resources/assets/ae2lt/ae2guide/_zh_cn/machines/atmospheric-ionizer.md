@@ -3,6 +3,11 @@ navigation:
   title: 大气电离仪
   icon: ae2lt:atmospheric_ionizer
   parent: machines/machines-index.md
+item_ids:
+  - ae2lt:atmospheric_ionizer
+  - ae2lt:clear_condensate
+  - ae2lt:rain_condensate
+  - ae2lt:thunderstorm_condensate
 ---
 
 # 大气电离仪

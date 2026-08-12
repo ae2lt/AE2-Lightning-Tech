@@ -627,6 +627,11 @@ public class MatrixControllerBlockEntity extends BlockEntity
     }
 
     @Override
+    public boolean isCraftingHostRemoved() {
+        return isRemoved();
+    }
+
+    @Override
     public boolean isConnected() {
         var port = getLinkedPort();
         return port != null && port.isLinkConnected();

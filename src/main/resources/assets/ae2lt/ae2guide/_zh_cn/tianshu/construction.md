@@ -4,6 +4,10 @@ navigation:
   icon: ae2lt:tianshu_supercomputer_casing
   parent: tianshu/tianshu-index.md
   position: 10
+item_ids:
+  - ae2lt:tianshu_supercomputer_casing
+  - ae2lt:phase_change_cooling_unit
+  - ae2lt:tianshu_supercomputer_glass
 ---
 
 # 结构与自动搭建

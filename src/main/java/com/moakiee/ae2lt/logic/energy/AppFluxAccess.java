@@ -380,16 +380,6 @@ final class AppFluxAccess {
         return value >= Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) Math.max(0L, value);
     }
 
-    private static long clampToLong(double value) {
-        if (Double.isNaN(value) || value <= 0.0) {
-            return 0L;
-        }
-        if (value >= 9.223372036854776E18) {
-            return Long.MAX_VALUE;
-        }
-        return (long) value;
-    }
-
     private static long maxForgeEnergyFor(double feToJoules) {
         if (Double.isNaN(feToJoules) || feToJoules <= 0.0) {
             return Long.MAX_VALUE;

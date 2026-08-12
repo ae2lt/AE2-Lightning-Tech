@@ -2,7 +2,6 @@ package com.moakiee.ae2lt.logic.tianshu.terminal;
 
 import java.util.ArrayList;
 import java.util.List;
-import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
