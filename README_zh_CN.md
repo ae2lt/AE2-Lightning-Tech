@@ -4,7 +4,7 @@
 
 这是 [Applied Energistics 2](https://github.com/AppliedEnergistics/Applied-Energistics-2) 的附属模组，添加闪电能源、进阶机器和过载 ME 网络组件。
 
-> 必需依赖 AE2 与 Thunderbolt Core · 适用于 Minecraft 1.20.1 / Forge 47.4
+> 必需依赖 AE2 与 Thunderbolt Core · 适用于 Minecraft 1.20.1 / Forge 47.1.3+
 
 本分支是持续维护的 Forge 1.20.1 移植。主项目面向更新的 Minecraft 与 NeoForge；在 1.20.1 API 能支持的范围内，本分支会同步其行为修复和功能改进。
 
@@ -23,7 +23,7 @@
 | 模组 | 要求 |
 |------|------|
 | Minecraft 1.20.1 | 必需 |
-| Forge 47.4.x | 必需 |
+| Forge 47.1.3+ | 必需 |
 | Applied Energistics 2 15.4.10+ | 必需 |
 | Thunderbolt Core 1.0.7 | 必需 |
 | JEI 或 EMI、Jade | 可选联动 |
