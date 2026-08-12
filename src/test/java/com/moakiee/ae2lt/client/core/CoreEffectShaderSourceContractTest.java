@@ -112,6 +112,28 @@ class CoreEffectShaderSourceContractTest {
     }
 
     @Test
+    void activeShaderPacksUseAKnownVanillaShaderFallback() throws Exception {
+        String backend = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/client/core/CoreEffectBackend.java"));
+        String renderTypes = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/client/core/CoreEffectRenderTypes.java"));
+        String geometry = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/client/core/CoreEffectGeometry.java"));
+
+        assertAll(
+                () -> assertTrue(backend.contains("modList.isLoaded(\"iris\")")),
+                () -> assertTrue(backend.contains("modList.isLoaded(\"oculus\")")),
+                () -> assertTrue(backend.contains("net.irisshaders.iris.api.v0.IrisApi")),
+                () -> assertTrue(backend.contains("net.coderbot.iris.api.v0.IrisApi")),
+                () -> assertTrue(backend.contains("isShaderPackInUse")),
+                () -> assertFalse(backend.contains("import net.irisshaders")),
+                () -> assertTrue(renderTypes.contains("POSITION_COLOR_SHADER")),
+                () -> assertTrue(renderTypes.contains("SHADER_PACK_FALLBACK")),
+                () -> assertTrue(renderTypes.contains("shaderPackActive ?")),
+                () -> assertTrue(geometry.contains("CoreEffectBackend.useShaderPackFallback()")));
+    }
+
+    @Test
     void nativeAndVeilShadersKeepTheSameVisualLogic() throws Exception {
         Path nativeDirectory = Path.of(
                 "src/main/resources/assets/ae2lt/shaders/core/multiblock");
