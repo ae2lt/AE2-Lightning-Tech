@@ -1,6 +1,7 @@
 package com.moakiee.ae2lt.client;
 
 import appeng.client.gui.style.ScreenStyle;
+import appeng.client.gui.widgets.BackgroundPanel;
 import com.moakiee.ae2lt.menu.TianshuWirelessPatternEncodingTermMenu;
 import de.mari_023.ae2wtlib.wut.CycleTerminalButton;
 import de.mari_023.ae2wtlib.wut.IUniversalTerminalCapable;
@@ -20,5 +21,7 @@ public final class TianshuWirelessPatternEncodingTermScreen
         if (menu.isWUT()) {
             addToLeftToolbar(new CycleTerminalButton(ignored -> cycleTerminal()));
         }
+        widgets.add("singularityBackground",
+                new BackgroundPanel(style.getImage("singularityBackground")));
     }
 }
