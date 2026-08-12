@@ -4,6 +4,12 @@ navigation:
   icon: ae2lt:matter_warping_matrix_casing
   parent: matrix/matrix-index.md
   position: 10
+item_ids:
+  - ae2lt:matter_warping_matrix_casing
+  - ae2lt:matter_warping_matrix_constraint_frame
+  - ae2lt:matter_warping_matrix_glass
+  - ae2lt:matter_warping_matrix_controller
+  - ae2lt:matter_warping_matrix_port
 ---
 
 # 结构与自动搭建

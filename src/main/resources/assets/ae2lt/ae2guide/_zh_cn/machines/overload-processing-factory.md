@@ -3,6 +3,8 @@ navigation:
   title: 过载处理工厂
   icon: ae2lt:overload_processing_factory
   parent: machines/machines-index.md
+item_ids:
+  - ae2lt:overload_processing_factory
 ---
 
 # 过载处理工厂

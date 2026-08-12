@@ -4,6 +4,15 @@ navigation:
   icon: ae2lt:matter_warping_matrix_stable_main_core
   parent: matrix/matrix-index.md
   position: 20
+item_ids:
+  - ae2lt:matter_warping_matrix_stable_main_core
+  - ae2lt:matter_warping_matrix_quantum_main_core
+  - ae2lt:matter_warping_matrix_overload_main_core
+  - ae2lt:matter_warping_matrix_multidimensional_main_core
+  - ae2lt:matter_warping_matrix_thread_unit_t1
+  - ae2lt:matter_warping_matrix_thread_unit_t2
+  - ae2lt:matter_warping_matrix_thermal_control_unit_t1
+  - ae2lt:matter_warping_matrix_thermal_control_unit_t2
 ---
 
 # 主核心、外围单元与热度

@@ -3,6 +3,8 @@ navigation:
   title: 闪电装配室
   icon: ae2lt:lightning_assembly_chamber
   parent: machines/machines-index.md
+item_ids:
+  - ae2lt:lightning_assembly_chamber
 ---
 
 # 闪电装配室

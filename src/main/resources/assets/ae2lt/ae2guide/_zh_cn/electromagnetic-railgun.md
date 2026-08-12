@@ -4,6 +4,13 @@ navigation:
   icon: ae2lt:electromagnetic_railgun
   parent: devices-index.md
   position: 10
+item_ids:
+  - ae2lt:electromagnetic_railgun
+  - ae2lt:railgun_module_core
+  - ae2lt:railgun_module_compute
+  - ae2lt:railgun_module_acceleration
+  - ae2lt:railgun_module_range
+  - ae2lt:railgun_module_overload_execution
 ---
 
 # 电磁炮

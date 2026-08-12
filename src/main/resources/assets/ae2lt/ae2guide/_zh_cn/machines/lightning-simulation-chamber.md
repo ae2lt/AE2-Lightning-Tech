@@ -3,6 +3,8 @@ navigation:
   title: 闪电模拟室
   icon: ae2lt:lightning_simulation_room
   parent: machines/machines-index.md
+item_ids:
+  - ae2lt:lightning_simulation_room
 ---
 
 # 闪电模拟室

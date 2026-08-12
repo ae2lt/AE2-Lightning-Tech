@@ -3,6 +3,9 @@ navigation:
   title: 过载奇点
   icon: ae2lt:overload_singularity
   parent: materials/materials-index.md
+item_ids:
+  - ae2lt:overload_singularity
+  - ae2lt:ultimate_overload_core
 ---
 
 # 过载奇点与极限过载核心
