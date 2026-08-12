@@ -42,10 +42,8 @@ public final class TianshuWTMenuHost extends WTMenuHost
     private static final String TAG_TIANSHU_MODE = "tianshuMode";
     private static final String TAG_CLOSED_LOOP_DRAFT = "tianshuClosedLoopDraft";
     private static final String TAG_PROCESSING_DRAFT = "tianshuProcessingDraft";
-    private static final String TAG_VIEW_CELLS = "viewcells";
 
     private final PatternEncodingLogic logic = new PatternEncodingLogic(this);
-    private final AppEngInternalInventory viewCells = new AppEngInternalInventory(null, 5);
     private TianshuEncodingMode tianshuMode = TianshuEncodingMode.CRAFTING;
     @Nullable
     private ClosedLoopTerminalDraft closedLoopDraft;
@@ -58,13 +56,7 @@ public final class TianshuWTMenuHost extends WTMenuHost
             ItemStack stack,
             BiConsumer<Player, ISubMenu> returnToMainMenu) {
         super(player, inventorySlot, stack, returnToMainMenu);
-
-        CompoundTag data = getItemStack().getTagElement(TAG_PATTERN_LOGIC);
-        if (data != null) {
-            logic.readFromNBT(data);
-            viewCells.readFromNBT(data, TAG_VIEW_CELLS);
-            readTianshuState(data);
-        }
+        readFromNbt();
 
         // Tianshu pulls blank patterns from ME storage and stages only the pattern being encoded.
         // Keep the inherited physical blank-pattern slot unavailable, just like the wired part.
@@ -89,10 +81,25 @@ public final class TianshuWTMenuHost extends WTMenuHost
     }
 
     @Override
-    public void markForSave() {
+    public ItemStack getMainMenuIcon() {
+        return new ItemStack(Ae2wtlibIntegration.terminal());
+    }
+
+    @Override
+    protected void readFromNbt() {
+        super.readFromNbt();
+        CompoundTag data = getItemStack().getTagElement(TAG_PATTERN_LOGIC);
+        if (data != null) {
+            logic.readFromNBT(data);
+            readTianshuState(data);
+        }
+    }
+
+    @Override
+    public void saveChanges() {
+        super.saveChanges();
         CompoundTag data = getItemStack().getOrCreateTagElement(TAG_PATTERN_LOGIC);
         logic.writeToNBT(data);
-        viewCells.writeToNBT(data, TAG_VIEW_CELLS);
         data.putString(TAG_TIANSHU_MODE, tianshuMode.name());
         if (closedLoopDraft != null) {
             data.put(TAG_CLOSED_LOOP_DRAFT, closedLoopDraft.write());
@@ -107,8 +114,8 @@ public final class TianshuWTMenuHost extends WTMenuHost
     }
 
     @Override
-    public AppEngInternalInventory getViewCellStorage() {
-        return viewCells;
+    public void markForSave() {
+        saveChanges();
     }
 
     @Override

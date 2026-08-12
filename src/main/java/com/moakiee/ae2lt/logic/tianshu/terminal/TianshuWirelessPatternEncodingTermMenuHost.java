@@ -11,11 +11,13 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 
 import appeng.api.implementations.blockentities.IViewCellStorage;
+import appeng.api.inventories.InternalInventory;
 import appeng.helpers.IPatternTerminalLogicHost;
 import appeng.helpers.WirelessTerminalMenuHost;
 import appeng.menu.ISubMenu;
 import appeng.parts.encoding.PatternEncodingLogic;
 import appeng.util.inv.AppEngInternalInventory;
+import appeng.util.inv.InternalInventoryHost;
 
 /**
  * Wireless host for the Tianshu terminal.
@@ -31,7 +33,8 @@ import appeng.util.inv.AppEngInternalInventory;
  * same draft as the part version.</p>
  */
 public class TianshuWirelessPatternEncodingTermMenuHost extends WirelessTerminalMenuHost
-        implements TianshuPatternTerminalHost, IPatternTerminalLogicHost, IViewCellStorage {
+        implements TianshuPatternTerminalHost, IPatternTerminalLogicHost, IViewCellStorage,
+        InternalInventoryHost {
     private static final String TAG_PATTERN_LOGIC = "patternEncodingLogic";
     private static final String TAG_TIANSHU_MODE = "tianshuMode";
     private static final String TAG_CLOSED_LOOP_DRAFT = "tianshuClosedLoopDraft";
@@ -39,7 +42,7 @@ public class TianshuWirelessPatternEncodingTermMenuHost extends WirelessTerminal
     private static final String TAG_VIEW_CELLS = "viewcells";
 
     private final PatternEncodingLogic logic = new PatternEncodingLogic(this);
-    private final AppEngInternalInventory viewCells = new AppEngInternalInventory(null, 5);
+    private final AppEngInternalInventory viewCells = new AppEngInternalInventory(this, 5);
     private TianshuEncodingMode tianshuMode = TianshuEncodingMode.CRAFTING;
     @Nullable
     private ClosedLoopTerminalDraft closedLoopDraft;
@@ -93,6 +96,16 @@ public class TianshuWirelessPatternEncodingTermMenuHost extends WirelessTerminal
         } else {
             data.remove(TAG_PROCESSING_DRAFT);
         }
+    }
+
+    @Override
+    public void saveChanges() {
+        markForSave();
+    }
+
+    @Override
+    public void onChangeInventory(InternalInventory inventory, int slot) {
+        markForSave();
     }
 
     @Override
