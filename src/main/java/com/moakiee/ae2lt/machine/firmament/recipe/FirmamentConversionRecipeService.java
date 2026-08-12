@@ -13,7 +13,6 @@ import net.minecraft.world.item.crafting.RecipeManager;
 import net.minecraft.world.level.Level;
 
 import com.moakiee.ae2lt.machine.firmament.FirmamentConversionInventory;
-import com.moakiee.ae2lt.registry.ModRecipeTypes;
 
 public final class FirmamentConversionRecipeService {
     private static final Comparator<Map.Entry<ResourceLocation, FirmamentConversionRecipe>> RECIPE_ORDER = Comparator

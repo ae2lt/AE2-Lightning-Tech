@@ -2,7 +2,6 @@ package com.moakiee.ae2lt.network.tianshu;
 import java.util.function.Supplier;
 import appeng.api.implementations.blockentities.PatternContainerGroup;
 import com.moakiee.ae2lt.menu.TianshuPatternEncodingTermMenu;
-import com.moakiee.ae2lt.network.NetworkInit;
 import net.minecraftforge.network.NetworkEvent;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;

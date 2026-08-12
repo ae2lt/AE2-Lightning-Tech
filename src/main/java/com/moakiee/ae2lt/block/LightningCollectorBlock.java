@@ -1,6 +1,5 @@
 package com.moakiee.ae2lt.block;
 
-import appeng.block.AEBaseEntityBlock;
 import appeng.menu.locator.MenuLocators;
 
 import com.moakiee.ae2lt.blockentity.LightningCollectorBlockEntity;

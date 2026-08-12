@@ -4,7 +4,6 @@ import com.moakiee.ae2lt.config.AE2LTCommonConfig;
 import com.moakiee.ae2lt.item.FixedInfiniteCellItem;
 import com.moakiee.ae2lt.logic.LightningBlastTask;
 import com.moakiee.ae2lt.logic.LightningBlastTaskManager;
-import com.moakiee.ae2lt.registry.ModBlocks;
 import com.moakiee.ae2lt.registry.ModEntities;
 import com.moakiee.ae2lt.registry.ModItems;
 import java.util.List;
@@ -22,7 +21,6 @@ import net.minecraft.world.entity.item.PrimedTnt;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 
 public class OverloadTntEntity extends PrimedTnt {
@@ -159,7 +157,4 @@ public class OverloadTntEntity extends PrimedTnt {
         return id == null ? null : BuiltInRegistries.ITEM.getOptional(id).orElse(null);
     }
 
-    private static BlockState getDefaultBlockState() {
-        return ModBlocks.OVERLOAD_TNT.get().defaultBlockState();
-    }
 }

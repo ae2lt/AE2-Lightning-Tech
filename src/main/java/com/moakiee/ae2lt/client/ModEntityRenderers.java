@@ -5,7 +5,6 @@ import com.moakiee.ae2lt.client.core.MatrixCoreEffectRenderer;
 import com.moakiee.ae2lt.client.core.TianshuCoreEffectRenderer;
 import com.moakiee.ae2lt.registry.ModEntities;
 import com.moakiee.ae2lt.registry.ModBlockEntities;
-import com.moakiee.ae2lt.registry.ModFumos;
 import net.minecraft.client.resources.model.ModelResourceLocation;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.client.renderer.ItemBlockRenderTypes;

@@ -3,7 +3,6 @@ import java.util.function.Supplier;
 import appeng.api.stacks.AEKey;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.ReservedStockMatchMode;
 import com.moakiee.ae2lt.menu.TianshuPatternEncodingTermMenu;
-import com.moakiee.ae2lt.network.NetworkInit;
 import net.minecraftforge.network.NetworkEvent;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;

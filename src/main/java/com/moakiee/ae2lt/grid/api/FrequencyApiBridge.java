@@ -10,7 +10,6 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import com.moakiee.ae2lt.api.frequency.FrequencyApiProvider;
 import com.moakiee.ae2lt.api.frequency.FrequencyBindingAccess;
 import com.moakiee.ae2lt.api.frequency.FrequencyBindingHost;
-import com.moakiee.ae2lt.api.frequency.FrequencyBindingMenuHost;
 import com.moakiee.ae2lt.api.frequency.FrequencyInfo;
 import com.moakiee.ae2lt.api.frequency.FrequencySecurity;
 import com.moakiee.ae2lt.api.frequency.TransmitterInfo;

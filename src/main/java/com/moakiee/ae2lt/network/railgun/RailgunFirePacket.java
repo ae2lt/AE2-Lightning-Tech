@@ -9,7 +9,6 @@ import java.util.UUID;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.phys.Vec3;
 
-import com.moakiee.ae2lt.network.NetworkInit;
 
 /**
  * Server to client: a charged shot fired with the listed chain segments. The

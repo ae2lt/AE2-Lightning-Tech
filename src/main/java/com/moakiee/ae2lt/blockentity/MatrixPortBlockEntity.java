@@ -41,7 +41,6 @@ import appeng.api.stacks.KeyCounter;
 import appeng.api.util.AECableType;
 import appeng.blockentity.grid.AENetworkBlockEntity;
 import appeng.me.helpers.MachineSource;
-import net.minecraft.core.RegistryAccess;
 
 public class MatrixPortBlockEntity extends AENetworkBlockEntity
         implements IBatchCraftingProvider {

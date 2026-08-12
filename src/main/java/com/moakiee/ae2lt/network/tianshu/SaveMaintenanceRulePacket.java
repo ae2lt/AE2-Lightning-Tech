@@ -3,7 +3,6 @@ import java.util.function.Supplier;
 import appeng.api.stacks.AEKey;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.ReservedStockMatchMode;
 import com.moakiee.ae2lt.menu.TianshuPatternEncodingTermMenu;
-import com.moakiee.ae2lt.network.NetworkInit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;

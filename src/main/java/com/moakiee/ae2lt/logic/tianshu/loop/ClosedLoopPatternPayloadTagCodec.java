@@ -5,7 +5,6 @@ import java.util.ArrayList;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
-import net.minecraft.core.RegistryAccess;
 
 public final class ClosedLoopPatternPayloadTagCodec {
     private static final String TAG_MEMBERS = "Members";
