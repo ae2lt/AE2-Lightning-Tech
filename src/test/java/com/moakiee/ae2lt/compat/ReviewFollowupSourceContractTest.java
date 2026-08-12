@@ -34,4 +34,23 @@ class ReviewFollowupSourceContractTest {
         assertFalse(integration.contains("\"pattern_access\""));
         assertFalse(integration.contains("\"pattern_encoding\""));
     }
+
+    @Test
+    void wirelessTianshuUsesItsOwnNameAndKeepsTheUniversalTerminalCycle() throws IOException {
+        String integration = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/integration/ae2wtlib/Ae2wtlibIntegration.java"));
+        String screen = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/client/TianshuWirelessPatternEncodingTermScreen.java"));
+        String menuHost = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/integration/ae2wtlib/TianshuWTMenuHost.java"));
+
+        assertTrue(integration.contains(
+                "item.ae2lt.wireless_tianshu_pattern_encoding_terminal"));
+        assertTrue(integration.contains("TIANSHU_TERMINAL_DESCRIPTION_ID);"));
+        assertFalse(integration.contains("terminal());"));
+        assertTrue(screen.contains("implements IUniversalTerminalCapable"));
+        assertTrue(screen.contains("if (menu.isWUT())"));
+        assertTrue(screen.contains("new CycleTerminalButton(ignored -> cycleTerminal())"));
+        assertTrue(menuHost.contains("getItemStack().getItem() instanceof ItemWUT"));
+    }
 }

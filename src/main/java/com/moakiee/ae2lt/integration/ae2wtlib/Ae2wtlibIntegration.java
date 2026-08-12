@@ -28,6 +28,8 @@ import de.mari_023.ae2wtlib.wut.WUTHandler;
  */
 public final class Ae2wtlibIntegration {
     public static final String TIANSHU_TERMINAL_NAME = "tianshu_pattern_encoding";
+    public static final String TIANSHU_TERMINAL_DESCRIPTION_ID =
+            "item.ae2lt.wireless_tianshu_pattern_encoding_terminal";
 
     private static TianshuWTItem tianshuTerminal;
     private static boolean terminalRegistrationRequested;
@@ -67,7 +69,8 @@ public final class Ae2wtlibIntegration {
                 Ae2wtlibIntegration::tryOpen,
                 TianshuWTMenuHost::new,
                 TianshuWirelessPatternEncodingTermMenu.TYPE,
-                terminal());
+                terminal(),
+                TIANSHU_TERMINAL_DESCRIPTION_ID);
         terminalRegistrationRequested = true;
     }
 

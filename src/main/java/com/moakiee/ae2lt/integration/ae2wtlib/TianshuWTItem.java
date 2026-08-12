@@ -15,7 +15,7 @@ import com.moakiee.ae2lt.menu.TianshuWirelessPatternEncodingTermMenu;
  */
 public final class TianshuWTItem extends ItemWT {
     private static final String DESCRIPTION_ID =
-            "item.ae2lt.wireless_tianshu_pattern_encoding_terminal";
+            Ae2wtlibIntegration.TIANSHU_TERMINAL_DESCRIPTION_ID;
 
     public TianshuWTItem() {
         super();

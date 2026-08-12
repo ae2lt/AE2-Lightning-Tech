@@ -17,6 +17,7 @@ import appeng.parts.encoding.PatternEncodingLogic;
 import appeng.util.inv.AppEngInternalInventory;
 
 import de.mari_023.ae2wtlib.terminal.WTMenuHost;
+import de.mari_023.ae2wtlib.wut.ItemWUT;
 
 import com.moakiee.ae2lt.logic.tianshu.terminal.ClosedLoopTerminalDraft;
 import com.moakiee.ae2lt.logic.tianshu.terminal.ProcessingPatternTerminalDraft;
@@ -80,6 +81,11 @@ public final class TianshuWTMenuHost extends WTMenuHost
     @Override
     public Level getLevel() {
         return getPlayer().level();
+    }
+
+    @Override
+    public boolean isUniversalWirelessTerminal() {
+        return getItemStack().getItem() instanceof ItemWUT;
     }
 
     @Override

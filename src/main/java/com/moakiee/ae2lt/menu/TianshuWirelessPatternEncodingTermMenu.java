@@ -23,4 +23,8 @@ public final class TianshuWirelessPatternEncodingTermMenu extends TianshuPattern
             int id, Inventory inventory, TianshuPatternTerminalHost host) {
         super(TYPE, id, inventory, host);
     }
+
+    public boolean isWUT() {
+        return tianshuHost.isUniversalWirelessTerminal();
+    }
 }
