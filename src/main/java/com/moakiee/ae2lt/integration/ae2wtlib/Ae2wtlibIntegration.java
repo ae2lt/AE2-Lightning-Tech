@@ -1,12 +1,7 @@
 package com.moakiee.ae2lt.integration.ae2wtlib;
 
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegisterEvent;
-
-import appeng.menu.MenuOpener;
-import appeng.menu.locator.MenuLocator;
 
 import com.moakiee.ae2lt.menu.TianshuWirelessPatternEncodingTermMenu;
 import com.moakiee.ae2lt.registry.ModItems;
@@ -66,18 +61,12 @@ public final class Ae2wtlibIntegration {
 
         WUTHandler.addTerminal(
                 TIANSHU_TERMINAL_NAME,
-                Ae2wtlibIntegration::tryOpen,
+                terminal()::tryOpen,
                 TianshuWTMenuHost::new,
                 TianshuWirelessPatternEncodingTermMenu.TYPE,
                 terminal(),
                 TIANSHU_TERMINAL_DESCRIPTION_ID);
         terminalRegistrationRequested = true;
-    }
-
-    private static boolean tryOpen(Player player, MenuLocator locator, ItemStack stack,
-            boolean returningFromSubmenu) {
-        return MenuOpener.open(TianshuWirelessPatternEncodingTermMenu.TYPE,
-                player, locator, returningFromSubmenu);
     }
 
     /**
