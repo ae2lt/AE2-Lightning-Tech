@@ -62,6 +62,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
+import org.jetbrains.annotations.Nullable;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.core.RegistryAccess;
@@ -131,6 +132,15 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
 
     public TianshuSupercomputerControllerBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.TIANSHU_SUPERCOMPUTER_CONTROLLER.get(), pos, state);
+    }
+
+    @Nullable
+    @Override
+    public Level getCpuLevel() {
+        // Named getCpuLevel (not getLevel): getLevel collides with BlockEntity.getLevel,
+        // so host impls get SRG-remapped while the interface method keeps its Mojang name,
+        // producing an AbstractMethodError across the two mod jars.
+        return level;
     }
 
     public static void serverTick(Level level, BlockPos pos, BlockState state,

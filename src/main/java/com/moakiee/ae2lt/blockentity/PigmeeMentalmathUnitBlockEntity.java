@@ -29,6 +29,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
+import org.jetbrains.annotations.Nullable;
 import net.minecraft.core.RegistryAccess;
 
 /**
@@ -107,6 +108,15 @@ public final class PigmeeMentalmathUnitBlockEntity extends AENetworkBlockEntity
     @Override
     public Component getCpuDisplayName() {
         return Component.translatable("block.ae2lt.pigmee_mentalmath_unit");
+    }
+
+    @Nullable
+    @Override
+    public Level getCpuLevel() {
+        // Named getCpuLevel (not getLevel): getLevel collides with BlockEntity.getLevel,
+        // so host impls get SRG-remapped while the interface method keeps its Mojang name,
+        // producing an AbstractMethodError across the two mod jars.
+        return level;
     }
 
     @Override
