@@ -11,7 +11,8 @@ final class CoreEffectGeometry {
     static void renderTianshu(PoseStack stack, MultiBufferSource buffers,
                               CoreEffectPalette palette,
                               double stepPhase, double spinDegrees) {
-        var consumer = buffers.getBuffer(CoreEffectRenderTypes.tianshu());
+        boolean shaderPackActive = CoreEffectBackend.useShaderPackFallback();
+        var consumer = buffers.getBuffer(CoreEffectRenderTypes.tianshu(shaderPackActive));
         stack.pushPose();
         stack.scale(1.80F, 1.80F, 1.80F);
         renderCubeCore(stack, consumer, palette, stepPhase, spinDegrees);
@@ -21,7 +22,8 @@ final class CoreEffectGeometry {
     static void renderMatrix(PoseStack stack, MultiBufferSource buffers,
                              CoreEffectPalette palette,
                              CoreEffectAnimationState.Sample animation) {
-        var coreConsumer = buffers.getBuffer(CoreEffectRenderTypes.matrixCore());
+        boolean shaderPackActive = CoreEffectBackend.useShaderPackFallback();
+        var coreConsumer = buffers.getBuffer(CoreEffectRenderTypes.matrixCore(shaderPackActive));
         float activity = (float) animation.activity();
         float ambientTime = (float) animation.ambientTime();
         float corePhase = (float) animation.primaryPhase();
@@ -30,6 +32,7 @@ final class CoreEffectGeometry {
                 - activity * (0.07F + 0.02F * (float) Math.sin(ambientTime * 4.5F));
         float pulse = 1.0F + activity * 0.035F * (float) Math.sin(ambientTime * 6.0F);
         float glowPulse = 0.94F + 0.06F * (float) Math.sin(animation.glowPhase());
+        float coreBrightness = shaderPackActive ? 0.42F : 0.18F;
         float primaryR = brighten(palette.primaryR(), 0.34F);
         float primaryG = brighten(palette.primaryG(), 0.34F);
         float primaryB = brighten(palette.primaryB(), 0.34F);
@@ -47,13 +50,13 @@ final class CoreEffectGeometry {
                 stack,
                 coreConsumer,
                 0.72F * pulse,
-                palette.primaryR() * 0.18F,
-                palette.primaryG() * 0.18F,
-                palette.primaryB() * 0.18F,
+                palette.primaryR() * coreBrightness,
+                palette.primaryG() * coreBrightness,
+                palette.primaryB() * coreBrightness,
                 0.98F);
         stack.popPose();
 
-        var glowConsumer = buffers.getBuffer(CoreEffectRenderTypes.matrixGlow());
+        var glowConsumer = buffers.getBuffer(CoreEffectRenderTypes.matrixGlow(shaderPackActive));
         float ringRadius = 1.22F * contraction;
         float constraintRadius = 1.12F * contraction;
         float diskAlpha = lerp(0.22F, 0.34F, activity) * glowPulse;
