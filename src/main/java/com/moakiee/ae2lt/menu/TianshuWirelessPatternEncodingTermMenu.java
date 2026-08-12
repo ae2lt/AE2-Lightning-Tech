@@ -1,5 +1,6 @@
 package com.moakiee.ae2lt.menu;
 
+import appeng.api.networking.IGridNode;
 import appeng.menu.implementations.MenuTypeBuilder;
 import appeng.menu.slot.RestrictedInputSlot;
 import com.moakiee.ae2lt.AE2LightningTech;
@@ -22,9 +23,12 @@ public final class TianshuWirelessPatternEncodingTermMenu extends TianshuPattern
                             FACTORY, TianshuWTMenuHost.class),
                     new ResourceLocation(AE2LightningTech.MODID, "wireless_tianshu_pattern_encoding_terminal"));
 
+    private final TianshuWTMenuHost wirelessHost;
+
     public TianshuWirelessPatternEncodingTermMenu(
             int id, Inventory inventory, TianshuWTMenuHost host) {
         super(TYPE, id, inventory, host);
+        this.wirelessHost = host;
 
         // MEStorageMenu already contributes the normal upgrade and view-cell slots. AE2WTLib's
         // entangled singularity is an additional segmented inventory owned by WTMenuHost.
@@ -32,6 +36,15 @@ public final class TianshuWirelessPatternEncodingTermMenu extends TianshuPattern
                         RestrictedInputSlot.PlacableItemType.QE_SINGULARITY,
                         host.getSubInventory(WTMenuHost.INV_SINGULARITY), 0),
                 AE2wtlibSlotSemantics.SINGULARITY);
+    }
+
+    /**
+     * AE2 1.20 does not populate {@code MEStorageMenu.networkNode} for portable terminals.
+     * Expose AE2WTLib's current actionable node explicitly, matching its native WET menu.
+     */
+    @Override
+    public IGridNode getNetworkNode() {
+        return wirelessHost.getActionableNode();
     }
 
     public boolean isWUT() {

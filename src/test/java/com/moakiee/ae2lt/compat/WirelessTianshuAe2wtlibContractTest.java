@@ -40,6 +40,8 @@ class WirelessTianshuAe2wtlibContractTest {
         assertTrue(menu.contains("PlacableItemType.QE_SINGULARITY"));
         assertTrue(menu.contains("AE2wtlibSlotSemantics.SINGULARITY"));
         assertTrue(menu.contains("WTMenuHost.INV_SINGULARITY"));
+        assertTrue(menu.contains("public IGridNode getNetworkNode()"));
+        assertTrue(menu.contains("return wirelessHost.getActionableNode();"));
         assertTrue(screen.contains("new BackgroundPanel(style.getImage(\"singularityBackground\"))"));
         assertTrue(style.contains("wtlib/universal_terminal_with_viewcells.json"));
     }
