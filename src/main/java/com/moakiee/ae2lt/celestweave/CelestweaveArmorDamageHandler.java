@@ -32,7 +32,8 @@ import com.moakiee.ae2lt.registry.ModDamageTypes;
 /**
  * Applies staged mitigation and reflect tuning from active armor modules.
  *
- * <p>The active mitigation stage is applied after vanilla armor in Pre.
+ * <p>Shield payment and mitigation run at the end of Incoming so a fully blocked hit can be
+ * canceled before later damage handlers run.
  * {@code reflectPct} bounces pre-overload-shield damage back to LivingEntity attackers.
  * Environmental damage (fire/fall/drown) is never reflected.
  */
@@ -45,7 +46,7 @@ public final class CelestweaveArmorDamageHandler {
     private CelestweaveArmorDamageHandler() {}
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
-    public static void onIncoming(LivingIncomingDamageEvent event) {
+    public static void onDamageTypeImmunity(LivingIncomingDamageEvent event) {
         if (!(event.getEntity() instanceof Player player) || player.level().isClientSide()) {
             return;
         }
@@ -59,11 +60,15 @@ public final class CelestweaveArmorDamageHandler {
         }
     }
 
-    @SubscribeEvent(priority = EventPriority.HIGH)
-    public static void onPre(LivingDamageEvent.Pre event) {
-        if (!(event.getEntity() instanceof Player player) || player.level().isClientSide()) return;
-        float incoming = event.getNewDamage();
-        float originalIncoming = event.getOriginalDamage();
+    @SubscribeEvent(priority = EventPriority.LOWEST)
+    public static void onShieldIncoming(LivingIncomingDamageEvent event) {
+        if (!(event.getEntity() instanceof Player player) || player.level().isClientSide()) {
+            return;
+        }
+        float incoming = event.getAmount();
+        if (incoming <= 0.0F) {
+            return;
+        }
         var capabilities = ArmorCapabilityCollector.collectPerInstalledUnit(player);
         ActiveCapability mitigation = collectMitigation(capabilities);
         if (mitigation != null
@@ -73,14 +78,26 @@ public final class CelestweaveArmorDamageHandler {
                     classifyDamage(event.getSource()),
                     incoming);
             if (payMitigationLightning(player, mitigation, staged, incoming - afterMitigation)) {
-                event.setNewDamage(afterMitigation);
+                event.setAmount(afterMitigation);
+                if (afterMitigation <= 0.0F) {
+                    if (!isReflectingDamage()) {
+                        reflectIncomingDamage(player, event.getSource(), event.getOriginalAmount());
+                    }
+                    event.setCanceled(true);
+                    return;
+                }
                 if (!ResistanceSubmodule.isHitFeedbackEnabled(mitigation.armor(), staged.stage())) {
                     markSuppressShieldHitFeedback(player);
                 }
             }
         }
+    }
+
+    @SubscribeEvent(priority = EventPriority.LOWEST)
+    public static void onPre(LivingDamageEvent.Pre event) {
+        if (!(event.getEntity() instanceof Player player) || player.level().isClientSide()) return;
         if (!isReflectingDamage()) {
-            reflectIncomingDamage(player, event.getSource(), originalIncoming);
+            reflectIncomingDamage(player, event.getSource(), event.getOriginalDamage());
         }
     }
 

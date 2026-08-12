@@ -32,4 +32,11 @@ final class ArmorMitigationRulesTest {
                         ArmorMitigationRules.DamageClass.HARD,
                         8.0F));
     }
+
+    @Test
+    void phaseShieldCancelsEveryDamageClass() {
+        for (var damageClass : ArmorMitigationRules.DamageClass.values()) {
+            assertEquals(0.0F, ArmorMitigationRules.apply("phase_shield", damageClass, 8.0F));
+        }
+    }
 }
