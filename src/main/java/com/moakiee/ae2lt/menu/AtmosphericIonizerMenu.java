@@ -18,7 +18,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.inventory.ClickType;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
@@ -91,16 +90,6 @@ public class AtmosphericIonizerMenu extends AEBaseMenu implements FrequencyBindi
         sourceSlot.remove(moved);
         sourceSlot.setChanged();
         return original;
-    }
-
-    @Override
-    public void clicked(int slotId, int button, ClickType clickType, Player player) {
-        if (LargeStackAppEngSlot.handleMenuInteraction(this, slotId, button, clickType, player)) {
-            broadcastChanges();
-            return;
-        }
-
-        super.clicked(slotId, button, clickType, player);
     }
 
     @Override
