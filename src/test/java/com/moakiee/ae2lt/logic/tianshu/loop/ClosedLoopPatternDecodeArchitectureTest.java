@@ -29,7 +29,7 @@ class ClosedLoopPatternDecodeArchitectureTest {
         assertFalse(details.contains("PatternDetailsHelper.decodePattern"));
         assertTrue(controller.contains("decodedClosedLoopPatterns.computeIfAbsent("));
         assertTrue(controller.contains("membersAreAvailable(decoded.members())"));
-        assertTrue(controller.contains("decoded.createDetails("));
+        assertTrue(controller.contains("candidate.decoded().createDetails("));
         assertFalse(controller.contains("PatternDetailsHelper.decodePattern"));
     }
 

@@ -189,8 +189,21 @@ class ControllerOwnedRuntimeArchitectureTest {
                 "refreshClosedLoopProviderForDependencyChanges(port)"));
         assertTrue(controller.contains(
                 "closedLoopDependencyChanges.shouldRecheck(grid.getCraftingService())"));
+        String dependencyRefresh = sourceBetween(controller,
+                "private void refreshClosedLoopProviderForDependencyChanges(",
+                "private Map<AEKey, Long> availableSeedsFor(");
+        assertTrue(dependencyRefresh.contains(
+                "collectAvailablePatternDefinitionsForDependencyChanges()"));
+        assertFalse(dependencyRefresh.contains("collectAvailablePatterns()"),
+                "Dependency churn must not rebuild every published runtime pattern");
+        assertTrue(dependencyRefresh.contains(
+                "availableDefinitions.equals(publishedClosedLoopPatternDefinitions)"));
         assertTrue(controller.contains(
-                "available.patternDefinitions().equals(publishedClosedLoopPatternDefinitions)"));
+                "ClosedLoopPublicationSupport.reusePublishedOrValidate("),
+                "A newly available definition must still pass full details construction");
+        assertTrue(controller.contains(
+                "new ClosedLoopPublicationSupport.SeedSnapshotMemoizer("),
+                "One provider publication should scan reusable seeds at most once");
     }
 
     private static String sourceBetween(String source, String start, String end) {
