@@ -244,7 +244,7 @@ public class OverloadProcessingFactoryMenu extends AEBaseMenu implements Frequen
 
     @Override
     public void clicked(int slotId, int button, ClickType clickType, Player player) {
-        if (clickType == ClickType.PICKUP && handleLargeMachineSlotPickup(slotId, button, player)) {
+        if (LargeStackAppEngSlot.handleMenuInteraction(this, slotId, button, clickType, player)) {
             broadcastChanges();
             return;
         }
@@ -503,78 +503,4 @@ public class OverloadProcessingFactoryMenu extends AEBaseMenu implements Frequen
         return mask;
     }
 
-    private boolean handleLargeMachineSlotPickup(int slotId, int button, Player player) {
-        if (slotId < 0 || slotId >= slots.size()) {
-            return false;
-        }
-
-        var slot = getSlot(slotId);
-        if (!(slot instanceof LargeStackAppEngSlot) || isPlayerSideSlot(slot)) {
-            return false;
-        }
-
-        if (button != 0 && button != 1) {
-            return false;
-        }
-
-        var carried = getCarried();
-        var slotStack = slot.getItem();
-        boolean rightClick = button == 1;
-
-        if (carried.isEmpty()) {
-            if (slotStack.isEmpty() || !slot.mayPickup(player)) {
-                return true;
-            }
-
-            int requested = rightClick
-                    ? Math.min(64, Math.max(1, (int) Math.ceil(slotStack.getCount() / 2.0D)))
-                    : 64;
-            var taken = slot.remove(requested);
-            setCarried(taken);
-            slot.onTake(player, taken);
-            slot.setChanged();
-            return true;
-        }
-
-        if (!slot.mayPlace(carried)) {
-            return false;
-        }
-
-        if (slotStack.isEmpty()) {
-            int toMove = Math.min(rightClick ? 1 : carried.getCount(), slot.getMaxStackSize(carried));
-            if (toMove <= 0) {
-                return true;
-            }
-
-            var placed = carried.copyWithCount(toMove);
-            slot.set(placed);
-            carried.shrink(toMove);
-            setCarried(carried.isEmpty() ? ItemStack.EMPTY : carried);
-            return true;
-        }
-
-        if (ItemStack.isSameItemSameComponents(slotStack, carried)) {
-            int room = slot.getMaxStackSize(carried) - slotStack.getCount();
-            int toMove = Math.min(rightClick ? 1 : carried.getCount(), room);
-            if (toMove <= 0) {
-                return true;
-            }
-
-            slotStack.grow(toMove);
-            slot.setChanged();
-            carried.shrink(toMove);
-            setCarried(carried.isEmpty() ? ItemStack.EMPTY : carried);
-            return true;
-        }
-
-        if (!slot.mayPickup(player)
-                || carried.getCount() > slot.getMaxStackSize(carried)
-                || slotStack.getCount() > 64) {
-            return true;
-        }
-
-        slot.set(carried);
-        setCarried(slotStack);
-        return true;
-    }
 }
