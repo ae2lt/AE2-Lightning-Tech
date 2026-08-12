@@ -52,5 +52,7 @@ class ReviewFollowupSourceContractTest {
         assertTrue(screen.contains("if (menu.isWUT())"));
         assertTrue(screen.contains("new CycleTerminalButton(ignored -> cycleTerminal())"));
         assertTrue(menuHost.contains("getItemStack().getItem() instanceof ItemWUT"));
+        assertTrue(menuHost.contains("@Nullable Integer inventorySlot"));
+        assertFalse(menuHost.contains("int inventorySlot"));
     }
 }

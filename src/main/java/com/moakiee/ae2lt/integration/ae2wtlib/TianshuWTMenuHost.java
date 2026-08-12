@@ -54,7 +54,7 @@ public final class TianshuWTMenuHost extends WTMenuHost
 
     public TianshuWTMenuHost(
             Player player,
-            int inventorySlot,
+            @Nullable Integer inventorySlot,
             ItemStack stack,
             BiConsumer<Player, ISubMenu> returnToMainMenu) {
         super(player, inventorySlot, stack, returnToMainMenu);
