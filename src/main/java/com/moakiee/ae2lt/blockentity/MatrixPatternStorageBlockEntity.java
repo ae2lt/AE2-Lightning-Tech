@@ -166,8 +166,11 @@ public class MatrixPatternStorageBlockEntity extends BlockEntity
         if (stack.isEmpty()) {
             return true;
         }
+        if (!PatternDetailsHelper.isEncodedPattern(stack)) {
+            return false;
+        }
         if (level == null) {
-            return PatternDetailsHelper.isEncodedPattern(stack);
+            return true;
         }
         var details = PatternDetailsHelper.decodePattern(stack, level);
         return details instanceof IMolecularAssemblerSupportedPattern;
