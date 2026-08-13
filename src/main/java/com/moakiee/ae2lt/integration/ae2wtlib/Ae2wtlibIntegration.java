@@ -1,12 +1,7 @@
 package com.moakiee.ae2lt.integration.ae2wtlib;
 
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegisterEvent;
-
-import appeng.menu.MenuOpener;
-import appeng.menu.locator.MenuLocator;
 
 import com.moakiee.ae2lt.menu.TianshuWirelessPatternEncodingTermMenu;
 import com.moakiee.ae2lt.registry.ModItems;
@@ -28,6 +23,8 @@ import de.mari_023.ae2wtlib.wut.WUTHandler;
  */
 public final class Ae2wtlibIntegration {
     public static final String TIANSHU_TERMINAL_NAME = "tianshu_pattern_encoding";
+    public static final String TIANSHU_TERMINAL_DESCRIPTION_ID =
+            "item.ae2lt.wireless_tianshu_pattern_encoding_terminal";
 
     private static TianshuWTItem tianshuTerminal;
     private static boolean terminalRegistrationRequested;
@@ -64,17 +61,12 @@ public final class Ae2wtlibIntegration {
 
         WUTHandler.addTerminal(
                 TIANSHU_TERMINAL_NAME,
-                Ae2wtlibIntegration::tryOpen,
+                terminal()::tryOpen,
                 TianshuWTMenuHost::new,
                 TianshuWirelessPatternEncodingTermMenu.TYPE,
-                terminal());
+                terminal(),
+                TIANSHU_TERMINAL_DESCRIPTION_ID);
         terminalRegistrationRequested = true;
-    }
-
-    private static boolean tryOpen(Player player, MenuLocator locator, ItemStack stack,
-            boolean returningFromSubmenu) {
-        return MenuOpener.open(TianshuWirelessPatternEncodingTermMenu.TYPE,
-                player, locator, returningFromSubmenu);
     }
 
     /**
