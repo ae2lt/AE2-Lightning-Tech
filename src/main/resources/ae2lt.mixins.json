@@ -7,6 +7,7 @@
   "refmap": "ae2lt.refmap.json",
   "mixins": [
     "ServerLevelMixin",
+    "AEBaseMenuManagedSlotClickMixin",
     "LightningBoltMixin",
     "ItemEntityMixin",
     "AnnihilationPlaneFirmamentDustMixin",
