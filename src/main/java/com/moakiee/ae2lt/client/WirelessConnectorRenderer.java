@@ -10,7 +10,6 @@ import java.util.Set;
 import java.util.function.Function;
 
 import org.joml.Matrix4f;
-import org.joml.Quaternionf;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -53,8 +52,8 @@ import com.moakiee.ae2lt.util.ItemStackTagSupport;
  *   <li>The chunk/BE scan is performed at most once every {@link #RESCAN_INTERVAL_TICKS}
  *       game ticks, not every frame. At 200fps this turns ~200 scans/sec into ~5 scans/sec
  *       while remaining visually instantaneous (鈮?00ms staleness).</li>
- *   <li>Hot-path objects ({@link Quaternionf}, scratch {@link HashSet}) are reused across
- *       frames instead of re-allocated, to keep GC pressure flat under high frame rates
+ *   <li>Hot-path objects (scratch {@link HashSet}) are reused across frames instead of
+ *       re-allocated, to keep GC pressure flat under high frame rates
  *       (the report flags high-FPS as an amplifier of any per-frame leak path).</li>
  * </ul>
  */
@@ -64,14 +63,11 @@ public class WirelessConnectorRenderer {
     // Preview color: semi-transparent yellow (ARGB)
     private static final int COLOR_PREVIEW = 0x60FFFF00;
     // Connected face color: semi-transparent blue (ARGB)
-    private static final int COLOR_CONNECTED = 0x900080FF;
-    // Connected face outline color: bright white (ARGB)
-    private static final int COLOR_CONNECTED_EDGE = 0xE0FFFFFF;
+    private static final int COLOR_CONNECTED = 0x600080FF;
     // Preview line color: bright yellow
     private static final int COLOR_PREVIEW_LINE = 0xC0FFFF00;
-    // Host inner cube color (unselected): semi-transparent blue (ARGB)
+    // Host inner cube colors (unselected / selected)
     private static final int COLOR_HOST = 0x800080FF;
-    // Host inner cube color (selected): semi-transparent yellow (ARGB)
     private static final int COLOR_HOST_SELECTED = 0x80FFFF00;
     // Line color: blue (ARGB)
     private static final int COLOR_LINE = 0xC00080FF;
@@ -87,14 +83,12 @@ public class WirelessConnectorRenderer {
     /** Dimension key of the last scan; if it changes we force a re-scan immediately. */
     private static ResourceKey<Level> lastScanDimension = null;
 
-    /** Reusable rotation; avoids {@code new Quaternionf(...)} every frame. */
-    private static final Quaternionf scratchRotation = new Quaternionf();
     /** Reusable scratch set used by {@link #collectConnectionsForFace}; cleared between calls. */
     private static final Set<BlockPos> scratchConnectionSet = new HashSet<>();
 
     @SubscribeEvent
     public static void onRenderLevelStage(RenderLevelStageEvent event) {
-        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_LEVEL) {
+        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS) {
             return;
         }
 
@@ -110,20 +104,9 @@ public class WirelessConnectorRenderer {
             return;
         }
 
-        // -- Set up camera offset --
         PoseStack poseStack = event.getPoseStack();
         MultiBufferSource.BufferSource buffer = mc.renderBuffers().bufferSource();
-
-        poseStack.pushPose();
-        Vec3 cam = mc.gameRenderer.getMainCamera().getPosition();
-        // Reuse a single Quaternionf instance instead of allocating per frame.
-        // mc.gameRenderer.getMainCamera().rotation() returns a reference Quaternionf
-        // owned by the camera; copying-and-inverting through scratchRotation keeps
-        // the camera's value untouched while avoiding a per-frame allocation.
-        scratchRotation.set(mc.gameRenderer.getMainCamera().rotation());
-        scratchRotation.invert();
-        poseStack.mulPose(scratchRotation);
-        poseStack.translate(-cam.x, -cam.y, -cam.z);
+        Vec3 cam = event.getCamera().getPosition();
 
         // Resolve selected host for special coloring and preview rendering.
         var selectedHost = getSelectedHost(stack);
@@ -172,7 +155,7 @@ public class WirelessConnectorRenderer {
                         bePos.asLong())) {
                     continue;
                 }
-                renderProviderHost(poseStack, buffer, mc.level, bePos, provider, isSelected);
+                renderProviderHost(poseStack, buffer, cam, mc.level, bePos, provider, isSelected);
                 selectedRendered |= isSelected;
             } else if (be instanceof OverloadedInterfaceBlockEntity iface) {
                 if (iface.getInterfaceMode() != OverloadedInterfaceBlockEntity.InterfaceMode.WIRELESS) {
@@ -191,7 +174,7 @@ public class WirelessConnectorRenderer {
                         bePos.asLong())) {
                     continue;
                 }
-                renderInterfaceHost(poseStack, buffer, mc.level, bePos, iface, isSelected);
+                renderInterfaceHost(poseStack, buffer, cam, mc.level, bePos, iface, isSelected);
                 selectedRendered |= isSelected;
             } else if (be instanceof OverloadedPowerSupplyBlockEntity powerSupply) {
                 boolean isSelected = hasSelection
@@ -207,7 +190,7 @@ public class WirelessConnectorRenderer {
                         bePos.asLong())) {
                     continue;
                 }
-                renderPowerSupplyHost(poseStack, buffer, mc.level, bePos, powerSupply, isSelected);
+                renderPowerSupplyHost(poseStack, buffer, cam, mc.level, bePos, powerSupply, isSelected);
                 selectedRendered |= isSelected;
             }
         }
@@ -217,14 +200,14 @@ public class WirelessConnectorRenderer {
             if (OverloadedWirelessConnectorItem.HOST_PROVIDER.equals(selectedHostType)
                     && selectedBe instanceof WirelessPatternProviderHost provider
                     && provider.isWirelessProvider()) {
-                renderProviderHost(poseStack, buffer, mc.level, selectedPos, provider, true);
+                renderProviderHost(poseStack, buffer, cam, mc.level, selectedPos, provider, true);
             } else if (OverloadedWirelessConnectorItem.HOST_INTERFACE.equals(selectedHostType)
                     && selectedBe instanceof OverloadedInterfaceBlockEntity iface
                     && iface.getInterfaceMode() == OverloadedInterfaceBlockEntity.InterfaceMode.WIRELESS) {
-                renderInterfaceHost(poseStack, buffer, mc.level, selectedPos, iface, true);
+                renderInterfaceHost(poseStack, buffer, cam, mc.level, selectedPos, iface, true);
             } else if (OverloadedWirelessConnectorItem.HOST_POWER_SUPPLY.equals(selectedHostType)
                     && selectedBe instanceof OverloadedPowerSupplyBlockEntity powerSupply) {
-                renderPowerSupplyHost(poseStack, buffer, mc.level, selectedPos, powerSupply, true);
+                renderPowerSupplyHost(poseStack, buffer, cam, mc.level, selectedPos, powerSupply, true);
             }
         }
 
@@ -253,8 +236,8 @@ public class WirelessConnectorRenderer {
                         c -> c.boundFace());
                 for (var lookPos : previewTargets) {
                     if (!existingConnections.contains(lookPos)) {
-                        renderFaceOverlay(poseStack, buffer, lookPos, lookFace, COLOR_PREVIEW);
-                        renderLine(poseStack, buffer, selectedPos, lookPos, lookFace, COLOR_PREVIEW_LINE, false);
+                        renderFaceOverlay(poseStack, buffer, cam, lookPos, lookFace, COLOR_PREVIEW);
+                        renderLine(poseStack, buffer, cam, selectedPos, lookPos, lookFace, COLOR_PREVIEW_LINE);
                     }
                 }
             } else if (OverloadedWirelessConnectorItem.HOST_INTERFACE.equals(selectedHostType)
@@ -278,8 +261,8 @@ public class WirelessConnectorRenderer {
                         c -> c.boundFace());
                 for (var lookPos : previewTargets) {
                     if (!existingConnections.contains(lookPos)) {
-                        renderFaceOverlay(poseStack, buffer, lookPos, lookFace, COLOR_PREVIEW);
-                        renderLine(poseStack, buffer, selectedPos, lookPos, lookFace, COLOR_PREVIEW_LINE, false);
+                        renderFaceOverlay(poseStack, buffer, cam, lookPos, lookFace, COLOR_PREVIEW);
+                        renderLine(poseStack, buffer, cam, selectedPos, lookPos, lookFace, COLOR_PREVIEW_LINE);
                     }
                 }
             } else if (OverloadedWirelessConnectorItem.HOST_POWER_SUPPLY.equals(selectedHostType)
@@ -303,97 +286,39 @@ public class WirelessConnectorRenderer {
                         c -> c.boundFace());
                 for (var lookPos : previewTargets) {
                     if (!existingConnections.contains(lookPos)) {
-                        renderFaceOverlay(poseStack, buffer, lookPos, lookFace, COLOR_PREVIEW);
-                        renderLine(poseStack, buffer, selectedPos, lookPos, lookFace, COLOR_PREVIEW_LINE, false);
+                        renderFaceOverlay(poseStack, buffer, cam, lookPos, lookFace, COLOR_PREVIEW);
+                        renderLine(poseStack, buffer, cam, selectedPos, lookPos, lookFace, COLOR_PREVIEW_LINE);
                     }
                 }
             }
         }
 
-        poseStack.popPose();
-
         // Flush render batches
         buffer.endBatch(Ae2ltRenderTypes.getFaceSeeThrough());
-        buffer.endBatch(Ae2ltRenderTypes.getLineSeeThrough());
         buffer.endBatch(OverlayRenderType.getBlockHilightFace());
         buffer.endBatch(OverlayRenderType.getBlockHilightLine());
     }
 
     // -- Render helpers --
 
-    /**
-     * Render a small cube inside the block using a see-through render type
-     * (GREATER depth test) so it is visible through the opaque block.
-     */
     private static void renderInnerCube(PoseStack poseStack, MultiBufferSource buffer,
-            BlockPos pos, int color) {
+            Vec3 cam, BlockPos pos, int color) {
         VertexConsumer vc = buffer.getBuffer(Ae2ltRenderTypes.getFaceSeeThrough());
         int[] c = OverlayRenderType.decomposeColor(color);
 
         poseStack.pushPose();
-        poseStack.translate(pos.getX(), pos.getY(), pos.getZ());
+        poseStack.translate(pos.getX() - cam.x, pos.getY() - cam.y, pos.getZ() - cam.z);
         Matrix4f mat = poseStack.last().pose();
 
         float lo = 0.25f, hi = 0.75f;
-
-        // DOWN (Y-)
-        quad(vc, mat, c, lo, lo, lo,  hi, lo, lo,  hi, lo, hi,  lo, lo, hi,  0, -1, 0);
-        // UP (Y+)
-        quad(vc, mat, c, lo, hi, hi,  hi, hi, hi,  hi, hi, lo,  lo, hi, lo,  0, 1, 0);
-        // NORTH (Z-)
-        quad(vc, mat, c, lo, lo, lo,  lo, hi, lo,  hi, hi, lo,  hi, lo, lo,  0, 0, -1);
-        // SOUTH (Z+)
-        quad(vc, mat, c, hi, lo, hi,  hi, hi, hi,  lo, hi, hi,  lo, lo, hi,  0, 0, 1);
-        // WEST (X-)
-        quad(vc, mat, c, lo, lo, hi,  lo, hi, hi,  lo, hi, lo,  lo, lo, lo,  -1, 0, 0);
-        // EAST (X+)
-        quad(vc, mat, c, hi, lo, lo,  hi, hi, lo,  hi, hi, hi,  hi, lo, hi,  1, 0, 0);
+        quad(vc, mat, c, lo, lo, lo, hi, lo, lo, hi, lo, hi, lo, lo, hi, 0, -1, 0);
+        quad(vc, mat, c, lo, hi, hi, hi, hi, hi, hi, hi, lo, lo, hi, lo, 0, 1, 0);
+        quad(vc, mat, c, lo, lo, lo, lo, hi, lo, hi, hi, lo, hi, lo, lo, 0, 0, -1);
+        quad(vc, mat, c, hi, lo, hi, hi, hi, hi, lo, hi, hi, lo, lo, hi, 0, 0, 1);
+        quad(vc, mat, c, lo, lo, hi, lo, hi, hi, lo, hi, lo, lo, lo, lo, -1, 0, 0);
+        quad(vc, mat, c, hi, lo, lo, hi, hi, lo, hi, hi, hi, hi, lo, hi, 1, 0, 0);
 
         poseStack.popPose();
-    }
-
-    private static void renderProviderHost(PoseStack poseStack, MultiBufferSource buffer,
-            Level level, BlockPos hostPos, WirelessPatternProviderHost provider, boolean selected) {
-        renderInnerCube(poseStack, buffer, hostPos, selected ? COLOR_HOST_SELECTED : COLOR_HOST);
-
-        for (var conn : provider.getConnections()) {
-            if (!conn.dimension().equals(level.dimension())) continue;
-            renderConnectedFace(poseStack, buffer, conn.pos(), conn.boundFace());
-            renderLine(poseStack, buffer, hostPos, conn.pos(), conn.boundFace(), COLOR_LINE, true);
-        }
-    }
-
-    private static void renderInterfaceHost(PoseStack poseStack, MultiBufferSource buffer,
-            Level level, BlockPos hostPos, OverloadedInterfaceBlockEntity iface, boolean selected) {
-        renderInnerCube(poseStack, buffer, hostPos, selected ? COLOR_HOST_SELECTED : COLOR_HOST);
-
-        for (var conn : iface.getConnections()) {
-            if (!conn.dimension().equals(level.dimension())) continue;
-            renderConnectedFace(poseStack, buffer, conn.pos(), conn.boundFace());
-            renderLine(poseStack, buffer, hostPos, conn.pos(), conn.boundFace(), COLOR_LINE, true);
-        }
-    }
-
-    private static void renderPowerSupplyHost(PoseStack poseStack, MultiBufferSource buffer,
-            Level level, BlockPos hostPos, OverloadedPowerSupplyBlockEntity powerSupply, boolean selected) {
-        renderInnerCube(poseStack, buffer, hostPos, selected ? COLOR_HOST_SELECTED : COLOR_HOST);
-
-        for (var conn : powerSupply.getConnections()) {
-            if (!conn.dimension().equals(level.dimension())) continue;
-            renderConnectedFace(poseStack, buffer, conn.pos(), conn.boundFace());
-            renderLine(poseStack, buffer, hostPos, conn.pos(), conn.boundFace(), COLOR_LINE, true);
-        }
-    }
-
-    /**
-     * Renders the bound face of an established connection: a see-through blue
-     * quad plus a bright outline, so the connected side stays visible even when
-     * the face is hidden behind opaque blocks (e.g. a machine pushed against a wall).
-     */
-    private static void renderConnectedFace(PoseStack poseStack, MultiBufferSource buffer,
-            BlockPos pos, Direction face) {
-        renderFaceOverlaySeeThrough(poseStack, buffer, pos, face, COLOR_CONNECTED);
-        renderFaceOutline(poseStack, buffer, pos, face, COLOR_CONNECTED_EDGE);
     }
 
     private static void quad(VertexConsumer vc, Matrix4f mat, int[] c,
@@ -402,38 +327,57 @@ public class WirelessConnectorRenderer {
             float x3, float y3, float z3,
             float x4, float y4, float z4,
             float nx, float ny, float nz) {
-        vc.vertex(mat, x1, y1, z1).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
-        vc.vertex(mat, x2, y2, z2).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
-        vc.vertex(mat, x3, y3, z3).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
-        vc.vertex(mat, x4, y4, z4).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
+        vc.vertex(mat, x1, y1, z1).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz).endVertex();
+        vc.vertex(mat, x2, y2, z2).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz).endVertex();
+        vc.vertex(mat, x3, y3, z3).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz).endVertex();
+        vc.vertex(mat, x4, y4, z4).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz).endVertex();
     }
 
+    private static void renderProviderHost(PoseStack poseStack, MultiBufferSource buffer,
+            Vec3 cam, Level level, BlockPos hostPos, WirelessPatternProviderHost provider, boolean selected) {
+        renderInnerCube(poseStack, buffer, cam, hostPos, selected ? COLOR_HOST_SELECTED : COLOR_HOST);
+        for (var conn : provider.getConnections()) {
+            if (!conn.dimension().equals(level.dimension())) continue;
+            renderFaceOverlay(poseStack, buffer, cam, conn.pos(), conn.boundFace(), COLOR_CONNECTED);
+            renderLine(poseStack, buffer, cam, hostPos, conn.pos(), conn.boundFace(), COLOR_LINE);
+        }
+    }
+
+    private static void renderInterfaceHost(PoseStack poseStack, MultiBufferSource buffer,
+            Vec3 cam, Level level, BlockPos hostPos, OverloadedInterfaceBlockEntity iface, boolean selected) {
+        renderInnerCube(poseStack, buffer, cam, hostPos, selected ? COLOR_HOST_SELECTED : COLOR_HOST);
+        for (var conn : iface.getConnections()) {
+            if (!conn.dimension().equals(level.dimension())) continue;
+            renderFaceOverlay(poseStack, buffer, cam, conn.pos(), conn.boundFace(), COLOR_CONNECTED);
+            renderLine(poseStack, buffer, cam, hostPos, conn.pos(), conn.boundFace(), COLOR_LINE);
+        }
+    }
+
+    private static void renderPowerSupplyHost(PoseStack poseStack, MultiBufferSource buffer,
+            Vec3 cam, Level level, BlockPos hostPos, OverloadedPowerSupplyBlockEntity powerSupply, boolean selected) {
+        renderInnerCube(poseStack, buffer, cam, hostPos, selected ? COLOR_HOST_SELECTED : COLOR_HOST);
+        for (var conn : powerSupply.getConnections()) {
+            if (!conn.dimension().equals(level.dimension())) continue;
+            renderFaceOverlay(poseStack, buffer, cam, conn.pos(), conn.boundFace(), COLOR_CONNECTED);
+            renderLine(poseStack, buffer, cam, hostPos, conn.pos(), conn.boundFace(), COLOR_LINE);
+        }
+    }
 
     /**
      * Render a single face overlay (quad) on the given block face.
      */
     private static void renderFaceOverlay(PoseStack poseStack, MultiBufferSource buffer,
-            BlockPos pos, Direction face, int color) {
+            Vec3 cam, BlockPos pos, Direction face, int color) {
         renderFaceOverlayInternal(poseStack, buffer.getBuffer(OverlayRenderType.getBlockHilightFace()),
-                pos, face, color);
-    }
-
-    /**
-     * Render a face overlay with the see-through (GREATER depth test) render type,
-     * making it visible through opaque blocks.
-     */
-    private static void renderFaceOverlaySeeThrough(PoseStack poseStack, MultiBufferSource buffer,
-            BlockPos pos, Direction face, int color) {
-        renderFaceOverlayInternal(poseStack, buffer.getBuffer(Ae2ltRenderTypes.getFaceSeeThrough()),
-                pos, face, color);
+                cam, pos, face, color);
     }
 
     private static void renderFaceOverlayInternal(PoseStack poseStack, VertexConsumer vc,
-            BlockPos pos, Direction face, int color) {
+            Vec3 cam, BlockPos pos, Direction face, int color) {
         int[] c = OverlayRenderType.decomposeColor(color);
 
         poseStack.pushPose();
-        poseStack.translate(pos.getX(), pos.getY(), pos.getZ());
+        poseStack.translate(pos.getX() - cam.x, pos.getY() - cam.y, pos.getZ() - cam.z);
         Matrix4f mat = poseStack.last().pose();
 
         // Slight offset to avoid z-fighting
@@ -445,80 +389,41 @@ public class WirelessConnectorRenderer {
 
         switch (face) {
             case DOWN -> {
-                vc.vertex(mat, 0, -offset, 0).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
-                vc.vertex(mat, 1, -offset, 0).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
-                vc.vertex(mat, 1, -offset, 1).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
-                vc.vertex(mat, 0, -offset, 1).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
+                vc.vertex(mat, 0, -offset, 0).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz).endVertex();
+                vc.vertex(mat, 1, -offset, 0).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz).endVertex();
+                vc.vertex(mat, 1, -offset, 1).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz).endVertex();
+                vc.vertex(mat, 0, -offset, 1).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz).endVertex();
             }
             case UP -> {
-                vc.vertex(mat, 0, 1 + offset, 1).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
-                vc.vertex(mat, 1, 1 + offset, 1).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
-                vc.vertex(mat, 1, 1 + offset, 0).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
-                vc.vertex(mat, 0, 1 + offset, 0).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
+                vc.vertex(mat, 0, 1 + offset, 1).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz).endVertex();
+                vc.vertex(mat, 1, 1 + offset, 1).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz).endVertex();
+                vc.vertex(mat, 1, 1 + offset, 0).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz).endVertex();
+                vc.vertex(mat, 0, 1 + offset, 0).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz).endVertex();
             }
             case NORTH -> {
-                vc.vertex(mat, 0, 0, -offset).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
-                vc.vertex(mat, 0, 1, -offset).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
-                vc.vertex(mat, 1, 1, -offset).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
-                vc.vertex(mat, 1, 0, -offset).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
+                vc.vertex(mat, 0, 0, -offset).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz).endVertex();
+                vc.vertex(mat, 0, 1, -offset).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz).endVertex();
+                vc.vertex(mat, 1, 1, -offset).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz).endVertex();
+                vc.vertex(mat, 1, 0, -offset).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz).endVertex();
             }
             case SOUTH -> {
-                vc.vertex(mat, 1, 0, 1 + offset).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
-                vc.vertex(mat, 1, 1, 1 + offset).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
-                vc.vertex(mat, 0, 1, 1 + offset).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
-                vc.vertex(mat, 0, 0, 1 + offset).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
+                vc.vertex(mat, 1, 0, 1 + offset).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz).endVertex();
+                vc.vertex(mat, 1, 1, 1 + offset).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz).endVertex();
+                vc.vertex(mat, 0, 1, 1 + offset).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz).endVertex();
+                vc.vertex(mat, 0, 0, 1 + offset).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz).endVertex();
             }
             case WEST -> {
-                vc.vertex(mat, -offset, 0, 1).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
-                vc.vertex(mat, -offset, 1, 1).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
-                vc.vertex(mat, -offset, 1, 0).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
-                vc.vertex(mat, -offset, 0, 0).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
+                vc.vertex(mat, -offset, 0, 1).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz).endVertex();
+                vc.vertex(mat, -offset, 1, 1).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz).endVertex();
+                vc.vertex(mat, -offset, 1, 0).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz).endVertex();
+                vc.vertex(mat, -offset, 0, 0).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz).endVertex();
             }
             case EAST -> {
-                vc.vertex(mat, 1 + offset, 0, 0).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
-                vc.vertex(mat, 1 + offset, 1, 0).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
-                vc.vertex(mat, 1 + offset, 1, 1).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
-                vc.vertex(mat, 1 + offset, 0, 1).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
+                vc.vertex(mat, 1 + offset, 0, 0).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz).endVertex();
+                vc.vertex(mat, 1 + offset, 1, 0).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz).endVertex();
+                vc.vertex(mat, 1 + offset, 1, 1).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz).endVertex();
+                vc.vertex(mat, 1 + offset, 0, 1).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz).endVertex();
             }
-        }
-
-        poseStack.popPose();
-    }
-
-    /**
-     * Render the 4-edge outline of a block face with the see-through line type,
-     * making the exact bound side obvious from any angle.
-     */
-    private static void renderFaceOutline(PoseStack poseStack, MultiBufferSource buffer,
-            BlockPos pos, Direction face, int color) {
-        VertexConsumer vc = buffer.getBuffer(Ae2ltRenderTypes.getLineSeeThrough());
-        int[] c = OverlayRenderType.decomposeColor(color);
-
-        poseStack.pushPose();
-        poseStack.translate(pos.getX(), pos.getY(), pos.getZ());
-        Matrix4f mat = poseStack.last().pose();
-
-        // Slightly outside the see-through quad so the outline is not hidden behind it.
-        float o = 0.004f;
-
-        float nx = face.getStepX();
-        float ny = face.getStepY();
-        float nz = face.getStepZ();
-
-        float[][] corners = switch (face) {
-            case DOWN -> new float[][] {{0, -o, 0}, {1, -o, 0}, {1, -o, 1}, {0, -o, 1}};
-            case UP -> new float[][] {{0, 1 + o, 0}, {1, 1 + o, 0}, {1, 1 + o, 1}, {0, 1 + o, 1}};
-            case NORTH -> new float[][] {{0, 0, -o}, {1, 0, -o}, {1, 1, -o}, {0, 1, -o}};
-            case SOUTH -> new float[][] {{0, 0, 1 + o}, {1, 0, 1 + o}, {1, 1, 1 + o}, {0, 1, 1 + o}};
-            case WEST -> new float[][] {{-o, 0, 0}, {-o, 1, 0}, {-o, 1, 1}, {-o, 0, 1}};
-            case EAST -> new float[][] {{1 + o, 0, 0}, {1 + o, 1, 0}, {1 + o, 1, 1}, {1 + o, 0, 1}};
-        };
-
-        for (int i = 0; i < 4; i++) {
-            float[] a = corners[i];
-            float[] b = corners[(i + 1) % 4];
-            vc.vertex(mat, a[0], a[1], a[2]).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
-            vc.vertex(mat, b[0], b[1], b[2]).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
         }
 
         poseStack.popPose();
@@ -526,37 +431,32 @@ public class WirelessConnectorRenderer {
 
     /**
      * Render a line from provider center to the center of the connected face.
-     * Established connections use the see-through line type so the line stays
-     * visible even when it passes behind opaque blocks; preview lines stay on
-     * the normal (non-see-through) hilight type since the player is looking
-     * directly at the target face.
+     * Uses AE2's regular highlight line type, matching the main implementation.
      */
     private static void renderLine(PoseStack poseStack, MultiBufferSource buffer,
-            BlockPos from, BlockPos to, Direction face, int color, boolean seeThrough) {
-        VertexConsumer vc = buffer.getBuffer(seeThrough
-                ? Ae2ltRenderTypes.getLineSeeThrough()
-                : OverlayRenderType.getBlockHilightLine());
+            Vec3 cam, BlockPos from, BlockPos to, Direction face, int color) {
+        VertexConsumer vc = buffer.getBuffer(OverlayRenderType.getBlockHilightLine());
         int[] c = OverlayRenderType.decomposeColor(color);
 
         Matrix4f mat = poseStack.last().pose();
 
         // Provider center
-        float fx = from.getX() + 0.5f;
-        float fy = from.getY() + 0.5f;
-        float fz = from.getZ() + 0.5f;
+        float fx = (float) (from.getX() + 0.5 - cam.x);
+        float fy = (float) (from.getY() + 0.5 - cam.y);
+        float fz = (float) (from.getZ() + 0.5 - cam.z);
 
         // Target face center
-        float tx = to.getX() + 0.5f + face.getStepX() * 0.501f;
-        float ty = to.getY() + 0.5f + face.getStepY() * 0.501f;
-        float tz = to.getZ() + 0.5f + face.getStepZ() * 0.501f;
+        float tx = (float) (to.getX() + 0.5 + face.getStepX() * 0.501 - cam.x);
+        float ty = (float) (to.getY() + 0.5 + face.getStepY() * 0.501 - cam.y);
+        float tz = (float) (to.getZ() + 0.5 + face.getStepZ() * 0.501 - cam.z);
 
         float dx = tx - fx, dy = ty - fy, dz = tz - fz;
         float len = (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
         if (len < 1e-6f) return;
         float nx = dx / len, ny = dy / len, nz = dz / len;
 
-        vc.vertex(mat, fx, fy, fz).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
-        vc.vertex(mat, tx, ty, tz).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz);
+        vc.vertex(mat, fx, fy, fz).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz).endVertex();
+        vc.vertex(mat, tx, ty, tz).color(c[1], c[2], c[3], c[0]).normal(nx, ny, nz).endVertex();
     }
 
     // -- Item NBT helpers (client-side read-only) --
