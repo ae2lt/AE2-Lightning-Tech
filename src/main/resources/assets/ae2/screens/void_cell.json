@@ -2,7 +2,7 @@
   "$schema": "schema.json",
   "includes": ["common/common.json"],
   "background": {
-    "texture": "guis/condenser.png",
+    "texture": "ae2lt:textures/guis/void_cell.png",
     "srcRect": [0, 0, 121, 60]
   },
   "text": {

@@ -2,7 +2,7 @@
   "$schema": "schema.json",
   "includes": [
     "common/common.json",
-    "common/player_inventory.json"
+    "common/legacy_player_inventory.json"
   ],
   "background": {
     "texture": "ae2lt:textures/gui/pigmee_molecular_assembler.png",

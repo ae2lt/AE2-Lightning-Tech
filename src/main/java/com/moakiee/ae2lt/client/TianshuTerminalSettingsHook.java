@@ -49,11 +49,15 @@ public final class TianshuTerminalSettingsHook {
     private static final class TianshuSettingsButton extends IconButton {
         private TianshuSettingsButton(OnPress onPress) {
             super(onPress);
+            // AE2 1.20.1 always renders getIcon() before the item overlay. Use
+            // its toolbar background as the non-null base icon, and suppress
+            // IconButton's separate background pass so it is drawn once.
+            setDisableBackground(true);
         }
 
         @Override
         protected Icon getIcon() {
-            return null;
+            return Icon.TOOLBAR_BUTTON_BACKGROUND;
         }
 
         @Override

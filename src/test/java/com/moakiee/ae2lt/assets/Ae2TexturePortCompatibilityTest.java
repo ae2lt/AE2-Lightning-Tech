@@ -7,6 +7,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
+
+import com.google.gson.JsonParser;
 
 import org.junit.jupiter.api.Test;
 
@@ -16,16 +19,21 @@ class Ae2TexturePortCompatibilityTest {
     private static final Path AE2LT_MODELS = RESOURCES.resolve(Path.of("assets", "ae2lt", "models"));
 
     @Test
-    void machineScreensUseTheAe2_1_20InscriberProgressSprite() throws IOException {
-        for (String screen : List.of(
-                "atmospheric_ionizer.json",
-                "crystal_catalyzer.json",
-                "lightning_assembly_chamber.json",
-                "lightning_simulation_room.json",
-                "tesla_coil.json")) {
-            String json = Files.readString(AE2_SCREENS.resolve(screen));
-            assertTrue(json.contains("[135, 177, 6, 18]"), screen);
-            assertFalse(json.contains("[176, 0, 6, 18]"), screen);
+    void poweredMachineScreensUseTheirBundledAe2_1_21EnergySprite() throws IOException {
+        var screens = Map.of(
+                "atmospheric_ionizer.json", "ae2lt:textures/guis/lightning_collector.png",
+                "crystal_catalyzer.json", "ae2lt:textures/guis/crystal_catalyzer.png",
+                "lightning_assembly_chamber.json", "ae2lt:textures/guis/lightning_assembly_chamber.png",
+                "lightning_simulation_room.json", "ae2lt:textures/guis/lightning_simulation_room.png",
+                "overload_processing_factory.json", "ae2lt:textures/guis/overload_processing_factory.png",
+                "tesla_coil.json", "ae2lt:textures/guis/tesla_coil.png");
+
+        for (var entry : screens.entrySet()) {
+            var screen = JsonParser.parseString(Files.readString(AE2_SCREENS.resolve(entry.getKey())))
+                    .getAsJsonObject();
+            var energyBar = screen.getAsJsonObject("images").getAsJsonObject("energyBar");
+            assertTrue(entry.getValue().equals(energyBar.get("texture").getAsString()), entry.getKey());
+            assertTrue("[176,0,6,18]".equals(energyBar.getAsJsonArray("srcRect").toString()), entry.getKey());
         }
 
         String seedStorage = Files.readString(AE2_SCREENS.resolve("tianshu_seed_storage.json"));
@@ -105,5 +113,48 @@ class Ae2TexturePortCompatibilityTest {
                 "ModEntityRenderers.java"));
         assertTrue(clientInit.contains("ModBlocks.PIGMEE_MOLECULAR_ASSEMBLER.get()"));
         assertTrue(clientInit.contains("RenderType.cutout()"));
+    }
+
+    @Test
+    void teslaCoilTopRingDisablesForgeAmbientOcclusion() throws IOException {
+        var blockstate = JsonParser.parseString(Files.readString(RESOURCES.resolve(Path.of(
+                "assets", "ae2lt", "blockstates", "tesla_coil.json")))).getAsJsonObject();
+        for (String facing : List.of("north", "east", "south", "west")) {
+            boolean hasOffVariant = false;
+            for (var entry : blockstate.getAsJsonArray("multipart")) {
+                var part = entry.getAsJsonObject();
+                var when = part.getAsJsonObject("when");
+                var apply = part.getAsJsonObject("apply");
+                if (facing.equals(when.get("facing").getAsString())
+                        && when.has("working")
+                        && "false".equals(when.get("working").getAsString())
+                        && "ae2lt:block/tesla_coil_off".equals(apply.get("model").getAsString())) {
+                    hasOffVariant = true;
+                    break;
+                }
+            }
+            assertTrue(hasOffVariant, facing);
+        }
+
+        for (String modelName : List.of("tesla_coil_off.json", "tesla_coil_on.json")) {
+            var model = JsonParser.parseString(Files.readString(
+                    AE2LT_MODELS.resolve(Path.of("block", modelName)))).getAsJsonObject();
+            int ringCount = 0;
+            for (var element : model.getAsJsonArray("elements")) {
+                var ring = element.getAsJsonObject();
+                if (!ring.has("name") || !"ring".equals(ring.get("name").getAsString())) {
+                    continue;
+                }
+                ringCount++;
+                assertTrue(ring.has("shade") && !ring.get("shade").getAsBoolean(), modelName);
+                for (var face : ring.getAsJsonObject("faces").asMap().values()) {
+                    var forgeData = face.getAsJsonObject().getAsJsonObject("forge_data");
+                    assertTrue(forgeData != null
+                            && forgeData.has("ambient_occlusion")
+                            && !forgeData.get("ambient_occlusion").getAsBoolean(), modelName);
+                }
+            }
+            assertTrue(ringCount == 4, modelName);
+        }
     }
 }

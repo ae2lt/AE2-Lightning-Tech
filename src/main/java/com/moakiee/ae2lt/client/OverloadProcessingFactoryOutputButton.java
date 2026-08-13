@@ -33,7 +33,7 @@ public class OverloadProcessingFactoryOutputButton extends IconButton {
 
     @Override
     protected Icon getIcon() {
-        return null;
+        return Icon.TOOLBAR_BUTTON_BACKGROUND;
     }
 
     @Override
@@ -56,15 +56,10 @@ public class OverloadProcessingFactoryOutputButton extends IconButton {
             return;
         }
 
-        var yOffset = isHovered() ? 1 : 0;
-        // 1.20.1: no hover/focus background variants; reuse the plain toolbar background.
-        Icon bgIcon = Icon.TOOLBAR_BUTTON_BACKGROUND;
-        bgIcon.getBlitter()
-                .dest(getX() - 1, getY() + yOffset, 18, 20)
-                .blit(guiGraphics);
+        OutputSideButtonStyle.renderBackground(guiGraphics, getX(), getY(), on);
 
         if (!display.isEmpty()) {
-            guiGraphics.renderItem(display, getX(), getY() + 1 + yOffset, 0, 3);
+            guiGraphics.renderItem(display, getX() + 1, getY() + 1, 0, 3);
         }
     }
 }

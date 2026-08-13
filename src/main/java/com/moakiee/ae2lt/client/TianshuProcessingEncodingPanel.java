@@ -8,7 +8,6 @@ package com.moakiee.ae2lt.client;
 
 import appeng.api.config.ActionItems;
 import appeng.client.Point;
-import appeng.client.gui.Icon;
 import appeng.client.gui.WidgetContainer;
 import appeng.client.gui.style.Blitter;
 import appeng.client.gui.widgets.ActionButton;
@@ -19,9 +18,11 @@ import com.moakiee.ae2lt.util.SlotPositionAccess;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 
 final class TianshuProcessingEncodingPanel extends TianshuEncodingModePanel {
-    private static final Blitter BG = Blitter.texture("guis/pattern_modes.png").src(0, 70, 124, 66);
+    private static final Blitter BG = Blitter.texture("guis/pattern_modes.png").src(0, 70, 126, 68);
 
     private final ActionButton clearButton;
     private final ActionButton cycleOutputButton;
@@ -34,14 +35,12 @@ final class TianshuProcessingEncodingPanel extends TianshuEncodingModePanel {
 
         clearButton = new ActionButton(ActionItems.CLOSE, action -> menu.clear());
         clearButton.setHalfSize(true);
-        clearButton.setDisableBackground(true);
         widgets.add("processingClearPattern", clearButton);
 
         cycleOutputButton = new ActionButton(
                 ActionItems.CYCLE_PROCESSING_OUTPUT,
                 action -> menu.cycleProcessingOutput());
         cycleOutputButton.setHalfSize(true);
-        cycleOutputButton.setDisableBackground(true);
         widgets.add("processingCycleOutput", cycleOutputButton);
 
         scrollbar = widgets.addScrollBar("processingPatternModeScrollbar", Scrollbar.SMALL);
@@ -72,7 +71,7 @@ final class TianshuProcessingEncodingPanel extends TianshuEncodingModePanel {
 
     @Override
     public void drawBackgroundLayer(GuiGraphics graphics, Rect2i bounds, Point mouse) {
-        BG.dest(bounds.getX() + 8, bounds.getY() + bounds.getHeight() - 165).blit(graphics);
+        BG.dest(bounds.getX() + 9, bounds.getY() + bounds.getHeight() - 164).blit(graphics);
     }
 
     @Override
@@ -92,8 +91,8 @@ final class TianshuProcessingEncodingPanel extends TianshuEncodingModePanel {
     }
 
     @Override
-    Icon getIcon() {
-        return Icon.HORIZONTAL_TAB_SELECTED;
+    ItemStack getTabIconItem() {
+        return Items.FURNACE.getDefaultInstance();
     }
 
     @Override

@@ -104,7 +104,7 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
                 case STONECUTTING -> new TianshuStonecuttingEncodingPanel(this, widgets);
             };
             var tabButton = new TabButton(
-                    panel.getIcon(),
+                    panel.getTabIconItem(),
                     panel.getTabTooltip(),
                     button -> menu.setMode(mode));
             tabButton.setStyle(Style.HORIZONTAL);

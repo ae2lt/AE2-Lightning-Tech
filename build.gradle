@@ -205,9 +205,9 @@ dependencies {
     // Optional integrations. Resolve their public release jars reproducibly instead of relying
     // on an untracked machine-local libs/ directory.
     compileOnly fg.deobf("maven.modrinth:advancedae:${advancedae_version}")
-    // Keep AdvancedAE optional for players while making its complete Mixin/integration path
-    // reproducible in development: -Penable_advancedae_runtime=true.
-    if ((findProperty('enable_advancedae_runtime') ?: 'false').toBoolean()) {
+    // Exercise AdvancedAE's complete integration path in normal development runs. Pass
+    // -Penable_advancedae_runtime=false to verify the no-integration startup path.
+    if ((findProperty('enable_advancedae_runtime') ?: 'true').toBoolean()) {
         runtimeOnly fg.deobf("maven.modrinth:advancedae:${advancedae_version}")
         // AdvancedAE instantiates GeoItem implementations but its 1.20.1 metadata does not
         // declare GeckoLib. Mirror the dependency from its categorized 1.20.1 source project.

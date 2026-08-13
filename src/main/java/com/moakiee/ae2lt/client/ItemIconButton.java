@@ -15,13 +15,14 @@ public class ItemIconButton extends IconButton {
     public ItemIconButton(Item item, Component tooltip, OnPress onPress) {
         super(onPress);
         this.item = item;
+        setDisableBackground(true);
         setMessage(tooltip);
         setTooltip(Tooltip.create(tooltip));
     }
 
     @Override
     protected Icon getIcon() {
-        return null;
+        return Icon.TOOLBAR_BUTTON_BACKGROUND;
     }
 
     @Override

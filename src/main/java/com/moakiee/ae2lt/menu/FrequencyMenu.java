@@ -25,6 +25,7 @@ import appeng.menu.ISubMenu;
 import appeng.menu.MenuOpener;
 import appeng.menu.locator.MenuLocator;
 
+import com.moakiee.ae2lt.api.frequency.FrequencyBindingMenuHost;
 import com.moakiee.ae2lt.api.frequency.FrequencyBindingHost;
 import com.moakiee.ae2lt.blockentity.WirelessOverloadedControllerBlockEntity;
 import com.moakiee.ae2lt.grid.WirelessFrequencyManager;
@@ -251,9 +252,14 @@ public class FrequencyMenu extends AEBaseMenu implements ISubMenu {
             return false;
         }
 
-        // 15.x has no ItemMenuHostLocator type: probe for an item-backed host.
-        ItemMenuHost terminalHost = locator.locate(serverPlayer, ItemMenuHost.class);
-        if (terminalHost != null) {
+        // MenuLocator implementations log a warning when asked for an incompatible
+        // host type. Use the parent menu marker to choose the correct lookup instead
+        // of probing every block locator as ItemMenuHost first.
+        if (!(serverPlayer.containerMenu instanceof FrequencyBindingMenuHost)) {
+            ItemMenuHost terminalHost = locator.locate(serverPlayer, ItemMenuHost.class);
+            if (terminalHost == null) {
+                return false;
+            }
             ItemStack terminal = terminalHost.getItemStack();
             if (!TerminalCardAccess.hasCard(terminal)) {
                 return false;

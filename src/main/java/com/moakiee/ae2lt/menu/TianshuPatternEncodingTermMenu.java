@@ -269,6 +269,10 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
                 ? null : host.selectTianshuTarget();
         if (boundTianshuTarget != null) tianshuSelectionRevision = 1;
         this.tianshuMode = host.getTianshuEncodingMode();
+        this.maintainableView = host.isMaintainableView();
+        if (maintainableView && !inventory.player.level().isClientSide) {
+            getConfigManager().putSetting(Settings.VIEW_MODE, ViewItems.ALL);
+        }
         if (!inventory.player.level().isClientSide) {
             restoreProcessingDraft(host.getProcessingPatternTerminalDraft());
             restoreClosedLoopDraft(host.getClosedLoopTerminalDraft());
@@ -300,6 +304,8 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         registerClientAction("encodeTianshu", Boolean.class, this::encodeServerWithOptions);
         registerClientAction("uploadEncodedPattern", Integer.class, this::uploadEncodedPatternServer);
         registerClientAction("setMaintainableView", Boolean.class, this::setMaintainableViewServer);
+        registerClientAction("setMaintainableViewTemporarily", Boolean.class,
+                this::setMaintainableViewTemporarilyServer);
         registerClientAction("maintenanceAction", MaintenanceAction.class, this::maintenanceActionServer);
     }
 
@@ -1848,9 +1854,25 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         } else setMaintainableViewServer(enabled);
     }
 
+    public void setMaintainableViewTemporarily(boolean enabled) {
+        maintainableView = enabled;
+        if (isClientSide()) {
+            sendClientAction("setMaintainableViewTemporarily", enabled);
+        } else setMaintainableViewTemporarilyServer(enabled);
+    }
+
     private void setMaintainableViewServer(boolean enabled) {
+        applyMaintainableViewServer(enabled, true);
+    }
+
+    private void setMaintainableViewTemporarilyServer(boolean enabled) {
+        applyMaintainableViewServer(enabled, false);
+    }
+
+    private void applyMaintainableViewServer(boolean enabled, boolean persist) {
         if (!isServerSide()) return;
         maintainableView = enabled;
+        if (persist) tianshuHost.setMaintainableView(enabled);
         getConfigManager().putSetting(Settings.VIEW_MODE, ViewItems.ALL);
         broadcastChanges();
     }

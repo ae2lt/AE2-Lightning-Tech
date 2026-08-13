@@ -8,11 +8,11 @@ package com.moakiee.ae2lt.client;
 
 import appeng.client.Point;
 import appeng.client.gui.ICompositeWidget;
-import appeng.client.gui.Icon;
 import appeng.client.gui.WidgetContainer;
 import com.moakiee.ae2lt.menu.TianshuPatternEncodingTermMenu;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.ItemStack;
 
 abstract class TianshuEncodingModePanel implements ICompositeWidget {
     protected final TianshuPatternEncodingTermScreen<?> screen;
@@ -30,7 +30,7 @@ abstract class TianshuEncodingModePanel implements ICompositeWidget {
         this.widgets = widgets;
     }
 
-    abstract Icon getIcon();
+    abstract ItemStack getTabIconItem();
 
     abstract Component getTabTooltip();
 
@@ -46,7 +46,7 @@ abstract class TianshuEncodingModePanel implements ICompositeWidget {
 
     @Override
     public Rect2i getBounds() {
-        return new Rect2i(x, y, 124, 66);
+        return new Rect2i(x, y, 126, 68);
     }
 
     @Override

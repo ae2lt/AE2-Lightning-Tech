@@ -1,6 +1,6 @@
 {
   "$schema": "schema.json",
-  "includes": ["common/common.json", "common/player_inventory.json"],
+  "includes": ["common/common.json", "common/legacy_player_inventory.json"],
   "background": {
     "texture": "ae2lt:textures/guis/lightning_collector.png",
     "srcRect": [0, 0, 176, 168]
@@ -13,8 +13,8 @@
   },
   "images": {
     "energyBar": {
-      "texture": "ae2:textures/guis/inscriber.png",
-      "srcRect": [135, 177, 6, 18]
+      "texture": "ae2lt:textures/guis/lightning_collector.png",
+      "srcRect": [176, 0, 6, 18]
     }
   },
   "widgets": {

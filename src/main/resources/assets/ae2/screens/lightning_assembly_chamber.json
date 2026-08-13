@@ -40,8 +40,8 @@
   },
   "images": {
     "energyBar": {
-      "texture": "ae2:textures/guis/inscriber.png",
-      "srcRect": [135, 177, 6, 18]
+      "texture": "ae2lt:textures/guis/lightning_assembly_chamber.png",
+      "srcRect": [176, 0, 6, 18]
     },
     "processOverlay": {
       "texture": "ae2lt:textures/guis/lightning_assembly_chamber.png",

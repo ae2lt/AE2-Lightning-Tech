@@ -37,6 +37,7 @@ public class TianshuWirelessPatternEncodingTermMenuHost extends WirelessTerminal
         InternalInventoryHost {
     private static final String TAG_PATTERN_LOGIC = "patternEncodingLogic";
     private static final String TAG_TIANSHU_MODE = "tianshuMode";
+    private static final String TAG_MAINTAINABLE_VIEW = "tianshuMaintainableView";
     private static final String TAG_CLOSED_LOOP_DRAFT = "tianshuClosedLoopDraft";
     private static final String TAG_PROCESSING_DRAFT = "tianshuProcessingDraft";
     private static final String TAG_VIEW_CELLS = "viewcells";
@@ -44,6 +45,7 @@ public class TianshuWirelessPatternEncodingTermMenuHost extends WirelessTerminal
     private final PatternEncodingLogic logic = new PatternEncodingLogic(this);
     private final AppEngInternalInventory viewCells = new AppEngInternalInventory(this, 5);
     private TianshuEncodingMode tianshuMode = TianshuEncodingMode.CRAFTING;
+    private boolean maintainableView;
     @Nullable
     private ClosedLoopTerminalDraft closedLoopDraft;
     @Nullable
@@ -86,6 +88,7 @@ public class TianshuWirelessPatternEncodingTermMenuHost extends WirelessTerminal
         logic.writeToNBT(data);
         viewCells.writeToNBT(data, TAG_VIEW_CELLS);
         data.putString(TAG_TIANSHU_MODE, tianshuMode.name());
+        data.putBoolean(TAG_MAINTAINABLE_VIEW, maintainableView);
         if (closedLoopDraft != null) {
             data.put(TAG_CLOSED_LOOP_DRAFT, closedLoopDraft.write());
         } else {
@@ -127,6 +130,19 @@ public class TianshuWirelessPatternEncodingTermMenuHost extends WirelessTerminal
     }
 
     @Override
+    public boolean isMaintainableView() {
+        return maintainableView;
+    }
+
+    @Override
+    public void setMaintainableView(boolean enabled) {
+        if (maintainableView != enabled) {
+            maintainableView = enabled;
+            markForSave();
+        }
+    }
+
+    @Override
     public ClosedLoopTerminalDraft getClosedLoopTerminalDraft() {
         return closedLoopDraft;
     }
@@ -160,6 +176,7 @@ public class TianshuWirelessPatternEncodingTermMenuHost extends WirelessTerminal
         } catch (IllegalArgumentException ignored) {
             tianshuMode = TianshuEncodingMode.CRAFTING;
         }
+        maintainableView = data.getBoolean(TAG_MAINTAINABLE_VIEW);
         closedLoopDraft = data.contains(TAG_CLOSED_LOOP_DRAFT, Tag.TAG_COMPOUND)
                 ? ClosedLoopTerminalDraft.read(data.getCompound(TAG_CLOSED_LOOP_DRAFT))
                 : null;

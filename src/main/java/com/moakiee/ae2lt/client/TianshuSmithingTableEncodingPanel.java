@@ -23,10 +23,11 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.RecipeType;
 
 final class TianshuSmithingTableEncodingPanel extends TianshuEncodingModePanel {
-    private static final Blitter BG = Blitter.texture("guis/pattern_modes.png").src(128, 70, 124, 66);
+    private static final Blitter BG = Blitter.texture("guis/pattern_modes.png").src(128, 70, 126, 68);
 
     private final ActionButton clearButton;
     private final ToggleButton substitutionsButton;
@@ -39,7 +40,6 @@ final class TianshuSmithingTableEncodingPanel extends TianshuEncodingModePanel {
 
         clearButton = new ActionButton(ActionItems.CLOSE, action -> menu.clear());
         clearButton.setHalfSize(true);
-        clearButton.setDisableBackground(true);
         widgets.add("smithingTableClearPattern", clearButton);
 
         substitutionsButton = createSubstitutionButton();
@@ -48,8 +48,8 @@ final class TianshuSmithingTableEncodingPanel extends TianshuEncodingModePanel {
     }
 
     @Override
-    Icon getIcon() {
-        return Icon.HORIZONTAL_TAB_SELECTED;
+    ItemStack getTabIconItem() {
+        return Items.SMITHING_TABLE.getDefaultInstance();
     }
 
     @Override
@@ -63,7 +63,6 @@ final class TianshuSmithingTableEncodingPanel extends TianshuEncodingModePanel {
                 Icon.SUBSTITUTION_DISABLED,
                 menu::setSubstitute);
         button.setHalfSize(true);
-        button.setDisableBackground(true);
         button.setTooltipOn(List.of(
                 ButtonToolTips.SubstitutionsOn.text(),
                 ButtonToolTips.SubstitutionsDescEnabled.text()));
@@ -76,7 +75,7 @@ final class TianshuSmithingTableEncodingPanel extends TianshuEncodingModePanel {
 
     @Override
     public void drawBackgroundLayer(GuiGraphics graphics, Rect2i bounds, Point mouse) {
-        BG.dest(bounds.getX() + 8, bounds.getY() + bounds.getHeight() - 165).blit(graphics);
+        BG.dest(bounds.getX() + 9, bounds.getY() + bounds.getHeight() - 164).blit(graphics);
     }
 
     @Override

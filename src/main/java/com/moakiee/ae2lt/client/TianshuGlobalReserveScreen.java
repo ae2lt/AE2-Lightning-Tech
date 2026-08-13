@@ -57,7 +57,7 @@ public final class TianshuGlobalReserveScreen<M extends TianshuPatternEncodingTe
     public TianshuGlobalReserveScreen(TianshuPatternEncodingTermScreen<M> parent) {
         super(parent, "/screens/tianshu_inventory_overview.json");
         restoreMaintainableView = menu.maintainableView;
-        if (restoreMaintainableView) menu.setMaintainableView(false);
+        if (restoreMaintainableView) menu.setMaintainableViewTemporarily(false);
 
         scrollbar = widgets.addScrollBar("scrollbar", Scrollbar.SMALL);
         scrollbar.setCaptureMouseWheel(false);
@@ -94,7 +94,7 @@ public final class TianshuGlobalReserveScreen<M extends TianshuPatternEncodingTe
     }
 
     private void restoreParentViewMode() {
-        if (restoreMaintainableView) menu.setMaintainableView(true);
+        if (restoreMaintainableView) menu.setMaintainableViewTemporarily(true);
     }
 
     void hideSlots() {

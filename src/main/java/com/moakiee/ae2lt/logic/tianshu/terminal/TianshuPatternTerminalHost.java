@@ -11,6 +11,13 @@ public interface TianshuPatternTerminalHost extends IPatternTerminalMenuHost, IA
     TianshuEncodingMode getTianshuEncodingMode();
     void setTianshuEncodingMode(TianshuEncodingMode mode);
 
+    default boolean isMaintainableView() {
+        return false;
+    }
+
+    default void setMaintainableView(boolean enabled) {
+    }
+
     /** Whether this host is currently backed by AE2WTLib's universal terminal item. */
     default boolean isUniversalWirelessTerminal() {
         return false;
