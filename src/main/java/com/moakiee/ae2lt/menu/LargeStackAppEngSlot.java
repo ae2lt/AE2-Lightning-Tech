@@ -1,11 +1,17 @@
 package com.moakiee.ae2lt.menu;
 
+import java.util.ArrayList;
+
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.ClickType;
+import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 
 import appeng.api.inventories.InternalInventory;
+import appeng.api.stacks.AEItemKey;
+import appeng.api.stacks.GenericStack;
 import appeng.menu.AEBaseMenu;
+import appeng.menu.SlotSemantics;
 import appeng.menu.slot.AppEngSlot;
 
 /**
@@ -15,6 +21,8 @@ import appeng.menu.slot.AppEngSlot;
 public class LargeStackAppEngSlot extends AppEngSlot {
     private final InternalInventory backingInventory;
     private final int backingSlot;
+    private ItemStack synchronizedDisplayStack = ItemStack.EMPTY;
+    private boolean hasSynchronizedDisplayStack;
 
     public LargeStackAppEngSlot(InternalInventory inventory, int slot) {
         super(inventory, slot);
@@ -24,27 +32,51 @@ public class LargeStackAppEngSlot extends AppEngSlot {
         setNotDraggable();
     }
 
-    /**
-     * Never expose an oversized real item stack through the menu slot. The
-     * backing inventory may legally contain more than the item's native stack
-     * size, but vanilla menu code and third-party item hooks must only ever see
-     * a normal-sized presentation copy.
-     */
     @Override
     public ItemStack getItem() {
         if (!isSlotEnabled()) {
             return ItemStack.EMPTY;
         }
-        ItemStack actual = getBackingItem();
-        if (actual.isEmpty() || actual.getCount() <= actual.getMaxStackSize()) {
-            return actual;
+
+        // Client menu synchronization must never write AE2's wrapped display
+        // stack into the block entity's real inventory. Keep that projection
+        // local to the slot instead.
+        if (isRemote() && hasSynchronizedDisplayStack) {
+            return synchronizedDisplayStack;
         }
-        return actual.copyWithCount(actual.getMaxStackSize());
+
+        return toPresentationStack(getBackingItem());
+    }
+
+    @Override
+    public void initialize(ItemStack stack) {
+        if (isRemote()) {
+            setSynchronizedDisplayStack(stack);
+        } else {
+            super.initialize(stack);
+        }
+    }
+
+    @Override
+    public void set(ItemStack stack) {
+        if (isRemote()) {
+            setSynchronizedDisplayStack(stack);
+        } else {
+            super.set(stack);
+        }
     }
 
     @Override
     public int getMaxStackSize(ItemStack stack) {
         return getMaxStackSize();
+    }
+
+    @Override
+    public boolean mayPlace(ItemStack stack) {
+        return isSlotEnabled()
+                && !stack.isEmpty()
+                && !GenericStack.isWrapped(stack)
+                && backingInventory.isItemValid(backingSlot, stack);
     }
 
     /**
@@ -90,6 +122,30 @@ public class LargeStackAppEngSlot extends AppEngSlot {
         return backingInventory.getStackInSlot(backingSlot);
     }
 
+    /** Returns the exact logical amount represented by this menu slot. */
+    public long getDisplayedAmount() {
+        ItemStack displayed = getItem();
+        GenericStack wrapped = GenericStack.unwrapItemStack(displayed);
+        return wrapped != null ? wrapped.amount() : displayed.getCount();
+    }
+
+    private void setSynchronizedDisplayStack(ItemStack stack) {
+        synchronizedDisplayStack = stack.isEmpty() ? ItemStack.EMPTY : stack.copy();
+        hasSynchronizedDisplayStack = true;
+    }
+
+    private static ItemStack toPresentationStack(ItemStack actual) {
+        if (actual.isEmpty() || GenericStack.isWrapped(actual)) {
+            return actual;
+        }
+
+        AEItemKey key = AEItemKey.of(actual);
+        if (key != null && actual.getCount() > key.getMaxStackSize()) {
+            return GenericStack.wrapInItemStack(key, actual.getCount());
+        }
+        return actual;
+    }
+
     private int insertIntoBacking(ItemStack stack, int amount) {
         if (amount <= 0) {
             return 0;
@@ -126,20 +182,38 @@ public class LargeStackAppEngSlot extends AppEngSlot {
             return false;
         }
 
+        // Match the existing ME-terminal proxy pattern: the client consumes the
+        // click locally without mutating its display projection; the server is
+        // the only side allowed to touch the backing inventory.
+        if (menu.isClientSide()) {
+            return true;
+        }
+
         if (mustRejectDirectExtraction(button, clickType)) {
             return true;
         }
 
-        return clickType == ClickType.PICKUP && handlePickup(menu, slot, button, player);
+        switch (clickType) {
+            case PICKUP -> handlePickup(menu, slot, button, player);
+            case QUICK_MOVE -> handleQuickMove(menu, slot, player);
+            case THROW -> handleThrow(slot, button, player);
+            case CLONE -> handleClone(menu, slot, player);
+            case PICKUP_ALL -> handlePickupAll(menu, slot, player);
+            case QUICK_CRAFT, SWAP -> {
+                // Dragging and direct hotbar/offhand swaps are deliberately not
+                // delegated to vanilla for a managed large-stack slot.
+            }
+        }
+        return true;
     }
 
-    private static boolean handlePickup(
+    private static void handlePickup(
             AEBaseMenu menu,
             LargeStackAppEngSlot slot,
             int button,
             Player player) {
         if (button != 0 && button != 1) {
-            return false;
+            return;
         }
 
         var carried = menu.getCarried();
@@ -147,8 +221,8 @@ public class LargeStackAppEngSlot extends AppEngSlot {
         boolean rightClick = button == 1;
 
         if (carried.isEmpty()) {
-            if (slotStack.isEmpty() || !slot.mayPickup(player)) {
-                return true;
+            if (slotStack.isEmpty() || !slot.canExtractBacking()) {
+                return;
             }
 
             int nativeMax = slotStack.getMaxStackSize();
@@ -159,29 +233,29 @@ public class LargeStackAppEngSlot extends AppEngSlot {
             menu.setCarried(taken);
             slot.onTake(player, taken);
             slot.setChanged();
-            return true;
+            return;
         }
 
         if (slotStack.isEmpty()) {
             if (!slot.mayPlace(carried)) {
-                return true;
+                return;
             }
 
             int toMove = Math.min(rightClick ? 1 : carried.getCount(), slot.getMaxStackSize(carried));
             if (toMove <= 0) {
-                return true;
+                return;
             }
 
             int inserted = slot.insertIntoBacking(carried, toMove);
             carried.shrink(inserted);
             menu.setCarried(carried.isEmpty() ? ItemStack.EMPTY : carried);
-            return true;
+            return;
         }
 
         if (ItemStack.isSameItemSameComponents(slotStack, carried)) {
             if (!slot.mayPlace(carried)) {
-                if (!slot.mayPickup(player)) {
-                    return true;
+                if (!slot.canExtractBacking()) {
+                    return;
                 }
 
                 int cursorRoom = carried.getMaxStackSize() - carried.getCount();
@@ -192,7 +266,7 @@ public class LargeStackAppEngSlot extends AppEngSlot {
                     slot.onTake(player, taken);
                     slot.setChanged();
                 }
-                return true;
+                return;
             }
 
             int room = slot.getMaxStackSize(carried) - slotStack.getCount();
@@ -200,18 +274,127 @@ public class LargeStackAppEngSlot extends AppEngSlot {
             int inserted = slot.insertIntoBacking(carried, requested);
             carried.shrink(inserted);
             menu.setCarried(carried.isEmpty() ? ItemStack.EMPTY : carried);
-            return true;
+            return;
         }
 
         if (!slot.mayPlace(carried)
-                || !slot.mayPickup(player)
+                || !slot.canExtractBacking()
                 || carried.getCount() > slot.getMaxStackSize(carried)
                 || slotStack.getCount() > slotStack.getMaxStackSize()) {
-            return true;
+            return;
         }
 
         slot.set(carried);
         menu.setCarried(slotStack.copy());
-        return true;
+    }
+
+    private static void handleQuickMove(
+            AEBaseMenu menu,
+            LargeStackAppEngSlot slot,
+            Player player) {
+        ItemStack actual = slot.getBackingItem();
+        if (actual.isEmpty() || !slot.canExtractBacking()) {
+            return;
+        }
+
+        ItemStack taken = slot.remove(actual.getMaxStackSize());
+        if (taken.isEmpty()) {
+            return;
+        }
+
+        ItemStack original = taken.copy();
+        ItemStack remainder = moveIntoPlayerInventory(menu, taken);
+        int moved = original.getCount() - remainder.getCount();
+
+        if (!remainder.isEmpty()) {
+            int restored = slot.insertIntoBacking(remainder, remainder.getCount());
+            remainder.shrink(restored);
+            if (!remainder.isEmpty()) {
+                player.drop(remainder, false);
+            }
+        }
+
+        if (moved > 0) {
+            ItemStack movedStack = original.copyWithCount(moved);
+            slot.onTake(player, movedStack);
+            slot.setChanged();
+        }
+    }
+
+    private static ItemStack moveIntoPlayerInventory(AEBaseMenu menu, ItemStack stack) {
+        var destinations = new ArrayList<Slot>(menu.getSlots(SlotSemantics.PLAYER_INVENTORY));
+        destinations.addAll(menu.getSlots(SlotSemantics.PLAYER_HOTBAR));
+
+        ItemStack remainder = stack;
+        for (Slot destination : destinations) {
+            if (!destination.hasItem()) {
+                continue;
+            }
+            remainder = destination.safeInsert(remainder);
+            if (remainder.isEmpty()) {
+                return ItemStack.EMPTY;
+            }
+        }
+        for (Slot destination : destinations) {
+            if (destination.hasItem()) {
+                continue;
+            }
+            remainder = destination.safeInsert(remainder);
+            if (remainder.isEmpty()) {
+                return ItemStack.EMPTY;
+            }
+        }
+        return remainder;
+    }
+
+    private static void handleThrow(LargeStackAppEngSlot slot, int button, Player player) {
+        ItemStack actual = slot.getBackingItem();
+        if (actual.isEmpty() || !slot.canExtractBacking()) {
+            return;
+        }
+
+        int amount = button == 1 ? actual.getMaxStackSize() : 1;
+        ItemStack taken = slot.remove(amount);
+        if (!taken.isEmpty()) {
+            player.drop(taken, true);
+            slot.onTake(player, taken);
+            slot.setChanged();
+        }
+    }
+
+    private static void handleClone(AEBaseMenu menu, LargeStackAppEngSlot slot, Player player) {
+        if (!player.getAbilities().instabuild) {
+            return;
+        }
+
+        ItemStack actual = slot.getBackingItem();
+        if (!actual.isEmpty()) {
+            menu.setCarried(actual.copyWithCount(actual.getMaxStackSize()));
+        }
+    }
+
+    private static void handlePickupAll(AEBaseMenu menu, LargeStackAppEngSlot slot, Player player) {
+        ItemStack carried = menu.getCarried();
+        ItemStack actual = slot.getBackingItem();
+        if (carried.isEmpty()
+                || actual.isEmpty()
+                || !ItemStack.isSameItemSameComponents(actual, carried)
+                || !slot.canExtractBacking()) {
+            return;
+        }
+
+        int room = carried.getMaxStackSize() - carried.getCount();
+        ItemStack taken = slot.remove(room);
+        if (!taken.isEmpty()) {
+            carried.grow(taken.getCount());
+            menu.setCarried(carried);
+            slot.onTake(player, taken);
+            slot.setChanged();
+        }
+    }
+
+    private boolean canExtractBacking() {
+        return isSlotEnabled()
+                && !backingInventory.extractItem(backingSlot, 1, true).isEmpty();
     }
 }

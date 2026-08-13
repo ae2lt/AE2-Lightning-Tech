@@ -17,26 +17,35 @@ class LargeStackInteractionContractTest {
     void sharedPolicyRejectsUnsafeDirectExtractionAndCapsCursorStacks() throws Exception {
         String source = Files.readString(MENU_DIR.resolve("LargeStackAppEngSlot.java"));
 
-        assertTrue(source.contains(
-                "return clickType == ClickType.SWAP;"));
+        assertTrue(source.contains("return clickType == ClickType.SWAP;"));
         assertTrue(source.contains("int nativeMax = slotStack.getMaxStackSize();"),
                 "Normal pickup must respect the item's native stack size");
         assertTrue(source.contains("slotStack.getCount() > slotStack.getMaxStackSize()"),
                 "Cursor swaps must reject oversized machine stacks");
-        assertTrue(source.contains("actual.copyWithCount(actual.getMaxStackSize())"),
-                "The menu slot must expose a native-sized presentation proxy");
+        assertTrue(source.contains("GenericStack.wrapInItemStack(key, actual.getCount())"),
+                "Oversized menu stacks must use AE2's long-count presentation wrapper");
+        assertTrue(source.contains("if (isRemote() && hasSynchronizedDisplayStack)"),
+                "Client display synchronization must not overwrite the real machine inventory");
+        assertTrue(source.contains("if (menu.isClientSide())"),
+                "Only the authoritative server may mutate the backing inventory");
         assertTrue(source.contains("Math.min(amount, actual.getMaxStackSize())"),
                 "Generic slot extraction must return at most one native stack");
         assertTrue(source.contains("backingInventory.insertItem(backingSlot, offered, false)"),
                 "Insertion must mutate the backing inventory instead of the presentation proxy");
+        assertTrue(source.contains("backingInventory.isItemValid(backingSlot, stack)"),
+                "Insertion validation must consult the backing inventory even while the display is wrapped");
         assertTrue(source.contains("setNotDraggable();"),
                 "Quick-craft dragging must not replace an oversized backing stack with a presentation copy");
         assertTrue(source.contains("var slotStack = slot.getBackingItem();"),
                 "The authoritative click handler must operate on the backing stack");
+        assertTrue(source.contains("case QUICK_MOVE -> handleQuickMove"),
+                "Shift-click extraction must bypass the read-only presentation wrapper safely");
+        assertTrue(source.contains("case THROW -> handleThrow"),
+                "Q and Ctrl+Q must materialize only native-sized stacks");
     }
 
     @Test
-    void everyLargeStackMachineMenuUsesTheSharedGuardBeforeVanilla() throws Exception {
+    void commonAe2MenuMixinOwnsTheGuardAndMachinesDoNotRepeatIt() throws Exception {
         Set<String> menuNames;
         try (var files = Files.list(MENU_DIR)) {
             menuNames = files
@@ -55,8 +64,21 @@ class LargeStackInteractionContractTest {
                 "OverloadProcessingFactoryMenu.java",
                 "TeslaCoilMenu.java"), menuNames);
 
+        String mixin = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/mixin/AEBaseMenuManagedSlotClickMixin.java"));
+        assertTrue(mixin.contains("@Mixin(AEBaseMenu.class)"));
+        assertTrue(mixin.contains("@Inject(method = \"clicked\", at = @At(\"HEAD\"), cancellable = true)"));
+        assertTrue(mixin.contains("LargeStackAppEngSlot.handleMenuInteraction(menu, slotId, button, clickType, player)"));
+        assertTrue(mixin.contains("button != 40"),
+                "The overloaded provider return slot must reject the offhand SWAP button");
+        assertTrue(mixin.contains("SlotSemantics.STORAGE"),
+                "The provider rule must be limited to return/storage slots");
+
+        String mixinConfig = Files.readString(Path.of("src/main/resources/ae2lt.mixins.json"));
+        assertTrue(mixinConfig.contains("\"AEBaseMenuManagedSlotClickMixin\""));
+
         for (String menuName : menuNames) {
-            assertServerMenuGuard(menuName);
+            assertNoRepeatedMenuGuard(menuName);
         }
     }
 
@@ -68,20 +90,10 @@ class LargeStackInteractionContractTest {
         }
     }
 
-    private static void assertServerMenuGuard(String fileName) throws Exception {
+    private static void assertNoRepeatedMenuGuard(String fileName) throws Exception {
         String source = Files.readString(MENU_DIR.resolve(fileName)).replace("\r\n", "\n");
-        int methodStart = source.indexOf("public void clicked(int slotId, int button, ClickType clickType, Player player)");
-        int methodEnd = source.indexOf("\n    @Override", methodStart + 1);
-
-        assertTrue(methodStart >= 0, "Missing clicked override in " + fileName);
-        assertTrue(methodEnd > methodStart, "Could not isolate clicked override in " + fileName);
-
-        String method = source.substring(methodStart, methodEnd);
-        int guard = method.indexOf("LargeStackAppEngSlot.handleMenuInteraction(this, slotId, button, clickType, player)");
-        int delegate = method.indexOf("super.clicked(slotId, button, clickType, player)");
-
-        assertTrue(guard >= 0, "Missing shared large-stack interaction guard in " + fileName);
-        assertTrue(delegate > guard, "Server-side guard must run before vanilla delegation in " + fileName);
+        assertTrue(!source.contains("LargeStackAppEngSlot.handleMenuInteraction("),
+                "Large-stack click forwarding must stay centralized, not repeated in " + fileName);
 
         int destinationsStart = source.indexOf("private List<Slot> getPlayerDestinationSlots()");
         int destinationsEnd = source.indexOf("private static ItemStack moveIntoSlots", destinationsStart);
