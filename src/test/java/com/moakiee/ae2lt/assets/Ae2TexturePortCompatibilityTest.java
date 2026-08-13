@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 
 import com.google.gson.JsonParser;
 
@@ -18,16 +19,21 @@ class Ae2TexturePortCompatibilityTest {
     private static final Path AE2LT_MODELS = RESOURCES.resolve(Path.of("assets", "ae2lt", "models"));
 
     @Test
-    void machineScreensUseTheAe2_1_20InscriberProgressSprite() throws IOException {
-        for (String screen : List.of(
-                "atmospheric_ionizer.json",
-                "crystal_catalyzer.json",
-                "lightning_assembly_chamber.json",
-                "lightning_simulation_room.json",
-                "tesla_coil.json")) {
-            String json = Files.readString(AE2_SCREENS.resolve(screen));
-            assertTrue(json.contains("[135, 177, 6, 18]"), screen);
-            assertFalse(json.contains("[176, 0, 6, 18]"), screen);
+    void poweredMachineScreensUseTheirBundledAe2_1_21EnergySprite() throws IOException {
+        var screens = Map.of(
+                "atmospheric_ionizer.json", "ae2lt:textures/guis/lightning_collector.png",
+                "crystal_catalyzer.json", "ae2lt:textures/guis/crystal_catalyzer.png",
+                "lightning_assembly_chamber.json", "ae2lt:textures/guis/lightning_assembly_chamber.png",
+                "lightning_simulation_room.json", "ae2lt:textures/guis/lightning_simulation_room.png",
+                "overload_processing_factory.json", "ae2lt:textures/guis/overload_processing_factory.png",
+                "tesla_coil.json", "ae2lt:textures/guis/tesla_coil.png");
+
+        for (var entry : screens.entrySet()) {
+            var screen = JsonParser.parseString(Files.readString(AE2_SCREENS.resolve(entry.getKey())))
+                    .getAsJsonObject();
+            var energyBar = screen.getAsJsonObject("images").getAsJsonObject("energyBar");
+            assertTrue(entry.getValue().equals(energyBar.get("texture").getAsString()), entry.getKey());
+            assertTrue("[176,0,6,18]".equals(energyBar.getAsJsonArray("srcRect").toString()), entry.getKey());
         }
 
         String seedStorage = Files.readString(AE2_SCREENS.resolve("tianshu_seed_storage.json"));
