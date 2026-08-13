@@ -83,6 +83,23 @@ class MatrixPortServerTraversalContractTest {
                 "Automation must not expose every matrix storage slot");
     }
 
+    @Test
+    void patternValidationRejectsOrdinaryItemsBeforeDecoding() throws Exception {
+        String storage = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/blockentity/MatrixPatternStorageBlockEntity.java"));
+
+        String validation = methodBody(storage,
+                "public boolean isValidPatternStack(ItemStack stack)");
+        int encodedPatternGuard = validation.indexOf(
+                "!PatternDetailsHelper.isEncodedPattern(stack)");
+        int decodePattern = validation.indexOf("PatternDetailsHelper.decodePattern(stack, level)");
+
+        assertTrue(encodedPatternGuard >= 0,
+                "Ordinary automation inputs need a cheap pattern-item guard");
+        assertTrue(decodePattern > encodedPatternGuard,
+                "Only encoded patterns should pay the full decoder and component-hash cost");
+    }
+
     private static String methodBody(String source, String signature) {
         return methodBody(source, signature, 0);
     }
