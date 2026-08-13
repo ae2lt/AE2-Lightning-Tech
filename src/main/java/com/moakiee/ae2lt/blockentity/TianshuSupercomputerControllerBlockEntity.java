@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import com.google.common.collect.ImmutableSet;
@@ -899,31 +900,17 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
     }
 
     private AvailableClosedLoopPatterns collectAvailablePatterns() {
-        if (!isFormed() || level == null || !functionProfile.supportsClosedLoopPatterns()
-                || functionProfile.closedLoopPatternCapacity() <= 0) {
-            return AvailableClosedLoopPatterns.EMPTY;
-        }
-        if (patternStorages() == null
-                || (functionProfile.supportsClosedLoopSeeds() && seedDrives() == null)) {
+        if (!closedLoopPatternsReadyForPublication()) {
             return AvailableClosedLoopPatterns.EMPTY;
         }
         var result = new java.util.ArrayList<IPatternDetails>();
         var patternDefinitions = new java.util.LinkedHashSet<AEItemKey>();
+        var availableSeeds = new ClosedLoopPublicationSupport.SeedSnapshotMemoizer(
+                this::availableSeedsFor);
         for (var payload : closedLoopPatterns.activePatterns()) {
-            if (!payload.enabled()) continue;
-            var decoded = decodedClosedLoopPatterns.computeIfAbsent(
-                    payload, candidate -> ClosedLoopPatternDecoder.decodePayload(candidate, level));
-            if (!decoded.valid() || !membersAreAvailable(decoded.members())) continue;
-            var item = (com.moakiee.ae2lt.item.ClosedLoopPatternItem)
-                    ModItems.CLOSED_LOOP_PATTERN.get();
-            var key = AEItemKey.of(item.createStack(payload, level.registryAccess()));
-            IPatternDetails details;
-            try {
-                details = key != null ? decoded.createDetails(
-                        key, level, machineId, this::availableSeedsFor) : null;
-            } catch (RuntimeException ignored) {
-                details = null;
-            }
+            var candidate = availableClosedLoopPatternCandidate(payload);
+            if (candidate == null) continue;
+            var details = createAvailableClosedLoopPatternDetails(candidate, availableSeeds);
             if (details != null) {
                 result.add(details);
                 patternDefinitions.add(details.getDefinition());
@@ -931,6 +918,61 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
         }
         return new AvailableClosedLoopPatterns(
                 List.copyOf(result), Set.copyOf(patternDefinitions));
+    }
+
+    private Set<AEItemKey> collectAvailablePatternDefinitionsForDependencyChanges() {
+        if (!closedLoopPatternsReadyForPublication()) return Set.of();
+
+        var result = new java.util.LinkedHashSet<AEItemKey>();
+        var availableSeeds = new ClosedLoopPublicationSupport.SeedSnapshotMemoizer(
+                this::availableSeedsFor);
+        for (var payload : closedLoopPatterns.activePatterns()) {
+            var candidate = availableClosedLoopPatternCandidate(payload);
+            if (candidate == null) continue;
+            // Published definitions already passed details construction. Provider churn only
+            // requires rechecking their member providers; newly returning definitions still
+            // take the full construction path before they can trigger a provider refresh.
+            var definition = ClosedLoopPublicationSupport.reusePublishedOrValidate(
+                    candidate.definition(), publishedClosedLoopPatternDefinitions, () -> {
+                        var details = createAvailableClosedLoopPatternDetails(
+                                candidate, availableSeeds);
+                        return details != null ? details.getDefinition() : null;
+                    });
+            if (definition != null) result.add(definition);
+        }
+        return Set.copyOf(result);
+    }
+
+    private boolean closedLoopPatternsReadyForPublication() {
+        return isFormed() && level != null && functionProfile.supportsClosedLoopPatterns()
+                && functionProfile.closedLoopPatternCapacity() > 0
+                && patternStorages() != null
+                && (!functionProfile.supportsClosedLoopSeeds() || seedDrives() != null);
+    }
+
+    private AvailableClosedLoopPatternCandidate availableClosedLoopPatternCandidate(
+            ClosedLoopPatternPayload payload) {
+        if (!payload.enabled()) return null;
+        var decoded = decodedClosedLoopPatterns.computeIfAbsent(
+                payload, candidate -> ClosedLoopPatternDecoder.decodePayload(candidate, level));
+        if (!decoded.valid() || !membersAreAvailable(decoded.members())) return null;
+        var item = (com.moakiee.ae2lt.item.ClosedLoopPatternItem)
+                ModItems.CLOSED_LOOP_PATTERN.get();
+        var definition = AEItemKey.of(item.createStack(payload, level.registryAccess()));
+        return definition != null
+                ? new AvailableClosedLoopPatternCandidate(definition, decoded)
+                : null;
+    }
+
+    private IPatternDetails createAvailableClosedLoopPatternDetails(
+            AvailableClosedLoopPatternCandidate candidate,
+            Function<ReusableSeedPattern, Map<AEKey, Long>> availableSeeds) {
+        try {
+            return candidate.decoded().createDetails(
+                    candidate.definition(), level, machineId, availableSeeds);
+        } catch (RuntimeException ignored) {
+            return null;
+        }
     }
 
     private void refreshClosedLoopProviderForDependencyChanges(
@@ -941,8 +983,8 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
             return;
         }
 
-        var available = collectAvailablePatterns();
-        if (!available.patternDefinitions().equals(publishedClosedLoopPatternDefinitions)) {
+        var availableDefinitions = collectAvailablePatternDefinitionsForDependencyChanges();
+        if (!availableDefinitions.equals(publishedClosedLoopPatternDefinitions)) {
             port.refreshCraftingProvider();
         }
     }
@@ -974,6 +1016,10 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
             List<IPatternDetails> patterns, Set<AEItemKey> patternDefinitions) {
         private static final AvailableClosedLoopPatterns EMPTY =
                 new AvailableClosedLoopPatterns(List.of(), Set.of());
+    }
+
+    private record AvailableClosedLoopPatternCandidate(
+            AEItemKey definition, ClosedLoopPatternDecoder.DecodedPayload decoded) {
     }
 
     public void persistRuntimeStateIfChanged() {
