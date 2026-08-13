@@ -6,9 +6,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.Reader;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -119,8 +122,14 @@ class PortResourceIntegrityTest {
         }
 
         Path ae2ltGuis = ASSETS.resolve(Path.of("textures", "guis"));
-        assertTrue(Files.isRegularFile(ae2ltGuis.resolve("overloaded_interface.png")));
-        assertTrue(Files.isRegularFile(ae2ltGuis.resolve("overloaded_pattern_provider.png")));
+        Path interfaceTexture = ae2ltGuis.resolve("overloaded_interface.png");
+        Path providerTexture = ae2ltGuis.resolve("overloaded_pattern_provider.png");
+        assertTrue(Files.isRegularFile(interfaceTexture));
+        assertTrue(Files.isRegularFile(providerTexture));
+        assertEquals("40e24e9e63598eeb8f9504643cf79116c868e8626ae152c1fa3d5849480316f0",
+                sha256(interfaceTexture));
+        assertEquals("81064beb4d84ccf8f041f78282e5c82f7749f9f1807a635b03a1b3cfe8b8c0b5",
+                sha256(providerTexture));
 
         String interfaceScreen = Files.readString(
                 RESOURCES.resolve(Path.of("assets", "ae2", "screens", "overloaded_interface.json")));
@@ -130,6 +139,22 @@ class PortResourceIntegrityTest {
         assertTrue(providerScreen.contains("ae2lt:textures/guis/overloaded_pattern_provider.png"));
         assertFalse(interfaceScreen.contains("guis/ex_interface.png"));
         assertFalse(providerScreen.contains("guis/ex_pattern_provider.png"));
+    }
+
+    private static String sha256(Path path) throws IOException {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            try (InputStream input = Files.newInputStream(path)) {
+                byte[] buffer = new byte[8192];
+                int read;
+                while ((read = input.read(buffer)) >= 0) {
+                    digest.update(buffer, 0, read);
+                }
+            }
+            return java.util.HexFormat.of().formatHex(digest.digest());
+        } catch (NoSuchAlgorithmException exception) {
+            throw new AssertionError("SHA-256 must be available", exception);
+        }
     }
 
     private static void validateAnimationFrames(Path metadata, List<String> invalid) throws IOException {
