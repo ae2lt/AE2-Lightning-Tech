@@ -1,5 +1,17 @@
 # Third-Party Notices
 
+## ExtendedAE — Overloaded Machine GUI Backgrounds
+
+The bundled overloaded interface and overloaded pattern provider GUI background textures are
+derived from ExtendedAE's Minecraft 1.21.1 resources. They are stored in the `ae2lt` resource
+namespace so installing ExtendedAE cannot replace them through a shared `ae2` resource path.
+
+- Upstream repository: https://github.com/GlodBlock/ExtendedAE
+- Upstream release reviewed: `1.21-2.2.33-neoforge`
+- Upstream revision reviewed: `90005ee29839fb9fa83bbe6544919c722f8b0dc6`
+- Upstream author attribution: GlodBlock
+- Upstream license: GNU Lesser General Public License version 3
+
 ## ExtendedAE — ME Void Cell
 
 The ME Void Cell implementation, mode-selection GUI, recipe, localization, and GuideME entry

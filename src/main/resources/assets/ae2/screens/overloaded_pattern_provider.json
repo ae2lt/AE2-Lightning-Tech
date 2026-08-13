@@ -2,7 +2,7 @@
   "$schema": "schema.json",
   "includes": ["common/common.json", "common/legacy_player_inventory.json"],
   "background": {
-    "texture": "guis/ex_pattern_provider.png",
+    "texture": "ae2lt:textures/guis/overloaded_pattern_provider.png",
     "srcRect": [0, 0, 176, 245]
   },
   "slots": {

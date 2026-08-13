@@ -1,6 +1,7 @@
 package com.moakiee.ae2lt.assets;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.awt.image.BufferedImage;
@@ -105,6 +106,30 @@ class PortResourceIntegrityTest {
         }
 
         assertTrue(invalid.isEmpty(), String.join(System.lineSeparator(), invalid));
+    }
+
+    @Test
+    void bundledGuiTexturesStayInTheAe2ltNamespace() throws IOException {
+        Path ae2Textures = RESOURCES.resolve(Path.of("assets", "ae2", "textures"));
+        if (Files.isDirectory(ae2Textures)) {
+            try (Stream<Path> paths = Files.walk(ae2Textures)) {
+                assertTrue(paths.filter(Files::isRegularFile).findAny().isEmpty(),
+                        "Bundled textures under assets/ae2 can override AE2 or another add-on");
+            }
+        }
+
+        Path ae2ltGuis = ASSETS.resolve(Path.of("textures", "guis"));
+        assertTrue(Files.isRegularFile(ae2ltGuis.resolve("overloaded_interface.png")));
+        assertTrue(Files.isRegularFile(ae2ltGuis.resolve("overloaded_pattern_provider.png")));
+
+        String interfaceScreen = Files.readString(
+                RESOURCES.resolve(Path.of("assets", "ae2", "screens", "overloaded_interface.json")));
+        String providerScreen = Files.readString(
+                RESOURCES.resolve(Path.of("assets", "ae2", "screens", "overloaded_pattern_provider.json")));
+        assertTrue(interfaceScreen.contains("ae2lt:textures/guis/overloaded_interface.png"));
+        assertTrue(providerScreen.contains("ae2lt:textures/guis/overloaded_pattern_provider.png"));
+        assertFalse(interfaceScreen.contains("guis/ex_interface.png"));
+        assertFalse(providerScreen.contains("guis/ex_pattern_provider.png"));
     }
 
     private static void validateAnimationFrames(Path metadata, List<String> invalid) throws IOException {
