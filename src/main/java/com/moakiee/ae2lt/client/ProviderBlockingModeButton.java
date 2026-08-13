@@ -37,7 +37,7 @@ final class ProviderBlockingModeButton extends IconButton {
     protected Icon getIcon() {
         return switch (state) {
             case STATE_NORMAL -> Icon.BLOCKING_MODE_YES;
-            case STATE_SAME_PATTERN -> null;
+            case STATE_SAME_PATTERN -> Icon.TOOLBAR_BUTTON_BACKGROUND;
             default -> Icon.BLOCKING_MODE_NO;
         };
     }
@@ -45,15 +45,25 @@ final class ProviderBlockingModeButton extends IconButton {
     @Override
     public void renderWidget(
             GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+        boolean customIcon = state == STATE_SAME_PATTERN;
+        setDisableBackground(customIcon);
+
+        boolean wasActive = active;
+        if (customIcon) {
+            // The placeholder is the native toolbar background, which should
+            // remain opaque while only the custom icon is dimmed.
+            active = true;
+        }
         super.renderWidget(guiGraphics, mouseX, mouseY, partialTick);
-        if (state == STATE_SAME_PATTERN) {
-            int yOffset = isHovered() ? 1 : 0;
+        active = wasActive;
+
+        if (customIcon && visible) {
             var blitter = Blitter.texture(SAME_PATTERN_TEXTURE, 16, 16)
                     .src(0, 0, 16, 16);
-            if (!active) {
+            if (!wasActive) {
                 blitter.opacity(0.5F);
             }
-            blitter.dest(getX(), getY() + 1 + yOffset)
+            blitter.dest(getX(), getY())
                     .blit(guiGraphics);
         }
     }

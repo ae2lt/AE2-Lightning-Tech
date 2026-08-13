@@ -5,14 +5,12 @@ import java.util.Collections;
 import java.util.List;
 
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 
 import appeng.client.gui.Icon;
 import appeng.client.gui.style.Blitter;
-import appeng.client.gui.widgets.ITooltip;
+import appeng.client.gui.widgets.IconButton;
 
 import com.moakiee.ae2lt.AE2LightningTech;
 
@@ -32,7 +30,7 @@ import com.moakiee.ae2lt.AE2LightningTech;
  * 但不依赖 AE2 的 {@code Setting<T>} 注册体系,也允许任意 mod 资源命名空间下的 PNG 作为贴图,
  * 适合我们这种"自定义 BlockEntity 字段 + 自定义贴图"的场景。</p>
  */
-public class TextureToggleButton extends Button implements ITooltip {
+public class TextureToggleButton extends IconButton {
 
     private final List<ResourceLocation> textures;
     private final List<List<Component>> tooltips;
@@ -41,7 +39,11 @@ public class TextureToggleButton extends Button implements ITooltip {
     private int stateIndex;
 
     public TextureToggleButton(ButtonType type, Listener listener) {
-        super(0, 0, 16, 16, Component.empty(), btn -> listener.onChange(0), DEFAULT_NARRATION);
+        super(btn -> listener.onChange(0));
+        // Let AE2's IconButton render its own 1.20.1 toolbar chrome. The
+        // background icon is used as a harmless placeholder for the custom
+        // texture rendered on top of it.
+        setDisableBackground(true);
         this.textures = type.textures;
         this.tooltips = new ArrayList<>(type.textures.size());
         for (int i = 0; i < type.textures.size(); i++) {
@@ -111,9 +113,9 @@ public class TextureToggleButton extends Button implements ITooltip {
         setTooltipAt(2, lines);
     }
 
-    public void setVisibility(boolean visible) {
-        this.visible = visible;
-        this.active = visible;
+    @Override
+    protected Icon getIcon() {
+        return Icon.TOOLBAR_BUTTON_BACKGROUND;
     }
 
     @Override
@@ -122,18 +124,17 @@ public class TextureToggleButton extends Button implements ITooltip {
     }
 
     @Override
-    protected void renderWidget(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+    public void renderWidget(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
         if (!this.visible) {
             return;
         }
 
-        var yOffset = isHovered() ? 1 : 0;
-        // 1.20.1: no hover/focus background variants; reuse the plain toolbar background.
-        var background = Icon.TOOLBAR_BUTTON_BACKGROUND;
-
-        background.getBlitter()
-                .dest(getX() - 1, getY() + yOffset, 18, 20)
-                .blit(guiGraphics);
+        // This calls AE2 1.20.1's native IconButton renderer, including its
+        // focus outline and exact 16x16 toolbar footprint.
+        boolean wasActive = this.active;
+        this.active = true; // Native backgrounds do not dim when a button is disabled.
+        super.renderWidget(guiGraphics, mouseX, mouseY, partialTick);
+        this.active = wasActive;
 
         if (this.textures.isEmpty()) {
             return;
@@ -144,7 +145,7 @@ public class TextureToggleButton extends Button implements ITooltip {
         if (!this.active) {
             blitter.opacity(0.5f);
         }
-        blitter.dest(getX(), getY() + 1 + yOffset).blit(guiGraphics);
+        blitter.dest(getX(), getY()).blit(guiGraphics);
     }
 
     @Override
@@ -154,16 +155,6 @@ public class TextureToggleButton extends Button implements ITooltip {
         }
         int idx = Math.min(this.stateIndex, this.tooltips.size() - 1);
         return this.tooltips.get(idx);
-    }
-
-    @Override
-    public Rect2i getTooltipArea() {
-        return new Rect2i(getX(), getY(), 16, 16);
-    }
-
-    @Override
-    public boolean isTooltipAreaVisible() {
-        return this.visible && !getTooltipMessage().isEmpty();
     }
 
     public enum ButtonType {

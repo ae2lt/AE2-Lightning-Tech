@@ -22,6 +22,7 @@ public class TeslaCoilModeButton extends IconButton {
 
     public TeslaCoilModeButton(OnPress onPress) {
         super(onPress);
+        setDisableBackground(true);
     }
 
     public void setMode(TeslaCoilMode mode) {
@@ -30,7 +31,7 @@ public class TeslaCoilModeButton extends IconButton {
 
     @Override
     protected Icon getIcon() {
-        return null;
+        return Icon.TOOLBAR_BUTTON_BACKGROUND;
     }
 
     @Override
@@ -55,17 +56,16 @@ public class TeslaCoilModeButton extends IconButton {
             return;
         }
 
-        int yOffset = isHovered() ? 1 : 0;
-        // 1.20.1: no hover/focus background variants; reuse the plain toolbar background.
-        Icon bgIcon = Icon.TOOLBAR_BUTTON_BACKGROUND;
-        bgIcon.getBlitter()
-                .dest(getX() - 1, getY() + yOffset, 18, 20)
-                .blit(guiGraphics);
+        boolean wasActive = this.active;
+        this.active = true;
+        super.renderWidget(guiGraphics, mouseX, mouseY, partial);
+        this.active = wasActive;
 
         var texture = mode == TeslaCoilMode.EXTREME_HIGH_VOLTAGE ? EHV_TEXTURE : HV_TEXTURE;
-        Blitter.texture(texture, 16, 16)
-                .src(0, 0, 16, 16)
-                .dest(getX(), getY() + 1 + yOffset, 16, 16)
-                .blit(guiGraphics);
+        var blitter = Blitter.texture(texture, 16, 16).src(0, 0, 16, 16);
+        if (!wasActive) {
+            blitter.opacity(0.5F);
+        }
+        blitter.dest(getX(), getY(), 16, 16).blit(guiGraphics);
     }
 }
