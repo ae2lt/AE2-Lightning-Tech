@@ -14,6 +14,7 @@ import appeng.client.gui.style.ScreenStyle;
 import com.moakiee.ae2lt.client.gui.AE2Button;
 import appeng.client.gui.widgets.AETextField;
 import appeng.client.gui.widgets.TabButton;
+import appeng.core.sync.network.NetworkHandler;
 import appeng.core.sync.packets.SwitchGuisPacket;
 
 import com.moakiee.ae2lt.AE2LightningTech;
@@ -464,7 +465,8 @@ public class FrequencyScreen extends AbstractContainerScreen<FrequencyMenu> {
                             : "ae2lt.gui.button.back");
             HoverableTabButton backButton = new HoverableTabButton(
                     Icon.ARROW_LEFT, null, backTooltip,
-                    btn -> NetworkInit.sendToServer(SwitchGuisPacket.returnToParentMenu()));
+                    btn -> NetworkHandler.instance().sendToServer(
+                            SwitchGuisPacket.returnToParentMenu()));
             backButton.setStyle(TabButton.Style.BOX);
             backButton.setX(x0 - TAB_WIDTH + 6);
             backButton.setY(y0 - TAB_HEIGHT);
