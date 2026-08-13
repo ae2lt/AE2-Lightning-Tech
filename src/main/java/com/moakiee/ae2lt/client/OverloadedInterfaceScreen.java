@@ -2,10 +2,10 @@ package com.moakiee.ae2lt.client;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import com.moakiee.ae2lt.blockentity.OverloadedInterfaceBlockEntity;
 import com.moakiee.ae2lt.client.gui.GuiTextLayout;
+import com.moakiee.ae2lt.menu.Ae2ltSlotSemantics;
 import com.moakiee.ae2lt.menu.OverloadedInterfaceMenu;
 
 import net.minecraft.client.gui.GuiGraphics;
@@ -56,13 +56,13 @@ public class OverloadedInterfaceScreen extends AEBaseScreen<OverloadedInterfaceM
                                      Component title, ScreenStyle style) {
         super(menu, playerInventory, title, style);
 
-        var filterSlot = menu.getFilterSlot();
-        var upgradeSlots = menu.getSlots(SlotSemantics.UPGRADE).stream()
-                .filter(slot -> slot != filterSlot)
-                .collect(Collectors.toList());
-        widgets.add("upgrades", new UpgradesPanel(upgradeSlots, this::getCompatibleUpgrades));
-        if (filterSlot != null) {
-            widgets.add("overloadedFilter", new UpgradesPanel(List.of(filterSlot), List::of));
+        widgets.add("upgrades", new UpgradesPanel(
+                menu.getSlots(SlotSemantics.UPGRADE), this::getCompatibleUpgrades));
+        var filterSlots = menu.getSlots(Ae2ltSlotSemantics.OVERLOADED_INTERFACE_FILTER);
+        if (!filterSlots.isEmpty()) {
+            widgets.add("overloadedFilter", new UpgradesPanel(
+                    filterSlots,
+                    () -> List.of(Component.translatable("item.ae2lt.overloaded_filter_component"))));
         }
         if (menu.getToolbox().isPresent()) {
             this.widgets.add("toolbox", new ToolboxPanel(style, menu.getToolbox().getName()));

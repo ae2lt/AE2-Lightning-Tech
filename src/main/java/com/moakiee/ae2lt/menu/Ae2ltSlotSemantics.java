@@ -64,6 +64,8 @@ public final class Ae2ltSlotSemantics {
             SlotSemantics.register("AE2LT_CRYSTAL_CATALYZER_FLUID", false);
     public static final SlotSemantic OVERLOADED_POWER_SUPPLY_CELL =
             SlotSemantics.register("AE2LT_OVERLOADED_POWER_SUPPLY_CELL", false);
+    public static final SlotSemantic OVERLOADED_INTERFACE_FILTER =
+            SlotSemantics.register("AE2LT_OVERLOADED_INTERFACE_FILTER", false);
 
     // Tianshu closed-loop authoring. These slots are positioned only by the
     // closed-loop editor sub-screen; the terminal screen keeps them hidden.

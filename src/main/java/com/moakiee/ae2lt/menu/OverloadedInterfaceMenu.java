@@ -104,7 +104,7 @@ public class OverloadedInterfaceMenu extends InterfaceMenu implements FrequencyB
         if (host instanceof OverloadedInterfaceBlockEntity be) {
             var filterSlot = new OverloadedFilterSlot(be.getFilterInv(), 0);
             filterSlot.setNotDraggable();
-            this.filterSlot = this.addSlot(filterSlot, SlotSemantics.UPGRADE);
+            this.filterSlot = this.addSlot(filterSlot, Ae2ltSlotSemantics.OVERLOADED_INTERFACE_FILTER);
             Ae2ltSlotBackgrounds.withBackground(this.filterSlot, Ae2ltSlotBackgrounds.FILTER_COMPONENT);
         }
 
@@ -124,6 +124,9 @@ public class OverloadedInterfaceMenu extends InterfaceMenu implements FrequencyB
         var cSlots = new HashSet<Slot>(storageSlotSet);
         cSlots.addAll(allConfigSlots);
         cSlots.addAll(getSlots(SlotSemantics.UPGRADE));
+        if (filterSlot != null) {
+            cSlots.add(filterSlot);
+        }
         this.containerSlotSet = cSlots;
 
         registerClientAction("nextPage", this::nextPage);
