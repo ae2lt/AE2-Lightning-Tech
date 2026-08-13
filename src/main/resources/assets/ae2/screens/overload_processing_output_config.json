@@ -24,34 +24,46 @@
       "height": 20
     },
     "clear": {
-      "left": 74,
-      "top": 72,
+      "left": 81,
+      "top": 76,
       "width": 8,
       "height": 8
     },
     "front": {
       "left": 34,
-      "top": 38
+      "top": 38,
+      "width": 18,
+      "height": 20
     },
     "back": {
       "left": 54,
-      "top": 60
+      "top": 60,
+      "width": 18,
+      "height": 20
     },
     "left": {
       "left": 54,
-      "top": 38
+      "top": 38,
+      "width": 18,
+      "height": 20
     },
     "right": {
       "left": 14,
-      "top": 38
+      "top": 38,
+      "width": 18,
+      "height": 20
     },
     "top": {
       "left": 34,
-      "top": 16
+      "top": 16,
+      "width": 18,
+      "height": 20
     },
     "bottom": {
       "left": 34,
-      "top": 60
+      "top": 60,
+      "width": 18,
+      "height": 20
     }
   }
 }
