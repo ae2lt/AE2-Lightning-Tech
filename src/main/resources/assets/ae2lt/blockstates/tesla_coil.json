@@ -2,7 +2,8 @@
   "multipart": [
     {
       "when": {
-        "facing": "north"
+        "facing": "north",
+        "working": "false"
       },
       "apply": {
         "model": "ae2lt:block/tesla_coil_off"
@@ -10,7 +11,8 @@
     },
     {
       "when": {
-        "facing": "east"
+        "facing": "east",
+        "working": "false"
       },
       "apply": {
         "model": "ae2lt:block/tesla_coil_off",
@@ -19,7 +21,8 @@
     },
     {
       "when": {
-        "facing": "south"
+        "facing": "south",
+        "working": "false"
       },
       "apply": {
         "model": "ae2lt:block/tesla_coil_off",
@@ -28,7 +31,8 @@
     },
     {
       "when": {
-        "facing": "west"
+        "facing": "west",
+        "working": "false"
       },
       "apply": {
         "model": "ae2lt:block/tesla_coil_off",
