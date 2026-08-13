@@ -1,6 +1,6 @@
 {
   "$schema": "schema.json",
-  "includes": ["common/common.json", "common/player_inventory.json"],
+  "includes": ["common/common.json", "common/legacy_player_inventory.json"],
   "background": {
     "texture": "ae2lt:textures/guis/lightning_simulation_room.png",
     "srcRect": [0, 0, 176, 178]
