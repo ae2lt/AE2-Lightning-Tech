@@ -12,7 +12,6 @@ import net.minecraft.client.renderer.RenderType;
 public class Ae2ltRenderTypes extends RenderType {
 
     private static RenderType FACE_SEE_THROUGH;
-    private static RenderType LINE_SEE_THROUGH;
 
     private Ae2ltRenderTypes(String name, VertexFormat format, VertexFormat.Mode mode,
             int bufferSize, boolean affectsCrumbling, boolean sortOnUpload,
@@ -39,26 +38,5 @@ public class Ae2ltRenderTypes extends RenderType {
                             .createCompositeState(false));
         }
         return FACE_SEE_THROUGH;
-    }
-
-    /**
-     * A line (LINES) render type with GREATER depth test, so connection outlines
-     * stay visible even when the highlighted face is hidden behind opaque blocks.
-     */
-    public static RenderType getLineSeeThrough() {
-        if (LINE_SEE_THROUGH == null) {
-            LINE_SEE_THROUGH = create("ae2lt_line_see_through",
-                    DefaultVertexFormat.POSITION_COLOR_NORMAL, VertexFormat.Mode.LINES, 65536, false, false,
-                    CompositeState.builder()
-                            .setTransparencyState(TRANSLUCENT_TRANSPARENCY)
-                            .setTextureState(NO_TEXTURE)
-                            .setLightmapState(NO_LIGHTMAP)
-                            .setDepthTestState(GREATER_DEPTH_TEST)
-                            .setWriteMaskState(COLOR_WRITE)
-                            .setCullState(NO_CULL)
-                            .setShaderState(POSITION_COLOR_SHADER)
-                            .createCompositeState(false));
-        }
-        return LINE_SEE_THROUGH;
     }
 }
