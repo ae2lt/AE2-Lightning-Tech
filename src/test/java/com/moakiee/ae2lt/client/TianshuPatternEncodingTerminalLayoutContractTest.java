@@ -94,9 +94,9 @@ class TianshuPatternEncodingTerminalLayoutContractTest {
                 SCREEN_ROOT.resolve("tianshu_pattern_encoding_terminal.json"));
 
         assertTrue(style.contains(
-                "\"closedLoopScrollbar\": { \"left\": 17, \"bottom\": 156, \"height\": 52 }"));
+                "\"closedLoopScrollbar\": { \"left\": 16, \"bottom\": 157, \"height\": 52 }"));
         assertFalse(style.contains(
-                "\"closedLoopScrollbar\": { \"left\": 15, \"bottom\": 158"));
+                "\"closedLoopScrollbar\": { \"left\": 17, \"bottom\": 156"));
     }
 
     @Test

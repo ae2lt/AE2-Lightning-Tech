@@ -23,7 +23,7 @@
     "advancedEncodingButton": { "left": 81, "bottom": 112, "width": 12, "height": 9 },
     "overloadEncodingButton": { "left": 94, "bottom": 112, "width": 12, "height": 9 },
     "closedLoopPanel": { "left": 9, "bottom": 166, "width": 124, "height": 66 },
-    "closedLoopScrollbar": { "left": 17, "bottom": 156, "height": 52 },
+    "closedLoopScrollbar": { "left": 16, "bottom": 157, "height": 52 },
     "closedLoopDetail": { "left": 68, "bottom": 178, "width": 28, "height": 12 },
     "closedLoopAutoFill": { "left": 97, "bottom": 178, "width": 26, "height": 12 },
     "closedLoopClear": { "left": 58, "bottom": 176, "width": 8, "height": 8 },
