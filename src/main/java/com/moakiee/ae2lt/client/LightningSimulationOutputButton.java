@@ -33,7 +33,7 @@ public class LightningSimulationOutputButton extends IconButton {
 
     @Override
     protected Icon getIcon() {
-        return null;
+        return Icon.TOOLBAR_BUTTON_BACKGROUND;
     }
 
     @Override
