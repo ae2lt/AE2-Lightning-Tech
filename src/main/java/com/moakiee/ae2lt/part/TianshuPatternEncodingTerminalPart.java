@@ -31,9 +31,11 @@ public final class TianshuPatternEncodingTerminalPart extends PatternEncodingTer
             MODEL_BASE, MODEL_ON, MODEL_STATUS_HAS_CHANNEL);
 
     private static final String TAG_MODE = "TianshuEncodingMode";
+    private static final String TAG_MAINTAINABLE_VIEW = "MaintainableView";
     private static final String TAG_CLOSED_LOOP_DRAFT = "ClosedLoopDraft";
     private static final String TAG_PROCESSING_DRAFT = "ProcessingDraft";
     private TianshuEncodingMode tianshuMode = TianshuEncodingMode.CRAFTING;
+    private boolean maintainableView;
     @Nullable private ClosedLoopTerminalDraft closedLoopDraft;
     @Nullable private ProcessingPatternTerminalDraft processingDraft;
 
@@ -73,6 +75,19 @@ public final class TianshuPatternEncodingTerminalPart extends PatternEncodingTer
         }
     }
 
+    @Override
+    public boolean isMaintainableView() {
+        return maintainableView;
+    }
+
+    @Override
+    public void setMaintainableView(boolean enabled) {
+        if (maintainableView != enabled) {
+            maintainableView = enabled;
+            markForSave();
+        }
+    }
+
     @Nullable
     @Override
     public ClosedLoopTerminalDraft getClosedLoopTerminalDraft() {
@@ -108,6 +123,7 @@ public final class TianshuPatternEncodingTerminalPart extends PatternEncodingTer
         } catch (IllegalArgumentException ignored) {
             tianshuMode = TianshuEncodingMode.CRAFTING;
         }
+        maintainableView = data.getBoolean(TAG_MAINTAINABLE_VIEW);
         closedLoopDraft = data.contains(TAG_CLOSED_LOOP_DRAFT, net.minecraft.nbt.Tag.TAG_COMPOUND)
                 ? ClosedLoopTerminalDraft.read(data.getCompound(TAG_CLOSED_LOOP_DRAFT))
                 : null;
@@ -121,6 +137,7 @@ public final class TianshuPatternEncodingTerminalPart extends PatternEncodingTer
     public void writeToNBT(CompoundTag data) {
         super.writeToNBT(data);
         data.putString(TAG_MODE, tianshuMode.name());
+        data.putBoolean(TAG_MAINTAINABLE_VIEW, maintainableView);
         if (closedLoopDraft != null) {
             data.put(TAG_CLOSED_LOOP_DRAFT, closedLoopDraft.write());
         } else {

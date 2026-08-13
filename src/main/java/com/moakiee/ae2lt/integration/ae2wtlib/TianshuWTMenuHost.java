@@ -40,11 +40,13 @@ public final class TianshuWTMenuHost extends WTMenuHost
         implements TianshuPatternTerminalHost, IPatternTerminalLogicHost, IViewCellStorage {
     private static final String TAG_PATTERN_LOGIC = "patternEncodingLogic";
     private static final String TAG_TIANSHU_MODE = "tianshuMode";
+    private static final String TAG_MAINTAINABLE_VIEW = "tianshuMaintainableView";
     private static final String TAG_CLOSED_LOOP_DRAFT = "tianshuClosedLoopDraft";
     private static final String TAG_PROCESSING_DRAFT = "tianshuProcessingDraft";
 
     private final PatternEncodingLogic logic = new PatternEncodingLogic(this);
     private TianshuEncodingMode tianshuMode = TianshuEncodingMode.CRAFTING;
+    private boolean maintainableView;
     @Nullable
     private ClosedLoopTerminalDraft closedLoopDraft;
     @Nullable
@@ -101,6 +103,7 @@ public final class TianshuWTMenuHost extends WTMenuHost
         CompoundTag data = getItemStack().getOrCreateTagElement(TAG_PATTERN_LOGIC);
         logic.writeToNBT(data);
         data.putString(TAG_TIANSHU_MODE, tianshuMode.name());
+        data.putBoolean(TAG_MAINTAINABLE_VIEW, maintainableView);
         if (closedLoopDraft != null) {
             data.put(TAG_CLOSED_LOOP_DRAFT, closedLoopDraft.write());
         } else {
@@ -127,6 +130,19 @@ public final class TianshuWTMenuHost extends WTMenuHost
     public void setTianshuEncodingMode(TianshuEncodingMode mode) {
         if (mode != null && mode != tianshuMode) {
             tianshuMode = mode;
+            markForSave();
+        }
+    }
+
+    @Override
+    public boolean isMaintainableView() {
+        return maintainableView;
+    }
+
+    @Override
+    public void setMaintainableView(boolean enabled) {
+        if (maintainableView != enabled) {
+            maintainableView = enabled;
             markForSave();
         }
     }
@@ -165,6 +181,7 @@ public final class TianshuWTMenuHost extends WTMenuHost
         } catch (IllegalArgumentException ignored) {
             tianshuMode = TianshuEncodingMode.CRAFTING;
         }
+        maintainableView = data.getBoolean(TAG_MAINTAINABLE_VIEW);
         closedLoopDraft = data.contains(TAG_CLOSED_LOOP_DRAFT, Tag.TAG_COMPOUND)
                 ? ClosedLoopTerminalDraft.read(data.getCompound(TAG_CLOSED_LOOP_DRAFT))
                 : null;
