@@ -21,9 +21,11 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 
 final class TianshuCraftingEncodingPanel extends TianshuEncodingModePanel {
-    private static final Blitter BG = Blitter.texture("guis/pattern_modes.png").src(0, 0, 124, 66);
+    private static final Blitter BG = Blitter.texture("guis/pattern_modes.png").src(0, 0, 126, 68);
 
     private final ActionButton clearButton;
     private final ToggleButton substitutionsButton;
@@ -36,7 +38,6 @@ final class TianshuCraftingEncodingPanel extends TianshuEncodingModePanel {
 
         clearButton = new ActionButton(ActionItems.CLOSE, action -> menu.clear());
         clearButton.setHalfSize(true);
-        clearButton.setDisableBackground(true);
         widgets.add("craftingClearPattern", clearButton);
 
         substitutionsButton = createCraftingSubstitutionButton();
@@ -44,8 +45,8 @@ final class TianshuCraftingEncodingPanel extends TianshuEncodingModePanel {
     }
 
     @Override
-    Icon getIcon() {
-        return Icon.HORIZONTAL_TAB_SELECTED;
+    ItemStack getTabIconItem() {
+        return Items.CRAFTING_TABLE.getDefaultInstance();
     }
 
     @Override
@@ -59,7 +60,6 @@ final class TianshuCraftingEncodingPanel extends TianshuEncodingModePanel {
                 Icon.SUBSTITUTION_DISABLED,
                 menu::setSubstitute);
         button.setHalfSize(true);
-        button.setDisableBackground(true);
         button.setTooltipOn(List.of(
                 ButtonToolTips.SubstitutionsOn.text(),
                 ButtonToolTips.SubstitutionsDescEnabled.text()));
@@ -76,7 +76,6 @@ final class TianshuCraftingEncodingPanel extends TianshuEncodingModePanel {
                 Icon.FLUID_SUBSTITUTION_DISABLED,
                 menu::setSubstituteFluids);
         button.setHalfSize(true);
-        button.setDisableBackground(true);
         button.setTooltipOn(List.of(
                 ButtonToolTips.FluidSubstitutions.text(),
                 ButtonToolTips.FluidSubstitutionsDescEnabled.text()));
@@ -89,7 +88,7 @@ final class TianshuCraftingEncodingPanel extends TianshuEncodingModePanel {
 
     @Override
     public void drawBackgroundLayer(GuiGraphics graphics, Rect2i bounds, Point mouse) {
-        BG.dest(bounds.getX() + 8, bounds.getY() + bounds.getHeight() - 165).blit(graphics);
+        BG.dest(bounds.getX() + 9, bounds.getY() + bounds.getHeight() - 164).blit(graphics);
 
         var absoluteMouseX = bounds.getX() + mouse.getX();
         var absoluteMouseY = bounds.getY() + mouse.getY();
@@ -104,7 +103,7 @@ final class TianshuCraftingEncodingPanel extends TianshuEncodingModePanel {
     private void drawSlotGreenBackground(Rect2i bounds, GuiGraphics graphics, Slot slot) {
         int slotX = bounds.getX() + slot.x;
         int slotY = bounds.getY() + slot.y;
-        graphics.fill(slotX, slotY, slotX + 16, slotY + 16, 0xFF7AC25F);
+        graphics.fill(slotX, slotY, slotX + 16, slotY + 16, 0x7F00FF00);
     }
 
     @Override
