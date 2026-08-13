@@ -232,7 +232,10 @@ public class OverloadedInterfaceLogic extends InterfaceLogic {
 
         @Override
         public TickingRequest getTickingRequest(IGridNode node) {
-            return new TickingRequest(MIN_TICKS, MAX_TICKS, false, false);
+            // The interface actively alerts this ticker whenever its mode,
+            // connection set or I/O configuration changes. AE2 15 rejects
+            // alertDevice calls unless canBeAlerted is enabled on the request.
+            return new TickingRequest(MIN_TICKS, MAX_TICKS, false, true);
         }
 
         @Override

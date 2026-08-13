@@ -14,8 +14,6 @@ class WirelessConnectorRendererContractTest {
     private static final Path RENDERER = Path.of(
             "src", "main", "java", "com", "moakiee", "ae2lt", "client",
             "WirelessConnectorRenderer.java");
-    private static final Path CLIENT_REGISTRATION = RENDERER.resolveSibling("ModEntityRenderers.java");
-
     @Test
     void forgeOverlayUsesTheCameraRelativeTranslucentStageContract() throws IOException {
         String source = Files.readString(RENDERER);
@@ -31,19 +29,16 @@ class WirelessConnectorRendererContractTest {
         assertFalse(source.contains("scratchRotation"));
         assertFalse(source.contains("poseStack.mulPose"));
         assertFalse(source.contains("getLineSeeThrough"));
-        assertFalse(source.contains("renderInnerCube"));
         assertEquals(countOccurrences(source, "vc.vertex("), countOccurrences(source, ".endVertex()"));
     }
 
     @Test
-    void forgeRegistersTheDedicatedHostRendererForEveryBuiltInHost() throws IOException {
-        String source = Files.readString(CLIENT_REGISTRATION);
+    void hostCubeRendersInTheSameGlobalPassAsConnections() throws IOException {
+        String source = Files.readString(RENDERER);
 
-        assertTrue(source.contains("ModBlockEntities.OVERLOADED_PATTERN_PROVIDER.get()"));
-        assertTrue(source.contains("ModBlockEntities.EXTENDED_OVERLOADED_PATTERN_PROVIDER.get()"));
-        assertTrue(source.contains("ModBlockEntities.OVERLOADED_INTERFACE.get()"));
-        assertTrue(source.contains("ModBlockEntities.OVERLOADED_POWER_SUPPLY.get()"));
-        assertTrue(source.contains("WirelessConnectorHostRenderer::new"));
+        assertTrue(source.contains("renderInnerCube(poseStack, buffer, cam, hostPos"));
+        assertTrue(source.contains("pos.getX() - cam.x"));
+        assertTrue(source.contains("buffer.endBatch(Ae2ltRenderTypes.getFaceSeeThrough())"));
     }
 
     private static int countOccurrences(String source, String needle) {
