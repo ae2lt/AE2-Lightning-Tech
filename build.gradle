@@ -218,9 +218,9 @@ dependencies {
     // Thunderbolt Core — the extracted AE2 infrastructure layer (fast crafting planner,
     // channel/batch/cell/matrix algorithms). Provided at runtime as a separate mod jar in the modpack,
     // so compileOnly here. Published to mavenLocal via `./gradlew publishToMavenLocal` in Thunderbolt Core.
-    compileOnly "com.moakiee.thunderbolt:thunderbolt:1.0.4"
-    runtimeOnly "com.moakiee.thunderbolt:thunderbolt:1.0.4"
-    testRuntimeOnly "com.moakiee.thunderbolt:thunderbolt:1.0.4"
+    compileOnly "com.moakiee.thunderbolt:thunderbolt:1.0.5"
+    runtimeOnly "com.moakiee.thunderbolt:thunderbolt:1.0.5"
+    testRuntimeOnly "com.moakiee.thunderbolt:thunderbolt:1.0.5"
     jdbProbeModPaths.each { runtimeOnly files(it) }
 
     implementation "curse.maven:applied-energistics-2-223794:7027323"

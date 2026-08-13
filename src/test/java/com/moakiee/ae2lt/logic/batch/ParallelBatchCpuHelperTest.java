@@ -4,10 +4,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertIterableEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
@@ -303,6 +305,158 @@ class ParallelBatchCpuHelperTest {
     }
 
     @Test
+    void resolvedBulkExtractBatchesAConcreteComponentVariant() {
+        var template = variantKey("component_item", "encoded");
+        var actual = variantKey("component_item", "actual");
+        var inv = inventory();
+        inv.insert(actual, 8, Actionable.MODULATE);
+        var pattern = pattern(fuzzyInput(stack(template, 1), 1, "component_item"));
+
+        var result = ParallelBatchCpuHelper.bulkExtract(
+                pattern, inv, 10, true, Map.of(), null);
+
+        assertNotNull(result);
+        assertEquals(8, result.actualCopies);
+        assertEquals(8, result.scaledInputs[0].get(actual));
+        assertEquals(1, ParallelBatchCpuHelper.cloneSingleCopy(result)[0].get(actual));
+        assertEquals(0, inv.extract(actual, Long.MAX_VALUE, Actionable.SIMULATE));
+    }
+
+    @Test
+    void resolvedBulkExtractSplitsDifferentComponentVariantsIntoHomogeneousBatches() {
+        var template = variantKey("split_item", "encoded");
+        var first = variantKey("split_item", "first");
+        var second = variantKey("split_item", "second");
+        var inv = inventory();
+        inv.insert(first, 3, Actionable.MODULATE);
+        inv.insert(second, 5, Actionable.MODULATE);
+        var pattern = pattern(fuzzyInput(stack(template, 1), 1, "split_item"));
+
+        var firstBatch = ParallelBatchCpuHelper.bulkExtract(
+                pattern, inv, 10, true, Map.of(), null);
+        assertNotNull(firstBatch);
+        var firstCopy = ParallelBatchCpuHelper.cloneSingleCopy(firstBatch)[0];
+        assertTrue(firstCopy.get(first) == 1 ^ firstCopy.get(second) == 1);
+        ParallelBatchCpuHelper.markDispatched(firstBatch, firstBatch.actualCopies);
+
+        var secondBatch = ParallelBatchCpuHelper.bulkExtract(
+                pattern, inv, 10, true, Map.of(), null);
+        assertNotNull(secondBatch);
+        var secondCopy = ParallelBatchCpuHelper.cloneSingleCopy(secondBatch)[0];
+        assertTrue(secondCopy.get(first) == 1 ^ secondCopy.get(second) == 1);
+        assertTrue(firstCopy.get(first) == 1 && secondCopy.get(second) == 1
+                || firstCopy.get(second) == 1 && secondCopy.get(first) == 1);
+        assertEquals(8, firstBatch.actualCopies + secondBatch.actualCopies);
+    }
+
+    @Test
+    void resolvedBulkExtractPreservesAMixedVariantRecipeCopy() {
+        var template = variantKey("mixed_item", "encoded");
+        var first = variantKey("mixed_item", "first");
+        var second = variantKey("mixed_item", "second");
+        var inv = inventory();
+        inv.insert(first, 2, Actionable.MODULATE);
+        inv.insert(second, 7, Actionable.MODULATE);
+        var pattern = pattern(fuzzyInput(stack(template, 1), 3, "mixed_item"));
+
+        var firstBatch = ParallelBatchCpuHelper.bulkExtract(
+                pattern, inv, 10, true, Map.of(), null);
+
+        assertNotNull(firstBatch);
+        assertEquals(1, firstBatch.actualCopies);
+        assertEquals(2, firstBatch.scaledInputs[0].get(first));
+        assertEquals(1, firstBatch.scaledInputs[0].get(second));
+        ParallelBatchCpuHelper.markDispatched(firstBatch, 1);
+
+        var secondBatch = ParallelBatchCpuHelper.bulkExtract(
+                pattern, inv, 10, true, Map.of(), null);
+        assertNotNull(secondBatch);
+        assertEquals(2, secondBatch.actualCopies);
+        assertEquals(6, secondBatch.scaledInputs[0].get(second));
+    }
+
+    @Test
+    void resolvedBulkExtractRollsBackAChosenVariantWhenAnotherSlotIsMissing() {
+        var template = variantKey("rollback_item", "encoded");
+        var actual = variantKey("rollback_item", "actual");
+        var missing = key("missing_input");
+        var inv = inventory();
+        inv.insert(actual, 4, Actionable.MODULATE);
+        var pattern = pattern(
+                fuzzyInput(stack(template, 1), 1, "rollback_item"),
+                input(stack(missing, 1), 1));
+
+        assertNull(ParallelBatchCpuHelper.bulkExtract(
+                pattern, inv, 10, true, Map.of(), null));
+        assertEquals(4, inv.extract(actual, Long.MAX_VALUE, Actionable.SIMULATE));
+    }
+
+    @Test
+    void resolvedBulkExtractProtectsReservedVariants() {
+        var template = variantKey("reserved_item", "encoded");
+        var reserved = variantKey("reserved_item", "reserved");
+        var available = variantKey("reserved_item", "available");
+        var inv = inventory();
+        inv.insert(reserved, 4, Actionable.MODULATE);
+        inv.insert(available, 6, Actionable.MODULATE);
+        var pattern = pattern(fuzzyInput(stack(template, 1), 1, "reserved_item"));
+
+        var result = ParallelBatchCpuHelper.bulkExtract(
+                pattern, inv, 10, true, Map.of(reserved, 4L), null);
+
+        assertNotNull(result);
+        assertEquals(6, result.actualCopies);
+        assertEquals(6, result.scaledInputs[0].get(available));
+        assertEquals(4, inv.extract(reserved, Long.MAX_VALUE, Actionable.SIMULATE));
+    }
+
+    @Test
+    void resolvedBulkExtractAggregatesOneVariantAcrossSlots() {
+        var template = variantKey("shared_variant_item", "encoded");
+        var actual = variantKey("shared_variant_item", "actual");
+        var inv = inventory();
+        inv.insert(actual, 11, Actionable.MODULATE);
+        var pattern = pattern(
+                fuzzyInput(stack(template, 1), 1, "shared_variant_item"),
+                fuzzyInput(stack(template, 2), 1, "shared_variant_item"));
+
+        var result = ParallelBatchCpuHelper.bulkExtract(
+                pattern, inv, 10, true, Map.of(), null);
+
+        assertNotNull(result);
+        assertEquals(3, result.actualCopies);
+        assertEquals(3, result.scaledInputs[0].get(actual));
+        assertEquals(6, result.scaledInputs[1].get(actual));
+        assertEquals(2, inv.extract(actual, Long.MAX_VALUE, Actionable.SIMULATE));
+    }
+
+    @Test
+    void resolvedBulkExtractTracksRemaindersForTheActualVariant() {
+        var template = variantKey("filled_variant", "encoded");
+        var actual = variantKey("filled_variant", "actual");
+        var empty = key("empty_variant_container");
+        var inv = inventory();
+        inv.insert(actual, 6, Actionable.MODULATE);
+        var pattern = pattern(fuzzyReturningInput(
+                stack(template, 1), 2, "filled_variant", empty));
+
+        var result = ParallelBatchCpuHelper.bulkExtract(
+                pattern, inv, 3, true, Map.of(), null);
+        var waiting = inventory();
+
+        assertNotNull(result);
+        assertEquals(3, result.actualCopies);
+        ParallelBatchCpuHelper.registerExpectedOutputs(
+                new FakeBatchJobView(waiting), pattern, result, 2);
+        ParallelBatchCpuHelper.markDispatched(result, 2);
+        ParallelBatchCpuHelper.reinject(result, 1, inv);
+
+        assertEquals(4, waiting.extract(empty, Long.MAX_VALUE, Actionable.SIMULATE));
+        assertEquals(2, inv.extract(actual, Long.MAX_VALUE, Actionable.SIMULATE));
+        assertEquals(0, result.scaledInputs[0].get(actual));
+    }
+
+    @Test
     void providerFilterSkipsOnlyIdentityMatchedProviders() {
         var first = new FakeProvider();
         var skipped = new FakeProvider();
@@ -326,6 +480,10 @@ class ParallelBatchCpuHelperTest {
         return new TestKey(id);
     }
 
+    private static TestKey variantKey(String primaryId, String variant) {
+        return new TestKey(primaryId, primaryId + "_" + variant);
+    }
+
     private static GenericStack stack(AEKey key, long amount) {
         return new GenericStack(key, amount);
     }
@@ -341,6 +499,17 @@ class ParallelBatchCpuHelperTest {
     private static IPatternDetails.IInput returningInput(
             GenericStack stack, long multiplier, AEKey remainder) {
         return new FakeReturningInput(new GenericStack[] {stack}, multiplier, remainder);
+    }
+
+    private static IPatternDetails.IInput fuzzyInput(
+            GenericStack stack, long multiplier, String primaryId) {
+        return new FakeFuzzyInput(new GenericStack[] {stack}, multiplier, primaryId);
+    }
+
+    private static IPatternDetails.IInput fuzzyReturningInput(
+            GenericStack stack, long multiplier, String primaryId, AEKey remainder) {
+        return new FakeFuzzyReturningInput(
+                new GenericStack[] {stack}, multiplier, primaryId, remainder);
     }
 
     private record FakePattern(IPatternDetails.IInput[] inputs) implements IPatternDetails {
@@ -448,6 +617,28 @@ class ParallelBatchCpuHelperTest {
         @Override public AEKey getRemainingKey(AEKey template) { return remainder; }
     }
 
+    private record FakeFuzzyInput(
+            GenericStack[] possibleInputs, long multiplier, String primaryId)
+            implements IPatternDetails.IInput {
+        @Override public GenericStack[] getPossibleInputs() { return possibleInputs; }
+        @Override public long getMultiplier() { return multiplier; }
+        @Override public boolean isValid(AEKey key, Level level) {
+            return key instanceof TestKey testKey && testKey.primaryId.equals(primaryId);
+        }
+        @Override public AEKey getRemainingKey(AEKey template) { return null; }
+    }
+
+    private record FakeFuzzyReturningInput(
+            GenericStack[] possibleInputs, long multiplier, String primaryId, AEKey remainder)
+            implements IPatternDetails.IInput {
+        @Override public GenericStack[] getPossibleInputs() { return possibleInputs; }
+        @Override public long getMultiplier() { return multiplier; }
+        @Override public boolean isValid(AEKey key, Level level) {
+            return key instanceof TestKey testKey && testKey.primaryId.equals(primaryId);
+        }
+        @Override public AEKey getRemainingKey(AEKey template) { return remainder; }
+    }
+
     private static final class FakeProvider implements ICraftingProvider {
         @Override
         public List<IPatternDetails> getAvailablePatterns() {
@@ -467,9 +658,15 @@ class ParallelBatchCpuHelperTest {
 
     private static final class TestKey extends AEKey {
         private static final TestKeyType TYPE = new TestKeyType();
+        private final String primaryId;
         private final String id;
 
         private TestKey(String id) {
+            this(id, id);
+        }
+
+        private TestKey(String primaryId, String id) {
+            this.primaryId = primaryId.intern();
             this.id = id;
         }
 
@@ -492,12 +689,12 @@ class ParallelBatchCpuHelperTest {
 
         @Override
         public Object getPrimaryKey() {
-            return id;
+            return primaryId;
         }
 
         @Override
         public ResourceLocation getId() {
-            return ResourceLocation.fromNamespaceAndPath("ae2lt_test", id);
+            return ResourceLocation.fromNamespaceAndPath("ae2lt_test", primaryId);
         }
 
         @Override
@@ -515,17 +712,19 @@ class ParallelBatchCpuHelperTest {
 
         @Override
         public boolean hasComponents() {
-            return false;
+            return !primaryId.equals(id);
         }
 
         @Override
         public boolean equals(Object obj) {
-            return obj instanceof TestKey other && id.equals(other.id);
+            return obj instanceof TestKey other
+                    && primaryId.equals(other.primaryId)
+                    && id.equals(other.id);
         }
 
         @Override
         public int hashCode() {
-            return id.hashCode();
+            return 31 * primaryId.hashCode() + id.hashCode();
         }
     }
 
