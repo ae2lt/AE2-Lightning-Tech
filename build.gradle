@@ -301,6 +301,8 @@ tasks.named('processResources', ProcessResources).configure {
 }
 
 tasks.named('jar', Jar).configure {
+    archiveClassifier = 'slim'
+
     from('LICENSE') {
         into 'META-INF'
     }
@@ -347,7 +349,7 @@ tasks.named('jarJar', Jar).configure {
     from('THIRD_PARTY_NOTICES.md') {
         into 'META-INF'
     }
-    finalizedBy 'reobfJar'
+    finalizedBy 'reobfJarJar'
 }
 
 afterEvaluate {
