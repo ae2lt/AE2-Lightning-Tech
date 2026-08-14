@@ -128,7 +128,9 @@ public final class CtmFaceGeometry {
         builder.vertex(pos.x, pos.y, pos.z);
         builder.color(255, 255, 255, 255);
         builder.normal(normal.getX(), normal.getY(), normal.getZ());
-        builder.uv(sprite.getU(u), sprite.getV(v));
+        // 1.20.1 TextureAtlasSprite#getU/getV use the vanilla 0..16 texture
+        // coordinate range, while the CTM geometry above works in normalized 0..1 UVs.
+        builder.uv(sprite.getU(u * 16.0F), sprite.getV(v * 16.0F));
         builder.endVertex();
     }
 
