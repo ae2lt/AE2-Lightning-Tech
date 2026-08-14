@@ -4,6 +4,7 @@ import net.minecraft.client.renderer.item.ItemProperties;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.client.event.RegisterColorHandlersEvent;
@@ -33,6 +34,9 @@ public final class LightningKeyClientInit {
         event.enqueueWork(() -> {
             RailgunClientBootstrap.install();
             ShieldHitFeedbackClientBootstrap.install();
+            if (ModList.get().isLoaded("curios")) {
+                PigmeeCuriosClientBridge.registerRenderers();
+            }
             AEKeyRendering.register(LightningKeyType.INSTANCE, LightningKey.class, LightningKeyRenderHandler.INSTANCE);
 
             ItemProperties.register(
