@@ -7,7 +7,6 @@ import mezz.jei.api.gui.IRecipeLayoutDrawable;
 import mezz.jei.gui.input.UserInput;
 import mezz.jei.gui.recipes.RecipeTransferButton;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
@@ -61,8 +60,11 @@ public abstract class JeiRecipeTransferButtonControllerMixin {
     private void ae2lt$keepRecipePageForDirectUpload(Runnable onClose) {
         var menu = ae2lt$getParentContainer();
         var recipeScreen = Minecraft.getInstance().screen;
-        if (Screen.hasAltDown()
-                && menu instanceof TianshuPatternEncodingTermMenu tianshuMenu
+        // The successful transfer handler has already converted Alt into an authoritative
+        // pending-direct-upload request. Do not sample the physical modifier again here: JEI
+        // may run this close callback after its input state has advanced, which would close the
+        // recipe page even though the direct upload is already armed.
+        if (menu instanceof TianshuPatternEncodingTermMenu tianshuMenu
                 && TianshuDirectUploadClient.holdRecipeScreen(tianshuMenu, recipeScreen)) {
             return;
         }
