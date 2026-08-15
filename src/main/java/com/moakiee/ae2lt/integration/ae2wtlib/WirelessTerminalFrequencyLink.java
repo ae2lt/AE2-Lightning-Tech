@@ -52,11 +52,7 @@ public final class WirelessTerminalFrequencyLink {
 
     /** A resolved frequency route is usable only while its target ME network is powered. */
     public static boolean isNetworkPowered(@Nullable IGridNode node) {
-        if (node == null) {
-            return false;
-        }
-        var grid = node.getGrid();
-        return grid != null && grid.getEnergyService().isNetworkPowered();
+        return node != null && node.isPowered();
     }
 
     private static int findBoundFrequency(IUpgradeInventory upgrades) {

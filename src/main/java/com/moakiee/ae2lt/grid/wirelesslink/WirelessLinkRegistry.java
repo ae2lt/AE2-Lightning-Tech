@@ -18,6 +18,7 @@ import com.moakiee.ae2lt.config.AE2LTCommonConfig;
 import com.moakiee.ae2lt.grid.FrequencyAccessLevel;
 import com.moakiee.ae2lt.grid.WirelessFrequencyManager;
 import com.moakiee.ae2lt.item.OverloadedFrequencyCardItem;
+import com.moakiee.ae2lt.me.GridNodeAccess;
 import com.moakiee.thunderbolt.ae2.channel.ChannelProviderRegistry;
 import com.moakiee.thunderbolt.ae2.channel.OverloadedChannelOwnerHelper;
 import java.util.ArrayList;
@@ -650,7 +651,9 @@ public final class WirelessLinkRegistry extends SavedData {
                     : ActionFeedback.yellow("ae2lt.frequency_card.already_in_frequency");
         }
 
-        if (transmitterNode != null && wouldMergeControllerNetworks(target.node().getGrid(), transmitterNode.getGrid())) {
+        if (transmitterNode != null && wouldMergeControllerNetworks(
+                GridNodeAccess.getGridIfPresent(target.node()),
+                GridNodeAccess.getGridIfPresent(transmitterNode))) {
             return automatic
                     ? ActionFeedback.green("ae2lt.frequency_card.auto_silent_skip")
                     : ActionFeedback.red("ae2lt.frequency_card.controller_conflict");
@@ -848,7 +851,7 @@ public final class WirelessLinkRegistry extends SavedData {
             return true;
         }
 
-        var grid = transmitterNode.getGrid();
+        var grid = GridNodeAccess.getGridIfPresent(transmitterNode);
         if (grid == null || grid.getPathingService().isNetworkBooting()) {
             return true;
         }
@@ -1194,7 +1197,9 @@ public final class WirelessLinkRegistry extends SavedData {
                 targetNode != null,
                 transmitterNode != null,
                 nodesReady && alreadyHasFrequencyChannel(targetNode, transmitterNode),
-                nodesReady && wouldMergeControllerNetworks(targetNode.getGrid(), transmitterNode.getGrid()));
+                nodesReady && wouldMergeControllerNetworks(
+                        GridNodeAccess.getGridIfPresent(targetNode),
+                        GridNodeAccess.getGridIfPresent(transmitterNode)));
     }
 
     private void processLinks(MinecraftServer server, boolean cleanupPass) {
@@ -1323,7 +1328,9 @@ public final class WirelessLinkRegistry extends SavedData {
             return markState(link, WirelessLinkState.REDUNDANT_LINK, server, cleanupPass);
         }
 
-        if (wouldMergeControllerNetworks(targetNode.getGrid(), transmitterNode.getGrid())) {
+        if (wouldMergeControllerNetworks(
+                GridNodeAccess.getGridIfPresent(targetNode),
+                GridNodeAccess.getGridIfPresent(transmitterNode))) {
             return markState(link, WirelessLinkState.DISCONNECTED, server, cleanupPass);
         }
 
@@ -1864,8 +1871,8 @@ public final class WirelessLinkRegistry extends SavedData {
     }
 
     private static boolean isAlreadyInFrequencyGrid(IGridNode targetNode, IGridNode transmitterNode) {
-        IGrid targetGrid = targetNode.getGrid();
-        IGrid transmitterGrid = transmitterNode.getGrid();
+        IGrid targetGrid = GridNodeAccess.getGridIfPresent(targetNode);
+        IGrid transmitterGrid = GridNodeAccess.getGridIfPresent(transmitterNode);
         return targetGrid != null && transmitterGrid != null && targetGrid == transmitterGrid;
     }
 

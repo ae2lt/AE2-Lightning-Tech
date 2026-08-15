@@ -17,6 +17,7 @@ import net.minecraft.server.level.ServerLevel;
 
 import com.moakiee.ae2lt.blockentity.OverloadedControllerBlockEntity;
 import com.moakiee.ae2lt.logic.MemoryCardConfigSupport;
+import com.moakiee.ae2lt.me.GridNodeAccess;
 
 /**
  * Shared receiver-side frequency binding. It mirrors the original
@@ -362,7 +363,9 @@ public final class FrequencyBindingHelper
             return;
         }
 
-        if (wouldMergeControllerNetworks(myNode.getGrid(), remoteNode.getGrid())) {
+        if (wouldMergeControllerNetworks(
+                GridNodeAccess.getGridIfPresent(myNode),
+                GridNodeAccess.getGridIfPresent(remoteNode))) {
             LOG.warn("Virtual connection blocked to avoid controller-network merge: device@{} -> freq={}",
                     be.getBlockPos(), frequencyId);
             return;
@@ -427,8 +430,8 @@ public final class FrequencyBindingHelper
     }
 
     private static boolean isAlreadyInFrequencyGrid(IGridNode targetNode, IGridNode transmitterNode) {
-        IGrid targetGrid = targetNode.getGrid();
-        IGrid transmitterGrid = transmitterNode.getGrid();
+        IGrid targetGrid = GridNodeAccess.getGridIfPresent(targetNode);
+        IGrid transmitterGrid = GridNodeAccess.getGridIfPresent(transmitterNode);
         return targetGrid != null && transmitterGrid != null && targetGrid == transmitterGrid;
     }
 

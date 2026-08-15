@@ -44,6 +44,7 @@ import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuTerminalTarget;
 import com.moakiee.ae2lt.logic.tianshu.terminal.MaintenanceEditorData;
 import com.moakiee.ae2lt.logic.tianshu.terminal.PatternEncodingDuplicateFilter;
 import com.moakiee.ae2lt.mixin.PatternEncodingTermMenuAccessor;
+import com.moakiee.ae2lt.me.GridNodeAccess;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.InventoryMaintenanceRule;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.InventoryMaintenanceStatus;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.MaintenanceTopologyService;
@@ -311,6 +312,10 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
 
     @Override
     public void broadcastChanges() {
+        if (isServerSide() && GridNodeAccess.getGridIfPresent(getNetworkNode()) == null) {
+            setValidMenu(false);
+            return;
+        }
         if (isServerSide()) {
             returnLegacyBlankPatternsToNetwork();
             tianshuMode = tianshuHost.getTianshuEncodingMode();
@@ -1187,7 +1192,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
 
     private List<PatternContainer> discoverUploadTargets(boolean diagnostics) {
         var node = tianshuHost.getActionableNode();
-        var grid = node != null ? node.getGrid() : null;
+        var grid = GridNodeAccess.getActiveGrid(node);
         if (grid == null) {
             if (diagnostics) {
                 DUPLICATE_LOG.warn("Target scan found no grid (nodePresent={})", node != null);
@@ -1417,7 +1422,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
 
     private void refreshClosedLoops(AEKey primaryOutput) {
         var node = tianshuHost.getActionableNode();
-        var grid = node != null ? node.getGrid() : null;
+        var grid = GridNodeAccess.getActiveGrid(node);
         if (primaryOutput == null) return;
         closedLoopMainOutput = primaryOutput;
         if (grid == null) {
@@ -2084,8 +2089,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         var maintenance = target.getInventoryMaintenance();
         if (maintenance == null) return;
         var rule = maintenance.repository().get(key);
-        var grid = tianshuHost.getActionableNode() != null
-                ? tianshuHost.getActionableNode().getGrid() : null;
+        var grid = GridNodeAccess.getActiveGrid(tianshuHost.getActionableNode());
         var available = grid != null
                 ? grid.getStorageService().getInventory().getAvailableStacks() : null;
         var topology = grid != null
@@ -2449,8 +2453,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
 
     /** @return whether this menu is attached to an active AE2 grid (1.20.1 API replacement). */
     private boolean isConnectedToNetwork() {
-        var node = getNetworkNode();
-        return node != null && node.getGrid() != null && node.isActive();
+        return GridNodeAccess.getActiveGrid(getNetworkNode()) != null;
     }
 
     private boolean stageNetworkBlankPattern() {

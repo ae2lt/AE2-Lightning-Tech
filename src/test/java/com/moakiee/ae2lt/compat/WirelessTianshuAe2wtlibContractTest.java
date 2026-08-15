@@ -61,7 +61,8 @@ class WirelessTianshuAe2wtlibContractTest {
 
         assertTrue(link.contains("WUTHandler.getUpgradeCardCount()"));
         assertTrue(link.contains("resolveAdvancedNode"));
-        assertTrue(link.contains("isNetworkPowered()"));
+        assertTrue(link.contains("node != null && node.isPowered()"));
+        assertFalse(link.contains("node.getGrid()"));
         assertTrue(mixin.contains("method = \"getActionableNode\""));
         assertTrue(mixin.contains("method = \"rangeCheck\""));
         assertTrue(mixin.contains("rangeCheck = false;"));
