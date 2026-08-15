@@ -56,6 +56,7 @@ import com.moakiee.ae2lt.logic.AdjacentItemAutoExportHelper;
 import com.moakiee.ae2lt.logic.FluidStackHelper;
 import com.moakiee.ae2lt.logic.MemoryCardConfigSupport;
 import com.moakiee.ae2lt.machine.common.GridRecipeMachineHost;
+import com.moakiee.ae2lt.machine.common.LightningCollapseMatrixHost;
 import com.moakiee.ae2lt.machine.crystalcatalyzer.CrystalCatalyzerAutomationInventory;
 import com.moakiee.ae2lt.machine.crystalcatalyzer.CrystalCatalyzerFluidHandler;
 import com.moakiee.ae2lt.machine.crystalcatalyzer.CrystalCatalyzerInventory;
@@ -74,6 +75,7 @@ import com.moakiee.ae2lt.util.LargeStackStreamCodecs;
 
 public class CrystalCatalyzerBlockEntity extends AENetworkBlockEntity
         implements IActionHost, IUpgradeableObject, FrequencyBindingHost,
+        LightningCollapseMatrixHost,
         GridRecipeMachineHost<CrystalCatalyzerLockedRecipe, CrystalCatalyzerRecipeCandidate> {
 
     private static final String TAG_INVENTORY = "Inventory";
@@ -174,6 +176,16 @@ public class CrystalCatalyzerBlockEntity extends AENetworkBlockEntity
 
     public CrystalCatalyzerInventory getInventory() {
         return inventory;
+    }
+
+    @Override
+    public IItemHandlerModifiable getMatrixInventory() {
+        return inventory;
+    }
+
+    @Override
+    public int getMatrixSlot() {
+        return CrystalCatalyzerInventory.SLOT_MATRIX;
     }
 
     public IItemHandlerModifiable getAutomationInventory() {
@@ -771,8 +783,11 @@ public class CrystalCatalyzerBlockEntity extends AENetworkBlockEntity
                                net.minecraft.nbt.CompoundTag output,
                                @org.jetbrains.annotations.Nullable Player player) {
         super.exportSettings(mode, output, player);
-        MemoryCardConfigSupport.exportAutoExportSettings(mode, output, autoExport, allowedOutputs,
-                tag -> FrequencyBindingHelper.writeMemoryFrequency(tag, getFrequencyId()));
+        MemoryCardConfigSupport.exportAutoExportSettings(mode, output, autoExport, allowedOutputs, tag -> {
+            MemoryCardConfigSupport.writeEnum(tag, TAG_MODE, this.mode);
+            FrequencyBindingHelper.writeMemoryFrequency(tag, getFrequencyId());
+            MemoryCardConfigSupport.writeMatrixCount(tag, this);
+        });
     }
 
     @Override
@@ -783,7 +798,16 @@ public class CrystalCatalyzerBlockEntity extends AENetworkBlockEntity
         MemoryCardConfigSupport.importAutoExportSettings(mode, input,
                 v -> this.autoExport = v,
                 sides -> this.allowedOutputs = sides,
-                tag -> FrequencyBindingHelper.importMemoryFrequency(tag, this::setFrequency),
+                tag -> {
+                    Mode importedMode = MemoryCardConfigSupport.readEnum(
+                            tag, TAG_MODE, Mode.class, this.mode);
+                    if (this.mode != importedMode) {
+                        this.mode = importedMode;
+                        abortProcessing();
+                    }
+                    FrequencyBindingHelper.importMemoryFrequency(tag, this::setFrequency);
+                    MemoryCardConfigSupport.restoreMatrixCount(tag, player, this);
+                },
                 () -> {
                     exportTargetCache.invalidate();
                     saveChanges();
