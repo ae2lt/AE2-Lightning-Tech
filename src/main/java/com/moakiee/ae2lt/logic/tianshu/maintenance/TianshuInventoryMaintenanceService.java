@@ -13,6 +13,7 @@ import appeng.api.stacks.AEKey;
 import appeng.crafting.CraftingLink;
 import appeng.me.service.CraftingService;
 import com.google.common.collect.ImmutableSet;
+import com.moakiee.ae2lt.me.GridNodeAccess;
 import com.moakiee.thunderbolt.ae2.crafting.ReservedStockCraftingRequester;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -319,7 +320,7 @@ public final class TianshuInventoryMaintenanceService
         // thread. AE2 then silently skips every pattern and reports the requested output itself as
         // missing. Capture the already-active node and source here, while still on the server tick.
         var calculationNode = host.getActionableNode();
-        if (calculationNode == null || calculationNode.getGrid() != grid) {
+        if (GridNodeAccess.getActiveGrid(calculationNode) != grid) {
             statuses.put(rule.id(), InventoryMaintenanceStatus.WAITING_RETRY);
             scheduleRetry(rule.id());
             InventoryMaintenanceCalculationClaims.release(grid, rule.key(), rule.id());

@@ -28,6 +28,8 @@ import net.minecraft.world.level.saveddata.SavedData;
 
 import appeng.api.networking.IGridNode;
 
+import com.moakiee.ae2lt.me.GridNodeAccess;
+
 /**
  * Global registry of wireless frequencies and their transmitters.
  * Replaces the old UUID-based WirelessTransmitterManager.
@@ -257,22 +259,32 @@ public final class WirelessFrequencyManager extends SavedData {
 
         ServerLevel targetLevel = server.getLevel(entry.dimension());
         if (targetLevel == null) {
-            return entry.cachedNode();
+            return liveCachedNode(entry);
         }
 
-        // Chunk not loaded: fall back to cached node. Loaded but BE missing/wrong type: treat as invalid.
+        // A cached raw node may already have been destroyed by chunk unload. Only expose it while
+        // AE2 still considers its grid structurally available.
         var chunk = targetLevel.getChunkSource()
                 .getChunkNow(entry.pos().getX() >> 4, entry.pos().getZ() >> 4);
         if (chunk == null) {
-            return entry.cachedNode();
+            return liveCachedNode(entry);
         }
         var be = chunk.getBlockEntity(entry.pos());
         if (be instanceof WirelessTransmitterNodeProvider provider) {
             IGridNode node = provider.getWirelessGridNode();
+            if (GridNodeAccess.getGridIfPresent(node) == null) {
+                node = null;
+            }
             updateNode(freqId, node);
             return node;
         }
         return null;
+    }
+
+    @Nullable
+    private static IGridNode liveCachedNode(TransmitterEntry entry) {
+        var node = entry.cachedNode();
+        return GridNodeAccess.getGridIfPresent(node) != null ? node : null;
     }
 
     /**

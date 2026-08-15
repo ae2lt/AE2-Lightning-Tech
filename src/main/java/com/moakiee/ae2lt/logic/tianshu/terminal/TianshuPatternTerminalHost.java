@@ -3,6 +3,7 @@ package com.moakiee.ae2lt.logic.tianshu.terminal;
 import appeng.helpers.IPatternTerminalMenuHost;
 import appeng.api.networking.security.IActionHost;
 import com.moakiee.ae2lt.blockentity.TianshuSupercomputerPortBlockEntity;
+import com.moakiee.ae2lt.me.GridNodeAccess;
 import java.util.Comparator;
 import java.util.List;
 import org.jetbrains.annotations.Nullable;
@@ -41,8 +42,7 @@ public interface TianshuPatternTerminalHost extends IPatternTerminalMenuHost, IA
     }
 
     default List<TianshuSupercomputerPortBlockEntity> getAvailableTianshu() {
-        var node = getActionableNode();
-        var grid = node != null ? node.getGrid() : null;
+        var grid = GridNodeAccess.getActiveGrid(getActionableNode());
         if (grid == null) return List.of();
         return grid.getActiveMachines(TianshuSupercomputerPortBlockEntity.class).stream()
                 .filter(TianshuSupercomputerPortBlockEntity::isLinkActive)
