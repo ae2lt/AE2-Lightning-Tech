@@ -64,6 +64,7 @@ import com.moakiee.ae2lt.machine.overloadfactory.OverloadProcessingFactoryEnergy
 import com.moakiee.ae2lt.menu.CrystalCatalyzerMenu;
 import com.moakiee.ae2lt.registry.ModBlockEntities;
 import com.moakiee.ae2lt.registry.ModBlocks;
+import com.moakiee.ae2lt.util.NativeStackDropHelper;
 
 public class CrystalCatalyzerBlockEntity extends AENetworkedBlockEntity
         implements IActionHost, IUpgradeableObject, FrequencyBindingHost,
@@ -472,7 +473,7 @@ public class CrystalCatalyzerBlockEntity extends AENetworkedBlockEntity
                 remainder -> {
                     ItemStack leftover = inventory.insertRecipeOutput(remainder, false);
                     if (!leftover.isEmpty() && level != null) {
-                        Block.popResource(level, worldPosition, leftover);
+                        NativeStackDropHelper.popResource(level, worldPosition, leftover);
                     }
                 },
                 direction -> exportTargetCache.resolve(serverLevel, worldPosition, direction));
@@ -752,7 +753,7 @@ public class CrystalCatalyzerBlockEntity extends AENetworkedBlockEntity
         for (int slot = 0; slot < inventory.getSlots(); slot++) {
             ItemStack stack = inventory.getStackInSlot(slot);
             if (!stack.isEmpty()) {
-                drops.add(stack.copy());
+                NativeStackDropHelper.addDrops(drops, stack);
             }
         }
     }

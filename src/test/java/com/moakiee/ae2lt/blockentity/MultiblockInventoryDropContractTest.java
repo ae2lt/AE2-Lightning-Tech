@@ -29,7 +29,7 @@ class MultiblockInventoryDropContractTest {
             throws Exception {
         String source = Files.readString(Path.of(
                 "src/main/java/com/moakiee/ae2lt/blockentity/" + fileName));
-        assertAppearsBefore(source, clearCall, "Block.popResource(");
+        assertAppearsBefore(source, clearCall, "NativeStackDropHelper.popResource(");
     }
 
     private static void assertAppearsBefore(String source, String first, String second) {

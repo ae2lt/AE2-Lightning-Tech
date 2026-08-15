@@ -27,6 +27,7 @@ import com.moakiee.ae2lt.machine.firmament.recipe.FirmamentConversionLockedRecip
 import com.moakiee.ae2lt.machine.firmament.recipe.FirmamentConversionRecipeCandidate;
 import com.moakiee.ae2lt.machine.firmament.recipe.FirmamentConversionRecipeService;
 import com.moakiee.ae2lt.registry.ModBlockEntities;
+import com.moakiee.ae2lt.util.NativeStackDropHelper;
 
 public class FirmamentConversionCoreBlockEntity extends BlockEntity {
     private static final ResourceLocation FIRMAMENT_STARSHIP_ID =
@@ -121,7 +122,7 @@ public class FirmamentConversionCoreBlockEntity extends BlockEntity {
         ItemStack remainder = extracted.copy();
         player.addItem(remainder);
         if (!remainder.isEmpty() && level != null) {
-            Block.popResource(level, worldPosition, remainder);
+            NativeStackDropHelper.popResource(level, worldPosition, remainder);
         }
         setChanged();
         return true;
@@ -131,7 +132,7 @@ public class FirmamentConversionCoreBlockEntity extends BlockEntity {
         for (int slot = 0; slot < inventory.getSlots(); slot++) {
             ItemStack stack = inventory.getStackInSlot(slot);
             if (!stack.isEmpty()) {
-                drops.add(stack.copy());
+                NativeStackDropHelper.addDrops(drops, stack);
             }
         }
     }
@@ -140,7 +141,7 @@ public class FirmamentConversionCoreBlockEntity extends BlockEntity {
         for (int slot = 0; slot < inventory.getSlots(); slot++) {
             ItemStack stack = inventory.getStackInSlot(slot);
             if (!stack.isEmpty()) {
-                Block.popResource(level, pos, stack.copy());
+                NativeStackDropHelper.popResource(level, pos, stack);
             }
         }
         inventory.clear();
