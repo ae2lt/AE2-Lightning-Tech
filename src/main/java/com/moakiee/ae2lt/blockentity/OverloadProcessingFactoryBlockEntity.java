@@ -61,6 +61,7 @@ import com.moakiee.ae2lt.me.key.LightningKey;
 import com.moakiee.ae2lt.menu.OverloadProcessingFactoryMenu;
 import com.moakiee.ae2lt.registry.ModBlockEntities;
 import com.moakiee.ae2lt.registry.ModBlocks;
+import com.moakiee.ae2lt.util.NativeStackDropHelper;
 
 public class OverloadProcessingFactoryBlockEntity extends AENetworkedBlockEntity
     implements IUpgradeableObject, FrequencyBindingHost,
@@ -392,7 +393,7 @@ public class OverloadProcessingFactoryBlockEntity extends AENetworkedBlockEntity
                 (slot, amount) -> inventory.extractItem(slot, amount, false),
                 remainder -> {
                     if (!inventory.insertRecipeOutputs(List.of(remainder)) && !remainder.isEmpty() && level != null) {
-                        Block.popResource(level, worldPosition, remainder);
+                        NativeStackDropHelper.popResource(level, worldPosition, remainder);
                     }
                 },
                 direction -> getExportTarget(serverLevel, direction));
@@ -689,12 +690,12 @@ public class OverloadProcessingFactoryBlockEntity extends AENetworkedBlockEntity
         for (int slot = 0; slot < inventory.getSlots(); slot++) {
             ItemStack stack = inventory.getStackInSlot(slot);
             if (!stack.isEmpty()) {
-                drops.add(stack.copy());
+                NativeStackDropHelper.addDrops(drops, stack);
             }
         }
         for (var upgrade : upgrades) {
             if (!upgrade.isEmpty()) {
-                drops.add(upgrade.copy());
+                NativeStackDropHelper.addDrops(drops, upgrade);
             }
         }
     }

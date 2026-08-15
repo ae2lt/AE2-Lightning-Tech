@@ -57,6 +57,7 @@ import com.moakiee.ae2lt.machine.lightningchamber.recipe.LightningSimulationReci
 import com.moakiee.ae2lt.me.key.LightningKey;
 import com.moakiee.ae2lt.registry.ModBlockEntities;
 import com.moakiee.ae2lt.registry.ModBlocks;
+import com.moakiee.ae2lt.util.NativeStackDropHelper;
 
 public class LightningSimulationChamberBlockEntity extends AENetworkedBlockEntity
     implements IUpgradeableObject, FrequencyBindingHost,
@@ -297,7 +298,7 @@ public class LightningSimulationChamberBlockEntity extends AENetworkedBlockEntit
                 remainder -> {
                     ItemStack leftover = inventory.insertRecipeOutput(remainder, false);
                     if (!leftover.isEmpty() && level != null) {
-                        Block.popResource(level, worldPosition, leftover);
+                        NativeStackDropHelper.popResource(level, worldPosition, leftover);
                     }
                 },
                 direction -> getExportTarget(serverLevel, direction));
@@ -550,12 +551,12 @@ public class LightningSimulationChamberBlockEntity extends AENetworkedBlockEntit
         for (int slot = 0; slot < inventory.getSlots(); slot++) {
             ItemStack stack = inventory.getStackInSlot(slot);
             if (!stack.isEmpty()) {
-                drops.add(stack.copy());
+                NativeStackDropHelper.addDrops(drops, stack);
             }
         }
         for (var upgrade : upgrades) {
             if (!upgrade.isEmpty()) {
-                drops.add(upgrade.copy());
+                NativeStackDropHelper.addDrops(drops, upgrade);
             }
         }
     }

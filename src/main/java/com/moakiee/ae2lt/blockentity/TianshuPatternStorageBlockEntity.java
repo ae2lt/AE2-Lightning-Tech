@@ -9,6 +9,7 @@ import com.moakiee.ae2lt.logic.terminal.InternalPatternContainerLink;
 import com.moakiee.ae2lt.registry.ModBlockEntities;
 import com.moakiee.ae2lt.registry.ModBlocks;
 import com.moakiee.ae2lt.registry.ModItems;
+import com.moakiee.ae2lt.util.NativeStackDropHelper;
 import appeng.api.implementations.blockentities.PatternContainerGroup;
 import appeng.api.inventories.BaseInternalInventory;
 import appeng.api.inventories.InternalInventory;
@@ -115,7 +116,7 @@ public final class TianshuPatternStorageBlockEntity extends BlockEntity implemen
         patterns.clear();
         setChanged();
         for (var payload : storedPatterns) {
-            Block.popResource(level, pos, item.createStack(payload, level.registryAccess()));
+            NativeStackDropHelper.popResource(level, pos, item.createStack(payload, level.registryAccess()));
         }
     }
 
