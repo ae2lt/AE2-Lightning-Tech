@@ -7,10 +7,7 @@ import org.jetbrains.annotations.Nullable;
 import net.minecraft.network.chat.Component;
 
 public enum RitualGoal {
-    HIGH_VOLTAGE,
-    EXTREME_HIGH_VOLTAGE,
-    LIGHTNING_COLLAPSE_MATRIX,
-    INFINITE_STORAGE_CELL;
+    HYPERDIMENSIONAL_PIGMEE;
 
     public String translationKey() {
         return "ae2lt.research_note.goal." + name().toLowerCase(Locale.ROOT);
