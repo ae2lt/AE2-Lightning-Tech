@@ -10,12 +10,12 @@ import appeng.api.networking.IGrid;
 import appeng.api.networking.IGridConnection;
 import appeng.api.networking.IGridNode;
 import appeng.api.networking.IGridNodeListener;
-import appeng.me.GridConnection;
 import appeng.util.SettingsFrom;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 
 import com.moakiee.ae2lt.blockentity.OverloadedControllerBlockEntity;
+import com.moakiee.ae2lt.grid.wirelesslink.WirelessLinkOps;
 import com.moakiee.ae2lt.logic.MemoryCardConfigSupport;
 import com.moakiee.ae2lt.me.GridNodeAccess;
 
@@ -454,7 +454,7 @@ public final class FrequencyBindingHelper
         }
 
         try {
-            virtualConnection = GridConnection.create(myNode, remoteNode, null);
+            virtualConnection = WirelessLinkOps.createVirtualConnection(myNode, remoteNode);
             LOG.debug("Virtual connection established: device@{} -> freq={}", be.getBlockPos(), frequencyId);
         } catch (IllegalStateException e) {
             LOG.warn("Virtual connection FAILED: device@{} -> freq={}: {}",
@@ -467,14 +467,7 @@ public final class FrequencyBindingHelper
         if (virtualConnection == null) return;
 
         IGridNode myNode = host.getFrequencyBindingBlockEntity().getMainNode().getNode();
-        if (myNode != null) {
-            for (var conn : myNode.getConnections()) {
-                if (conn == virtualConnection) {
-                    virtualConnection.destroy();
-                    break;
-                }
-            }
-        }
+        WirelessLinkOps.destroy(virtualConnection, myNode);
         virtualConnection = null;
     }
 
