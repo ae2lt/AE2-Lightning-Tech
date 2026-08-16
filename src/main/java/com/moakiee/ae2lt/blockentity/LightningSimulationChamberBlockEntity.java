@@ -67,6 +67,7 @@ import com.moakiee.ae2lt.me.key.LightningKey;
 import com.moakiee.ae2lt.registry.ModBlockEntities;
 import com.moakiee.ae2lt.registry.ModBlocks;
 import com.moakiee.ae2lt.util.LargeStackStreamCodecs;
+import com.moakiee.ae2lt.util.NativeStackDropHelper;
 
 public class LightningSimulationChamberBlockEntity extends AENetworkBlockEntity
     implements IUpgradeableObject, FrequencyBindingHost,
@@ -209,17 +210,10 @@ public class LightningSimulationChamberBlockEntity extends AENetworkBlockEntity
     }
 
     public void addConsumedEnergy(long amount) {
-        if (amount <= 0) {
-            return;
+        if (addConsumedEnergyUnchecked(amount)) {
+            saveChanges();
+            markForUpdate();
         }
-
-        if (amount > Long.MAX_VALUE - this.consumedEnergy) {
-            this.consumedEnergy = Long.MAX_VALUE;
-        } else {
-            this.consumedEnergy += amount;
-        }
-        saveChanges();
-        markForUpdate();
     }
 
     public void incrementProcessingTicksSpent() {
@@ -325,7 +319,7 @@ public class LightningSimulationChamberBlockEntity extends AENetworkBlockEntity
                 remainder -> {
                     ItemStack leftover = inventory.insertRecipeOutput(remainder, false);
                     if (!leftover.isEmpty() && level != null) {
-                        Block.popResource(level, worldPosition, leftover);
+                        NativeStackDropHelper.popResource(level, worldPosition, leftover);
                     }
                 },
                 direction -> getExportTarget(serverLevel, direction));
@@ -590,12 +584,12 @@ public class LightningSimulationChamberBlockEntity extends AENetworkBlockEntity
         for (int slot = 0; slot < inventory.getSlots(); slot++) {
             ItemStack stack = inventory.getStackInSlot(slot);
             if (!stack.isEmpty()) {
-                drops.add(stack.copy());
+                NativeStackDropHelper.addDrops(drops, stack);
             }
         }
         for (var upgrade : upgrades) {
             if (!upgrade.isEmpty()) {
-                drops.add(upgrade.copy());
+                NativeStackDropHelper.addDrops(drops, upgrade);
             }
         }
     }
@@ -673,8 +667,25 @@ public class LightningSimulationChamberBlockEntity extends AENetworkBlockEntity
 
     @Override
     public void onEnergyConsumed(int consumed) {
-        addConsumedEnergy(consumed);
-        incrementProcessingTicksSpent();
+        if (consumed <= 0) {
+            return;
+        }
+        addConsumedEnergyUnchecked(consumed);
+        this.processingTicksSpent++;
+        saveChanges();
+        markForUpdate();
+    }
+
+    private boolean addConsumedEnergyUnchecked(long amount) {
+        if (amount <= 0L) {
+            return false;
+        }
+        if (amount > Long.MAX_VALUE - this.consumedEnergy) {
+            this.consumedEnergy = Long.MAX_VALUE;
+        } else {
+            this.consumedEnergy += amount;
+        }
+        return true;
     }
 
     private long simulateLightningExtract(LightningKey key, long amount) {

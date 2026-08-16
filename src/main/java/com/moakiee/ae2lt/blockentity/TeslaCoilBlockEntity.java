@@ -51,6 +51,7 @@ import org.jetbrains.annotations.Nullable;
 
 import com.moakiee.ae2lt.api.AE2LTCapabilities;
 import com.moakiee.ae2lt.me.GridLightningEnergyHandler;
+import com.moakiee.ae2lt.util.NativeStackDropHelper;
 
 public class TeslaCoilBlockEntity extends AENetworkBlockEntity
         implements IActionHost, FrequencyBindingHost, LightningCollapseMatrixHost {
@@ -439,7 +440,7 @@ public class TeslaCoilBlockEntity extends AENetworkBlockEntity
         for (int slot = 0; slot < inventory.getSlots(); slot++) {
             ItemStack stack = inventory.getStackInSlot(slot);
             if (!stack.isEmpty()) {
-                drops.add(stack.copy());
+                NativeStackDropHelper.addDrops(drops, stack);
             }
         }
     }

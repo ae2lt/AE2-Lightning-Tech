@@ -25,6 +25,7 @@ import com.moakiee.ae2lt.logic.persistence.CompletePhysicalStorageSet;
 import com.moakiee.ae2lt.registry.ModBlockEntities;
 import com.moakiee.ae2lt.registry.ModItems;
 import com.moakiee.ae2lt.registry.ModBlocks;
+import com.moakiee.ae2lt.util.NativeStackDropHelper;
 import com.moakiee.thunderbolt.ae2.api.crafting.CraftingProviderChangeTracker;
 import com.moakiee.thunderbolt.ae2.timewheel.ReusableSeedPattern;
 import com.moakiee.thunderbolt.ae2.timewheel.TimeWheelCraftingCpuPool;
@@ -1129,7 +1130,7 @@ public class TianshuSupercomputerControllerBlockEntity extends BlockEntity
                 var result = closedLoopPatterns.add(payload);
                 if (result == ClosedLoopPatternRepository.PutResult.FULL
                         || result == ClosedLoopPatternRepository.PutResult.UNAVAILABLE) {
-                    Block.popResource(level, port.getBlockPos(),
+                    NativeStackDropHelper.popResource(level, port.getBlockPos(),
                             item.createStack(payload, level.registryAccess()));
                 }
             }

@@ -80,10 +80,6 @@ public final class AE2LTCommonConfig {
         return VALUES.overloadTntEnableTerrainDamage.get();
     }
 
-    public static boolean overloadTntEnableMysteriousCellEasterEgg() {
-        return VALUES.overloadTntEnableMysteriousCellEasterEgg.get();
-    }
-
     public static boolean easterEggEnabled() {
         return VALUES.easterEggEnabled.get();
     }
@@ -343,7 +339,6 @@ public final class AE2LTCommonConfig {
         private final ForgeConfigSpec.IntValue lightningCollectorCooldownTicks;
         private final ForgeConfigSpec.IntValue electroChimeMaxCatalysis;
         private final ForgeConfigSpec.BooleanValue overloadTntEnableTerrainDamage;
-        private final ForgeConfigSpec.BooleanValue overloadTntEnableMysteriousCellEasterEgg;
         private final ForgeConfigSpec.BooleanValue easterEggEnabled;
         private final ForgeConfigSpec.ConfigValue<String> easterEggItem;
         private final ForgeConfigSpec.IntValue easterEggWeight;
@@ -497,9 +492,6 @@ public final class AE2LTCommonConfig {
             overloadTntEnableTerrainDamage = builder
                     .comment("Controls whether overload TNT can damage terrain with the custom blast task.")
                     .define("enableTerrainDamage", true);
-            overloadTntEnableMysteriousCellEasterEgg = builder
-                    .comment("Controls whether overload TNT can consume a Lightning Collapse Matrix to drop a Mysterious Cell.")
-                    .define("enableMysteriousCellEasterEgg", true);
             overloadTntGlobalBlockBudgetPerTick = builder
                     .comment("Maximum blocks processed per tick across all overload TNT tasks.")
                     .defineInRange("globalBlockBudgetPerTick", 2400, 0, Integer.MAX_VALUE);

@@ -14,6 +14,7 @@ import com.moakiee.ae2lt.logic.craft.MatrixCraftingMath;
 import com.moakiee.ae2lt.logic.craft.MatrixCraftingProfile;
 import com.moakiee.ae2lt.registry.ModBlockEntities;
 import com.moakiee.ae2lt.registry.ModBlocks;
+import com.moakiee.ae2lt.util.NativeStackDropHelper;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -330,7 +331,7 @@ public class MatrixPortBlockEntity extends AENetworkBlockEntity
         key.addDrops(amount, drops, level, getBlockPos());
         for (var drop : drops) {
             if (!drop.isEmpty()) {
-                Block.popResource(level, getBlockPos(), drop);
+                NativeStackDropHelper.popResource(level, getBlockPos(), drop);
             }
         }
     }
