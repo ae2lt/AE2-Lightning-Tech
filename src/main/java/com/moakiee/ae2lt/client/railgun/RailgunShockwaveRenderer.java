@@ -189,10 +189,10 @@ public final class RailgunShockwaveRenderer {
             float ox1 = (float) (center.x + cos1 * outer1);
             float oz1 = (float) (center.z + sin1 * outer1);
             // Soft outer edge: feather alpha to zero at the very rim.
-            bb.vertex(matrix, ix0, y, iz0).color(r, g, b, alpha);
-            bb.vertex(matrix, ix1, y, iz1).color(r, g, b, alpha);
-            bb.vertex(matrix, ox1, y, oz1).color(r, g, b, alpha * 0.15F);
-            bb.vertex(matrix, ox0, y, oz0).color(r, g, b, alpha * 0.15F);
+            bb.vertex(matrix, ix0, y, iz0).color(r, g, b, alpha).endVertex();
+            bb.vertex(matrix, ix1, y, iz1).color(r, g, b, alpha).endVertex();
+            bb.vertex(matrix, ox1, y, oz1).color(r, g, b, alpha * 0.15F).endVertex();
+            bb.vertex(matrix, ox0, y, oz0).color(r, g, b, alpha * 0.15F).endVertex();
         }
     }
 

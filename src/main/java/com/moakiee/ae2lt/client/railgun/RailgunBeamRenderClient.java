@@ -384,10 +384,10 @@ public final class RailgunBeamRenderClient {
                                      double p2x, double p2y, double p2z,
                                      double p3x, double p3y, double p3z,
                                      float r, float g, float b, float a) {
-        bb.vertex(matrix, (float) p0x, (float) p0y, (float) p0z).color(r, g, b, a);
-        bb.vertex(matrix, (float) p1x, (float) p1y, (float) p1z).color(r, g, b, a);
-        bb.vertex(matrix, (float) p2x, (float) p2y, (float) p2z).color(r, g, b, a);
-        bb.vertex(matrix, (float) p3x, (float) p3y, (float) p3z).color(r, g, b, a);
+        bb.vertex(matrix, (float) p0x, (float) p0y, (float) p0z).color(r, g, b, a).endVertex();
+        bb.vertex(matrix, (float) p1x, (float) p1y, (float) p1z).color(r, g, b, a).endVertex();
+        bb.vertex(matrix, (float) p2x, (float) p2y, (float) p2z).color(r, g, b, a).endVertex();
+        bb.vertex(matrix, (float) p3x, (float) p3y, (float) p3z).color(r, g, b, a).endVertex();
     }
 
     /**
@@ -430,10 +430,10 @@ public final class RailgunBeamRenderClient {
                                  double p3x, double p3y, double p3z,
                                  float r, float g, float b,
                                  float aFrom, float aTo) {
-        bb.vertex(matrix, (float) p0x, (float) p0y, (float) p0z).color(r, g, b, aFrom);
-        bb.vertex(matrix, (float) p1x, (float) p1y, (float) p1z).color(r, g, b, aFrom);
-        bb.vertex(matrix, (float) p2x, (float) p2y, (float) p2z).color(r, g, b, aTo);
-        bb.vertex(matrix, (float) p3x, (float) p3y, (float) p3z).color(r, g, b, aTo);
+        bb.vertex(matrix, (float) p0x, (float) p0y, (float) p0z).color(r, g, b, aFrom).endVertex();
+        bb.vertex(matrix, (float) p1x, (float) p1y, (float) p1z).color(r, g, b, aFrom).endVertex();
+        bb.vertex(matrix, (float) p2x, (float) p2y, (float) p2z).color(r, g, b, aTo).endVertex();
+        bb.vertex(matrix, (float) p3x, (float) p3y, (float) p3z).color(r, g, b, aTo).endVertex();
     }
 
     /**
