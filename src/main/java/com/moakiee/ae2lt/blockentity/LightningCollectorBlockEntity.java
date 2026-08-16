@@ -426,6 +426,12 @@ public class LightningCollectorBlockEntity extends AENetworkedBlockEntity
     }
 
     @Override
+    public void onChunkUnloaded() {
+        frequencyBinding.onChunkUnloaded();
+        super.onChunkUnloaded();
+    }
+
+    @Override
     public void clearRemoved() {
         super.clearRemoved();
         frequencyBinding.clearRemoved();

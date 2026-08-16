@@ -256,6 +256,12 @@ public class CrystalCatalyzerBlockEntity extends AENetworkedBlockEntity
         inventory.setLevel(null);
     }
 
+    @Override
+    public void onChunkUnloaded() {
+        frequencyBinding.onChunkUnloaded();
+        super.onChunkUnloaded();
+    }
+
     public Optional<CrystalCatalyzerRecipeCandidate> findProcessableRecipe() {
         if (!hasEnoughFixedFluid()) {
             return Optional.empty();

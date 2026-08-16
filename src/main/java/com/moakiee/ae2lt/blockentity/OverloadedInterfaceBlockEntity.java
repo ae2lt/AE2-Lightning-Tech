@@ -1885,6 +1885,7 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
 
     @Override
     public void onChunkUnloaded() {
+        frequencyBinding.onChunkUnloaded();
         unloadingChunk = true;
         wirelessDistributor.flushBufferToNetwork();
         super.onChunkUnloaded();

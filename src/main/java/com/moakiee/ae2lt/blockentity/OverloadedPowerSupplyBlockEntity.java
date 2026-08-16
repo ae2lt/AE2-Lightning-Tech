@@ -572,6 +572,7 @@ public class OverloadedPowerSupplyBlockEntity extends AENetworkedBlockEntity
 
     @Override
     public void onChunkUnloaded() {
+        frequencyBinding.onChunkUnloaded();
         logic.flushBufferToNetwork();
         super.onChunkUnloaded();
     }
