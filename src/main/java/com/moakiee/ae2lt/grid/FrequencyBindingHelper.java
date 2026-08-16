@@ -169,6 +169,17 @@ public final class FrequencyBindingHelper
         attach();
     }
 
+    /**
+     * Releases runtime-only state when the host's chunk unloads. Keep the
+     * persisted device registration so unloaded devices remain visible in the
+     * frequency connection list.
+     */
+    public void onChunkUnloaded() {
+        unsubscribeListener();
+        clearConnectionUpdate();
+        virtualConnection = null;
+    }
+
     public void save(CompoundTag tag) {
         tag.putInt(TAG_FREQUENCY_ID, frequencyId);
     }

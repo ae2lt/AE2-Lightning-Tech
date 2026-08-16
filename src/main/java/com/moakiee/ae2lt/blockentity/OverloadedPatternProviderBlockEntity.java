@@ -719,6 +719,7 @@ public class OverloadedPatternProviderBlockEntity extends PatternProviderBlockEn
 
     @Override
     public void onChunkUnloaded() {
+        frequencyBinding.onChunkUnloaded();
         super.onChunkUnloaded();
         unloadingChunk = true;
         var logic = getOverloadedLogic();
