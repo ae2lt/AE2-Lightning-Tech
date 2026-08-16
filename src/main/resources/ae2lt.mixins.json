@@ -23,7 +23,6 @@
     "ServerGamePacketListenerPhaseMovementMixin",
     "ServerPayloadContextPhaseTeleportMixin",
     "ServerGamePacketListenerCelestweaveCreativeSyncMixin",
-    "compat.DraconicChargeUpPhaseFlightMixin",
     "thunderbolt.accessor.ElapsedTimeTrackerAccessor",
     "thunderbolt.accessor.ExecutingCraftingJobAccessor",
     "thunderbolt.accessor.CraftingCpuLogicAccessor",

@@ -22,6 +22,7 @@ import com.moakiee.ae2lt.celestweave.CelestweaveArmorState;
 import com.moakiee.ae2lt.celestweave.PhaseFlightMovementGuard;
 import com.moakiee.ae2lt.celestweave.PhaseFlightControlRules;
 import com.moakiee.ae2lt.celestweave.PhaseFlightPlayerState;
+import com.moakiee.ae2lt.celestweave.PhaseWingFlight;
 import com.moakiee.ae2lt.celestweave.service.ArmorLightningService;
 import com.moakiee.ae2lt.celestweave.service.ArmorResourceFeedback;
 import com.moakiee.ae2lt.me.key.LightningKey;
@@ -32,6 +33,7 @@ public final class PhaseFlightSubmodule extends AbstractCelestweaveArmorSubmodul
 
     public static final String INERTIA_CONFIG_KEY = "flight_inertia";
     public static final String PHASE_MODE_CONFIG_KEY = "phase_mode";
+    public static final String FLIGHT_LOCK_CONFIG_KEY = "flight_lock";
 
     private static final String TAG_HAD_MAYFLY = "PhaseHadMayfly";
     private static final String TAG_WAS_FLYING = "PhaseWasFlying";
@@ -97,6 +99,7 @@ public final class PhaseFlightSubmodule extends AbstractCelestweaveArmorSubmodul
         }
 
         maintainPhaseFlight(player, armor);
+        PhaseWingFlight.tickThrust(player);
         return 0;
     }
 
@@ -105,7 +108,8 @@ public final class PhaseFlightSubmodule extends AbstractCelestweaveArmorSubmodul
         return List.of(
                 speedConfig(armor),
                 inertiaConfig(armor),
-                phaseModeConfig(armor));
+                phaseModeConfig(armor),
+                flightLockConfig(armor));
     }
 
     @Override
@@ -124,6 +128,12 @@ public final class PhaseFlightSubmodule extends AbstractCelestweaveArmorSubmodul
             return true;
         }
         if (PHASE_MODE_CONFIG_KEY.equals(key)) {
+            var options = getOptions(armor);
+            options.put(key, value instanceof ByteTag bt ? bt : ByteTag.valueOf(true));
+            setOptions(armor, options);
+            return true;
+        }
+        if (FLIGHT_LOCK_CONFIG_KEY.equals(key)) {
             var options = getOptions(armor);
             options.put(key, value instanceof ByteTag bt ? bt : ByteTag.valueOf(true));
             setOptions(armor, options);
@@ -177,6 +187,10 @@ public final class PhaseFlightSubmodule extends AbstractCelestweaveArmorSubmodul
         return booleanOption(armor, PHASE_MODE_CONFIG_KEY, true);
     }
 
+    public static boolean isFlightLockEnabled(ItemStack armor) {
+        return booleanOption(armor, FLIGHT_LOCK_CONFIG_KEY, true);
+    }
+
     private CelestweaveArmorSubmoduleConfig phaseModeConfig(ItemStack armor) {
         return config(
                 PHASE_MODE_CONFIG_KEY,
@@ -184,6 +198,15 @@ public final class PhaseFlightSubmodule extends AbstractCelestweaveArmorSubmodul
                 ByteTag.valueOf(isPhaseModeEnabled(armor)),
                 booleanChoices(),
                 Component.translatable("ae2lt.celestweave.config.phase_mode.hint"));
+    }
+
+    private CelestweaveArmorSubmoduleConfig flightLockConfig(ItemStack armor) {
+        return config(
+                FLIGHT_LOCK_CONFIG_KEY,
+                Component.translatable("ae2lt.celestweave.config.flight_lock"),
+                ByteTag.valueOf(isFlightLockEnabled(armor)),
+                booleanChoices(),
+                Component.translatable("ae2lt.celestweave.config.flight_lock.hint"));
     }
 
     private static boolean booleanOption(ItemStack armor, String key, boolean defaultValue) {
@@ -200,6 +223,7 @@ public final class PhaseFlightSubmodule extends AbstractCelestweaveArmorSubmodul
         var data = CelestweaveArmorState.getSubmoduleData(armor, INSTANCE);
         var abilities = player.getAbilities();
         PhaseFlightPlayerState.activate(player);
+        PhaseFlightPlayerState.setFlightLocked(player, isFlightLockEnabled(armor));
         updateMovementGuards(player, armor);
         if (!data.contains(TAG_HAD_MAYFLY, CompoundTag.TAG_BYTE)) {
             data.putBoolean(TAG_HAD_MAYFLY, abilities.mayfly);
@@ -218,6 +242,7 @@ public final class PhaseFlightSubmodule extends AbstractCelestweaveArmorSubmodul
 
     private static void maintainPhaseFlight(Player player, ItemStack armor) {
         PhaseFlightPlayerState.activate(player);
+        PhaseFlightPlayerState.setFlightLocked(player, isFlightLockEnabled(armor));
         updateMovementGuards(player, armor);
         updateAbilitiesIfChanged(
                 player,
@@ -230,13 +255,14 @@ public final class PhaseFlightSubmodule extends AbstractCelestweaveArmorSubmodul
     private static void revokePhaseFlight(Player player, ItemStack armor) {
         PhaseFlightMovementGuard.clearPhaseFlightState(player);
         stopPhaseTraversal(player);
+        PhaseFlightPlayerState.setFlightLocked(player, false);
         restoreStoredAbilities(player, armor);
         PhaseFlightPlayerState.endControl(player);
     }
 
     public static boolean shouldUsePhaseTraversal(Player player, ItemStack armor) {
         return player != null
-                && PhaseFlightPlayerState.isFlying(player)
+                && PhaseWingFlight.isFlightActive(player)
                 && isPhaseModeConfigured(armor);
     }
 
@@ -366,7 +392,9 @@ public final class PhaseFlightSubmodule extends AbstractCelestweaveArmorSubmodul
 
     public static void applyTransientPhaseState(Player player) {
         player.noPhysics = true;
-        player.setNoGravity(true);
+        // Elytra travel still needs gravity for its pitch-dependent glide curve. Hovering and the
+        // bounded in-wall escape state remain gravity-free.
+        player.setNoGravity(!player.isFallFlying());
         player.setOnGround(false);
         player.fallDistance = 0.0F;
         player.getPersistentData().putBoolean(PLAYER_PHASE_TAG, true);
@@ -416,7 +444,7 @@ public final class PhaseFlightSubmodule extends AbstractCelestweaveArmorSubmodul
         PhaseFlightMovementGuard.updatePhaseFlightState(
                 player,
                 isPhaseModeConfigured(armor),
-                PhaseFlightPlayerState.isFlying(player));
+                PhaseWingFlight.isFlightActive(player));
     }
 
     private static void clearEscapePhase(Player player) {

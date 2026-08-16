@@ -108,9 +108,11 @@ The Phase Lock Module uses the chestplate as its controller and exposes three in
 | Module | Effect |
 |--------|--------|
 | Creative Flight | Grants creative-style flight; speed and inertia are configurable |
-| Phase Flight | Grants flight through blocks without switching game mode; speed and inertia are configurable |
+| Phase Flight | Provides hovering and phase-wing gliding; Phase Mode controls whether flight passes through blocks |
 
 Creative Flight and Phase Flight share the same install group, so only one can be installed on the leggings. Phase Flight is disabled by default after installation and must be enabled in the Device Hub.
+
+Phase Flight keeps vanilla-style controls: tap Jump in midair to deploy the phase wings, or double-tap Jump to toggle hovering. Hold Jump while gliding to thrust along the look direction. While hovering, Jump ascends and Sneak descends; holding both cancels vertical input and exposes a crouching state to other mods. When Phase Mode is enabled, both hovering and phase-wing gliding pass through blocks. Disabling it keeps both flight modes but restores normal collision. Flight Lock keeps non-phase hovering active on landing and rejects external hover-state changes; disabling it restores vanilla landing and external control behavior.
 
 ## Boots Modules
 
@@ -122,4 +124,4 @@ Creative Flight and Phase Flight share the same install group, so only one can b
 
 ## Cost Notes
 
-Most active modules consume 1 High Voltage Lightning per tick in addition to their FE drain. Creative Flight uses more High Voltage Lightning while flying, and Phase Flight consumes Extreme High Voltage Lightning every tick. Shield, Purification and Undying costs increase when they trigger repeatedly in a short time. Installing an Overload Core Module in the chestplate allows the whole set to compensate missing Extreme High Voltage Lightning at 16 High Voltage Lightning per Extreme High Voltage Lightning.
+Most active modules consume 1 High Voltage Lightning per tick in addition to their FE drain. Creative Flight and Phase Flight use more High Voltage Lightning while moving; active Phase Mode traversal uses Extreme High Voltage Lightning instead. Shield, Purification and Undying costs increase when they trigger repeatedly in a short time. Installing an Overload Core Module in the chestplate allows the whole set to compensate missing Extreme High Voltage Lightning at 16 High Voltage Lightning per Extreme High Voltage Lightning.

@@ -30,8 +30,8 @@ class PhaseFlightClientInputSourceContractTest {
                 "src/main/java/com/moakiee/ae2lt/mixin/client/LocalPlayerPhaseMovementMixin.java"));
         String module = Files.readString(Path.of(
                 "src/main/java/com/moakiee/ae2lt/celestweave/module/PhaseFlightSubmodule.java"));
-        String serverPacketMixin = Files.readString(Path.of(
-                "src/main/java/com/moakiee/ae2lt/mixin/ServerGamePacketListenerPhaseMovementMixin.java"));
+        String inputPacket = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/network/PhaseFlightInputPacket.java"));
         String clientHandler = Files.readString(Path.of(
                 "src/main/java/com/moakiee/ae2lt/client/ClientPhaseFlightHandler.java"));
 
@@ -40,8 +40,8 @@ class PhaseFlightClientInputSourceContractTest {
         assertFalse(mixin.contains("player.isInWall()"));
         assertTrue(module.contains("PhaseFlightControlRules.intersectsWorldCollision(player)"));
         assertFalse(module.contains("player.isInWall()"));
-        assertTrue(serverPacketMixin.contains("PhaseFlightControlRules.intersectsWorldCollision(player)"));
-        assertFalse(serverPacketMixin.contains("player.isInWall()"));
+        assertTrue(inputPacket.contains("PhaseFlightControlRules.intersectsWorldCollision(player)"));
+        assertFalse(inputPacket.contains("player.isInWall()"));
         assertTrue(clientHandler.contains("PhaseFlightControlRules.intersectsWorldCollision(player)"));
         assertFalse(clientHandler.contains("player.isInWall()"));
     }

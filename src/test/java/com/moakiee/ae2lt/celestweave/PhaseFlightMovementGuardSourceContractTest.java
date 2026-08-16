@@ -16,7 +16,7 @@ class PhaseFlightMovementGuardSourceContractTest {
         assertTrue(guard.contains("Map<UUID, ServerSettings> SERVER_SETTINGS"));
         assertTrue(guard.contains("updatePhaseFlightState("));
         assertTrue(guard.contains("updatePhaseLockProtection("));
-        assertTrue(guard.contains("withPhaseFlight(phaseModeEnabled, phaseFlying)"));
+        assertTrue(guard.contains("withPhaseFlight(phaseModeEnabled, phaseTraversalActive)"));
         assertTrue(guard.contains("withPhaseLockProtection(blockForces, blockTeleports)"));
         assertTrue(guard.contains("clearPhaseFlightState(Player player)"));
         assertTrue(guard.contains("clearPhaseLockProtection(Player player)"));
@@ -71,35 +71,46 @@ class PhaseFlightMovementGuardSourceContractTest {
                 "src/main/java/com/moakiee/ae2lt/client/ClientPhaseFlightHandler.java"));
         String packetMixin = Files.readString(Path.of(
                 "src/main/java/com/moakiee/ae2lt/mixin/ServerGamePacketListenerPhaseMovementMixin.java"));
+        String clientMixin = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/mixin/client/LocalPlayerPhaseMovementMixin.java"));
+        String inputPacket = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/network/PhaseFlightInputPacket.java"));
         String settingsPacket = Files.readString(Path.of(
                 "src/main/java/com/moakiee/ae2lt/network/FlightInertiaSyncPacket.java"));
-        String draconicCompat = Files.readString(Path.of(
-                "src/main/java/com/moakiee/ae2lt/mixin/compat/DraconicChargeUpPhaseFlightMixin.java"));
         String mixinConfig = Files.readString(Path.of("src/main/resources/ae2lt.mixins.json"));
 
         assertTrue(state.contains("interface Access"));
         assertTrue(state.contains("public static void activate(Player player)"));
-        assertTrue(state.contains("access.ae2lt$setPhaseFlying(true)"));
-        assertFalse(state.contains("player.getAbilities().flying"));
-        assertTrue(state.contains("abilities.mayfly = true"));
-        assertTrue(state.contains("abilities.flying = access.ae2lt$isPhaseFlying()"));
-        assertTrue(state.contains("rejectsExternalFlyingDisable(Abilities abilities)"));
+        assertTrue(state.contains("access.ae2lt$setPhaseFlying(access.ae2lt$getVanillaFlying())"));
+        assertTrue(state.contains("player.getAbilities().mayfly = true"));
+        assertTrue(state.contains("access.ae2lt$setVanillaFlying(flying)"));
+        assertTrue(state.contains("access.ae2lt$setVanillaFlying(access.ae2lt$isPhaseFlying())"));
+        assertTrue(state.contains("access.ae2lt$isPhaseFlightLocked()"));
+        assertTrue(state.contains("public static boolean readEffectiveFlying"));
+        assertTrue(state.contains("public static void applyFlightInput"));
+        assertTrue(state.contains("public static void synchronizeFlying"));
         assertTrue(playerMixin.contains("implements PhaseFlightPlayerState.Access"));
         assertTrue(playerMixin.contains("private boolean ae2lt$phaseFlying"));
         assertTrue(playerMixin.contains("@Inject(method = \"tick\", at = @At(\"HEAD\"))"));
-        assertTrue(playerMixin.contains("PhaseFlightPlayerState.syncVanillaAbilities"));
+        assertTrue(playerMixin.contains("method = \"getAbilities\""));
+        assertTrue(playerMixin.contains("abilities.flying = ae2lt$phaseFlying"));
+        assertTrue(playerMixin.contains("return abilities.flying"));
+        assertTrue(playerMixin.contains("@ModifyExpressionValue"));
+        assertTrue(playerMixin.contains("opcode = Opcodes.GETFIELD"));
+        assertTrue(playerMixin.contains("PhaseFlightPlayerState.readEffectiveFlying"));
         assertTrue(phaseFlight.contains("PhaseFlightPlayerState.isFlying(player)"));
-        assertTrue(clientHandler.contains("PhaseFlightPlayerState.isFlying(player)"));
-        assertTrue(packetMixin.contains("PhaseFlightPlayerState.setFlying(player, packet.isFlying())"));
-        assertTrue(packetMixin.contains("PhaseFlightPlayerState.syncVanillaAbilities(player)"));
+        assertTrue(clientHandler.contains("PhaseWingFlight.isFlightActive(player)"));
+        assertTrue(clientMixin.contains("PhaseFlightPlayerState.applyFlightInput"));
+        assertTrue(clientMixin.contains("PhaseFlightInputPacket.flight"));
+        assertTrue(inputPacket.contains("PhaseFlightPlayerState.applyFlightInput"));
+        assertFalse(packetMixin.contains("applyFlightInput"));
+        assertTrue(packetMixin.contains("PhaseFlightPlayerState.isFlightLocked(player)"));
+        assertFalse(packetMixin.contains("reconcileVanillaAbilities"));
         assertTrue(settingsPacket.contains("boolean phaseFlightActive"));
         assertTrue(settingsPacket.contains("boolean phaseFlying"));
-        assertTrue(settingsPacket.contains("PhaseFlightPlayerState.setFlying(player, payload.phaseFlying())"));
-        assertTrue(draconicCompat.contains("method = \"serverTick\""));
-        assertTrue(draconicCompat.contains("method = \"clientTick\""));
-        assertTrue(draconicCompat.contains("opcode = Opcodes.PUTFIELD"));
-        assertTrue(draconicCompat.contains("PhaseFlightPlayerState.rejectsExternalFlyingDisable(abilities)"));
-        assertTrue(mixinConfig.contains("compat.DraconicChargeUpPhaseFlightMixin"));
+        assertTrue(settingsPacket.contains("boolean phaseFlightLockEnabled"));
+        assertTrue(settingsPacket.contains("PhaseFlightPlayerState.synchronizeFlying(player, payload.phaseFlying())"));
+        assertFalse(mixinConfig.contains("DraconicChargeUpPhaseFlightMixin"));
         assertFalse(phaseFlight.contains("&& player.getAbilities().flying\n                && isPhaseModeConfigured"));
         assertTrue(phaseFlight.contains("restoreCapturedGameModeState ? wasFlying : abilities.flying"));
     }

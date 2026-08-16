@@ -15,7 +15,8 @@ public record FlightInertiaSyncPacket(
         boolean inertiaEnabled,
         boolean phaseFlightActive,
         boolean phaseFlying,
-        boolean phaseModeEnabled)
+        boolean phaseModeEnabled,
+        boolean phaseFlightLockEnabled)
         implements CustomPacketPayload {
 
     public static final Type<FlightInertiaSyncPacket> TYPE =
@@ -35,6 +36,7 @@ public record FlightInertiaSyncPacket(
                 buf.readBoolean(),
                 buf.readBoolean(),
                 buf.readBoolean(),
+                buf.readBoolean(),
                 buf.readBoolean());
     }
 
@@ -44,6 +46,7 @@ public record FlightInertiaSyncPacket(
         buf.writeBoolean(phaseFlightActive);
         buf.writeBoolean(phaseFlying);
         buf.writeBoolean(phaseModeEnabled);
+        buf.writeBoolean(phaseFlightLockEnabled);
     }
 
     public static void handle(FlightInertiaSyncPacket payload, IPayloadContext context) {
@@ -55,7 +58,8 @@ public record FlightInertiaSyncPacket(
             var player = context.player();
             if (payload.phaseFlightActive()) {
                 PhaseFlightPlayerState.activate(player);
-                PhaseFlightPlayerState.setFlying(player, payload.phaseFlying());
+                PhaseFlightPlayerState.setFlightLocked(player, payload.phaseFlightLockEnabled());
+                PhaseFlightPlayerState.synchronizeFlying(player, payload.phaseFlying());
             } else {
                 PhaseFlightPlayerState.endControl(player);
             }
