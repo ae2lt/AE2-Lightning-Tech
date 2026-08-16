@@ -422,6 +422,11 @@ public final class FrequencyBindingHelper
             scheduleRetry();
             return;
         }
+        if (!MultiblockLinkReadiness.canKeepVirtualConnection(myNode)) {
+            MultiblockLinkReadiness.refreshAfterVirtualConnectionRemoved(myNode);
+            scheduleRetry();
+            return;
+        }
 
         var manager = WirelessFrequencyManager.get();
         if (manager == null) return;  // The server registry is not ready; retrying would not help.
@@ -440,10 +445,6 @@ public final class FrequencyBindingHelper
         var server = ((ServerLevel) be.getLevel()).getServer();
         IGridNode remoteNode = manager.resolveNode(frequencyId, server);
         if (remoteNode == null) {
-            scheduleRetry();
-            return;
-        }
-        if (!MultiblockLinkReadiness.canKeepVirtualConnection(myNode)) {
             scheduleRetry();
             return;
         }
@@ -488,6 +489,11 @@ public final class FrequencyBindingHelper
 
         IGridNode myNode = be.getMainNode().getNode();
         if (myNode == null) return;
+        if (!MultiblockLinkReadiness.canKeepVirtualConnection(myNode)) {
+            destroyVirtualConnection();
+            scheduleRetry();
+            return;
+        }
 
         boolean connectionAlive = false;
         IGridNode connectedTarget = null;
