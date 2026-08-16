@@ -27,7 +27,7 @@ import appeng.me.cluster.implementations.CraftingCPUCluster;
 
 import com.moakiee.thunderbolt.core.crafting.support.CraftingPatternDelegates;
 import com.moakiee.ae2lt.mixin.thunderbolt.accessor.CraftingCpuLogicAccessor;
-import com.moakiee.ae2lt.crafting.timewheel.FinalOutputProgress;
+import com.moakiee.thunderbolt.core.crafting.support.FinalOutputProgress;
 import com.moakiee.ae2lt.mixin.thunderbolt.accessor.ElapsedTimeTrackerAccessor;
 import com.moakiee.ae2lt.mixin.thunderbolt.accessor.ExecutingCraftingJobAccessor;
 import com.moakiee.ae2lt.overload.runtime.cpu.InsertContext;

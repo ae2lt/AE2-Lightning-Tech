@@ -30,7 +30,7 @@ import com.moakiee.thunderbolt.core.crafting.support.CraftingProviderChangeTrack
 import com.moakiee.thunderbolt.core.crafting.loop.ReusableSeedPattern;
 import com.moakiee.thunderbolt.api.crafting.ConfigurableCraftingAlgorithmProvider;
 import com.moakiee.thunderbolt.api.crafting.DefaultCraftingAlgorithmProviderState;
-import com.moakiee.thunderbolt.core.crafting.algorithm.ThunderboltV2PlanningEngine;
+import com.moakiee.thunderbolt.core.crafting.planner.ThunderboltV2PlanningEngine;
 import com.moakiee.ae2lt.crafting.timewheel.TimeWheelCraftingCpuPool;
 import com.moakiee.ae2lt.crafting.timewheel.TimeWheelCraftingCpuPoolHost;
 import java.util.IdentityHashMap;

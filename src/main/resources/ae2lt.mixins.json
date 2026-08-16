@@ -50,9 +50,7 @@
     "client.LocalPlayerShieldHitFeedbackMixin",
     "client.LocalPlayerPhaseMovementMixin",
     "client.LevelRendererPhaseFlightMixin",
-    "client.EntityShieldFireVisualMixin",
-    "thunderbolt.client.CPUSelectionListStorageMixin",
-    "thunderbolt.client.CraftConfirmScreenCpuStatusMixin"
+    "client.EntityShieldFireVisualMixin"
   ],
   "injectors": {
     "defaultRequire": 1

@@ -64,6 +64,7 @@ import com.moakiee.thunderbolt.core.crafting.batch.ParallelBatchCpuHelper;
 import com.moakiee.thunderbolt.core.crafting.batch.TickProviderDispatchSchedule;
 import com.moakiee.ae2lt.crafting.runtime.api.CraftingTaskPriorities;
 import com.moakiee.thunderbolt.core.crafting.support.CraftingPatternDelegates;
+import com.moakiee.thunderbolt.core.crafting.support.FinalOutputProgress;
 import com.moakiee.thunderbolt.core.crafting.loop.CraftingTaskPersistenceDefinition;
 import com.moakiee.thunderbolt.core.crafting.loop.ISeedPreservingCraftingTask;
 import com.moakiee.thunderbolt.core.crafting.loop.ReusableSeedPattern;

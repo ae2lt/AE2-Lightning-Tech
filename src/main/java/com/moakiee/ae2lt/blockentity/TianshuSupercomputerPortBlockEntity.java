@@ -20,7 +20,7 @@ import com.moakiee.ae2lt.logic.tianshu.maintenance.TianshuInventoryMaintenanceSe
 import com.moakiee.ae2lt.crafting.timewheel.TimeWheelCraftingCpuPoolProvider;
 import com.moakiee.thunderbolt.api.crafting.CraftingAlgorithmProvider;
 import com.moakiee.thunderbolt.api.crafting.CraftingAlgorithmSelection;
-import com.moakiee.thunderbolt.core.crafting.algorithm.ThunderboltV2PlanningEngine;
+import com.moakiee.thunderbolt.core.crafting.planner.ThunderboltV2PlanningEngine;
 import com.moakiee.thunderbolt.core.crafting.algorithm.menu.CraftingAlgorithmProviderMenu;
 import com.moakiee.thunderbolt.core.crafting.algorithm.menu.CraftingAlgorithmProviderMenuHost;
 
