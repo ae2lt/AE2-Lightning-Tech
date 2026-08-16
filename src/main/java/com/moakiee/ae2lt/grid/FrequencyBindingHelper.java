@@ -36,6 +36,13 @@ public final class FrequencyBindingHelper
     private static final int INITIAL_RETRY_COOLDOWN_TICKS = 20;
     /** Upper bound for retry backoff; keeps unloaded chunks from causing steady update churn. */
     private static final int MAX_RETRY_COOLDOWN_TICKS = 20 * 10;
+    /**
+     * Revalidate an apparently idle binding once per second. AE2 can remove a
+     * virtual connection while rebuilding grids without delivering another
+     * transmitter event to this helper, so event-driven recovery alone can
+     * leave a persisted binding disconnected until the player binds it again.
+     */
+    private static final int CONNECTION_AUDIT_INTERVAL_TICKS = 20;
 
     private final com.moakiee.ae2lt.api.frequency.FrequencyBindingHost host;
 
@@ -45,6 +52,7 @@ public final class FrequencyBindingHelper
     private boolean needsConnectionUpdate;
     private int retryCooldownTicks;
     private int nextRetryCooldownTicks = INITIAL_RETRY_COOLDOWN_TICKS;
+    private int connectionAuditTicks = CONNECTION_AUDIT_INTERVAL_TICKS;
     private int subscribedFrequencyId = -1;
 
     public FrequencyBindingHelper(com.moakiee.ae2lt.api.frequency.FrequencyBindingHost host) {
@@ -98,19 +106,21 @@ public final class FrequencyBindingHelper
     }
 
     public void serverTick() {
-        if (retryCooldownTicks > 0) {
-            retryCooldownTicks--;
-            return;
-        }
-        if (!needsConnectionUpdate) return;
-
         var be = host.getFrequencyBindingBlockEntity();
         if (frequencyId <= 0 || be.getLevel() == null || be.getLevel().isClientSide()) {
             needsConnectionUpdate = false;
             return;
         }
 
-        if (host.getFrequencyBindingBlockEntity().getMainNode().getNode() == null) {
+        auditConnectionIfDue();
+
+        if (retryCooldownTicks > 0) {
+            retryCooldownTicks--;
+            return;
+        }
+        if (!needsConnectionUpdate) return;
+
+        if (be.getMainNode().getNode() == null) {
             scheduleRetry();
             return;
         }
@@ -218,7 +228,42 @@ public final class FrequencyBindingHelper
     }
 
     public boolean isConnected() {
-        return hasLiveVirtualConnection();
+        return hasEffectiveFrequencyConnection();
+    }
+
+    /**
+     * A physical cluster only needs one virtual entrance. Another native host
+     * in that cluster therefore has no connection object of its own, but it is
+     * still connected when its node shares the transmitter grid and has a
+     * channel. Treat that as connected both for the UI and for recovery checks.
+     */
+    private boolean hasEffectiveFrequencyConnection() {
+        if (hasLiveVirtualConnection()) {
+            return true;
+        }
+
+        var be = host.getFrequencyBindingBlockEntity();
+        if (frequencyId <= 0 || !(be.getLevel() instanceof ServerLevel serverLevel)) {
+            return false;
+        }
+
+        IGridNode myNode = be.getMainNode().getNode();
+        var manager = WirelessFrequencyManager.get();
+        IGridNode remoteNode = manager == null
+                ? null
+                : manager.resolveNode(frequencyId, serverLevel.getServer());
+        boolean alreadyInFrequencyGrid = isAlreadyInFrequencyGrid(myNode, remoteNode);
+        return hasEffectiveConnection(
+                false,
+                alreadyInFrequencyGrid,
+                alreadyInFrequencyGrid && myNode.meetsChannelRequirements());
+    }
+
+    static boolean hasEffectiveConnection(
+            boolean liveVirtualConnection,
+            boolean alreadyInFrequencyGrid,
+            boolean meetsChannelRequirements) {
+        return liveVirtualConnection || alreadyInFrequencyGrid && meetsChannelRequirements;
     }
 
     private boolean hasLiveVirtualConnection() {
@@ -260,12 +305,38 @@ public final class FrequencyBindingHelper
         needsConnectionUpdate = true;
         retryCooldownTicks = 0;
         resetRetryBackoff();
+        resetConnectionAudit();
     }
 
     private void clearConnectionUpdate() {
         needsConnectionUpdate = false;
         retryCooldownTicks = 0;
         resetRetryBackoff();
+        resetConnectionAudit();
+    }
+
+    private void resetConnectionAudit() {
+        connectionAuditTicks = CONNECTION_AUDIT_INTERVAL_TICKS;
+    }
+
+    /**
+     * Repairs the split-brain state where NBT/client state still says the host
+     * is bound, but AE2 no longer contains its runtime bridge. Do not reset the
+     * retry backoff here: unloaded transmitters must retain the existing bounded
+     * retry behaviour.
+     */
+    private void auditConnectionIfDue() {
+        if (--connectionAuditTicks > 0) {
+            return;
+        }
+        resetConnectionAudit();
+
+        if (virtualConnection != null) {
+            revalidateConnection();
+        }
+        if (!hasEffectiveFrequencyConnection() && !needsConnectionUpdate) {
+            scheduleRetry();
+        }
     }
 
     private void resetRetryBackoff() {
