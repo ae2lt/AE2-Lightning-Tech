@@ -157,6 +157,7 @@ public final class FlightSubmodule extends AbstractCelestweaveArmorSubmodule {
         var abilities = player.getAbilities();
         var data = CelestweaveArmorState.getSubmoduleData(armor, INSTANCE);
         PhaseFlightPlayerState.activate(player);
+        PhaseFlightPlayerState.setMayflyOwned(player, true);
         // This module owns no lock setting; the independent chest phase-lock module may lock it.
         PhaseFlightPlayerState.setFlightLocked(player, PhaseLockSubmodule.isFlightLockEnabled(player));
         if (!data.contains(TAG_HAD_MAYFLY, CompoundTag.TAG_BYTE)) {
@@ -175,6 +176,7 @@ public final class FlightSubmodule extends AbstractCelestweaveArmorSubmodule {
 
     private static void maintainFlight(Player player, ItemStack armor) {
         PhaseFlightPlayerState.activate(player);
+        PhaseFlightPlayerState.setMayflyOwned(player, true);
         PhaseFlightPlayerState.setFlightLocked(player, PhaseLockSubmodule.isFlightLockEnabled(player));
         updateAbilitiesIfChanged(
                 player,

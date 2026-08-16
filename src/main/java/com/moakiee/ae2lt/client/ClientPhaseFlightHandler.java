@@ -35,6 +35,7 @@ public final class ClientPhaseFlightHandler {
         boolean flightModuleActive = CelestweaveArmorState.isAnyClientFlightControlActive();
         if (flightModuleActive || PhaseFlightPlayerState.isFlightLocked(player)) {
             PhaseFlightPlayerState.activate(player);
+            PhaseFlightPlayerState.setMayflyOwned(player, flightModuleActive);
         } else {
             PhaseFlightPlayerState.endControl(player);
         }

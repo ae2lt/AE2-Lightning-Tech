@@ -58,6 +58,7 @@ public record FlightInertiaSyncPacket(
             var player = context.player();
             if (payload.flightControlActive() || payload.flightLockEnabled()) {
                 PhaseFlightPlayerState.activate(player);
+                PhaseFlightPlayerState.setMayflyOwned(player, payload.flightControlActive());
                 PhaseFlightPlayerState.setFlightLocked(player, payload.flightLockEnabled());
                 PhaseFlightPlayerState.synchronizeFlying(player, payload.flying());
             } else {

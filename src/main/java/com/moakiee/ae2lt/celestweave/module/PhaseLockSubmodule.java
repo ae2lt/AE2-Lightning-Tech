@@ -15,6 +15,7 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.neoforge.common.extensions.IPlayerExtension;
 
 import com.moakiee.ae2lt.celestweave.CelestweaveArmorState;
+import com.moakiee.ae2lt.celestweave.PhaseFlightControlRules;
 import com.moakiee.ae2lt.celestweave.PhaseFlightMovementGuard;
 import com.moakiee.ae2lt.celestweave.PhaseFlightPlayerState;
 import com.moakiee.ae2lt.celestweave.PhaseWingFlight;
@@ -133,7 +134,10 @@ public final class PhaseLockSubmodule extends AbstractCelestweaveArmorSubmodule 
     }
 
     public static boolean hasCreativeFlightSource(Player player) {
-        return player != null && ((IPlayerExtension) player).mayFly();
+        return player != null
+                && PhaseFlightControlRules.hasExternalFlightSource(
+                        PhaseFlightPlayerState.ownsMayfly(player),
+                        ((IPlayerExtension) player).mayFly());
     }
 
     public static boolean isFlightLockConfigured(Player player) {

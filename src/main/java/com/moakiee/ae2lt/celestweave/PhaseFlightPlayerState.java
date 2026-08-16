@@ -74,6 +74,16 @@ public final class PhaseFlightPlayerState {
                 && access.ae2lt$isPhaseFlightLocked();
     }
 
+    public static boolean ownsMayfly(Player player) {
+        return player instanceof Access access && access.ae2lt$ownsMayfly();
+    }
+
+    public static void setMayflyOwned(Player player, boolean owned) {
+        if (player instanceof Access access) {
+            access.ae2lt$setMayflyOwned(owned);
+        }
+    }
+
     public static void setFlightLocked(Player player, boolean locked) {
         if (!(player instanceof Access access)
                 || !access.ae2lt$isPhaseFlightControlled()
@@ -95,9 +105,9 @@ public final class PhaseFlightPlayerState {
                 : player != null && player.getAbilities().flying;
     }
 
-    /** Keeps the vanilla capability available; Player#getAbilities projects the locked value. */
+    /** Keeps only Celestweave-owned vanilla flight available while controls are active. */
     public static void maintainVanillaAbilities(Player player) {
-        if (!isControlled(player)) {
+        if (!isControlled(player) || !ownsMayfly(player)) {
             return;
         }
         player.getAbilities().mayfly = true;
@@ -108,6 +118,7 @@ public final class PhaseFlightPlayerState {
             access.ae2lt$setPhaseJumpHeld(false);
             access.ae2lt$setPhaseFlying(false);
             access.ae2lt$setPhaseFlightLocked(true);
+            access.ae2lt$setMayflyOwned(false);
             access.ae2lt$setPhaseFlightControlled(false);
         }
     }
@@ -128,6 +139,10 @@ public final class PhaseFlightPlayerState {
         boolean ae2lt$isPhaseFlightLocked();
 
         void ae2lt$setPhaseFlightLocked(boolean locked);
+
+        boolean ae2lt$ownsMayfly();
+
+        void ae2lt$setMayflyOwned(boolean owned);
 
         boolean ae2lt$getVanillaFlying();
 

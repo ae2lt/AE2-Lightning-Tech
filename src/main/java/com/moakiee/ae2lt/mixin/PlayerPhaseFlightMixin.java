@@ -35,6 +35,8 @@ public abstract class PlayerPhaseFlightMixin implements PhaseFlightPlayerState.A
     private boolean ae2lt$phaseJumpHeld;
     @Unique
     private boolean ae2lt$phaseFlightLocked = true;
+    @Unique
+    private boolean ae2lt$mayflyOwned;
 
     @Override
     public boolean ae2lt$isPhaseFlightControlled() {
@@ -74,6 +76,16 @@ public abstract class PlayerPhaseFlightMixin implements PhaseFlightPlayerState.A
     @Override
     public void ae2lt$setPhaseFlightLocked(boolean locked) {
         ae2lt$phaseFlightLocked = locked;
+    }
+
+    @Override
+    public boolean ae2lt$ownsMayfly() {
+        return ae2lt$mayflyOwned;
+    }
+
+    @Override
+    public void ae2lt$setMayflyOwned(boolean owned) {
+        ae2lt$mayflyOwned = owned;
     }
 
     @Override

@@ -40,6 +40,14 @@ final class PhaseFlightControlRulesTest {
     }
 
     @Test
+    void publicMayflyIsExternalOnlyWhenCelestweaveDoesNotOwnIt() {
+        assertTrue(PhaseFlightControlRules.hasExternalFlightSource(false, true));
+        assertFalse(PhaseFlightControlRules.hasExternalFlightSource(true, true));
+        assertFalse(PhaseFlightControlRules.hasExternalFlightSource(false, false));
+        assertFalse(PhaseFlightControlRules.hasExternalFlightSource(true, false));
+    }
+
+    @Test
     void lockedNonPhaseHoverCanStillCrouchOnTheGround() {
         assertTrue(PhaseFlightControlRules.exposeGroundCrouch(true, false, true, true, true));
         assertFalse(PhaseFlightControlRules.exposeGroundCrouch(false, false, true, true, true));

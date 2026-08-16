@@ -36,6 +36,11 @@ public final class PhaseFlightControlRules {
         return controlled && flightLocked ? phaseFlying : vanillaFlying;
     }
 
+    /** A public mayfly bit is external only while Celestweave does not own that projection. */
+    public static boolean hasExternalFlightSource(boolean mayflyOwned, boolean mayFly) {
+        return !mayflyOwned && mayFly;
+    }
+
     public static boolean exposeGroundCrouch(
             boolean flightLocked,
             boolean phaseModeEnabled,
