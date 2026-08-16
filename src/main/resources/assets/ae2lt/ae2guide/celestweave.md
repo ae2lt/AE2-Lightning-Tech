@@ -87,17 +87,18 @@ If FE or required Lightning is missing, the affected effects cannot be maintaine
 | Purification | Removes and blocks configured status effects; by default, harmful effects only |
 | Radiation Assimilation | Prevents new exposure and radiation damage; while ambient radiation is present, restores 1-5 hearts per second depending on radiation severity |
 | Laser Protection | Absorbs Mekanism lasers completely and converts the actually absorbed Joules to FE using Mekanism's configured conversion ratio, filling the chestplate and then the rest of the equipped set |
-| Phase Lock | Provides three independently toggled features: Armor Lock, Block External Forces and Block External Teleports; see below |
+| Phase Lock | Provides four independently toggled features: Armor Lock, Flight Lock, Block External Forces and Block External Teleports; see below |
 | Overload Core Module | Unlocks Lightning compensation for the armor set. Existing Extreme High Voltage Lightning is consumed first, then any shortfall is paid at 16 High Voltage Lightning per Extreme High Voltage Lightning |
 
 Matrix Shield and Phase Shield share the same install group, so only one of them can be installed on the chestplate.
 
 ### Phase Lock
 
-The Phase Lock Module uses the chestplate as its controller and exposes three independently toggled features in the Device Hub:
+The Phase Lock Module uses the chestplate as its controller and exposes four independently toggled features in the Device Hub:
 
 * **Armor Lock:** Moves the currently worn Celestweave set into four player-bound private phase slots; the armor slots only hold data-free Phase-Locked Projections. The real armor keeps running inside the private slots, and newly worn Celestweave pieces join the lock automatically. Projections carry no enchantment glint and cannot be extracted or traded; replacing or removing one projection costs 1,000,000 FE and 16 Extreme High Voltage Lightning to rebuild it in place, and a failed payment releases the lock and re-equips the entire real set.
 `Think of this as soulbinding.`
+* **Flight Lock:** Freezes the current flight state, keeps flight active after landing, and rejects external state changes. It recognizes active Creative/Phase Flight modules, game-mode flight, and NeoForge's `CREATIVE_FLIGHT` attribute, but never grants flight by itself.
 * **Block External Forces:** Blocks velocity changes from water, fans, knockback and similar external systems, while player input and armor-driven movement still work.
 `For example: ignores pushing and pulling from Create's Encased Fan.`
 * **Block External Teleports:** Blocks external coordinate rewrites, teleports and dimension changes, while normal player movement is unaffected.
@@ -107,12 +108,12 @@ The Phase Lock Module uses the chestplate as its controller and exposes three in
 
 | Module | Effect |
 |--------|--------|
-| Creative Flight | Grants creative-style flight; speed and inertia are configurable |
+| Creative Flight | Provides hovering and wing gliding; speed and inertia are configurable |
 | Phase Flight | Provides hovering and phase-wing gliding; Phase Mode controls whether flight passes through blocks |
 
 Creative Flight and Phase Flight share the same install group, so only one can be installed on the leggings. Phase Flight is disabled by default after installation and must be enabled in the Device Hub.
 
-Phase Flight keeps vanilla-style controls: tap Jump in midair to deploy the phase wings, or double-tap Jump to toggle hovering. Hold Jump while gliding to thrust along the look direction. While hovering, Jump ascends and Sneak descends; holding both cancels vertical input and exposes a crouching state to other mods. When Phase Mode is enabled, both hovering and phase-wing gliding pass through blocks. Disabling it keeps both flight modes but restores normal collision. Flight Lock keeps non-phase hovering active on landing and rejects external hover-state changes; disabling it restores vanilla landing and external control behavior.
+Both flight modules share vanilla-style controls: tap Jump in midair to deploy the wings, or double-tap Jump to toggle hovering. Hold Jump while gliding to thrust along the look direction. While hovering, Jump ascends and Sneak descends; holding both cancels vertical input and exposes a crouching state to other mods. Only Phase Flight exposes Phase Mode; when enabled, both hovering and gliding pass through blocks. Flight Lock is controlled centrally by the chestplate's Phase Lock Module.
 
 ## Boots Modules
 

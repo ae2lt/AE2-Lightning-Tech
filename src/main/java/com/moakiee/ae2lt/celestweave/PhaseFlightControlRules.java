@@ -15,10 +15,10 @@ public final class PhaseFlightControlRules {
     }
 
     public static boolean isCrouchChord(
-            boolean phaseModuleActive,
+            boolean flightControlActive,
             boolean jumpHeld,
             boolean shiftHeld) {
-        return phaseModuleActive && jumpHeld && shiftHeld;
+        return flightControlActive && jumpHeld && shiftHeld;
     }
 
     public static boolean preserveFlightOnLanding(

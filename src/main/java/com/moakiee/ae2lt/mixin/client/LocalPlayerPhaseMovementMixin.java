@@ -69,7 +69,8 @@ public abstract class LocalPlayerPhaseMovementMixin {
                     ordinal = 1))
     private void ae2lt$applyPhaseFlightInput(Abilities abilities, boolean requestedFlying) {
         LocalPlayer player = (LocalPlayer) (Object) this;
-        if (!CelestweaveArmorState.isAnyClientPhaseFlightActive()) {
+        if (!CelestweaveArmorState.isAnyClientFlightControlActive()
+                && !PhaseFlightPlayerState.isFlightLocked(player)) {
             abilities.flying = requestedFlying;
             return;
         }
@@ -96,7 +97,8 @@ public abstract class LocalPlayerPhaseMovementMixin {
                     target = "Lnet/minecraft/client/player/LocalPlayer;onUpdateAbilities()V",
                     ordinal = 1))
     private void ae2lt$useSinglePhaseFlightInputPath(LocalPlayer player) {
-        if (!CelestweaveArmorState.isAnyClientPhaseFlightActive()) {
+        if (!CelestweaveArmorState.isAnyClientFlightControlActive()
+                && !PhaseFlightPlayerState.isFlightLocked(player)) {
             player.onUpdateAbilities();
         }
     }
@@ -139,7 +141,7 @@ public abstract class LocalPlayerPhaseMovementMixin {
     private void ae2lt$exposePhaseFlightCrouchChord(CallbackInfoReturnable<Boolean> cir) {
         LocalPlayer player = (LocalPlayer) (Object) this;
         boolean crouchChord = PhaseFlightControlRules.isCrouchChord(
-                CelestweaveArmorState.isAnyClientPhaseFlightActive(),
+                CelestweaveArmorState.isAnyClientFlightControlActive(),
                 PhaseFlightPlayerState.isJumpHeld(player),
                 player.isShiftKeyDown());
         boolean groundCrouch = PhaseFlightControlRules.exposeGroundCrouch(

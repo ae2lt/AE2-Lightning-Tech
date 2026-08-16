@@ -28,7 +28,7 @@ class PhaseFlightMovementGuardSourceContractTest {
         assertTrue(guard.contains("if (notice.equals(previous))"));
         assertTrue(guard.contains("LAST_BLOCKED_TELEPORT_NOTICE.remove(player.getUUID())"));
         assertTrue(guard.contains("teleport_blocked.dimension"));
-        assertTrue(guard.contains("CelestweaveArmorState.isAnyClientPhaseFlightActive()"));
+        assertTrue(guard.contains("CelestweaveArmorState.isAnyClientFlightControlActive()"));
         assertTrue(guard.contains("CelestweaveArmorState.getClientPhaseLockBlockExternalForces()"));
         assertTrue(guard.contains("StackWalker.Option.RETAIN_CLASS_REFERENCE"));
         assertTrue(guard.contains("MOVEMENT_PACKET_PLAYER.get() != player"));
@@ -106,10 +106,10 @@ class PhaseFlightMovementGuardSourceContractTest {
         assertFalse(packetMixin.contains("applyFlightInput"));
         assertTrue(packetMixin.contains("PhaseFlightPlayerState.isFlightLocked(player)"));
         assertFalse(packetMixin.contains("reconcileVanillaAbilities"));
-        assertTrue(settingsPacket.contains("boolean phaseFlightActive"));
-        assertTrue(settingsPacket.contains("boolean phaseFlying"));
-        assertTrue(settingsPacket.contains("boolean phaseFlightLockEnabled"));
-        assertTrue(settingsPacket.contains("PhaseFlightPlayerState.synchronizeFlying(player, payload.phaseFlying())"));
+        assertTrue(settingsPacket.contains("boolean flightControlActive"));
+        assertTrue(settingsPacket.contains("boolean flying"));
+        assertTrue(settingsPacket.contains("boolean flightLockEnabled"));
+        assertTrue(settingsPacket.contains("PhaseFlightPlayerState.synchronizeFlying(player, payload.flying())"));
         assertFalse(mixinConfig.contains("DraconicChargeUpPhaseFlightMixin"));
         assertFalse(phaseFlight.contains("&& player.getAbilities().flying\n                && isPhaseModeConfigured"));
         assertTrue(phaseFlight.contains("restoreCapturedGameModeState ? wasFlying : abilities.flying"));
