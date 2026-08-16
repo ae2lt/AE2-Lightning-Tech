@@ -70,6 +70,7 @@ final class PhaseWingFlightSourceContractTest {
 
     @Test
     void oneFlightLockControlsLandingAndExternalStateReconciliation() throws Exception {
+        String flightModule = read("src/main/java/com/moakiee/ae2lt/celestweave/module/FlightSubmodule.java");
         String phaseModule = read("src/main/java/com/moakiee/ae2lt/celestweave/module/PhaseFlightSubmodule.java");
         String lockModule = read("src/main/java/com/moakiee/ae2lt/celestweave/module/PhaseLockSubmodule.java");
         String state = read("src/main/java/com/moakiee/ae2lt/celestweave/PhaseFlightPlayerState.java");
@@ -83,17 +84,23 @@ final class PhaseWingFlightSourceContractTest {
         assertTrue(lockModule.contains("FLIGHT_LOCK_CONFIG_KEY = \"flight_lock\""));
         assertTrue(lockModule.contains("isSubmoduleRuntimeActive(chest, INSTANCE.id())"));
         assertTrue(lockModule.contains("((IPlayerExtension) player).mayFly()"));
+        assertTrue(lockModule.contains("PhaseFlightControlRules.hasExternalFlightSource"));
         assertTrue(lockModule.contains("|| PhaseWingFlight.canUse(player)"));
         assertFalse(phaseModule.contains("FLIGHT_LOCK_CONFIG_KEY"));
+        assertTrue(flightModule.contains("PhaseFlightPlayerState.setMayflyOwned(player, true)"));
+        assertTrue(phaseModule.contains("PhaseFlightPlayerState.setMayflyOwned(player, true)"));
         assertTrue(phaseModule.contains("PhaseLockSubmodule.isFlightLockEnabled(player)"));
         assertTrue(state.contains("ae2lt$isPhaseFlightLocked"));
+        assertTrue(state.contains("!isControlled(player) || !ownsMayfly(player)"));
         assertTrue(state.contains("access.ae2lt$setPhaseFlying(access.ae2lt$getVanillaFlying())"));
         assertTrue(state.contains("access.ae2lt$setVanillaFlying(access.ae2lt$isPhaseFlying())"));
         assertTrue(clientMixin.contains("preserveFlightOnLanding"));
         assertTrue(clientMixin.contains("useSinglePhaseFlightInputPath"));
         assertTrue(clientHandler.contains("flightModuleActive || PhaseFlightPlayerState.isFlightLocked(player)"));
         assertTrue(inputPacket.contains("!flightModuleActive && !flightLockActive"));
+        assertTrue(inputPacket.contains("setMayflyOwned(player, flightModuleActive)"));
         assertTrue(settingsPacket.contains("payload.flightControlActive() || payload.flightLockEnabled()"));
+        assertTrue(settingsPacket.contains("setMayflyOwned(player, payload.flightControlActive())"));
         assertTrue(menu.contains("PhaseLockSubmodule.FLIGHT_LOCK_CONFIG_KEY.equals(config.key())"));
         assertFalse(mixins.contains("DraconicChargeUpPhaseFlightMixin"));
     }
