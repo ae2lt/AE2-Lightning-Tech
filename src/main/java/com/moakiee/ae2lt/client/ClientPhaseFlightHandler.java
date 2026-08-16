@@ -32,13 +32,13 @@ public final class ClientPhaseFlightHandler {
         }
 
         var player = minecraft.player;
-        boolean phaseModuleActive = CelestweaveArmorState.isAnyClientPhaseFlightActive();
-        if (phaseModuleActive) {
+        boolean flightModuleActive = CelestweaveArmorState.isAnyClientFlightControlActive();
+        if (flightModuleActive || PhaseFlightPlayerState.isFlightLocked(player)) {
             PhaseFlightPlayerState.activate(player);
         } else {
             PhaseFlightPlayerState.endControl(player);
         }
-        syncJumpInput(minecraft, phaseModuleActive);
+        syncJumpInput(minecraft, flightModuleActive);
         PhaseWingFlight.tickThrust(player);
         if (isClientPhaseActive(player)) {
             PhaseFlightSubmodule.applyTransientPhaseState(player);
@@ -84,13 +84,13 @@ public final class ClientPhaseFlightHandler {
     }
 
     private static boolean isClientPhaseActive(net.minecraft.world.entity.player.Player player) {
-        return CelestweaveArmorState.isAnyClientPhaseFlightActive()
+        return CelestweaveArmorState.isAnyClientFlightControlActive()
                 && PhaseWingFlight.isFlightActive(player)
                 && CelestweaveArmorState.getClientPhaseModeEnabled();
     }
 
-    private static void syncJumpInput(Minecraft minecraft, boolean phaseModuleActive) {
-        boolean jumpHeld = phaseModuleActive && minecraft.options.keyJump.isDown();
+    private static void syncJumpInput(Minecraft minecraft, boolean flightModuleActive) {
+        boolean jumpHeld = flightModuleActive && minecraft.options.keyJump.isDown();
         PhaseFlightPlayerState.setJumpHeld(minecraft.player, jumpHeld);
         if (jumpHeld == lastJumpHeld) {
             return;

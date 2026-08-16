@@ -7,11 +7,18 @@ import org.jetbrains.annotations.Nullable;
 import net.minecraft.nbt.ByteTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.common.extensions.IPlayerExtension;
 
+import com.moakiee.ae2lt.celestweave.CelestweaveArmorState;
 import com.moakiee.ae2lt.celestweave.PhaseFlightMovementGuard;
+import com.moakiee.ae2lt.celestweave.PhaseFlightPlayerState;
+import com.moakiee.ae2lt.celestweave.PhaseWingFlight;
+import com.moakiee.ae2lt.celestweave.phase.CelestweaveEquipmentAccess;
 
 /**
  * Uses the chestplate as the phase-lock controller, moves every worn Celestweave armor piece into
@@ -21,6 +28,7 @@ public final class PhaseLockSubmodule extends AbstractCelestweaveArmorSubmodule 
     public static final PhaseLockSubmodule INSTANCE = new PhaseLockSubmodule();
 
     public static final String ARMOR_LOCK_CONFIG_KEY = "phase_armor_lock";
+    public static final String FLIGHT_LOCK_CONFIG_KEY = "flight_lock";
     public static final String BLOCK_EXTERNAL_FORCES_CONFIG_KEY = "phase_block_external_forces";
     public static final String BLOCK_EXTERNAL_TELEPORTS_CONFIG_KEY = "phase_block_external_teleports";
 
@@ -56,6 +64,7 @@ public final class PhaseLockSubmodule extends AbstractCelestweaveArmorSubmodule 
     public void onActivated(@Nullable Player player, Dist dist, ItemStack armor) {
         if (player != null && dist == Dist.DEDICATED_SERVER) {
             updateMovementProtection(player, armor);
+            updateFlightLock(player);
         }
     }
 
@@ -63,6 +72,10 @@ public final class PhaseLockSubmodule extends AbstractCelestweaveArmorSubmodule 
     public void onDeactivated(@Nullable Player player, Dist dist, ItemStack armor) {
         if (player != null && dist == Dist.DEDICATED_SERVER) {
             PhaseFlightMovementGuard.clearPhaseLockProtection(player);
+            PhaseFlightPlayerState.setFlightLocked(player, false);
+            if (!PhaseWingFlight.canUse(player)) {
+                PhaseFlightPlayerState.endControl(player);
+            }
         }
     }
 
@@ -70,6 +83,7 @@ public final class PhaseLockSubmodule extends AbstractCelestweaveArmorSubmodule 
     public int tickActive(@Nullable Player player, Dist dist, ItemStack armor) {
         if (player != null && dist == Dist.DEDICATED_SERVER) {
             updateMovementProtection(player, armor);
+            updateFlightLock(player);
         }
         return 0;
     }
@@ -78,6 +92,7 @@ public final class PhaseLockSubmodule extends AbstractCelestweaveArmorSubmodule 
     public List<CelestweaveArmorSubmoduleConfig> getConfigs(ItemStack armor) {
         return List.of(
                 armorLockConfig(armor),
+                flightLockConfig(armor),
                 blockExternalForcesConfig(armor),
                 blockExternalTeleportsConfig(armor));
     }
@@ -85,6 +100,7 @@ public final class PhaseLockSubmodule extends AbstractCelestweaveArmorSubmodule 
     @Override
     public boolean setConfig(ItemStack armor, String key, @Nullable Tag value) {
         if (!ARMOR_LOCK_CONFIG_KEY.equals(key)
+                && !FLIGHT_LOCK_CONFIG_KEY.equals(key)
                 && !BLOCK_EXTERNAL_FORCES_CONFIG_KEY.equals(key)
                 && !BLOCK_EXTERNAL_TELEPORTS_CONFIG_KEY.equals(key)) {
             return false;
@@ -97,6 +113,37 @@ public final class PhaseLockSubmodule extends AbstractCelestweaveArmorSubmodule 
 
     public static boolean isArmorLockEnabled(ItemStack armor) {
         return booleanOption(armor, ARMOR_LOCK_CONFIG_KEY);
+    }
+
+    public static boolean isFlightLockEnabled(ItemStack armor) {
+        return booleanOption(armor, FLIGHT_LOCK_CONFIG_KEY);
+    }
+
+    /**
+     * Flight lock exists only while its chest module is active and some flight source is available.
+     * NeoForge's mayFly contract (game mode or CREATIVE_FLIGHT attribute) and either enabled
+     * Celestweave flight module are equivalent sources; this policy never grants flight itself.
+     */
+    public static boolean isFlightLockEnabled(Player player) {
+        return isFlightLockConfigured(player) && hasFlightSource(player);
+    }
+
+    private static boolean hasFlightSource(Player player) {
+        return hasCreativeFlightSource(player) || PhaseWingFlight.canUse(player);
+    }
+
+    public static boolean hasCreativeFlightSource(Player player) {
+        return player != null && ((IPlayerExtension) player).mayFly();
+    }
+
+    public static boolean isFlightLockConfigured(Player player) {
+        if (player == null) {
+            return false;
+        }
+        ItemStack chest = CelestweaveEquipmentAccess.findArmor(player, EquipmentSlot.CHEST);
+        return !chest.isEmpty()
+                && CelestweaveArmorState.isSubmoduleRuntimeActive(chest, INSTANCE.id())
+                && isFlightLockEnabled(chest);
     }
 
     public static boolean blocksExternalForces(ItemStack armor) {
@@ -112,6 +159,13 @@ public final class PhaseLockSubmodule extends AbstractCelestweaveArmorSubmodule 
                 ARMOR_LOCK_CONFIG_KEY,
                 "ae2lt.celestweave.config.phase_armor_lock",
                 isArmorLockEnabled(armor));
+    }
+
+    private CelestweaveArmorSubmoduleConfig flightLockConfig(ItemStack armor) {
+        return booleanConfig(
+                FLIGHT_LOCK_CONFIG_KEY,
+                "ae2lt.celestweave.config.flight_lock",
+                isFlightLockEnabled(armor));
     }
 
     private CelestweaveArmorSubmoduleConfig blockExternalForcesConfig(ItemStack armor) {
@@ -147,5 +201,24 @@ public final class PhaseLockSubmodule extends AbstractCelestweaveArmorSubmodule 
                 player,
                 blocksExternalForces(armor),
                 blocksExternalTeleports(armor));
+    }
+
+    private static void updateFlightLock(Player player) {
+        boolean wasFlightLocked = PhaseFlightPlayerState.isFlightLocked(player);
+        boolean flightSourceAvailable = hasFlightSource(player);
+        boolean flightLockEnabled = isFlightLockEnabled(player);
+        if (flightLockEnabled) {
+            PhaseFlightPlayerState.activate(player);
+        }
+        PhaseFlightPlayerState.setFlightLocked(player, flightLockEnabled);
+        if (!flightLockEnabled && !PhaseWingFlight.canUse(player)) {
+            if (!flightSourceAvailable && PhaseFlightPlayerState.isControlled(player)) {
+                PhaseFlightPlayerState.synchronizeFlying(player, false);
+            }
+            PhaseFlightPlayerState.endControl(player);
+        }
+        if (wasFlightLocked != flightLockEnabled && player instanceof ServerPlayer serverPlayer) {
+            CelestweaveArmorState.syncFlightSettingsToClient(serverPlayer);
+        }
     }
 }

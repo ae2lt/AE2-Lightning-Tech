@@ -10,12 +10,14 @@ import org.junit.jupiter.api.Test;
 
 final class PhaseWingFlightSourceContractTest {
     @Test
-    void phaseModuleProvidesElytraCapabilityThroughBothChestRepresentations() throws Exception {
-        String moduleItem = read("src/main/java/com/moakiee/ae2lt/item/PhaseFlightSubmoduleItem.java");
+    void bothFlightModulesProvideElytraCapabilityThroughBothChestRepresentations() throws Exception {
+        String flightModuleItem = read("src/main/java/com/moakiee/ae2lt/item/FlightSubmoduleItem.java");
+        String phaseModuleItem = read("src/main/java/com/moakiee/ae2lt/item/PhaseFlightSubmoduleItem.java");
         String chest = read("src/main/java/com/moakiee/ae2lt/item/CelestweaveCoreItem.java");
         String projection = read("src/main/java/com/moakiee/ae2lt/item/PhaseLockProjectionItem.java");
 
-        assertTrue(moduleItem.contains("new DeviceCapability.ElytraFlight()"));
+        assertTrue(flightModuleItem.contains("new DeviceCapability.ElytraFlight()"));
+        assertTrue(phaseModuleItem.contains("new DeviceCapability.ElytraFlight()"));
         assertTrue(chest.contains("canElytraFly"));
         assertTrue(chest.contains("elytraFlightTick"));
         assertTrue(projection.contains("equipmentSlot == EquipmentSlot.CHEST"));
@@ -32,7 +34,7 @@ final class PhaseWingFlightSourceContractTest {
         assertTrue(client.contains("jumpHeld == lastJumpHeld"));
         assertTrue(client.contains("PhaseFlightInputPacket.jump(jumpHeld)"));
         assertTrue(packet.contains("PhaseFlightPlayerState.setJumpHeld"));
-        assertTrue(rules.contains("phaseModuleActive && jumpHeld && shiftHeld"));
+        assertTrue(rules.contains("flightControlActive && jumpHeld && shiftHeld"));
         assertTrue(network.contains("PhaseFlightInputPacket.TYPE"));
     }
 
@@ -68,21 +70,51 @@ final class PhaseWingFlightSourceContractTest {
 
     @Test
     void oneFlightLockControlsLandingAndExternalStateReconciliation() throws Exception {
-        String module = read("src/main/java/com/moakiee/ae2lt/celestweave/module/PhaseFlightSubmodule.java");
+        String phaseModule = read("src/main/java/com/moakiee/ae2lt/celestweave/module/PhaseFlightSubmodule.java");
+        String lockModule = read("src/main/java/com/moakiee/ae2lt/celestweave/module/PhaseLockSubmodule.java");
         String state = read("src/main/java/com/moakiee/ae2lt/celestweave/PhaseFlightPlayerState.java");
         String clientMixin = read("src/main/java/com/moakiee/ae2lt/mixin/client/LocalPlayerPhaseMovementMixin.java");
+        String clientHandler = read("src/main/java/com/moakiee/ae2lt/client/ClientPhaseFlightHandler.java");
+        String inputPacket = read("src/main/java/com/moakiee/ae2lt/network/PhaseFlightInputPacket.java");
+        String settingsPacket = read("src/main/java/com/moakiee/ae2lt/network/FlightInertiaSyncPacket.java");
         String menu = read("src/main/java/com/moakiee/ae2lt/menu/hub/DeviceHubMenu.java");
         String mixins = read("src/main/resources/ae2lt.mixins.json");
 
-        assertTrue(module.contains("FLIGHT_LOCK_CONFIG_KEY = \"flight_lock\""));
-        assertTrue(module.contains("PhaseFlightPlayerState.setFlightLocked"));
+        assertTrue(lockModule.contains("FLIGHT_LOCK_CONFIG_KEY = \"flight_lock\""));
+        assertTrue(lockModule.contains("isSubmoduleRuntimeActive(chest, INSTANCE.id())"));
+        assertTrue(lockModule.contains("((IPlayerExtension) player).mayFly()"));
+        assertTrue(lockModule.contains("|| PhaseWingFlight.canUse(player)"));
+        assertFalse(phaseModule.contains("FLIGHT_LOCK_CONFIG_KEY"));
+        assertTrue(phaseModule.contains("PhaseLockSubmodule.isFlightLockEnabled(player)"));
         assertTrue(state.contains("ae2lt$isPhaseFlightLocked"));
         assertTrue(state.contains("access.ae2lt$setPhaseFlying(access.ae2lt$getVanillaFlying())"));
         assertTrue(state.contains("access.ae2lt$setVanillaFlying(access.ae2lt$isPhaseFlying())"));
         assertTrue(clientMixin.contains("preserveFlightOnLanding"));
         assertTrue(clientMixin.contains("useSinglePhaseFlightInputPath"));
-        assertTrue(menu.contains("PhaseFlightSubmodule.FLIGHT_LOCK_CONFIG_KEY.equals(config.key())"));
+        assertTrue(clientHandler.contains("flightModuleActive || PhaseFlightPlayerState.isFlightLocked(player)"));
+        assertTrue(inputPacket.contains("!flightModuleActive && !flightLockActive"));
+        assertTrue(settingsPacket.contains("payload.flightControlActive() || payload.flightLockEnabled()"));
+        assertTrue(menu.contains("PhaseLockSubmodule.FLIGHT_LOCK_CONFIG_KEY.equals(config.key())"));
         assertFalse(mixins.contains("DraconicChargeUpPhaseFlightMixin"));
+    }
+
+    @Test
+    void creativeFlightUsesSharedControlsWithoutLocalPhaseOrLockConfig() throws Exception {
+        String module = read("src/main/java/com/moakiee/ae2lt/celestweave/module/FlightSubmodule.java");
+        String state = read("src/main/java/com/moakiee/ae2lt/celestweave/CelestweaveArmorState.java");
+        String recipe = read("src/main/resources/data/ae2lt/recipe/lightning_assembly/module_creative_flight.json");
+
+        assertTrue(module.contains("return List.of(speedConfig(armor), inertiaConfig(armor))"));
+        assertTrue(module.contains("PhaseLockSubmodule.isFlightLockEnabled(player)"));
+        assertTrue(module.contains("PhaseWingFlight.tickThrust(player)"));
+        assertFalse(module.contains("tickElytraBoost"));
+        assertFalse(module.contains("PHASE_MODE_CONFIG_KEY"));
+        assertFalse(module.contains("FLIGHT_LOCK_CONFIG_KEY"));
+        assertTrue(state.contains("boolean flightControlActive = flightActive || phaseFlightActive"));
+        assertTrue(state.contains("boolean flightLockActive = PhaseLockSubmodule.isFlightLockConfigured(player)"));
+        assertTrue(state.contains("flightControlActive || PhaseLockSubmodule.hasCreativeFlightSource(player)"));
+        assertTrue(recipe.contains("\"item\": \"minecraft:elytra\""));
+        assertTrue(recipe.contains("\"count\": 1"));
     }
 
     private static String read(String path) throws Exception {

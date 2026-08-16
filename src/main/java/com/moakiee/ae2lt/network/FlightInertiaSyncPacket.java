@@ -13,10 +13,10 @@ import com.moakiee.ae2lt.celestweave.PhaseFlightPlayerState;
 public record FlightInertiaSyncPacket(
         UUID armorId,
         boolean inertiaEnabled,
-        boolean phaseFlightActive,
-        boolean phaseFlying,
+        boolean flightControlActive,
+        boolean flying,
         boolean phaseModeEnabled,
-        boolean phaseFlightLockEnabled)
+        boolean flightLockEnabled)
         implements CustomPacketPayload {
 
     public static final Type<FlightInertiaSyncPacket> TYPE =
@@ -43,10 +43,10 @@ public record FlightInertiaSyncPacket(
     public void write(RegistryFriendlyByteBuf buf) {
         buf.writeUUID(armorId);
         buf.writeBoolean(inertiaEnabled);
-        buf.writeBoolean(phaseFlightActive);
-        buf.writeBoolean(phaseFlying);
+        buf.writeBoolean(flightControlActive);
+        buf.writeBoolean(flying);
         buf.writeBoolean(phaseModeEnabled);
-        buf.writeBoolean(phaseFlightLockEnabled);
+        buf.writeBoolean(flightLockEnabled);
     }
 
     public static void handle(FlightInertiaSyncPacket payload, IPayloadContext context) {
@@ -56,10 +56,10 @@ public record FlightInertiaSyncPacket(
                     payload.inertiaEnabled(),
                     payload.phaseModeEnabled());
             var player = context.player();
-            if (payload.phaseFlightActive()) {
+            if (payload.flightControlActive() || payload.flightLockEnabled()) {
                 PhaseFlightPlayerState.activate(player);
-                PhaseFlightPlayerState.setFlightLocked(player, payload.phaseFlightLockEnabled());
-                PhaseFlightPlayerState.synchronizeFlying(player, payload.phaseFlying());
+                PhaseFlightPlayerState.setFlightLocked(player, payload.flightLockEnabled());
+                PhaseFlightPlayerState.synchronizeFlying(player, payload.flying());
             } else {
                 PhaseFlightPlayerState.endControl(player);
             }

@@ -10,8 +10,9 @@ import com.moakiee.ae2lt.celestweave.PhaseFlightControlRules;
 import com.moakiee.ae2lt.celestweave.PhaseFlightMovementGuard;
 import com.moakiee.ae2lt.celestweave.PhaseFlightPlayerState;
 import com.moakiee.ae2lt.celestweave.PhaseWingFlight;
+import com.moakiee.ae2lt.celestweave.module.PhaseLockSubmodule;
 
-/** Edge-triggered phase-flight input. Hover intent is present only for a vanilla double-jump. */
+/** Edge-triggered shared flight input. Hover intent is present only for a vanilla double-jump. */
 public record PhaseFlightInputPacket(boolean jumpHeld, boolean hasFlightInput, boolean flying)
         implements CustomPacketPayload {
     public static final Type<PhaseFlightInputPacket> TYPE =
@@ -48,11 +49,13 @@ public record PhaseFlightInputPacket(boolean jumpHeld, boolean hasFlightInput, b
             if (!(context.player() instanceof ServerPlayer player)) {
                 return;
             }
-            boolean canUse = PhaseWingFlight.canUse(player);
-            PhaseFlightPlayerState.setJumpHeld(player, packet.jumpHeld() && canUse);
-            if (!canUse || !packet.hasFlightInput()) {
+            boolean flightModuleActive = PhaseWingFlight.canUse(player);
+            boolean flightLockActive = PhaseLockSubmodule.isFlightLockEnabled(player);
+            PhaseFlightPlayerState.setJumpHeld(player, packet.jumpHeld() && flightModuleActive);
+            if (!packet.hasFlightInput() || !flightModuleActive && !flightLockActive) {
                 return;
             }
+            PhaseFlightPlayerState.activate(player);
             boolean requestedFlying = packet.flying();
             if (PhaseFlightControlRules.rejectFlightToggle(
                     PhaseFlightMovementGuard.isPhaseModeEnabled(player),

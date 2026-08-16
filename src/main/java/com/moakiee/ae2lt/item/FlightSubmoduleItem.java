@@ -17,6 +17,7 @@ public final class FlightSubmoduleItem extends AbstractSingleArmorSubmoduleItem 
                 FlightSubmodule.INSTANCE,
                 stack -> List.of(
                         new DeviceCapability.FlightMode(FlightKind.CREATIVE),
+                        new DeviceCapability.ElytraFlight(),
                         new DeviceCapability.PassiveDrain(ArmorOverloadRules.FLIGHT_HOVER_DRAIN_FE)));
     }
 }

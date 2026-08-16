@@ -10,11 +10,12 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
 
 import com.moakiee.ae2lt.celestweave.ArmorFlightSpeedRules;
 import com.moakiee.ae2lt.celestweave.CelestweaveArmorState;
+import com.moakiee.ae2lt.celestweave.PhaseFlightPlayerState;
+import com.moakiee.ae2lt.celestweave.PhaseWingFlight;
 
 public final class FlightSubmodule extends AbstractCelestweaveArmorSubmodule {
 
@@ -77,18 +78,8 @@ public final class FlightSubmodule extends AbstractCelestweaveArmorSubmodule {
     @Override
     public int tickActive(@Nullable Player player, Dist dist, ItemStack armor) {
         if (player != null && dist == Dist.DEDICATED_SERVER) {
-            if (!player.getAbilities().mayfly) {
-                grantFlight(player, armor);
-            } else {
-                updateAbilitiesIfChanged(
-                        player,
-                        true,
-                        player.getAbilities().flying,
-                        ArmorFlightSpeedRules.activeFlightSpeed(armor));
-            }
-            if (player.isFallFlying() && player.isSprinting()) {
-                tickElytraBoost(player, armor);
-            }
+            maintainFlight(player, armor);
+            PhaseWingFlight.tickThrust(player);
         }
         return 0;
     }
@@ -162,21 +153,12 @@ public final class FlightSubmodule extends AbstractCelestweaveArmorSubmodule {
         return FlightSpeedOption.fromTag(options.get(FlightSpeedOption.CONFIG_KEY));
     }
 
-    private static void tickElytraBoost(Player player, ItemStack armor) {
-        Vec3 look = player.getLookAngle();
-        Vec3 motion = player.getDeltaMovement();
-        Vec3 boosted = motion.add(look.scale(0.03D));
-        double maxSpeedSqr = 9.0D;
-        if (boosted.lengthSqr() > maxSpeedSqr) {
-            boosted = boosted.normalize().scale(3.0D);
-        }
-        player.setDeltaMovement(boosted);
-        player.hurtMarked = true;
-    }
-
     private static void grantFlight(Player player, ItemStack armor) {
         var abilities = player.getAbilities();
         var data = CelestweaveArmorState.getSubmoduleData(armor, INSTANCE);
+        PhaseFlightPlayerState.activate(player);
+        // This module owns no lock setting; the independent chest phase-lock module may lock it.
+        PhaseFlightPlayerState.setFlightLocked(player, PhaseLockSubmodule.isFlightLockEnabled(player));
         if (!data.contains(TAG_HAD_MAYFLY, CompoundTag.TAG_BYTE)) {
             data.putBoolean(TAG_HAD_MAYFLY, abilities.mayfly);
             data.putBoolean(TAG_WAS_FLYING, abilities.flying);
@@ -187,12 +169,24 @@ public final class FlightSubmodule extends AbstractCelestweaveArmorSubmodule {
         updateAbilitiesIfChanged(
                 player,
                 true,
-                abilities.flying,
+                PhaseFlightPlayerState.isFlying(player),
+                ArmorFlightSpeedRules.activeFlightSpeed(armor));
+    }
+
+    private static void maintainFlight(Player player, ItemStack armor) {
+        PhaseFlightPlayerState.activate(player);
+        PhaseFlightPlayerState.setFlightLocked(player, PhaseLockSubmodule.isFlightLockEnabled(player));
+        updateAbilitiesIfChanged(
+                player,
+                true,
+                PhaseFlightPlayerState.isFlying(player),
                 ArmorFlightSpeedRules.activeFlightSpeed(armor));
     }
 
     private static void revokeFlight(Player player, ItemStack armor) {
+        PhaseFlightPlayerState.setFlightLocked(player, false);
         restoreStoredAbilities(player, armor);
+        PhaseFlightPlayerState.endControl(player);
     }
 
     private static void restoreStoredAbilities(Player player, ItemStack armor) {

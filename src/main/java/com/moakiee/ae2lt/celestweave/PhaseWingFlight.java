@@ -22,7 +22,7 @@ public final class PhaseWingFlight {
             return false;
         }
         if (player.level().isClientSide()) {
-            return CelestweaveArmorState.isAnyClientPhaseFlightActive();
+            return CelestweaveArmorState.isAnyClientFlightControlActive();
         }
         for (var active : ArmorCapabilityCollector.collectPerInstalledStack(player)) {
             if (active.capability() instanceof DeviceCapability.ElytraFlight) {
