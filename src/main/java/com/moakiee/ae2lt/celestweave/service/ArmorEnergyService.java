@@ -412,7 +412,9 @@ public final class ArmorEnergyService {
     }
 
     private static boolean isMovingInFlight(ServerPlayer player) {
-        if (!player.getAbilities().flying && !PhaseFlightPlayerState.isFlying(player)) {
+        if (!player.getAbilities().flying
+                && !PhaseFlightPlayerState.isFlying(player)
+                && !player.isFallFlying()) {
             return false;
         }
         Vec3 motion = player.getDeltaMovement();

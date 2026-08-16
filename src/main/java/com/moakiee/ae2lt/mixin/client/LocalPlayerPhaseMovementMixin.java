@@ -1,59 +1,155 @@
 package com.moakiee.ae2lt.mixin.client;
 
+import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
+import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.world.entity.player.Abilities;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.neoforge.network.PacketDistributor;
 
 import com.moakiee.ae2lt.celestweave.PhaseFlightMovementGuard;
 import com.moakiee.ae2lt.celestweave.PhaseFlightControlRules;
 import com.moakiee.ae2lt.celestweave.PhaseFlightPlayerState;
 import com.moakiee.ae2lt.celestweave.CelestweaveArmorState;
+import com.moakiee.ae2lt.network.PhaseFlightInputPacket;
 
 /** Authorizes the vanilla space/shift vertical-flight impulse without authorizing world forces. */
 @Mixin(LocalPlayer.class)
 public abstract class LocalPlayerPhaseMovementMixin {
-    @Inject(
+    @ModifyExpressionValue(
+            method = "aiStep",
+            at = @At(
+                    value = "FIELD",
+                    target = "Lnet/minecraft/world/entity/player/Abilities;flying:Z",
+                    opcode = Opcodes.GETFIELD))
+    private boolean ae2lt$readEffectiveFlightState(boolean vanillaFlying) {
+        return PhaseFlightPlayerState.readEffectiveFlying(
+                (LocalPlayer) (Object) this,
+                vanillaFlying);
+    }
+
+    @Redirect(
+            method = "aiStep",
+            at = @At(
+                    value = "FIELD",
+                    target = "Lnet/minecraft/world/entity/player/Abilities;flying:Z",
+                    opcode = Opcodes.PUTFIELD,
+                    ordinal = 0))
+    private void ae2lt$rejectAlwaysFlyingOverride(Abilities abilities, boolean requestedFlying) {
+        LocalPlayer player = (LocalPlayer) (Object) this;
+        abilities.flying = PhaseFlightPlayerState.isFlightLocked(player)
+                ? PhaseFlightPlayerState.isFlying(player)
+                : requestedFlying;
+    }
+
+    @Redirect(
             method = "aiStep",
             at = @At(
                     value = "INVOKE",
                     target = "Lnet/minecraft/client/player/LocalPlayer;onUpdateAbilities()V",
-                    ordinal = 1,
-                    shift = At.Shift.BEFORE))
-    private void ae2lt$rejectPhaseFlightToggleInsideWall(CallbackInfo ci) {
+                    ordinal = 0))
+    private void ae2lt$syncAlwaysFlyingUnlessLocked(LocalPlayer player) {
+        if (!PhaseFlightPlayerState.isFlightLocked(player)) {
+            player.onUpdateAbilities();
+        }
+    }
+
+    @Redirect(
+            method = "aiStep",
+            at = @At(
+                    value = "FIELD",
+                    target = "Lnet/minecraft/world/entity/player/Abilities;flying:Z",
+                    opcode = Opcodes.PUTFIELD,
+                    ordinal = 1))
+    private void ae2lt$applyPhaseFlightInput(Abilities abilities, boolean requestedFlying) {
         LocalPlayer player = (LocalPlayer) (Object) this;
         if (!CelestweaveArmorState.isAnyClientPhaseFlightActive()) {
+            abilities.flying = requestedFlying;
             return;
         }
         PhaseFlightPlayerState.activate(player);
-        boolean requestedFlying = player.getAbilities().flying;
         if (PhaseFlightControlRules.rejectFlightToggle(
                 PhaseFlightMovementGuard.isPhaseModeEnabled(player),
                 PhaseFlightControlRules.intersectsWorldCollision(player),
                 requestedFlying)) {
             requestedFlying = true;
-            player.getAbilities().flying = true;
         }
-        PhaseFlightPlayerState.setFlying(player, requestedFlying);
+        if (requestedFlying && player.isFallFlying()) {
+            player.stopFallFlying();
+        }
+        PhaseFlightPlayerState.applyFlightInput(player, requestedFlying);
+        PacketDistributor.sendToServer(PhaseFlightInputPacket.flight(
+                PhaseFlightPlayerState.isJumpHeld(player),
+                requestedFlying));
     }
 
-    @Inject(
+    @Redirect(
             method = "aiStep",
             at = @At(
                     value = "INVOKE",
                     target = "Lnet/minecraft/client/player/LocalPlayer;onUpdateAbilities()V",
-                    ordinal = 2,
-                    shift = At.Shift.BEFORE))
-    private void ae2lt$keepPhaseFlightWhenTouchingGround(CallbackInfo ci) {
+                    ordinal = 1))
+    private void ae2lt$useSinglePhaseFlightInputPath(LocalPlayer player) {
+        if (!CelestweaveArmorState.isAnyClientPhaseFlightActive()) {
+            player.onUpdateAbilities();
+        }
+    }
+
+    @Redirect(
+            method = "aiStep",
+            at = @At(
+                    value = "FIELD",
+                    target = "Lnet/minecraft/world/entity/player/Abilities;flying:Z",
+                    opcode = Opcodes.PUTFIELD,
+                    ordinal = 2))
+    private void ae2lt$preserveLockedFlightOnLanding(Abilities abilities, boolean requestedFlying) {
         LocalPlayer player = (LocalPlayer) (Object) this;
-        if (PhaseFlightControlRules.suppressLandingExit(
-                PhaseFlightMovementGuard.isPhaseModeEnabled(player))) {
-            player.getAbilities().flying = true;
-            PhaseFlightPlayerState.setFlying(player, true);
+        if (PhaseFlightControlRules.preserveFlightOnLanding(
+                PhaseFlightPlayerState.isFlightLocked(player),
+                PhaseFlightMovementGuard.isPhaseModeEnabled(player),
+                PhaseFlightPlayerState.isFlying(player))) {
+            abilities.flying = PhaseFlightPlayerState.isFlying(player);
+        } else {
+            abilities.flying = requestedFlying;
+        }
+    }
+
+    @Redirect(
+            method = "aiStep",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/client/player/LocalPlayer;onUpdateAbilities()V",
+                    ordinal = 2))
+    private void ae2lt$syncLandingExitUnlessLocked(LocalPlayer player) {
+        if (!PhaseFlightControlRules.preserveFlightOnLanding(
+                PhaseFlightPlayerState.isFlightLocked(player),
+                PhaseFlightMovementGuard.isPhaseModeEnabled(player),
+                PhaseFlightPlayerState.isFlying(player))) {
+            player.onUpdateAbilities();
+        }
+    }
+
+    @Inject(method = "isCrouching", at = @At("HEAD"), cancellable = true)
+    private void ae2lt$exposePhaseFlightCrouchChord(CallbackInfoReturnable<Boolean> cir) {
+        LocalPlayer player = (LocalPlayer) (Object) this;
+        boolean crouchChord = PhaseFlightControlRules.isCrouchChord(
+                CelestweaveArmorState.isAnyClientPhaseFlightActive(),
+                PhaseFlightPlayerState.isJumpHeld(player),
+                player.isShiftKeyDown());
+        boolean groundCrouch = PhaseFlightControlRules.exposeGroundCrouch(
+                PhaseFlightPlayerState.isFlightLocked(player),
+                PhaseFlightMovementGuard.isPhaseModeEnabled(player),
+                PhaseFlightPlayerState.isFlying(player),
+                player.onGround(),
+                player.isShiftKeyDown());
+        if (crouchChord || groundCrouch) {
+            cir.setReturnValue(true);
         }
     }
 

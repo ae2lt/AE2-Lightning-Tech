@@ -24,7 +24,6 @@
     "ServerGamePacketListenerPhaseMovementMixin",
     "ServerPayloadContextPhaseTeleportMixin",
     "ServerGamePacketListenerCelestweaveCreativeSyncMixin",
-    "compat.DraconicChargeUpPhaseFlightMixin",
     "ControllerValidatorMixin",
     "ShulkerBulletMixin"
   ],

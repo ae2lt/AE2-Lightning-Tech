@@ -79,6 +79,9 @@ public sealed interface DeviceCapability {
     /** Flight mode. */
     record FlightMode(FlightKind kind) implements DeviceCapability {}
 
+    /** Allows the equipped chest item to act as an Elytra while this module is active. */
+    record ElytraFlight() implements DeviceCapability {}
+
     /** Optional no-clip traversal layered on top of an already active flight mode. */
     record PhaseTraversal(long activeFePerTick) implements DeviceCapability {
         public PhaseTraversal {

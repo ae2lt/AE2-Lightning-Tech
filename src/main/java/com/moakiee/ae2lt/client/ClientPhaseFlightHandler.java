@@ -6,17 +6,21 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
+import net.neoforged.neoforge.network.PacketDistributor;
 
 import com.moakiee.ae2lt.AE2LightningTech;
-import com.moakiee.ae2lt.celestweave.ArmorPhaseFlightRules;
 import com.moakiee.ae2lt.celestweave.CelestweaveArmorState;
 import com.moakiee.ae2lt.celestweave.PhaseFlightMovementGuard;
 import com.moakiee.ae2lt.celestweave.PhaseFlightControlRules;
 import com.moakiee.ae2lt.celestweave.PhaseFlightPlayerState;
+import com.moakiee.ae2lt.celestweave.PhaseWingFlight;
 import com.moakiee.ae2lt.celestweave.module.PhaseFlightSubmodule;
+import com.moakiee.ae2lt.network.PhaseFlightInputPacket;
 
 @EventBusSubscriber(modid = AE2LightningTech.MODID, value = Dist.CLIENT)
 public final class ClientPhaseFlightHandler {
+    private static boolean lastJumpHeld;
+
     private ClientPhaseFlightHandler() {
     }
 
@@ -31,14 +35,11 @@ public final class ClientPhaseFlightHandler {
         boolean phaseModuleActive = CelestweaveArmorState.isAnyClientPhaseFlightActive();
         if (phaseModuleActive) {
             PhaseFlightPlayerState.activate(player);
-            if (PhaseFlightPlayerState.isFlying(player)) {
-                // Bosses such as Draconic Evolution's guardian directly clear vanilla's public
-                // ability bit on both logical sides. Restore that projection from private intent.
-                PhaseFlightPlayerState.syncVanillaAbilities(player);
-            }
         } else {
             PhaseFlightPlayerState.endControl(player);
         }
+        syncJumpInput(minecraft, phaseModuleActive);
+        PhaseWingFlight.tickThrust(player);
         if (isClientPhaseActive(player)) {
             PhaseFlightSubmodule.applyTransientPhaseState(player);
             return;
@@ -57,6 +58,7 @@ public final class ClientPhaseFlightHandler {
 
     @SubscribeEvent
     public static void onLoggingOut(ClientPlayerNetworkEvent.LoggingOut event) {
+        lastJumpHeld = false;
         CelestweaveArmorState.clearClientActiveCache();
         PhaseFlightMovementGuard.clear(event.getPlayer());
         PhaseFlightPlayerState.endControl(event.getPlayer());
@@ -67,6 +69,7 @@ public final class ClientPhaseFlightHandler {
 
     @SubscribeEvent
     public static void onPlayerClone(ClientPlayerNetworkEvent.Clone event) {
+        lastJumpHeld = false;
         CelestweaveArmorState.clearClientActiveCache();
         PhaseFlightMovementGuard.clear(event.getOldPlayer());
         PhaseFlightMovementGuard.clear(event.getNewPlayer());
@@ -81,9 +84,18 @@ public final class ClientPhaseFlightHandler {
     }
 
     private static boolean isClientPhaseActive(net.minecraft.world.entity.player.Player player) {
-        return ArmorPhaseFlightRules.clientPhaseStateActive(
-                CelestweaveArmorState.isAnyClientPhaseFlightActive(),
-                PhaseFlightPlayerState.isFlying(player),
-                CelestweaveArmorState.getClientPhaseModeEnabled());
+        return CelestweaveArmorState.isAnyClientPhaseFlightActive()
+                && PhaseWingFlight.isFlightActive(player)
+                && CelestweaveArmorState.getClientPhaseModeEnabled();
+    }
+
+    private static void syncJumpInput(Minecraft minecraft, boolean phaseModuleActive) {
+        boolean jumpHeld = phaseModuleActive && minecraft.options.keyJump.isDown();
+        PhaseFlightPlayerState.setJumpHeld(minecraft.player, jumpHeld);
+        if (jumpHeld == lastJumpHeld) {
+            return;
+        }
+        lastJumpHeld = jumpHeld;
+        PacketDistributor.sendToServer(PhaseFlightInputPacket.jump(jumpHeld));
     }
 }

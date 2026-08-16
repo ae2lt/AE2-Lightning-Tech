@@ -153,6 +153,10 @@ public final class NetworkInit {
                 DashPacket.TYPE,
                 DashPacket.STREAM_CODEC,
                 DashPacket::handle);
+        registrar.playToServer(
+                PhaseFlightInputPacket.TYPE,
+                PhaseFlightInputPacket.STREAM_CODEC,
+                PhaseFlightInputPacket::handle);
 
         // Device Hub: C→S
         registrar.playToServer(

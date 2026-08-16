@@ -687,7 +687,8 @@ public final class CelestweaveArmorState {
                 phaseFlightActive && PhaseFlightPlayerState.isFlying(player),
                 phaseFlightActive
                         && AE2LTCommonConfig.overloadArmorPhaseFlightEnabled()
-                        && PhaseFlightSubmodule.isPhaseModeEnabled(armor)));
+                        && PhaseFlightSubmodule.isPhaseModeEnabled(armor),
+                phaseFlightActive && PhaseFlightSubmodule.isFlightLockEnabled(armor)));
     }
 
     public static void syncFlightInertiaToClientIfFlight(ServerPlayer player, ItemStack armor) {
