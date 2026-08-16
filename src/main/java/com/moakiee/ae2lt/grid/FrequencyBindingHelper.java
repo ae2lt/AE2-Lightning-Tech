@@ -209,13 +209,15 @@ public final class FrequencyBindingHelper
     }
 
     public int getGridUsedChannels() {
-        var grid = host.getFrequencyBindingBlockEntity().getMainNode().getGrid();
+        var grid = GridNodeAccess.getGridIfPresent(
+                host.getFrequencyBindingBlockEntity().getMainNode().getNode());
         if (grid == null) return 0;
         return OverloadedChannelOwnerHelper.countUsedChannels(grid);
     }
 
     public int getGridMaxChannels() {
-        var grid = host.getFrequencyBindingBlockEntity().getMainNode().getGrid();
+        var grid = GridNodeAccess.getGridIfPresent(
+                host.getFrequencyBindingBlockEntity().getMainNode().getNode());
         if (grid == null) return 0;
 
         var channelMode = grid.getPathingService().getChannelMode();
