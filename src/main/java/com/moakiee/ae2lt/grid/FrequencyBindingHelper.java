@@ -15,6 +15,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 
 import com.moakiee.ae2lt.blockentity.OverloadedControllerBlockEntity;
+import com.moakiee.ae2lt.grid.wirelesslink.MultiblockLinkReadiness;
 import com.moakiee.ae2lt.grid.wirelesslink.WirelessLinkOps;
 import com.moakiee.ae2lt.logic.MemoryCardConfigSupport;
 import com.moakiee.ae2lt.me.GridNodeAccess;
@@ -440,6 +441,10 @@ public final class FrequencyBindingHelper
             scheduleRetry();
             return;
         }
+        if (!MultiblockLinkReadiness.canKeepVirtualConnection(myNode)) {
+            scheduleRetry();
+            return;
+        }
 
         if (alreadyHasFrequencyChannel(myNode, remoteNode)) {
             return;
@@ -468,6 +473,9 @@ public final class FrequencyBindingHelper
 
         IGridNode myNode = host.getFrequencyBindingBlockEntity().getMainNode().getNode();
         WirelessLinkOps.destroy(virtualConnection, myNode);
+        if (myNode != null) {
+            MultiblockLinkReadiness.refreshAfterVirtualConnectionRemoved(myNode);
+        }
         virtualConnection = null;
     }
 
