@@ -36,6 +36,10 @@ class PhaseFlightMovementGuardSourceContractTest {
         assertTrue(guard.contains("frame.getMethodName().equals(\"handleMovePlayer\")"));
         assertTrue(guard.contains("frame.getMethodName().equals(\"handleCustomPayload\")"));
         assertTrue(guard.contains("PLAYER_PAYLOAD_TELEPORT_DEPTH"));
+        assertTrue(guard.contains("CommandSourceStack commandSource = COMMAND_SOURCE.get()"));
+        assertTrue(guard.contains("commandSource.getEntity() == player"));
+        assertTrue(guard.contains("commandSource.hasPermission(Commands.LEVEL_GAMEMASTERS)"));
+        assertTrue(guard.contains("AE2LTCommonConfig.overloadArmorPhaseLockTeleportMode()"));
         assertFalse(guard.contains("PhaseFlightSubmodule.hasTransientPhaseState(player)"));
         assertFalse(guard.contains("isSubmoduleInstalled"));
         assertFalse(guard.contains("getPersistentData()"));
@@ -169,5 +173,22 @@ class PhaseFlightMovementGuardSourceContractTest {
         assertTrue(packetMixin.contains("ServerPlayer;absMoveTo(DDDFF)V"));
         assertTrue(packetMixin.contains("ae2lt$authorizeVanillaTickPositionRestore"));
         assertTrue(packetMixin.contains("PhaseFlightMovementGuard.runAsSelfMovement("));
+    }
+
+    @Test
+    void commandQueuesBindTheirInitiatingSourceWithFinallySafeCleanup() throws Exception {
+        String commandMixin = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/mixin/CommandsPhaseTeleportMixin.java"));
+        String guard = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/celestweave/PhaseFlightMovementGuard.java"));
+        String mixinConfig = Files.readString(Path.of("src/main/resources/ae2lt.mixins.json"));
+
+        assertTrue(commandMixin.contains("@Mixin(Commands.class)"));
+        assertTrue(commandMixin.contains("executeCommandInContext"));
+        assertTrue(commandMixin.contains("runAsCommandExecution("));
+        assertTrue(commandMixin.contains("CommandSourceStack source"));
+        assertTrue(guard.contains("CommandSourceStack previous = COMMAND_SOURCE.get()"));
+        assertTrue(guard.contains("COMMAND_SOURCE.remove()"));
+        assertTrue(mixinConfig.contains("CommandsPhaseTeleportMixin"));
     }
 }

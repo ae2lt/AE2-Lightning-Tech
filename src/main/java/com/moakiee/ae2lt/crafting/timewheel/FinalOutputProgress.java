@@ -1,11 +1,11 @@
 package com.moakiee.ae2lt.crafting.timewheel;
 
-/** Final-output accounting shared by the time-wheel CPU and its regression tests. */
-final class FinalOutputProgress {
+/** Final-output accounting shared by every AE2/AE2LT crafting CPU integration. */
+public final class FinalOutputProgress {
     private FinalOutputProgress() {
     }
 
-    static long completedAmount(boolean standalone, long offered, long requesterAccepted) {
+    public static long completedAmount(boolean standalone, long offered, long requesterAccepted) {
         long boundedOffered = Math.max(0L, offered);
         if (standalone) {
             return boundedOffered;
@@ -17,13 +17,26 @@ final class FinalOutputProgress {
      * Amount a requester job must retain in the CPU and retry later. Standalone jobs deliberately
      * leave their unaccepted output in the current ME insertion chain instead.
      */
-    static long deferredRequesterAmount(boolean standalone, long offered, long requesterAccepted) {
+    public static long deferredRequesterAmount(
+            boolean standalone, long offered, long requesterAccepted) {
         if (standalone) {
             return 0L;
         }
         long boundedOffered = Math.max(0L, offered);
         long boundedAccepted = Math.min(boundedOffered, Math.max(0L, requesterAccepted));
         return boundedOffered - boundedAccepted;
+    }
+
+    /** Amount the current insertion chain must consider physically consumed. */
+    public static long physicallyAcceptedAmount(
+            long inventoryAccepted,
+            long completedRequesterAmount,
+            long requesterAccepted) {
+        long boundedInventory = Math.max(0L, inventoryAccepted);
+        long boundedRequester = Math.min(
+                Math.max(0L, completedRequesterAmount),
+                Math.max(0L, requesterAccepted));
+        return addSaturated(boundedInventory, boundedRequester);
     }
 
     /**

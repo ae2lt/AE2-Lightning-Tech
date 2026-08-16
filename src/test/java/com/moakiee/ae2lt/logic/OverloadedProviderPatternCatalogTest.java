@@ -63,6 +63,22 @@ class OverloadedProviderPatternCatalogTest {
         assertEquals(0, wrapper.hashCalls);
     }
 
+    @Test
+    void persistenceSlotIndexUsesTheCanonicalPatternIdentity() {
+        var equalityCalls = new AtomicInteger();
+        var first = new LogicalPattern("same", equalityCalls);
+        var duplicate = new LogicalPattern("same", equalityCalls);
+        var catalog = new OverloadedProviderPatternCatalog();
+
+        catalog.register(first, 3);
+        catalog.register(duplicate, 7);
+
+        assertSame(first, catalog.patternAtSlot(3));
+        assertSame(first, catalog.patternAtSlot(7));
+        assertEquals(3, catalog.slotOf(first));
+        assertEquals(3, catalog.slotOf(catalog.resolve(duplicate)));
+    }
+
     private static class ExplosiveEqualityPattern
             implements IPatternDetails {
         @Override

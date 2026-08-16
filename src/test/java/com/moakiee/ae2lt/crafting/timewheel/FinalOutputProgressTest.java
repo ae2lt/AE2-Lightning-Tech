@@ -24,6 +24,14 @@ class FinalOutputProgressTest {
     }
 
     @Test
+    void progressCompletionDoesNotPretendStorageAcceptedTheOutput() {
+        assertEquals(0L, FinalOutputProgress.physicallyAcceptedAmount(0L, 10L, 0L));
+        assertEquals(7L, FinalOutputProgress.physicallyAcceptedAmount(3L, 4L, 4L));
+        assertEquals(Long.MAX_VALUE, FinalOutputProgress.physicallyAcceptedAmount(
+                Long.MAX_VALUE, 1L, 1L));
+    }
+
+    @Test
     void terminalRecoveryNeverConsumesProtectedSeedOrRetainedOutput() {
         assertEquals(64L,
                 FinalOutputProgress.recoverableInventoryAmount(192L, 64L, 64L, 128L));

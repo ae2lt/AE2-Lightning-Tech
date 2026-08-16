@@ -22,6 +22,7 @@ import appeng.core.localization.ButtonToolTips;
 import appeng.core.localization.Tooltips;
 import appeng.core.definitions.AEItems;
 import appeng.core.network.ServerboundPacket;
+import appeng.core.network.bidirectional.ConfigValuePacket;
 import appeng.core.network.serverbound.InventoryActionPacket;
 import appeng.helpers.InventoryAction;
 import appeng.menu.SlotSemantics;
@@ -225,8 +226,6 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
                 processing, hasDraftInput, "overload");
         boolean closedLoop = selected == TianshuEncodingMode.CLOSED_LOOP;
         closedLoopPanel.setVisible(closedLoop);
-        setSlotsHidden(Ae2ltSlotSemantics.TIANSHU_CLOSED_LOOP_EXTERNAL_INPUT, true);
-        setSlotsHidden(Ae2ltSlotSemantics.TIANSHU_CLOSED_LOOP_SEED_INPUT, true);
         setSlotsHidden(Ae2ltSlotSemantics.TIANSHU_GLOBAL_RESERVE_MARK, true);
     }
 
@@ -283,6 +282,14 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
         }
     }
 
+    /** Opens the provider picker immediately after a recipe viewer restores this parent screen. */
+    public boolean openDirectUploadFallback() {
+        if (!menu.consumeTriggeredUpload()) return false;
+        if (!menu.consumeDirectUploadRequest()) return false;
+        switchToScreen(new TianshuUploadTargetScreen<>(this, true));
+        return true;
+    }
+
     private TianshuViewModeButton replaceViewModeButton() {
         var toolbar = ((AEBaseScreenAccessor) this).ae2lt$getVerticalToolbar();
         var buttons = ((VerticalButtonBarAccessor) toolbar).ae2lt$getButtons();
@@ -322,8 +329,13 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
             menu.getConfigManager().putSetting(Settings.VIEW_MODE, ViewItems.ALL);
             menu.setMaintainableView(true);
         } else {
-            menu.getConfigManager().putSetting(Settings.VIEW_MODE, next);
+            setViewMode(next);
         }
+    }
+
+    private void setViewMode(ViewItems viewMode) {
+        menu.getConfigManager().putSetting(Settings.VIEW_MODE, viewMode);
+        PacketDistributor.sendToServer(new ConfigValuePacket(Settings.VIEW_MODE, viewMode));
     }
 
     private final class TianshuViewModeButton extends IconButton {

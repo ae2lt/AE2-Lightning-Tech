@@ -5,6 +5,7 @@
   "compatibilityLevel": "JAVA_21",
   "mixins": [
     "ServerLevelMixin",
+    "AEBaseMenuManagedSlotClickMixin",
     "AnnihilationPlaneFirmamentDustMixin",
     "PatternProviderLogicAccessor",
     "PatternProviderLogicMixin",
@@ -16,6 +17,7 @@
     "ServerPlayerUndyingMixin",
     "ServerPlayerPhaseMovementMixin",
     "EntityPhaseMovementMixin",
+    "CommandsPhaseTeleportMixin",
     "PlayerPhaseFlightMixin",
     "BlockItemPhasePlacementMixin",
     "ServerGamePacketListenerPhaseMovementMixin",
@@ -32,7 +34,7 @@
     "thunderbolt.AdvCraftingCpuLogicMixin",
     "thunderbolt.ECOCraftingCpuLogicMixin",
     "ControllerValidatorMixin",
-    "AnnihilationPlaneShulkerMixin"
+    "ShulkerBulletMixin"
   ],
   "client": [
     "client.CableBusRenderStateMixin",

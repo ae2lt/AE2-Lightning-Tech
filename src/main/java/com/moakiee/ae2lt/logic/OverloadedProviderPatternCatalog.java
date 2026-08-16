@@ -2,6 +2,7 @@ package com.moakiee.ae2lt.logic;
 
 import java.lang.ref.WeakReference;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -46,6 +47,12 @@ final class OverloadedProviderPatternCatalog {
     private final Map<IPatternDetails, Registration> registeredByEquality =
             new WeakHashMap<>();
 
+    /** Stable inventory-slot bridge used only for save/load bookkeeping. */
+    private final Map<IPatternDetails, Integer> slotByCanonicalIdentity =
+            new IdentityHashMap<>();
+    private final Map<Integer, IPatternDetails> canonicalBySlot =
+            new HashMap<>();
+
     void rebuild(
             AppEngInternalInventory inventory,
             Level level,
@@ -64,7 +71,7 @@ final class OverloadedProviderPatternCatalog {
             }
 
             visiblePatterns.add(details);
-            register(details, previousRegistrations);
+            register(details, previousRegistrations, slot);
             for (var input : details.getInputs()) {
                 for (var possibleInput : input.getPossibleInputs()) {
                     patternInputs.add(possibleInput.what().dropSecondary());
@@ -111,15 +118,22 @@ final class OverloadedProviderPatternCatalog {
     void clear() {
         resolvedByIdentity.clear();
         registeredByEquality.clear();
+        slotByCanonicalIdentity.clear();
+        canonicalBySlot.clear();
     }
 
     void register(IPatternDetails details) {
-        register(details, Map.of());
+        register(details, Map.of(), -1);
+    }
+
+    void register(IPatternDetails details, int slot) {
+        register(details, Map.of(), slot);
     }
 
     private void register(
             IPatternDetails details,
-            Map<IPatternDetails, Registration> previousRegistrations) {
+            Map<IPatternDetails, Registration> previousRegistrations,
+            int slot) {
         // Preserve the provider-owned representative across an equivalent
         // decode/rebuild only while another owner still retains it. This
         // comparison is off the dispatch hot path.
@@ -141,6 +155,20 @@ final class OverloadedProviderPatternCatalog {
             registeredByEquality.put(details, registration);
         }
         resolvedByIdentity.put(details, canonicalDetails);
+        if (slot >= 0) {
+            canonicalBySlot.put(slot, canonicalDetails);
+            slotByCanonicalIdentity.putIfAbsent(canonicalDetails, slot);
+        }
+    }
+
+    int slotOf(IPatternDetails canonicalDetails) {
+        return slotByCanonicalIdentity.getOrDefault(
+                canonicalDetails, -1);
+    }
+
+    @Nullable
+    IPatternDetails patternAtSlot(int slot) {
+        return canonicalBySlot.get(slot);
     }
 
     /** A registration index entry that never owns either IPatternDetails object. */

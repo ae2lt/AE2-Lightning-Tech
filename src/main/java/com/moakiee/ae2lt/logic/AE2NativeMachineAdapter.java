@@ -7,6 +7,7 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Supplier;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -17,6 +18,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 
+import appeng.api.AECapabilities;
 import appeng.api.behaviors.ExternalStorageStrategy;
 import appeng.api.config.Actionable;
 import appeng.api.crafting.IPatternDetails;
@@ -163,6 +165,21 @@ final class AE2NativeMachineAdapter implements MachineAdapter {
     }
 
     @Override
+    public boolean canAccept(
+            ServerLevel level,
+            BlockPos pos,
+            Direction face,
+            IPatternDetails pattern,
+            @Nullable PatternProviderTarget cachedTarget) {
+        var machine = ICraftingMachine.of(level, pos, face);
+        if (machine != null && machine.acceptsPlans()) {
+            return true;
+        }
+        return cachedTarget != null
+                && pattern.supportsPushInputsToExternalInventory();
+    }
+
+    @Override
     public boolean supportsBatch(
             ServerLevel level, BlockPos pos, Direction face, IPatternDetails pattern) {
         return ICraftingMachine.of(level, pos, face) == null;
@@ -176,6 +193,33 @@ final class AE2NativeMachineAdapter implements MachineAdapter {
                                  boolean blocking, Set<AEKey> patternInputs,
                                  IActionSource source,
                                  @Nullable PatternProviderTarget cachedTarget) {
+        return pushCopies(
+                level,
+                pos,
+                face,
+                pattern,
+                inputs,
+                maxCopies,
+                PatternInputAcceptance.COMPLETE_BATCH,
+                blocking,
+                patternInputs,
+                source,
+                cachedTarget);
+    }
+
+    @Override
+    public PushResult pushCopies(
+            ServerLevel level,
+            BlockPos pos,
+            Direction face,
+            IPatternDetails pattern,
+            KeyCounter[] inputs,
+            int maxCopies,
+            PatternInputAcceptance inputAcceptance,
+            boolean blocking,
+            Set<AEKey> patternInputs,
+            IActionSource source,
+            @Nullable PatternProviderTarget cachedTarget) {
         long now = level.getGameTime();
         sweepStaleEntries(now);
         var be = level.getBlockEntity(pos);
@@ -214,8 +258,34 @@ final class AE2NativeMachineAdapter implements MachineAdapter {
             return PushResult.REJECTED;
         }
 
-        if (!adapterAcceptsCompleteBatch(target, plannedInputs)) {
+        return pushPlannedInputs(
+                target, plannedInputs, maxCopies, inputAcceptance);
+    }
+
+    static PushResult pushPlannedInputs(
+            PatternProviderTarget target,
+            List<GenericStack> plannedInputs,
+            int maxCopies,
+            PatternInputAcceptance inputAcceptance) {
+        if (!adapterAcceptsInputs(target, plannedInputs, inputAcceptance)) {
             return PushResult.REJECTED;
+        }
+
+        if (inputAcceptance == PatternInputAcceptance.VANILLA_SINGLE_COPY) {
+            if (maxCopies != 1) {
+                throw new IllegalArgumentException(
+                        "Vanilla provider dispatch must contain exactly one copy");
+            }
+            var overflow = new ArrayList<GenericStack>();
+            for (var input : plannedInputs) {
+                long inserted = target.insert(
+                        input.what(), input.amount(), Actionable.MODULATE);
+                if (inserted < input.amount()) {
+                    overflow.add(new GenericStack(
+                            input.what(), input.amount() - inserted));
+                }
+            }
+            return new PushResult(1, overflow);
         }
 
         var overflow = new ArrayList<GenericStack>();
@@ -253,16 +323,29 @@ final class AE2NativeMachineAdapter implements MachineAdapter {
             AllowedOutputFilter allowedOutputs,
             IActionSource source,
             OutputSink sink) {
-        var cached = resolveCache(level, pos, face);
-        if (cached == null) return OutputReturnResult.UNAVAILABLE;
+        // Match PatternProviderTarget's resolution order: a native MEStorage
+        // capability is the authoritative target. Only adapt platform item/fluid
+        // capabilities when no native storage exists. Scanning both could extract
+        // the same logical inventory twice when a block exposes both views.
+        var directStorage = resolveDirectStorage(level, pos, face);
+        var storages = preferredExtractionStorages(
+                directStorage,
+                () -> resolveExternalStorages(level, pos, face));
+        return extractOutputsFromStorages(
+                storages, allowedOutputs, source, sink);
+    }
 
-        var wrappers = cached.getWrappers(level.getGameTime());
-        if (wrappers == null) return OutputReturnResult.UNAVAILABLE;
+    static OutputReturnResult extractOutputsFromStorages(
+            List<MEStorage> storages,
+            AllowedOutputFilter allowedOutputs,
+            IActionSource source,
+            OutputSink sink) {
+        if (storages.isEmpty()) return OutputReturnResult.UNAVAILABLE;
 
         boolean extractedAny = false;
         boolean matchingOutputBlocked = false;
 
-        for (var wrapper : wrappers.values()) {
+        for (var storage : storages) {
             // TODO(perf): A 512-target Spark sample put getAvailableStacks at only
             // about 0.1 ms/t, so a discovery cache is not worth its state cost yet.
             // If this becomes material, keep a 100-tick cumulative key window,
@@ -274,7 +357,7 @@ final class AE2NativeMachineAdapter implements MachineAdapter {
             // so a reused buffer accumulates every key ever scanned and makes
             // reset/iteration cost grow unboundedly (was 77% of server tick).
             var scanBuffer = new KeyCounter();
-            wrapper.getAvailableStacks(scanBuffer);
+            storage.getAvailableStacks(scanBuffer);
 
             for (var entry : scanBuffer) {
                 var key = entry.getKey();
@@ -289,7 +372,7 @@ final class AE2NativeMachineAdapter implements MachineAdapter {
                     continue;
                 }
 
-                long taken = wrapper.extract(key, Math.min(cap, amount), Actionable.MODULATE, source);
+                long taken = storage.extract(key, Math.min(cap, amount), Actionable.MODULATE, source);
                 if (taken <= 0) {
                     matchingOutputBlocked = true;
                     continue;
@@ -300,7 +383,7 @@ final class AE2NativeMachineAdapter implements MachineAdapter {
                 if (leftover > 0) {
                     // Sink state changed between maxAccept and accept; try the
                     // machine first, then force the rest on the sink — never void.
-                    leftover -= wrapper.insert(key, leftover, Actionable.MODULATE, source);
+                    leftover -= storage.insert(key, leftover, Actionable.MODULATE, source);
                     if (leftover > 0) {
                         sink.acceptOverflow(key, leftover);
                     }
@@ -313,6 +396,44 @@ final class AE2NativeMachineAdapter implements MachineAdapter {
         return matchingOutputBlocked
                 ? OutputReturnResult.BLOCKED
                 : OutputReturnResult.EMPTY;
+    }
+
+    /**
+     * Select the same authoritative storage view AE2 uses for pattern dispatch.
+     * The fallback is deliberately lazy so blocks exposing native ME storage do
+     * not also resolve or scan their item/fluid capability facades.
+     */
+    static List<MEStorage> preferredExtractionStorages(
+            @Nullable MEStorage directStorage,
+            Supplier<List<MEStorage>> externalStorageFallback) {
+        return directStorage != null
+                ? List.of(directStorage)
+                : externalStorageFallback.get();
+    }
+
+    @Nullable
+    private static MEStorage resolveDirectStorage(
+            ServerLevel level, BlockPos pos, Direction face) {
+        var blockEntity = level.getBlockEntity(pos);
+        if (blockEntity == null) {
+            return null;
+        }
+        return level.getCapability(
+                AECapabilities.ME_STORAGE,
+                pos,
+                blockEntity.getBlockState(),
+                blockEntity,
+                face);
+    }
+
+    private List<MEStorage> resolveExternalStorages(
+            ServerLevel level, BlockPos pos, Direction face) {
+        var cached = resolveCache(level, pos, face);
+        if (cached == null) {
+            return List.of();
+        }
+        var wrappers = cached.getWrappers(level.getGameTime());
+        return wrappers == null ? List.of() : List.copyOf(wrappers.values());
     }
 
     // ---- helpers ----------------------------------------------------------------
@@ -352,12 +473,18 @@ final class AE2NativeMachineAdapter implements MachineAdapter {
         return planned;
     }
 
-    private static boolean adapterAcceptsCompleteBatch(
-            PatternProviderTarget target, List<GenericStack> plannedInputs) {
+    private static boolean adapterAcceptsInputs(
+            PatternProviderTarget target,
+            List<GenericStack> plannedInputs,
+            PatternInputAcceptance inputAcceptance) {
         for (var input : plannedInputs) {
             long simulated = target.insert(
                     input.what(), input.amount(), Actionable.SIMULATE);
-            if (input.amount() <= 0L || simulated < input.amount()) {
+            boolean accepted = inputAcceptance
+                            == PatternInputAcceptance.VANILLA_SINGLE_COPY
+                    ? simulated > 0L
+                    : input.amount() > 0L && simulated >= input.amount();
+            if (!accepted) {
                 return false;
             }
         }

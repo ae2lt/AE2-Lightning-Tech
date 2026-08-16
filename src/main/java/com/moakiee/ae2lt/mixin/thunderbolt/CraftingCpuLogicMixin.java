@@ -27,6 +27,7 @@ import appeng.me.cluster.implementations.CraftingCPUCluster;
 
 import com.moakiee.thunderbolt.core.crafting.support.CraftingPatternDelegates;
 import com.moakiee.ae2lt.mixin.thunderbolt.accessor.CraftingCpuLogicAccessor;
+import com.moakiee.ae2lt.crafting.timewheel.FinalOutputProgress;
 import com.moakiee.ae2lt.mixin.thunderbolt.accessor.ElapsedTimeTrackerAccessor;
 import com.moakiee.ae2lt.mixin.thunderbolt.accessor.ExecutingCraftingJobAccessor;
 import com.moakiee.ae2lt.overload.runtime.cpu.InsertContext;
@@ -106,28 +107,36 @@ public abstract class CraftingCpuLogicMixin {
         long requesterLimit = Math.min(
                 preview.claimedForRequester(),
                 Math.max(0L, jobAccessor.ae2lt$getRemainingAmount()));
-        long requesterAccepted = requesterLimit;
+        long requesterAccepted = 0L;
         if (requesterLimit > 0) {
             requesterAccepted = link != null
                     ? link.insert(what, requesterLimit, type) : 0L;
         }
-        var claims = preview.partitionRequester(requesterLimit, requesterAccepted);
+        long requesterCompleted = FinalOutputProgress.completedAmount(
+                true, requesterLimit, requesterAccepted);
+        var claims = preview.partitionRequester(requesterLimit, requesterCompleted);
         if (type == Actionable.MODULATE) {
             claims = OverloadCpuStateManager.INSTANCE.commitPreview(logic, claims);
         }
         if (!claims.claimedAnything()) return;
 
-        long supplementalReturn = 0;
         if (type == Actionable.MODULATE) {
             ae2lt$deductClaimedWaitingFor(job, claims);
-            supplementalReturn += ae2lt$applyInventoryClaims(what, claims);
-            supplementalReturn += ae2lt$applyRequesterClaims(what, claims);
+            long inventoryAccepted = ae2lt$applyInventoryClaims(what, claims);
+            ae2lt$applyRequesterClaims(what, claims);
+            long supplementalReturn = FinalOutputProgress.physicallyAcceptedAmount(
+                    inventoryAccepted,
+                    claims.claimedForRequester(),
+                    requesterAccepted);
             cluster.markDirty();
+            cir.setReturnValue(cir.getReturnValue() + supplementalReturn);
         } else {
-            supplementalReturn += claims.claimedAmount();
+            long simulatedReturn = FinalOutputProgress.physicallyAcceptedAmount(
+                    claims.claimedForInventory(),
+                    claims.claimedForRequester(),
+                    requesterAccepted);
+            cir.setReturnValue(cir.getReturnValue() + simulatedReturn);
         }
-
-        cir.setReturnValue(cir.getReturnValue() + supplementalReturn);
     }
 
     @WrapOperation(
@@ -144,34 +153,34 @@ public abstract class CraftingCpuLogicMixin {
         var providerDetails = CraftingPatternDelegates.forProviderLookup(details);
         var overloadDetails = providerDetails instanceof OverloadedProviderOnlyPatternDetails overload
                 ? overload : null;
-        if (overloadDetails == null
-                && OverloadCpuInsertSupport.hasPendingCollisionWithOrdinaryPattern(logic, details)) {
+        if (overloadDetails == null) {
+            if (OverloadCpuInsertSupport.hasPendingCollisionWithOrdinaryPattern(logic, details)) {
+                return false;
+            }
+            return original.call(provider, details, inputHolder);
+        }
+
+        var activeJob = ((CraftingCpuLogicAccessor) logic).ae2lt$getJob();
+        if (activeJob == null
+                || OverloadCpuInsertSupport.hasStrictCollisionWithOverloadPattern(
+                        logic,
+                        details,
+                        overloadDetails,
+                        ((ExecutingCraftingJobAccessor) activeJob).ae2lt$getWaitingFor().list)) {
             return false;
         }
-        OverloadPatternReference patternReference = null;
-        if (overloadDetails != null) {
-            var activeJob = ((CraftingCpuLogicAccessor) logic).ae2lt$getJob();
-            if (activeJob == null
-                    || OverloadCpuInsertSupport.hasStrictCollisionWithOverloadPattern(
-                            logic,
-                            details,
-                            overloadDetails,
-                            ((ExecutingCraftingJobAccessor) activeJob).ae2lt$getWaitingFor().list)) {
-                return false;
-            }
-            patternReference = new OverloadPatternReference(
-                    overloadDetails.overloadPatternIdentity(),
-                    overloadDetails.overloadPatternDetailsView().sourcePattern());
-            if (OverloadCpuStateManager.INSTANCE.hasAmbiguousOutputRegistration(
-                    logic,
-                    patternReference,
-                    overloadDetails.overloadPatternDetailsView())) {
-                return false;
-            }
+        var patternReference = new OverloadPatternReference(
+                overloadDetails.overloadPatternIdentity(),
+                overloadDetails.overloadPatternDetailsView().sourcePattern());
+        if (OverloadCpuStateManager.INSTANCE.hasAmbiguousOutputRegistration(
+                logic,
+                patternReference,
+                overloadDetails.overloadPatternDetailsView())) {
+            return false;
         }
 
         boolean pushed = original.call(provider, details, inputHolder);
-        if (pushed && overloadDetails != null) {
+        if (pushed) {
             var job = ((CraftingCpuLogicAccessor) logic).ae2lt$getJob();
             var finalOutput = job != null
                     ? ((ExecutingCraftingJobAccessor) job).ae2lt$getFinalOutput()
@@ -179,11 +188,7 @@ public abstract class CraftingCpuLogicMixin {
             var finalOutputKey = finalOutput != null ? finalOutput.what() : null;
             OverloadCpuStateManager.INSTANCE.registerExpectedOutputs(
                     logic,
-                    patternReference != null
-                            ? patternReference
-                            : new OverloadPatternReference(
-                                    overloadDetails.overloadPatternIdentity(),
-                                    overloadDetails.overloadPatternDetailsView().sourcePattern()),
+                    patternReference,
                     overloadDetails.overloadPatternDetailsView(),
                     details.getOutputs(),
                     finalOutputKey,
@@ -240,17 +245,17 @@ public abstract class CraftingCpuLogicMixin {
     }
 
     @Unique
-    private long ae2lt$applyRequesterClaims(AEKey incoming, OverloadClaimResult claims) {
+    private void ae2lt$applyRequesterClaims(AEKey incoming, OverloadClaimResult claims) {
         long claimed = claims.claimedForRequester();
         if (claimed <= 0) {
-            return 0;
+            return;
         }
 
         var logic = (appeng.crafting.execution.CraftingCpuLogic) (Object) this;
         var logicAccessor = (CraftingCpuLogicAccessor) logic;
         ExecutingCraftingJob job = logicAccessor.ae2lt$getJob();
         if (job == null) {
-            return 0;
+            return;
         }
 
         var jobAccessor = (ExecutingCraftingJobAccessor) job;
@@ -271,8 +276,6 @@ public abstract class CraftingCpuLogicMixin {
                 cluster.updateOutput(new GenericStack(finalOutput.what(), remaining));
             }
         }
-
-        return claimed;
     }
 
     @Unique

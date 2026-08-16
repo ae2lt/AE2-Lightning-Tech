@@ -33,9 +33,10 @@ import com.moakiee.ae2lt.network.MatrixControllerActionPacket;
 import com.moakiee.ae2lt.registry.ModBlockEntities;
 import com.moakiee.ae2lt.registry.ModBlocks;
 import com.moakiee.ae2lt.registry.ModItems;
-import com.moakiee.thunderbolt.api.crafting.batch.BatchDispatchMode;
+import com.moakiee.ae2lt.util.NativeStackDropHelper;
 import com.moakiee.ae2lt.crafting.matrix.core.CraftingCoreHost;
 import com.moakiee.ae2lt.crafting.matrix.core.MolecularCopyAssembler;
+import com.moakiee.thunderbolt.api.crafting.batch.BatchDispatchMode;
 
 import appeng.api.crafting.IPatternDetails;
 import appeng.api.config.Actionable;
@@ -682,7 +683,7 @@ public class MatrixControllerBlockEntity extends BlockEntity
         var drops = new ArrayList<ItemStack>();
         key.addDrops(amount, drops, level, worldPosition);
         for (var drop : drops) {
-            if (!drop.isEmpty()) Block.popResource(level, worldPosition, drop);
+            if (!drop.isEmpty()) NativeStackDropHelper.popResource(level, worldPosition, drop);
         }
     }
 

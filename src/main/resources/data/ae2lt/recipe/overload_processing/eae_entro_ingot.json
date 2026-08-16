@@ -10,13 +10,13 @@
   "inputs": [
     {
       "ingredient": {
-        "item": "extendedae:entro_dust"
+        "tag": "c:dusts/entro"
       },
       "count": 32
     },
     {
       "ingredient": {
-        "item": "minecraft:gold_ingot"
+        "tag": "c:ingots/gold"
       },
       "count": 32
     },

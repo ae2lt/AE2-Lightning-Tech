@@ -55,8 +55,36 @@ class CoreEffectShaderSourceContractTest {
                 () -> assertFalse(build.contains("implementation(\"foundry.veil")),
                 () -> assertTrue(metadata.contains("modId = \"veil\"")),
                 () -> assertTrue(metadata.contains("type = \"optional\"")),
+                () -> assertTrue(metadata.contains("versionRange = \"*\"")),
                 () -> assertTrue(Files.exists(Path.of(
                         "src/main/resources/assets/ae2lt/pinwheel/shaders/program/multiblock/core.vsh"))));
+    }
+
+    @Test
+    void incompatibleVeilCanFallBackAfterStartup() throws Exception {
+        String backend = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/client/core/CoreEffectBackend.java"));
+        String renderTypes = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/client/core/CoreEffectRenderTypes.java"));
+        String nativeShaders = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/client/core/CoreEffectShaders.java"));
+
+        assertAll(
+                () -> assertTrue(backend.contains("detectCompatibleVeil()")),
+                () -> assertTrue(backend.contains("disableVeil(Throwable cause)")),
+                () -> assertTrue(backend.contains("new DefaultArtifactVersion(\"4.3.0\")")),
+                () -> assertTrue(backend.contains("new DefaultArtifactVersion(\"5.0.0\")")),
+                () -> assertTrue(backend.contains("installedVersion.compareTo(MINIMUM_VEIL_VERSION) < 0")),
+                () -> assertTrue(backend.contains("installedVersion.compareTo(MAXIMUM_VEIL_VERSION) >= 0")),
+                () -> assertTrue(renderTypes.contains("RuntimeException | LinkageError")),
+                () -> assertTrue(renderTypes.contains("CoreEffectBackend.disableVeil(exception)")),
+                () -> assertFalse(nativeShaders.contains(
+                        "LOGGER.info(\"Veil detected; using the Veil core-effect shader backend\");\n"
+                                + "            return;")),
+                () -> assertTrue(nativeShaders.contains(
+                        "registerShader(event, TIANSHU_SHADER, TIANSHU);")),
+                () -> assertTrue(nativeShaders.contains(
+                        "registerShader(event, MATRIX_SHADER, MATRIX);")));
     }
 
     @Test
@@ -81,6 +109,28 @@ class CoreEffectShaderSourceContractTest {
                 List.of(Path.of(
                         "com/moakiee/ae2lt/client/core/veil/VeilCoreEffectShaders.java")),
                 veilReferences);
+    }
+
+    @Test
+    void activeShaderPacksUseAKnownVanillaShaderFallback() throws Exception {
+        String backend = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/client/core/CoreEffectBackend.java"));
+        String renderTypes = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/client/core/CoreEffectRenderTypes.java"));
+        String geometry = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/client/core/CoreEffectGeometry.java"));
+
+        assertAll(
+                () -> assertTrue(backend.contains("modList.isLoaded(\"iris\")")),
+                () -> assertTrue(backend.contains("modList.isLoaded(\"oculus\")")),
+                () -> assertTrue(backend.contains("net.irisshaders.iris.api.v0.IrisApi")),
+                () -> assertTrue(backend.contains("net.coderbot.iris.api.v0.IrisApi")),
+                () -> assertTrue(backend.contains("isShaderPackInUse")),
+                () -> assertFalse(backend.contains("import net.irisshaders")),
+                () -> assertTrue(renderTypes.contains("POSITION_COLOR_SHADER")),
+                () -> assertTrue(renderTypes.contains("SHADER_PACK_FALLBACK")),
+                () -> assertTrue(renderTypes.contains("shaderPackActive ?")),
+                () -> assertTrue(geometry.contains("CoreEffectBackend.useShaderPackFallback()")));
     }
 
     @Test

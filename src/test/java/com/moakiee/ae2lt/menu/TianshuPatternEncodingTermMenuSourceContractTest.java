@@ -9,20 +9,30 @@ import org.junit.jupiter.api.Test;
 
 class TianshuPatternEncodingTermMenuSourceContractTest {
     @Test
-    void ae2EncodingCanReadAndConsumeTheStagedBlankPattern() throws Exception {
+    void ae2EncodingChecksTheActualCommittedPatternAndRefundsItsNetworkBlank() throws Exception {
         String menu = Files.readString(Path.of(
                 "src/main/java/com/moakiee/ae2lt/menu/TianshuPatternEncodingTermMenu.java"));
         int encodeStart = menu.indexOf("public void encode()");
         int stage = menu.indexOf("stageNetworkBlankPattern()", encodeStart);
-        int encode = menu.indexOf("super.encode()", encodeStart);
-        int returnUnused = menu.indexOf("returnStagedBlankPatternToNetwork()", encode);
+        int nativeEncode = menu.indexOf("super.encode();", stage);
+        int candidate = menu.indexOf(
+                "var encoded = encodedInventory.getStackInSlot(0)", nativeEncode);
+        int duplicateCheck = menu.indexOf(
+                "shouldInterceptDuplicateEncoding(candidate, interceptDuplicates)", candidate);
+        if (duplicateCheck < 0) {
+            duplicateCheck = menu.indexOf(
+                    "shouldInterceptDuplicateEncoding(encoded, interceptDuplicates)", candidate);
+        }
+        int rollback = menu.indexOf("rollbackRefundableEncodedPattern()", duplicateCheck);
 
         assertTrue(encodeStart >= 0);
         assertTrue(stage > encodeStart);
-        assertTrue(encode > stage);
-        assertTrue(returnUnused > encode);
+        assertTrue(nativeEncode > stage);
+        assertTrue(candidate > nativeEncode);
+        assertTrue(duplicateCheck > candidate);
+        assertTrue(rollback > duplicateCheck);
         assertTrue(menu.contains("getEncodedPatternInv()"));
-        assertTrue(menu.contains("encodedInventory.setItemDirect(0, AEItems.BLANK_PATTERN.stack"));
+        assertTrue(menu.contains("refundableEncodedPattern = encoded.copy()"));
     }
 
     @Test
@@ -212,6 +222,28 @@ class TianshuPatternEncodingTermMenuSourceContractTest {
         assertTrue(write > stage);
         assertTrue(menu.contains(
                 "if (tianshuMode != TianshuEncodingMode.CLOSED_LOOP) return ItemStack.EMPTY"));
+    }
+
+    @Test
+    void closedLoopComputedResultsUseBoundedPagesInsteadOfHundredsOfMenuSlots()
+            throws Exception {
+        String menu = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/menu/TianshuPatternEncodingTermMenu.java"));
+        String config = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/client/TianshuClosedLoopPatternConfigScreen.java"));
+        String network = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/network/NetworkInit.java"));
+
+        assertFalse(menu.contains("closedLoopExternalInputInventory"));
+        assertFalse(menu.contains("closedLoopSeedInventory"));
+        assertFalse(menu.contains("getClosedLoopExternalInputSlots"));
+        assertFalse(menu.contains("getClosedLoopSeedSlots"));
+        assertTrue(menu.contains("ClosedLoopResultPage.from("));
+        assertTrue(menu.contains("sendClosedLoopResultPage("));
+        assertTrue(config.contains("requestVisibleResultPage()"));
+        assertTrue(config.contains("drawResultRows("));
+        assertTrue(network.contains("RequestClosedLoopResultPagePacket.TYPE"));
+        assertTrue(network.contains("ClosedLoopResultPagePacket.TYPE"));
     }
 
     @Test

@@ -72,6 +72,23 @@ class ControllerOwnedRuntimeArchitectureTest {
     }
 
     @Test
+    void matrixRetriesPatternPublicationOnceItsAe2PortNodeIsReady() throws Exception {
+        String port = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/blockentity/MatrixPortBlockEntity.java"));
+
+        int onReady = port.indexOf("public void onReady()");
+        int readyNode = port.indexOf("super.onReady();", onReady);
+        int resolveController = port.indexOf("var controller = getController();", readyNode);
+        int scheduleRetry = port.indexOf("controller.scheduleStructureCheck();", resolveController);
+
+        assertTrue(onReady >= 0);
+        assertTrue(readyNode > onReady);
+        assertTrue(resolveController > readyNode);
+        assertTrue(scheduleRetry > resolveController,
+                "The matrix must retry pattern publication only after AE2 has readied its port node");
+    }
+
+    @Test
     void matrixCoalescesSameTickPatternChangesBeforeRefreshingAe2() throws Exception {
         String port = Files.readString(Path.of(
                 "src/main/java/com/moakiee/ae2lt/blockentity/MatrixPortBlockEntity.java"));
@@ -172,8 +189,21 @@ class ControllerOwnedRuntimeArchitectureTest {
                 "refreshClosedLoopProviderForDependencyChanges(port)"));
         assertTrue(controller.contains(
                 "closedLoopDependencyChanges.shouldRecheck(grid.getCraftingService())"));
+        String dependencyRefresh = sourceBetween(controller,
+                "private void refreshClosedLoopProviderForDependencyChanges(",
+                "private Map<AEKey, Long> availableSeedsFor(");
+        assertTrue(dependencyRefresh.contains(
+                "collectAvailablePatternDefinitionsForDependencyChanges()"));
+        assertFalse(dependencyRefresh.contains("collectAvailablePatterns()"),
+                "Dependency churn must not rebuild every published runtime pattern");
+        assertTrue(dependencyRefresh.contains(
+                "availableDefinitions.equals(publishedClosedLoopPatternDefinitions)"));
         assertTrue(controller.contains(
-                "available.patternDefinitions().equals(publishedClosedLoopPatternDefinitions)"));
+                "ClosedLoopPublicationSupport.reusePublishedOrValidate("),
+                "A newly available definition must still pass full details construction");
+        assertTrue(controller.contains(
+                "new ClosedLoopPublicationSupport.SeedSnapshotMemoizer("),
+                "One provider publication should scan reusable seeds at most once");
     }
 
     private static String sourceBetween(String source, String start, String end) {

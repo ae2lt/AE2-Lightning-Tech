@@ -44,6 +44,7 @@ class TianshuPatternUploadRoutingTest {
         assertCraftingGroup("neoecoae", "crafting_system_l4");
         assertCraftingGroup("neoecoae", "crafting_system_l6");
         assertCraftingGroup("neoecoae", "crafting_system_l9");
+        assertCraftingGroup("ae2cs", "meteorite_pattern_provider");
         assertCraftingGroup("ae2lt", "matter_warping_matrix_controller");
 
         assertMatrixGroup("matter_warping_matrix_controller");
@@ -100,9 +101,11 @@ class TianshuPatternUploadRoutingTest {
     }
 
     @Test
-    void duplicateFilteringInterceptsEncodingAndCanBeDisabledByTheClient() throws Exception {
+    void duplicateFilteringOnlyInterceptsTriggeredUploadsAndCanBeDisabledByTheClient()
+            throws Exception {
         String menu = Files.readString(Path.of(
-                "src/main/java/com/moakiee/ae2lt/menu/TianshuPatternEncodingTermMenu.java"));
+                "src/main/java/com/moakiee/ae2lt/menu/TianshuPatternEncodingTermMenu.java"))
+                .replace("\r\n", "\n");
         String duplicateFilter = Files.readString(Path.of(
                 "src/main/java/com/moakiee/ae2lt/logic/tianshu/terminal/"
                         + "PatternEncodingDuplicateFilter.java"));

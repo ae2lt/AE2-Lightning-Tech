@@ -22,7 +22,7 @@ final class DataEnergisticsCompatibilityWarningContractTest {
     }
 
     @Test
-    void warnsEachPlayerAtLoginWhenDataEnergisticsIsLoaded() throws Exception {
+    void gatesStartupAndLoginWarningsByDataEnergisticsVersion() throws Exception {
         String bootstrap = Files.readString(
                 Path.of("src/main/java/com/moakiee/ae2lt/AE2LightningTech.java"));
         String chinese = Files.readString(
@@ -32,7 +32,7 @@ final class DataEnergisticsCompatibilityWarningContractTest {
 
         assertTrue(bootstrap.contains("NeoForge.EVENT_BUS.addListener(this::onPlayerLoggedIn)"));
         assertTrue(bootstrap.contains("PlayerEvent.PlayerLoggedInEvent"));
-        assertTrue(bootstrap.contains("ModList.get().isLoaded(\"data_energistics\")"));
+        assertTrue(bootstrap.contains("DataEnergisticsVersionPolicy.shouldWarn"));
         assertTrue(bootstrap.contains("getModContainerById(\"data_energistics\")"));
         assertTrue(bootstrap.contains("\"ae2lt.compat.data_energistics.unsupported\""));
         assertTrue(bootstrap.contains("\"ae2lt.compat.data_energistics.feedback_scope\""));
@@ -40,23 +40,25 @@ final class DataEnergisticsCompatibilityWarningContractTest {
         assertTrue(bootstrap.contains("ChatFormatting.RED, ChatFormatting.BOLD"));
         assertTrue(bootstrap.contains("ChatFormatting.YELLOW"));
         assertTrue(bootstrap.contains("warnAboutDataEnergistics()"));
-        assertTrue(bootstrap.contains("has taken the necessary measures to mitigate"));
+        assertTrue(bootstrap.contains("Legacy Data Energistics {} detected"));
         assertTrue(bootstrap.contains("compatibility.dataEnergisticsMixinProtection=false"));
         assertTrue(bootstrap.contains("ae2lt-common.toml"));
         assertTrue(bootstrap.contains("ae2lt.compat.data_energistics.protection_disabled"));
 
         assertTrue(chinese.contains("\"ae2lt.compat.data_energistics.unsupported\""));
         assertTrue(chinese.contains("\"ae2lt.compat.data_energistics.feedback_scope\""));
-        assertTrue(chinese.contains("已采取必要手段尽量修复兼容性"));
+        assertTrue(chinese.contains("cee32c9"));
+        assertTrue(chinese.contains("2.4.4+"));
         assertTrue(chinese.contains("compatibility.dataEnergisticsMixinProtection"));
         assertTrue(chinese.contains("完整重启客户端或服务端"));
         assertTrue(chinese.contains("兼容保护已被配置禁用"));
-        assertTrue(chinese.contains("请勿向 AE2 Lightning Tech 或 Data Energistics"));
+        assertTrue(chinese.contains("更新至 2.4.4"));
         assertTrue(english.contains("\"ae2lt.compat.data_energistics.unsupported\""));
         assertTrue(english.contains("\"ae2lt.compat.data_energistics.feedback_scope\""));
-        assertTrue(english.contains("taken the necessary measures to mitigate"));
+        assertTrue(english.contains("cee32c9"));
+        assertTrue(english.contains("2.4.4+"));
         assertTrue(english.contains("set compatibility.dataEnergisticsMixinProtection to false"));
         assertTrue(english.contains("Compatibility protection is disabled by configuration"));
-        assertTrue(english.contains("either the AE2 Lightning Tech or Data Energistics issue tracker"));
+        assertTrue(english.contains("update Data Energistics to 2.4.4 or newer"));
     }
 }

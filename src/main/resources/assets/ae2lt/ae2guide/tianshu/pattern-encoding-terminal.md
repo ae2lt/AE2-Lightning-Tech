@@ -57,8 +57,8 @@ Prepare a blank pattern in the Tianshu Pattern Encoding Terminal and use any non
 
 The direct-upload result depends on the pattern type:
 
-* **Crafting, stonecutting, and smithing patterns** follow their normal automatic routing. When no selection is needed, the JEI recipe page remains open and the upload result appears in the action bar, making consecutive transfers easier.
-* **Processing, advanced, and overload patterns** use the same initial filter as the provider-selection screen: a saved alias for the current recipe type or category takes priority; otherwise the first default alias supplied by the viewer is used. If the filter produces exactly one candidate group with a free slot, the pattern uploads in the background and JEI remains open. No candidate, multiple candidates, or a sole full candidate returns to the terminal and opens the provider-selection screen.
+* **Crafting, stonecutting, and smithing patterns** follow their normal automatic routing. When no selection is needed, the current JEI or EMI recipe page remains open and the upload result appears in the action bar, making consecutive transfers easier.
+* **Processing, advanced, and overload patterns** use the same initial filter as the provider-selection screen: a saved alias for the current recipe type or category takes priority; otherwise the first default alias supplied by the viewer is used. If the filter produces exactly one candidate group with a free slot, the pattern uploads in the background and the current recipe page remains open. No candidate, multiple candidates, or a sole full candidate opens the provider-selection screen directly; returning from it goes back to the terminal.
 * **Closed-loop mode** does not use this direct-upload shortcut. A JEI/EMI transfer only marks the primary output and starts closed-loop discovery; finish configuring, encoding, and uploading the closed-loop pattern normally.
 
 When JEI and EMI are both installed, the EMI integration owns recipe transfer to prevent the same action from being handled twice.
@@ -100,7 +100,16 @@ For a Certus Quartz closed loop, this could be a processing pattern such as `16 
    * **Stored task sets:** How many jobs' worth of seeds the Tianshu keeps pre-stocked—effectively the number of jobs that can run in parallel.
 5. When the status reads ready to encode, encode to obtain a <ItemLink id="ae2lt:closed_loop_pattern" />, then upload it into the Closed-Loop Pattern Storage. Authoring and encoding a closed-loop pattern needs no Tianshu; however, the pattern must be stored in some Tianshu's Closed-Loop Pattern Storage before it can execute.
 
-> Encoding a closed-loop pattern requires at least one Closed-Loop Pattern Storage installed in the Tianshu Supercomputing Array. Running closed-loop patterns requires at least one Closed-Loop Seed Storage with an ME Storage Cell installed.
+### Preparing Seed Storage
+
+Encoding a closed-loop pattern requires at least one Closed-Loop Pattern Storage in the Tianshu Supercomputing Array. To run one, install at least one Closed-Loop Seed Storage and place an **ME Storage Cell** compatible with the seed type inside it. The Seed Storage's 10 slots hold storage cells only; seed items cannot be inserted directly.
+
+After installing the cell, select **Refill Seeds** on the closed-loop page. The terminal calculates the stored requirement for every enabled closed-loop pattern and transfers missing seeds from the current ME network into Seed Storage:
+
+* **ME network lacks seeds:** The current network does not contain enough of the listed item or fluid. Add it to the network and try again.
+* **Seed storage cannot accept seeds:** No suitable storage cell is installed, or its byte/type capacity is full, or a partition rejects the seed.
+* **Seed refill incomplete:** Both kinds of problem are present. Hover over the status text to see the reason and amount for each seed.
+* **Seeds ready:** The stored requirement is satisfied and the corresponding closed-loop crafting jobs can start.
 
 Members can also be filled entirely by hand when no automatic candidate exists. An encoded closed-loop pattern can be re-inserted to load it for editing; encoding again updates the original pattern. A closed-loop pattern may itself be nested as a member of another loop; it is flattened during encoding, and the flattened member total must still not exceed 27. `(In other words, the old fake-crafting workaround is no longer available—but how many recipes truly need more than 27 member patterns?)`
 
@@ -130,7 +139,7 @@ When a formed Tianshu Supercomputing Array is available on the network, the term
 
 Click any entry under **Crafting topology** to set how much of that material maintenance jobs may not consume. Switch **Tianshu global** to **Rule additional** to configure an extra reserve for this rule. A rule-specific reserve only changes the effective protection when it is greater than the matching global reserve; see “Global Reserves” below.
 
-> Configured materials show a colored marker in the Tianshu Pattern Encoding Terminal: gray means the rule is disabled, green means the stock target is satisfied, orange means crafting is in progress, and red indicates missing materials.
+> Configured materials show a colored marker in the Tianshu Pattern Encoding Terminal: gray means the rule is disabled, green means the stock target is satisfied, orange means the rule is idle or crafting, and red indicates missing materials.
 
 ### Global Reserves
 A global reserve protects a quantity of an item from automatic maintenance jobs. Player-requested crafting jobs may still use this protected stock.

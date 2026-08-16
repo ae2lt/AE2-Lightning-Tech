@@ -14,6 +14,7 @@ import com.moakiee.ae2lt.logic.craft.MatrixCraftingMath;
 import com.moakiee.ae2lt.logic.craft.MatrixCraftingProfile;
 import com.moakiee.ae2lt.registry.ModBlockEntities;
 import com.moakiee.ae2lt.registry.ModBlocks;
+import com.moakiee.ae2lt.util.NativeStackDropHelper;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -58,7 +59,7 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
     private CompoundTag legacyClusterState;
     private boolean formed;
     private boolean patternUpdatePending;
-    private MatrixPatternStorageBlockEntity exposedPatternStorage;
+    private List<MatrixPatternStorageBlockEntity> exposedPatternStorages = List.of();
     private boolean exposedPatternStorageDirty = true;
     private List<TerminalPatternSlot> terminalPatternSlots = List.of();
     private boolean terminalPatternSlotsDirty = true;
@@ -331,7 +332,7 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
         key.addDrops(amount, drops, level, getBlockPos());
         for (var drop : drops) {
             if (!drop.isEmpty()) {
-                Block.popResource(level, getBlockPos(), drop);
+                NativeStackDropHelper.popResource(level, getBlockPos(), drop);
             }
         }
     }
@@ -340,6 +341,19 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
     public void onLoad() {
         super.onLoad();
         nextBindingCheckTick = level != null ? level.getGameTime() : 0L;
+    }
+
+    @Override
+    public void onReady() {
+        super.onReady();
+        // AE2 creates this managed node at the end of the server-level tick. If the controller
+        // restored the multiblock earlier in that tick, its first attempt to attach the internal
+        // pattern-container nodes could not succeed. Retry the publication once now that the
+        // port node is ready, without polling or repeatedly scanning a broken structure.
+        var controller = getController();
+        if (controller != null) {
+            controller.scheduleStructureCheck();
+        }
     }
 
     public CompoundTag copyLegacyClusterState() {
@@ -407,29 +421,31 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
         return terminalPatternSlots;
     }
 
-    private MatrixPatternStorageBlockEntity getExposedPatternStorage() {
+    private List<MatrixPatternStorageBlockEntity> getExposedPatternStorages() {
         if (exposedPatternStorageDirty) {
-            exposedPatternStorage = selectExposedPatternStorage();
+            exposedPatternStorages = selectExposedPatternStorages();
             exposedPatternStorageDirty = false;
         }
-        return exposedPatternStorage;
+        return exposedPatternStorages;
     }
 
-    private MatrixPatternStorageBlockEntity selectExposedPatternStorage() {
-        var firstStorage = (MatrixPatternStorageBlockEntity) null;
-        var firstFree = (MatrixPatternStorageBlockEntity) null;
-        for (var storage : getPatternStorages()) {
-            if (firstStorage == null) {
-                firstStorage = storage;
-            }
-            if (!storage.isEmpty()) {
-                return storage;
-            }
-            if (firstFree == null && storage.hasFreeSlot()) {
-                firstFree = storage;
-            }
+    private List<MatrixPatternStorageBlockEntity> selectExposedPatternStorages() {
+        var storages = getPatternStorages();
+        var readable = storages.stream()
+                .filter(storage -> !storage.isEmpty())
+                .findFirst()
+                .orElse(null);
+        var writable = storages.stream()
+                .filter(storage -> storage != readable && storage.hasFreeSlot())
+                .findFirst()
+                .orElse(null);
+        if (readable == null) {
+            return writable != null ? List.of(writable) : List.of();
         }
-        return firstFree != null ? firstFree : firstStorage;
+        if (writable == null && readable.hasFreeSlot()) {
+            return List.of(readable);
+        }
+        return writable != null ? List.of(readable, writable) : List.of(readable);
     }
 
     private void requestCraftingUpdate() {
@@ -510,21 +526,26 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
     private final class PortPatternItemHandler implements IItemHandlerModifiable {
         @Override
         public int getSlots() {
-            var storage = exposedStorage();
-            return storage != null ? storage.capacity() : 0;
+            int slots = 0;
+            for (var storage : getExposedPatternStorages()) {
+                slots += storage.capacity();
+            }
+            return slots;
         }
 
         @Override
         public ItemStack getStackInSlot(int slot) {
-            var storage = requireStorage(slot);
-            return storage == null ? ItemStack.EMPTY : storage.getInventory().getStackInSlot(slot);
+            var target = exposedPatternSlot(slot);
+            return target == null
+                    ? ItemStack.EMPTY
+                    : target.storage().getInventory().getStackInSlot(target.slot());
         }
 
         @Override
         public void setStackInSlot(int slot, ItemStack stack) {
-            var storage = requireStorage(slot);
-            if (storage != null) {
-                storage.getInventory().setStackInSlot(slot, stack);
+            var target = exposedPatternSlot(slot);
+            if (target != null) {
+                target.storage().getInventory().setStackInSlot(target.slot(), stack);
             }
         }
 
@@ -533,8 +554,8 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
             if (stack.isEmpty()) {
                 return ItemStack.EMPTY;
             }
-            var exposed = requireStorage(slot);
-            if (exposed == null || !exposed.isValidPatternStack(stack)) {
+            var target = exposedPatternSlot(slot);
+            if (target == null || !target.storage().isValidPatternStack(stack)) {
                 return stack;
             }
             var remainder = stack.copy();
@@ -551,31 +572,34 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
 
         @Override
         public ItemStack extractItem(int slot, int amount, boolean simulate) {
-            var storage = requireStorage(slot);
-            return storage == null ? ItemStack.EMPTY : storage.getInventory().extractItem(slot, amount, simulate);
+            var target = exposedPatternSlot(slot);
+            return target == null
+                    ? ItemStack.EMPTY
+                    : target.storage().getInventory().extractItem(target.slot(), amount, simulate);
         }
 
         @Override
         public int getSlotLimit(int slot) {
-            return requireStorage(slot) == null ? 0 : 1;
+            return exposedPatternSlot(slot) == null ? 0 : 1;
         }
 
         @Override
         public boolean isItemValid(int slot, ItemStack stack) {
-            var storage = requireStorage(slot);
-            return storage != null && storage.isValidPatternStack(stack);
+            var target = exposedPatternSlot(slot);
+            return target != null && target.storage().isValidPatternStack(stack);
         }
 
-        private MatrixPatternStorageBlockEntity requireStorage(int slot) {
-            var storage = exposedStorage();
-            if (storage == null || slot < 0 || slot >= storage.capacity()) {
+        private TerminalPatternSlot exposedPatternSlot(int slot) {
+            if (slot < 0) {
                 return null;
             }
-            return storage;
-        }
-
-        private MatrixPatternStorageBlockEntity exposedStorage() {
-            return getExposedPatternStorage();
+            for (var storage : getExposedPatternStorages()) {
+                if (slot < storage.capacity()) {
+                    return new TerminalPatternSlot(storage, slot);
+                }
+                slot -= storage.capacity();
+            }
+            return null;
         }
     }
 }

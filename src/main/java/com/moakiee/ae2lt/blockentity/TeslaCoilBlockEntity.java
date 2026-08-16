@@ -32,6 +32,7 @@ import com.moakiee.ae2lt.me.key.LightningKey;
 import com.moakiee.ae2lt.menu.TeslaCoilMenu;
 import com.moakiee.ae2lt.registry.ModBlockEntities;
 import com.moakiee.ae2lt.registry.ModBlocks;
+import com.moakiee.ae2lt.util.NativeStackDropHelper;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -328,7 +329,9 @@ public class TeslaCoilBlockEntity extends AENetworkedBlockEntity
         saveChanges();
         markForClientUpdate();
         logic.onStateChanged();
-        setWorking(false);
+        // Keep the active state across the cycle boundary. The urgent grid tick
+        // decides whether another batch can start and marks us idle only when it
+        // confirms that no follow-up work exists.
         return true;
     }
 
@@ -344,8 +347,10 @@ public class TeslaCoilBlockEntity extends AENetworkedBlockEntity
         boolean changed = this.working != working;
         this.working = working;
         if (level != null) {
-            BlockState state = getBlockState();
-            if (state.hasProperty(TeslaCoilBlock.WORKING)
+            BlockState state = level.getBlockState(worldPosition);
+            if (state.is(ModBlocks.TESLA_COIL.get())
+                    && level.getBlockEntity(worldPosition) == this
+                    && state.hasProperty(TeslaCoilBlock.WORKING)
                     && state.getValue(TeslaCoilBlock.WORKING) != working) {
                 level.setBlock(worldPosition, state.setValue(TeslaCoilBlock.WORKING, working), Block.UPDATE_ALL);
             } else if (changed) {
@@ -425,7 +430,7 @@ public class TeslaCoilBlockEntity extends AENetworkedBlockEntity
         for (int slot = 0; slot < inventory.getSlots(); slot++) {
             ItemStack stack = inventory.getStackInSlot(slot);
             if (!stack.isEmpty()) {
-                drops.add(stack.copy());
+                NativeStackDropHelper.addDrops(drops, stack);
             }
         }
     }

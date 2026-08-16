@@ -4,7 +4,6 @@ import net.minecraft.world.item.ItemStack;
 import net.neoforged.fml.ModList;
 
 import appeng.client.gui.AEBaseScreen;
-import appeng.menu.SlotSemantics;
 
 import com.moakiee.ae2lt.client.FrequencyBindingClient;
 import com.moakiee.ae2lt.client.TextureToggleButton;
@@ -54,8 +53,17 @@ public final class FrequencyTerminalButton {
     }
 
     private static ItemStack findInstalledFrequencyCard(AEBaseScreen<?> screen) {
-        for (var slot : screen.getMenu().getSlots(SlotSemantics.UPGRADE)) {
-            var stack = slot.getItem();
+        if (!(screen instanceof IUniversalTerminalCapable terminalScreen)) {
+            return ItemStack.EMPTY;
+        }
+
+        // AE2WTLib disables upgrade menu slots that are outside the scrolling
+        // panel's visible window. AppEngSlot#getItem then reports EMPTY even
+        // though the backing upgrade inventory still contains the card, so the
+        // toolbar must inspect the terminal host rather than presentation slots.
+        var upgrades = terminalScreen.getHost().getUpgrades();
+        for (int slot = 0; slot < upgrades.size(); slot++) {
+            var stack = upgrades.getStackInSlot(slot);
             if (stack.getItem() instanceof OverloadedFrequencyCardItem) {
                 return stack;
             }

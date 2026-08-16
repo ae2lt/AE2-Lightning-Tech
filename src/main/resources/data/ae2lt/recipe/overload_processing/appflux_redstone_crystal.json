@@ -10,19 +10,19 @@
   "inputs": [
     {
       "ingredient": {
-        "item": "minecraft:redstone_block"
+        "tag": "c:storage_blocks/redstone"
       },
       "count": 16
     },
     {
       "ingredient": {
-        "item": "ae2:fluix_crystal"
+        "tag": "c:gems/fluix"
       },
       "count": 16
     },
     {
       "ingredient": {
-        "item": "minecraft:glowstone_dust"
+        "tag": "c:dusts/glowstone"
       },
       "count": 16
     }

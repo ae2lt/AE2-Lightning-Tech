@@ -14,6 +14,8 @@ import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
 public final class CelestweaveArmorMaterials {
+    private static final int ENCHANTMENT_VALUE = 32;
+
     public static final DeferredRegister<ArmorMaterial> ARMOR_MATERIALS =
             DeferredRegister.create(Registries.ARMOR_MATERIAL, AE2LightningTech.MODID);
 
@@ -26,7 +28,7 @@ public final class CelestweaveArmorMaterials {
                                     ArmorItem.Type.CHESTPLATE, 12,
                                     ArmorItem.Type.LEGGINGS, 8,
                                     ArmorItem.Type.BOOTS, 5),
-                            0,
+                            ENCHANTMENT_VALUE,
                             SoundEvents.ARMOR_EQUIP_GENERIC,
                             () -> Ingredient.EMPTY,
                             List.of(),

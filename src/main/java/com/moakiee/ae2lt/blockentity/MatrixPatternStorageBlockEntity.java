@@ -8,6 +8,7 @@ import com.moakiee.ae2lt.logic.craft.MatrixPatternCore;
 import com.moakiee.ae2lt.logic.craft.MatrixPatternStorageTier;
 import com.moakiee.ae2lt.logic.terminal.InternalPatternContainerLink;
 import com.moakiee.ae2lt.registry.ModBlockEntities;
+import com.moakiee.ae2lt.util.NativeStackDropHelper;
 import com.moakiee.ae2lt.registry.ModBlocks;
 
 import net.minecraft.core.BlockPos;
@@ -94,7 +95,7 @@ public class MatrixPatternStorageBlockEntity extends BlockEntity
         setChangedAndUpdate();
         for (var stack : drops) {
             if (!stack.isEmpty()) {
-                Block.popResource(level, pos, stack);
+                NativeStackDropHelper.popResource(level, pos, stack);
             }
         }
     }
@@ -166,8 +167,11 @@ public class MatrixPatternStorageBlockEntity extends BlockEntity
         if (stack.isEmpty()) {
             return true;
         }
+        if (!PatternDetailsHelper.isEncodedPattern(stack)) {
+            return false;
+        }
         if (level == null) {
-            return PatternDetailsHelper.isEncodedPattern(stack);
+            return true;
         }
         var details = PatternDetailsHelper.decodePattern(stack, level);
         return details instanceof IMolecularAssemblerSupportedPattern;

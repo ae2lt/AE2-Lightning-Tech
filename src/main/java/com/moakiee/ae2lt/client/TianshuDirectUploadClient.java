@@ -85,10 +85,13 @@ public final class TianshuDirectUploadClient {
                     awaitResult(menu, target.group().name());
                     clearHeldRecipe();
                 } else {
-                    // No safe unique target: return to the terminal without consuming the request.
-                    // Its normal update path will open the visible provider picker.
+                    // Restore the terminal parent and replace it with the picker in the same tick.
                     clearHeldRecipe();
                     recipeScreen.onClose();
+                    if (minecraft.screen
+                            instanceof TianshuPatternEncodingTermScreen<?> terminalScreen) {
+                        terminalScreen.openDirectUploadFallback();
+                    }
                 }
             }
             case INVALID -> {

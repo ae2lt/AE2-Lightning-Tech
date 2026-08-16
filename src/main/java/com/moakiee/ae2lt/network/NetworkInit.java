@@ -10,7 +10,9 @@ import com.moakiee.ae2lt.network.railgun.RailgunBeamUpdatePacket;
 import com.moakiee.ae2lt.network.railgun.RailgunFirePacket;
 import com.moakiee.ae2lt.network.railgun.RailgunRecoilFxPacket;
 import com.moakiee.ae2lt.network.tianshu.OpenMaintenanceEditorPacket;
+import com.moakiee.ae2lt.network.tianshu.ClosedLoopResultPagePacket;
 import com.moakiee.ae2lt.network.tianshu.MaintenanceEditorSyncPacket;
+import com.moakiee.ae2lt.network.tianshu.RequestClosedLoopResultPagePacket;
 import com.moakiee.ae2lt.network.tianshu.SaveMaintenanceRulePacket;
 import com.moakiee.ae2lt.network.tianshu.MaintenanceSummarySyncPacket;
 import com.moakiee.ae2lt.network.tianshu.SaveGlobalReservePacket;
@@ -192,6 +194,10 @@ public final class NetworkInit {
                 RequestUploadTargetsPacket.STREAM_CODEC,
                 RequestUploadTargetsPacket::handle);
         registrar.playToServer(
+                RequestClosedLoopResultPagePacket.TYPE,
+                RequestClosedLoopResultPagePacket.STREAM_CODEC,
+                RequestClosedLoopResultPagePacket::handle);
+        registrar.playToServer(
                 UploadPatternToTargetPacket.TYPE,
                 UploadPatternToTargetPacket.STREAM_CODEC,
                 UploadPatternToTargetPacket::handle);
@@ -199,6 +205,10 @@ public final class NetworkInit {
                 UploadTargetsSyncPacket.TYPE,
                 UploadTargetsSyncPacket.STREAM_CODEC,
                 UploadTargetsSyncPacket::handle);
+        registrar.playToClient(
+                ClosedLoopResultPagePacket.TYPE,
+                ClosedLoopResultPagePacket.STREAM_CODEC,
+                ClosedLoopResultPagePacket::handle);
     }
 
     public static ResourceLocation id(String path) {

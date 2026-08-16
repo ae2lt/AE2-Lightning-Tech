@@ -10,13 +10,13 @@
   "inputs": [
     {
       "ingredient": {
-        "item": "extendedae:entro_block"
+        "tag": "c:storage_blocks/entro"
       },
       "count": 9
     },
     {
       "ingredient": {
-        "item": "minecraft:redstone_block"
+        "tag": "c:storage_blocks/redstone"
       },
       "count": 4
     },

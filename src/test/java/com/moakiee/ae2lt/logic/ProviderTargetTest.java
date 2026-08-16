@@ -424,6 +424,42 @@ class ProviderTargetTest {
     }
 
     @Test
+    void persistedNormalHistoryRestoresTheProvenStartingChunk() {
+        var originalPattern = new EmptyPattern();
+        target.pushPattern(
+                originalPattern,
+                8L,
+                true,
+                () -> false,
+                copies -> new ProviderTarget.BatchChunk(
+                        copies, true, false));
+
+        var snapshot = target.adaptiveBatchSnapshots()
+                .get(originalPattern);
+        assertTrue(target.consumeAdaptiveBatchHistoryDirty());
+
+        var restoredTarget = new ProviderTarget(
+                Level.OVERWORLD, BlockPos.ZERO, Direction.NORTH);
+        var restoredPattern = new EmptyPattern();
+        restoredTarget.restoreAdaptiveBatchSnapshot(
+                restoredPattern, snapshot);
+
+        var chunks = new ArrayList<Integer>();
+        restoredTarget.pushPattern(
+                restoredPattern,
+                16L,
+                true,
+                () -> false,
+                copies -> {
+                    chunks.add(copies);
+                    return new ProviderTarget.BatchChunk(
+                            copies, true, false);
+                });
+
+        assertEquals(List.of(4, 4, 8), chunks);
+    }
+
+    @Test
     void wirelessGrowthProofRepeatsOnlyTheBaselineWithinEachTick() {
         var pattern = new EmptyPattern();
         var chunks = new ArrayList<Integer>();
@@ -459,6 +495,58 @@ class ProviderTargetTest {
 
         assertEquals(1_024L, secondTick.ownedCopies());
         assertEquals(List.of(256, 256, 512), chunks);
+    }
+
+    @Test
+    void persistedWirelessHistoryStillRequiresTwoFreshBaselines() {
+        var originalPattern = new EmptyPattern();
+        target.pushPatternStep(
+                originalPattern,
+                16L,
+                20L,
+                true,
+                () -> false,
+                copies -> new ProviderTarget.BatchChunk(
+                        copies, true, false));
+
+        var snapshot = target.adaptiveBatchSnapshots()
+                .get(originalPattern);
+        var encoded = AdaptiveBatchStatePersistence.writeSnapshot(snapshot);
+        var decoded = AdaptiveBatchStatePersistence.readSnapshot(encoded);
+        assertEquals(snapshot, decoded);
+
+        var restoredTarget = new ProviderTarget(
+                Level.OVERWORLD, BlockPos.ZERO, Direction.NORTH);
+        var restoredPattern = new EmptyPattern();
+        restoredTarget.restoreAdaptiveBatchSnapshot(
+                restoredPattern, decoded);
+
+        var chunks = new ArrayList<Integer>();
+        restoredTarget.pushPatternStep(
+                restoredPattern,
+                32L,
+                21L,
+                true,
+                () -> false,
+                copies -> {
+                    chunks.add(copies);
+                    return new ProviderTarget.BatchChunk(
+                            copies, true, false);
+                });
+
+        assertEquals(List.of(8, 8, 16), chunks);
+    }
+
+    @Test
+    void corruptedPersistedBatchHistoryFailsClosed() {
+        var tag = new net.minecraft.nbt.CompoundTag();
+        var step = new net.minecraft.nbt.CompoundTag();
+        step.putInt("next_chunk", 0);
+        tag.put("step", step);
+
+        assertEquals(
+                null,
+                AdaptiveBatchStatePersistence.readSnapshot(tag));
     }
 
     @Test

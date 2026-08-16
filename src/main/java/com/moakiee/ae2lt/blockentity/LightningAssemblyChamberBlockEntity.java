@@ -58,6 +58,7 @@ import com.moakiee.ae2lt.machine.lightningassembly.recipe.LightningAssemblyRecip
 import com.moakiee.ae2lt.me.key.LightningKey;
 import com.moakiee.ae2lt.registry.ModBlockEntities;
 import com.moakiee.ae2lt.registry.ModBlocks;
+import com.moakiee.ae2lt.util.NativeStackDropHelper;
 
 public class LightningAssemblyChamberBlockEntity extends AENetworkedBlockEntity
     implements IUpgradeableObject, FrequencyBindingHost,
@@ -91,6 +92,7 @@ public class LightningAssemblyChamberBlockEntity extends AENetworkedBlockEntity
     private boolean working;
     private boolean powered;
     private boolean autoExport;
+    private boolean removing;
     private ItemStack clientRecipeResult = ItemStack.EMPTY;
     private EnumSet<RelativeSide> allowedOutputs = EnumSet.noneOf(RelativeSide.class);
     private final AdjacentItemAutoExportHelper.DirectionalTargetCache exportTargetCache =
@@ -294,7 +296,7 @@ public class LightningAssemblyChamberBlockEntity extends AENetworkedBlockEntity
                 remainder -> {
                     ItemStack leftover = inventory.insertRecipeOutput(remainder, false);
                     if (!leftover.isEmpty() && level != null) {
-                        Block.popResource(level, worldPosition, leftover);
+                        NativeStackDropHelper.popResource(level, worldPosition, leftover);
                     }
                 },
                 direction -> getExportTarget(serverLevel, direction));
@@ -381,7 +383,6 @@ public class LightningAssemblyChamberBlockEntity extends AENetworkedBlockEntity
 
         clearLockedRecipe();
         resetProgressState();
-        setWorking(false);
         pushOutResult();
         return true;
     }
@@ -411,8 +412,10 @@ public class LightningAssemblyChamberBlockEntity extends AENetworkedBlockEntity
         boolean changed = this.working != working;
         this.working = working;
         if (level != null) {
-            BlockState state = getBlockState();
-            if (state.hasProperty(LightningAssemblyChamberBlock.WORKING)
+            BlockState state = level.getBlockState(worldPosition);
+            if (state.is(ModBlocks.LIGHTNING_ASSEMBLY_CHAMBER.get())
+                    && level.getBlockEntity(worldPosition) == this
+                    && state.hasProperty(LightningAssemblyChamberBlock.WORKING)
                     && state.getValue(LightningAssemblyChamberBlock.WORKING) != working) {
                 level.setBlock(worldPosition, state.setValue(LightningAssemblyChamberBlock.WORKING, working), Block.UPDATE_ALL);
             } else if (changed) {
@@ -424,7 +427,7 @@ public class LightningAssemblyChamberBlockEntity extends AENetworkedBlockEntity
     @Override
     public void onMainNodeStateChanged(IGridNodeListener.State reason) {
         frequencyBinding.onMainNodeStateChanged(reason);
-        if (reason != IGridNodeListener.State.GRID_BOOT) {
+        if (!removing && reason != IGridNodeListener.State.GRID_BOOT) {
             refreshPoweredState();
         }
     }
@@ -454,6 +457,7 @@ public class LightningAssemblyChamberBlockEntity extends AENetworkedBlockEntity
 
     @Override
     public void setRemoved() {
+        removing = true;
         frequencyBinding.setRemoved();
         super.setRemoved();
     }
@@ -461,6 +465,7 @@ public class LightningAssemblyChamberBlockEntity extends AENetworkedBlockEntity
     @Override
     public void clearRemoved() {
         super.clearRemoved();
+        removing = false;
         frequencyBinding.clearRemoved();
     }
 
@@ -580,12 +585,12 @@ public class LightningAssemblyChamberBlockEntity extends AENetworkedBlockEntity
         for (int slot = 0; slot < inventory.getSlots(); slot++) {
             ItemStack stack = inventory.getStackInSlot(slot);
             if (!stack.isEmpty()) {
-                drops.add(stack.copy());
+                NativeStackDropHelper.addDrops(drops, stack);
             }
         }
         for (var upgrade : upgrades) {
             if (!upgrade.isEmpty()) {
-                drops.add(upgrade.copy());
+                NativeStackDropHelper.addDrops(drops, upgrade);
             }
         }
     }
@@ -726,4 +731,3 @@ public class LightningAssemblyChamberBlockEntity extends AENetworkedBlockEntity
                 .insert(key, amount, Actionable.MODULATE, IActionSource.ofMachine(this));
     }
 }
-

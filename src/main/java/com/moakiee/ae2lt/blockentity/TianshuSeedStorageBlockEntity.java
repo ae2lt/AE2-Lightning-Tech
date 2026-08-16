@@ -13,6 +13,7 @@ import appeng.util.inv.AppEngInternalInventory;
 import appeng.util.inv.InternalInventoryHost;
 import com.moakiee.ae2lt.menu.TianshuSeedStorageMenu;
 import com.moakiee.ae2lt.registry.ModBlockEntities;
+import com.moakiee.ae2lt.util.NativeStackDropHelper;
 import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.core.BlockPos;
@@ -121,7 +122,7 @@ public final class TianshuSeedStorageBlockEntity extends AEBaseBlockEntity
         }
         cells.clear();
         for (var stack : drops) {
-            Block.popResource(level, worldPosition, stack);
+            NativeStackDropHelper.popResource(level, worldPosition, stack);
         }
     }
 

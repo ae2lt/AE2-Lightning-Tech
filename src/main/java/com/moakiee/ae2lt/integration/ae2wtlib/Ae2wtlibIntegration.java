@@ -7,6 +7,8 @@ import com.moakiee.ae2lt.menu.TianshuWirelessPatternEncodingTermMenu;
 import com.moakiee.ae2lt.registry.ModItems;
 
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.core.registries.Registries;
+import net.neoforged.neoforge.registries.RegisterEvent;
 
 import de.mari_023.ae2wtlib.api.gui.Icon;
 import de.mari_023.ae2wtlib.api.registration.AddTerminalEvent;
@@ -54,9 +56,15 @@ public final class Ae2wtlibIntegration {
     }
 
     /**
-     * Installs the handler during mod construction. AddTerminalEvent is a one-shot callback list
-     * that is consumed during item registration, not a normal NeoForge event-bus event.
+     * Installs the handler when the item registry opens. Delaying registration until this point
+     * lets AE2WTLib add its built-in terminals first, which also determines the selector order.
      */
+    public static void onRegister(RegisterEvent event) {
+        if (event.getRegistryKey().equals(Registries.ITEM)) {
+            registerTerminal();
+        }
+    }
+
     public static synchronized void registerTerminal() {
         if (terminalRegistrationRequested) {
             return;

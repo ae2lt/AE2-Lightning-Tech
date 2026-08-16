@@ -64,6 +64,7 @@ import com.moakiee.ae2lt.machine.overloadfactory.OverloadProcessingFactoryEnergy
 import com.moakiee.ae2lt.menu.CrystalCatalyzerMenu;
 import com.moakiee.ae2lt.registry.ModBlockEntities;
 import com.moakiee.ae2lt.registry.ModBlocks;
+import com.moakiee.ae2lt.util.NativeStackDropHelper;
 
 public class CrystalCatalyzerBlockEntity extends AENetworkedBlockEntity
         implements IActionHost, IUpgradeableObject, FrequencyBindingHost,
@@ -472,7 +473,7 @@ public class CrystalCatalyzerBlockEntity extends AENetworkedBlockEntity
                 remainder -> {
                     ItemStack leftover = inventory.insertRecipeOutput(remainder, false);
                     if (!leftover.isEmpty() && level != null) {
-                        Block.popResource(level, worldPosition, leftover);
+                        NativeStackDropHelper.popResource(level, worldPosition, leftover);
                     }
                 },
                 direction -> exportTargetCache.resolve(serverLevel, worldPosition, direction));
@@ -605,7 +606,6 @@ public class CrystalCatalyzerBlockEntity extends AENetworkedBlockEntity
         }
 
         clearLockedRecipe();
-        setWorking(false);
         pushOutResult();
         return true;
     }
@@ -641,8 +641,10 @@ public class CrystalCatalyzerBlockEntity extends AENetworkedBlockEntity
     @Override
     public void setWorking(boolean working) {
         if (level != null) {
-            BlockState state = getBlockState();
-            if (state.hasProperty(CrystalCatalyzerBlock.WORKING)
+            BlockState state = level.getBlockState(worldPosition);
+            if (state.is(ModBlocks.CRYSTAL_CATALYZER.get())
+                    && level.getBlockEntity(worldPosition) == this
+                    && state.hasProperty(CrystalCatalyzerBlock.WORKING)
                     && state.getValue(CrystalCatalyzerBlock.WORKING) != working) {
                 level.setBlock(worldPosition, state.setValue(CrystalCatalyzerBlock.WORKING, working), Block.UPDATE_ALL);
             }
@@ -751,7 +753,7 @@ public class CrystalCatalyzerBlockEntity extends AENetworkedBlockEntity
         for (int slot = 0; slot < inventory.getSlots(); slot++) {
             ItemStack stack = inventory.getStackInSlot(slot);
             if (!stack.isEmpty()) {
-                drops.add(stack.copy());
+                NativeStackDropHelper.addDrops(drops, stack);
             }
         }
     }

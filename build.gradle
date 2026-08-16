@@ -12,8 +12,8 @@ repositories {
     mavenLocal()
     mavenCentral()
     maven {
-        name = "TerraformersMC"
-        url = "https://maven.terraformersmc.com/releases/"
+        name = "Sleeping Town"
+        url = "https://repo.sleeping.town/"
         content {
             includeGroup "dev.emi"
         }
@@ -218,9 +218,9 @@ dependencies {
     // Thunderbolt Core — the extracted AE2 infrastructure layer (fast crafting planner,
     // channel/batch/cell/matrix algorithms). Provided at runtime as a separate mod jar in the modpack,
     // so compileOnly here. Published to mavenLocal via `./gradlew publishToMavenLocal` in Thunderbolt Core.
-    compileOnly "com.moakiee.thunderbolt:thunderbolt:1.0.0"
-    runtimeOnly "com.moakiee.thunderbolt:thunderbolt:1.0.0"
-    testRuntimeOnly "com.moakiee.thunderbolt:thunderbolt:1.0.0"
+    compileOnly "com.moakiee.thunderbolt:thunderbolt:1.0.6"
+    runtimeOnly "com.moakiee.thunderbolt:thunderbolt:1.0.6"
+    testRuntimeOnly "com.moakiee.thunderbolt:thunderbolt:1.0.6"
     jdbProbeModPaths.each { runtimeOnly files(it) }
 
     implementation "curse.maven:applied-energistics-2-223794:7027323"
@@ -254,7 +254,12 @@ dependencies {
     }
     compileOnly "curse.maven:jei-238222:7391682"
     runtimeOnly "curse.maven:jei-238222:7391682"
-    compileOnly "dev.emi:emi-neoforge:1.1.10+1.21"
+    // Optional Polymorphic Energistics integration. Only the Polymorph client API is needed at
+    // compile time; the compatibility bootstrap never loads API-backed classes unless both mods
+    // are installed by the modpack.
+    compileOnly "curse.maven:polymorph-388800:${polymorph_curse_file_id}"
+    compileOnly "dev.emi:emi-neoforge:${emi_version}:api"
+    runtimeOnly "dev.emi:emi-neoforge:${emi_version}"
     compileOnly "curse.maven:jade-324717:6291517"
     runtimeOnly "curse.maven:jade-324717:6291517"
     runtimeOnly "curse.maven:mekanism-268560:7621971"

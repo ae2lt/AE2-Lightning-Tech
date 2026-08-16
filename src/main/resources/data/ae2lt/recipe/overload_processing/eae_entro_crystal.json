@@ -10,7 +10,7 @@
   "inputs": [
     {
       "ingredient": {
-        "item": "extendedae:entro_dust"
+        "tag": "c:dusts/entro"
       },
       "count": 32
     },

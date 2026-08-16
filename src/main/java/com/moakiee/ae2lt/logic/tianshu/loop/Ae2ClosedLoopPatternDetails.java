@@ -14,7 +14,6 @@ import java.util.TreeSet;
 import java.util.function.Function;
 import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.Nullable;
-import appeng.api.crafting.PatternDetailsHelper;
 import appeng.api.crafting.IPatternDetails;
 import com.moakiee.thunderbolt.api.crafting.cpu.ExtendedCraftingCpuClusterHost;
 import com.moakiee.thunderbolt.core.crafting.loop.PatternFiringExpander;
@@ -72,6 +71,17 @@ public final class Ae2ClosedLoopPatternDetails
             Level level,
             UUID owningTianshuId,
             Function<ReusableSeedPattern, Map<AEKey, Long>> availableSeedSnapshotFactory) {
+        this(definition, payload, level, owningTianshuId, availableSeedSnapshotFactory,
+                ClosedLoopPatternDecoder.decodePayload(payload, level).members());
+    }
+
+    Ae2ClosedLoopPatternDetails(
+            AEItemKey definition,
+            ClosedLoopPatternPayload payload,
+            Level level,
+            UUID owningTianshuId,
+            Function<ReusableSeedPattern, Map<AEKey, Long>> availableSeedSnapshotFactory,
+            List<IPatternDetails> decodedMemberDetails) {
         this.definition = Objects.requireNonNull(definition, "definition");
         this.payload = Objects.requireNonNull(payload, "payload");
         this.owningTianshuId = owningTianshuId;
@@ -92,18 +102,14 @@ public final class Ae2ClosedLoopPatternDetails
         }
         for (var input : payload.externalInputs()) inputs[slot++] = new ExactInput(input, false);
 
-        var rawMembers = new ArrayList<IPatternDetails>(payload.memberPatterns().size());
-        for (var member : payload.memberPatterns()) {
-            var memberStack = member.pattern().toItemStack(level.registryAccess());
-            if (memberStack.getItem() instanceof com.moakiee.ae2lt.item.ClosedLoopPatternItem) {
-                throw new IllegalArgumentException(
-                        "closed-loop runtime payload must contain only flattened ordinary members");
-            }
-            var details = PatternDetailsHelper.decodePattern(memberStack, level);
-            if (details == null || details instanceof TianshuClosedLoopPatternDetails) {
+        var rawMembers = List.copyOf(decodedMemberDetails);
+        if (rawMembers.size() != payload.memberPatterns().size()) {
+            throw new IllegalArgumentException("decoded closed-loop member count does not match payload");
+        }
+        for (var details : rawMembers) {
+            if (details instanceof TianshuClosedLoopPatternDetails) {
                 throw new IllegalArgumentException("closed-loop member pattern is no longer decodable");
             }
-            rawMembers.add(details);
         }
         var seedAmounts = new java.util.LinkedHashMap<AEKey, Long>();
         for (var seed : payload.seeds()) seedAmounts.merge(seed.what(), seed.amount(), Sat::add);

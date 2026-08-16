@@ -49,9 +49,9 @@ The Port:
 * Publishes the matrix as a crafting provider to the ME network
 * Aggregates and exposes all Pattern Storages
 * Receives ingredients from crafting jobs and inserts completed results directly into the network
-* Accepts ME cable connections on all six sides only after formation; cables cannot connect while the structure is unformed. It uses 8 AE/t while idle, and the formed multiblock consumes 1 channel
+* Accepts ME cable connections on all six sides only after formation; cables cannot connect while the structure is unformed. It has a fixed idle cost of 8 AE/t, and the formed multiblock consumes 1 channel
 
-The matrix accepts no new crafting work while the Port is disconnected from a powered network or belongs to an unformed structure.
+In addition to its fixed idle cost, the matrix consumes **1 AE** for every pattern copy it successfully accepts. If it accepts a given number of pattern copies during one tick, that tick consumes the same amount of additional AE on top of the 8 AE/t idle cost. When available power is insufficient, the matrix limits that tick's work to the number of copies the network can pay for. It accepts no new crafting work while the Port is disconnected from a powered network or belongs to an unformed structure.
 
 The matrix does not force-load any chunk in its footprint. If any structure chunk is unloaded, the Port disconnects and work pauses without clearing patterns, jobs, or the last confirmed structure data. It rescans and reconnects automatically after the complete structure is loaded again. A cross-chunk build therefore needs a chunk loader covering the whole matrix.
 

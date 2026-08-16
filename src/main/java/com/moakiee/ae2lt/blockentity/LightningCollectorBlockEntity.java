@@ -403,8 +403,10 @@ public class LightningCollectorBlockEntity extends AENetworkedBlockEntity
         if (level == null) {
             return;
         }
-        BlockState state = getBlockState();
-        if (state.hasProperty(LightningCollectorBlock.WORKING)
+        BlockState state = level.getBlockState(worldPosition);
+        if (state.is(ModBlocks.LIGHTNING_COLLECTOR.get())
+                && level.getBlockEntity(worldPosition) == this
+                && state.hasProperty(LightningCollectorBlock.WORKING)
                 && state.getValue(LightningCollectorBlock.WORKING) != working) {
             level.setBlock(worldPosition, state.setValue(LightningCollectorBlock.WORKING, working), Block.UPDATE_ALL);
         }

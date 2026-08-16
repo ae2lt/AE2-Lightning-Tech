@@ -15,6 +15,7 @@ import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternPayload;
 import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternRepository;
 import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopMemberPattern;
 import com.moakiee.ae2lt.logic.tianshu.loop.TianshuSeedRefillService;
+import com.moakiee.ae2lt.logic.tianshu.terminal.SeedRefillSync;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.InventoryMaintenanceDecision;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.InventoryMaintenanceRepository;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.InventoryMaintenanceRule;
@@ -44,6 +45,26 @@ import net.minecraft.world.level.Level;
 import org.junit.jupiter.api.Test;
 
 class ClosedLoopPatternRepositoryTest {
+    @Test
+    void seedRefillStatusSeparatesNetworkAndStorageProblems() {
+        var networkSeed = new TestKey("network_seed");
+        var blockedSeed = new TestKey("blocked_seed");
+
+        var networkOnly = SeedRefillSync.of(new TianshuSeedRefillService.RefillResult(
+                true, Map.of(), Map.of(networkSeed, 12L), Map.of()));
+        var storageOnly = SeedRefillSync.of(new TianshuSeedRefillService.RefillResult(
+                true, Map.of(), Map.of(), Map.of(blockedSeed, 7L)));
+        var mixed = SeedRefillSync.of(new TianshuSeedRefillService.RefillResult(
+                true, Map.of(), Map.of(networkSeed, 12L), Map.of(blockedSeed, 7L)));
+
+        assertEquals(SeedRefillSync.STATE_NETWORK_MISSING, networkOnly.state());
+        assertEquals(12L, networkOnly.problems().getFirst().networkMissing());
+        assertEquals(SeedRefillSync.STATE_STORAGE_BLOCKED, storageOnly.state());
+        assertEquals(7L, storageOnly.problems().getFirst().storageBlocked());
+        assertEquals(SeedRefillSync.STATE_MIXED, mixed.state());
+        assertEquals(2, mixed.problems().size());
+    }
+
     @Test
     void executionAndStoredTaskMultipliersScaleDifferentSeedCapacityAxes() {
         var base = payload();

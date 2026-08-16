@@ -30,6 +30,19 @@ class TianshuRecipeViewerIntegrationSourceContractTest {
     }
 
     @Test
+    void emiRegistersRecipeHandlersForBothTianshuTerminalMenuTypes() throws Exception {
+        String emiPlugin = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/integration/emi/AE2LTEmiPlugin.java"));
+
+        assertTrue(emiPlugin.contains("TianshuPatternEncodingTermMenu.TYPE"));
+        assertTrue(emiPlugin.contains(
+                "new EmiEncodePatternHandler<>(TianshuPatternEncodingTermMenu.class)"));
+        assertTrue(emiPlugin.contains("TianshuWirelessPatternEncodingTermMenu.TYPE"));
+        assertTrue(emiPlugin.contains(
+                "new EmiEncodePatternHandler<>(TianshuWirelessPatternEncodingTermMenu.class)"));
+    }
+
+    @Test
     void bothViewersObserveOnlyActualTransfersAndCaptureStableRecipeIdentity() throws Exception {
         String jei = Files.readString(Path.of(
                 "src/main/java/com/moakiee/ae2lt/mixin/recipeviewer/jei/JeiEncodePatternTransferMixin.java"));
@@ -130,6 +143,8 @@ class TianshuRecipeViewerIntegrationSourceContractTest {
                 "src/main/java/com/moakiee/ae2lt/client/TianshuUploadTargetMatcher.java"));
         String coordinator = Files.readString(Path.of(
                 "src/main/java/com/moakiee/ae2lt/client/TianshuDirectUploadClient.java"));
+        String terminalScreen = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/client/TianshuPatternEncodingTermScreen.java"));
         String menu = Files.readString(Path.of(
                 "src/main/java/com/moakiee/ae2lt/menu/TianshuPatternEncodingTermMenu.java"));
         String transferButton = Files.readString(Path.of(
@@ -143,6 +158,8 @@ class TianshuRecipeViewerIntegrationSourceContractTest {
         assertTrue(emi.contains("EmiRecipeTransferResultAccessor result"));
         assertTrue(emi.contains("result.ae2lt$canCraft()"));
         assertTrue(emi.contains("encodeAndUploadDirectly()"));
+        assertTrue(emi.contains("currentScreen != EmiApi.getHandledScreen()"));
+        assertTrue(emi.contains("TianshuDirectUploadClient.holdRecipeScreen("));
         assertTrue(picker.contains("directUploadRequested"));
         assertTrue(picker.contains("findUniqueCandidate"));
         assertTrue(picker.contains("if (selected != null) select("));
@@ -157,6 +174,10 @@ class TianshuRecipeViewerIntegrationSourceContractTest {
         assertTrue(coordinator.contains("requestDirectUploadTargetsAfterEncoding()"));
         assertTrue(coordinator.contains("hasFreshDirectUploadTargets()"));
         assertTrue(coordinator.contains("recipeScreen.onClose()"));
+        assertTrue(coordinator.contains("terminalScreen.openDirectUploadFallback()"));
+        assertTrue(terminalScreen.contains("public boolean openDirectUploadFallback()"));
+        assertTrue(terminalScreen.contains(
+                "switchToScreen(new TianshuUploadTargetScreen<>(this, true))"));
         assertTrue(coordinator.contains("menu.uploadTianshuPatternToTarget(target.group())"));
         assertTrue(picker.contains("\"ae2lt.tianshu.upload.success_target\""));
         assertTrue(coordinator.contains("\"ae2lt.tianshu.upload.success_target\""));
@@ -167,6 +188,9 @@ class TianshuRecipeViewerIntegrationSourceContractTest {
         int resultReady = coordinator.indexOf("isEncodingResultReady(menu, stack)");
         int targetRefresh = coordinator.indexOf("requestDirectUploadTargetsAfterEncoding()");
         assertTrue(resultReady >= 0 && targetRefresh > resultReady);
+        int emiEncode = emi.indexOf("tianshuMenu.encodeAndUploadDirectly()");
+        int emiHold = emi.indexOf("TianshuDirectUploadClient.holdRecipeScreen(");
+        assertTrue(emiEncode >= 0 && emiHold > emiEncode);
         int beginEncoding = menu.indexOf("private void beginClientEncoding(");
         int encodeServer = menu.indexOf("private void encodeServerWithOptions(", beginEncoding);
         assertTrue(beginEncoding >= 0 && encodeServer > beginEncoding);
