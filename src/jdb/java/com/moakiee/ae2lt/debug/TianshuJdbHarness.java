@@ -113,8 +113,10 @@ public final class TianshuJdbHarness {
             var waitingFor = new appeng.crafting.inv.ListCraftingInventory(ignored -> {});
             cpuInventory.insert(master, 1, Actionable.MODULATE);
             cpuInventory.insert(inferium, 8, Actionable.MODULATE);
-            var job = new com.moakiee.thunderbolt.core.crafting.batch.BatchJobView() {
-                @Override public java.util.Iterator<com.moakiee.thunderbolt.core.crafting.batch.BatchTaskHandle>
+            var job = new com.moakiee.thunderbolt.api.crafting.batch.BatchJobView() {
+                @Override public net.minecraft.world.level.Level level() { return level; }
+                @Override public java.util.UUID craftingId() { return null; }
+                @Override public java.util.Iterator<com.moakiee.thunderbolt.api.crafting.batch.BatchTaskHandle>
                 taskIterator() { return java.util.Collections.emptyIterator(); }
                 @Override public appeng.crafting.inv.ListCraftingInventory waitingFor() {
                     return waitingFor;

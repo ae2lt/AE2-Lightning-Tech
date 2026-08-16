@@ -793,7 +793,7 @@ public class AE2LightningTech {
      */
     private void commonSetup(FMLCommonSetupEvent event) {
         FrequencyApi.setProvider(new FrequencyApiBridge());
-        BatchExecutor.setBatchEligibleRule(BatchPatternEligibility::isEligible);
+        BatchExecutor.registerBatchEligibilityRule(BatchPatternEligibility::isEligible);
         event.enqueueWork(() -> {
             // Thunderbolt keeps controller discovery content-agnostic. Register the
             // AE2LT controller family before any grid can be created so infinite

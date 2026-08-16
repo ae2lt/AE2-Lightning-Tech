@@ -252,7 +252,7 @@ public class MatrixPortBlockEntity extends AENetworkedBlockEntity
     }
 
     @Override
-    public boolean supportsSingleSeedBatch() {
+    public boolean supportsSharedBatchInputs() {
         return isFormed();
     }
 

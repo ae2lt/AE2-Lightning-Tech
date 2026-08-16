@@ -12,8 +12,8 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import com.moakiee.thunderbolt.core.crafting.batch.BatchProviderFilterIterable;
-import com.moakiee.thunderbolt.core.crafting.batch.BatchJobView;
-import com.moakiee.thunderbolt.core.crafting.batch.BatchTaskHandle;
+import com.moakiee.thunderbolt.api.crafting.batch.BatchJobView;
+import com.moakiee.thunderbolt.api.crafting.batch.BatchTaskHandle;
 import com.moakiee.thunderbolt.core.crafting.batch.ParallelBatchCpuHelper;
 import com.moakiee.thunderbolt.core.crafting.batch.SharedBatchInputPattern;
 import com.mojang.serialization.MapCodec;
@@ -403,6 +403,8 @@ class ParallelBatchCpuHelperTest {
     }
 
     private record FakeBatchJobView(ListCraftingInventory waitingFor) implements BatchJobView {
+        @Override public Level level() { return null; }
+        @Override public java.util.UUID craftingId() { return null; }
         @Override public java.util.Iterator<BatchTaskHandle> taskIterator() {
             return java.util.Collections.emptyIterator();
         }

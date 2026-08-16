@@ -58,8 +58,8 @@ import appeng.me.service.CraftingService;
 
 import com.moakiee.thunderbolt.core.crafting.batch.BatchExecutor;
 import com.moakiee.thunderbolt.core.crafting.batch.BatchCpuAccounting;
-import com.moakiee.thunderbolt.core.crafting.batch.BatchJobView;
-import com.moakiee.thunderbolt.core.crafting.batch.BatchTaskHandle;
+import com.moakiee.thunderbolt.api.crafting.batch.BatchJobView;
+import com.moakiee.thunderbolt.api.crafting.batch.BatchTaskHandle;
 import com.moakiee.thunderbolt.core.crafting.batch.ParallelBatchCpuHelper;
 import com.moakiee.thunderbolt.core.crafting.batch.TickProviderDispatchSchedule;
 import com.moakiee.ae2lt.crafting.runtime.api.CraftingTaskPriorities;
@@ -67,7 +67,7 @@ import com.moakiee.thunderbolt.core.crafting.support.CraftingPatternDelegates;
 import com.moakiee.thunderbolt.core.crafting.loop.CraftingTaskPersistenceDefinition;
 import com.moakiee.thunderbolt.core.crafting.loop.ISeedPreservingCraftingTask;
 import com.moakiee.thunderbolt.core.crafting.loop.ReusableSeedPattern;
-import com.moakiee.thunderbolt.mixin.ae2.crafting.ElapsedTimeTrackerAccessor;
+import com.moakiee.ae2lt.mixin.thunderbolt.accessor.ElapsedTimeTrackerAccessor;
 import com.moakiee.ae2lt.overload.runtime.cpu.OverloadClaimResult;
 import com.moakiee.ae2lt.overload.runtime.cpu.OverloadConsumerCredit;
 import com.moakiee.ae2lt.overload.runtime.cpu.OverloadCpuStateManager;
@@ -579,7 +579,6 @@ public final class Ae2LtTimeWheelCraftingCpuLogic {
                 BatchCpuAccounting.Mode.SUCCESSFUL_DISPATCH,
                 craftingService,
                 energyService,
-                level,
                 scratchBatchJobView.bind(activeJob, details),
                 inventory,
                 batchedByTask,
@@ -2816,11 +2815,11 @@ public final class Ae2LtTimeWheelCraftingCpuLogic {
     }
 
     private static void addMaxItems(ElapsedTimeTracker tracker, long count, AEKeyType type) {
-        ((ElapsedTimeTrackerAccessor) tracker).invokeAddMaxItems(count, type);
+        ((ElapsedTimeTrackerAccessor) tracker).ae2lt$addMaxItems(count, type);
     }
 
     private static void decrementItems(ElapsedTimeTracker tracker, long count, AEKeyType type) {
-        ((ElapsedTimeTrackerAccessor) tracker).invokeDecrementItems(count, type);
+        ((ElapsedTimeTrackerAccessor) tracker).ae2lt$decrementItems(count, type);
     }
 
     private static void clearScratchCounter(KeyCounter counter) {
@@ -3271,6 +3270,11 @@ public final class Ae2LtTimeWheelCraftingCpuLogic {
         public Iterator<BatchTaskHandle> taskIterator() {
             consumed = false;
             return this;
+        }
+
+        @Override
+        public Level level() {
+            return cpu.getLevel();
         }
 
         @Override

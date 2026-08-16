@@ -31,7 +31,7 @@ import appeng.crafting.inv.ListCraftingInventory;
 
 import com.moakiee.thunderbolt.core.crafting.support.CraftingPatternDelegates;
 import com.moakiee.thunderbolt.core.util.MixinReflectionSupport;
-import com.moakiee.thunderbolt.mixin.compat.neoeco.ECOCraftingCpuAccessor;
+import com.moakiee.ae2lt.mixin.thunderbolt.accessor.ECOCraftingCpuAccessor;
 import com.moakiee.ae2lt.overload.runtime.cpu.InsertContext;
 import com.moakiee.ae2lt.overload.runtime.cpu.OverloadClaimResult;
 import com.moakiee.ae2lt.overload.runtime.cpu.OverloadCpuInsertSupport;
@@ -212,7 +212,7 @@ public abstract class ECOCraftingCpuLogicMixin {
             long supplementalReturn = ae2lt$applyInventoryClaims(what, claims) + ae2lt$applyRequesterClaims(what, claims);
             var cpu = ae2lt$getCpu();
             if (cpu != null) {
-                ((ECOCraftingCpuAccessor) cpu).invokeMarkDirty();
+                ((ECOCraftingCpuAccessor) cpu).ae2lt$markDirty();
             }
             cir.setReturnValue(cir.getReturnValue() + supplementalReturn);
         } else {

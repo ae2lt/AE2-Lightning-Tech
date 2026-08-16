@@ -31,7 +31,7 @@ import appeng.crafting.inv.ListCraftingInventory;
 
 import com.moakiee.thunderbolt.core.crafting.support.CraftingPatternDelegates;
 import com.moakiee.thunderbolt.core.util.MixinReflectionSupport;
-import com.moakiee.thunderbolt.mixin.compat.advancedae.AdvCraftingCpuAccessor;
+import com.moakiee.ae2lt.mixin.thunderbolt.accessor.AdvCraftingCpuAccessor;
 import com.moakiee.ae2lt.overload.runtime.cpu.InsertContext;
 import com.moakiee.ae2lt.overload.runtime.cpu.OverloadClaimResult;
 import com.moakiee.ae2lt.overload.runtime.cpu.OverloadCpuInsertSupport;
@@ -201,7 +201,7 @@ public abstract class AdvCraftingCpuLogicMixin {
             long supplementalReturn = ae2lt$applyInventoryClaims(what, claims) + ae2lt$applyRequesterClaims(what, claims);
             var cpu = ae2lt$getCpu();
             if (cpu != null) {
-                ((AdvCraftingCpuAccessor) cpu).invokeMarkDirty();
+                ((AdvCraftingCpuAccessor) cpu).ae2lt$markDirty();
             }
             cir.setReturnValue(cir.getReturnValue() + supplementalReturn);
         } else {
@@ -343,12 +343,13 @@ public abstract class AdvCraftingCpuLogicMixin {
         if (remaining <= 0) {
             ae2lt$invokeFinishJob(true);
             if (cpu != null) {
-                ((AdvCraftingCpuAccessor) cpu).invokeUpdateOutput(null);
+                ((AdvCraftingCpuAccessor) cpu).ae2lt$updateOutput(null);
             }
         } else {
             GenericStack finalOutput = ae2lt$getJobFinalOutput(job);
             if (cpu != null && finalOutput != null) {
-                ((AdvCraftingCpuAccessor) cpu).invokeUpdateOutput(new GenericStack(finalOutput.what(), remaining));
+                ((AdvCraftingCpuAccessor) cpu).ae2lt$updateOutput(
+                        new GenericStack(finalOutput.what(), remaining));
             }
         }
 
