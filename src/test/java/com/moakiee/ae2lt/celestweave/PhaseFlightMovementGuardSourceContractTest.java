@@ -115,6 +115,18 @@ class PhaseFlightMovementGuardSourceContractTest {
         assertTrue(settingsPacket.contains("boolean flying"));
         assertTrue(settingsPacket.contains("boolean flightLockEnabled"));
         assertTrue(settingsPacket.contains("PhaseFlightPlayerState.synchronizeFlying(player, payload.flying())"));
+        int settingsHandler = settingsPacket.indexOf("public static void handle");
+        int inactiveBranch = settingsPacket.indexOf("} else {", settingsHandler);
+        int inactiveFlyingSync = settingsPacket.indexOf(
+                "PhaseFlightPlayerState.synchronizeFlying(player, payload.flying())",
+                inactiveBranch);
+        int inactiveEndControl = settingsPacket.indexOf(
+                "PhaseFlightPlayerState.endControl(player)",
+                inactiveBranch);
+        assertTrue(settingsHandler >= 0);
+        assertTrue(inactiveBranch > settingsHandler);
+        assertTrue(inactiveFlyingSync > inactiveBranch);
+        assertTrue(inactiveEndControl > inactiveFlyingSync);
         assertFalse(mixinConfig.contains("DraconicChargeUpPhaseFlightMixin"));
         assertFalse(phaseFlight.contains("&& player.getAbilities().flying\n                && isPhaseModeConfigured"));
         assertFalse(phaseFlight.contains("abilities.mayfly"));
