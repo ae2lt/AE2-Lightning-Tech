@@ -65,6 +65,8 @@ class PhaseFlightMovementGuardSourceContractTest {
                 "src/main/java/com/moakiee/ae2lt/celestweave/PhaseFlightPlayerState.java"));
         String playerMixin = Files.readString(Path.of(
                 "src/main/java/com/moakiee/ae2lt/mixin/PlayerPhaseFlightMixin.java"));
+        String mayFlyMixin = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/mixin/PlayerMayFlyMixin.java"));
         String phaseFlight = Files.readString(Path.of(
                 "src/main/java/com/moakiee/ae2lt/celestweave/module/PhaseFlightSubmodule.java"));
         String clientHandler = Files.readString(Path.of(
@@ -82,7 +84,7 @@ class PhaseFlightMovementGuardSourceContractTest {
         assertTrue(state.contains("interface Access"));
         assertTrue(state.contains("public static void activate(Player player)"));
         assertTrue(state.contains("access.ae2lt$setPhaseFlying(access.ae2lt$getVanillaFlying())"));
-        assertTrue(state.contains("player.getAbilities().mayfly = true"));
+        assertFalse(state.contains("mayfly"));
         assertTrue(state.contains("access.ae2lt$setVanillaFlying(flying)"));
         assertTrue(state.contains("access.ae2lt$setVanillaFlying(access.ae2lt$isPhaseFlying())"));
         assertTrue(state.contains("access.ae2lt$isPhaseFlightLocked()"));
@@ -91,13 +93,16 @@ class PhaseFlightMovementGuardSourceContractTest {
         assertTrue(state.contains("public static void synchronizeFlying"));
         assertTrue(playerMixin.contains("implements PhaseFlightPlayerState.Access"));
         assertTrue(playerMixin.contains("private boolean ae2lt$phaseFlying"));
-        assertTrue(playerMixin.contains("@Inject(method = \"tick\", at = @At(\"HEAD\"))"));
+        assertFalse(playerMixin.contains("maintainVanillaAbilities"));
         assertTrue(playerMixin.contains("method = \"getAbilities\""));
         assertTrue(playerMixin.contains("abilities.flying = ae2lt$phaseFlying"));
         assertTrue(playerMixin.contains("return abilities.flying"));
         assertTrue(playerMixin.contains("@ModifyExpressionValue"));
         assertTrue(playerMixin.contains("opcode = Opcodes.GETFIELD"));
         assertTrue(playerMixin.contains("PhaseFlightPlayerState.readEffectiveFlying"));
+        assertTrue(mayFlyMixin.contains("priority = Integer.MAX_VALUE"));
+        assertTrue(mayFlyMixin.contains("original"));
+        assertTrue(mayFlyMixin.contains("PhaseWingFlight.canUse(player)"));
         assertTrue(phaseFlight.contains("PhaseFlightPlayerState.isFlying(player)"));
         assertTrue(clientHandler.contains("PhaseWingFlight.isFlightActive(player)"));
         assertTrue(clientMixin.contains("PhaseFlightPlayerState.applyFlightInput"));
@@ -124,7 +129,9 @@ class PhaseFlightMovementGuardSourceContractTest {
         assertTrue(inactiveEndControl > inactiveFlyingSync);
         assertFalse(mixinConfig.contains("DraconicChargeUpPhaseFlightMixin"));
         assertFalse(phaseFlight.contains("&& player.getAbilities().flying\n                && isPhaseModeConfigured"));
-        assertTrue(phaseFlight.contains("restoreCapturedGameModeState ? wasFlying : abilities.flying"));
+        assertFalse(phaseFlight.contains("abilities.mayfly"));
+        assertTrue(phaseFlight.contains("((IPlayerExtension) player).mayFly()"));
+        assertTrue(mixinConfig.contains("PlayerMayFlyMixin"));
     }
 
     @Test

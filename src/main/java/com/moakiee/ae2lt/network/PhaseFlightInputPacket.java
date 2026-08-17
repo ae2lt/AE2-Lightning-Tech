@@ -56,7 +56,6 @@ public record PhaseFlightInputPacket(boolean jumpHeld, boolean hasFlightInput, b
                 return;
             }
             PhaseFlightPlayerState.activate(player);
-            PhaseFlightPlayerState.setMayflyOwned(player, flightModuleActive);
             boolean requestedFlying = packet.flying();
             if (PhaseFlightControlRules.rejectFlightToggle(
                     PhaseFlightMovementGuard.isPhaseModeEnabled(player),

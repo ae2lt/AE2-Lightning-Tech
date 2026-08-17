@@ -18,6 +18,7 @@
     "ServerPlayerPhaseMovementMixin",
     "EntityPhaseMovementMixin",
     "CommandsPhaseTeleportMixin",
+    "PlayerMayFlyMixin",
     "PlayerPhaseFlightMixin",
     "BlockItemPhasePlacementMixin",
     "ServerGamePacketListenerPhaseMovementMixin",
