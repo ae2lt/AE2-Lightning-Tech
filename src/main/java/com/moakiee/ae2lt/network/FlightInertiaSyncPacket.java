@@ -62,6 +62,7 @@ public record FlightInertiaSyncPacket(
                 PhaseFlightPlayerState.setFlightLocked(player, payload.flightLockEnabled());
                 PhaseFlightPlayerState.synchronizeFlying(player, payload.flying());
             } else {
+                PhaseFlightPlayerState.synchronizeFlying(player, payload.flying());
                 PhaseFlightPlayerState.endControl(player);
             }
         });
