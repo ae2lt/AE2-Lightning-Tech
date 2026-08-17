@@ -49,7 +49,7 @@ final class TianshuClosedLoopEncodingPanel implements ICompositeWidget {
     // Offsets relative to the panel anchor (JSON "closedLoopPanel": left 9 / bottom 166).
     private static final int MEMBER_X = 16;
     private static final int SLOT_Y = 9;
-    private static final int OUTPUT_X = 101;
+    private static final int OUTPUT_X = 100;
     private static final int CONTROL_X = 70;
     private static final int CONTROL_WIDTH = 26;
     private static final int EXEC_LABEL_Y = 9;
