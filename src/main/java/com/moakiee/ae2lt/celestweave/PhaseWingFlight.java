@@ -21,7 +21,7 @@ public final class PhaseWingFlight {
         if (player == null) {
             return false;
         }
-        if (player.level().isClientSide()) {
+        if (player.level().isClientSide() && player.isLocalPlayer()) {
             return CelestweaveArmorState.isAnyClientFlightControlActive();
         }
         for (var active : ArmorCapabilityCollector.collectPerInstalledStack(player)) {
@@ -33,9 +33,15 @@ public final class PhaseWingFlight {
     }
 
     public static boolean canElytraFly(LivingEntity entity) {
-        return entity instanceof Player player
-                && canUse(player)
-                && !PhaseFlightPlayerState.isFlying(player);
+        if (!(entity instanceof Player player)) {
+            return false;
+        }
+        // A phase-locked remote player wears an inert projection whose private modules are not
+        // replicated. Trust the server-synced glide flag instead of the observing client's cache.
+        if (player.level().isClientSide() && !player.isLocalPlayer()) {
+            return player.isFallFlying();
+        }
+        return canUse(player) && !PhaseFlightPlayerState.isFlying(player);
     }
 
     public static boolean elytraFlightTick(LivingEntity entity) {

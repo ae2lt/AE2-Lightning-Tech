@@ -277,7 +277,9 @@ public final class PhaseFlightSubmodule extends AbstractCelestweaveArmorSubmodul
         var abilities = player.getAbilities();
         updateAbilitiesIfChanged(
                 player,
-                abilities.flying && ((IPlayerExtension) player).mayFly(),
+                PhaseFlightControlRules.handoffFlying(
+                        abilities.flying,
+                        ((IPlayerExtension) player).mayFly()),
                 previousSpeed > 0.0F ? previousSpeed : DEFAULT_FLYING_SPEED);
     }
 

@@ -14,6 +14,7 @@ import net.neoforged.neoforge.common.extensions.IPlayerExtension;
 
 import com.moakiee.ae2lt.celestweave.ArmorFlightSpeedRules;
 import com.moakiee.ae2lt.celestweave.CelestweaveArmorState;
+import com.moakiee.ae2lt.celestweave.PhaseFlightControlRules;
 import com.moakiee.ae2lt.celestweave.PhaseFlightPlayerState;
 import com.moakiee.ae2lt.celestweave.PhaseWingFlight;
 
@@ -192,7 +193,9 @@ public final class FlightSubmodule extends AbstractCelestweaveArmorSubmodule {
         var abilities = player.getAbilities();
         updateAbilitiesIfChanged(
                 player,
-                abilities.flying && ((IPlayerExtension) player).mayFly(),
+                PhaseFlightControlRules.handoffFlying(
+                        abilities.flying,
+                        ((IPlayerExtension) player).mayFly()),
                 previousSpeed > 0.0F ? previousSpeed : FlightSpeedOption.VANILLA_FLYING_SPEED);
     }
 

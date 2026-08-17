@@ -91,6 +91,8 @@ class PhaseFlightMovementGuardSourceContractTest {
         assertTrue(state.contains("public static boolean readEffectiveFlying"));
         assertTrue(state.contains("public static void applyFlightInput"));
         assertTrue(state.contains("public static void synchronizeFlying"));
+        assertTrue(state.contains("public static void endControl(Player player, boolean flying)"));
+        assertTrue(state.contains("access.ae2lt$setVanillaFlying(flying)"));
         assertTrue(playerMixin.contains("implements PhaseFlightPlayerState.Access"));
         assertTrue(playerMixin.contains("private boolean ae2lt$phaseFlying"));
         assertFalse(playerMixin.contains("maintainVanillaAbilities"));
@@ -117,16 +119,12 @@ class PhaseFlightMovementGuardSourceContractTest {
         assertTrue(settingsPacket.contains("PhaseFlightPlayerState.synchronizeFlying(player, payload.flying())"));
         int settingsHandler = settingsPacket.indexOf("public static void handle");
         int inactiveBranch = settingsPacket.indexOf("} else {", settingsHandler);
-        int inactiveFlyingSync = settingsPacket.indexOf(
-                "PhaseFlightPlayerState.synchronizeFlying(player, payload.flying())",
-                inactiveBranch);
         int inactiveEndControl = settingsPacket.indexOf(
-                "PhaseFlightPlayerState.endControl(player)",
+                "PhaseFlightPlayerState.endControl(player, payload.flying())",
                 inactiveBranch);
         assertTrue(settingsHandler >= 0);
         assertTrue(inactiveBranch > settingsHandler);
-        assertTrue(inactiveFlyingSync > inactiveBranch);
-        assertTrue(inactiveEndControl > inactiveFlyingSync);
+        assertTrue(inactiveEndControl > inactiveBranch);
         assertFalse(mixinConfig.contains("DraconicChargeUpPhaseFlightMixin"));
         assertFalse(phaseFlight.contains("&& player.getAbilities().flying\n                && isPhaseModeConfigured"));
         assertFalse(phaseFlight.contains("abilities.mayfly"));

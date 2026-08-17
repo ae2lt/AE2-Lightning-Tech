@@ -25,6 +25,15 @@ final class PhaseWingFlightSourceContractTest {
     }
 
     @Test
+    void remoteGlideNeverUsesTheObservingPlayersFlightCache() throws Exception {
+        String wing = read("src/main/java/com/moakiee/ae2lt/celestweave/PhaseWingFlight.java");
+
+        assertTrue(wing.contains("player.level().isClientSide() && player.isLocalPlayer()"));
+        assertTrue(wing.contains("player.level().isClientSide() && !player.isLocalPlayer()"));
+        assertTrue(wing.contains("return player.isFallFlying()"));
+    }
+
+    @Test
     void jumpInputDrivesThrustAndCrouchWithoutPerTickPackets() throws Exception {
         String client = read("src/main/java/com/moakiee/ae2lt/client/ClientPhaseFlightHandler.java");
         String packet = read("src/main/java/com/moakiee/ae2lt/network/PhaseFlightInputPacket.java");
@@ -97,6 +106,7 @@ final class PhaseWingFlightSourceContractTest {
         assertTrue(clientHandler.contains("flightModuleActive || PhaseFlightPlayerState.isFlightLocked(player)"));
         assertTrue(inputPacket.contains("!flightModuleActive && !flightLockActive"));
         assertTrue(settingsPacket.contains("payload.flightControlActive() || payload.flightLockEnabled()"));
+        assertTrue(settingsPacket.contains("endControl(player, payload.flying())"));
         assertTrue(menu.contains("PhaseLockSubmodule.FLIGHT_LOCK_CONFIG_KEY.equals(config.key())"));
         assertFalse(mixins.contains("DraconicChargeUpPhaseFlightMixin"));
     }
@@ -116,6 +126,9 @@ final class PhaseWingFlightSourceContractTest {
         assertTrue(state.contains("boolean flightControlActive = flightActive || phaseFlightActive"));
         assertTrue(state.contains("boolean flightLockActive = PhaseLockSubmodule.isFlightLockConfigured(player)"));
         assertTrue(state.contains("PhaseLockSubmodule.hasFlightSource(player)"));
+        assertTrue(state.contains("syncFlightSettingsToClient(serverPlayer, armorId)"));
+        assertTrue(state.contains("syncArmorId = fallbackArmorId"));
+        assertTrue(state.contains("PhaseFlightControlRules.handoffFlying"));
         assertFalse(module.contains("abilities.mayfly"));
         assertTrue(recipe.contains("\"item\": \"minecraft:elytra\""));
         assertTrue(recipe.contains("\"count\": 1"));

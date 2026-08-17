@@ -392,7 +392,9 @@ public final class CelestweaveArmorState {
                 }
                 if (PhaseLockSubmodule.INSTANCE.id().equals(submodule.id()) && (changed || forceClientSync)) {
                     syncPhaseLockProtectionToClient(serverPlayer, armor, armorId, active);
-                    syncFlightSettingsToClient(serverPlayer);
+                    // The chest may already have left its slot. Retain its id long enough to send
+                    // the control-ending flight packet even when no flight leggings are equipped.
+                    syncFlightSettingsToClient(serverPlayer, armorId);
                 }
                 // Flight inertia drives client-side movement decay, so push it when flight engages
                 // and when the client needs an authoritative resync after player transfer.
@@ -698,11 +700,14 @@ public final class CelestweaveArmorState {
                 flightActive && FlightSubmodule.isInertiaEnabled(flightArmor),
                 phaseFlightActive,
                 phaseFlightActive && PhaseFlightSubmodule.isInertiaEnabled(flightArmor));
+        boolean flying = PhaseFlightControlRules.handoffFlying(
+                PhaseFlightPlayerState.isFlying(player),
+                PhaseLockSubmodule.hasFlightSource(player));
         PacketDistributor.sendToPlayer(player, new FlightInertiaSyncPacket(
                 syncArmorId,
                 inertia,
                 flightControlActive,
-                (flightControlActive || flightLockActive) && PhaseFlightPlayerState.isFlying(player),
+                flying,
                 phaseFlightActive
                         && AE2LTCommonConfig.overloadArmorPhaseFlightEnabled()
                         && PhaseFlightSubmodule.isPhaseModeEnabled(flightArmor),
@@ -710,11 +715,18 @@ public final class CelestweaveArmorState {
     }
 
     public static void syncFlightSettingsToClient(ServerPlayer player) {
+        syncFlightSettingsToClient(player, null);
+    }
+
+    private static void syncFlightSettingsToClient(ServerPlayer player, @Nullable UUID fallbackArmorId) {
         ItemStack flightArmor = CelestweaveEquipmentAccess.findArmor(player, EquipmentSlot.LEGS);
         UUID syncArmorId = flightArmor.isEmpty() ? null : getArmorId(flightArmor);
         if (syncArmorId == null) {
             ItemStack chest = CelestweaveEquipmentAccess.findArmor(player, EquipmentSlot.CHEST);
             syncArmorId = chest.isEmpty() ? null : getArmorId(chest);
+        }
+        if (syncArmorId == null) {
+            syncArmorId = fallbackArmorId;
         }
         if (syncArmorId != null) {
             syncFlightSettingsToClient(player, flightArmor, syncArmorId);
