@@ -1,31 +1,19 @@
 package com.moakiee.ae2lt.celestweave;
 
-import java.lang.ref.WeakReference;
-import java.util.Collections;
-import java.util.Map;
-import java.util.WeakHashMap;
-
-import net.minecraft.world.entity.player.Abilities;
 import net.minecraft.world.entity.player.Player;
 
-/**
- * Player-owned phase-flight intent. Vanilla's public ability bits are only a projection of this
- * state and may be overwritten by bosses or other flight-denial systems.
- */
+/** Player-owned flight intent. Vanilla's {@code flying} bit is only its public projection. */
 public final class PhaseFlightPlayerState {
-    private static final Map<Abilities, WeakReference<Player>> ABILITY_OWNERS =
-            Collections.synchronizedMap(new WeakHashMap<>());
-
     private PhaseFlightPlayerState() {
     }
 
-    /** Activating the phase module directly enables its private flight state. */
+    /** Starts controlling flight without changing the player's current vanilla flying intent. */
     public static void activate(Player player) {
         if (player instanceof Access access && !access.ae2lt$isPhaseFlightControlled()) {
-            access.ae2lt$setPhaseFlying(true);
+            access.ae2lt$setPhaseFlying(access.ae2lt$getVanillaFlying());
+            access.ae2lt$setPhaseFlightLocked(true);
             access.ae2lt$setPhaseFlightControlled(true);
         }
-        registerAbilityOwner(player);
     }
 
     public static boolean isControlled(Player player) {
@@ -33,53 +21,91 @@ public final class PhaseFlightPlayerState {
     }
 
     public static boolean isFlying(Player player) {
+        return readEffectiveFlying(player, getVanillaFlying(player));
+    }
+
+    /** Resolves one actual field read through the lock without mutating either state. */
+    public static boolean readEffectiveFlying(Player player, boolean vanillaFlying) {
+        if (!(player instanceof Access access)) {
+            return vanillaFlying;
+        }
+        return PhaseFlightControlRules.effectiveFlying(
+                access.ae2lt$isPhaseFlightControlled(),
+                access.ae2lt$isPhaseFlightLocked(),
+                access.ae2lt$isPhaseFlying(),
+                vanillaFlying);
+    }
+
+    public static boolean isJumpHeld(Player player) {
         return player instanceof Access access
                 && access.ae2lt$isPhaseFlightControlled()
-                && access.ae2lt$isPhaseFlying();
+                && access.ae2lt$isPhaseJumpHeld();
     }
 
-    public static void setFlying(Player player, boolean flying) {
+    /** The only state transition for an explicit hover-flight input. */
+    public static void applyFlightInput(Player player, boolean flying) {
+        writeFlying(player, flying);
+    }
+
+    /** Applies the server-authoritative initial/resync value without representing local input. */
+    public static void synchronizeFlying(Player player, boolean flying) {
+        writeFlying(player, flying);
+    }
+
+    private static void writeFlying(Player player, boolean flying) {
         if (player instanceof Access access && access.ae2lt$isPhaseFlightControlled()) {
             access.ae2lt$setPhaseFlying(flying);
+            access.ae2lt$setVanillaFlying(flying);
         }
     }
 
-    /** Mirrors private intent into the vanilla fields inspected by movement and anti-cheat code. */
-    public static void syncVanillaAbilities(Player player) {
-        if (!(player instanceof Access access) || !access.ae2lt$isPhaseFlightControlled()) {
+    public static void setJumpHeld(Player player, boolean jumpHeld) {
+        if (player instanceof Access access && access.ae2lt$isPhaseFlightControlled()) {
+            access.ae2lt$setPhaseJumpHeld(jumpHeld);
+        }
+    }
+
+    public static boolean isFlightLocked(Player player) {
+        return player instanceof Access access
+                && access.ae2lt$isPhaseFlightControlled()
+                && access.ae2lt$isPhaseFlightLocked();
+    }
+
+    public static void setFlightLocked(Player player, boolean locked) {
+        if (!(player instanceof Access access)
+                || !access.ae2lt$isPhaseFlightControlled()
+                || access.ae2lt$isPhaseFlightLocked() == locked) {
             return;
         }
-        var abilities = player.getAbilities();
-        ABILITY_OWNERS.put(abilities, new WeakReference<>(player));
-        abilities.mayfly = true;
-        abilities.flying = access.ae2lt$isPhaseFlying();
+        if (locked) {
+            access.ae2lt$setPhaseFlying(access.ae2lt$getVanillaFlying());
+        } else {
+            access.ae2lt$setVanillaFlying(access.ae2lt$isPhaseFlying());
+        }
+        access.ae2lt$setPhaseFlightLocked(locked);
     }
 
-    /** Used by optional compatibility hooks around direct public-field writes. */
-    public static boolean rejectsExternalFlyingDisable(Abilities abilities) {
-        if (abilities == null) {
-            return false;
-        }
-        WeakReference<Player> reference = ABILITY_OWNERS.get(abilities);
-        Player player = reference == null ? null : reference.get();
-        if (player == null) {
-            ABILITY_OWNERS.remove(abilities);
-            return false;
-        }
-        return isFlying(player);
+    /** Reads the public field without triggering the locked projection in Player#getAbilities. */
+    public static boolean getVanillaFlying(Player player) {
+        return player instanceof Access access
+                ? access.ae2lt$getVanillaFlying()
+                : player != null && player.getAbilities().flying;
     }
 
     public static void endControl(Player player) {
-        if (player instanceof Access access) {
-            ABILITY_OWNERS.remove(player.getAbilities());
-            access.ae2lt$setPhaseFlying(false);
-            access.ae2lt$setPhaseFlightControlled(false);
-        }
+        endControl(player, isFlying(player));
     }
 
-    private static void registerAbilityOwner(Player player) {
-        if (player != null) {
-            ABILITY_OWNERS.put(player.getAbilities(), new WeakReference<>(player));
+    /** Ends private control and publishes the authoritative state for ordinary flight consumers. */
+    public static void endControl(Player player, boolean flying) {
+        if (player instanceof Access access) {
+            access.ae2lt$setVanillaFlying(flying);
+            access.ae2lt$setPhaseJumpHeld(false);
+            access.ae2lt$setPhaseFlying(false);
+            access.ae2lt$setPhaseFlightLocked(true);
+            access.ae2lt$setPhaseFlightControlled(false);
+        } else if (player != null) {
+            player.getAbilities().flying = flying;
         }
     }
 
@@ -91,5 +117,17 @@ public final class PhaseFlightPlayerState {
         boolean ae2lt$isPhaseFlying();
 
         void ae2lt$setPhaseFlying(boolean flying);
+
+        boolean ae2lt$isPhaseJumpHeld();
+
+        void ae2lt$setPhaseJumpHeld(boolean jumpHeld);
+
+        boolean ae2lt$isPhaseFlightLocked();
+
+        void ae2lt$setPhaseFlightLocked(boolean locked);
+
+        boolean ae2lt$getVanillaFlying();
+
+        void ae2lt$setVanillaFlying(boolean flying);
     }
 }

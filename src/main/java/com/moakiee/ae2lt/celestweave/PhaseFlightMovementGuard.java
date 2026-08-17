@@ -45,12 +45,12 @@ public final class PhaseFlightMovementGuard {
     public static void updatePhaseFlightState(
             Player player,
             boolean phaseModeEnabled,
-            boolean phaseFlying) {
+            boolean phaseTraversalActive) {
         if (player == null || player.level().isClientSide()) {
             return;
         }
         SERVER_SETTINGS.compute(player.getUUID(), (id, current) ->
-                currentFor(player, current).withPhaseFlight(phaseModeEnabled, phaseFlying));
+                currentFor(player, current).withPhaseFlight(phaseModeEnabled, phaseTraversalActive));
     }
 
     public static void clearPhaseFlightState(Player player) {
@@ -144,13 +144,13 @@ public final class PhaseFlightMovementGuard {
             return false;
         }
         if (player.level().isClientSide()) {
-            return isPhaseModeEnabled(player) && PhaseFlightPlayerState.isFlying(player);
+            return isPhaseModeEnabled(player) && PhaseWingFlight.isFlightActive(player);
         }
         ServerSettings settings = SERVER_SETTINGS.get(player.getUUID());
         return settings != null
                 && settings.owner() == player
                 && settings.phaseModeEnabled()
-                && settings.phaseFlying();
+                && settings.phaseTraversalActive();
     }
 
     /** Phase-mode availability without requiring the current flying bit to remain set. */
@@ -159,7 +159,7 @@ public final class PhaseFlightMovementGuard {
             return false;
         }
         if (player.level().isClientSide()) {
-            return CelestweaveArmorState.isAnyClientPhaseFlightActive()
+            return CelestweaveArmorState.isAnyClientFlightControlActive()
                     && CelestweaveArmorState.getClientPhaseModeEnabled();
         }
         ServerSettings settings = SERVER_SETTINGS.get(player.getUUID());
@@ -413,23 +413,23 @@ public final class PhaseFlightMovementGuard {
     private record ServerSettings(
             Player owner,
             boolean phaseModeEnabled,
-            boolean phaseFlying,
+            boolean phaseTraversalActive,
             boolean blockForces,
             boolean blockTeleports) {
         private static ServerSettings empty(Player owner) {
             return new ServerSettings(owner, false, false, false, false);
         }
 
-        private ServerSettings withPhaseFlight(boolean phaseModeEnabled, boolean phaseFlying) {
-            return new ServerSettings(owner, phaseModeEnabled, phaseFlying, blockForces, blockTeleports);
+        private ServerSettings withPhaseFlight(boolean phaseModeEnabled, boolean phaseTraversalActive) {
+            return new ServerSettings(owner, phaseModeEnabled, phaseTraversalActive, blockForces, blockTeleports);
         }
 
         private ServerSettings withPhaseLockProtection(boolean blockForces, boolean blockTeleports) {
-            return new ServerSettings(owner, phaseModeEnabled, phaseFlying, blockForces, blockTeleports);
+            return new ServerSettings(owner, phaseModeEnabled, phaseTraversalActive, blockForces, blockTeleports);
         }
 
         private boolean isEmpty() {
-            return !phaseModeEnabled && !phaseFlying && !blockForces && !blockTeleports;
+            return !phaseModeEnabled && !phaseTraversalActive && !blockForces && !blockTeleports;
         }
     }
 

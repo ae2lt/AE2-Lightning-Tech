@@ -6,41 +6,30 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 
 final class FlightAbilityRestoreRulesTest {
-
     @Test
-    void nonGameModeRestoreIgnoresFlightCapturedFromCreative() {
-        var target = FlightAbilityRestoreRules.targetForNonGameModePlayer(
-                true,
-                true,
-                true,
-                false);
+    void survivalDoesNotKeepFlightCapturedFromCreativeMode() {
+        var target = FlightAbilityRestoreRules.targetForForgePlayer(
+                true, true, false, true, false);
 
         assertFalse(target.mayfly());
         assertFalse(target.flying());
     }
 
     @Test
-    void nonGameModeRestoreKeepsPreviousNonCreativeFlight() {
-        var target = FlightAbilityRestoreRules.targetForNonGameModePlayer(
-                true,
-                true,
-                false,
-                false);
+    void externalForgeFlightAndCurrentIntentSurviveHandoff() {
+        var target = FlightAbilityRestoreRules.targetForForgePlayer(
+                true, false, false, true, false);
 
         assertTrue(target.mayfly());
         assertTrue(target.flying());
     }
 
     @Test
-    void siblingFlightModuleStillKeepsFlightAfterCreativeBaselineRestore() {
-        var target = FlightAbilityRestoreRules.targetForNonGameModePlayer(
-                true,
-                true,
-                true,
-                true);
+    void siblingCelestweaveModuleKeepsCurrentFlight() {
+        var target = FlightAbilityRestoreRules.targetForForgePlayer(
+                false, false, false, true, true);
 
         assertTrue(target.mayfly());
         assertTrue(target.flying());
     }
 }
-

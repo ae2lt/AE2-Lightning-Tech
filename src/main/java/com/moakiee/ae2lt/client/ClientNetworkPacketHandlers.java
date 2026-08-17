@@ -138,11 +138,12 @@ public final class ClientNetworkPacketHandlers {
         if (player == null) {
             return;
         }
-        if (packet.phaseFlightActive()) {
+        if (packet.flightControlActive() || packet.flightLockEnabled()) {
             PhaseFlightPlayerState.activate(player);
-            PhaseFlightPlayerState.setFlying(player, packet.phaseFlying());
+            PhaseFlightPlayerState.setFlightLocked(player, packet.flightLockEnabled());
+            PhaseFlightPlayerState.synchronizeFlying(player, packet.flying());
         } else {
-            PhaseFlightPlayerState.endControl(player);
+            PhaseFlightPlayerState.endControl(player, packet.flying());
         }
     }
 

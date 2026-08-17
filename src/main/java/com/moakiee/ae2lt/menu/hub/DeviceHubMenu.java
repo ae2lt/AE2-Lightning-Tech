@@ -429,8 +429,9 @@ public class DeviceHubMenu extends AbstractContainerMenu {
         // sync inertia to client when flight module config changes
         if ("flight_inertia".equals(config.key())
                 || FlightSpeedOption.CONFIG_KEY.equals(config.key())
-                || PhaseFlightSubmodule.PHASE_MODE_CONFIG_KEY.equals(config.key())) {
-            CelestweaveArmorState.syncFlightInertiaToClientIfFlight(player, deviceStack);
+                || PhaseFlightSubmodule.PHASE_MODE_CONFIG_KEY.equals(config.key())
+                || PhaseLockSubmodule.FLIGHT_LOCK_CONFIG_KEY.equals(config.key())) {
+            CelestweaveArmorState.syncFlightSettingsToClient(player);
         }
         if (PhaseLockSubmodule.BLOCK_EXTERNAL_FORCES_CONFIG_KEY.equals(config.key())
                 || PhaseLockSubmodule.BLOCK_EXTERNAL_TELEPORTS_CONFIG_KEY.equals(config.key())) {

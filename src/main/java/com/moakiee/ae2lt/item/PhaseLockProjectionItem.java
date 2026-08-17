@@ -10,6 +10,7 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ArmorItem;
 import net.minecraft.world.item.Item;
@@ -18,6 +19,7 @@ import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.Level;
 
 import com.moakiee.ae2lt.celestweave.CelestweaveArmorMaterials;
+import com.moakiee.ae2lt.celestweave.PhaseWingFlight;
 import com.moakiee.ae2lt.celestweave.phase.PhaseLockProjectionRules;
 import com.moakiee.ae2lt.celestweave.phase.PhaseLockService;
 
@@ -44,6 +46,16 @@ public final class PhaseLockProjectionItem extends ArmorItem {
 
     public EquipmentSlot equipmentSlot() {
         return equipmentSlot;
+    }
+
+    @Override
+    public boolean canElytraFly(ItemStack stack, LivingEntity entity) {
+        return equipmentSlot == EquipmentSlot.CHEST && PhaseWingFlight.canElytraFly(entity);
+    }
+
+    @Override
+    public boolean elytraFlightTick(ItemStack stack, LivingEntity entity, int flightTicks) {
+        return equipmentSlot == EquipmentSlot.CHEST && PhaseWingFlight.elytraFlightTick(entity);
     }
 
     @Override
