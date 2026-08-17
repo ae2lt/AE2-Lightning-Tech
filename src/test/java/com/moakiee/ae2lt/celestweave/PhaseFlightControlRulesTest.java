@@ -23,6 +23,13 @@ final class PhaseFlightControlRulesTest {
     }
 
     @Test
+    void jumpInputResynchronizesWhenFlightControlChanges() {
+        assertTrue(PhaseFlightControlRules.shouldSyncJumpInput(true, false, 4L, 4L));
+        assertTrue(PhaseFlightControlRules.shouldSyncJumpInput(true, true, 5L, 4L));
+        assertFalse(PhaseFlightControlRules.shouldSyncJumpInput(true, true, 4L, 4L));
+    }
+
+    @Test
     void flightLockOnlyPreservesNonPhaseHoverOnLanding() {
         assertTrue(PhaseFlightControlRules.preserveFlightOnLanding(true, false, true));
         assertFalse(PhaseFlightControlRules.preserveFlightOnLanding(false, false, true));

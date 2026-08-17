@@ -20,6 +20,8 @@ import com.moakiee.ae2lt.network.PhaseFlightInputPacket;
 @EventBusSubscriber(modid = AE2LightningTech.MODID, value = Dist.CLIENT)
 public final class ClientPhaseFlightHandler {
     private static boolean lastJumpHeld;
+    private static long lastFlightControlGeneration =
+            CelestweaveArmorState.getClientFlightControlGeneration();
 
     private ClientPhaseFlightHandler() {
     }
@@ -58,8 +60,8 @@ public final class ClientPhaseFlightHandler {
 
     @SubscribeEvent
     public static void onLoggingOut(ClientPlayerNetworkEvent.LoggingOut event) {
-        lastJumpHeld = false;
         CelestweaveArmorState.clearClientActiveCache();
+        resetJumpInputSync();
         PhaseFlightMovementGuard.clear(event.getPlayer());
         PhaseFlightPlayerState.endControl(event.getPlayer());
         if (event.getPlayer() != null && PhaseFlightSubmodule.hasTransientPhaseState(event.getPlayer())) {
@@ -69,8 +71,8 @@ public final class ClientPhaseFlightHandler {
 
     @SubscribeEvent
     public static void onPlayerClone(ClientPlayerNetworkEvent.Clone event) {
-        lastJumpHeld = false;
         CelestweaveArmorState.clearClientActiveCache();
+        resetJumpInputSync();
         PhaseFlightMovementGuard.clear(event.getOldPlayer());
         PhaseFlightMovementGuard.clear(event.getNewPlayer());
         PhaseFlightPlayerState.endControl(event.getOldPlayer());
@@ -92,10 +94,21 @@ public final class ClientPhaseFlightHandler {
     private static void syncJumpInput(Minecraft minecraft, boolean flightModuleActive) {
         boolean jumpHeld = flightModuleActive && minecraft.options.keyJump.isDown();
         PhaseFlightPlayerState.setJumpHeld(minecraft.player, jumpHeld);
-        if (jumpHeld == lastJumpHeld) {
+        long controlGeneration = CelestweaveArmorState.getClientFlightControlGeneration();
+        if (!PhaseFlightControlRules.shouldSyncJumpInput(
+                jumpHeld,
+                lastJumpHeld,
+                controlGeneration,
+                lastFlightControlGeneration)) {
             return;
         }
         lastJumpHeld = jumpHeld;
+        lastFlightControlGeneration = controlGeneration;
         PacketDistributor.sendToServer(PhaseFlightInputPacket.jump(jumpHeld));
+    }
+
+    private static void resetJumpInputSync() {
+        lastJumpHeld = false;
+        lastFlightControlGeneration = CelestweaveArmorState.getClientFlightControlGeneration();
     }
 }

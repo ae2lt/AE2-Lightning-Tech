@@ -21,6 +21,14 @@ public final class PhaseFlightControlRules {
         return flightControlActive && jumpHeld && shiftHeld;
     }
 
+    public static boolean shouldSyncJumpInput(
+            boolean jumpHeld,
+            boolean lastJumpHeld,
+            long controlGeneration,
+            long lastControlGeneration) {
+        return jumpHeld != lastJumpHeld || controlGeneration != lastControlGeneration;
+    }
+
     public static boolean preserveFlightOnLanding(
             boolean flightLocked,
             boolean phaseModeEnabled,
