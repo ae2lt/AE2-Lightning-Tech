@@ -93,11 +93,19 @@ public final class PhaseFlightPlayerState {
     }
 
     public static void endControl(Player player) {
+        endControl(player, isFlying(player));
+    }
+
+    /** Ends private control and publishes the authoritative state for ordinary flight consumers. */
+    public static void endControl(Player player, boolean flying) {
         if (player instanceof Access access) {
+            access.ae2lt$setVanillaFlying(flying);
             access.ae2lt$setPhaseJumpHeld(false);
             access.ae2lt$setPhaseFlying(false);
             access.ae2lt$setPhaseFlightLocked(true);
             access.ae2lt$setPhaseFlightControlled(false);
+        } else if (player != null) {
+            player.getAbilities().flying = flying;
         }
     }
 

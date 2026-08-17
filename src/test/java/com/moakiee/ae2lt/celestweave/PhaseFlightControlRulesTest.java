@@ -40,6 +40,14 @@ final class PhaseFlightControlRulesTest {
     }
 
     @Test
+    void flightHandoffRequiresBothCurrentIntentAndARealSource() {
+        assertTrue(PhaseFlightControlRules.handoffFlying(true, true));
+        assertFalse(PhaseFlightControlRules.handoffFlying(true, false));
+        assertFalse(PhaseFlightControlRules.handoffFlying(false, true));
+        assertFalse(PhaseFlightControlRules.handoffFlying(false, false));
+    }
+
+    @Test
     void lockedNonPhaseHoverCanStillCrouchOnTheGround() {
         assertTrue(PhaseFlightControlRules.exposeGroundCrouch(true, false, true, true, true));
         assertFalse(PhaseFlightControlRules.exposeGroundCrouch(false, false, true, true, true));

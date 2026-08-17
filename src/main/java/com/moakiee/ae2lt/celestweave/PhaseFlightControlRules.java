@@ -36,6 +36,11 @@ public final class PhaseFlightControlRules {
         return controlled && flightLocked ? phaseFlying : vanillaFlying;
     }
 
+    /** Hands active flight back only while some source still grants the permission. */
+    public static boolean handoffFlying(boolean effectiveFlying, boolean flightSourceAvailable) {
+        return effectiveFlying && flightSourceAvailable;
+    }
+
     public static boolean exposeGroundCrouch(
             boolean flightLocked,
             boolean phaseModeEnabled,
