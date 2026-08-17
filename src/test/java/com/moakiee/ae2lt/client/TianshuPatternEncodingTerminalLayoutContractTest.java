@@ -106,6 +106,6 @@ class TianshuPatternEncodingTerminalLayoutContractTest {
 
         assertTrue(panel.contains("private static final int MEMBER_X = 16"));
         assertTrue(panel.contains("private static final int SLOT_Y = 9"));
-        assertTrue(panel.contains("private static final int OUTPUT_X = 101"));
+        assertTrue(panel.contains("private static final int OUTPUT_X = 100"));
     }
 }
