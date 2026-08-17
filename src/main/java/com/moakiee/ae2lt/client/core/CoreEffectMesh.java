@@ -167,7 +167,8 @@ final class CoreEffectMesh {
         var pose = stack.last();
         consumer.vertex(pose.pose(), vertex.x, vertex.y, vertex.z)
                 .color(r, g, b, alpha)
-                .normal(pose.normal(), vertex.nx, vertex.ny, vertex.nz);
+                .normal(pose.normal(), vertex.nx, vertex.ny, vertex.nz)
+                .endVertex();
     }
 
     private record Vertex(float x, float y, float z, float nx, float ny, float nz) {

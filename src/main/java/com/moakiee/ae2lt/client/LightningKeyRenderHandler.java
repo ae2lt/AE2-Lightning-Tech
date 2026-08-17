@@ -67,25 +67,29 @@ public final class LightningKeyRenderHandler implements AEKeyRenderHandler<Light
                 .uv(sprite.getU0(), sprite.getV1())
                 .overlayCoords(OverlayTexture.NO_OVERLAY)
                 .uv2(combinedLight)
-                .normal(0, 0, 1);
+                .normal(0, 0, 1)
+                .endVertex();
         buffer.vertex(transform, x1, y1, 0)
                 .color(0xFFFFFFFF)
                 .uv(sprite.getU1(), sprite.getV1())
                 .overlayCoords(OverlayTexture.NO_OVERLAY)
                 .uv2(combinedLight)
-                .normal(0, 0, 1);
+                .normal(0, 0, 1)
+                .endVertex();
         buffer.vertex(transform, x1, y0, 0)
                 .color(0xFFFFFFFF)
                 .uv(sprite.getU1(), sprite.getV0())
                 .overlayCoords(OverlayTexture.NO_OVERLAY)
                 .uv2(combinedLight)
-                .normal(0, 0, 1);
+                .normal(0, 0, 1)
+                .endVertex();
         buffer.vertex(transform, x0, y0, 0)
                 .color(0xFFFFFFFF)
                 .uv(sprite.getU0(), sprite.getV0())
                 .overlayCoords(OverlayTexture.NO_OVERLAY)
                 .uv2(combinedLight)
-                .normal(0, 0, 1);
+                .normal(0, 0, 1)
+                .endVertex();
 
         poseStack.popPose();
     }

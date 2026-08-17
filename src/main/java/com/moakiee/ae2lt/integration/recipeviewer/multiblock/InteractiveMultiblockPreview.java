@@ -326,13 +326,13 @@ public final class InteractiveMultiblockPreview {
             float x4, float y4, float z4,
             float normalX, float normalY, float normalZ) {
         consumer.vertex(matrix, x1, y1, z1).color(255, 220, 0, alpha)
-                .normal(normalX, normalY, normalZ);
+                .normal(normalX, normalY, normalZ).endVertex();
         consumer.vertex(matrix, x2, y2, z2).color(255, 220, 0, alpha)
-                .normal(normalX, normalY, normalZ);
+                .normal(normalX, normalY, normalZ).endVertex();
         consumer.vertex(matrix, x3, y3, z3).color(255, 220, 0, alpha)
-                .normal(normalX, normalY, normalZ);
+                .normal(normalX, normalY, normalZ).endVertex();
         consumer.vertex(matrix, x4, y4, z4).color(255, 220, 0, alpha)
-                .normal(normalX, normalY, normalZ);
+                .normal(normalX, normalY, normalZ).endVertex();
     }
 
     private void drawPanel(GuiGraphics guiGraphics, Font font, double mouseX, double mouseY) {

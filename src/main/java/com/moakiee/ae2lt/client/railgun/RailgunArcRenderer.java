@@ -254,9 +254,9 @@ public final class RailgunArcRenderer {
         Vec3 a2 = a.subtract(side);
         Vec3 b1 = b.add(side);
         Vec3 b2 = b.subtract(side);
-        bb.vertex(matrix, (float) a1.x, (float) a1.y, (float) a1.z).color(r, g, bCol, alpha);
-        bb.vertex(matrix, (float) a2.x, (float) a2.y, (float) a2.z).color(r, g, bCol, alpha);
-        bb.vertex(matrix, (float) b2.x, (float) b2.y, (float) b2.z).color(r, g, bCol, alpha);
-        bb.vertex(matrix, (float) b1.x, (float) b1.y, (float) b1.z).color(r, g, bCol, alpha);
+        bb.vertex(matrix, (float) a1.x, (float) a1.y, (float) a1.z).color(r, g, bCol, alpha).endVertex();
+        bb.vertex(matrix, (float) a2.x, (float) a2.y, (float) a2.z).color(r, g, bCol, alpha).endVertex();
+        bb.vertex(matrix, (float) b2.x, (float) b2.y, (float) b2.z).color(r, g, bCol, alpha).endVertex();
+        bb.vertex(matrix, (float) b1.x, (float) b1.y, (float) b1.z).color(r, g, bCol, alpha).endVertex();
     }
 }

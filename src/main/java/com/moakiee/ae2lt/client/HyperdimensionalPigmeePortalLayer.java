@@ -77,7 +77,8 @@ final class HyperdimensionalPigmeePortalLayer {
                         pose.pose(),
                         Float.intBitsToFloat(vertices[offset]) + offsetX,
                         Float.intBitsToFloat(vertices[offset + 1]) + offsetY,
-                        Float.intBitsToFloat(vertices[offset + 2]) + offsetZ);
+                        Float.intBitsToFloat(vertices[offset + 2]) + offsetZ)
+                        .endVertex();
             }
         }
     }
