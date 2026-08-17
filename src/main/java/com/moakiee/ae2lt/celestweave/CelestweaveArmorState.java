@@ -686,8 +686,7 @@ public final class CelestweaveArmorState {
                 && isSubmoduleRuntimeActive(flightArmor, FlightSubmodule.INSTANCE.id());
         boolean flightControlActive = flightActive || phaseFlightActive;
         boolean flightLockActive = PhaseLockSubmodule.isFlightLockConfigured(player)
-                && (flightControlActive || PhaseLockSubmodule.hasCreativeFlightSource(player));
-        PhaseFlightPlayerState.setMayflyOwned(player, flightControlActive);
+                && PhaseLockSubmodule.hasFlightSource(player);
         if (flightControlActive || flightLockActive) {
             // The active-state packet and this settings packet are sent before onActivated. Make
             // private intent authoritative first so armor state transitions cannot sample a boss-

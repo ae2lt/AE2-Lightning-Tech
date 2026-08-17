@@ -35,8 +35,6 @@ public abstract class PlayerPhaseFlightMixin implements PhaseFlightPlayerState.A
     private boolean ae2lt$phaseJumpHeld;
     @Unique
     private boolean ae2lt$phaseFlightLocked = true;
-    @Unique
-    private boolean ae2lt$mayflyOwned;
 
     @Override
     public boolean ae2lt$isPhaseFlightControlled() {
@@ -79,16 +77,6 @@ public abstract class PlayerPhaseFlightMixin implements PhaseFlightPlayerState.A
     }
 
     @Override
-    public boolean ae2lt$ownsMayfly() {
-        return ae2lt$mayflyOwned;
-    }
-
-    @Override
-    public void ae2lt$setMayflyOwned(boolean owned) {
-        ae2lt$mayflyOwned = owned;
-    }
-
-    @Override
     public boolean ae2lt$getVanillaFlying() {
         return abilities.flying;
     }
@@ -96,11 +84,6 @@ public abstract class PlayerPhaseFlightMixin implements PhaseFlightPlayerState.A
     @Override
     public void ae2lt$setVanillaFlying(boolean flying) {
         abilities.flying = flying;
-    }
-
-    @Inject(method = "tick", at = @At("HEAD"))
-    private void ae2lt$syncPrivatePhaseFlightAbilities(CallbackInfo ci) {
-        PhaseFlightPlayerState.maintainVanillaAbilities((Player) (Object) this);
     }
 
     @Inject(method = "getAbilities", at = @At("HEAD"))

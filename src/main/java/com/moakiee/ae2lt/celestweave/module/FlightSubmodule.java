@@ -5,12 +5,12 @@ import java.util.List;
 import org.jetbrains.annotations.Nullable;
 
 import net.minecraft.nbt.ByteTag;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.common.extensions.IPlayerExtension;
 
 import com.moakiee.ae2lt.celestweave.ArmorFlightSpeedRules;
 import com.moakiee.ae2lt.celestweave.CelestweaveArmorState;
@@ -24,10 +24,7 @@ public final class FlightSubmodule extends AbstractCelestweaveArmorSubmodule {
     public static final String INSTALL_GROUP = "flight";
     public static final String INERTIA_CONFIG_KEY = "flight_inertia";
 
-    private static final String TAG_HAD_MAYFLY = "FlightHadMayfly";
-    private static final String TAG_WAS_FLYING = "FlightWasFlying";
     private static final String TAG_PREVIOUS_SPEED = "FlightPreviousFlyingSpeed";
-    private static final String TAG_HAD_GAME_MODE_FLIGHT = "FlightHadGameModeFlight";
     private static final float SPEED_EPSILON = 1.0E-6F;
     private FlightSubmodule() {}
 
@@ -157,30 +154,23 @@ public final class FlightSubmodule extends AbstractCelestweaveArmorSubmodule {
         var abilities = player.getAbilities();
         var data = CelestweaveArmorState.getSubmoduleData(armor, INSTANCE);
         PhaseFlightPlayerState.activate(player);
-        PhaseFlightPlayerState.setMayflyOwned(player, true);
         // This module owns no lock setting; the independent chest phase-lock module may lock it.
         PhaseFlightPlayerState.setFlightLocked(player, PhaseLockSubmodule.isFlightLockEnabled(player));
-        if (!data.contains(TAG_HAD_MAYFLY, CompoundTag.TAG_BYTE)) {
-            data.putBoolean(TAG_HAD_MAYFLY, abilities.mayfly);
-            data.putBoolean(TAG_WAS_FLYING, abilities.flying);
+        if (!data.contains(TAG_PREVIOUS_SPEED, Tag.TAG_FLOAT)) {
             data.putFloat(TAG_PREVIOUS_SPEED, abilities.getFlyingSpeed());
-            data.putBoolean(TAG_HAD_GAME_MODE_FLIGHT, player.isCreative() || player.isSpectator());
             CelestweaveArmorState.setSubmoduleData(armor, INSTANCE, data);
         }
         updateAbilitiesIfChanged(
                 player,
-                true,
                 PhaseFlightPlayerState.isFlying(player),
                 ArmorFlightSpeedRules.activeFlightSpeed(armor));
     }
 
     private static void maintainFlight(Player player, ItemStack armor) {
         PhaseFlightPlayerState.activate(player);
-        PhaseFlightPlayerState.setMayflyOwned(player, true);
         PhaseFlightPlayerState.setFlightLocked(player, PhaseLockSubmodule.isFlightLockEnabled(player));
         updateAbilitiesIfChanged(
                 player,
-                true,
                 PhaseFlightPlayerState.isFlying(player),
                 ArmorFlightSpeedRules.activeFlightSpeed(armor));
     }
@@ -193,57 +183,25 @@ public final class FlightSubmodule extends AbstractCelestweaveArmorSubmodule {
 
     private static void restoreStoredAbilities(Player player, ItemStack armor) {
         var data = CelestweaveArmorState.getSubmoduleData(armor, INSTANCE);
-        boolean hadMayfly = data.contains(TAG_HAD_MAYFLY, CompoundTag.TAG_BYTE) && data.getBoolean(TAG_HAD_MAYFLY);
-        boolean wasFlying = data.contains(TAG_WAS_FLYING, CompoundTag.TAG_BYTE) && data.getBoolean(TAG_WAS_FLYING);
-        float previousSpeed = data.contains(TAG_PREVIOUS_SPEED, CompoundTag.TAG_FLOAT)
+        float previousSpeed = data.contains(TAG_PREVIOUS_SPEED, Tag.TAG_FLOAT)
                 ? data.getFloat(TAG_PREVIOUS_SPEED)
                 : FlightSpeedOption.VANILLA_FLYING_SPEED;
-        boolean hadGameModeFlight = capturedGameModeFlight(data, hadMayfly);
-        data.remove(TAG_HAD_MAYFLY);
-        data.remove(TAG_WAS_FLYING);
         data.remove(TAG_PREVIOUS_SPEED);
-        data.remove(TAG_HAD_GAME_MODE_FLIGHT);
         CelestweaveArmorState.setSubmoduleData(armor, INSTANCE, data);
 
         var abilities = player.getAbilities();
-        if (player.isCreative() || player.isSpectator()) {
-            abilities.setFlyingSpeed(previousSpeed > 0.0F ? previousSpeed : FlightSpeedOption.VANILLA_FLYING_SPEED);
-            player.onUpdateAbilities();
-            return;
-        }
-        boolean phaseFlightActive = CelestweaveArmorState.isSubmoduleRuntimeActive(armor, PhaseFlightSubmodule.INSTANCE.id());
-        var target = FlightAbilityRestoreRules.targetForNonGameModePlayer(
-                hadMayfly,
-                wasFlying,
-                hadGameModeFlight,
-                phaseFlightActive);
         updateAbilitiesIfChanged(
                 player,
-                target.mayfly(),
-                target.flying(),
-                phaseFlightActive
-                        ? ArmorFlightSpeedRules.activeFlightSpeed(armor)
-                        : previousSpeed > 0.0F ? previousSpeed : FlightSpeedOption.VANILLA_FLYING_SPEED);
-    }
-
-    private static boolean capturedGameModeFlight(CompoundTag data, boolean hadMayfly) {
-        if (data.contains(TAG_HAD_GAME_MODE_FLIGHT, CompoundTag.TAG_BYTE)) {
-            return data.getBoolean(TAG_HAD_GAME_MODE_FLIGHT);
-        }
-        return hadMayfly;
+                abilities.flying && ((IPlayerExtension) player).mayFly(),
+                previousSpeed > 0.0F ? previousSpeed : FlightSpeedOption.VANILLA_FLYING_SPEED);
     }
 
     private static boolean updateAbilitiesIfChanged(
             Player player,
-            boolean mayfly,
             boolean flying,
             float desiredSpeed) {
         var abilities = player.getAbilities();
         boolean changed = false;
-        if (abilities.mayfly != mayfly) {
-            abilities.mayfly = mayfly;
-            changed = true;
-        }
         if (abilities.flying != flying) {
             abilities.flying = flying;
             changed = true;
