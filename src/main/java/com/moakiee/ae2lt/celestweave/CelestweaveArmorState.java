@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import org.jetbrains.annotations.Nullable;
 
 import net.minecraft.core.HolderLookup;
@@ -46,6 +47,7 @@ public final class CelestweaveArmorState {
     // Include the module id so a delayed inactive packet from one module cannot erase the other.
     private static final Set<ClientFlightControlKey> CLIENT_FLIGHT_CONTROL_ACTIVE =
             ConcurrentHashMap.newKeySet();
+    private static final AtomicLong CLIENT_FLIGHT_CONTROL_GENERATION = new AtomicLong();
 
     private CelestweaveArmorState() {
     }
@@ -530,10 +532,11 @@ public final class CelestweaveArmorState {
             return;
         }
         var key = new ClientFlightControlKey(armorId, submoduleId);
-        if (active) {
-            CLIENT_FLIGHT_CONTROL_ACTIVE.add(key);
-        } else {
-            CLIENT_FLIGHT_CONTROL_ACTIVE.remove(key);
+        boolean changed = active
+                ? CLIENT_FLIGHT_CONTROL_ACTIVE.add(key)
+                : CLIENT_FLIGHT_CONTROL_ACTIVE.remove(key);
+        if (changed) {
+            CLIENT_FLIGHT_CONTROL_GENERATION.incrementAndGet();
         }
     }
 
@@ -541,8 +544,15 @@ public final class CelestweaveArmorState {
         return !CLIENT_FLIGHT_CONTROL_ACTIVE.isEmpty();
     }
 
+    public static long getClientFlightControlGeneration() {
+        return CLIENT_FLIGHT_CONTROL_GENERATION.get();
+    }
+
     public static void clearClientActiveCache() {
-        CLIENT_FLIGHT_CONTROL_ACTIVE.clear();
+        if (!CLIENT_FLIGHT_CONTROL_ACTIVE.isEmpty()) {
+            CLIENT_FLIGHT_CONTROL_ACTIVE.clear();
+            CLIENT_FLIGHT_CONTROL_GENERATION.incrementAndGet();
+        }
         CLIENT_FLIGHT_INERTIA = true;
         CLIENT_FLIGHT_INERTIA_ARMOR_ID = null;
         CLIENT_PHASE_MODE_ENABLED = true;
@@ -553,7 +563,9 @@ public final class CelestweaveArmorState {
     public static void forgetSubmoduleActiveCache(UUID armorId) {
         ArmorRuntimeRegistry.clear(armorId);
         if (armorId != null) {
-            CLIENT_FLIGHT_CONTROL_ACTIVE.removeIf(key -> key.armorId().equals(armorId));
+            if (CLIENT_FLIGHT_CONTROL_ACTIVE.removeIf(key -> key.armorId().equals(armorId))) {
+                CLIENT_FLIGHT_CONTROL_GENERATION.incrementAndGet();
+            }
             if (armorId.equals(CLIENT_PHASE_LOCK_ARMOR_ID)) {
                 CLIENT_PHASE_LOCK_ARMOR_ID = null;
                 CLIENT_PHASE_LOCK_BLOCK_EXTERNAL_FORCES = false;

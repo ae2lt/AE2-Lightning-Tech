@@ -36,12 +36,15 @@ final class PhaseWingFlightSourceContractTest {
     @Test
     void jumpInputDrivesThrustAndCrouchWithoutPerTickPackets() throws Exception {
         String client = read("src/main/java/com/moakiee/ae2lt/client/ClientPhaseFlightHandler.java");
+        String state = read("src/main/java/com/moakiee/ae2lt/celestweave/CelestweaveArmorState.java");
         String packet = read("src/main/java/com/moakiee/ae2lt/network/PhaseFlightInputPacket.java");
         String rules = read("src/main/java/com/moakiee/ae2lt/celestweave/PhaseFlightControlRules.java");
         String network = read("src/main/java/com/moakiee/ae2lt/network/NetworkInit.java");
 
-        assertTrue(client.contains("jumpHeld == lastJumpHeld"));
+        assertTrue(client.contains("shouldSyncJumpInput"));
         assertTrue(client.contains("PhaseFlightInputPacket.jump(jumpHeld)"));
+        assertTrue(client.contains("getClientFlightControlGeneration"));
+        assertTrue(state.contains("CLIENT_FLIGHT_CONTROL_GENERATION.incrementAndGet()"));
         assertTrue(packet.contains("PhaseFlightPlayerState.setJumpHeld"));
         assertTrue(rules.contains("flightControlActive && jumpHeld && shiftHeld"));
         assertTrue(network.contains("PhaseFlightInputPacket.TYPE"));
