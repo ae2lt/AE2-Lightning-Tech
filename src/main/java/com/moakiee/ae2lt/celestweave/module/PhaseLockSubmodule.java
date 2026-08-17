@@ -120,8 +120,8 @@ public final class PhaseLockSubmodule extends AbstractCelestweaveArmorSubmodule 
 
     /**
      * Flight lock exists only while its chest module is active and some flight source is available.
-     * Forge's vanilla ability bit and either enabled Celestweave flight module are equivalent
-     * sources; this policy never grants flight itself.
+     * Forge's vanilla ability bit, a pending external-source probe, and either enabled
+     * Celestweave flight module are equivalent sources; this policy never grants flight itself.
      */
     public static boolean isFlightLockEnabled(Player player) {
         return isFlightLockConfigured(player) && hasFlightSource(player);
@@ -129,7 +129,9 @@ public final class PhaseLockSubmodule extends AbstractCelestweaveArmorSubmodule 
 
     public static boolean hasFlightSource(Player player) {
         return player != null
-                && (player.getAbilities().mayfly || PhaseWingFlight.canUse(player));
+                && (player.getAbilities().mayfly
+                        || ForgeFlightPermissionHandoff.isReleasePending(player)
+                        || PhaseWingFlight.canUse(player));
     }
 
     public static boolean isFlightLockConfigured(Player player) {
@@ -216,5 +218,9 @@ public final class PhaseLockSubmodule extends AbstractCelestweaveArmorSubmodule 
         if (wasFlightLocked != flightLockEnabled && player instanceof ServerPlayer serverPlayer) {
             CelestweaveArmorState.syncFlightSettingsToClient(serverPlayer);
         }
+    }
+
+    static void reconcileFlightLock(Player player) {
+        updateFlightLock(player);
     }
 }

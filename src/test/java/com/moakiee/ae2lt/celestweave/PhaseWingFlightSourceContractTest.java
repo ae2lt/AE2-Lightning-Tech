@@ -90,15 +90,18 @@ final class PhaseWingFlightSourceContractTest {
         String inputPacket = read("src/main/java/com/moakiee/ae2lt/network/PhaseFlightInputPacket.java");
         String settingsPacket = read("src/main/java/com/moakiee/ae2lt/network/FlightInertiaSyncPacket.java");
         String clientPacketHandlers = read("src/main/java/com/moakiee/ae2lt/client/ClientNetworkPacketHandlers.java");
+        String forgeHandoff = read(
+                "src/main/java/com/moakiee/ae2lt/celestweave/module/ForgeFlightPermissionHandoff.java");
         String menu = read("src/main/java/com/moakiee/ae2lt/menu/hub/DeviceHubMenu.java");
         String mixins = read("src/main/resources/ae2lt.mixins.json");
 
         assertTrue(lockModule.contains("FLIGHT_LOCK_CONFIG_KEY = \"flight_lock\""));
         assertTrue(lockModule.contains("isSubmoduleRuntimeActive(chest, INSTANCE.id())"));
-        assertTrue(lockModule.contains("player.getAbilities().mayfly || PhaseWingFlight.canUse(player)"));
+        assertTrue(lockModule.contains("ForgeFlightPermissionHandoff.isReleasePending(player)"));
         assertFalse(lockModule.contains("IPlayerExtension"));
         assertFalse(phaseModule.contains("FLIGHT_LOCK_CONFIG_KEY"));
         assertTrue(phaseModule.contains("PhaseLockSubmodule.isFlightLockEnabled(player)"));
+        assertTrue(phaseModule.contains("ForgeFlightPermissionHandoff.beginRelease(player)"));
         assertTrue(state.contains("ae2lt$isPhaseFlightLocked"));
         assertTrue(state.contains("access.ae2lt$setPhaseFlying(access.ae2lt$getVanillaFlying())"));
         assertTrue(state.contains("access.ae2lt$setVanillaFlying(access.ae2lt$isPhaseFlying())"));
@@ -109,6 +112,12 @@ final class PhaseWingFlightSourceContractTest {
         assertTrue(settingsPacket.contains("ClientNetworkPacketHandlers.handleFlightInertia(payload)"));
         assertTrue(clientPacketHandlers.contains("packet.flightControlActive() || packet.flightLockEnabled()"));
         assertTrue(clientPacketHandlers.contains("endControl(player, packet.flying())"));
+        assertTrue(forgeHandoff.contains("player.getAbilities().mayfly = false"));
+        assertTrue(forgeHandoff.contains("ProbeState.WAITING_FOR_NEXT_TICK"));
+        assertTrue(forgeHandoff.contains("PENDING.put(player, ProbeState.PROBING)"));
+        assertTrue(forgeHandoff.contains("PENDING.get(player) == ProbeState.PROBING"));
+        assertTrue(forgeHandoff.contains("EventPriority.HIGHEST"));
+        assertTrue(forgeHandoff.contains("EventPriority.LOWEST"));
         assertTrue(menu.contains("PhaseLockSubmodule.FLIGHT_LOCK_CONFIG_KEY.equals(config.key())"));
         assertFalse(mixins.contains("DraconicChargeUpPhaseFlightMixin"));
     }
@@ -122,6 +131,7 @@ final class PhaseWingFlightSourceContractTest {
         assertTrue(module.contains("return List.of(speedConfig(armor), inertiaConfig(armor))"));
         assertTrue(module.contains("PhaseLockSubmodule.isFlightLockEnabled(player)"));
         assertTrue(module.contains("PhaseWingFlight.tickThrust(player)"));
+        assertTrue(module.contains("ForgeFlightPermissionHandoff.beginRelease(player)"));
         assertFalse(module.contains("tickElytraBoost"));
         assertFalse(module.contains("PHASE_MODE_CONFIG_KEY"));
         assertFalse(module.contains("FLIGHT_LOCK_CONFIG_KEY"));

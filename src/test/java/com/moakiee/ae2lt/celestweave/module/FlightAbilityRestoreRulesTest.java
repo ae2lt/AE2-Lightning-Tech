@@ -7,27 +7,36 @@ import org.junit.jupiter.api.Test;
 
 final class FlightAbilityRestoreRulesTest {
     @Test
-    void survivalDoesNotKeepFlightCapturedFromCreativeMode() {
-        var target = FlightAbilityRestoreRules.targetForForgePlayer(
-                true, true, false, true, false);
+    void removedExternalSourceDoesNotLeakFlightPermission() {
+        var target = FlightAbilityRestoreRules.targetAfterReleaseProbe(
+                false, false, true);
 
         assertFalse(target.mayfly());
         assertFalse(target.flying());
     }
 
     @Test
-    void externalForgeFlightAndCurrentIntentSurviveHandoff() {
-        var target = FlightAbilityRestoreRules.targetForForgePlayer(
-                true, false, false, true, false);
+    void reassertedExternalSourceKeepsCurrentFlight() {
+        var target = FlightAbilityRestoreRules.targetAfterReleaseProbe(
+                false, true, true);
 
         assertTrue(target.mayfly());
         assertTrue(target.flying());
     }
 
     @Test
-    void siblingCelestweaveModuleKeepsCurrentFlight() {
-        var target = FlightAbilityRestoreRules.targetForForgePlayer(
-                false, false, false, true, true);
+    void newlyActivatedExternalSourceIsDetectedDuringProbe() {
+        var target = FlightAbilityRestoreRules.targetAfterReleaseProbe(
+                false, true, false);
+
+        assertTrue(target.mayfly());
+        assertFalse(target.flying());
+    }
+
+    @Test
+    void currentGameModeFlightDoesNotDependOnExternalReassertion() {
+        var target = FlightAbilityRestoreRules.targetAfterReleaseProbe(
+                true, false, true);
 
         assertTrue(target.mayfly());
         assertTrue(target.flying());
