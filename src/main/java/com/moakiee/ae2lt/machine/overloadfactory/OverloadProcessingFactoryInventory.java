@@ -19,7 +19,7 @@ public class OverloadProcessingFactoryInventory extends LargeStackItemHandler {
     public static final int SLOT_COUNT = 11;
     public static final int INPUT_SLOT_COUNT = 9;
     public static final int OUTPUT_SLOT_COUNT = 1;
-    public static final int LARGE_SLOT_LIMIT = 8192;
+    public static final int LARGE_SLOT_LIMIT = 16_384;
     public static final int MATRIX_SLOT_LIMIT = 32;
     public OverloadProcessingFactoryInventory(@Nullable Runnable changeListener) {
         super(SLOT_COUNT, changeListener);
@@ -108,6 +108,25 @@ public class OverloadProcessingFactoryInventory extends LargeStackItemHandler {
         }
 
         return true;
+    }
+
+    /**
+     * Total count of {@code stack}'s item the output slots can still accept,
+     * mirroring the placement rules of {@link #canAcceptRecipeOutputs}. Exact
+     * for a single output item; multiple distinct outputs may compete for the
+     * same empty slots.
+     */
+    public long getOutputCapacityFor(ItemStack stack) {
+        long capacity = 0L;
+        for (int slot = SLOT_OUTPUT_0; slot < SLOT_OUTPUT_0 + OUTPUT_SLOT_COUNT; slot++) {
+            ItemStack existing = getStackInSlot(slot);
+            if (existing.isEmpty()) {
+                capacity += LARGE_SLOT_LIMIT;
+            } else if (ItemStack.isSameItemSameTags(existing, stack)) {
+                capacity += Math.max(0, LARGE_SLOT_LIMIT - existing.getCount());
+            }
+        }
+        return capacity;
     }
 
     public boolean insertRecipeOutputs(List<ItemStack> outputs) {

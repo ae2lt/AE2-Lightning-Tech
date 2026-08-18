@@ -12,6 +12,7 @@ import appeng.api.networking.IGridNodeListener;
 import appeng.api.networking.security.IActionHost;
 import appeng.api.networking.security.IActionSource;
 import appeng.api.orientation.BlockOrientation;
+import appeng.api.util.AECableType;
 import appeng.blockentity.grid.AENetworkBlockEntity;
 import appeng.menu.MenuOpener;
 import appeng.menu.locator.MenuLocator;
@@ -22,7 +23,6 @@ import com.moakiee.ae2lt.config.AE2LTCommonConfig;
 import com.moakiee.ae2lt.grid.FrequencyBindingHelper;
 import com.moakiee.ae2lt.grid.FrequencyBindingHost;
 import com.moakiee.ae2lt.item.ElectroChimeCrystalItem;
-import com.moakiee.ae2lt.machine.common.InsertOnlyAutomationInventory;
 import com.moakiee.ae2lt.machine.lightningcollector.LightningCollectorInventory;
 import com.moakiee.ae2lt.me.key.LightningKey;
 import com.moakiee.ae2lt.menu.LightningCollectorMenu;
@@ -43,7 +43,15 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.common.capabilities.Capability;
+import net.minecraftforge.common.capabilities.ForgeCapabilities;
+import net.minecraftforge.common.util.LazyOptional;
 import net.minecraftforge.items.IItemHandlerModifiable;
+
+import org.jetbrains.annotations.Nullable;
+
+import com.moakiee.ae2lt.api.AE2LTCapabilities;
+import com.moakiee.ae2lt.me.GridLightningEnergyHandler;
 
 public class LightningCollectorBlockEntity extends AENetworkBlockEntity
         implements IActionHost, FrequencyBindingHost {
@@ -57,7 +65,6 @@ public class LightningCollectorBlockEntity extends AENetworkBlockEntity
     private static boolean warnedInvalidExtremeVoltageBaseRange;
 
     private final LightningCollectorInventory inventory = new LightningCollectorInventory(this::onInventoryChanged);
-    private final IItemHandlerModifiable automationInventory = new InsertOnlyAutomationInventory(inventory);
     private final FrequencyBindingHelper frequencyBinding = new FrequencyBindingHelper(this);
 
     private int cooldownTicks;
@@ -121,7 +128,7 @@ public class LightningCollectorBlockEntity extends AENetworkBlockEntity
     }
 
     public IItemHandlerModifiable getAutomationInventory() {
-        return automationInventory;
+        return inventory;
     }
 
     public LightningCollectorInventory getInventory() {
@@ -339,6 +346,11 @@ public class LightningCollectorBlockEntity extends AENetworkBlockEntity
         return EnumSet.allOf(Direction.class);
     }
 
+    @Override
+    public AECableType getCableConnectionType(Direction dir) {
+        return AECableType.SMART;
+    }
+
     private boolean canCultivateFromNaturalStrike(ServerLevel serverLevel) {
         long gameTime = serverLevel.getGameTime();
         return lastNaturalCultivationGameTime == Long.MIN_VALUE
@@ -397,8 +409,10 @@ public class LightningCollectorBlockEntity extends AENetworkBlockEntity
         if (level == null) {
             return;
         }
-        BlockState state = getBlockState();
-        if (state.hasProperty(LightningCollectorBlock.WORKING)
+        BlockState state = level.getBlockState(worldPosition);
+        if (state.is(ModBlocks.LIGHTNING_COLLECTOR.get())
+                && level.getBlockEntity(worldPosition) == this
+                && state.hasProperty(LightningCollectorBlock.WORKING)
                 && state.getValue(LightningCollectorBlock.WORKING) != working) {
             level.setBlock(worldPosition, state.setValue(LightningCollectorBlock.WORKING, working), Block.UPDATE_ALL);
         }
@@ -418,9 +432,26 @@ public class LightningCollectorBlockEntity extends AENetworkBlockEntity
     }
 
     @Override
+    public void onChunkUnloaded() {
+        frequencyBinding.onChunkUnloaded();
+        super.onChunkUnloaded();
+    }
+
+    @Override
     public void clearRemoved() {
         super.clearRemoved();
         frequencyBinding.clearRemoved();
+    }
+
+    @Override
+    public <T> LazyOptional<T> getCapability(Capability<T> cap, @Nullable Direction side) {
+        if (cap == ForgeCapabilities.ITEM_HANDLER) {
+            return LazyOptional.of(this::getAutomationInventory).cast();
+        }
+        if (cap == AE2LTCapabilities.LIGHTNING_ENERGY_BLOCK) {
+            return LazyOptional.of(() -> new GridLightningEnergyHandler(this)).cast();
+        }
+        return super.getCapability(cap, side);
     }
 
     public record OutputPreview(int min, int max) {

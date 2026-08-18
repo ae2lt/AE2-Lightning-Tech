@@ -1,8 +1,8 @@
 {
   "$schema": "schema.json",
-  "includes": ["common/common.json", "common/player_inventory.json"],
+  "includes": ["common/common.json", "common/legacy_player_inventory.json"],
   "background": {
-    "texture": "guis/ex_interface.png",
+    "texture": "ae2lt:textures/guis/overloaded_interface.png",
     "srcRect": [0, 0, 176, 253]
   },
   "slots": {
@@ -66,8 +66,9 @@
       "height": 20
     },
     "overloadedFilter": {
-      "right": 2,
-      "top": 82
+      "$comment": "Align below the four-slot upgrades panel (86 px tall) with a 2 px gap.",
+      "right": -2,
+      "top": 88
     }
   }
 }

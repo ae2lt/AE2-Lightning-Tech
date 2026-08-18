@@ -235,4 +235,3 @@ public class OverloadProcessingCategory implements IRecipeCategory<OverloadProce
         return rounded + suffix;
     }
 }
-

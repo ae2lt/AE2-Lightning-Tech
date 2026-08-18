@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "ACA",
+    "BDB",
+    "ACA"
+  ],
+  "key": {
+    "A": { "item": "ae2:item_cell_housing" },
+    "B": { "item": "ae2:drive" },
+    "C": { "item": "ae2:capacity_card" },
+    "D": { "item": "ae2lt:tianshu_blank_unit" }
+  },
+  "result": {
+    "item": "ae2lt:closed_loop_seed_storage",
+    "count": 1
+  }
+}

@@ -4,7 +4,7 @@
       "type": "forge:not",
       "value": {
         "type": "forge:tag_empty",
-        "tag": "c:dusts/amethyst"
+        "tag": "forge:dusts/amethyst"
       }
     }
   ],
@@ -15,7 +15,7 @@
   },
   "catalystCount": 1,
   "output": {
-    "tag": "c:dusts/amethyst",
+    "tag": "forge:dusts/amethyst",
     "count": 1
   },
   "energyPerCycle": 100000,

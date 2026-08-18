@@ -77,11 +77,11 @@ public abstract class LargeStackItemHandler implements IItemHandlerModifiable, I
         Objects.requireNonNull(stack, "stack");
 
         if (!stack.isEmpty()) {
-            int slotLimit = getSlotLimit(slot);
-            if (stack.getCount() > slotLimit) {
-                throw new IllegalArgumentException(
-                        "Stack count " + stack.getCount() + " exceeds slot " + slot + " limit " + slotLimit);
-            }
+            // Note: we intentionally do NOT enforce stack.getCount() <= getSlotLimit(slot)
+            // here. Save loading and client slot sync both call this path, and may carry
+            // stacks whose count exceeds the current slot limit (e.g. legacy saves from
+            // when the matrix slot capped at 64 instead of 32). Insertion via insertItem
+            // still enforces the limit, so automation cannot grow stacks beyond it.
             if (validateItem && !isItemValid(slot, stack)) {
                 throw new IllegalArgumentException("Stack " + stack + " is not valid for slot " + slot);
             }
@@ -260,11 +260,15 @@ public abstract class LargeStackItemHandler implements IItemHandlerModifiable, I
                 continue;
             }
 
-            int limit = getSlotLimit(slot);
             int savedCount = itemTag.contains(TAG_COUNT_INT, Tag.TAG_INT)
                     ? itemTag.getInt(TAG_COUNT_INT)
                     : stack.getCount();
-            stack = stack.copyWithCount(Math.min(limit, Math.max(1, savedCount)));
+            // Preserve the saved count as-is, even if it exceeds the current slot limit.
+            // This grandfathers in stacks from older versions whose limit has since been
+            // lowered (e.g. matrix slot 64 -> 32). The insert path still enforces the
+            // current limit, so external automation cannot grow stacks beyond it; the
+            // player can drain the excess through the GUI.
+            stack = stack.copyWithCount(Math.max(1, savedCount));
             stacks.set(slot, stack);
         }
     }

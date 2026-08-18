@@ -214,4 +214,3 @@ public class CrystalCatalyzerFluidWidget extends AbstractWidget implements ITool
                 .orElseGet(() -> namespace.replace('_', ' '));
     }
 }
-

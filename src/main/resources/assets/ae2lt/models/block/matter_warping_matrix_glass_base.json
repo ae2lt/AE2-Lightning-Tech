@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/cube_all",
+  "render_type": "minecraft:translucent",
+  "textures": {
+    "all": "ae2lt:block/matter_warping_matrix/matter_warping_matrix_glass",
+    "particle": "ae2lt:block/matter_warping_matrix/matter_warping_matrix_glass"
+  }
+}

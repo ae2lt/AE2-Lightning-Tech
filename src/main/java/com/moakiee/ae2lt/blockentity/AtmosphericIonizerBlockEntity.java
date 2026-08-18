@@ -13,6 +13,7 @@ import appeng.api.networking.IGridNode;
 import appeng.api.networking.IGridNodeListener;
 import appeng.api.networking.security.IActionHost;
 import appeng.api.orientation.BlockOrientation;
+import appeng.api.util.AECableType;
 import appeng.blockentity.grid.AENetworkBlockEntity;
 import appeng.menu.MenuOpener;
 import appeng.menu.locator.MenuLocator;
@@ -21,6 +22,7 @@ import com.moakiee.ae2lt.grid.FrequencyBindingHelper;
 import com.moakiee.ae2lt.grid.FrequencyBindingHost;
 import com.moakiee.ae2lt.item.WeatherCondensateItem;
 import com.moakiee.ae2lt.logic.WeatherControlHelper;
+import com.moakiee.ae2lt.logic.research.ResearchRitualService;
 import com.moakiee.ae2lt.machine.atmosphericionizer.AtmosphericIonizerInventory;
 import com.moakiee.ae2lt.machine.atmosphericionizer.AtmosphericIonizerLogic;
 import com.moakiee.ae2lt.machine.atmosphericionizer.AtmosphericIonizerStatus;
@@ -44,6 +46,11 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.items.IItemHandlerModifiable;
+import net.minecraftforge.common.capabilities.Capability;
+import net.minecraftforge.common.capabilities.ForgeCapabilities;
+import net.minecraftforge.common.util.LazyOptional;
+
+import org.jetbrains.annotations.Nullable;
 
 public class AtmosphericIonizerBlockEntity extends AENetworkBlockEntity
         implements IActionHost, FrequencyBindingHost {
@@ -300,8 +307,10 @@ public class AtmosphericIonizerBlockEntity extends AENetworkBlockEntity
         boolean changed = this.working != working;
         this.working = working;
         if (level != null) {
-            BlockState state = getBlockState();
-            if (state.hasProperty(AtmosphericIonizerBlock.WORKING)
+            BlockState state = level.getBlockState(worldPosition);
+            if (state.is(ModBlocks.ATMOSPHERIC_IONIZER.get())
+                    && level.getBlockEntity(worldPosition) == this
+                    && state.hasProperty(AtmosphericIonizerBlock.WORKING)
                     && state.getValue(AtmosphericIonizerBlock.WORKING) != working) {
                 level.setBlock(worldPosition, state.setValue(AtmosphericIonizerBlock.WORKING, working), Block.UPDATE_ALL);
             } else if (changed) {
@@ -331,6 +340,12 @@ public class AtmosphericIonizerBlockEntity extends AENetworkBlockEntity
     }
 
     @Override
+    public void onChunkUnloaded() {
+        frequencyBinding.onChunkUnloaded();
+        super.onChunkUnloaded();
+    }
+
+    @Override
     public void clearRemoved() {
         super.clearRemoved();
         frequencyBinding.clearRemoved();
@@ -351,6 +366,7 @@ public class AtmosphericIonizerBlockEntity extends AENetworkBlockEntity
         BlockPos strikePos = worldPosition.above(RITUAL_STRIKE_HEIGHT_OFFSET);
         bolt.moveTo(Vec3.atBottomCenterOf(strikePos));
         bolt.setVisualOnly(false);
+        ResearchRitualService.markRitualLightning(bolt, worldPosition);
         serverLevel.addFreshEntity(bolt);
         LOG.info("[ae2lt/ionizer] thunderstorm nucleation -> spawn lightning at {} (ionizer={})", strikePos,
                 worldPosition);
@@ -469,5 +485,17 @@ public class AtmosphericIonizerBlockEntity extends AENetworkBlockEntity
 
         double extracted = grid.getEnergyService().extractAEPower(amount, mode, PowerMultiplier.CONFIG);
         return extracted >= amount - POWER_EPSILON;
+    }
+    @Override
+    public <T> LazyOptional<T> getCapability(Capability<T> cap, @Nullable Direction side) {
+        if (cap == ForgeCapabilities.ITEM_HANDLER) {
+            return LazyOptional.of(this::getAutomationInventory).cast();
+        }
+        return super.getCapability(cap, side);
+    }
+
+    @Override
+    public AECableType getCableConnectionType(Direction dir) {
+        return AECableType.SMART;
     }
 }

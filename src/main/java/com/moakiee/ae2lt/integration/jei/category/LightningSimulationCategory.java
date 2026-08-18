@@ -164,4 +164,3 @@ public class LightningSimulationCategory implements IRecipeCategory<LightningSim
         return rounded + suffix;
     }
 }
-

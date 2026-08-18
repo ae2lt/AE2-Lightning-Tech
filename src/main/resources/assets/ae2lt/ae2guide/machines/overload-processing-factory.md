@@ -19,11 +19,11 @@ The **Overload Processing Factory** is the largest and highest-throughput proces
 
 | Slot / Component | Capacity | Notes |
 |------------------|----------|-------|
-| Item Input × 9 | 8,192 | Feed in the items |
+| Item Input × 9 | 16,384 | Feed in the items |
 | Matrix × 1 | 32 | Install Lightning Collapse Matrices to unlock parallelism |
-| Item Output × 1 | 8,192 | Processed output; written by the machine only |
-| Fluid Input | 512,000 mB | Feed in the required fluid through pipes |
-| Fluid Output | 512,000 mB | Holds fluid output |
+| Item Output × 1 | 16,384 | Processed output; written by the machine only |
+| Fluid Input | 1,024,000 mB | Feed in the required fluid through pipes |
+| Fluid Output | 1,024,000 mB | Holds fluid output |
 | FE Buffer | 640,000,000 FE (default) | Built-in energy buffer |
 | Speed Card Slots | — | Up to 4 AE2 Speed Cards |
 
@@ -40,6 +40,8 @@ The **Overload Processing Factory** is the largest and highest-throughput proces
 <ItemImage id="ae2lt:lightning_collapse_matrix" scale="2" float="left" />
 
 The factory's parallelism is determined by the number of **Lightning Collapse Matrices** installed. The matrix slot holds up to 32 matrices, with each one providing a configurable amount of parallelism (default 8 per matrix, max 32 × 8 = 256):
+
+Hold Lightning Collapse Matrices and **sneak-use** the Overload Processing Factory to insert them directly into its matrix slot. The factory inserts as many as possible, up to 32, and leaves any remainder in your hand.
 
 * With no matrices installed, the factory cannot parallelize
 * Installing more matrices linearly raises the parallel ceiling

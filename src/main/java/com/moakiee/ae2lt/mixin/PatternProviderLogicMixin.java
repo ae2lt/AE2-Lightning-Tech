@@ -16,7 +16,7 @@ import appeng.api.crafting.IPatternDetails;
 import appeng.api.stacks.GenericStack;
 import appeng.helpers.patternprovider.PatternProviderLogic;
 import com.moakiee.ae2lt.logic.OverloadedPatternProviderLogic;
-import com.moakiee.ae2lt.overload.pattern.OverloadedProviderOnlyPatternDetails;
+import com.moakiee.thunderbolt.ae2.overload.pattern.OverloadedProviderOnlyPatternDetails;
 
 /**
  * Keeps overload patterns out of normal AE2 pattern providers.

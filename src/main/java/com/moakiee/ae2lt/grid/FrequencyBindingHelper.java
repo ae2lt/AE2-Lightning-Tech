@@ -6,16 +6,19 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import appeng.api.networking.IGrid;
 import appeng.api.networking.IGridConnection;
 import appeng.api.networking.IGridNode;
 import appeng.api.networking.IGridNodeListener;
-import appeng.me.GridConnection;
 import appeng.util.SettingsFrom;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 
 import com.moakiee.ae2lt.blockentity.OverloadedControllerBlockEntity;
+import com.moakiee.ae2lt.grid.wirelesslink.MultiblockLinkReadiness;
+import com.moakiee.ae2lt.grid.wirelesslink.WirelessLinkOps;
 import com.moakiee.ae2lt.logic.MemoryCardConfigSupport;
+import com.moakiee.ae2lt.me.GridNodeAccess;
 
 /**
  * Shared receiver-side frequency binding. It mirrors the original
@@ -34,6 +37,13 @@ public final class FrequencyBindingHelper
     private static final int INITIAL_RETRY_COOLDOWN_TICKS = 20;
     /** Upper bound for retry backoff; keeps unloaded chunks from causing steady update churn. */
     private static final int MAX_RETRY_COOLDOWN_TICKS = 20 * 10;
+    /**
+     * Revalidate an apparently idle binding once per second. AE2 can remove a
+     * virtual connection while rebuilding grids without delivering another
+     * transmitter event to this helper, so event-driven recovery alone can
+     * leave a persisted binding disconnected until the player binds it again.
+     */
+    private static final int CONNECTION_AUDIT_INTERVAL_TICKS = 20;
 
     private final com.moakiee.ae2lt.api.frequency.FrequencyBindingHost host;
 
@@ -43,6 +53,7 @@ public final class FrequencyBindingHelper
     private boolean needsConnectionUpdate;
     private int retryCooldownTicks;
     private int nextRetryCooldownTicks = INITIAL_RETRY_COOLDOWN_TICKS;
+    private int connectionAuditTicks = CONNECTION_AUDIT_INTERVAL_TICKS;
     private int subscribedFrequencyId = -1;
 
     public FrequencyBindingHelper(com.moakiee.ae2lt.api.frequency.FrequencyBindingHost host) {
@@ -96,19 +107,21 @@ public final class FrequencyBindingHelper
     }
 
     public void serverTick() {
-        if (retryCooldownTicks > 0) {
-            retryCooldownTicks--;
-            return;
-        }
-        if (!needsConnectionUpdate) return;
-
         var be = host.getFrequencyBindingBlockEntity();
         if (frequencyId <= 0 || be.getLevel() == null || be.getLevel().isClientSide()) {
             needsConnectionUpdate = false;
             return;
         }
 
-        if (host.getFrequencyBindingMainNode().getNode() == null) {
+        auditConnectionIfDue();
+
+        if (retryCooldownTicks > 0) {
+            retryCooldownTicks--;
+            return;
+        }
+        if (!needsConnectionUpdate) return;
+
+        if (be.getMainNode().getNode() == null) {
             scheduleRetry();
             return;
         }
@@ -154,6 +167,17 @@ public final class FrequencyBindingHelper
         attach();
     }
 
+    /**
+     * Releases runtime-only state when the host's chunk unloads. Keep the
+     * persisted device registration so unloaded devices remain visible in the
+     * frequency connection list.
+     */
+    public void onChunkUnloaded() {
+        unsubscribeListener();
+        clearConnectionUpdate();
+        virtualConnection = null;
+    }
+
     public void save(CompoundTag tag) {
         tag.putInt(TAG_FREQUENCY_ID, frequencyId);
     }
@@ -185,13 +209,15 @@ public final class FrequencyBindingHelper
     }
 
     public int getGridUsedChannels() {
-        var grid = host.getFrequencyBindingMainNode().getGrid();
+        var grid = GridNodeAccess.getGridIfPresent(
+                host.getFrequencyBindingBlockEntity().getMainNode().getNode());
         if (grid == null) return 0;
         return OverloadedChannelOwnerHelper.countUsedChannels(grid);
     }
 
     public int getGridMaxChannels() {
-        var grid = host.getFrequencyBindingMainNode().getGrid();
+        var grid = GridNodeAccess.getGridIfPresent(
+                host.getFrequencyBindingBlockEntity().getMainNode().getNode());
         if (grid == null) return 0;
 
         var channelMode = grid.getPathingService().getChannelMode();
@@ -216,16 +242,51 @@ public final class FrequencyBindingHelper
     }
 
     public boolean isConnected() {
-        return hasLiveVirtualConnection();
+        return hasEffectiveFrequencyConnection();
+    }
+
+    /**
+     * A physical cluster only needs one virtual entrance. Another native host
+     * in that cluster therefore has no connection object of its own, but it is
+     * still connected when its node shares the transmitter grid and has a
+     * channel. Treat that as connected both for the UI and for recovery checks.
+     */
+    private boolean hasEffectiveFrequencyConnection() {
+        if (hasLiveVirtualConnection()) {
+            return true;
+        }
+
+        var be = host.getFrequencyBindingBlockEntity();
+        if (frequencyId <= 0 || !(be.getLevel() instanceof ServerLevel serverLevel)) {
+            return false;
+        }
+
+        IGridNode myNode = be.getMainNode().getNode();
+        var manager = WirelessFrequencyManager.get();
+        IGridNode remoteNode = manager == null
+                ? null
+                : manager.resolveNode(frequencyId, serverLevel.getServer());
+        boolean alreadyInFrequencyGrid = isAlreadyInFrequencyGrid(myNode, remoteNode);
+        return hasEffectiveConnection(
+                false,
+                alreadyInFrequencyGrid,
+                alreadyInFrequencyGrid && myNode.meetsChannelRequirements());
+    }
+
+    static boolean hasEffectiveConnection(
+            boolean liveVirtualConnection,
+            boolean alreadyInFrequencyGrid,
+            boolean meetsChannelRequirements) {
+        return liveVirtualConnection || alreadyInFrequencyGrid && meetsChannelRequirements;
     }
 
     private boolean hasLiveVirtualConnection() {
         if (virtualConnection == null) return false;
 
-        IGridNode myNode = host.getFrequencyBindingMainNode().getNode();
+        IGridNode myNode = host.getFrequencyBindingBlockEntity().getMainNode().getNode();
         if (myNode == null) return false;
         for (var conn : myNode.getConnections()) {
-            if (conn == virtualConnection) return true;
+            if (conn == virtualConnection && !conn.isInWorld()) return true;
         }
 
         return false;
@@ -258,12 +319,38 @@ public final class FrequencyBindingHelper
         needsConnectionUpdate = true;
         retryCooldownTicks = 0;
         resetRetryBackoff();
+        resetConnectionAudit();
     }
 
     private void clearConnectionUpdate() {
         needsConnectionUpdate = false;
         retryCooldownTicks = 0;
         resetRetryBackoff();
+        resetConnectionAudit();
+    }
+
+    private void resetConnectionAudit() {
+        connectionAuditTicks = CONNECTION_AUDIT_INTERVAL_TICKS;
+    }
+
+    /**
+     * Repairs the split-brain state where NBT/client state still says the host
+     * is bound, but AE2 no longer contains its runtime bridge. Do not reset the
+     * retry backoff here: unloaded transmitters must retain the existing bounded
+     * retry behaviour.
+     */
+    private void auditConnectionIfDue() {
+        if (--connectionAuditTicks > 0) {
+            return;
+        }
+        resetConnectionAudit();
+
+        if (virtualConnection != null) {
+            revalidateConnection();
+        }
+        if (!hasEffectiveFrequencyConnection() && !needsConnectionUpdate) {
+            scheduleRetry();
+        }
     }
 
     private void resetRetryBackoff() {
@@ -330,8 +417,13 @@ public final class FrequencyBindingHelper
         if (frequencyId <= 0 || be.getLevel() == null || be.getLevel().isClientSide()) return;
         if (virtualConnection != null) return;
 
-        IGridNode myNode = host.getFrequencyBindingMainNode().getNode();
+        IGridNode myNode = be.getMainNode().getNode();
         if (myNode == null) {
+            scheduleRetry();
+            return;
+        }
+        if (!MultiblockLinkReadiness.canKeepVirtualConnection(myNode)) {
+            MultiblockLinkReadiness.refreshAfterVirtualConnectionRemoved(myNode);
             scheduleRetry();
             return;
         }
@@ -357,14 +449,20 @@ public final class FrequencyBindingHelper
             return;
         }
 
-        for (var conn : myNode.getConnections()) {
-            if (conn.getOtherSide(myNode) == remoteNode) {
-                return;
-            }
+        if (alreadyHasFrequencyChannel(myNode, remoteNode)) {
+            return;
+        }
+
+        if (wouldMergeControllerNetworks(
+                GridNodeAccess.getGridIfPresent(myNode),
+                GridNodeAccess.getGridIfPresent(remoteNode))) {
+            LOG.warn("Virtual connection blocked to avoid controller-network merge: device@{} -> freq={}",
+                    be.getBlockPos(), frequencyId);
+            return;
         }
 
         try {
-            virtualConnection = GridConnection.create(myNode, remoteNode, null);
+            virtualConnection = WirelessLinkOps.createVirtualConnection(myNode, remoteNode);
             LOG.debug("Virtual connection established: device@{} -> freq={}", be.getBlockPos(), frequencyId);
         } catch (IllegalStateException e) {
             LOG.warn("Virtual connection FAILED: device@{} -> freq={}: {}",
@@ -376,14 +474,10 @@ public final class FrequencyBindingHelper
     private void destroyVirtualConnection() {
         if (virtualConnection == null) return;
 
-        IGridNode myNode = host.getFrequencyBindingMainNode().getNode();
+        IGridNode myNode = host.getFrequencyBindingBlockEntity().getMainNode().getNode();
+        WirelessLinkOps.destroy(virtualConnection, myNode);
         if (myNode != null) {
-            for (var conn : myNode.getConnections()) {
-                if (conn == virtualConnection) {
-                    virtualConnection.destroy();
-                    break;
-                }
-            }
+            MultiblockLinkReadiness.refreshAfterVirtualConnectionRemoved(myNode);
         }
         virtualConnection = null;
     }
@@ -393,13 +487,18 @@ public final class FrequencyBindingHelper
         if (frequencyId <= 0 || be.getLevel() == null || be.getLevel().isClientSide()) return;
         if (virtualConnection == null) return;
 
-        IGridNode myNode = host.getFrequencyBindingMainNode().getNode();
+        IGridNode myNode = be.getMainNode().getNode();
         if (myNode == null) return;
+        if (!MultiblockLinkReadiness.canKeepVirtualConnection(myNode)) {
+            destroyVirtualConnection();
+            scheduleRetry();
+            return;
+        }
 
         boolean connectionAlive = false;
         IGridNode connectedTarget = null;
         for (var conn : myNode.getConnections()) {
-            if (conn == virtualConnection) {
+            if (conn == virtualConnection && !conn.isInWorld()) {
                 connectionAlive = true;
                 connectedTarget = conn.getOtherSide(myNode);
                 break;
@@ -419,5 +518,23 @@ public final class FrequencyBindingHelper
         if (currentTarget == null || connectedTarget != currentTarget) {
             destroyVirtualConnection();
         }
+    }
+
+    private static boolean isAlreadyInFrequencyGrid(IGridNode targetNode, IGridNode transmitterNode) {
+        IGrid targetGrid = GridNodeAccess.getGridIfPresent(targetNode);
+        IGrid transmitterGrid = GridNodeAccess.getGridIfPresent(transmitterNode);
+        return targetGrid != null && transmitterGrid != null && targetGrid == transmitterGrid;
+    }
+
+    private static boolean alreadyHasFrequencyChannel(IGridNode targetNode, IGridNode transmitterNode) {
+        return isAlreadyInFrequencyGrid(targetNode, transmitterNode)
+                && targetNode.meetsChannelRequirements();
+    }
+
+    private static boolean wouldMergeControllerNetworks(@Nullable IGrid targetGrid, @Nullable IGrid frequencyGrid) {
+        if (targetGrid == null || targetGrid == frequencyGrid) {
+            return false;
+        }
+        return !OverloadedChannelOwnerHelper.getAllControllerNodes(targetGrid).isEmpty();
     }
 }

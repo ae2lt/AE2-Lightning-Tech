@@ -9,7 +9,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.inventory.ClickType;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
@@ -40,9 +39,7 @@ public class OverloadProcessingFactoryMenu extends AEBaseMenu implements Frequen
             MenuTypeBuilder
                     .create(OverloadProcessingFactoryMenu::new, OverloadProcessingFactoryBlockEntity.class)
                     .withMenuTitle(host -> Component.translatable("block.ae2lt.overload_processing_factory")),
-            new ResourceLocation(
-                    AE2LightningTech.MODID,
-                    "overload_processing_factory"));
+            new ResourceLocation(AE2LightningTech.MODID, "overload_processing_factory"));
 
     private static final List<SlotSemantic> INPUT_SEMANTICS = List.of(
             Ae2ltSlotSemantics.OVERLOAD_FACTORY_INPUT_0,
@@ -244,16 +241,6 @@ public class OverloadProcessingFactoryMenu extends AEBaseMenu implements Frequen
     }
 
     @Override
-    public void clicked(int slotId, int button, ClickType clickType, Player player) {
-        if (clickType == ClickType.PICKUP && handleLargeMachineSlotPickup(slotId, button, player)) {
-            broadcastChanges();
-            return;
-        }
-
-        super.clicked(slotId, button, clickType, player);
-    }
-
-    @Override
     public boolean stillValid(Player player) {
         if (host.isRemoved() || host.getLevel() == null) {
             return false;
@@ -271,10 +258,6 @@ public class OverloadProcessingFactoryMenu extends AEBaseMenu implements Frequen
         return host;
     }
 
-    @Override
-    public net.minecraft.core.BlockPos getFrequencyBindingBlockPos() {
-        return host.getBlockPos();
-    }
 
     public ToolboxMenu getToolbox() {
         return toolbox;
@@ -505,79 +488,4 @@ public class OverloadProcessingFactoryMenu extends AEBaseMenu implements Frequen
         return mask;
     }
 
-    private boolean handleLargeMachineSlotPickup(int slotId, int button, Player player) {
-        if (slotId < 0 || slotId >= slots.size()) {
-            return false;
-        }
-
-        var slot = getSlot(slotId);
-        if (!(slot instanceof LargeStackAppEngSlot) || ((com.moakiee.ae2lt.mixin.AEBaseMenuAccessor) (Object) this).ae2lt$isPlayerSideSlot(slot)) {
-            return false;
-        }
-
-        if (button != 0 && button != 1) {
-            return false;
-        }
-
-        var carried = getCarried();
-        var slotStack = slot.getItem();
-        boolean rightClick = button == 1;
-
-        if (carried.isEmpty()) {
-            if (slotStack.isEmpty() || !slot.mayPickup(player)) {
-                return true;
-            }
-
-            int requested = rightClick
-                    ? Math.min(64, Math.max(1, (int) Math.ceil(slotStack.getCount() / 2.0D)))
-                    : 64;
-            var taken = slot.remove(requested);
-            setCarried(taken);
-            slot.onTake(player, taken);
-            slot.setChanged();
-            return true;
-        }
-
-        if (!slot.mayPlace(carried)) {
-            return false;
-        }
-
-        if (slotStack.isEmpty()) {
-            int toMove = Math.min(rightClick ? 1 : carried.getCount(), slot.getMaxStackSize(carried));
-            if (toMove <= 0) {
-                return true;
-            }
-
-            var placed = carried.copyWithCount(toMove);
-            slot.set(placed);
-            carried.shrink(toMove);
-            setCarried(carried.isEmpty() ? ItemStack.EMPTY : carried);
-            return true;
-        }
-
-        if (ItemStack.isSameItemSameTags(slotStack, carried)) {
-            int room = slot.getMaxStackSize(carried) - slotStack.getCount();
-            int toMove = Math.min(rightClick ? 1 : carried.getCount(), room);
-            if (toMove <= 0) {
-                return true;
-            }
-
-            slotStack.grow(toMove);
-            slot.setChanged();
-            carried.shrink(toMove);
-            setCarried(carried.isEmpty() ? ItemStack.EMPTY : carried);
-            return true;
-        }
-
-        if (!slot.mayPickup(player)
-                || carried.getCount() > slot.getMaxStackSize(carried)
-                || slotStack.getCount() > 64) {
-            return true;
-        }
-
-        slot.set(carried);
-        setCarried(slotStack);
-        return true;
-    }
 }
-

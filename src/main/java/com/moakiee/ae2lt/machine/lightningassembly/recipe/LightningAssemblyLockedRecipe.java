@@ -139,7 +139,7 @@ public final class LightningAssemblyLockedRecipe {
         }
 
         return new LightningAssemblyLockedRecipe(
-                new ResourceLocation(tag.getString(TAG_RECIPE_ID)),
+                ResourceLocation.tryParse(tag.getString(TAG_RECIPE_ID)),
                 result,
                 totalEnergy,
                 lightningCost,

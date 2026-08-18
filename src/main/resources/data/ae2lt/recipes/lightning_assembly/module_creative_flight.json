@@ -1,0 +1,43 @@
+{
+  "type": "ae2lt:lightning_assembly",
+  "priority": 0,
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "ae2lt:overload_module_base"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "ae2lt:ultimate_overload_core"
+      },
+      "count": 4
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:elytra"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:dragon_head"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "ae2lt:floating_matter"
+      },
+      "count": 2
+    }
+  ],
+  "result": {
+    "id": "ae2lt:module_creative_flight",
+    "count": 1
+  },
+  "totalEnergy": 18000000,
+  "lightningCost": 64,
+  "lightningTier": "high_voltage"
+}

@@ -12,6 +12,7 @@ import appeng.api.networking.security.IActionSource;
 import appeng.api.networking.ticking.IGridTickable;
 import appeng.api.orientation.BlockOrientation;
 import appeng.api.orientation.RelativeSide;
+import appeng.api.util.AECableType;
 import appeng.blockentity.grid.AENetworkBlockEntity;
 import appeng.menu.MenuOpener;
 import appeng.menu.locator.MenuLocator;
@@ -19,6 +20,8 @@ import appeng.menu.locator.MenuLocator;
 import com.moakiee.ae2lt.block.TeslaCoilBlock;
 import com.moakiee.ae2lt.grid.FrequencyBindingHelper;
 import com.moakiee.ae2lt.grid.FrequencyBindingHost;
+import com.moakiee.ae2lt.logic.MemoryCardConfigSupport;
+import com.moakiee.ae2lt.machine.common.LightningCollapseMatrixHost;
 import com.moakiee.ae2lt.machine.teslacoil.TeslaCoilAutomationInventory;
 import com.moakiee.ae2lt.machine.teslacoil.TeslaCoilEnergyStorage;
 import com.moakiee.ae2lt.machine.teslacoil.TeslaCoilInventory;
@@ -40,9 +43,18 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.energy.IEnergyStorage;
 import net.minecraftforge.items.IItemHandlerModifiable;
+import net.minecraftforge.common.capabilities.Capability;
+import net.minecraftforge.common.capabilities.ForgeCapabilities;
+import net.minecraftforge.common.util.LazyOptional;
+
+import org.jetbrains.annotations.Nullable;
+
+import com.moakiee.ae2lt.api.AE2LTCapabilities;
+import com.moakiee.ae2lt.me.GridLightningEnergyHandler;
+import com.moakiee.ae2lt.util.NativeStackDropHelper;
 
 public class TeslaCoilBlockEntity extends AENetworkBlockEntity
-        implements IActionHost, FrequencyBindingHost {
+        implements IActionHost, FrequencyBindingHost, LightningCollapseMatrixHost {
     public static final int ENERGY_CAPACITY = 16_000_000;
     private static final String TAG_INVENTORY = "Inventory";
     private static final String TAG_ENERGY = "Energy";
@@ -109,6 +121,16 @@ public class TeslaCoilBlockEntity extends AENetworkBlockEntity
 
     public TeslaCoilInventory getInventory() {
         return inventory;
+    }
+
+    @Override
+    public IItemHandlerModifiable getMatrixInventory() {
+        return inventory;
+    }
+
+    @Override
+    public int getMatrixSlot() {
+        return TeslaCoilInventory.SLOT_MATRIX;
     }
 
     public IItemHandlerModifiable getAutomationInventory() {
@@ -314,7 +336,9 @@ public class TeslaCoilBlockEntity extends AENetworkBlockEntity
         saveChanges();
         markForUpdate();
         logic.onStateChanged();
-        setWorking(false);
+        // Keep the active state across the cycle boundary. The urgent grid tick
+        // decides whether another batch can start and marks us idle only when it
+        // confirms that no follow-up work exists.
         return true;
     }
 
@@ -330,8 +354,10 @@ public class TeslaCoilBlockEntity extends AENetworkBlockEntity
         boolean changed = this.working != working;
         this.working = working;
         if (level != null) {
-            BlockState state = getBlockState();
-            if (state.hasProperty(TeslaCoilBlock.WORKING)
+            BlockState state = level.getBlockState(worldPosition);
+            if (state.is(ModBlocks.TESLA_COIL.get())
+                    && level.getBlockEntity(worldPosition) == this
+                    && state.hasProperty(TeslaCoilBlock.WORKING)
                     && state.getValue(TeslaCoilBlock.WORKING) != working) {
                 level.setBlock(worldPosition, state.setValue(TeslaCoilBlock.WORKING, working), Block.UPDATE_ALL);
             } else if (changed) {
@@ -354,6 +380,12 @@ public class TeslaCoilBlockEntity extends AENetworkBlockEntity
     public void setRemoved() {
         frequencyBinding.setRemoved();
         super.setRemoved();
+    }
+
+    @Override
+    public void onChunkUnloaded() {
+        frequencyBinding.onChunkUnloaded();
+        super.onChunkUnloaded();
     }
 
     @Override
@@ -414,7 +446,7 @@ public class TeslaCoilBlockEntity extends AENetworkBlockEntity
         for (int slot = 0; slot < inventory.getSlots(); slot++) {
             ItemStack stack = inventory.getStackInSlot(slot);
             if (!stack.isEmpty()) {
-                drops.add(stack.copy());
+                NativeStackDropHelper.addDrops(drops, stack);
             }
         }
     }
@@ -430,9 +462,10 @@ public class TeslaCoilBlockEntity extends AENetworkBlockEntity
                                net.minecraft.nbt.CompoundTag output,
                                @org.jetbrains.annotations.Nullable Player player) {
         super.exportSettings(mode, output, player);
-        com.moakiee.ae2lt.logic.MemoryCardConfigSupport.exportMemoryCardSettings(mode, output, tag -> {
-            com.moakiee.ae2lt.logic.MemoryCardConfigSupport.writeEnum(tag, TAG_SELECTED_MODE, selectedMode);
+        MemoryCardConfigSupport.exportMemoryCardSettings(mode, output, tag -> {
+            MemoryCardConfigSupport.writeEnum(tag, TAG_SELECTED_MODE, selectedMode);
             FrequencyBindingHelper.writeMemoryFrequency(tag, getFrequencyId());
+            MemoryCardConfigSupport.writeMatrixCount(tag, this);
         });
     }
 
@@ -441,13 +474,15 @@ public class TeslaCoilBlockEntity extends AENetworkBlockEntity
                                net.minecraft.nbt.CompoundTag input,
                                @org.jetbrains.annotations.Nullable Player player) {
         super.importSettings(mode, input, player);
-        com.moakiee.ae2lt.logic.MemoryCardConfigSupport.importMemoryCardSettings(mode, input, tag -> {
-            var mode2 = com.moakiee.ae2lt.logic.MemoryCardConfigSupport.readEnum(
+        MemoryCardConfigSupport.importMemoryCardSettings(mode, input, tag -> {
+            var mode2 = MemoryCardConfigSupport.readEnum(
                     tag, TAG_SELECTED_MODE, TeslaCoilMode.class, selectedMode);
             this.selectedMode = mode2;
             FrequencyBindingHelper.importMemoryFrequency(tag, this::setFrequency);
+            MemoryCardConfigSupport.restoreMatrixCount(tag, player, this);
             saveChanges();
             markForUpdate();
+            logic.onStateChanged();
         });
     }
 
@@ -625,4 +660,23 @@ public class TeslaCoilBlockEntity extends AENetworkBlockEntity
     private long getRequiredHighVoltageForBatch(TeslaCoilMode mode, long batchSize) {
         return Math.multiplyExact(mode.requiredHighVoltage(), batchSize);
     }
+    @Override
+    public <T> LazyOptional<T> getCapability(Capability<T> cap, @Nullable Direction side) {
+        if (cap == ForgeCapabilities.ITEM_HANDLER) {
+            return LazyOptional.of(this::getAutomationInventory).cast();
+        }
+        if (cap == ForgeCapabilities.ENERGY) {
+            return LazyOptional.of(() -> getEnergyStorageCapability(side)).cast();
+        }
+        if (cap == AE2LTCapabilities.LIGHTNING_ENERGY_BLOCK) {
+            return LazyOptional.of(() -> new GridLightningEnergyHandler(this)).cast();
+        }
+        return super.getCapability(cap, side);
+    }
+
+    @Override
+    public AECableType getCableConnectionType(Direction dir) {
+        return AECableType.SMART;
+    }
 }
+

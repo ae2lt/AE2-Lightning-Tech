@@ -1,0 +1,111 @@
+package com.moakiee.ae2lt.client;
+import com.moakiee.ae2lt.network.NetworkInit;
+
+import org.lwjgl.glfw.GLFW;
+
+import net.minecraft.client.KeyMapping;
+import net.minecraft.client.Minecraft;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.item.ItemStack;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
+
+import com.moakiee.ae2lt.AE2LightningTech;
+import com.moakiee.ae2lt.menu.hub.DeviceHubMenu;
+import com.moakiee.ae2lt.network.DashPacket;
+import com.moakiee.ae2lt.network.hub.OpenDeviceHubPacket;
+import com.moakiee.ae2lt.celestweave.BaseCelestweaveArmorItem;
+import com.moakiee.ae2lt.item.PhaseLockProjectionItem;
+import com.moakiee.ae2lt.item.railgun.ElectromagneticRailgunItem;
+
+@Mod.EventBusSubscriber(modid = AE2LightningTech.MODID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
+public final class DeviceHubKeyMappings {
+    private static final String CATEGORY = "key.categories.ae2lt";
+
+    public static final KeyMapping DASH = new KeyMapping(
+            "key.ae2lt.dash",
+            GLFW.GLFW_KEY_V,
+            CATEGORY);
+
+    public static final KeyMapping OPEN_CONFIG = new KeyMapping(
+            "key.ae2lt.open_config",
+            GLFW.GLFW_KEY_G,
+            CATEGORY);
+
+    private DeviceHubKeyMappings() {
+    }
+
+    @SubscribeEvent
+    public static void register(RegisterKeyMappingsEvent event) {
+        event.register(DASH);
+        event.register(OPEN_CONFIG);
+    }
+
+    @Mod.EventBusSubscriber(modid = AE2LightningTech.MODID, bus = Mod.EventBusSubscriber.Bus.FORGE, value = Dist.CLIENT)
+    public static final class RuntimeHandler {
+        private RuntimeHandler() {
+        }
+
+        @SubscribeEvent
+        public static void onClientTick(TickEvent.ClientTickEvent event) {
+            var minecraft = Minecraft.getInstance();
+            if (minecraft.player == null || minecraft.screen != null) {
+                return;
+            }
+
+            while (DASH.consumeClick()) {
+                NetworkInit.sendToServer(new DashPacket());
+            }
+
+            while (OPEN_CONFIG.consumeClick()) {
+                int defaultTab = -1;
+                if (minecraft.player.getMainHandItem().getItem() instanceof ElectromagneticRailgunItem
+                        || minecraft.player.getOffhandItem().getItem() instanceof ElectromagneticRailgunItem) {
+                    defaultTab = DeviceHubMenu.TAB_RAILGUN;
+                }
+
+                if (defaultTab < 0) {
+                    for (EquipmentSlot slot : new EquipmentSlot[]{
+                            EquipmentSlot.CHEST,
+                            EquipmentSlot.HEAD,
+                            EquipmentSlot.LEGS,
+                            EquipmentSlot.FEET}) {
+                        if (minecraft.player.getItemBySlot(slot).getItem()
+                                instanceof PhaseLockProjectionItem projection
+                                && projection.equipmentSlot() == slot) {
+                            defaultTab = tabFor(slot);
+                            break;
+                        }
+                    }
+                }
+
+                if (defaultTab < 0) {
+                    for (EquipmentSlot slot : new EquipmentSlot[]{EquipmentSlot.CHEST, EquipmentSlot.HEAD, EquipmentSlot.LEGS, EquipmentSlot.FEET}) {
+                        ItemStack armor = minecraft.player.getItemBySlot(slot);
+                        if (armor.getItem() instanceof BaseCelestweaveArmorItem) {
+                            defaultTab = tabFor(slot);
+                            break;
+                        }
+                    }
+                }
+
+                if (defaultTab >= 0) {
+                    NetworkInit.sendToServer(new OpenDeviceHubPacket(defaultTab));
+                }
+            }
+        }
+
+        private static int tabFor(EquipmentSlot slot) {
+            return switch (slot) {
+                case HEAD -> DeviceHubMenu.TAB_HELMET;
+                case CHEST -> DeviceHubMenu.TAB_CHESTPLATE;
+                case LEGS -> DeviceHubMenu.TAB_LEGGINGS;
+                case FEET -> DeviceHubMenu.TAB_BOOTS;
+                default -> -1;
+            };
+        }
+    }
+}

@@ -1,15 +1,9 @@
 {
   "parent": "ae2lt:main/overload_singularity",
   "display": {
-    "icon": {
-      "item": "ae2lt:ultimate_overload_core"
-    },
-    "title": {
-      "translate": "advancements.ae2lt.ultimate_overload_core.title"
-    },
-    "description": {
-      "translate": "advancements.ae2lt.ultimate_overload_core.description"
-    },
+    "icon": { "item": "ae2lt:ultimate_overload_core" },
+    "title": { "translate": "advancements.ae2lt.ultimate_overload_core.title" },
+    "description": { "translate": "advancements.ae2lt.ultimate_overload_core.description" },
     "frame": "goal",
     "show_toast": true,
     "announce_to_chat": false,
@@ -20,19 +14,11 @@
       "trigger": "minecraft:inventory_changed",
       "conditions": {
         "items": [
-          {
-            "items": [
-              "ae2lt:ultimate_overload_core"
-            ]
-          }
+          { "items": [ "ae2lt:ultimate_overload_core" ] }
         ]
       }
     }
   },
-  "requirements": [
-    [
-      "get_item"
-    ]
-  ],
+  "requirements": [ [ "get_item" ] ],
   "sends_telemetry_event": false
 }

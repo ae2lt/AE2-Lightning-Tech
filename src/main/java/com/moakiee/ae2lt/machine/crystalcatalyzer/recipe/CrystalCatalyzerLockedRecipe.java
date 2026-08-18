@@ -147,7 +147,7 @@ public final class CrystalCatalyzerLockedRecipe {
                 : CrystalCatalyzerRecipe.DEFAULT_LIGHTNING_TIER;
 
         return new CrystalCatalyzerLockedRecipe(
-                new ResourceLocation(tag.getString(TAG_RECIPE_ID)),
+                ResourceLocation.tryParse(tag.getString(TAG_RECIPE_ID)),
                 output,
                 energy,
                 outputMultiplier,

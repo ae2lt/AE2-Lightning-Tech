@@ -1,4 +1,5 @@
 package com.moakiee.ae2lt.client.gui;
+import com.moakiee.ae2lt.network.NetworkInit;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -10,12 +11,14 @@ import appeng.client.gui.Icon;
 import appeng.client.gui.style.Color;
 import appeng.client.gui.style.PaletteColor;
 import appeng.client.gui.style.ScreenStyle;
+import com.moakiee.ae2lt.client.gui.AE2Button;
 import appeng.client.gui.widgets.AETextField;
 import appeng.client.gui.widgets.TabButton;
+import appeng.core.sync.network.NetworkHandler;
+import appeng.core.sync.packets.SwitchGuisPacket;
 
 import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.client.ClientFrequencyCache;
-import com.moakiee.ae2lt.client.FrequencyBindingClient;
 import com.moakiee.ae2lt.grid.FrequencyAccessLevel;
 import com.moakiee.ae2lt.grid.FrequencySecurityLevel;
 import com.moakiee.ae2lt.grid.WirelessFrequency;
@@ -130,14 +133,10 @@ public class FrequencyScreen extends AbstractContainerScreen<FrequencyMenu> {
      *   <li>{@code wireless_overloaded_form.png} — clean panel for create / settings.</li>
      * </ul>
      */
-    private static final ResourceLocation BG_HOME = new ResourceLocation(
-            AE2LightningTech.MODID, "textures/gui/wireless_overloaded_home.png");
-    private static final ResourceLocation BG_SELECTION = new ResourceLocation(
-            AE2LightningTech.MODID, "textures/gui/wireless_overloaded_selection.png");
-    private static final ResourceLocation BG_LIST = new ResourceLocation(
-            AE2LightningTech.MODID, "textures/gui/wireless_overloaded_list.png");
-    private static final ResourceLocation BG_FORM = new ResourceLocation(
-            AE2LightningTech.MODID, "textures/gui/wireless_overloaded_form.png");
+    private static final ResourceLocation BG_HOME = new ResourceLocation(AE2LightningTech.MODID, "textures/gui/wireless_overloaded_home.png");
+    private static final ResourceLocation BG_SELECTION = new ResourceLocation(AE2LightningTech.MODID, "textures/gui/wireless_overloaded_selection.png");
+    private static final ResourceLocation BG_LIST = new ResourceLocation(AE2LightningTech.MODID, "textures/gui/wireless_overloaded_list.png");
+    private static final ResourceLocation BG_FORM = new ResourceLocation(AE2LightningTech.MODID, "textures/gui/wireless_overloaded_form.png");
     private static final int TEXTURE_SIZE = 256;
 
     // AE2 standard text tones — matches AE2's own screens such as
@@ -248,6 +247,7 @@ public class FrequencyScreen extends AbstractContainerScreen<FrequencyMenu> {
 
     private int lastCacheRevision = -1;
     private int lastFreqId = Integer.MIN_VALUE;
+    private boolean lastAutoConnect;
 
     // popup state for Members tab
     private UUID popupMemberUUID;
@@ -306,9 +306,9 @@ public class FrequencyScreen extends AbstractContainerScreen<FrequencyMenu> {
     @Override
     protected void init() {
         super.init();
-        FrequencyBindingClient.restoreCursorPositionIfNeeded(freqMenu().getBlockPos());
         lastCacheRevision = ClientFrequencyCache.revision();
         lastFreqId = freqMenu().getCurrentFrequencyId();
+        lastAutoConnect = freqMenu().isAutoConnect();
         initTabWidgets();
     }
 
@@ -317,9 +317,11 @@ public class FrequencyScreen extends AbstractContainerScreen<FrequencyMenu> {
         super.containerTick();
         int rev = ClientFrequencyCache.revision();
         int fid = freqMenu().getCurrentFrequencyId();
-        if (rev != lastCacheRevision || fid != lastFreqId) {
+        boolean auto = freqMenu().isAutoConnect();
+        if (rev != lastCacheRevision || fid != lastFreqId || auto != lastAutoConnect) {
             lastCacheRevision = rev;
             lastFreqId = fid;
+            lastAutoConnect = auto;
             initTabWidgets();
         }
     }
@@ -448,6 +450,29 @@ public class FrequencyScreen extends AbstractContainerScreen<FrequencyMenu> {
         int y0 = topPos;
 
         buildTopTabs(x0, y0, false);
+
+        // A back button is shown whenever this screen was opened as a sub-menu of
+        // a parent GUI: card mode (from a wireless terminal) or device mode opened
+        // from a machine's frequency config button. It reopens the parent via
+        // AE2's native SwitchGuisPacket instead of forcing the player to close the
+        // whole GUI. Controller/receiver blocks opened directly have no parent, so
+        // no back button is shown (ESC closes). Styled like AE2's native sub-menu
+        // back button: a BOX-style TabButton carrying the engine's BACK glyph.
+        if (freqMenu().hasParentMenu()) {
+            Component backTooltip = Component.translatable(
+                    freqMenu().isCardMode()
+                            ? "ae2lt.gui.button.return_to_terminal"
+                            : "ae2lt.gui.button.back");
+            HoverableTabButton backButton = new HoverableTabButton(
+                    Icon.ARROW_LEFT, null, backTooltip,
+                    btn -> NetworkHandler.instance().sendToServer(
+                            SwitchGuisPacket.returnToParentMenu()));
+            backButton.setStyle(TabButton.Style.BOX);
+            backButton.setX(x0 - TAB_WIDTH + 6);
+            backButton.setY(y0 - TAB_HEIGHT);
+            backButton.setTooltip(Tooltip.create(backTooltip));
+            addRenderableWidget(backButton);
+        }
 
         // Password prompt re-evaluation: if the target frequency now
         // grants us membership (server accepted our password and
@@ -726,6 +751,7 @@ public class FrequencyScreen extends AbstractContainerScreen<FrequencyMenu> {
      */
     private static Icon iconFor(FrequencyNavigationTab tab) {
         return switch (tab) {
+            // 1.20.1: no COG sprite; fall back to the wrench.
             case TAB_SETTING -> Icon.WRENCH;
             default -> null;
         };
@@ -747,16 +773,11 @@ public class FrequencyScreen extends AbstractContainerScreen<FrequencyMenu> {
         };
     }
 
-    private static final ResourceLocation TAB_ICON_HOME = new ResourceLocation(
-            AE2LightningTech.MODID, "textures/gui/buttons/menu.png");
-    private static final ResourceLocation TAB_ICON_SELECTION = new ResourceLocation(
-            AE2LightningTech.MODID, "textures/gui/buttons/frequency_select.png");
-    private static final ResourceLocation TAB_ICON_CONNECTION = new ResourceLocation(
-            AE2LightningTech.MODID, "textures/gui/buttons/frequency_connect.png");
-    private static final ResourceLocation TAB_ICON_MEMBER = new ResourceLocation(
-            AE2LightningTech.MODID, "textures/gui/buttons/frequency_member.png");
-    private static final ResourceLocation TAB_ICON_CREATE = new ResourceLocation(
-            AE2LightningTech.MODID, "textures/gui/buttons/frequency_add.png");
+    private static final ResourceLocation TAB_ICON_HOME = new ResourceLocation(AE2LightningTech.MODID, "textures/gui/buttons/menu.png");
+    private static final ResourceLocation TAB_ICON_SELECTION = new ResourceLocation(AE2LightningTech.MODID, "textures/gui/buttons/frequency_select.png");
+    private static final ResourceLocation TAB_ICON_CONNECTION = new ResourceLocation(AE2LightningTech.MODID, "textures/gui/buttons/frequency_connect.png");
+    private static final ResourceLocation TAB_ICON_MEMBER = new ResourceLocation(AE2LightningTech.MODID, "textures/gui/buttons/frequency_member.png");
+    private static final ResourceLocation TAB_ICON_CREATE = new ResourceLocation(AE2LightningTech.MODID, "textures/gui/buttons/frequency_add.png");
 
     private void switchTab(FrequencyNavigationTab tab) {
         currentTab = tab;
@@ -789,6 +810,23 @@ public class FrequencyScreen extends AbstractContainerScreen<FrequencyMenu> {
         // (shelf y=39..111, chassis bottom y=156). Centring vertically
         // around y=132 keeps it clear of both the shelf bevel above and
         // the chassis bottom bevel below.
+        if (freqMenu().isCardMode()) {
+            // Card mode adds an auto-link toggle alongside disconnect, so the
+            // two share the strip side by side instead of one centred button.
+            boolean auto = freqMenu().isAutoConnect();
+            addRenderableWidget(new AE2Button(
+                    x0 + 8, y0 + 124, 88, 18,
+                    Component.translatable(auto
+                            ? "ae2lt.gui.button.auto_connect_on"
+                            : "ae2lt.gui.button.auto_connect_off"),
+                    btn -> freqMenu().clientToggleAutoConnect()));
+            addRenderableWidget(new AE2Button(
+                    x0 + 99, y0 + 124, 88, 18,
+                    Component.translatable("ae2lt.gui.button.disconnect"),
+                    btn -> NetworkInit.sendToServer(
+                            new SelectFrequencyPacket(token(), freqMenu().getBlockPos(), -1, ""))));
+            return;
+        }
         addRenderableWidget(new AE2Button(
                 x0 + (GUI_WIDTH - 96) / 2, y0 + 124, 96, 18,
                 Component.translatable("ae2lt.gui.button.disconnect"),
@@ -2053,16 +2091,17 @@ public class FrequencyScreen extends AbstractContainerScreen<FrequencyMenu> {
         @Override
         protected void renderWidget(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
             boolean enabled = maxOffset() > 0;
+            // 1.20.1 has no GuiGraphics.blitSprite: AE2 1.20.1 draws its scrollbar
+            // handles from the vanilla creative-tabs texture (enabled at 232,0,
+            // disabled at 244,0, each 12x15).
+            ResourceLocation sprite =
+                    new ResourceLocation("minecraft", "textures/gui/container/creative_inventory/tabs.png");
+            int srcX = enabled ? 232 : 244;
             int availH = Math.max(0, getHeight() - SCROLLBAR_HANDLE_HEIGHT);
             int handleY = enabled
                     ? getY() + scrollOffset * availH / maxOffset()
                     : getY();
-            // 1.20.1 lacks blitSprite/sprite-atlas access — draw a flat handle.
-            int color = enabled ? 0xFFB0B0B0 : 0xFF606060;
-            g.fill(getX(), handleY, getX() + SCROLLBAR_WIDTH, handleY + SCROLLBAR_HANDLE_HEIGHT, color);
-            g.fill(getX(), handleY, getX() + SCROLLBAR_WIDTH, handleY + 1, 0xFFFFFFFF);
-            g.fill(getX(), handleY + SCROLLBAR_HANDLE_HEIGHT - 1,
-                    getX() + SCROLLBAR_WIDTH, handleY + SCROLLBAR_HANDLE_HEIGHT, 0xFF000000);
+            g.blit(sprite, getX(), handleY, srcX, 0, SCROLLBAR_WIDTH, SCROLLBAR_HANDLE_HEIGHT, 256, 256);
         }
 
         @Override
@@ -2122,4 +2161,3 @@ public class FrequencyScreen extends AbstractContainerScreen<FrequencyMenu> {
     }
 
 }
-

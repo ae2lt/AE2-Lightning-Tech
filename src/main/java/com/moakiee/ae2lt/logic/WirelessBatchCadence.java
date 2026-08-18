@@ -1,0 +1,430 @@
+package com.moakiee.ae2lt.logic;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import appeng.api.crafting.IPatternDetails;
+
+/**
+ * Learns a pattern-scoped refill interval from an actual rejected proven
+ * chunk followed by recovery. Once stable, it probes one tick earlier:
+ * repeated successful probes lower the interval while a rejected probe leaves
+ * both the learned interval and the target's proven batch capacity intact.
+ * If a substantial proven chunk remains under sustained rejection without an
+ * unrestricted acceptance for 100 ticks, a bounded fallback visits it at most
+ * four times per 100 ticks until two consecutive successes prove that normal
+ * cadence learning can safely resume. Small chunks remain on the original
+ * learned cadence so ordinary slow machines are not overfilled.
+ */
+final class WirelessBatchCadence<T> {
+    static final int MAX_COVERAGE_TICKS = 100;
+    private static final int HISTORY_TTL = 100;
+    private static final int FILL_FALLBACK_BASELINE_TICKS = 100;
+    private static final int FILL_FALLBACK_RETRY_TICKS = 25;
+    private static final int FILL_FALLBACK_RECOVERY_SUCCESSES = 2;
+    private static final int FILL_FALLBACK_MIN_REJECTIONS = 64;
+    private static final int FILL_FALLBACK_MIN_BATCH_COPIES = 64;
+    private static final int MAX_FAILURE_PRESSURE = 8;
+    private static final int HIGH_FAILURE_PRESSURE = 7;
+    private static final int MODERATE_FAILURE_PRESSURE = 2;
+    private static final int CONFIRMED_COVERAGE_PRESSURE_DECAY = 3;
+    private final Map<T, Map<IPatternDetails, State>> states = new HashMap<>();
+
+    int recordSuccess(
+            T target,
+            IPatternDetails pattern,
+            long gameTick,
+            long ownedCopies,
+            boolean acceptedFullChunk,
+            boolean requestLimited) {
+        return recordSuccess(
+                target,
+                pattern,
+                gameTick,
+                ownedCopies,
+                acceptedFullChunk,
+                requestLimited,
+                false,
+                ProviderTarget.BaselineStatus.NONE);
+    }
+
+    int recordSuccess(
+            T target,
+            IPatternDetails pattern,
+            long gameTick,
+            long ownedCopies,
+            boolean acceptedFullChunk,
+            boolean requestLimited,
+            boolean exploratoryAttempt) {
+        return recordSuccess(
+                target,
+                pattern,
+                gameTick,
+                ownedCopies,
+                acceptedFullChunk,
+                requestLimited,
+                exploratoryAttempt,
+                ProviderTarget.BaselineStatus.NONE);
+    }
+
+    int recordSuccess(
+            T target,
+            IPatternDetails pattern,
+            long gameTick,
+            long ownedCopies,
+            boolean acceptedFullChunk,
+            boolean requestLimited,
+            boolean exploratoryAttempt,
+            ProviderTarget.BaselineStatus baselineStatus) {
+        if (ownedCopies <= 0L) {
+            throw new IllegalArgumentException(
+                    "Successful cadence samples must own at least one copy");
+        }
+        var state = state(target, pattern);
+        state.expireIfIdle(gameTick);
+        state.lastActivityTick = gameTick;
+        boolean capacitySuccess = acceptedFullChunk && !requestLimited;
+        if (state.fillFallback) {
+            if (!capacitySuccess) {
+                state.fillFallbackSuccesses = 0;
+                return FILL_FALLBACK_RETRY_TICKS;
+            }
+            state.lastSuccessTick = gameTick;
+            state.lastOwnedCopies = ownedCopies;
+            state.lastCapacitySuccessTick = gameTick;
+            state.fillFallbackRejections = 0;
+            state.firstProvenRejectionTick = Long.MIN_VALUE;
+            if (++state.fillFallbackSuccesses
+                    < FILL_FALLBACK_RECOVERY_SUCCESSES) {
+                return FILL_FALLBACK_RETRY_TICKS;
+            }
+            state.fillFallback = false;
+            state.fillFallbackSuccesses = 0;
+            state.learnedCoverage = 1;
+            state.nextAttemptExploratory = false;
+            state.exploratorySuccesses = 0;
+            state.exploratoryProbeRejected = false;
+            state.growthProbeRejected = false;
+            state.provenChunkRejections = 0;
+            state.failurePressure = 0;
+            return 1;
+        }
+        if (!capacitySuccess) {
+            if (shouldEnterFillFallback(state, gameTick)) {
+                return enterFillFallback(state);
+            }
+        }
+        if (baselineStatus != ProviderTarget.BaselineStatus.NONE) {
+            return recordBaselineResult(
+                    state,
+                    gameTick,
+                    ownedCopies,
+                    baselineStatus);
+        }
+        boolean confirmedFasterCoverage = false;
+        int coverage = 1;
+        if (acceptedFullChunk
+                && !requestLimited
+                && state.lastSuccessTick != Long.MIN_VALUE
+                && ownedCopies == state.lastOwnedCopies) {
+            long elapsed = Math.max(1L, gameTick - state.lastSuccessTick);
+            if (exploratoryAttempt) {
+                if (++state.exploratorySuccesses >= 2) {
+                    state.learnedCoverage = Math.max(
+                            1, state.learnedCoverage - 1);
+                    state.exploratorySuccesses = 0;
+                    confirmedFasterCoverage = true;
+                }
+                elapsed = state.learnedCoverage;
+            } else if (state.exploratoryProbeRejected) {
+                state.exploratorySuccesses = 0;
+                elapsed = state.learnedCoverage;
+            } else if (state.growthProbeRejected
+                    && state.provenChunkRejections == 0) {
+                elapsed = 1L;
+            } else if (state.provenChunkRejections > 0) {
+                state.learnedCoverage = (int) Math.max(
+                        1L, Math.min(MAX_COVERAGE_TICKS, elapsed));
+            } else {
+                elapsed = state.learnedCoverage;
+            }
+            coverage = (int) Math.min(MAX_COVERAGE_TICKS, elapsed);
+        } else if (acceptedFullChunk
+                && !requestLimited
+                && state.provenChunkRejections > 0
+                && state.lastOwnedCopies > 0L) {
+            long scaledCoverage = ownedCopies * state.learnedCoverage;
+            coverage = (int) Math.max(
+                    1L,
+                    Math.min(MAX_COVERAGE_TICKS,
+                            ceilingDivide(scaledCoverage, state.lastOwnedCopies)));
+        }
+
+        int pressureFloor = pressureFloor(state.failurePressure);
+        coverage = Math.max(coverage, pressureFloor);
+        state.nextAttemptExploratory = false;
+        if (acceptedFullChunk
+                && !requestLimited
+                && !state.fillFallback
+                && state.lastSuccessTick != Long.MIN_VALUE
+                && ownedCopies == state.lastOwnedCopies
+                && state.learnedCoverage > 1) {
+            int exploratoryCoverage = Math.max(
+                    pressureFloor, state.learnedCoverage - 1);
+            if (exploratoryCoverage < state.learnedCoverage) {
+                coverage = exploratoryCoverage;
+                state.nextAttemptExploratory = true;
+            }
+        }
+        state.failurePressure = Math.max(
+                0,
+                state.failurePressure
+                        - (confirmedFasterCoverage
+                                ? CONFIRMED_COVERAGE_PRESSURE_DECAY
+                                : 1));
+        state.lastSuccessTick = gameTick;
+        state.lastOwnedCopies = ownedCopies;
+        state.growthProbeRejected = false;
+        state.provenChunkRejections = 0;
+        if (capacitySuccess) {
+            state.lastCapacitySuccessTick = gameTick;
+            state.fillFallbackRejections = 0;
+            state.firstProvenRejectionTick = Long.MIN_VALUE;
+        }
+        state.exploratoryProbeRejected = false;
+        return coverage;
+    }
+
+    int recordFailure(
+            T target,
+            IPatternDetails pattern,
+            long gameTick,
+            int attemptedCopies) {
+        return recordFailure(
+                target,
+                pattern,
+                gameTick,
+                attemptedCopies,
+                false);
+    }
+
+    int recordFailure(
+            T target,
+            IPatternDetails pattern,
+            long gameTick,
+            int attemptedCopies,
+            boolean exploratoryAttempt) {
+        var state = state(target, pattern);
+        state.expireIfIdle(gameTick);
+        state.lastActivityTick = gameTick;
+        state.nextAttemptExploratory = false;
+        if (state.fillFallback) {
+            state.exploratorySuccesses = 0;
+            state.exploratoryProbeRejected = false;
+            state.fillFallbackSuccesses = 0;
+            return FILL_FALLBACK_RETRY_TICKS;
+        }
+        if (exploratoryAttempt) {
+            state.exploratorySuccesses = 0;
+            state.exploratoryProbeRejected = true;
+            return 1;
+        }
+        state.exploratoryProbeRejected = false;
+        state.exploratorySuccesses = 0;
+        if (state.lastOwnedCopies > 0L
+                && attemptedCopies > state.lastOwnedCopies) {
+            state.growthProbeRejected = true;
+            state.failurePressure = Math.min(
+                    MAX_FAILURE_PRESSURE, state.failurePressure + 1);
+            return 1;
+        }
+        state.provenChunkRejections++;
+        state.failurePressure = Math.min(
+                MAX_FAILURE_PRESSURE, state.failurePressure + 2);
+        if (state.firstProvenRejectionTick == Long.MIN_VALUE) {
+            state.firstProvenRejectionTick = gameTick;
+        }
+        if (state.fillFallbackRejections < Integer.MAX_VALUE) {
+            state.fillFallbackRejections++;
+        }
+        if (shouldEnterFillFallback(state, gameTick)) {
+            return enterFillFallback(state);
+        }
+        return 1;
+    }
+
+    boolean isExploratoryAttempt(T target, IPatternDetails pattern) {
+        var byPattern = states.get(target);
+        if (byPattern == null) {
+            return false;
+        }
+        var state = byPattern.get(pattern);
+        return state != null && state.nextAttemptExploratory;
+    }
+
+    boolean isFillFallback(T target, IPatternDetails pattern) {
+        var byPattern = states.get(target);
+        if (byPattern == null) {
+            return false;
+        }
+        var state = byPattern.get(pattern);
+        return state != null && state.fillFallback;
+    }
+
+    boolean shouldPreserveBatchHistory(
+            T target, IPatternDetails pattern, long gameTick) {
+        var byPattern = states.get(target);
+        if (byPattern == null) {
+            return false;
+        }
+        var state = byPattern.get(pattern);
+        if (state == null) {
+            return false;
+        }
+        state.expireIfIdle(gameTick);
+        return state.fillFallback
+                || state.nextAttemptExploratory
+                || shouldEnterFillFallback(state, gameTick);
+    }
+
+    void removeTarget(T target) {
+        states.remove(target);
+    }
+
+    void clear() {
+        states.clear();
+    }
+
+    private State state(T target, IPatternDetails pattern) {
+        var byPattern = states.computeIfAbsent(
+                target, ignored -> CanonicalPatternMaps.create());
+        return byPattern.computeIfAbsent(pattern, ignored -> new State());
+    }
+
+    private static long ceilingDivide(long amount, long divisor) {
+        return amount <= 0L
+                ? 0L
+                : 1L + (amount - 1L) / Math.max(1L, divisor);
+    }
+
+    private static int recordBaselineResult(
+            State state,
+            long gameTick,
+            long ownedCopies,
+            ProviderTarget.BaselineStatus baselineStatus) {
+        if (baselineStatus
+                == ProviderTarget.BaselineStatus.GROWTH_COMPLETE) {
+            state.baselineCoverage = 1;
+        } else if ((baselineStatus
+                                == ProviderTarget.BaselineStatus.COMPLETE
+                        || baselineStatus
+                                == ProviderTarget.BaselineStatus.PREFIX_COMPLETE)
+                && state.lastSuccessTick != Long.MIN_VALUE
+                && ownedCopies == state.lastOwnedCopies) {
+            state.baselineCoverage = (int) Math.max(
+                    1L,
+                    Math.min(MAX_COVERAGE_TICKS, gameTick - state.lastSuccessTick));
+        }
+        finishBaselineSample(state, gameTick, ownedCopies, true);
+        state.nextAttemptExploratory = false;
+        state.exploratorySuccesses = 0;
+        state.exploratoryProbeRejected = false;
+        return state.baselineCoverage;
+    }
+
+    private static void finishBaselineSample(
+            State state,
+            long gameTick,
+            long ownedCopies,
+            boolean capacitySuccess) {
+        state.nextAttemptExploratory = false;
+        state.growthProbeRejected = false;
+        state.provenChunkRejections = 0;
+        state.failurePressure = 0;
+        state.lastSuccessTick = gameTick;
+        state.lastOwnedCopies = ownedCopies;
+        if (capacitySuccess) {
+            state.lastCapacitySuccessTick = gameTick;
+            state.fillFallbackRejections = 0;
+            state.firstProvenRejectionTick = Long.MIN_VALUE;
+        }
+    }
+
+    private static boolean shouldEnterFillFallback(
+            State state, long gameTick) {
+        if (state.fillFallbackRejections
+                < FILL_FALLBACK_MIN_REJECTIONS
+                || state.lastOwnedCopies
+                        < FILL_FALLBACK_MIN_BATCH_COPIES) {
+            return false;
+        }
+        long noCapacitySuccessSince =
+                state.lastCapacitySuccessTick != Long.MIN_VALUE
+                        ? state.lastCapacitySuccessTick
+                        : state.firstProvenRejectionTick;
+        return noCapacitySuccessSince != Long.MIN_VALUE
+                && gameTick - noCapacitySuccessSince >=
+                        FILL_FALLBACK_BASELINE_TICKS;
+    }
+
+    private static int enterFillFallback(State state) {
+        state.fillFallback = true;
+        state.fillFallbackSuccesses = 0;
+        state.learnedCoverage = FILL_FALLBACK_BASELINE_TICKS;
+        state.nextAttemptExploratory = false;
+        state.exploratorySuccesses = 0;
+        state.exploratoryProbeRejected = false;
+        return FILL_FALLBACK_RETRY_TICKS;
+    }
+
+    private static int pressureFloor(int failurePressure) {
+        if (failurePressure >= HIGH_FAILURE_PRESSURE) {
+            return 3;
+        }
+        return failurePressure >= MODERATE_FAILURE_PRESSURE ? 2 : 1;
+    }
+
+    private static final class State {
+        private long lastSuccessTick = Long.MIN_VALUE;
+        private long lastCapacitySuccessTick = Long.MIN_VALUE;
+        private long lastOwnedCopies;
+        private int learnedCoverage = 1;
+        private int provenChunkRejections;
+        private int failurePressure;
+        private boolean growthProbeRejected;
+        private boolean nextAttemptExploratory;
+        private boolean exploratoryProbeRejected;
+        private int exploratorySuccesses;
+        private boolean fillFallback;
+        private int fillFallbackSuccesses;
+        private long lastActivityTick = Long.MIN_VALUE;
+        private long firstProvenRejectionTick = Long.MIN_VALUE;
+        private int fillFallbackRejections;
+        private int baselineCoverage = 1;
+
+        private void expireIfIdle(long gameTick) {
+            if (lastActivityTick == Long.MIN_VALUE) {
+                return;
+            }
+            if (gameTick < lastActivityTick
+                    || gameTick - lastActivityTick > HISTORY_TTL) {
+                lastSuccessTick = Long.MIN_VALUE;
+                lastCapacitySuccessTick = Long.MIN_VALUE;
+                lastOwnedCopies = 0L;
+                learnedCoverage = 1;
+                provenChunkRejections = 0;
+                failurePressure = 0;
+                growthProbeRejected = false;
+                nextAttemptExploratory = false;
+                exploratoryProbeRejected = false;
+                exploratorySuccesses = 0;
+                fillFallback = false;
+                fillFallbackSuccesses = 0;
+                lastActivityTick = Long.MIN_VALUE;
+                firstProvenRejectionTick = Long.MIN_VALUE;
+                fillFallbackRejections = 0;
+                baselineCoverage = 1;
+            }
+        }
+    }
+}

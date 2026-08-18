@@ -1,78 +1,57 @@
-# AE2 闪电科技
+# AE2 闪电科技 — Forge 1.20.1 移植版
 
 [English](README.md)
 
-一个 [Applied Energistics 2](https://github.com/AppliedEnergistics/Applied-Energistics-2) 的附属模组，添加了一套闪电能源系统、进阶机器以及过载 ME 网络组件。
+这是 [Applied Energistics 2](https://github.com/AppliedEnergistics/Applied-Energistics-2) 的附属模组，添加闪电能源、进阶机器和过载 ME 网络组件。
 
-> 依赖 AE2 · 适用于 Minecraft 1.20.1 / Forge
+> 必需依赖 AE2 与 Thunderbolt Core · 适用于 Minecraft 1.20.1 / Forge 47.1.3+
 
-## 关于
+本分支是持续维护的 Forge 1.20.1 移植。主项目面向更新的 Minecraft 与 NeoForge；在 1.20.1 API 能支持的范围内，本分支会同步其行为修复和功能改进。
 
-AE2 闪电科技 把闪电变成一种可用的资源。收集自然雷电，精炼成 **高压闪电** 与 **极高压闪电**，再交给机器培育 **过载水晶** —— 一切过载 ME 网络的基础。它带来了远超原版 AE2 的传输能力、无线样板路由，以及全新的加工流水线。
+## 主要内容
 
-## 特性
-
-### 闪电能源系统
-两个等级的闪电能源 —— **高压闪电 / 极高压闪电** —— 与 FE 并列，能像物品和液体一样被存储、传输和参与合成。
-
-### 闪电收集
-- **闪电收集器** —— 捕获击中附近避雷针的雷电。
-- **大气电离仪** —— 多方块天气调节装置，产出晴天 / 雨天 / 雷暴凝液。
-- **特斯拉线圈** —— 消耗过载水晶粉与 FE，将闪电提纯为高压 / 极高压。
-
-### 过载水晶
-基于 AE2 赛特斯石英分级体系的成长线 —— 含 **受损 / 破裂 / 瑕疵 / 完美** 四级母岩、衰变机制、支持水晶生长加速器，最终结晶为过载水晶簇。
-
-### 闪电机械
-- **闪电装配室** —— 用原料与闪电装配过载组件。
-- **闪电模拟室** —— 通过 闪电塌缩矩阵 在室内运行雷击转化配方。
-- **过载处理工厂** —— 高吞吐并行处理器，量产过载合金、合金板与核心。
-- **水晶催化器** —— 多催化剂并行加速水晶产出，闪电塌缩矩阵 可成倍放大产量。
-
-### 过载 ME 网络
-- **过载ME控制器**、**过载ME接口**、**过载样板供应器** 以及 16 种染色的 **过载ME线缆** —— AE2 网络的高吞吐升级版。
-- **过载样板编码器** 支持副产物槽位与 *忽略 NBT* 模式。
-- **无线过载控制器** + **无线接收器** —— 不用线缆即可把样板供应器对接到远程机器，可选 轮询 / 均衡 两种分配策略。
-- **过载无线连接工具** —— 在世界中直接绑定样板供应器和电源供应器与目标机器。
-
-## Addon 开发者 API
-
-`com.moakiee.ae2lt.api.*` 是本 mod 对第三方模组暴露的唯一稳定接口。Addon 可以 `compileOnly` 依赖本 jar 并 import：
-
-- **`AE2LTCapabilities.LIGHTNING_ENERGY_BLOCK`** —— 方块侧 capability，返回 `ILightningEnergyHandler`。已为 5 个接入闪电网格的方块实体注册：闪电收集器、闪电模拟室、闪电装配室、过载处理工厂、特斯拉线圈。Handler 直接桥接到 AE2 网格闪电存储，不需要任何反射。
-- **`LightningTier`** —— `HIGH_VOLTAGE` / `EXTREME_HIGH_VOLTAGE`。序列化名固化为 `"high_voltage"` / `"extreme_high_voltage"`。
-- **`LightningCollectedEvent`** —— 在 `MinecraftForge.EVENT_BUS` 上发布的可取消事件，于 `LightningCollectorBlockEntity.captureLightning(boolean)` 内部、roll 出数量之后、写入网格之前触发。订阅者可以取消捕获或改写入库数量。
-- **`AE2LTBlockEntityIds`** / **`AE2LTRecipeIds`** —— 公开方块实体与配方类型的固化 `ResourceLocation` 常量。
-- **`com.moakiee.ae2lt.api.frequency.FrequencyApi`** —— 无线频率系统的静态门面（服务器线程）。提供只读查询：`getBoundFrequencyId(BlockEntity)`、`getFrequencyInfo(server, id)`、`getTransmitter(server, id)`、`isValidFrequency(server, id)`，返回 `FrequencyInfo` / `TransmitterInfo` / `FrequencySecurity` 等不可变快照，不暴露内部可变状态。
-- **`FrequencyBindingHost`** + **`FrequencyBindingAccess`** —— 让第三方方块实体作为接收设备加入无线控制器。BE 必须继承 AE2 的 `AENetworkedBlockEntity`；把 `FrequencyApi.createBinding(this)` 得到的 access 存进一个字段，从 `getFrequencyBindingAccess()` 返回（同时实现另外三个 host 访问器：`getFrequencyBindingBlockEntity` / `saveFrequencyBindingChanges` / `markFrequencyBindingForUpdate`），并把生命周期方法（`onReady` / `setRemoved` / `clearRemoved` / `serverTick` / `save` / `load` / `onMainNodeStateChanged`）转发给句柄。虚拟连接重试、监听订阅、绑定设备列表全部由内部 helper 自动处理。完整可参考实现见 `package-info.java`。
-- **`FrequencyBindingMenuHost`** + **`FrequencyApi.openBindingScreen(menu)`** —— 让第三方菜单复用本 mod 完整的频率选择 / 创建 / 成员管理 UI。在你的 `AbstractContainerMenu` 上实现 Marker，在 `Screen` 上自绘按钮，`onPress` 里调一行辅助函数即可——服务端权限校验、列表同步、密码、成员管理全部复用。
-
-`com.moakiee.ae2lt.api.*` 之外的所有代码都是内部实现，可能在小版本之间变更。完整契约与"发布即冻结"清单见 `package-info.java`。
+- 高压闪电与极高压闪电两级能源。
+- 闪电收集器、大气电离仪和特斯拉线圈能源链。
+- 闪电装配室、闪电模拟室、过载处理工厂和水晶催化器加工链。
+- 过载水晶生长、衰变和批量加工体系。
+- 高吞吐的过载 ME 控制器、接口、样板供应器与线缆。
+- 无线样板路由、天枢超级计算机自动化和可配置批量调度。
+- 苍穹织雷模块化护甲与电磁炮系统。
 
 ## 依赖
 
-| 模组 | 是否必需 |
-|------|----------|
-| Applied Energistics 2 | 必需 |
-| Jade、Flywheel、Ponder | 可选 |
-| Advanced AE、ExtendedAE、Applied Flux、AE2 JEI Integration | 可选联动 |
+| 模组 | 要求 |
+|------|------|
+| Minecraft 1.20.1 | 必需 |
+| Forge 47.1.3+ | 必需 |
+| Applied Energistics 2 15.4.10+ | 必需 |
+| Thunderbolt Core 1.0.7 | 必需 |
+| JEI 或 EMI、Jade | 可选联动 |
+| AdvancedAE、ExtendedAE、Applied Flux、AE2WTLib | 可选联动 |
+| Mekanism、Curios、Flux Networks、Polymorph | 可选联动 |
 
-## 问题反馈
+所有可选联动均已隔离，不安装时不应影响正常启动。
 
-发现 bug 或有建议？欢迎在项目 issue 跟踪器中提交，请附上 Minecraft / Forge / AE2LT 的版本号，清晰的描述以及必要的日志。
+## 构建
+
+使用 Java 17 并执行：
+
+```powershell
+.\gradlew.bat test build
+```
+
+可发布制品位于 `build/libs/ae2lt-2.0.0-port-1.20.1forge.jar`。
+
+## 公开 API
+
+`com.moakiee.ae2lt.api.*` 是提供给附属模组作者的稳定接口，包括闪电能源 capability 与事件、固定的方块实体和配方 ID，以及服务器权威的无线频率 API。Forge 事件订阅应使用 `MinecraftForge.EVENT_BUS`。
+
+该包之外的实现均视为内部接口，可能在小版本更新时变化。
 
 ## 许可证
 
-[![源码许可证](https://img.shields.io/badge/Source-LGPL--3.0-blue)](LICENSE)
-[![材质许可证](https://img.shields.io/badge/Assets-CC%20BY--NC--SA%203.0-lightgrey)](LICENSE_ASSETS.md)
+- 源代码：[GNU LGPL 3.0](LICENSE)
+- 材质与视觉资源：[CC BY-NC-SA 3.0](LICENSE_ASSETS.md)
+- 改编或内置代码：[第三方声明](THIRD_PARTY_NOTICES.md)
 
-AE2 闪电科技对源码和材质使用不同的许可证：
-
-- 源码以 [GNU LGPL 3.0](https://www.gnu.org/licenses/lgpl-3.0.html) 协议开源。
-- 材质与其他视觉资产以 [CC BY-NC-SA 3.0](https://creativecommons.org/licenses/by-nc-sa/3.0/) 协议授权。
-
-## 鸣谢
-
-由 **MOAKIEE**、**CystrySU**、**gjmhmm8**、**_leng**、**TedXenon**、**MHanHanBing** 开发。
-
-特别感谢 Applied Energistics 2 团队 —— 没有 AE2 就没有这个附属。
+开发者：**MOAKIEE**、**CystrySU**、**gjmhmm8**、**_leng**、**TedXenon**、**MHanHanBing**。

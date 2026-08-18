@@ -1,0 +1,55 @@
+{
+  "type": "ae2lt:lightning_assembly",
+  "priority": 0,
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "ae2lt:overload_module_base"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "ae2lt:hyperdimensional_topological_lattice"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "ae2lt:lightning_collapse_matrix"
+      },
+      "count": 16
+    },
+    {
+      "ingredient": {
+        "item": "ae2lt:firmament_superconducting_wire"
+      },
+      "count": 8
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:nether_star"
+      },
+      "count": 64
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:dragon_egg"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:trident"
+      },
+      "count": 1
+    }
+  ],
+  "result": {
+    "id": "ae2lt:railgun_module_overload_execution",
+    "count": 1
+  },
+  "totalEnergy": 128000000,
+  "lightningCost": 4096,
+  "lightningTier": "extreme_high_voltage"
+}

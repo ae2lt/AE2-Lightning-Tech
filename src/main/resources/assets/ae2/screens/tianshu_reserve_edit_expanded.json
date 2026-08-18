@@ -1,0 +1,23 @@
+{
+  "$schema": "schema.json",
+  "includes": ["common/common.json"],
+  "background": {
+    "texture": "ae2lt:textures/guis/tianshu_maintenance_rule.png",
+    "textureWidth": 207,
+    "textureHeight": 228,
+    "srcRect": [0, 0, 207, 228]
+  },
+  "widgets": {
+    "back": { "left": 183, "top": -5, "width": 20, "height": 20 },
+    "scope": { "left": 9, "top": 58, "width": 92, "height": 20 },
+    "mode": { "left": 105, "top": 58, "width": 92, "height": 20 },
+    "amount": { "left": 58, "top": 95, "width": 65, "height": 14 },
+    "zero": { "left": 127, "top": 92, "width": 18, "height": 20 },
+    "stack": { "left": 148, "top": 92, "width": 22, "height": 20 },
+    "infinite": { "left": 173, "top": 92, "width": 24, "height": 20 },
+    "scrollbar": { "left": 192, "top": 132, "width": 8, "height": 55 },
+    "delete": { "left": 9, "top": 201, "width": 52, "height": 20 },
+    "cancel": { "left": 94, "top": 201, "width": 50, "height": 20 },
+    "save": { "left": 148, "top": 201, "width": 49, "height": 20 }
+  }
+}

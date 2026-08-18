@@ -1,0 +1,12 @@
+{
+  "parent": "block/cube",
+  "textures": {
+    "particle": "ae2lt:block/extended_overloaded_pattern_provider",
+    "down": "ae2lt:block/extended_overloaded_pattern_provider_top",
+    "up": "ae2lt:block/extended_overloaded_pattern_provider_bottom",
+    "north": "ae2lt:block/extended_overloaded_pattern_provider_side",
+    "south": "ae2lt:block/extended_overloaded_pattern_provider_side",
+    "east": "ae2lt:block/extended_overloaded_pattern_provider_side",
+    "west": "ae2lt:block/extended_overloaded_pattern_provider_side"
+  }
+}

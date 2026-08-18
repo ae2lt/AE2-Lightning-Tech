@@ -1,0 +1,25 @@
+{
+  "$schema": "schema.json",
+  "includes": ["common/common.json"],
+  "background": {
+    "texture": "ae2lt:textures/guis/tianshu_inventory.png",
+    "textureWidth": 320,
+    "textureHeight": 320,
+    "srcRect": [0, 0, 207, 248]
+  },
+  "slots": {
+    "AE2LT_TIANSHU_GLOBAL_RESERVE_MARK": {
+      "left": 11,
+      "top": 208
+    }
+  },
+  "widgets": {
+    "back": { "left": 183, "top": -5, "width": 20, "height": 20 },
+    "rules": { "left": 10, "top": 27, "width": 52, "height": 20 },
+    "reserves": { "left": 66, "top": 27, "width": 52, "height": 20 },
+    "search": { "left": 122, "top": 30, "width": 76, "height": 14 },
+    "scrollbar": { "left": 192, "top": 50, "width": 8, "height": 138 },
+    "reserveAmount": { "left": 35, "top": 209, "width": 67, "height": 14 },
+    "addReserve": { "left": 107, "top": 206, "width": 91, "height": 20 }
+  }
+}

@@ -25,10 +25,8 @@ import com.moakiee.ae2lt.overload.model.MatchMode;
  */
 public class OverloadPatternEncoderScreen extends AbstractContainerScreen<OverloadPatternEncoderMenu> {
     private static final Component SCREEN_TITLE = Component.translatable("item.ae2lt.overload_pattern_encoder");
-    private static final ResourceLocation TEXTURE = new ResourceLocation(
-            AE2LightningTech.MODID, "textures/gui/ae2lt_pattern_encoder.png");
-    private static final ResourceLocation CHECKBOX_TEXTURE = new ResourceLocation(
-            "ae2", "textures/guis/checkbox.png");
+    private static final ResourceLocation TEXTURE = new ResourceLocation(AE2LightningTech.MODID, "textures/gui/ae2lt_pattern_encoder.png");
+    private static final ResourceLocation CHECKBOX_TEXTURE = new ResourceLocation("ae2", "textures/guis/checkbox.png");
 
     private static final int TEXTURE_SIZE = 256;
     private static final int CHECKBOX_TEXTURE_SIZE = 64;
@@ -170,11 +168,11 @@ public class OverloadPatternEncoderScreen extends AbstractContainerScreen<Overlo
 
         graphics.drawString(font, entryLabel(entry), textX, contentY + 5, 0x404040, false);
 
-        renderModeSwitch(graphics, switchX, contentY + 2, entry.mode());
+        renderModeSwitch(graphics, switchX, contentY + 3, entry.mode());
     }
 
     private void renderModeSwitch(GuiGraphics graphics, int x, int y, MatchMode mode) {
-        int v = mode.ignoresComponents() ? ENTRY_SWITCH_HEIGHT : 0;
+        int v = mode.ignoresComponents() ? 14 : 0;
         graphics.blit(CHECKBOX_TEXTURE, x, y, 0, v, ENTRY_SWITCH_WIDTH, ENTRY_SWITCH_HEIGHT, CHECKBOX_TEXTURE_SIZE, CHECKBOX_TEXTURE_SIZE);
     }
 
@@ -292,7 +290,7 @@ public class OverloadPatternEncoderScreen extends AbstractContainerScreen<Overlo
     }
 
     private boolean isWithinEntrySwitch(double mouseX, double mouseY, int row) {
-        int y = topPos + PANEL_Y + ENTRY_TOP_OFFSET + row * ENTRY_ROW_HEIGHT + ENTRY_CONTENT_Y_OFFSET + 2;
+        int y = topPos + PANEL_Y + ENTRY_TOP_OFFSET + row * ENTRY_ROW_HEIGHT + ENTRY_CONTENT_Y_OFFSET + 3;
         return isWithin(mouseX, mouseY, leftPos + ENTRY_SWITCH_X, y, ENTRY_SWITCH_WIDTH, ENTRY_SWITCH_HEIGHT);
     }
 
@@ -319,4 +317,3 @@ public class OverloadPatternEncoderScreen extends AbstractContainerScreen<Overlo
         }
     }
 }
-

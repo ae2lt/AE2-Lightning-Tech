@@ -1,0 +1,43 @@
+{
+  "conditions": [
+    {
+      "type": "forge:mod_loaded",
+      "modid": "mekanism"
+    }
+  ],
+  "type": "ae2lt:lightning_assembly",
+  "priority": 0,
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "ae2lt:overload_module_base"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "mekanism:module_radiation_shielding_unit"
+      },
+      "count": 4
+    },
+    {
+      "ingredient": {
+        "item": "ae2lt:dense_topological_lattice"
+      },
+      "count": 8
+    },
+    {
+      "ingredient": {
+        "tag": "forge:storage_blocks/lead"
+      },
+      "count": 16
+    }
+  ],
+  "result": {
+    "id": "ae2lt:module_radiation_protection",
+    "count": 1
+  },
+  "totalEnergy": 12000000,
+  "lightningCost": 48,
+  "lightningTier": "high_voltage"
+}

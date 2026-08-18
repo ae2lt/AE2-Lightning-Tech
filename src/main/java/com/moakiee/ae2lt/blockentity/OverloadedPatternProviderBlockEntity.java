@@ -25,6 +25,7 @@ import appeng.api.implementations.blockentities.PatternContainerGroup;
 import appeng.api.inventories.InternalInventory;
 import appeng.api.networking.IGridNodeListener;
 import appeng.api.stacks.AEItemKey;
+import appeng.api.util.AECableType;
 import appeng.blockentity.crafting.PatternProviderBlockEntity;
 import appeng.blockentity.grid.AENetworkBlockEntity;
 import appeng.helpers.patternprovider.PatternProviderLogic;
@@ -34,6 +35,7 @@ import appeng.menu.locator.MenuLocator;
 import com.moakiee.ae2lt.grid.FrequencyBindingHelper;
 import com.moakiee.ae2lt.grid.FrequencyBindingHost;
 import com.moakiee.ae2lt.logic.OverloadedPatternProviderLogic;
+import com.moakiee.ae2lt.logic.ProviderTarget;
 import com.moakiee.ae2lt.logic.WirelessConnectionLists;
 import com.moakiee.ae2lt.logic.WirelessConnectionRef;
 import com.moakiee.ae2lt.logic.WirelessConnectionValidator;
@@ -41,12 +43,13 @@ import com.moakiee.ae2lt.logic.WirelessPatternContainerGroupSelector;
 import com.moakiee.ae2lt.menu.OverloadedPatternProviderMenu;
 import com.moakiee.ae2lt.registry.ModBlockEntities;
 import com.moakiee.ae2lt.registry.ModBlocks;
+import com.moakiee.ae2lt.api.patternprovider.WirelessPatternProviderHost;
 
 /**
  * BlockEntity for the Overloaded Pattern Provider.
  * <p>
  * Extends vanilla PatternProviderBlockEntity — behaves identically in NORMAL mode.
- * Three extra persisted / synced fields provide the skeleton for future wireless mode.
+ * Custom persisted and synced fields extend the provider with wireless behavior.
  * <p>
  * PUSH_DIRECTION (block orientation) is always kept and never repurposed:
  * in NORMAL mode it drives adjacent-machine interaction (vanilla semantics);
@@ -54,7 +57,7 @@ import com.moakiee.ae2lt.registry.ModBlocks;
  * wireless dispatch or auto-return — those use wireless connector records instead.
  */
 public class OverloadedPatternProviderBlockEntity extends PatternProviderBlockEntity
-        implements FrequencyBindingHost {
+        implements FrequencyBindingHost, WirelessPatternProviderHost {
 
     /** Pattern slots displayed per GUI page. */
     public static final int SLOTS_PER_PAGE = 36;
@@ -83,43 +86,55 @@ public class OverloadedPatternProviderBlockEntity extends PatternProviderBlockEn
     /** Wireless speed mode: NORMAL = standard cooldown, FAST = probe-based early detection. */
     public enum WirelessSpeedMode { NORMAL, FAST }
 
+    /** Blocking behavior while AE2's blocking switch is enabled. */
+    public enum BlockingMode { NORMAL, SAME_PATTERN }
+
     private ProviderMode providerMode = ProviderMode.NORMAL;
     private ReturnMode returnMode = ReturnMode.OFF;
     private WirelessDispatchMode wirelessDispatchMode = WirelessDispatchMode.EVEN_DISTRIBUTION;
     private WirelessSpeedMode wirelessSpeedMode = WirelessSpeedMode.NORMAL;
+    private BlockingMode blockingMode = BlockingMode.NORMAL;
     private boolean filteredImport = false;
+    private boolean adaptiveBatchEnabled = false;
 
     /** Active wireless connection records. */
     private final List<WirelessConnection> connections = new ArrayList<>();
     private int invalidConnectionScanCursor;
     private final FrequencyBindingHelper frequencyBinding = new FrequencyBindingHelper(this);
 
-    // -- Wireless connection record --
+    // -- Wireless connection target --
 
     /**
      * A single wireless connection to a remote machine face.
-     * Identity is determined by (dimension, pos) — only one connection per machine.
+     * Full address equality includes the face; connection-list replacement still
+     * uses (dimension, pos), so only one configured connection exists per machine.
      */
-    public record WirelessConnection(
-            ResourceKey<Level> dimension,
-            BlockPos pos,
-            Direction boundFace
-    ) implements WirelessConnectionRef {
+    public static final class WirelessConnection
+            extends ProviderTarget
+            implements WirelessConnectionRef {
         private static final String TAG_DIM = "Dim";
         private static final String TAG_POS = "Pos";
         private static final String TAG_FACE = "Face";
 
+        public WirelessConnection(
+                ResourceKey<Level> dimension,
+                BlockPos pos,
+                Direction boundFace) {
+            super(dimension, pos, boundFace);
+        }
+
+        @Override
         public CompoundTag toTag() {
             var tag = new CompoundTag();
-            tag.putString(TAG_DIM, dimension.location().toString());
-            tag.putLong(TAG_POS, pos.asLong());
-            tag.putInt(TAG_FACE, boundFace.get3DDataValue());
+            tag.putString(TAG_DIM, dimension().location().toString());
+            tag.putLong(TAG_POS, pos().asLong());
+            tag.putInt(TAG_FACE, boundFace().get3DDataValue());
             return tag;
         }
 
         public static WirelessConnection fromTag(CompoundTag tag) {
             var dim = ResourceKey.create(Registries.DIMENSION,
-                    new ResourceLocation(tag.getString(TAG_DIM)));
+                    ResourceLocation.tryParse(tag.getString(TAG_DIM)));
             var pos = BlockPos.of(tag.getLong(TAG_POS));
             var face = Direction.from3DDataValue(tag.getInt(TAG_FACE));
             return new WirelessConnection(dim, pos, face);
@@ -142,6 +157,13 @@ public class OverloadedPatternProviderBlockEntity extends PatternProviderBlockEn
             be.frequencyBinding.serverTick();
             if (level instanceof ServerLevel serverLevel) {
                 be.tickWirelessConnectionCleanup(serverLevel);
+            }
+            var logic = be.getOverloadedLogic();
+            if (logic != null) {
+                // The overflow queue carries explicit 5..20 tick deadlines.
+                // Check the O(1) due time from the BE ticker so AE2's adaptive
+                // grid-tick SLOWER modulation cannot delay an already-due retry.
+                logic.tickOverflowRetries();
             }
         }
     }
@@ -197,9 +219,10 @@ public class OverloadedPatternProviderBlockEntity extends PatternProviderBlockEn
         if (providerMode == ProviderMode.WIRELESS) {
             idle += IDLE_WIRELESS_BONUS;
             idle += connections.size() * IDLE_PER_CONNECTION;
-        }
-        if (wirelessSpeedMode == WirelessSpeedMode.FAST) {
-            idle *= IDLE_FAST_MULTIPLIER;
+            // FAST only affects wireless dispatch/return — no surcharge in NORMAL mode
+            if (wirelessSpeedMode == WirelessSpeedMode.FAST) {
+                idle *= IDLE_FAST_MULTIPLIER;
+            }
         }
         getMainNode().setIdlePowerUsage(idle);
     }
@@ -307,6 +330,23 @@ public class OverloadedPatternProviderBlockEntity extends PatternProviderBlockEn
         }
         this.wirelessSpeedMode = wirelessSpeedMode;
         recomputeIdlePower();
+        // Reset per-connection pacing so the new speed takes effect immediately
+        // instead of waiting out backoff intervals accrued under the old mode.
+        notifyLogicStateChanged();
+        saveChanges();
+        markForUpdate();
+    }
+
+    public BlockingMode getBlockingMode() {
+        return blockingMode;
+    }
+
+    public void setBlockingMode(BlockingMode blockingMode) {
+        if (this.blockingMode == blockingMode) {
+            return;
+        }
+        this.blockingMode = blockingMode;
+        notifyLogicStateChanged();
         saveChanges();
         markForUpdate();
     }
@@ -320,6 +360,20 @@ public class OverloadedPatternProviderBlockEntity extends PatternProviderBlockEn
             return;
         }
         this.filteredImport = filteredImport;
+        saveChanges();
+        markForUpdate();
+    }
+
+    public boolean isAdaptiveBatchEnabled() {
+        return adaptiveBatchEnabled;
+    }
+
+    public void setAdaptiveBatchEnabled(boolean adaptiveBatchEnabled) {
+        if (this.adaptiveBatchEnabled == adaptiveBatchEnabled) {
+            return;
+        }
+        this.adaptiveBatchEnabled = adaptiveBatchEnabled;
+        notifyLogicStateChanged();
         saveChanges();
         markForUpdate();
     }
@@ -338,6 +392,7 @@ public class OverloadedPatternProviderBlockEntity extends PatternProviderBlockEn
      * Add or update a wireless connection. If a connection to the same (dimension, pos)
      * already exists, the bound face is updated; otherwise a new record is added.
      */
+    @Override
     public boolean addOrUpdateConnection(ResourceKey<Level> dimension, BlockPos pos, Direction boundFace) {
         if (!isLocalDimension(dimension)) {
             return false;
@@ -372,6 +427,7 @@ public class OverloadedPatternProviderBlockEntity extends PatternProviderBlockEn
      *
      * @return true if a connection was removed
      */
+    @Override
     public boolean removeConnection(ResourceKey<Level> dimension, BlockPos pos) {
         int index = WirelessConnectionLists.indexOf(connections, dimension, pos);
         if (index < 0) {
@@ -387,8 +443,24 @@ public class OverloadedPatternProviderBlockEntity extends PatternProviderBlockEn
     }
 
     /** Returns an unmodifiable view of the current connections. */
+    @Override
     public List<WirelessConnection> getConnections() {
         return Collections.unmodifiableList(connections);
+    }
+
+    @Override
+    public BlockPos getProviderPos() {
+        return getBlockPos();
+    }
+
+    @Override
+    public boolean isWirelessProvider() {
+        return providerMode == ProviderMode.WIRELESS;
+    }
+
+    @Override
+    public int getMaxWirelessConnections() {
+        return MAX_WIRELESS_CONNECTIONS;
     }
 
     /**
@@ -446,7 +518,9 @@ public class OverloadedPatternProviderBlockEntity extends PatternProviderBlockEn
         data.writeByte(returnMode.ordinal());
         data.writeByte(wirelessDispatchMode.ordinal());
         data.writeByte(wirelessSpeedMode.ordinal());
+        data.writeByte(blockingMode.ordinal());
         data.writeBoolean(filteredImport);
+        data.writeBoolean(adaptiveBatchEnabled);
         data.writeVarInt(connections.size());
         for (var conn : connections) {
             data.writeResourceLocation(conn.dimension().location());
@@ -470,7 +544,11 @@ public class OverloadedPatternProviderBlockEntity extends PatternProviderBlockEn
         var speedOrd = data.readByte();
         var newSpeedMode = speedOrd >= 0 && speedOrd < WirelessSpeedMode.values().length
                 ? WirelessSpeedMode.values()[speedOrd] : WirelessSpeedMode.NORMAL;
+        var blockingOrd = data.readByte();
+        var newBlockingMode = blockingOrd >= 0 && blockingOrd < BlockingMode.values().length
+                ? BlockingMode.values()[blockingOrd] : BlockingMode.NORMAL;
         var newFilteredImport = data.readBoolean();
+        var newAdaptiveBatchEnabled = data.readBoolean();
         int count = data.readVarInt();
         var newConns = new ArrayList<WirelessConnection>(Math.min(count, MAX_WIRELESS_CONNECTIONS));
         for (int i = 0; i < count; i++) {
@@ -483,13 +561,17 @@ public class OverloadedPatternProviderBlockEntity extends PatternProviderBlockEn
         if (newMode != providerMode || newReturnMode != returnMode
                 || newDispatchMode != wirelessDispatchMode
                 || newSpeedMode != wirelessSpeedMode
+                || newBlockingMode != blockingMode
                 || newFilteredImport != filteredImport
+                || newAdaptiveBatchEnabled != adaptiveBatchEnabled
                 || !newConns.equals(connections)) {
             providerMode = newMode;
             returnMode = newReturnMode;
             wirelessDispatchMode = newDispatchMode;
             wirelessSpeedMode = newSpeedMode;
+            blockingMode = newBlockingMode;
             filteredImport = newFilteredImport;
+            adaptiveBatchEnabled = newAdaptiveBatchEnabled;
             connections.clear();
             connections.addAll(newConns);
             invalidConnectionScanCursor = 0;
@@ -507,7 +589,9 @@ public class OverloadedPatternProviderBlockEntity extends PatternProviderBlockEn
     private static final String TAG_RETURN_MODE = "ReturnMode";
     private static final String TAG_WIRELESS_DISPATCH_MODE = "WirelessDispatchMode";
     private static final String TAG_WIRELESS_SPEED_MODE = "WirelessSpeedMode";
+    private static final String TAG_BLOCKING_MODE = "BlockingMode";
     private static final String TAG_FILTERED_IMPORT = "FilteredImport";
+    private static final String TAG_ADAPTIVE_BATCH_ENABLED = "AdaptiveBatchEnabled";
     private static final String TAG_CONNECTIONS = "WirelessConnections";
 
     @Override
@@ -517,7 +601,9 @@ public class OverloadedPatternProviderBlockEntity extends PatternProviderBlockEn
         data.putString(TAG_RETURN_MODE, returnMode.name());
         data.putString(TAG_WIRELESS_DISPATCH_MODE, wirelessDispatchMode.name());
         data.putString(TAG_WIRELESS_SPEED_MODE, wirelessSpeedMode.name());
+        data.putString(TAG_BLOCKING_MODE, blockingMode.name());
         data.putBoolean(TAG_FILTERED_IMPORT, filteredImport);
+        data.putBoolean(TAG_ADAPTIVE_BATCH_ENABLED, adaptiveBatchEnabled);
 
         data.put(TAG_CONNECTIONS, WirelessConnectionLists.writeTagList(connections));
         frequencyBinding.save(data);
@@ -556,7 +642,15 @@ public class OverloadedPatternProviderBlockEntity extends PatternProviderBlockEn
                 wirelessSpeedMode = WirelessSpeedMode.NORMAL;
             }
         }
+        if (data.contains(TAG_BLOCKING_MODE)) {
+            try {
+                blockingMode = BlockingMode.valueOf(data.getString(TAG_BLOCKING_MODE));
+            } catch (IllegalArgumentException ignored) {
+                blockingMode = BlockingMode.NORMAL;
+            }
+        }
         filteredImport = data.getBoolean(TAG_FILTERED_IMPORT);
+        adaptiveBatchEnabled = data.getBoolean(TAG_ADAPTIVE_BATCH_ENABLED);
         WirelessConnectionLists.readTagList(
                 data, TAG_CONNECTIONS, connections, MAX_WIRELESS_CONNECTIONS, WirelessConnection::fromTag);
         invalidConnectionScanCursor = 0;
@@ -577,7 +671,9 @@ public class OverloadedPatternProviderBlockEntity extends PatternProviderBlockEn
             com.moakiee.ae2lt.logic.MemoryCardConfigSupport.writeEnum(tag, TAG_RETURN_MODE, returnMode);
             com.moakiee.ae2lt.logic.MemoryCardConfigSupport.writeEnum(tag, TAG_WIRELESS_DISPATCH_MODE, wirelessDispatchMode);
             com.moakiee.ae2lt.logic.MemoryCardConfigSupport.writeEnum(tag, TAG_WIRELESS_SPEED_MODE, wirelessSpeedMode);
+            com.moakiee.ae2lt.logic.MemoryCardConfigSupport.writeEnum(tag, TAG_BLOCKING_MODE, blockingMode);
             tag.putBoolean(TAG_FILTERED_IMPORT, filteredImport);
+            tag.putBoolean(TAG_ADAPTIVE_BATCH_ENABLED, adaptiveBatchEnabled);
             FrequencyBindingHelper.writeMemoryFrequency(tag, getFrequencyId());
         });
     }
@@ -596,8 +692,12 @@ public class OverloadedPatternProviderBlockEntity extends PatternProviderBlockEn
                     tag, TAG_WIRELESS_DISPATCH_MODE, WirelessDispatchMode.class, this.wirelessDispatchMode);
             this.wirelessSpeedMode = com.moakiee.ae2lt.logic.MemoryCardConfigSupport.readEnum(
                     tag, TAG_WIRELESS_SPEED_MODE, WirelessSpeedMode.class, this.wirelessSpeedMode);
+            this.blockingMode = com.moakiee.ae2lt.logic.MemoryCardConfigSupport.readEnum(
+                    tag, TAG_BLOCKING_MODE, BlockingMode.class, this.blockingMode);
             com.moakiee.ae2lt.logic.MemoryCardConfigSupport.ifBoolean(tag, TAG_FILTERED_IMPORT,
                     v -> this.filteredImport = v);
+            com.moakiee.ae2lt.logic.MemoryCardConfigSupport.ifBoolean(tag, TAG_ADAPTIVE_BATCH_ENABLED,
+                    v -> this.adaptiveBatchEnabled = v);
             FrequencyBindingHelper.importMemoryFrequency(tag, this::setFrequency);
             recomputeIdlePower();
             notifyLogicStateChanged();
@@ -612,6 +712,7 @@ public class OverloadedPatternProviderBlockEntity extends PatternProviderBlockEn
 
     @Override
     public void onChunkUnloaded() {
+        frequencyBinding.onChunkUnloaded();
         super.onChunkUnloaded();
         unloadingChunk = true;
         var logic = getOverloadedLogic();
@@ -726,4 +827,9 @@ public class OverloadedPatternProviderBlockEntity extends PatternProviderBlockEn
         // groups machines by that representation.
         return ModBlocks.OVERLOADED_PATTERN_PROVIDER.get().asItem();
     }
+    @Override
+    public AECableType getCableConnectionType(Direction dir) {
+        return AECableType.SMART;
+    }
 }
+

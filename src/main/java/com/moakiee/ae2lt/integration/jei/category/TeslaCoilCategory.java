@@ -220,4 +220,3 @@ public class TeslaCoilCategory implements IRecipeCategory<TeslaCoilCategory.Page
         }
     }
 }
-

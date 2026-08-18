@@ -16,7 +16,7 @@
     },
     {
       "ingredient": {
-        "item": "minecraft:ender_pearl"
+        "tag": "forge:dusts/ender_pearl"
       },
       "count": 2
     },
