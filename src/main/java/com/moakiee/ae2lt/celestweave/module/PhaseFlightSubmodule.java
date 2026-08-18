@@ -22,6 +22,7 @@ import com.moakiee.ae2lt.celestweave.CelestweaveArmorState;
 import com.moakiee.ae2lt.celestweave.PhaseFlightMovementGuard;
 import com.moakiee.ae2lt.celestweave.PhaseFlightControlRules;
 import com.moakiee.ae2lt.celestweave.PhaseFlightPlayerState;
+import com.moakiee.ae2lt.celestweave.PhaseWingFlight;
 import com.moakiee.ae2lt.celestweave.service.ArmorLightningService;
 import com.moakiee.ae2lt.celestweave.service.ArmorResourceFeedback;
 import com.moakiee.ae2lt.me.key.LightningKey;
@@ -33,10 +34,10 @@ public final class PhaseFlightSubmodule extends AbstractCelestweaveArmorSubmodul
     public static final String INERTIA_CONFIG_KEY = "flight_inertia";
     public static final String PHASE_MODE_CONFIG_KEY = "phase_mode";
 
-    private static final String TAG_HAD_MAYFLY = "PhaseHadMayfly";
-    private static final String TAG_WAS_FLYING = "PhaseWasFlying";
+    private static final String LEGACY_TAG_HAD_MAYFLY = "PhaseHadMayfly";
+    private static final String LEGACY_TAG_WAS_FLYING = "PhaseWasFlying";
     private static final String TAG_PREVIOUS_SPEED = "PhasePreviousFlyingSpeed";
-    private static final String TAG_HAD_GAME_MODE_FLIGHT = "PhaseHadGameModeFlight";
+    private static final String LEGACY_TAG_HAD_GAME_MODE_FLIGHT = "PhaseHadGameModeFlight";
     private static final String PLAYER_PHASE_TAG = "ae2lt.phase_flight.active";
     private static final String PLAYER_ESCAPE_TICKS_TAG = "ae2lt.phase_flight.escape_ticks";
     private static final float DEFAULT_FLYING_SPEED = 0.05F;
@@ -97,6 +98,7 @@ public final class PhaseFlightSubmodule extends AbstractCelestweaveArmorSubmodul
         }
 
         maintainPhaseFlight(player, armor);
+        PhaseWingFlight.tickThrust(player);
         return 0;
     }
 
@@ -199,15 +201,15 @@ public final class PhaseFlightSubmodule extends AbstractCelestweaveArmorSubmodul
     private static void grantPhaseFlight(Player player, ItemStack armor) {
         var data = CelestweaveArmorState.getSubmoduleData(armor, INSTANCE);
         var abilities = player.getAbilities();
+        ForgeFlightPermissionHandoff.cancelRelease(player);
         PhaseFlightPlayerState.activate(player);
+        PhaseFlightPlayerState.setFlightLocked(player, PhaseLockSubmodule.isFlightLockEnabled(player));
         updateMovementGuards(player, armor);
-        if (!data.contains(TAG_HAD_MAYFLY, CompoundTag.TAG_BYTE)) {
-            data.putBoolean(TAG_HAD_MAYFLY, abilities.mayfly);
-            data.putBoolean(TAG_WAS_FLYING, abilities.flying);
+        if (!data.contains(TAG_PREVIOUS_SPEED, Tag.TAG_FLOAT)) {
             data.putFloat(TAG_PREVIOUS_SPEED, abilities.getFlyingSpeed());
-            data.putBoolean(TAG_HAD_GAME_MODE_FLIGHT, player.isCreative() || player.isSpectator());
-            CelestweaveArmorState.setSubmoduleData(armor, INSTANCE, data);
         }
+        clearLegacyFlightCapture(data);
+        CelestweaveArmorState.setSubmoduleData(armor, INSTANCE, data);
         updateAbilitiesIfChanged(
                 player,
                 true,
@@ -217,7 +219,9 @@ public final class PhaseFlightSubmodule extends AbstractCelestweaveArmorSubmodul
     }
 
     private static void maintainPhaseFlight(Player player, ItemStack armor) {
+        ForgeFlightPermissionHandoff.cancelRelease(player);
         PhaseFlightPlayerState.activate(player);
+        PhaseFlightPlayerState.setFlightLocked(player, PhaseLockSubmodule.isFlightLockEnabled(player));
         updateMovementGuards(player, armor);
         updateAbilitiesIfChanged(
                 player,
@@ -230,13 +234,14 @@ public final class PhaseFlightSubmodule extends AbstractCelestweaveArmorSubmodul
     private static void revokePhaseFlight(Player player, ItemStack armor) {
         PhaseFlightMovementGuard.clearPhaseFlightState(player);
         stopPhaseTraversal(player);
+        PhaseFlightPlayerState.setFlightLocked(player, false);
         restoreStoredAbilities(player, armor);
         PhaseFlightPlayerState.endControl(player);
     }
 
     public static boolean shouldUsePhaseTraversal(Player player, ItemStack armor) {
         return player != null
-                && PhaseFlightPlayerState.isFlying(player)
+                && PhaseWingFlight.isFlightActive(player)
                 && isPhaseModeConfigured(armor);
     }
 
@@ -270,48 +275,34 @@ public final class PhaseFlightSubmodule extends AbstractCelestweaveArmorSubmodul
 
     private static void restoreStoredAbilities(Player player, ItemStack armor) {
         var data = CelestweaveArmorState.getSubmoduleData(armor, INSTANCE);
-        boolean hadMayfly = data.contains(TAG_HAD_MAYFLY, CompoundTag.TAG_BYTE) && data.getBoolean(TAG_HAD_MAYFLY);
-        boolean wasFlying = data.contains(TAG_WAS_FLYING, CompoundTag.TAG_BYTE) && data.getBoolean(TAG_WAS_FLYING);
-        float previousSpeed = data.contains(TAG_PREVIOUS_SPEED, CompoundTag.TAG_FLOAT)
+        float previousSpeed = data.contains(TAG_PREVIOUS_SPEED, Tag.TAG_FLOAT)
                 ? data.getFloat(TAG_PREVIOUS_SPEED)
                 : DEFAULT_FLYING_SPEED;
-        boolean hadGameModeFlight = capturedGameModeFlight(data, hadMayfly);
-        data.remove(TAG_HAD_MAYFLY);
-        data.remove(TAG_WAS_FLYING);
         data.remove(TAG_PREVIOUS_SPEED);
-        data.remove(TAG_HAD_GAME_MODE_FLIGHT);
+        clearLegacyFlightCapture(data);
         CelestweaveArmorState.setSubmoduleData(armor, INSTANCE, data);
 
-        var abilities = player.getAbilities();
-        if (player.isCreative() || player.isSpectator()) {
-            boolean restoreCapturedGameModeState = hadGameModeFlight;
-            updateAbilitiesIfChanged(
-                    player,
-                    restoreCapturedGameModeState ? hadMayfly : abilities.mayfly,
-                    restoreCapturedGameModeState ? wasFlying : abilities.flying,
-                    previousSpeed > 0.0F ? previousSpeed : DEFAULT_FLYING_SPEED);
-            return;
+        boolean siblingFlightActive = CelestweaveArmorState.isSubmoduleRuntimeActive(
+                armor,
+                FlightSubmodule.INSTANCE.id());
+        if (siblingFlightActive || player.isCreative() || player.isSpectator()) {
+            ForgeFlightPermissionHandoff.cancelRelease(player);
+        } else {
+            ForgeFlightPermissionHandoff.beginRelease(player);
         }
-        boolean otherFlightActive = CelestweaveArmorState.isSubmoduleRuntimeActive(armor, FlightSubmodule.INSTANCE.id());
-        var target = FlightAbilityRestoreRules.targetForNonGameModePlayer(
-                hadMayfly,
-                wasFlying,
-                hadGameModeFlight,
-                otherFlightActive);
         updateAbilitiesIfChanged(
                 player,
-                target.mayfly(),
-                target.flying(),
-                otherFlightActive
+                true,
+                PhaseFlightPlayerState.isFlying(player),
+                siblingFlightActive
                         ? ArmorFlightSpeedRules.activeFlightSpeed(armor)
                         : previousSpeed > 0.0F ? previousSpeed : DEFAULT_FLYING_SPEED);
     }
 
-    private static boolean capturedGameModeFlight(CompoundTag data, boolean hadMayfly) {
-        if (data.contains(TAG_HAD_GAME_MODE_FLIGHT, CompoundTag.TAG_BYTE)) {
-            return data.getBoolean(TAG_HAD_GAME_MODE_FLIGHT);
-        }
-        return hadMayfly;
+    private static void clearLegacyFlightCapture(CompoundTag data) {
+        data.remove(LEGACY_TAG_HAD_MAYFLY);
+        data.remove(LEGACY_TAG_WAS_FLYING);
+        data.remove(LEGACY_TAG_HAD_GAME_MODE_FLIGHT);
     }
 
     private static boolean escapeFromBlocks(Player player) {
@@ -366,7 +357,9 @@ public final class PhaseFlightSubmodule extends AbstractCelestweaveArmorSubmodul
 
     public static void applyTransientPhaseState(Player player) {
         player.noPhysics = true;
-        player.setNoGravity(true);
+        // Elytra travel still needs gravity for its pitch-dependent glide curve. Hovering and the
+        // bounded in-wall escape state remain gravity-free.
+        player.setNoGravity(!player.isFallFlying());
         player.setOnGround(false);
         player.fallDistance = 0.0F;
         player.getPersistentData().putBoolean(PLAYER_PHASE_TAG, true);
@@ -416,7 +409,7 @@ public final class PhaseFlightSubmodule extends AbstractCelestweaveArmorSubmodul
         PhaseFlightMovementGuard.updatePhaseFlightState(
                 player,
                 isPhaseModeConfigured(armor),
-                PhaseFlightPlayerState.isFlying(player));
+                PhaseWingFlight.isFlightActive(player));
     }
 
     private static void clearEscapePhase(Player player) {

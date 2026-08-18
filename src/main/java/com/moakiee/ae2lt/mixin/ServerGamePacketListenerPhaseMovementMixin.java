@@ -19,31 +19,24 @@ import net.minecraft.world.entity.RelativeMovement;
 import net.minecraft.world.phys.Vec3;
 
 import com.moakiee.ae2lt.celestweave.PhaseFlightMovementGuard;
-import com.moakiee.ae2lt.celestweave.PhaseFlightControlRules;
 import com.moakiee.ae2lt.celestweave.PhaseFlightPlayerState;
 
 /** Treats coordinates supplied by the player's own movement packet as authorized movement. */
 @Mixin(ServerGamePacketListenerImpl.class)
 public abstract class ServerGamePacketListenerPhaseMovementMixin {
     @Inject(method = "handlePlayerAbilities", at = @At("HEAD"), cancellable = true)
-    private void ae2lt$rejectPhaseFlightToggleInsideWall(
+    private void ae2lt$rejectExternalLockedFlightUpdate(
             ServerboundPlayerAbilitiesPacket packet,
             CallbackInfo ci) {
         var player = ((ServerGamePacketListenerImpl) (Object) this).player;
-        if (!PhaseFlightPlayerState.isControlled(player)) {
+        if (!PhaseFlightPlayerState.isFlightLocked(player)) {
             return;
         }
-        if (PhaseFlightControlRules.rejectFlightToggle(
-                PhaseFlightMovementGuard.isPhaseModeEnabled(player),
-                PhaseFlightControlRules.intersectsWorldCollision(player),
-                packet.isFlying())) {
-            PhaseFlightPlayerState.setFlying(player, true);
-            player.getAbilities().flying = true;
-            player.onUpdateAbilities();
-            ci.cancel();
-            return;
-        }
-        PhaseFlightPlayerState.setFlying(player, packet.isFlying());
+        // Locked hover input has its own packet. Vanilla ability packets are public-field
+        // reconciliation and must not replace the private flight intent.
+        player.getAbilities().flying = PhaseFlightPlayerState.isFlying(player);
+        player.onUpdateAbilities();
+        ci.cancel();
     }
 
     @Inject(
@@ -74,7 +67,6 @@ public abstract class ServerGamePacketListenerPhaseMovementMixin {
     @Inject(method = "handleMovePlayer", at = @At("HEAD"))
     private void ae2lt$beginPlayerAuthorizedMove(ServerboundMovePlayerPacket packet, CallbackInfo ci) {
         var player = ((ServerGamePacketListenerImpl) (Object) this).player;
-        PhaseFlightPlayerState.syncVanillaAbilities(player);
         PhaseFlightMovementGuard.beginMovementPacket(player);
     }
 

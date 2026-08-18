@@ -257,6 +257,13 @@ public final class NetworkInit {
                 DashPacket::decode,
                 DashPacket::handle,
                 Optional.of(NetworkDirection.PLAY_TO_SERVER));
+        CHANNEL.registerMessage(
+                nextPacketId++,
+                PhaseFlightInputPacket.class,
+                (pkt, buf) -> pkt.write(buf),
+                PhaseFlightInputPacket::decode,
+                PhaseFlightInputPacket::handle,
+                Optional.of(NetworkDirection.PLAY_TO_SERVER));
 
         // Device Hub: C→S
         CHANNEL.registerMessage(

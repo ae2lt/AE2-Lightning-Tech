@@ -6,41 +6,39 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 
 final class FlightAbilityRestoreRulesTest {
-
     @Test
-    void nonGameModeRestoreIgnoresFlightCapturedFromCreative() {
-        var target = FlightAbilityRestoreRules.targetForNonGameModePlayer(
-                true,
-                true,
-                true,
-                false);
+    void removedExternalSourceDoesNotLeakFlightPermission() {
+        var target = FlightAbilityRestoreRules.targetAfterReleaseProbe(
+                false, false, true);
 
         assertFalse(target.mayfly());
         assertFalse(target.flying());
     }
 
     @Test
-    void nonGameModeRestoreKeepsPreviousNonCreativeFlight() {
-        var target = FlightAbilityRestoreRules.targetForNonGameModePlayer(
-                true,
-                true,
-                false,
-                false);
+    void reassertedExternalSourceKeepsCurrentFlight() {
+        var target = FlightAbilityRestoreRules.targetAfterReleaseProbe(
+                false, true, true);
 
         assertTrue(target.mayfly());
         assertTrue(target.flying());
     }
 
     @Test
-    void siblingFlightModuleStillKeepsFlightAfterCreativeBaselineRestore() {
-        var target = FlightAbilityRestoreRules.targetForNonGameModePlayer(
-                true,
-                true,
-                true,
-                true);
+    void newlyActivatedExternalSourceIsDetectedDuringProbe() {
+        var target = FlightAbilityRestoreRules.targetAfterReleaseProbe(
+                false, true, false);
+
+        assertTrue(target.mayfly());
+        assertFalse(target.flying());
+    }
+
+    @Test
+    void currentGameModeFlightDoesNotDependOnExternalReassertion() {
+        var target = FlightAbilityRestoreRules.targetAfterReleaseProbe(
+                true, false, true);
 
         assertTrue(target.mayfly());
         assertTrue(target.flying());
     }
 }
-

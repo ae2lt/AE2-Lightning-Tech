@@ -1,18 +1,18 @@
 package com.moakiee.ae2lt.celestweave.module;
 
+import com.moakiee.ae2lt.celestweave.PhaseFlightControlRules;
+
+/** Resolves the result of Forge's one-tick external flight permission probe. */
 final class FlightAbilityRestoreRules {
     private FlightAbilityRestoreRules() {
     }
 
-    static Target targetForNonGameModePlayer(
-            boolean hadMayfly,
-            boolean wasFlying,
-            boolean capturedGameModeFlight,
-            boolean siblingFlightActive) {
-        boolean restoreMayfly = hadMayfly && !capturedGameModeFlight;
-        boolean restoreFlying = wasFlying && !capturedGameModeFlight;
-        boolean targetMayfly = restoreMayfly || siblingFlightActive;
-        boolean targetFlying = (restoreFlying || siblingFlightActive) && targetMayfly;
+    static Target targetAfterReleaseProbe(
+            boolean currentGameModeFlight,
+            boolean mayflyReasserted,
+            boolean currentFlying) {
+        boolean targetMayfly = currentGameModeFlight || mayflyReasserted;
+        boolean targetFlying = PhaseFlightControlRules.handoffFlying(currentFlying, targetMayfly);
         return new Target(targetMayfly, targetFlying);
     }
 

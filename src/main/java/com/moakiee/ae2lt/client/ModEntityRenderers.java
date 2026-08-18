@@ -11,6 +11,7 @@ import net.minecraft.client.renderer.ItemBlockRenderTypes;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.entity.ItemEntityRenderer;
 import net.minecraft.client.renderer.entity.TntRenderer;
+import net.minecraft.client.renderer.entity.player.PlayerRenderer;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -60,6 +61,16 @@ public final class ModEntityRenderers {
         event.registerBlockEntityRenderer(
                 ModBlockEntities.TIANSHU_SUPERCOMPUTER_CONTROLLER.get(),
                 TianshuCoreEffectRenderer::new);
+    }
+
+    @SubscribeEvent
+    public static void addPlayerLayers(EntityRenderersEvent.AddLayers event) {
+        for (var skin : event.getSkins()) {
+            PlayerRenderer renderer = event.getSkin(skin);
+            if (renderer != null) {
+                renderer.addLayer(new PhaseWingLayer(renderer, event.getEntityModels()));
+            }
+        }
     }
 
     @SubscribeEvent

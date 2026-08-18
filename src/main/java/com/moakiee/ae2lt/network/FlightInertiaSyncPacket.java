@@ -12,12 +12,14 @@ import net.minecraftforge.network.NetworkEvent;
 public record FlightInertiaSyncPacket(
         UUID armorId,
         boolean inertiaEnabled,
-        boolean phaseFlightActive,
-        boolean phaseFlying,
-        boolean phaseModeEnabled) {
+        boolean flightControlActive,
+        boolean flying,
+        boolean phaseModeEnabled,
+        boolean flightLockEnabled) {
     public static FlightInertiaSyncPacket decode(FriendlyByteBuf buf) {
         return new FlightInertiaSyncPacket(
                 buf.readUUID(),
+                buf.readBoolean(),
                 buf.readBoolean(),
                 buf.readBoolean(),
                 buf.readBoolean(),
@@ -27,9 +29,10 @@ public record FlightInertiaSyncPacket(
     public void write(FriendlyByteBuf buf) {
         buf.writeUUID(armorId);
         buf.writeBoolean(inertiaEnabled);
-        buf.writeBoolean(phaseFlightActive);
-        buf.writeBoolean(phaseFlying);
+        buf.writeBoolean(flightControlActive);
+        buf.writeBoolean(flying);
         buf.writeBoolean(phaseModeEnabled);
+        buf.writeBoolean(flightLockEnabled);
     }
 
     public static void handle(FlightInertiaSyncPacket payload, Supplier<NetworkEvent.Context> context) {

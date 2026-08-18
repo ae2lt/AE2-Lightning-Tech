@@ -7,11 +7,13 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import org.jetbrains.annotations.Nullable;
 
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.api.distmarker.Dist;
@@ -26,6 +28,7 @@ import com.moakiee.ae2lt.celestweave.module.PhaseFlightSubmodule;
 import com.moakiee.ae2lt.celestweave.module.PhaseLockSubmodule;
 import com.moakiee.ae2lt.celestweave.module.CelestweaveArmorSubmodule;
 import com.moakiee.ae2lt.celestweave.module.CelestweaveArmorSubmoduleItem;
+import com.moakiee.ae2lt.celestweave.phase.CelestweaveEquipmentAccess;
 import com.moakiee.ae2lt.device.module.OverloadDeviceModuleItem;
 import com.moakiee.ae2lt.registry.ModItems;
 import com.moakiee.ae2lt.registry.ModDataComponents;
@@ -40,8 +43,11 @@ public final class CelestweaveArmorState {
     private static volatile boolean CLIENT_PHASE_MODE_ENABLED = true;
     private static volatile UUID CLIENT_PHASE_LOCK_ARMOR_ID = null;
     private static volatile boolean CLIENT_PHASE_LOCK_BLOCK_EXTERNAL_FORCES = false;
-    // Client-side set of armor ids whose phase flight is active (authoritative, pushed from server).
-    private static final Set<UUID> CLIENT_PHASE_FLIGHT_ACTIVE = ConcurrentHashMap.newKeySet();
+    // Server-authoritative client cache for modules using the shared hover/glide controls.
+    // Include the module id so a delayed inactive packet from one module cannot erase the other.
+    private static final Set<ClientFlightControlKey> CLIENT_FLIGHT_CONTROL_ACTIVE =
+            ConcurrentHashMap.newKeySet();
+    private static final AtomicLong CLIENT_FLIGHT_CONTROL_GENERATION = new AtomicLong();
 
     private CelestweaveArmorState() {
     }
@@ -375,25 +381,27 @@ public final class CelestweaveArmorState {
             // Runtime map holds only active entries, so absent (null) means previously inactive.
             Boolean previous = setSubmoduleRuntimeActive(armor, submodule.id(), active);
             boolean changed = (previous != null && previous) != active;
+            boolean flightModule = isFlightControlModule(submodule.id());
             if (dedicatedServer) {
                 ServerPlayer serverPlayer = (ServerPlayer) player;
-                // Phase flight keeps an authoritative active-state push because the server may
-                // force it off when energy runs out. Phase lock uses its dedicated effective-
+                // Shared flight controls keep an authoritative active-state push because the server
+                // may force them off when energy runs out. Phase lock uses its dedicated effective-
                 // protection packet below because its real controller stack may live in the vault.
-                if (PhaseFlightSubmodule.INSTANCE.id().equals(submodule.id()) && (changed || forceClientSync)) {
+                if (flightModule && (changed || forceClientSync)) {
                     NetworkInit.sendToPlayer(
                             serverPlayer,
                             new CelestweaveSubmoduleActivePacket(armorId, submodule.id(), active));
                 }
                 if (PhaseLockSubmodule.INSTANCE.id().equals(submodule.id()) && (changed || forceClientSync)) {
                     syncPhaseLockProtectionToClient(serverPlayer, armor, armorId, active);
+                    // The chest may already have left its slot. Retain its id long enough to send
+                    // the control-ending flight packet even when no flight leggings are equipped.
+                    syncFlightSettingsToClient(serverPlayer, armorId);
                 }
                 // Flight inertia drives client-side movement decay, so push it when flight engages
                 // and when the client needs an authoritative resync after player transfer.
-                boolean flightModule = FlightSubmodule.INSTANCE.id().equals(submodule.id())
-                        || PhaseFlightSubmodule.INSTANCE.id().equals(submodule.id());
-                if (FlightInertiaSyncRules.shouldSync(changed, active, forceClientSync, flightModule)) {
-                    syncFlightInertiaToClient(serverPlayer, armor, armorId);
+                if (active && FlightInertiaSyncRules.shouldSync(changed, active, forceClientSync, flightModule)) {
+                    syncFlightSettingsToClient(serverPlayer, armor, armorId);
                 }
             }
             if (!changed) {
@@ -403,6 +411,11 @@ public final class CelestweaveArmorState {
                 submodule.onActivated(player, dist, armor);
             } else {
                 submodule.onDeactivated(player, dist, armor);
+                if (dedicatedServer && flightModule) {
+                    // Restore the captured vanilla/attribute flight source before deciding whether
+                    // the independent chest flight lock must remain active.
+                    syncFlightSettingsToClient((ServerPlayer) player, armor, armorId);
+                }
             }
         }
     }
@@ -513,24 +526,33 @@ public final class CelestweaveArmorState {
         }
     }
 
-    // The generic active-state cache is only needed by phase flight's predictive movement.
+    // The active-state cache drives client prediction for both creative and phase flight.
     public static void markClientActive(UUID armorId, String submoduleId, boolean active) {
-        if (armorId == null || !PhaseFlightSubmodule.INSTANCE.id().equals(submoduleId)) {
+        if (armorId == null || !isFlightControlModule(submoduleId)) {
             return;
         }
-        if (active) {
-            CLIENT_PHASE_FLIGHT_ACTIVE.add(armorId);
-        } else {
-            CLIENT_PHASE_FLIGHT_ACTIVE.remove(armorId);
+        var key = new ClientFlightControlKey(armorId, submoduleId);
+        boolean changed = active
+                ? CLIENT_FLIGHT_CONTROL_ACTIVE.add(key)
+                : CLIENT_FLIGHT_CONTROL_ACTIVE.remove(key);
+        if (changed) {
+            CLIENT_FLIGHT_CONTROL_GENERATION.incrementAndGet();
         }
     }
 
-    public static boolean isAnyClientPhaseFlightActive() {
-        return !CLIENT_PHASE_FLIGHT_ACTIVE.isEmpty();
+    public static boolean isAnyClientFlightControlActive() {
+        return !CLIENT_FLIGHT_CONTROL_ACTIVE.isEmpty();
+    }
+
+    public static long getClientFlightControlGeneration() {
+        return CLIENT_FLIGHT_CONTROL_GENERATION.get();
     }
 
     public static void clearClientActiveCache() {
-        CLIENT_PHASE_FLIGHT_ACTIVE.clear();
+        if (!CLIENT_FLIGHT_CONTROL_ACTIVE.isEmpty()) {
+            CLIENT_FLIGHT_CONTROL_ACTIVE.clear();
+            CLIENT_FLIGHT_CONTROL_GENERATION.incrementAndGet();
+        }
         CLIENT_FLIGHT_INERTIA = true;
         CLIENT_FLIGHT_INERTIA_ARMOR_ID = null;
         CLIENT_PHASE_MODE_ENABLED = true;
@@ -541,7 +563,9 @@ public final class CelestweaveArmorState {
     public static void forgetSubmoduleActiveCache(UUID armorId) {
         ArmorRuntimeRegistry.clear(armorId);
         if (armorId != null) {
-            CLIENT_PHASE_FLIGHT_ACTIVE.remove(armorId);
+            if (CLIENT_FLIGHT_CONTROL_ACTIVE.removeIf(key -> key.armorId().equals(armorId))) {
+                CLIENT_FLIGHT_CONTROL_GENERATION.incrementAndGet();
+            }
             if (armorId.equals(CLIENT_PHASE_LOCK_ARMOR_ID)) {
                 CLIENT_PHASE_LOCK_ARMOR_ID = null;
                 CLIENT_PHASE_LOCK_BLOCK_EXTERNAL_FORCES = false;
@@ -666,38 +690,64 @@ public final class CelestweaveArmorState {
         return CLIENT_PHASE_LOCK_BLOCK_EXTERNAL_FORCES;
     }
 
-    private static void syncFlightInertiaToClient(ServerPlayer player, ItemStack armor, UUID armorId) {
-        boolean phaseFlightActive = isSubmoduleRuntimeActive(armor, PhaseFlightSubmodule.INSTANCE.id());
-        if (phaseFlightActive) {
+    private static void syncFlightSettingsToClient(
+            ServerPlayer player,
+            ItemStack flightArmor,
+            UUID syncArmorId) {
+        boolean phaseFlightActive = !flightArmor.isEmpty()
+                && isSubmoduleRuntimeActive(flightArmor, PhaseFlightSubmodule.INSTANCE.id());
+        boolean flightActive = !flightArmor.isEmpty()
+                && isSubmoduleRuntimeActive(flightArmor, FlightSubmodule.INSTANCE.id());
+        boolean flightControlActive = flightActive || phaseFlightActive;
+        boolean flightLockActive = PhaseLockSubmodule.isFlightLockConfigured(player)
+                && PhaseLockSubmodule.hasFlightSource(player);
+        if (flightControlActive || flightLockActive) {
             // The active-state packet and this settings packet are sent before onActivated. Make
             // private intent authoritative first so armor state transitions cannot sample a boss-
             // modified vanilla flying bit on the client.
             PhaseFlightPlayerState.activate(player);
         }
-        boolean flightActive = isSubmoduleRuntimeActive(armor, FlightSubmodule.INSTANCE.id());
         boolean inertia = FlightInertiaSyncRules.targetInertia(
                 flightActive,
-                FlightSubmodule.isInertiaEnabled(armor),
+                flightActive && FlightSubmodule.isInertiaEnabled(flightArmor),
                 phaseFlightActive,
-                PhaseFlightSubmodule.isInertiaEnabled(armor));
+                phaseFlightActive && PhaseFlightSubmodule.isInertiaEnabled(flightArmor));
+        boolean flying = PhaseFlightControlRules.handoffFlying(
+                PhaseFlightPlayerState.isFlying(player),
+                PhaseLockSubmodule.hasFlightSource(player));
         NetworkInit.sendToPlayer(player, new FlightInertiaSyncPacket(
-                armorId,
+                syncArmorId,
                 inertia,
-                phaseFlightActive,
-                phaseFlightActive && PhaseFlightPlayerState.isFlying(player),
+                flightControlActive,
+                flying,
                 phaseFlightActive
                         && AE2LTCommonConfig.overloadArmorPhaseFlightEnabled()
-                        && PhaseFlightSubmodule.isPhaseModeEnabled(armor)));
+                        && PhaseFlightSubmodule.isPhaseModeEnabled(flightArmor),
+                flightLockActive));
     }
 
-    public static void syncFlightInertiaToClientIfFlight(ServerPlayer player, ItemStack armor) {
-        UUID armorId = getArmorId(armor);
-        if (armorId == null) return;
-        boolean flightActive = isSubmoduleRuntimeActive(armor, FlightSubmodule.INSTANCE.id())
-                || isSubmoduleRuntimeActive(armor, "phase_flight");
-        if (flightActive) {
-            syncFlightInertiaToClient(player, armor, armorId);
+    public static void syncFlightSettingsToClient(ServerPlayer player) {
+        syncFlightSettingsToClient(player, null);
+    }
+
+    private static void syncFlightSettingsToClient(ServerPlayer player, @Nullable UUID fallbackArmorId) {
+        ItemStack flightArmor = CelestweaveEquipmentAccess.findArmor(player, EquipmentSlot.LEGS);
+        UUID syncArmorId = flightArmor.isEmpty() ? null : getArmorId(flightArmor);
+        if (syncArmorId == null) {
+            ItemStack chest = CelestweaveEquipmentAccess.findArmor(player, EquipmentSlot.CHEST);
+            syncArmorId = chest.isEmpty() ? null : getArmorId(chest);
         }
+        if (syncArmorId == null) {
+            syncArmorId = fallbackArmorId;
+        }
+        if (syncArmorId != null) {
+            syncFlightSettingsToClient(player, flightArmor, syncArmorId);
+        }
+    }
+
+    private static boolean isFlightControlModule(String submoduleId) {
+        return FlightSubmodule.INSTANCE.id().equals(submoduleId)
+                || PhaseFlightSubmodule.INSTANCE.id().equals(submoduleId);
     }
 
     private static void syncPhaseLockProtectionToClient(
@@ -723,6 +773,9 @@ public final class CelestweaveArmorState {
     }
 
     public record InstalledSubmodule(ItemStack stack, CelestweaveArmorSubmodule submodule, int count) {
+    }
+
+    private record ClientFlightControlKey(UUID armorId, String submoduleId) {
     }
 
     public record Snapshot(
