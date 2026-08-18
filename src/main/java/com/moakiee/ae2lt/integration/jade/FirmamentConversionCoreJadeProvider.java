@@ -17,6 +17,7 @@ public class FirmamentConversionCoreJadeProvider implements IBlockComponentProvi
     private static final ResourceLocation UID =
             ResourceLocation.fromNamespaceAndPath(AE2LightningTech.MODID, "firmament_conversion_core");
     private static final String TAG_INSIDE_STARSHIP = "InsideStarship";
+    private static final String TAG_INACTIVE_CORE_OUTPUT = "InactiveCoreOutput";
     private static final String TAG_PROGRESS = "Progress";
     private static final String TAG_PROCESS_TIME = "ProcessTime";
 
@@ -29,6 +30,7 @@ public class FirmamentConversionCoreJadeProvider implements IBlockComponentProvi
     public void appendServerData(CompoundTag data, BlockAccessor accessor) {
         if (accessor.getBlockEntity() instanceof FirmamentConversionCoreBlockEntity core) {
             data.putBoolean(TAG_INSIDE_STARSHIP, core.isInsideFirmamentStarship());
+            data.putBoolean(TAG_INACTIVE_CORE_OUTPUT, core.hasInactiveSpiritCoreOutput());
             data.putInt(TAG_PROGRESS, core.getProgress());
             data.putInt(TAG_PROCESS_TIME, core.getProcessTime());
         }
@@ -44,6 +46,10 @@ public class FirmamentConversionCoreJadeProvider implements IBlockComponentProvi
         if (data.contains(TAG_INSIDE_STARSHIP) && !data.getBoolean(TAG_INSIDE_STARSHIP)) {
             tooltip.add(Component.translatable("jade.ae2lt.firmament_conversion_core.invalid_structure"));
             return;
+        }
+
+        if (data.getBoolean(TAG_INACTIVE_CORE_OUTPUT)) {
+            tooltip.add(Component.translatable("jade.ae2lt.firmament_conversion_core.inactive_core_output"));
         }
 
         int processTime = data.getInt(TAG_PROCESS_TIME);

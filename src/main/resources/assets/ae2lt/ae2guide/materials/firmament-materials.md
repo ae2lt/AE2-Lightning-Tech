@@ -68,7 +68,9 @@ Besides firmament materials, these recipes also call for auxiliary ingredients s
 
 The spirit cores are the heart of the Celestweave armor set.
 
-An <ItemLink id="ae2lt:inactive_firmament_spirit_core" /> has a chance to appear in End City treasure chests. Processing one in the Firmament Conversion Core **activates** it, splitting it into one of each of the four spirit cores at once:
+A naturally generated Firmament Conversion Core has a **50%** chance to retain an <ItemLink id="ae2lt:inactive_firmament_spirit_core" /> in its output slots; use the core with an empty hand to retrieve it. Inactive cores also have a **15%** chance to appear in End City treasure chests.
+
+Processing an inactive core in the Firmament Conversion Core **activates** it, splitting it into one of each of the four spirit cores at once:
 
 <ItemGrid>
   <ItemIcon id="ae2lt:firmament_spirit_core_oculus" />

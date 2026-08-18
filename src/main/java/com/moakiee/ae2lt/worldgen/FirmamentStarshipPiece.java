@@ -1,12 +1,18 @@
 package com.moakiee.ae2lt.worldgen;
 
+import com.moakiee.ae2lt.blockentity.FirmamentConversionCoreBlockEntity;
+import com.moakiee.ae2lt.registry.ModBlocks;
 import com.moakiee.ae2lt.registry.ModStructureTypes;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.ServerLevelAccessor;
+import net.minecraft.world.level.StructureManager;
+import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Rotation;
+import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.TemplateStructurePiece;
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext;
@@ -81,6 +87,27 @@ public final class FirmamentStarshipPiece extends TemplateStructurePiece {
             return BlockPos.ZERO;
         }
         return new BlockPos(tag.getInt("RPX"), tag.getInt("RPY"), tag.getInt("RPZ"));
+    }
+
+    @Override
+    public void postProcess(
+            WorldGenLevel level,
+            StructureManager structureManager,
+            ChunkGenerator chunkGenerator,
+            RandomSource random,
+            BoundingBox chunkBB,
+            ChunkPos chunkPos,
+            BlockPos pivot) {
+        super.postProcess(level, structureManager, chunkGenerator, random, chunkBB, chunkPos, pivot);
+
+        for (var blockInfo : this.template.filterBlocks(
+                this.templatePosition,
+                this.placeSettings,
+                ModBlocks.FIRMAMENT_CONVERSION_CORE.get())) {
+            if (level.getBlockEntity(blockInfo.pos()) instanceof FirmamentConversionCoreBlockEntity core) {
+                core.initializeNaturalLoot(random);
+            }
+        }
     }
 
     @Override
