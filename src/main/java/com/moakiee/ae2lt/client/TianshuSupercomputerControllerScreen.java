@@ -31,12 +31,19 @@ public class TianshuSupercomputerControllerScreen
         int x = leftPos - 18;
         int y = topPos;
 
+        var build = new TextureToggleButton(
+                TextureToggleButton.ButtonType.QUICK_BUILD,
+                state -> sendAction(TianshuControllerActionPacket.Action.AUTO_BUILD));
+        build.setTooltip(Tooltip.create(Component.translatable("ae2lt.tianshu.gui.build")));
+        build.setPosition(x, y);
+        addRenderableWidget(build);
+
         var selection = new TextureToggleButton(
                 TextureToggleButton.ButtonType.CPU_SELECTION,
                 state -> sendAction(TianshuControllerActionPacket.Action.OPEN_ALGORITHM_SELECTION));
         selection.setTooltip(Tooltip.create(Component.translatable(
                 "ae2lt.tianshu.gui.algorithm_selection")));
-        selection.setPosition(x, y);
+        selection.setPosition(x, y + 22);
         addRenderableWidget(selection);
 
         var cpuPriorityLabel = Component.translatable("ae2lt.tianshu.gui.cpu_priority");
