@@ -117,7 +117,7 @@ side = "CLIENT"
 [[dependencies."${mod_id}"]]
 modId = "thunderbolt"
 type = "required"
-versionRange = "[1.0.1,2.0.0)"
+versionRange = "[2.0-alpha,2.0.0)"
 ordering = "AFTER"
 side = "BOTH"
 
