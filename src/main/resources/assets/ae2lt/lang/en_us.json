@@ -923,7 +923,7 @@
   "item.ae2lt.module_radiation_protection": "Radiation Assimilation Module",
   "item.ae2lt.module_laser_protection": "Laser Protection Module",
   "item.ae2lt.phase_lock_projection": "Phase-Locked Projection",
-  "item.ae2lt.phase_lock_projection.desc": "An inert projection; the corresponding real armor remains in private phase storage",
+  "item.ae2lt.phase_lock_projection.desc": "Your real armor is secured in private phase storage and remains fully active",
   "ae2lt.module.tooltip.installable_on": "Installable on:",
   "ae2lt.module.device.railgun": "Electromagnetic Railgun",
   "ae2lt.module.device.celestweave_oculus": "Celestweave Oculus",
