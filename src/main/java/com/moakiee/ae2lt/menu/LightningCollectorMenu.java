@@ -118,6 +118,10 @@ public class LightningCollectorMenu extends AEBaseMenu implements IProgressProvi
         return host;
     }
 
+    @Override
+    public net.minecraft.core.BlockPos getFrequencyBindingBlockPos() {
+        return host.getBlockPos();
+    }
 
     @Override
     public int getCurrentProgress() {

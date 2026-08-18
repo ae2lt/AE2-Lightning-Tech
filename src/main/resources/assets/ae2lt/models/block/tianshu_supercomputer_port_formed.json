@@ -1,7 +1,0 @@
-{
-  "parent": "minecraft:block/cube_all",
-  "textures": {
-    "all": "ae2lt:block/tianshu/tianshu_supercomputer_port_formed",
-    "particle": "ae2lt:block/tianshu/tianshu_supercomputer_port_formed"
-  }
-}

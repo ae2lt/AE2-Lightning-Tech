@@ -1,6 +1,5 @@
 package com.moakiee.ae2lt.client;
 
-import net.minecraft.client.gui.screens.MenuScreens;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraftforge.api.distmarker.Dist;
@@ -12,32 +11,20 @@ import appeng.client.gui.style.StyleManager;
 
 import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.client.gui.FrequencyScreen;
-import com.moakiee.ae2lt.client.hub.DeviceHubScreen;
-import com.moakiee.ae2lt.integration.ae2wtlib.TianshuWirelessTerminalFactory;
 import com.moakiee.ae2lt.menu.AtmosphericIonizerMenu;
 import com.moakiee.ae2lt.menu.CrystalCatalyzerMenu;
 import com.moakiee.ae2lt.menu.FrequencyMenu;
 import com.moakiee.ae2lt.menu.LightningAssemblyChamberMenu;
 import com.moakiee.ae2lt.menu.LightningCollectorMenu;
 import com.moakiee.ae2lt.menu.LightningSimulationChamberMenu;
-import com.moakiee.ae2lt.menu.MatrixControllerMenu;
-import com.moakiee.ae2lt.menu.MatrixPortMenu;
-import com.moakiee.ae2lt.menu.OverloadDeviceWorkbenchMenu;
 import com.moakiee.ae2lt.menu.OverloadPatternEncoderMenu;
 import com.moakiee.ae2lt.menu.OverloadProcessingFactoryMenu;
 import com.moakiee.ae2lt.menu.OverloadedInterfaceMenu;
 import com.moakiee.ae2lt.menu.OverloadedPatternProviderMenu;
 import com.moakiee.ae2lt.menu.OverloadedPowerSupplyMenu;
-import com.moakiee.ae2lt.menu.PigmeePatternProviderMenu;
-import com.moakiee.ae2lt.menu.PigmeeMolecularAssemblerMenu;
 import com.moakiee.ae2lt.menu.TeslaCoilMenu;
-import com.moakiee.ae2lt.menu.TianshuSupercomputerControllerMenu;
-import com.moakiee.ae2lt.menu.TianshuPatternEncodingTermMenu;
-import com.moakiee.ae2lt.menu.TianshuWirelessPatternEncodingTermMenu;
-import com.moakiee.ae2lt.menu.TianshuSeedStorageMenu;
-import com.moakiee.ae2lt.menu.VoidCellMenu;
-import com.moakiee.ae2lt.menu.hub.DeviceHubMenu;
 import com.moakiee.ae2lt.registry.ModBlocks;
+import net.minecraft.client.gui.screens.MenuScreens;
 
 /**
  * Client event: binds MenuType to Screen.
@@ -49,10 +36,7 @@ public class ModScreens {
     public static void registerScreens(FMLClientSetupEvent event) {
         event.enqueueWork(() -> {
             MenuScreens.register(OverloadedPatternProviderMenu.TYPE, ModScreens::createOverloadedPatternProviderScreen);
-            MenuScreens.register(PigmeePatternProviderMenu.TYPE, ModScreens::createPigmeePatternProviderScreen);
-            MenuScreens.register(PigmeeMolecularAssemblerMenu.TYPE, ModScreens::createPigmeeMolecularAssemblerScreen);
             MenuScreens.register(OverloadPatternEncoderMenu.TYPE, OverloadPatternEncoderScreen::new);
-            MenuScreens.register(OverloadDeviceWorkbenchMenu.TYPE, OverloadDeviceWorkbenchScreen::new);
             MenuScreens.register(OverloadedInterfaceMenu.TYPE, ModScreens::createOverloadedInterfaceScreen);
             if (ModBlocks.hasOverloadedPowerSupply()) {
                 MenuScreens.register(OverloadedPowerSupplyMenu.TYPE, ModScreens::createOverloadedPowerSupplyScreen);
@@ -65,61 +49,13 @@ public class ModScreens {
             MenuScreens.register(AtmosphericIonizerMenu.TYPE, ModScreens::createAtmosphericIonizerScreen);
             MenuScreens.register(FrequencyMenu.TYPE, FrequencyScreen::new);
             MenuScreens.register(CrystalCatalyzerMenu.TYPE, ModScreens::createCrystalCatalyzerScreen);
-            MenuScreens.register(DeviceHubMenu.TYPE, DeviceHubScreen::new);
-            MenuScreens.register(MatrixControllerMenu.TYPE, MatrixControllerScreen::new);
-            MenuScreens.register(MatrixPortMenu.TYPE, MatrixPortScreen::new);
-            MenuScreens.register(TianshuSupercomputerControllerMenu.TYPE, TianshuSupercomputerControllerScreen::new);
-            MenuScreens.register(TianshuPatternEncodingTermMenu.TYPE, ModScreens::createTianshuPatternEncodingTermScreen);
-            if (TianshuWirelessTerminalFactory.isAvailable()) {
-                MenuScreens.register(TianshuWirelessPatternEncodingTermMenu.TYPE,
-                        ModScreens::createTianshuWirelessPatternEncodingTermScreen);
-            }
-            MenuScreens.register(TianshuSeedStorageMenu.TYPE, ModScreens::createTianshuSeedStorageScreen);
-            MenuScreens.register(VoidCellMenu.TYPE, ModScreens::createVoidCellScreen);
         });
-    }
-
-    private static TianshuPatternEncodingTermScreen<TianshuPatternEncodingTermMenu> createTianshuPatternEncodingTermScreen(
-            TianshuPatternEncodingTermMenu menu, Inventory inv, Component title) {
-        var style = StyleManager.loadStyleDoc("/screens/terminals/tianshu_pattern_encoding_terminal.json");
-        return new TianshuPatternEncodingTermScreen<>(menu, inv, title, style);
-    }
-
-    private static TianshuWirelessPatternEncodingTermScreen createTianshuWirelessPatternEncodingTermScreen(
-            TianshuWirelessPatternEncodingTermMenu menu, Inventory inv, Component title) {
-        var style = StyleManager.loadStyleDoc(
-                "/screens/wireless_tianshu_pattern_encoding_terminal.json");
-        return new TianshuWirelessPatternEncodingTermScreen(menu, inv, title, style);
-    }
-
-    private static TianshuSeedStorageScreen createTianshuSeedStorageScreen(
-            TianshuSeedStorageMenu menu, Inventory inv, Component title) {
-        var style = StyleManager.loadStyleDoc("/screens/tianshu_seed_storage.json");
-        return new TianshuSeedStorageScreen(menu, inv, title, style);
-    }
-
-    private static VoidCellScreen createVoidCellScreen(
-            VoidCellMenu menu, Inventory inv, Component title) {
-        var style = StyleManager.loadStyleDoc("/screens/void_cell.json");
-        return new VoidCellScreen(menu, inv, title, style);
     }
 
     private static OverloadedPatternProviderScreen<OverloadedPatternProviderMenu> createOverloadedPatternProviderScreen(
             OverloadedPatternProviderMenu menu, Inventory inv, Component title) {
         var style = StyleManager.loadStyleDoc("/screens/overloaded_pattern_provider.json");
-        return new OverloadedPatternProviderScreen<>(menu, inv, title, style);
-    }
-
-    private static PigmeePatternProviderScreen createPigmeePatternProviderScreen(
-            PigmeePatternProviderMenu menu, Inventory inv, Component title) {
-        var style = StyleManager.loadStyleDoc("/screens/pigmee_pattern_provider.json");
-        return new PigmeePatternProviderScreen(menu, inv, title, style);
-    }
-
-    private static PigmeeMolecularAssemblerScreen createPigmeeMolecularAssemblerScreen(
-            PigmeeMolecularAssemblerMenu menu, Inventory inv, Component title) {
-        var style = StyleManager.loadStyleDoc("/screens/pigmee_molecular_assembler.json");
-        return new PigmeeMolecularAssemblerScreen(menu, inv, title, style);
+        return new OverloadedPatternProviderScreen(menu, inv, title, style);
     }
 
     private static OverloadedInterfaceScreen createOverloadedInterfaceScreen(
@@ -177,3 +113,4 @@ public class ModScreens {
     }
 
 }
+

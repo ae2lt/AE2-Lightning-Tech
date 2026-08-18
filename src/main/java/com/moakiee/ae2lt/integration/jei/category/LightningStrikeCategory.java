@@ -63,9 +63,11 @@ public class LightningStrikeCategory implements IRecipeCategory<LightningStrikeR
 
     private static final int TEXT_COLOR = 0x404040;
 
+    private final IDrawable background;
     private final IDrawable icon;
 
     public LightningStrikeCategory(IGuiHelper guiHelper) {
+        this.background = guiHelper.createBlankDrawable(WIDTH, HEIGHT);
         this.icon = guiHelper.createDrawableIngredient(LightningJeiIngredients.TYPE, LightningKey.HIGH_VOLTAGE);
     }
 
@@ -80,13 +82,8 @@ public class LightningStrikeCategory implements IRecipeCategory<LightningStrikeR
     }
 
     @Override
-    public int getWidth() {
-        return WIDTH;
-    }
-
-    @Override
-    public int getHeight() {
-        return HEIGHT;
+    public IDrawable getBackground() {
+        return background;
     }
 
     @Override

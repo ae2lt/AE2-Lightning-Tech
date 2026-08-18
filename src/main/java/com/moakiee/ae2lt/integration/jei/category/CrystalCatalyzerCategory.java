@@ -52,7 +52,7 @@ public class CrystalCatalyzerCategory implements IRecipeCategory<CrystalCatalyze
     private static final int TEXTURE_WIDTH = 256;
     private static final int TEXTURE_HEIGHT = 256;
 
-    // category 鍧愭爣 = GUI 鍧愭爣 鈭?鑳屾櫙鍋忕Щ
+    // category 坐标 = GUI 坐标 − 背景偏移
     private static final int FLUID_X = 26 - BACKGROUND_U;   // 4
     private static final int FLUID_Y = 18 - BACKGROUND_V;   // 4
     private static final int FLUID_WIDTH = 16;
@@ -73,11 +73,11 @@ public class CrystalCatalyzerCategory implements IRecipeCategory<CrystalCatalyze
     private static final long PROCESS_CYCLE_MS_DUST = 2_000L;
 
     private static final int ENERGY_TEXT_Y = BACKGROUND_HEIGHT + 2;       // 64
-    private static final int TIME_TEXT_Y = BACKGROUND_HEIGHT + 12;       // 74
-    private static final int LIGHTNING_TEXT_Y = BACKGROUND_HEIGHT + 22;  // 84
-    private static final int MATRIX_LINE1_Y = BACKGROUND_HEIGHT + 32;   // 94
-    private static final int MATRIX_LINE2_Y = BACKGROUND_HEIGHT + 42;   // 104
-    private static final int HEIGHT = MATRIX_LINE2_Y + 10;              // 114
+    private static final int TIME_TEXT_Y = BACKGROUND_HEIGHT + 12;        // 74
+    private static final int LIGHTNING_TEXT_Y = BACKGROUND_HEIGHT + 22;   // 84
+    private static final int MATRIX_LINE1_Y = BACKGROUND_HEIGHT + 32;     // 94
+    private static final int MATRIX_LINE2_Y = BACKGROUND_HEIGHT + 42;     // 104
+    private static final int HEIGHT = MATRIX_LINE2_Y + 10;                // 114
 
     private final IDrawable icon;
     private final IDrawable background;
@@ -167,7 +167,6 @@ public class CrystalCatalyzerCategory implements IRecipeCategory<CrystalCatalyze
         drawProcessOverlay(guiGraphics, recipe.mode());
 
         var font = Minecraft.getInstance().font;
-
         var energyText = Component.translatable(
                 "jei.ae2lt.crystal_catalyzer.energy",
                 formatCompactEnergy(recipe.energyPerCycle()));
@@ -175,8 +174,7 @@ public class CrystalCatalyzerCategory implements IRecipeCategory<CrystalCatalyze
         guiGraphics.drawString(font, energyText, energyX, ENERGY_TEXT_Y, 0x404040, false);
 
         String timeStr = recipe.mode() == Mode.CRYSTAL ? "1s" : "2s";
-        var timeText = Component.translatable(
-                "jei.ae2lt.crystal_catalyzer.time", timeStr);
+        var timeText = Component.translatable("jei.ae2lt.crystal_catalyzer.time", timeStr);
         int timeX = (WIDTH - font.width(timeText)) / 2;
         guiGraphics.drawString(font, timeText, timeX, TIME_TEXT_Y, 0x404040, false);
 
@@ -244,3 +242,4 @@ public class CrystalCatalyzerCategory implements IRecipeCategory<CrystalCatalyze
         return rounded + suffix;
     }
 }
+

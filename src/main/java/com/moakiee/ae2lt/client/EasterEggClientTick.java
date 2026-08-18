@@ -3,9 +3,9 @@ package com.moakiee.ae2lt.client;
 import com.moakiee.ae2lt.AE2LightningTech;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
 import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.fml.common.Mod;
 
 @Mod.EventBusSubscriber(modid = AE2LightningTech.MODID, value = Dist.CLIENT)
 public final class EasterEggClientTick {
@@ -14,6 +14,9 @@ public final class EasterEggClientTick {
 
     @SubscribeEvent
     public static void onClientTick(TickEvent.ClientTickEvent event) {
+        if (event.phase != TickEvent.Phase.END) {
+            return;
+        }
         EasterEggOverlay.tick();
     }
 
@@ -30,3 +33,4 @@ public final class EasterEggClientTick {
         EasterEggOverlay.reset();
     }
 }
+

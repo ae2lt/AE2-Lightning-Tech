@@ -126,9 +126,9 @@ public final class LightningStrikeRecipe implements Recipe<LightningStrikeRecipe
             return new LightningStrikeRecipe(
                     recipeId,
                     GsonHelper.getAsBoolean(json, "requires_natural_lightning", false),
-                    BuiltInRegistries.BLOCK.getOptional(ResourceLocation.tryParse(GsonHelper.getAsString(json, "center_input")))
+                    BuiltInRegistries.BLOCK.getOptional(new ResourceLocation(GsonHelper.getAsString(json, "center_input")))
                             .orElseThrow(() -> new IllegalArgumentException("Unknown block id for center_input")),
-                    BuiltInRegistries.BLOCK.getOptional(ResourceLocation.tryParse(GsonHelper.getAsString(json, "center_output")))
+                    BuiltInRegistries.BLOCK.getOptional(new ResourceLocation(GsonHelper.getAsString(json, "center_output")))
                             .orElseThrow(() -> new IllegalArgumentException("Unknown block id for center_output")),
                     requirements);
         }

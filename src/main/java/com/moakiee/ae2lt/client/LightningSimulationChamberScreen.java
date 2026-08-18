@@ -77,7 +77,7 @@ public class LightningSimulationChamberScreen extends AEBaseScreen<LightningSimu
         addToLeftToolbar(this.autoExportButton);
 
         this.configureOutputButton = new ActionButton(
-                ActionItems.TERMINAL_SETTINGS,
+                ActionItems.WRENCH,
                 () -> switchToScreen(new LightningSimulationOutputConfigScreen(this)));
         this.configureOutputButton.setMessage(
                 Component.translatable("ae2lt.gui.lightning_simulation.configure_output"));

@@ -69,7 +69,7 @@ public class LightningAssemblyChamberScreen extends AEBaseScreen<LightningAssemb
         addToLeftToolbar(this.autoExportButton);
 
         this.configureOutputButton = new ActionButton(
-                ActionItems.TERMINAL_SETTINGS,
+                ActionItems.WRENCH,
                 () -> switchToScreen(new LightningAssemblyOutputConfigScreen(this)));
         this.configureOutputButton.setMessage(
                 Component.translatable("ae2lt.gui.lightning_assembly.configure_output"));

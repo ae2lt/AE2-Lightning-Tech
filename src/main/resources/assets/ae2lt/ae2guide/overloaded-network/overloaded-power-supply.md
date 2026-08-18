@@ -1,8 +1,10 @@
 ---
 navigation:
   title: Overloaded Power Supply
-  icon: ae2lt:overload_crystal
+  icon: ae2lt:overloaded_power_supply
   parent: overloaded-network/overloaded-network-index.md
+item_ids:
+  - ae2lt:overloaded_power_supply
 ---
 
 # Overloaded Power Supply
@@ -41,24 +43,24 @@ Overload Mode requires a Flux Cell in the cell slot. The cell becomes the active
 * **Ticket rotation** (~20 tick tickets) keeps active targets primed without re-scanning every tick
 * **2× cost multiplier** on cell-buffered FE — the energy per delivered FE is doubled
 * Refuses to run if no Flux Cell is installed (status: *Missing cell*)
-* If the cell is removed mid-tick, any buffered FE not yet delivered is returned to the ME network — no FE is lost
+* If the cell is removed mid-tick, any in-flight buffered FE is flushed back to the ME network — no FE is lost
 
 ## Setting Up
 
 1. Place the **Overloaded Power Supply** somewhere on your ME network
 2. (Optional) Insert a Flux Cell into the cell slot to unlock Overload Mode
 3. Use the **Overloaded Wireless Connect Tool**:
-   1. **Right-click** the Overloaded Power Supply to select it
+   1. **Shift + right-click** the Overloaded Power Supply to select it
    2. **Right-click the face** of each target machine to bind it as an FE recipient
 4. Open the supply's GUI and choose Normal or Overload Mode
 
 Wireless links must be in the same dimension and within **128 blocks** by default. The distance limit is configurable; setting it to 0 disables the limit. One supply can store up to **64** wireless connections. Hold **Ctrl** while right-clicking a target to batch-toggle contiguous machines of the same type.
+
+The same wireless connect tool used for the Overloaded ME Interface and the Overloaded Pattern Provider works here — one tool, three hosts.
 
 ## Tips
 
 * For most bases, Normal Mode is enough — it runs continuously and has no extra cost multiplier
 * Use Overload Mode for clusters of high-draw machines, such as mass-crafting setups, when the 2× cost is acceptable
 * A higher-tier Flux Cell gives a larger burst buffer, which smooths short ME-network FE shortages
-* The supply can be used together with the Overloaded ME Interface and Overloaded Pattern Provider
-
-> Note: Overload Mode can cause considerable lag. Avoid running multiple supplies under heavy load unless necessary, as this may crash the game.
+* You can mix the supply with the Overloaded ME Interface and Overloaded Pattern Provider; all three share the same per-target scheduler

@@ -37,7 +37,7 @@ minecraft {
             workingDirectory project.file('run')
             property 'forge.logging.markers', 'REGISTRIES'
             property 'forge.logging.console.level', 'debug'
-            property 'thunderbolt.mixinAudit', 'true'
+            args "-mixin.config=${mod_id}.mixins.json"
 
             mods {
                 "${mod_id}" {
@@ -56,13 +56,7 @@ minecraft {
         }
 
         gameTestServer {
-            // Keep worlds from different optional-dependency matrices isolated. For example:
-            // -Pgame_test_runtime_profile=minimum -Penable_appflux_runtime=false ...
-            workingDirectory project.file(
-                    "run-gametest/${project.findProperty('game_test_runtime_profile') ?: 'default'}")
-            // The focused drop test reuses a tiny vanilla structure template, so its template
-            // namespace must be enabled alongside this mod's own GameTest namespace.
-            property 'forge.enabledGameTestNamespaces', "${mod_id},minecraft"
+            property 'forge.enabledGameTestNamespaces', mod_id
         }
 
         data {
@@ -74,6 +68,7 @@ minecraft {
 
 mixin {
     add sourceSets.main, "${mod_id}.refmap.json"
+    config "${mod_id}.mixins.json"
 }
 
 sourceSets.main.resources { srcDir 'src/generated/resources' }
@@ -88,7 +83,6 @@ repositories {
             includeGroup 'org.appliedenergistics'
             includeGroup 'mekanism'
             includeGroup 'dev.technici4n'
-            includeGroup 'de.mari_023'
         }
     }
     maven {
@@ -100,41 +94,6 @@ repositories {
             includeGroup 'curse.maven'
         }
     }
-    maven {
-        name = "Sleeping Town"
-        url = "https://repo.sleeping.town/"
-        content {
-            includeGroup "dev.emi"
-        }
-    }
-    maven {
-        name = "Curios"
-        url = "https://maven.theillusivec4.top/"
-        content {
-            includeGroup "top.theillusivec4.curios"
-        }
-    }
-    maven {
-        name = "Modrinth"
-        url = "https://api.modrinth.com/maven"
-        content {
-            includeGroup "maven.modrinth"
-        }
-    }
-    maven {
-        name = "Architectury"
-        url = "https://maven.architectury.dev/"
-        content {
-            includeGroup "dev.architectury"
-        }
-    }
-    maven {
-        name = "Shedaniel"
-        url = "https://maven.shedaniel.me/"
-        content {
-            includeGroup "me.shedaniel.cloth"
-        }
-    }
 }
 
 dependencies {
@@ -144,110 +103,24 @@ dependencies {
 
     compileOnly fg.deobf("mezz.jei:jei-${minecraft_version}-common-api:${jei_version}")
     compileOnly fg.deobf("mezz.jei:jei-${minecraft_version}-forge-api:${jei_version}")
-    // Full jar needed at compile time for mixin targets inside the JEI GUI
-    // (RecipeTransferButton lives in mezz.jei.gui.recipes, not in the api jars).
-    compileOnly fg.deobf("mezz.jei:jei-${minecraft_version}-forge:${jei_version}")
-    if ((findProperty('enable_jei_runtime') ?: 'true').toBoolean()) {
-        runtimeOnly fg.deobf("mezz.jei:jei-${minecraft_version}-forge:${jei_version}")
-    }
-
-    compileOnly fg.deobf("dev.emi:emi-forge:${emi_version}:api")
-    if ((findProperty('enable_emi_runtime') ?: 'true').toBoolean()) {
-        runtimeOnly fg.deobf("dev.emi:emi-forge:${emi_version}")
-    }
+    runtimeOnly fg.deobf("mezz.jei:jei-${minecraft_version}-forge:${jei_version}")
 
     compileOnly fg.deobf("curse.maven:jade-324717:${jade_file_id}")
-    if ((findProperty('enable_jade_runtime') ?: 'true').toBoolean()) {
-        runtimeOnly fg.deobf("curse.maven:jade-324717:${jade_file_id}")
-    }
+    runtimeOnly fg.deobf("curse.maven:jade-324717:${jade_file_id}")
 
     compileOnly fg.deobf("curse.maven:applied-flux-965012:${appflux_file_id}")
-    if ((findProperty('enable_appflux_runtime') ?: 'true').toBoolean()) {
-        runtimeOnly fg.deobf("curse.maven:applied-flux-965012:${appflux_file_id}")
-    }
+    runtimeOnly fg.deobf("curse.maven:applied-flux-965012:${appflux_file_id}")
     runtimeOnly fg.deobf("org.appliedenergistics:guideme:${guideme_version}")
     runtimeOnly fg.deobf("curse.maven:glodium-957920:${glodium_file_id}")
 
-    compileOnly fg.deobf("curse.maven:ex-pattern-provider-892005:${extendedae_file_id}")
-    if ((findProperty('enable_extendedae_runtime') ?: 'true').toBoolean()) {
-        runtimeOnly fg.deobf("curse.maven:ex-pattern-provider-892005:${extendedae_file_id}")
-    }
+    compileOnly fg.deobf("curse.maven:extendedae-892005:${extendedae_file_id}")
+    runtimeOnly fg.deobf("curse.maven:extendedae-892005:${extendedae_file_id}")
 
     compileOnly fg.deobf("curse.maven:flux-networks-248020:${flux_networks_file_id}")
-    if ((findProperty('enable_flux_networks_runtime') ?: 'true').toBoolean()) {
-        runtimeOnly fg.deobf("curse.maven:flux-networks-248020:${flux_networks_file_id}")
-    }
+    runtimeOnly fg.deobf("curse.maven:flux-networks-248020:${flux_networks_file_id}")
 
     compileOnly fg.deobf("mekanism:Mekanism:${mekanism_version}:all")
-    if ((findProperty('enable_mekanism_runtime') ?: 'true').toBoolean()) {
-        runtimeOnly fg.deobf("mekanism:Mekanism:${mekanism_version}:all")
-    }
-
-    // Thunderbolt Core — AE2 infrastructure layer (fast crafting planner, channel/batch algorithms).
-    // Provided at runtime as a separate mod jar in the modpack.
-    compileOnly(fg.deobf("com.moakiee.thunderbolt:thunderbolt:${thunderbolt_version}")) {
-        transitive = false
-    }
-    runtimeOnly(fg.deobf("com.moakiee.thunderbolt:thunderbolt:${thunderbolt_version}")) {
-        transitive = false
-    }
-
-    // Curios integration — frequency card / armor charm slots.
-    compileOnly fg.deobf("top.theillusivec4.curios:curios-forge:${curios_version}:api")
-    if ((findProperty('enable_curios_runtime') ?: 'true').toBoolean()) {
-        runtimeOnly fg.deobf("top.theillusivec4.curios:curios-forge:${curios_version}")
-    }
-
-    // Optional Polymorph integration for the Tianshu pattern terminal recipe selector.
-    // Runtime jar is supplied by the modpack; only the API is needed at compile time.
-    compileOnly fg.deobf("curse.maven:polymorph-388800:6450982")
-
-    // Optional integrations. Resolve their public release jars reproducibly instead of relying
-    // on an untracked machine-local libs/ directory.
-    compileOnly fg.deobf("maven.modrinth:advancedae:${advancedae_version}")
-    // Exercise AdvancedAE's complete integration path in normal development runs. Pass
-    // -Penable_advancedae_runtime=false to verify the no-integration startup path.
-    if ((findProperty('enable_advancedae_runtime') ?: 'true').toBoolean()) {
-        runtimeOnly fg.deobf("maven.modrinth:advancedae:${advancedae_version}")
-        // AdvancedAE instantiates GeoItem implementations but its 1.20.1 metadata does not
-        // declare GeckoLib. Mirror the dependency from its categorized 1.20.1 source project.
-        runtimeOnly fg.deobf("curse.maven:geckolib-388172:${advancedae_geckolib_file_id}")
-    }
-    // ExtendedAE Plus is optional in production. Pin and expose its real Forge 1.20.1
-    // artifact for reproducible compatibility smoke tests:
-    // -Penable_extendedae_plus_runtime=true.
-    if ((findProperty('enable_extendedae_plus_runtime') ?: 'false').toBoolean()) {
-        runtimeOnly fg.deobf("maven.modrinth:extendedae-plus:${extendedae_plus_version}")
-    }
-    compileOnly fg.deobf("maven.modrinth:inventory-profiles-next:${inventory_profiles_next_version}")
-    compileOnly fg.deobf("maven.modrinth:applied-energistics-2-wireless-terminals:${ae2wtlib_version}")
-    // Exercise the optional wireless-terminal integration in normal development runs. Pass
-    // -Penable_ae2wtlib_runtime=false to verify the no-integration startup path as well.
-    if ((findProperty('enable_ae2wtlib_runtime') ?: 'true').toBoolean()) {
-        runtimeOnly fg.deobf("maven.modrinth:applied-energistics-2-wireless-terminals:${ae2wtlib_version}")
-        runtimeOnly fg.deobf("dev.architectury:architectury-forge:${architectury_version}")
-        runtimeOnly fg.deobf("me.shedaniel.cloth:cloth-config-forge:${cloth_config_version}")
-    }
-
-    // Veil is an optional client rendering backend. Keep its classes out of the native
-    // fallback path; modpacks supply Veil's shaded distribution jar at runtime.
-    // The unclassified artifact is Veil's shaded distribution jar. ForgeGradle flattens it
-    // onto the development module path, where its bundled LWJGL packages conflict with
-    // Minecraft's LWJGL module. The published slim classifier is the correct form for the
-    // deobfuscated compile classpath.
-    compileOnly(fg.deobf("foundry.veil:Veil-forge-${minecraft_version}:${veil_version}:slim")) {
-        transitive = false
-    }
-
-    compileOnly "org.jetbrains:annotations:${jetbrains_annotations_version}"
-
-    // Keep portable resource and pure-logic regressions executable on the Forge 1.20.1 port.
-    testImplementation platform("org.junit:junit-bom:5.10.2")
-    testImplementation "org.junit.jupiter:junit-jupiter"
-    testImplementation(fg.deobf("com.moakiee.thunderbolt:thunderbolt:${thunderbolt_version}")) {
-        transitive = false
-    }
-    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+    runtimeOnly fg.deobf("mekanism:Mekanism:${mekanism_version}:all")
 
     annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
     compileOnly(annotationProcessor("io.github.llamalad7:mixinextras-common:${mixinextras_version}"))
@@ -258,12 +131,6 @@ dependencies {
 }
 
 tasks.named('processResources', ProcessResources).configure {
-    // MixinGradle includes the annotation-processor refmap in packaged jars, but ForgeGradle's
-    // exploded development mod only exposes compiled classes and processed resources. Copy the
-    // generated refmap so dev runs exercise the same remapped selectors as a published build.
-    dependsOn compileJava
-    from(layout.buildDirectory.file("tmp/compileJava/${mod_id}.refmap.json"))
-
     var replaceProperties = [
             minecraft_version: minecraft_version,
             minecraft_version_range: minecraft_version_range,
@@ -276,21 +143,6 @@ tasks.named('processResources', ProcessResources).configure {
             mod_version: mod_version,
             mod_authors: mod_authors,
             mod_description: mod_description,
-            ae2_version_range: ae2_version_range,
-            guideme_version_range: guideme_version_range,
-            jade_version_range: jade_version_range,
-            jei_version_range: jei_version_range,
-            emi_version_range: emi_version_range,
-            advancedae_version_range: advancedae_version_range,
-            extendedae_version_range: extendedae_version_range,
-            appflux_version_range: appflux_version_range,
-            flux_networks_version_range: flux_networks_version_range,
-            mekanism_version_range: mekanism_version_range,
-            curios_version_range: curios_version_range,
-            polymorph_version_range: polymorph_version_range,
-            thunderbolt_version_range: thunderbolt_version_range,
-            ae2wtlib_version_range: ae2wtlib_version_range,
-            veil_version_range: veil_version_range,
     ]
 
     inputs.properties replaceProperties
@@ -301,25 +153,6 @@ tasks.named('processResources', ProcessResources).configure {
 }
 
 tasks.named('jar', Jar).configure {
-    archiveClassifier = 'slim'
-
-    from('LICENSE') {
-        into 'META-INF'
-    }
-    from('LICENSE_ASSETS.md') {
-        into 'META-INF'
-    }
-    from('THIRD_PARTY_NOTICES.md') {
-        into 'META-INF'
-    }
-
-    // The development resource output contains the generated refmap as well, while
-    // MixinGradle contributes that same file directly to production jars. Keep one
-    // copy without weakening duplicate checks for unrelated archive entries.
-    filesMatching("${mod_id}.refmap.json") {
-        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-    }
-
     manifest {
         attributes([
                 'Specification-Title'     : mod_id,
@@ -331,7 +164,7 @@ tasks.named('jar', Jar).configure {
                 'Implementation-Timestamp': new Date().format("yyyy-MM-dd'T'HH:mm:ssZ"),
                 'TweakClass'              : 'org.spongepowered.asm.launch.MixinTweaker',
                 'TweakOrder'              : 0,
-                'MixinConfigs'            : "${mod_id}.mixins.json,ae2lt.mekanism.mixins.json,ae2lt.recipeviewer.mixins.json,ae2lt.ae2wtlib.mixins.json"
+                'MixinConfigs'            : "${mod_id}.mixins.json"
         ])
     }
 
@@ -340,16 +173,7 @@ tasks.named('jar', Jar).configure {
 
 tasks.named('jarJar', Jar).configure {
     archiveClassifier = ''
-    from('LICENSE') {
-        into 'META-INF'
-    }
-    from('LICENSE_ASSETS.md') {
-        into 'META-INF'
-    }
-    from('THIRD_PARTY_NOTICES.md') {
-        into 'META-INF'
-    }
-    finalizedBy 'reobfJarJar'
+    finalizedBy 'reobfJar'
 }
 
 afterEvaluate {
@@ -360,11 +184,4 @@ afterEvaluate {
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
-    options.compilerArgs << '-Xmaxerrs' << '5000' << '-Xlint:unchecked'
-    // Force English javac output so logs are stable across locales.
-    options.forkOptions.jvmArgs += ['-Duser.language=en', '-Duser.country=US']
-}
-
-tasks.named('test', Test).configure {
-    useJUnitPlatform()
 }

@@ -10,7 +10,7 @@
       ],
       "entries": [
         {
-          "type": "minecraft:dynamic",
+          "type": "minecraft:item",
           "name": "ae2lt:overloaded_power_supply"
         }
       ],

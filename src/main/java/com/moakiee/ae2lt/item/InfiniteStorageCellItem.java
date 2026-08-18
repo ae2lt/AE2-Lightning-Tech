@@ -5,23 +5,11 @@ import java.util.List;
 import net.minecraft.ChatFormatting;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 
-import appeng.api.networking.security.IActionSource;
-import appeng.api.stacks.AEKey;
-
-import com.moakiee.thunderbolt.ae2.cell.IIndexedStorageCellItem;
-import com.moakiee.thunderbolt.ae2.cell.IndexedCellSummary;
-import com.moakiee.thunderbolt.ae2.cell.IndexedStorage;
-import com.moakiee.thunderbolt.core.cell.ByteTracker;
-
-public final class InfiniteStorageCellItem extends AE2LTItem implements IIndexedStorageCellItem {
-
-    private static final ResourceLocation STORAGE_TYPE =
-            new ResourceLocation("ae2lt", "infinite_cell");
+public final class InfiniteStorageCellItem extends AE2LTItem {
 
     private final long capacityLo;
     private final long capacityHi;
@@ -74,40 +62,4 @@ public final class InfiniteStorageCellItem extends AE2LTItem implements IIndexed
     public int getBytesPerType() { return bytesPerType; }
     public int getMaxTypes() { return maxTypes; }
     public double getIdleDrain() { return idleDrain; }
-
-    @Override
-    public ResourceLocation storageType(ItemStack stack) {
-        return STORAGE_TYPE;
-    }
-
-    @Override
-    public String cellIdTag(ItemStack stack) {
-        // Retain the original identity tag so old AE2LT versions can still read rolled-back worlds.
-        return "ae2lt:cell_id";
-    }
-
-    @Override
-    public ByteTracker createByteTracker(ItemStack stack, IndexedStorage storage) {
-        var tracker = new ByteTracker(storage::getTotalTypes);
-        tracker.configure(bytesPerType, maxTypes, capacityLo, capacityHi);
-        return tracker;
-    }
-
-    @Override
-    public double idleDrain(ItemStack stack) {
-        return idleDrain;
-    }
-
-    @Override
-    public boolean accepts(ItemStack stack, AEKey key, IActionSource source) {
-        return true;
-    }
-
-    @Override
-    public void writeSummary(ItemStack stack, IndexedCellSummary summary) {
-        com.moakiee.ae2lt.util.ItemStackTagSupport.updateTag(stack, tag -> {
-            tag.putInt("ae2lt:types", summary.totalTypes());
-            tag.putLong("ae2lt:bytes", summary.usedBytes());
-        });
-    }
 }

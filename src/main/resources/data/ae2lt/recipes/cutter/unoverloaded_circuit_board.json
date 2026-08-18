@@ -7,10 +7,10 @@
   ],
   "type": "expatternprovider:circuit_cutter",
   "item_input": {
-    "amount": 1,
     "ingredient": {
       "item": "ae2lt:overload_crystal_block"
-    }
+    },
+    "amount": 1
   },
   "output": {
     "count": 4,

@@ -1,8 +1,0 @@
-{
-  "parent": "ae2:block/molecular_assembler",
-  "render_type": "cutout",
-  "textures": {
-    "particle": "ae2lt:block/pigmee_molecular_assembler",
-    "outside": "ae2lt:block/pigmee_molecular_assembler"
-  }
-}

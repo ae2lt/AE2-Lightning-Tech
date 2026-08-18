@@ -1,7 +1,6 @@
 package com.moakiee.ae2lt.client;
 
 final class WirelessConnectorRenderFilter {
-
     private WirelessConnectorRenderFilter() {
     }
 

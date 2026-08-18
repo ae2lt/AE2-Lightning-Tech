@@ -4,7 +4,6 @@ import com.moakiee.ae2lt.block.FumoBlock;
 import com.moakiee.ae2lt.item.FumoBlockItem;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
-import net.minecraft.world.item.Rarity;
 import net.minecraftforge.registries.RegistryObject;
 
 /**
@@ -16,13 +15,9 @@ public final class ModFumos {
     public static RegistryObject<FumoBlock> MOAKIEE_FUMO;
     public static RegistryObject<FumoBlock> CYSTRYSU_FUMO;
     public static RegistryObject<FumoBlock> PIGMEE_FUMO;
-    public static RegistryObject<FumoBlock> CREATIVE_PIGMEE_FUMO;
-    public static RegistryObject<FumoBlock> HYPERDIMENSIONAL_PIGMEE_FUMO;
     public static RegistryObject<BlockItem> MOAKIEE_FUMO_ITEM;
     public static RegistryObject<BlockItem> CYSTRYSU_FUMO_ITEM;
     public static RegistryObject<FumoBlockItem> PIGMEE_FUMO_ITEM;
-    public static RegistryObject<FumoBlockItem> CREATIVE_PIGMEE_FUMO_ITEM;
-    public static RegistryObject<FumoBlockItem> HYPERDIMENSIONAL_PIGMEE_FUMO_ITEM;
 
     private ModFumos() {
     }
@@ -39,22 +34,6 @@ public final class ModFumos {
         PIGMEE_FUMO_ITEM = ModItems.ITEMS.register("pigmee_fumo",
                 () -> new FumoBlockItem(PIGMEE_FUMO.get(), new Item.Properties(),
                         "tooltip.ae2lt.pigmee_fumo"));
-
-        CREATIVE_PIGMEE_FUMO = ModBlocks.BLOCKS.register("creative_pigmee_fumo", FumoBlock::new);
-        CREATIVE_PIGMEE_FUMO_ITEM = ModItems.ITEMS.register("creative_pigmee_fumo",
-                () -> new FumoBlockItem(
-                        CREATIVE_PIGMEE_FUMO.get(),
-                        new Item.Properties().rarity(Rarity.EPIC),
-                        "tooltip.ae2lt.creative_pigmee_fumo"));
-
-        HYPERDIMENSIONAL_PIGMEE_FUMO =
-                ModBlocks.BLOCKS.register("hyperdimensional_pigmee_fumo", FumoBlock::new);
-        HYPERDIMENSIONAL_PIGMEE_FUMO_ITEM =
-                ModItems.ITEMS.register("hyperdimensional_pigmee_fumo",
-                        () -> new FumoBlockItem(
-                                HYPERDIMENSIONAL_PIGMEE_FUMO.get(),
-                                new Item.Properties().rarity(Rarity.EPIC),
-                                "tooltip.ae2lt.hyperdimensional_pigmee_fumo"));
     }
 }
 

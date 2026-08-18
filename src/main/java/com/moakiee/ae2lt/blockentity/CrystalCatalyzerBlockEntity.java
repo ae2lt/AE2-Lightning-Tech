@@ -24,11 +24,6 @@ import net.minecraftforge.fluids.FluidStack;
 import net.minecraftforge.fluids.capability.IFluidHandler;
 import net.minecraftforge.fluids.capability.IFluidHandler.FluidAction;
 import net.minecraftforge.items.IItemHandlerModifiable;
-import net.minecraftforge.common.capabilities.Capability;
-import net.minecraftforge.common.capabilities.ForgeCapabilities;
-import net.minecraftforge.common.util.LazyOptional;
-
-import org.jetbrains.annotations.Nullable;
 
 import appeng.api.config.Actionable;
 import appeng.api.networking.IGridNode;
@@ -44,7 +39,6 @@ import appeng.api.stacks.AEKey;
 import appeng.api.upgrades.IUpgradeInventory;
 import appeng.api.upgrades.IUpgradeableObject;
 import appeng.api.upgrades.UpgradeInventories;
-import appeng.api.util.AECableType;
 import appeng.blockentity.grid.AENetworkBlockEntity;
 import appeng.menu.MenuOpener;
 import appeng.menu.locator.MenuLocator;
@@ -56,7 +50,6 @@ import com.moakiee.ae2lt.logic.AdjacentItemAutoExportHelper;
 import com.moakiee.ae2lt.logic.FluidStackHelper;
 import com.moakiee.ae2lt.logic.MemoryCardConfigSupport;
 import com.moakiee.ae2lt.machine.common.GridRecipeMachineHost;
-import com.moakiee.ae2lt.machine.common.LightningCollapseMatrixHost;
 import com.moakiee.ae2lt.machine.crystalcatalyzer.CrystalCatalyzerAutomationInventory;
 import com.moakiee.ae2lt.machine.crystalcatalyzer.CrystalCatalyzerFluidHandler;
 import com.moakiee.ae2lt.machine.crystalcatalyzer.CrystalCatalyzerInventory;
@@ -72,11 +65,9 @@ import com.moakiee.ae2lt.menu.CrystalCatalyzerMenu;
 import com.moakiee.ae2lt.registry.ModBlockEntities;
 import com.moakiee.ae2lt.registry.ModBlocks;
 import com.moakiee.ae2lt.util.LargeStackStreamCodecs;
-import com.moakiee.ae2lt.util.NativeStackDropHelper;
 
 public class CrystalCatalyzerBlockEntity extends AENetworkBlockEntity
         implements IActionHost, IUpgradeableObject, FrequencyBindingHost,
-        LightningCollapseMatrixHost,
         GridRecipeMachineHost<CrystalCatalyzerLockedRecipe, CrystalCatalyzerRecipeCandidate> {
 
     private static final String TAG_INVENTORY = "Inventory";
@@ -179,16 +170,6 @@ public class CrystalCatalyzerBlockEntity extends AENetworkBlockEntity
         return inventory;
     }
 
-    @Override
-    public IItemHandlerModifiable getMatrixInventory() {
-        return inventory;
-    }
-
-    @Override
-    public int getMatrixSlot() {
-        return CrystalCatalyzerInventory.SLOT_MATRIX;
-    }
-
     public IItemHandlerModifiable getAutomationInventory() {
         return automationInventory;
     }
@@ -273,12 +254,6 @@ public class CrystalCatalyzerBlockEntity extends AENetworkBlockEntity
         frequencyBinding.setRemoved();
         super.setRemoved();
         inventory.setLevel(null);
-    }
-
-    @Override
-    public void onChunkUnloaded() {
-        frequencyBinding.onChunkUnloaded();
-        super.onChunkUnloaded();
     }
 
     public Optional<CrystalCatalyzerRecipeCandidate> findProcessableRecipe() {
@@ -498,7 +473,7 @@ public class CrystalCatalyzerBlockEntity extends AENetworkBlockEntity
                 remainder -> {
                     ItemStack leftover = inventory.insertRecipeOutput(remainder, false);
                     if (!leftover.isEmpty() && level != null) {
-                        NativeStackDropHelper.popResource(level, worldPosition, leftover);
+                        Block.popResource(level, worldPosition, leftover);
                     }
                 },
                 direction -> exportTargetCache.resolve(serverLevel, worldPosition, direction));
@@ -619,6 +594,7 @@ public class CrystalCatalyzerBlockEntity extends AENetworkBlockEntity
         }
 
         clearLockedRecipe();
+        setWorking(false);
         pushOutResult();
         return true;
     }
@@ -654,10 +630,8 @@ public class CrystalCatalyzerBlockEntity extends AENetworkBlockEntity
     @Override
     public void setWorking(boolean working) {
         if (level != null) {
-            BlockState state = level.getBlockState(worldPosition);
-            if (state.is(ModBlocks.CRYSTAL_CATALYZER.get())
-                    && level.getBlockEntity(worldPosition) == this
-                    && state.hasProperty(CrystalCatalyzerBlock.WORKING)
+            BlockState state = getBlockState();
+            if (state.hasProperty(CrystalCatalyzerBlock.WORKING)
                     && state.getValue(CrystalCatalyzerBlock.WORKING) != working) {
                 level.setBlock(worldPosition, state.setValue(CrystalCatalyzerBlock.WORKING, working), Block.UPDATE_ALL);
             }
@@ -765,7 +739,7 @@ public class CrystalCatalyzerBlockEntity extends AENetworkBlockEntity
         for (int slot = 0; slot < inventory.getSlots(); slot++) {
             ItemStack stack = inventory.getStackInSlot(slot);
             if (!stack.isEmpty()) {
-                NativeStackDropHelper.addDrops(drops, stack);
+                drops.add(stack.copy());
             }
         }
     }
@@ -790,11 +764,8 @@ public class CrystalCatalyzerBlockEntity extends AENetworkBlockEntity
                                net.minecraft.nbt.CompoundTag output,
                                @org.jetbrains.annotations.Nullable Player player) {
         super.exportSettings(mode, output, player);
-        MemoryCardConfigSupport.exportAutoExportSettings(mode, output, autoExport, allowedOutputs, tag -> {
-            MemoryCardConfigSupport.writeEnum(tag, TAG_MODE, this.mode);
-            FrequencyBindingHelper.writeMemoryFrequency(tag, getFrequencyId());
-            MemoryCardConfigSupport.writeMatrixCount(tag, this);
-        });
+        MemoryCardConfigSupport.exportAutoExportSettings(mode, output, autoExport, allowedOutputs,
+                tag -> FrequencyBindingHelper.writeMemoryFrequency(tag, getFrequencyId()));
     }
 
     @Override
@@ -805,16 +776,7 @@ public class CrystalCatalyzerBlockEntity extends AENetworkBlockEntity
         MemoryCardConfigSupport.importAutoExportSettings(mode, input,
                 v -> this.autoExport = v,
                 sides -> this.allowedOutputs = sides,
-                tag -> {
-                    Mode importedMode = MemoryCardConfigSupport.readEnum(
-                            tag, TAG_MODE, Mode.class, this.mode);
-                    if (this.mode != importedMode) {
-                        this.mode = importedMode;
-                        abortProcessing();
-                    }
-                    FrequencyBindingHelper.importMemoryFrequency(tag, this::setFrequency);
-                    MemoryCardConfigSupport.restoreMatrixCount(tag, player, this);
-                },
+                tag -> FrequencyBindingHelper.importMemoryFrequency(tag, this::setFrequency),
                 () -> {
                     exportTargetCache.invalidate();
                     saveChanges();
@@ -893,23 +855,5 @@ public class CrystalCatalyzerBlockEntity extends AENetworkBlockEntity
         }
         return grid.getStorageService().getInventory()
                 .insert(key, amount, Actionable.MODULATE, IActionSource.ofMachine(this));
-    }
-    @Override
-    public <T> LazyOptional<T> getCapability(Capability<T> cap, @Nullable Direction side) {
-        if (cap == ForgeCapabilities.ITEM_HANDLER) {
-            return LazyOptional.of(this::getAutomationInventory).cast();
-        }
-        if (cap == ForgeCapabilities.FLUID_HANDLER) {
-            return LazyOptional.of(() -> getFluidHandlerCapability(side)).cast();
-        }
-        if (cap == ForgeCapabilities.ENERGY) {
-            return LazyOptional.of(() -> getEnergyStorageCapability(side)).cast();
-        }
-        return super.getCapability(cap, side);
-    }
-
-    @Override
-    public AECableType getCableConnectionType(Direction dir) {
-        return AECableType.SMART;
     }
 }

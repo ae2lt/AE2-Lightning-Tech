@@ -14,7 +14,6 @@ import appeng.api.crafting.IPatternDetails;
 import appeng.api.stacks.AEItemKey;
 import appeng.crafting.pattern.EncodedPatternItem;
 
-import com.moakiee.ae2lt.api.patternprovider.EncodedPatternPayloadValidator;
 import com.moakiee.ae2lt.overload.model.EncodedOverloadPattern;
 import com.moakiee.ae2lt.overload.pattern.OverloadPatternDecoder;
 import com.moakiee.ae2lt.overload.pattern.OverloadPatternPayload;
@@ -29,7 +28,7 @@ import com.moakiee.ae2lt.overload.pattern.SourcePatternSnapshot;
  * payload. It must not be treated as a transparent variant of a normal AE2
  * pattern item.
  */
-public class OverloadPatternItem extends EncodedPatternItem implements EncodedPatternPayloadValidator {
+public class OverloadPatternItem extends EncodedPatternItem {
     private static final String TAG_OVERLOAD_PATTERN = "OverloadPattern";
 
     public OverloadPatternItem(net.minecraft.world.item.Item.Properties properties) {
@@ -38,11 +37,6 @@ public class OverloadPatternItem extends EncodedPatternItem implements EncodedPa
 
     public boolean hasPayload(ItemStack stack) {
         return readRootTag(stack).contains(TAG_OVERLOAD_PATTERN, CompoundTag.TAG_COMPOUND);
-    }
-
-    @Override
-    public boolean hasEncodedPatternPayload(ItemStack stack) {
-        return hasPayload(stack);
     }
 
     public Optional<OverloadPatternPayload> readPayload(ItemStack stack) {

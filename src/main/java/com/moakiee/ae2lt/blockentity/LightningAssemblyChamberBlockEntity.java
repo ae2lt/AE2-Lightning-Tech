@@ -20,14 +20,6 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.energy.IEnergyStorage;
 import net.minecraftforge.items.IItemHandlerModifiable;
-import net.minecraftforge.common.capabilities.Capability;
-import net.minecraftforge.common.capabilities.ForgeCapabilities;
-import net.minecraftforge.common.util.LazyOptional;
-
-import org.jetbrains.annotations.Nullable;
-
-import com.moakiee.ae2lt.api.AE2LTCapabilities;
-import com.moakiee.ae2lt.me.GridLightningEnergyHandler;
 
 import appeng.api.config.Actionable;
 import appeng.api.config.PowerMultiplier;
@@ -43,7 +35,6 @@ import appeng.api.orientation.BlockOrientation;
 import appeng.api.upgrades.IUpgradeInventory;
 import appeng.api.upgrades.IUpgradeableObject;
 import appeng.api.upgrades.UpgradeInventories;
-import appeng.api.util.AECableType;
 import appeng.blockentity.grid.AENetworkBlockEntity;
 import appeng.menu.MenuOpener;
 import appeng.menu.locator.MenuLocator;
@@ -54,7 +45,6 @@ import com.moakiee.ae2lt.grid.FrequencyBindingHost;
 import com.moakiee.ae2lt.logic.AdjacentItemAutoExportHelper;
 import com.moakiee.ae2lt.logic.MemoryCardConfigSupport;
 import com.moakiee.ae2lt.machine.common.GridRecipeMachineHost;
-import com.moakiee.ae2lt.machine.common.LightningCollapseMatrixHost;
 import com.moakiee.ae2lt.machine.common.SingleOutputLightningRecipeExecutor;
 import com.moakiee.ae2lt.machine.lightningassembly.LightningAssemblyChamberAutomationInventory;
 import com.moakiee.ae2lt.machine.lightningassembly.LightningAssemblyChamberEnergyStorage;
@@ -68,11 +58,9 @@ import com.moakiee.ae2lt.me.key.LightningKey;
 import com.moakiee.ae2lt.registry.ModBlockEntities;
 import com.moakiee.ae2lt.registry.ModBlocks;
 import com.moakiee.ae2lt.util.LargeStackStreamCodecs;
-import com.moakiee.ae2lt.util.NativeStackDropHelper;
 
 public class LightningAssemblyChamberBlockEntity extends AENetworkBlockEntity
     implements IUpgradeableObject, FrequencyBindingHost,
-        LightningCollapseMatrixHost,
         GridRecipeMachineHost<LightningAssemblyLockedRecipe, LightningAssemblyRecipeCandidate> {
     private static final String TAG_INVENTORY = "Inventory";
     private static final String TAG_LOCKED_RECIPE = "LockedRecipe";
@@ -102,7 +90,6 @@ public class LightningAssemblyChamberBlockEntity extends AENetworkBlockEntity
     private boolean working;
     private boolean powered;
     private boolean autoExport;
-    private boolean removing;
     private ItemStack clientRecipeResult = ItemStack.EMPTY;
     private EnumSet<RelativeSide> allowedOutputs = EnumSet.noneOf(RelativeSide.class);
     private final AdjacentItemAutoExportHelper.DirectionalTargetCache exportTargetCache =
@@ -157,16 +144,6 @@ public class LightningAssemblyChamberBlockEntity extends AENetworkBlockEntity
         return inventory;
     }
 
-    @Override
-    public IItemHandlerModifiable getMatrixInventory() {
-        return inventory;
-    }
-
-    @Override
-    public int getMatrixSlot() {
-        return LightningAssemblyChamberInventory.SLOT_CATALYST;
-    }
-
     public IItemHandlerModifiable getAutomationInventory() {
         return automationInventory;
     }
@@ -208,10 +185,17 @@ public class LightningAssemblyChamberBlockEntity extends AENetworkBlockEntity
     }
 
     public void addConsumedEnergy(long amount) {
-        if (addConsumedEnergyUnchecked(amount)) {
-            saveChanges();
-            markForUpdate();
+        if (amount <= 0) {
+            return;
         }
+
+        if (amount > Long.MAX_VALUE - this.consumedEnergy) {
+            this.consumedEnergy = Long.MAX_VALUE;
+        } else {
+            this.consumedEnergy += amount;
+        }
+        saveChanges();
+        markForUpdate();
     }
 
     public void incrementProcessingTicksSpent() {
@@ -317,7 +301,7 @@ public class LightningAssemblyChamberBlockEntity extends AENetworkBlockEntity
                 remainder -> {
                     ItemStack leftover = inventory.insertRecipeOutput(remainder, false);
                     if (!leftover.isEmpty() && level != null) {
-                        NativeStackDropHelper.popResource(level, worldPosition, leftover);
+                        Block.popResource(level, worldPosition, leftover);
                     }
                 },
                 direction -> getExportTarget(serverLevel, direction));
@@ -404,6 +388,7 @@ public class LightningAssemblyChamberBlockEntity extends AENetworkBlockEntity
 
         clearLockedRecipe();
         resetProgressState();
+        setWorking(false);
         pushOutResult();
         return true;
     }
@@ -433,10 +418,8 @@ public class LightningAssemblyChamberBlockEntity extends AENetworkBlockEntity
         boolean changed = this.working != working;
         this.working = working;
         if (level != null) {
-            BlockState state = level.getBlockState(worldPosition);
-            if (state.is(ModBlocks.LIGHTNING_ASSEMBLY_CHAMBER.get())
-                    && level.getBlockEntity(worldPosition) == this
-                    && state.hasProperty(LightningAssemblyChamberBlock.WORKING)
+            BlockState state = getBlockState();
+            if (state.hasProperty(LightningAssemblyChamberBlock.WORKING)
                     && state.getValue(LightningAssemblyChamberBlock.WORKING) != working) {
                 level.setBlock(worldPosition, state.setValue(LightningAssemblyChamberBlock.WORKING, working), Block.UPDATE_ALL);
             } else if (changed) {
@@ -448,7 +431,7 @@ public class LightningAssemblyChamberBlockEntity extends AENetworkBlockEntity
     @Override
     public void onMainNodeStateChanged(IGridNodeListener.State reason) {
         frequencyBinding.onMainNodeStateChanged(reason);
-        if (!removing && reason != IGridNodeListener.State.GRID_BOOT) {
+        if (reason != IGridNodeListener.State.GRID_BOOT) {
             refreshPoweredState();
         }
     }
@@ -478,21 +461,13 @@ public class LightningAssemblyChamberBlockEntity extends AENetworkBlockEntity
 
     @Override
     public void setRemoved() {
-        removing = true;
         frequencyBinding.setRemoved();
         super.setRemoved();
     }
 
     @Override
-    public void onChunkUnloaded() {
-        frequencyBinding.onChunkUnloaded();
-        super.onChunkUnloaded();
-    }
-
-    @Override
     public void clearRemoved() {
         super.clearRemoved();
-        removing = false;
         frequencyBinding.clearRemoved();
     }
 
@@ -623,12 +598,12 @@ public class LightningAssemblyChamberBlockEntity extends AENetworkBlockEntity
         for (int slot = 0; slot < inventory.getSlots(); slot++) {
             ItemStack stack = inventory.getStackInSlot(slot);
             if (!stack.isEmpty()) {
-                NativeStackDropHelper.addDrops(drops, stack);
+                drops.add(stack.copy());
             }
         }
         for (var upgrade : upgrades) {
             if (!upgrade.isEmpty()) {
-                NativeStackDropHelper.addDrops(drops, upgrade);
+                drops.add(upgrade.copy());
             }
         }
     }
@@ -645,10 +620,8 @@ public class LightningAssemblyChamberBlockEntity extends AENetworkBlockEntity
                                net.minecraft.nbt.CompoundTag output,
                                @org.jetbrains.annotations.Nullable Player player) {
         super.exportSettings(mode, output, player);
-        MemoryCardConfigSupport.exportAutoExportSettings(mode, output, autoExport, allowedOutputs, tag -> {
-            FrequencyBindingHelper.writeMemoryFrequency(tag, getFrequencyId());
-            MemoryCardConfigSupport.writeMatrixCount(tag, this);
-        });
+        MemoryCardConfigSupport.exportAutoExportSettings(mode, output, autoExport, allowedOutputs,
+                tag -> FrequencyBindingHelper.writeMemoryFrequency(tag, getFrequencyId()));
     }
 
     @Override
@@ -659,10 +632,7 @@ public class LightningAssemblyChamberBlockEntity extends AENetworkBlockEntity
         MemoryCardConfigSupport.importAutoExportSettings(mode, input,
                 v -> this.autoExport = v,
                 sides -> this.allowedOutputs = sides,
-                tag -> {
-                    FrequencyBindingHelper.importMemoryFrequency(tag, this::setFrequency);
-                    MemoryCardConfigSupport.restoreMatrixCount(tag, player, this);
-                },
+                tag -> FrequencyBindingHelper.importMemoryFrequency(tag, this::setFrequency),
                 () -> {
                     invalidateExportTargets();
                     saveChanges();
@@ -706,25 +676,8 @@ public class LightningAssemblyChamberBlockEntity extends AENetworkBlockEntity
 
     @Override
     public void onEnergyConsumed(int consumed) {
-        if (consumed <= 0) {
-            return;
-        }
-        addConsumedEnergyUnchecked(consumed);
-        this.processingTicksSpent++;
-        saveChanges();
-        markForUpdate();
-    }
-
-    private boolean addConsumedEnergyUnchecked(long amount) {
-        if (amount <= 0L) {
-            return false;
-        }
-        if (amount > Long.MAX_VALUE - this.consumedEnergy) {
-            this.consumedEnergy = Long.MAX_VALUE;
-        } else {
-            this.consumedEnergy += amount;
-        }
-        return true;
+        addConsumedEnergy(consumed);
+        incrementProcessingTicksSpent();
     }
 
     private long simulateLightningExtract(LightningKey key, long amount) {
@@ -761,23 +714,5 @@ public class LightningAssemblyChamberBlockEntity extends AENetworkBlockEntity
         }
         return grid.getStorageService().getInventory()
                 .insert(key, amount, Actionable.MODULATE, IActionSource.ofMachine(this));
-    }
-    @Override
-    public <T> LazyOptional<T> getCapability(Capability<T> cap, @Nullable Direction side) {
-        if (cap == ForgeCapabilities.ITEM_HANDLER) {
-            return LazyOptional.of(this::getAutomationInventory).cast();
-        }
-        if (cap == ForgeCapabilities.ENERGY) {
-            return LazyOptional.of(() -> getEnergyStorageCapability(side)).cast();
-        }
-        if (cap == AE2LTCapabilities.LIGHTNING_ENERGY_BLOCK) {
-            return LazyOptional.of(() -> new GridLightningEnergyHandler(this)).cast();
-        }
-        return super.getCapability(cap, side);
-    }
-
-    @Override
-    public AECableType getCableConnectionType(Direction dir) {
-        return AECableType.SMART;
     }
 }

@@ -140,36 +140,26 @@ public final class OverloadProcessingRecipe implements Recipe<OverloadProcessing
         if (operations <= 0 || input == null) {
             return Optional.empty();
         }
-        return prepareMatch(input).flatMap(plan -> plan.allocate(operations));
-    }
-
-    /**
-     * Runs the operation-independent part of matching once: ingredient/slot
-     * pairing, per-requirement availability and requirement ordering. The
-     * returned plan can then cheaply allocate for any operation count, so
-     * parallel search does not re-run Ingredient.test per probe.
-     */
-    public Optional<MatchPlan> prepareMatch(OverloadProcessingRecipeInput input) {
-        if (input == null) {
-            return Optional.empty();
-        }
 
         List<OverloadProcessingRecipeInput.SlotStack> slotStacks = input.slotStacks();
         if (itemInputs.isEmpty()) {
             if (!slotStacks.isEmpty()) {
                 return Optional.empty();
             }
-            return Optional.of(new MatchPlan(slotStacks, List.of()));
+            return Optional.of(new OverloadProcessingRecipeMatch(new int[OverloadProcessingFactoryInventory.INPUT_SLOT_COUNT]));
         }
 
         if (slotStacks.isEmpty() || slotStacks.size() > OverloadProcessingFactoryInventory.INPUT_SLOT_COUNT) {
             return Optional.empty();
         }
 
-        List<PreparedRequirement> requirements = new ArrayList<>(itemInputs.size());
+        int[] slotFlexibility = new int[slotStacks.size()];
+        List<List<Integer>> rawMatches = new ArrayList<>(itemInputs.size());
+
         for (OverloadProcessingIngredient requirement : itemInputs) {
             List<Integer> matchingSlots = new ArrayList<>();
             long availableCount = 0L;
+            long scaledRequirement = (long) requirement.count() * operations;
 
             for (int slotIndex = 0; slotIndex < slotStacks.size(); slotIndex++) {
                 var slotStack = slotStacks.get(slotIndex);
@@ -179,34 +169,41 @@ public final class OverloadProcessingRecipe implements Recipe<OverloadProcessing
 
                 matchingSlots.add(slotIndex);
                 availableCount += slotStack.stack().getCount();
+                slotFlexibility[slotIndex]++;
             }
 
-            if (availableCount < requirement.count()) {
+            if (availableCount < scaledRequirement) {
                 return Optional.empty();
             }
 
+            rawMatches.add(matchingSlots);
+        }
+
+        List<RequirementState> requirements = new ArrayList<>(itemInputs.size());
+        for (int requirementIndex = 0; requirementIndex < itemInputs.size(); requirementIndex++) {
+            OverloadProcessingIngredient requirement = itemInputs.get(requirementIndex);
+            List<Integer> matchingSlots = rawMatches.get(requirementIndex);
             // When multiple slots can satisfy the same ingredient, prefer the
             // machine's natural top-to-bottom slot order so repeated crafts
             // drain upper rows before lower ones.
             matchingSlots.sort(Comparator
                     .comparingInt((Integer slotIndex) -> slotStacks.get(slotIndex).slot()));
-            int[] matchingSlotArray = new int[matchingSlots.size()];
-            for (int index = 0; index < matchingSlots.size(); index++) {
-                matchingSlotArray[index] = matchingSlots.get(index);
-            }
-            requirements.add(new PreparedRequirement(
-                    requirement.count(),
-                    matchingSlotArray,
-                    availableCount));
+            requirements.add(new RequirementState(
+                    multiplyExactToInt(requirement.count(), operations),
+                    matchingSlots.stream().mapToInt(Integer::intValue).toArray()));
         }
 
-        // Same ordering the scaled matcher used: fewest candidate slots first,
-        // larger demand first. Scaling by operations preserves this order.
         requirements.sort(Comparator
-                .comparingInt((PreparedRequirement requirement) -> requirement.matchingSlots().length)
-                .thenComparing(Comparator.comparingInt(PreparedRequirement::baseCount).reversed()));
+                .comparingInt(RequirementState::matchingSlotCount)
+                .thenComparing(Comparator.comparingInt(RequirementState::count).reversed()));
 
-        return Optional.of(new MatchPlan(slotStacks, requirements));
+        int[] remainingCounts = slotStacks.stream().mapToInt(slotStack -> slotStack.stack().getCount()).toArray();
+        int[] slotConsumptions = new int[OverloadProcessingFactoryInventory.INPUT_SLOT_COUNT];
+        if (!allocateRequirement(0, requirements, slotStacks, remainingCounts, slotConsumptions)) {
+            return Optional.empty();
+        }
+
+        return Optional.of(new OverloadProcessingRecipeMatch(slotConsumptions));
     }
 
     public boolean hasRequiredFluid(FluidStack availableFluid, int operations) {
@@ -286,60 +283,56 @@ public final class OverloadProcessingRecipe implements Recipe<OverloadProcessing
         return fluidInput;
     }
 
-    List<ItemStack> rawItemResults() {
+    private List<ItemStack> rawItemResults() {
         return itemResults;
     }
 
-    FluidStack rawFluidResult() {
+    private FluidStack rawFluidResult() {
         return fluidResult;
     }
 
     private boolean allocateRequirement(
             int requirementIndex,
-            List<PreparedRequirement> requirements,
+            List<RequirementState> requirements,
             List<OverloadProcessingRecipeInput.SlotStack> slotStacks,
-            int operations,
             int[] remainingCounts,
             int[] slotConsumptions) {
         if (requirementIndex >= requirements.size()) {
             return true;
         }
 
-        PreparedRequirement requirement = requirements.get(requirementIndex);
+        RequirementState requirement = requirements.get(requirementIndex);
         return allocateAcrossSlots(
                 requirementIndex,
                 requirements,
                 requirement,
                 slotStacks,
-                operations,
                 0,
-                requirement.baseCount() * operations,
+                requirement.count(),
                 remainingCounts,
                 slotConsumptions);
     }
 
     private boolean allocateAcrossSlots(
             int requirementIndex,
-            List<PreparedRequirement> requirements,
-            PreparedRequirement requirement,
+            List<RequirementState> requirements,
+            RequirementState requirement,
             List<OverloadProcessingRecipeInput.SlotStack> slotStacks,
-            int operations,
             int slotCursor,
             int needed,
             int[] remainingCounts,
             int[] slotConsumptions) {
         if (needed == 0) {
-            return allocateRequirement(
-                    requirementIndex + 1, requirements, slotStacks, operations, remainingCounts, slotConsumptions);
+            return allocateRequirement(requirementIndex + 1, requirements, slotStacks, remainingCounts, slotConsumptions);
         }
-        if (slotCursor >= requirement.matchingSlots().length) {
+        if (slotCursor >= requirement.matchingSlots.length) {
             return false;
         }
-        if (remainingCapacity(requirement.matchingSlots(), slotCursor, remainingCounts) < needed) {
+        if (remainingCapacity(requirement.matchingSlots, slotCursor, remainingCounts) < needed) {
             return false;
         }
 
-        int slotIndex = requirement.matchingSlots()[slotCursor];
+        int slotIndex = requirement.matchingSlots[slotCursor];
         int maxTake = Math.min(needed, remainingCounts[slotIndex]);
         int machineSlot = slotStacks.get(slotIndex).slot();
 
@@ -354,7 +347,6 @@ public final class OverloadProcessingRecipe implements Recipe<OverloadProcessing
                     requirements,
                     requirement,
                     slotStacks,
-                    operations,
                     slotCursor + 1,
                     needed - take,
                     remainingCounts,
@@ -387,64 +379,21 @@ public final class OverloadProcessingRecipe implements Recipe<OverloadProcessing
         return (int) result;
     }
 
-    private record PreparedRequirement(int baseCount, int[] matchingSlots, long available) {
-    }
+    private static final class RequirementState {
+        private final int count;
+        private final int[] matchingSlots;
 
-    /**
-     * Operation-independent match state for one recipe against one input
-     * snapshot. Slot pairing and requirement order are fixed; only the
-     * per-operation counts are scaled inside {@link #allocate(int)}.
-     */
-    public final class MatchPlan {
-        private final List<OverloadProcessingRecipeInput.SlotStack> slotStacks;
-        private final List<PreparedRequirement> requirements;
-
-        private MatchPlan(
-                List<OverloadProcessingRecipeInput.SlotStack> slotStacks,
-                List<PreparedRequirement> requirements) {
-            this.slotStacks = slotStacks;
-            this.requirements = requirements;
+        private RequirementState(int count, int[] matchingSlots) {
+            this.count = count;
+            this.matchingSlots = matchingSlots;
         }
 
-        /**
-         * Optimistic upper bound from per-requirement availability. Slots
-         * shared between requirements may reduce the real maximum, which
-         * {@link #allocate(int)} decides exactly.
-         */
-        public long maxOperationsByAvailability() {
-            long bound = Long.MAX_VALUE;
-            for (PreparedRequirement requirement : requirements) {
-                bound = Math.min(bound, requirement.available() / requirement.baseCount());
-            }
-            return bound;
+        private int count() {
+            return count;
         }
 
-        public Optional<OverloadProcessingRecipeMatch> allocate(int operations) {
-            if (operations <= 0) {
-                return Optional.empty();
-            }
-
-            int[] slotConsumptions = new int[OverloadProcessingFactoryInventory.INPUT_SLOT_COUNT];
-            if (requirements.isEmpty()) {
-                return Optional.of(new OverloadProcessingRecipeMatch(slotConsumptions));
-            }
-
-            for (PreparedRequirement requirement : requirements) {
-                if (requirement.available() < (long) requirement.baseCount() * operations) {
-                    return Optional.empty();
-                }
-            }
-
-            int[] remainingCounts = new int[slotStacks.size()];
-            for (int slotIndex = 0; slotIndex < remainingCounts.length; slotIndex++) {
-                remainingCounts[slotIndex] = slotStacks.get(slotIndex).stack().getCount();
-            }
-
-            if (!allocateRequirement(0, requirements, slotStacks, operations, remainingCounts, slotConsumptions)) {
-                return Optional.empty();
-            }
-
-            return Optional.of(new OverloadProcessingRecipeMatch(slotConsumptions));
+        private int matchingSlotCount() {
+            return matchingSlots.length;
         }
     }
 

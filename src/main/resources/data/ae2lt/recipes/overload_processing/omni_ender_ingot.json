@@ -10,7 +10,7 @@
   "inputs": [
     {
       "ingredient": {
-        "tag": "forge:dusts/ender_pearl"
+        "tag": "c:dusts/ender_pearl"
       },
       "count": 32
     },

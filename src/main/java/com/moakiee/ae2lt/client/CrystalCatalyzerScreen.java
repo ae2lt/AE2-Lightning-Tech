@@ -56,7 +56,7 @@ public class CrystalCatalyzerScreen extends AEBaseScreen<CrystalCatalyzerMenu> {
         addToLeftToolbar(this.autoExportButton);
 
         this.configureOutputButton = new ActionButton(
-                ActionItems.TERMINAL_SETTINGS,
+                ActionItems.WRENCH,
                 () -> switchToScreen(new CrystalCatalyzerOutputConfigScreen(this)));
         this.configureOutputButton.setMessage(
                 Component.translatable("ae2lt.gui.crystal_catalyzer.configure_output"));

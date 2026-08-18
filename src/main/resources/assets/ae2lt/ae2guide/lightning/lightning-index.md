@@ -10,9 +10,7 @@ navigation:
 
 Lightning is a brand-new storage type that this mod adds to the ME network. Just like items and fluids, you can see its amount in the terminal, store it inside storage cells, and have processing machines consume it.
 
-~~GenericStack~~
-
-## Lightning Tiers
+## Two Tiers
 
 | Tier | How it is produced |
 |------|---------------------|

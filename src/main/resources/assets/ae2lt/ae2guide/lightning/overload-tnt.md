@@ -39,17 +39,18 @@ Overload TNT respects cleanup safeguards: **bedrock, barrier blocks, end portal 
 
 ## Configuration and Disabling
 
-`overloadTnt.enableTerrainDamage` in `ae2lt-common.toml` controls the normal blast and is
-**enabled** by default. When disabled, its lightning rain, terrain searing, thunderstorm, and mob
-damage are skipped.
+The config option `overloadTnt.enableTerrainDamage` in `ae2lt-common.toml` (default **enabled**) controls the entire detonation behavior:
+
+* **Enabled**: the "Detonation Behavior" above plays out in full — lightning rain, terrain searing, thunderstorm, and mob damage included.
+* **Disabled**: Overload TNT **does nothing** when triggered — no lightning, no destruction, no damage. Effectively a dud.
 
 ## Usage Tips
 
 * Place it on top of a **solid block**, keep a large safety distance, and prefer open terrain. The blast radius is large enough to catch players who remain near the detonation area.
 * If you want terrain damage without killing nearby mobs, move anything you want to preserve outside the blast area first.
 
-## Field Log: An Anomalous Explosion
+## Field Log: An Anomalous Drop
 
-> **Trial 7.** Conditions matched the previous six; however, the observed curve diverged. A [Lightning Collapse Matrix](../materials/lightning-collapse-matrix.md) was lying on the ground near the impact point. After the explosion, the immense energy inside the Overload TNT had vanished; only a few bolts and a cell not found in the records remained at the center.
+> **Trial 7.** Conditions matched the previous six; observed curve diverged. At detonation, a [Lightning Collapse Matrix](../materials/lightning-collapse-matrix.md) was lying on the ground near the impact point — no scorch crater, just a few bolts and a cell that wasn't on the manifest.
 
-> The first reproduction attempt failed. A larger sample with each variable controlled points to one condition: **the matrix has to be dropped in the world.**
+> Reproduction failed. Controlling for every variable points to the same conclusion: **the matrix has to be out in the open.**

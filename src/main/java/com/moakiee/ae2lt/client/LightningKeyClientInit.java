@@ -2,24 +2,19 @@ package com.moakiee.ae2lt.client;
 
 import net.minecraft.client.renderer.item.ItemProperties;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.FastColor;
 import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.ModList;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.client.event.RegisterColorHandlersEvent;
-import net.minecraftforge.client.event.RegisterGuiOverlaysEvent;
-import net.minecraftforge.client.gui.overlay.VanillaGuiOverlay;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
+import net.minecraftforge.fml.common.Mod;
 
 import appeng.api.client.AEKeyRendering;
-import appeng.api.util.AEColor;
 import appeng.items.storage.BasicStorageCell;
 
 import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.item.ElectroChimeCrystalItem;
 import com.moakiee.ae2lt.item.FixedInfiniteCellItem;
-import com.moakiee.ae2lt.client.railgun.RailgunClientBootstrap;
-import com.moakiee.ae2lt.item.railgun.ElectromagneticRailgunItem;
 import com.moakiee.ae2lt.me.key.LightningKey;
 import com.moakiee.ae2lt.me.key.LightningKeyType;
 import com.moakiee.ae2lt.registry.ModItems;
@@ -32,11 +27,6 @@ public final class LightningKeyClientInit {
     @SubscribeEvent
     public static void onClientSetup(FMLClientSetupEvent event) {
         event.enqueueWork(() -> {
-            RailgunClientBootstrap.install();
-            ShieldHitFeedbackClientBootstrap.install();
-            if (ModList.get().isLoaded("curios")) {
-                PigmeeCuriosClientBridge.registerRenderers();
-            }
             AEKeyRendering.register(LightningKeyType.INSTANCE, LightningKey.class, LightningKeyRenderHandler.INSTANCE);
 
             ItemProperties.register(
@@ -57,41 +47,18 @@ public final class LightningKeyClientInit {
                             default -> 0.0F;
                         };
                     });
-
-            ItemProperties.register(
-                    ModItems.ELECTROMAGNETIC_RAILGUN.get(),
-                    new ResourceLocation(AE2LightningTech.MODID, "ehv_model"),
-                    (stack, level, entity, seed) -> entity != null
-                            && entity.isUsingItem()
-                            && entity.getUseItem() == stack
-                            && stack.getItem() instanceof ElectromagneticRailgunItem
-                            ? 1.0F : 0.0F);
         });
     }
 
     @SubscribeEvent
     public static void registerItemColors(RegisterColorHandlersEvent.Item event) {
         event.register(
-                (stack, tintIndex) -> AEColor.TRANSPARENT.getVariantByTintIndex(tintIndex) | 0xFF000000,
-                ModItems.TIANSHU_PATTERN_ENCODING_TERMINAL.get());
-
-        event.register(
-                (stack, tintIndex) -> BasicStorageCell.getColor(stack, tintIndex) | 0xFF000000,
+                (stack, tintIndex) -> 0xFF000000 | BasicStorageCell.getColor(stack, tintIndex),
                 ModItems.LIGHTNING_STORAGE_COMPONENT_I.get(),
                 ModItems.LIGHTNING_STORAGE_COMPONENT_II.get(),
                 ModItems.LIGHTNING_STORAGE_COMPONENT_III.get(),
                 ModItems.LIGHTNING_STORAGE_COMPONENT_IV.get(),
-                ModItems.LIGHTNING_STORAGE_COMPONENT_V.get(),
-                ModItems.PIGMEE_STORAGE_CELL.get(),
-                ModItems.VOID_CELL.get());
+                ModItems.LIGHTNING_STORAGE_COMPONENT_V.get());
     }
-
-    @SubscribeEvent
-    public static void registerOverlays(RegisterGuiOverlaysEvent event) {
-        event.registerAbove(
-                VanillaGuiOverlay.ARMOR_LEVEL.id(),
-                "celestweave_energy_level",
-                CelestweaveArmorEnergyLevel.INSTANCE);
-    }
-
 }
+

@@ -10,9 +10,4 @@ public class AE2Button extends Button {
     public AE2Button(int x, int y, int width, int height, Component message, OnPress onPress) {
         super(x, y, width, height, message, onPress, DEFAULT_NARRATION);
     }
-
-    /** Convenience ctor for callers that position/resize the button later. */
-    public AE2Button(Component message, OnPress onPress) {
-        this(0, 0, 0, 0, message, onPress);
-    }
 }

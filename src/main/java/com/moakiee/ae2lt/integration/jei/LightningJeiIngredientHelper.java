@@ -22,7 +22,6 @@ public class LightningJeiIngredientHelper implements IIngredientHelper<Lightning
     }
 
     @Override
-    @SuppressWarnings("removal")
     public String getUniqueId(LightningKey ingredient, UidContext context) {
         return ingredient.getId().toString();
     }

@@ -1,7 +1,6 @@
 package com.moakiee.ae2lt.client.render;
 
 import com.moakiee.ae2lt.entity.OverloadTntEntity;
-import com.moakiee.ae2lt.registry.ModBlocks;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -43,7 +42,7 @@ public class OverloadTntRenderer extends EntityRenderer<OverloadTntEntity> {
         poseStack.mulPose(Axis.YP.rotationDegrees(90.0F));
         TntMinecartRenderer.renderWhiteSolidBlock(
                 blockRenderer,
-                ModBlocks.OVERLOAD_TNT.get().defaultBlockState(),
+                entity.getRenderBlockState(),
                 poseStack,
                 bufferSource,
                 packedLight,

@@ -3,9 +3,9 @@ package com.moakiee.ae2lt.client;
 import com.moakiee.ae2lt.AE2LightningTech;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.client.event.RegisterGuiOverlaysEvent;
 import net.minecraftforge.client.gui.overlay.VanillaGuiOverlay;
+import net.minecraftforge.fml.common.Mod;
 
 @Mod.EventBusSubscriber(modid = AE2LightningTech.MODID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
 public final class EasterEggClientInit {
@@ -20,3 +20,4 @@ public final class EasterEggClientInit {
                 EasterEggOverlay.INSTANCE);
     }
 }
+

@@ -5,12 +5,14 @@ import java.util.Collections;
 import java.util.List;
 
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 
 import appeng.client.gui.Icon;
 import appeng.client.gui.style.Blitter;
-import appeng.client.gui.widgets.IconButton;
+import appeng.client.gui.widgets.ITooltip;
 
 import com.moakiee.ae2lt.AE2LightningTech;
 
@@ -30,7 +32,7 @@ import com.moakiee.ae2lt.AE2LightningTech;
  * 但不依赖 AE2 的 {@code Setting<T>} 注册体系,也允许任意 mod 资源命名空间下的 PNG 作为贴图,
  * 适合我们这种"自定义 BlockEntity 字段 + 自定义贴图"的场景。</p>
  */
-public class TextureToggleButton extends IconButton {
+public class TextureToggleButton extends Button implements ITooltip {
 
     private final List<ResourceLocation> textures;
     private final List<List<Component>> tooltips;
@@ -39,11 +41,7 @@ public class TextureToggleButton extends IconButton {
     private int stateIndex;
 
     public TextureToggleButton(ButtonType type, Listener listener) {
-        super(btn -> listener.onChange(0));
-        // Let AE2's IconButton render its own 1.20.1 toolbar chrome. The
-        // background icon is used as a harmless placeholder for the custom
-        // texture rendered on top of it.
-        setDisableBackground(true);
+        super(0, 0, 16, 16, Component.empty(), btn -> listener.onChange(0), DEFAULT_NARRATION);
         this.textures = type.textures;
         this.tooltips = new ArrayList<>(type.textures.size());
         for (int i = 0; i < type.textures.size(); i++) {
@@ -113,9 +111,9 @@ public class TextureToggleButton extends IconButton {
         setTooltipAt(2, lines);
     }
 
-    @Override
-    protected Icon getIcon() {
-        return Icon.TOOLBAR_BUTTON_BACKGROUND;
+    public void setVisibility(boolean visible) {
+        this.visible = visible;
+        this.active = visible;
     }
 
     @Override
@@ -124,17 +122,19 @@ public class TextureToggleButton extends IconButton {
     }
 
     @Override
-    public void renderWidget(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+    protected void renderWidget(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
         if (!this.visible) {
             return;
         }
 
-        // This calls AE2 1.20.1's native IconButton renderer, including its
-        // focus outline and exact 16x16 toolbar footprint.
-        boolean wasActive = this.active;
-        this.active = true; // Native backgrounds do not dim when a button is disabled.
-        super.renderWidget(guiGraphics, mouseX, mouseY, partialTick);
-        this.active = wasActive;
+        var yOffset = isHovered() ? 1 : 0;
+        var background = isHovered() ? Icon.TOOLBAR_BUTTON_BACKGROUND
+                : isFocused() ? Icon.TOOLBAR_BUTTON_BACKGROUND : Icon.TOOLBAR_BUTTON_BACKGROUND;
+
+        background.getBlitter()
+                .dest(getX() - 1, getY() + yOffset, 18, 20)
+                
+                .blit(guiGraphics);
 
         if (this.textures.isEmpty()) {
             return;
@@ -145,7 +145,7 @@ public class TextureToggleButton extends IconButton {
         if (!this.active) {
             blitter.opacity(0.5f);
         }
-        blitter.dest(getX(), getY()).blit(guiGraphics);
+        blitter.dest(getX(), getY() + 1 + yOffset).blit(guiGraphics);
     }
 
     @Override
@@ -155,6 +155,16 @@ public class TextureToggleButton extends IconButton {
         }
         int idx = Math.min(this.stateIndex, this.tooltips.size() - 1);
         return this.tooltips.get(idx);
+    }
+
+    @Override
+    public Rect2i getTooltipArea() {
+        return new Rect2i(getX(), getY(), 16, 16);
+    }
+
+    @Override
+    public boolean isTooltipAreaVisible() {
+        return this.visible && !getTooltipMessage().isEmpty();
     }
 
     public enum ButtonType {
@@ -173,15 +183,7 @@ public class TextureToggleButton extends IconButton {
         OVERLOAD_MODE(texture("overloaded_off"), texture("overloaded_on")),
         // 水晶催化器 Mode { CRYSTAL=off, DUST=on }。
         CRYSTAL_CATALYZER_MODE(texture("catalyzer_crystal_mode"), texture("catalyzer_dust_mode")),
-        // 频率配置入口。机器与无线终端共用同一图标和工具栏样式。
-        FREQUENCY_BIND(texture("frequency_select")),
-        // 天枢有线与无线样板编码终端共用的库存维持入口。
-        INVENTORY_MAINTENANCE(texture("inventory_maintenance")),
-        // 多方块控制器左侧操作栏。
-        QUICK_BUILD(texture("quick_build")),
-        QUICK_COMPUTE(texture("quick_compute_off"), texture("quick_compute_on")),
-        PATTERN_STORAGE_UPGRADE(texture("pattern_storage_upgrade")),
-        ADAPTIVE_BATCH(texture("adaptive_batch_off"), texture("adaptive_batch_on"));
+        FREQUENCY_BIND(texture("frequency_select"));
 
         private final List<ResourceLocation> textures;
 
@@ -207,3 +209,4 @@ public class TextureToggleButton extends IconButton {
         void onChange(int previousStateIndex);
     }
 }
+

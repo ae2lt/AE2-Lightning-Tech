@@ -161,3 +161,4 @@ public class LightningAssemblyCategory implements IRecipeCategory<LightningAssem
         return rounded + suffix;
     }
 }
+

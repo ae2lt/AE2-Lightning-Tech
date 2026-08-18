@@ -50,11 +50,7 @@ public abstract class AbstractGridRecipeMachineLogic<
             if (host.pushOutResult()) {
                 return TickRateModulation.URGENT;
             }
-            // Lightning availability is intentionally polled through narrow
-            // SIMULATE-extract queries. Registering even a two-key
-            // IStorageWatcherNode makes AE2 rebuild the full network inventory
-            // every server tick.
-            return TickRateModulation.SLOWER;
+            return host.hasAutoExportWork() ? TickRateModulation.SLOWER : TickRateModulation.SLEEP;
         }
 
         host.setWorking(true);
@@ -63,9 +59,7 @@ public abstract class AbstractGridRecipeMachineLogic<
             if (host.pushOutResult()) {
                 return TickRateModulation.URGENT;
             }
-            // Output space and reusable lightning can both change without a
-            // reliable alert callback. Retain the bounded 1-20 tick poll.
-            return TickRateModulation.SLOWER;
+            return host.hasAutoExportWork() ? TickRateModulation.SLOWER : TickRateModulation.SLEEP;
         }
 
         Optional<C> lockedCandidate = validateLockedRecipe(lockedRecipe.get());
@@ -74,7 +68,7 @@ public abstract class AbstractGridRecipeMachineLogic<
             if (host.pushOutResult()) {
                 return TickRateModulation.URGENT;
             }
-            return TickRateModulation.SLOWER;
+            return host.hasAutoExportWork() ? TickRateModulation.SLOWER : TickRateModulation.SLEEP;
         }
 
         return tickActiveRecipe(lockedRecipe.get(), lockedCandidate.get());
@@ -138,7 +132,7 @@ public abstract class AbstractGridRecipeMachineLogic<
             if (host.pushOutResult()) {
                 return TickRateModulation.URGENT;
             }
-            return TickRateModulation.SLOWER;
+            return TickRateModulation.SLEEP;
         }
 
         long toConsume = computeEnergyToConsumeThisTick(lockedRecipe);
@@ -146,7 +140,7 @@ public abstract class AbstractGridRecipeMachineLogic<
             if (host.pushOutResult()) {
                 return TickRateModulation.URGENT;
             }
-            return energyWaitModulation();
+            return TickRateModulation.SLEEP;
         }
 
         int consumed = host.extractMachineEnergy(toConsume);
@@ -154,7 +148,7 @@ public abstract class AbstractGridRecipeMachineLogic<
             if (host.pushOutResult()) {
                 return TickRateModulation.URGENT;
             }
-            return energyWaitModulation();
+            return TickRateModulation.SLEEP;
         }
 
         host.onEnergyConsumed(consumed);
@@ -166,15 +160,6 @@ public abstract class AbstractGridRecipeMachineLogic<
 
         host.pushOutResult();
         return TickRateModulation.URGENT;
-    }
-
-    private TickRateModulation energyWaitModulation() {
-        // External FE insertion invokes the machine's energy-change callback,
-        // but FE appearing later in the ME network does not. Keep a slow poll
-        // only when Applied Flux can supply the machine from that network.
-        return AppFluxHelper.isAvailable()
-                ? TickRateModulation.SLOWER
-                : TickRateModulation.SLEEP;
     }
 
     private void tryStartProcessing() {

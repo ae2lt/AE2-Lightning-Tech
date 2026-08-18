@@ -22,8 +22,6 @@ hs_err_pid*
 # Common working directory
 run
 run2/
-/run-data/
-/run-gametest/
 
 # Local assistant/docs
 .aiassistant/
@@ -48,7 +46,7 @@ tmp/
 tmp_extae/
 appeng/
 net/
-/META-INF/
+META-INF/
 
 # Local dev logs / scratch
 DevLog/
@@ -56,11 +54,3 @@ DevLog/
 
 # Bundled source mirrors / references
 Source Code/
-
-# Port debugging workspace (local only)
-*.ps1
-*.txt
-libs/
-
-# Port debug scratch dirs
-.dbg_tmp*/

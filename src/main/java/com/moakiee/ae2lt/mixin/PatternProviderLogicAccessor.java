@@ -34,9 +34,6 @@ public interface PatternProviderLogicAccessor {
     @Invoker("hasWorkToDo")
     boolean invokeHasWorkToDo();
 
-    @Invoker("getActiveSides")
-    Set<Direction> invokeGetActiveSides();
-
     @Accessor("mainNode")
     IManagedGridNode getMainNode();
 

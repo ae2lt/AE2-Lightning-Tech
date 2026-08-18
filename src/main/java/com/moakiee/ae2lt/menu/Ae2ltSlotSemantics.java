@@ -64,27 +64,6 @@ public final class Ae2ltSlotSemantics {
             SlotSemantics.register("AE2LT_CRYSTAL_CATALYZER_FLUID", false);
     public static final SlotSemantic OVERLOADED_POWER_SUPPLY_CELL =
             SlotSemantics.register("AE2LT_OVERLOADED_POWER_SUPPLY_CELL", false);
-    public static final SlotSemantic OVERLOADED_INTERFACE_FILTER =
-            SlotSemantics.register("AE2LT_OVERLOADED_INTERFACE_FILTER", false);
-
-    // Tianshu closed-loop authoring. These slots are positioned only by the
-    // closed-loop editor sub-screen; the terminal screen keeps them hidden.
-    public static final SlotSemantic TIANSHU_CLOSED_LOOP_MEMBER =
-            SlotSemantics.register("AE2LT_TIANSHU_CLOSED_LOOP_MEMBER", false);
-    public static final SlotSemantic TIANSHU_CLOSED_LOOP_OUTPUT_MARK =
-            SlotSemantics.register("AE2LT_TIANSHU_CLOSED_LOOP_OUTPUT_MARK", false);
-    // Ephemeral AE2 fake slot used by the global-reserve screen. Keeping this as a
-    // real menu slot lets AE2's JEI/EMI ghost-ingredient handlers discover it.
-    public static final SlotSemantic TIANSHU_GLOBAL_RESERVE_MARK =
-            SlotSemantics.register("AE2LT_TIANSHU_GLOBAL_RESERVE_MARK", false);
-
-    // Overload Device Workbench
-    public static final SlotSemantic OVERLOAD_DEVICE_WORKBENCH_DEVICE =
-            SlotSemantics.register("AE2LT_OVERLOAD_DEVICE_WORKBENCH_DEVICE", false);
-    public static final SlotSemantic OVERLOAD_DEVICE_WORKBENCH_CORE =
-            SlotSemantics.register("AE2LT_OVERLOAD_DEVICE_WORKBENCH_CORE", false);
-    public static final SlotSemantic OVERLOAD_DEVICE_WORKBENCH_MODULE =
-            SlotSemantics.register("AE2LT_OVERLOAD_DEVICE_WORKBENCH_MODULE", false);
 
     private Ae2ltSlotSemantics() {
     }

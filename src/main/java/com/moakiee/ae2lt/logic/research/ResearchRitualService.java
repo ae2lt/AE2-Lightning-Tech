@@ -3,17 +3,18 @@ package com.moakiee.ae2lt.logic.research;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import com.mojang.logging.LogUtils;
 import org.slf4j.Logger;
 
 import com.moakiee.ae2lt.blockentity.AtmosphericIonizerBlockEntity;
-import com.moakiee.ae2lt.entity.RitualHyperdimensionalPigmeeEntity;
+import com.moakiee.ae2lt.item.FixedInfiniteCellItem;
 import com.moakiee.ae2lt.item.ResearchNoteItem;
 import com.moakiee.ae2lt.lightning.ProtectedItemEntityHelper;
-import com.moakiee.ae2lt.registry.ModFumos;
 import com.moakiee.ae2lt.registry.ModItems;
 
 import net.minecraft.core.BlockPos;
@@ -32,37 +33,27 @@ import net.minecraft.world.phys.Vec3;
 public final class ResearchRitualService {
     private static final Logger LOG = LogUtils.getLogger();
     private static final int EXPECTED_ITEM_COUNT = 9;
-    private static final String TAG_RITUAL_LIGHTNING = "ae2lt.research_ritual_lightning";
-    private static final String TAG_RITUAL_IONIZER_POS = "ae2lt.research_ritual_ionizer_pos";
-    private static final Comparator<ItemEntity> DROP_ORDER =
-            Comparator.comparingInt(ItemEntity::getAge).reversed();
 
     private ResearchRitualService() {
     }
 
-    /**
-     * Binds a lightning bolt to the ionizer that created it through thunderstorm nucleation.
-     * Natural and third-party lightning must not substitute for the ritual's condensate.
-     */
-    public static void markRitualLightning(LightningBolt lightningBolt, BlockPos ionizerPos) {
-        var data = lightningBolt.getPersistentData();
-        data.putBoolean(TAG_RITUAL_LIGHTNING, true);
-        data.putLong(TAG_RITUAL_IONIZER_POS, ionizerPos.asLong());
-    }
-
     public static void handleLightning(ServerLevel level, LightningBolt lightningBolt) {
-        var data = lightningBolt.getPersistentData();
-        if (!data.getBoolean(TAG_RITUAL_LIGHTNING) || !data.contains(TAG_RITUAL_IONIZER_POS)) {
-            return;
+        BlockPos center = BlockPos.containing(lightningBolt.position());
+        LOG.debug("[ae2lt/ritual] handleLightning: dim={} strike={} ", level.dimension().location(), center);
+        Set<BlockPos> visited = new HashSet<>();
+        int ionizerHits = 0;
+        for (BlockPos pos : BlockPos.betweenClosed(center.offset(-1, -4, -1), center.offset(1, 1, 1))) {
+            if (!visited.add(pos.immutable())) {
+                continue;
+            }
+            if (level.getBlockEntity(pos) instanceof AtmosphericIonizerBlockEntity ionizer) {
+                ionizerHits++;
+                LOG.debug("[ae2lt/ritual] handleLightning: found ionizer at {}", pos);
+                tryHandleIonizer(level, ionizer);
+            }
         }
-
-        BlockPos ionizerPos = BlockPos.of(data.getLong(TAG_RITUAL_IONIZER_POS));
-        if (level.getBlockEntity(ionizerPos) instanceof AtmosphericIonizerBlockEntity ionizer
-                && ionizer.isInstalledInWorld()) {
-            LOG.debug("[ae2lt/ritual] handleLightning: authenticated ionizer at {}", ionizerPos);
-            tryHandleIonizer(level, ionizer);
-        } else {
-            LOG.debug("[ae2lt/ritual] handleLightning: marked bolt has no valid ionizer at {}", ionizerPos);
+        if (ionizerHits == 0) {
+            LOG.debug("[ae2lt/ritual] handleLightning: no ionizer within 3x6x3 below {}", center);
         }
     }
 
@@ -98,7 +89,7 @@ public final class ResearchRitualService {
         List<ItemEntity> candidates = scanned.stream()
                 .filter(itemEntity -> itemEntity != anchorNote)
                 .filter(itemEntity -> itemEntity.getAge() <= anchorNote.getAge())
-                .sorted(DROP_ORDER)
+                .sorted(Comparator.comparingInt(ItemEntity::getAge).reversed())
                 .toList();
         if (candidates.size() != EXPECTED_ITEM_COUNT) {
             LOG.debug("[ae2lt/ritual] tryHandleIonizer: candidate count {} != expected {} (ages: {})",
@@ -117,7 +108,7 @@ public final class ResearchRitualService {
             return;
         }
 
-        if (matchesDropOrder(candidates, note.recipeItems())) {
+        if (thrownSequence.equals(note.recipeItems())) {
             LOG.info("[ae2lt/ritual] SUCCESS at ionizer={} goal={} (ordered recipe matched).", ionizerPos, note.goal());
             succeed(level, anchorNote, note, candidates);
         } else {
@@ -127,8 +118,7 @@ public final class ResearchRitualService {
         }
     }
 
-    private static void succeed(ServerLevel level, ItemEntity anchorNote, ResearchNoteData note,
-            List<ItemEntity> candidates) {
+    private static void succeed(ServerLevel level, ItemEntity anchorNote, ResearchNoteData note, List<ItemEntity> candidates) {
         long gameTime = level.getGameTime();
         consumeParticipants(candidates);
 
@@ -136,12 +126,8 @@ public final class ResearchRitualService {
         ResearchNoteItem.applyGeneratedState(noteStack, note.withConsumed(true));
         anchorNote.setItem(noteStack);
 
-        ItemEntity reward = new RitualHyperdimensionalPigmeeEntity(
-                level,
-                anchorNote.getX(),
-                anchorNote.getY() + 0.25D,
-                anchorNote.getZ(),
-                createRewardStack());
+        ItemEntity reward = new ItemEntity(level, anchorNote.getX(), anchorNote.getY() + 0.25D, anchorNote.getZ(),
+                createRewardStack(note.goal()));
         reward.setDeltaMovement(Vec3.ZERO);
         ProtectedItemEntityHelper.applyOutputProtection(reward, gameTime);
         level.addFreshEntity(reward);
@@ -188,8 +174,25 @@ public final class ResearchRitualService {
         return positions;
     }
 
-    private static ItemStack createRewardStack() {
-        return new ItemStack(ModFumos.HYPERDIMENSIONAL_PIGMEE_FUMO_ITEM.get());
+    private static ItemStack createRewardStack(RitualGoal goal) {
+        return switch (goal) {
+            case HIGH_VOLTAGE -> {
+                ItemStack stack = new ItemStack(ModItems.MYSTERIOUS_CELL.get());
+                FixedInfiniteCellItem.setType(stack, FixedInfiniteCellItem.CellOutcome.HIGH_VOLTAGE.typeId());
+                yield stack;
+            }
+            case EXTREME_HIGH_VOLTAGE -> {
+                ItemStack stack = new ItemStack(ModItems.MYSTERIOUS_CELL.get());
+                FixedInfiniteCellItem.setType(stack, FixedInfiniteCellItem.CellOutcome.EXTREME_HIGH_VOLTAGE.typeId());
+                yield stack;
+            }
+            case LIGHTNING_COLLAPSE_MATRIX -> {
+                ItemStack stack = new ItemStack(ModItems.MYSTERIOUS_CELL.get());
+                FixedInfiniteCellItem.setType(stack, FixedInfiniteCellItem.CellOutcome.LIGHTNING_COLLAPSE_MATRIX.typeId());
+                yield stack;
+            }
+            case INFINITE_STORAGE_CELL -> new ItemStack(ModItems.INFINITE_STORAGE_CELL.get());
+        };
     }
 
     private static boolean sameMultiset(List<ResourceLocation> left, List<ResourceLocation> right) {
@@ -215,34 +218,8 @@ public final class ResearchRitualService {
         return counts.isEmpty();
     }
 
-    /**
-     * Drop time is precise only to one server tick. Tick groups must remain in note order, while
-     * materials created during the same tick are treated as simultaneous and may appear in either
-     * entity order.
-     */
-    private static boolean matchesDropOrder(List<ItemEntity> orderedCandidates,
-            List<ResourceLocation> expectedOrder) {
-        int start = 0;
-        while (start < orderedCandidates.size()) {
-            int age = orderedCandidates.get(start).getAge();
-            int end = start + 1;
-            while (end < orderedCandidates.size() && orderedCandidates.get(end).getAge() == age) {
-                end++;
-            }
-
-            List<ResourceLocation> actualTickGroup = orderedCandidates.subList(start, end).stream()
-                    .map(itemEntity -> BuiltInRegistries.ITEM.getKey(itemEntity.getItem().getItem()))
-                    .toList();
-            if (!sameMultiset(actualTickGroup, expectedOrder.subList(start, end))) {
-                return false;
-            }
-            start = end;
-        }
-        return true;
-    }
-
     private static AABB ritualSearchBox(BlockPos ionizerPos) {
-        // 反应场：电离仪正上方 3x3 水平 × 4 格纵深。
+        // 反应场:电离仪**正上方** 3x3 水平 × 4 格纵深。
         // 上界 +5 给一点缓冲,允许物品在落地瞬间还未完全稳定时仍被识别。
         return new AABB(
                 ionizerPos.getX() - 1.0D,

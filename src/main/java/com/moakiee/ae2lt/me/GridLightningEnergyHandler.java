@@ -31,7 +31,8 @@ public final class GridLightningEnergyHandler implements ILightningEnergyHandler
     }
 
     private @Nullable IGrid getGrid() {
-        return GridNodeAccess.getActiveGrid(host.getActionableNode());
+        var node = host.getActionableNode();
+        return node == null ? null : node.getGrid();
     }
 
     @Override

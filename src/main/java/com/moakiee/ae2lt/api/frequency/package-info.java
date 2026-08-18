@@ -2,8 +2,8 @@
  * Public API for the AE2LT wireless frequency system.
  *
  * <p>Frozen on release: all public type signatures in this package,
- * {@link com.moakiee.ae2lt.api.frequency.FrequencySecurity} constant order
- * and names, and the NBT key ({@code "FrequencyId"}) used by
+ * {@link com.moakiee.ae2lt.api.frequency.FrequencySecurity} constant order and
+ * names, and the NBT key ({@code "FrequencyId"}) used by
  * {@link com.moakiee.ae2lt.api.frequency.FrequencyBindingAccess#save} /
  * {@link com.moakiee.ae2lt.api.frequency.FrequencyBindingAccess#load}.
  *
@@ -17,7 +17,7 @@
  * OptionalInt id = FrequencyApi.getBoundFrequencyId(level.getBlockEntity(pos));
  * id.ifPresent(freqId -&gt; {
  *     FrequencyApi.getFrequencyInfo(server, freqId).ifPresent(info -&gt; ...);
- *     FrequencyApi.getTransmitter(server, freqId).ifPresent(tx   -&gt; ...);
+ *     FrequencyApi.getTransmitter(server, freqId).ifPresent(tx -&gt; ...);
  * });
  * </pre>
  *
@@ -42,19 +42,18 @@
  *         binding.load(tag);
  *     }
  *
- *     &#64;Override public AENetworkBlockEntity getFrequencyBindingBlockEntity() { return this; }
- *     &#64;Override public FrequencyBindingAccess getFrequencyBindingAccess()     { return binding; }
- *     &#64;Override public void saveFrequencyBindingChanges()                     { setChanged(); }
- *     &#64;Override public void markFrequencyBindingForUpdate()                   { markForUpdate(); }
+ *     &#64;Override public BlockEntity getFrequencyBindingBlockEntity()       { return this; }
+ *     &#64;Override public IManagedGridNode getFrequencyBindingMainNode()     { return getMainNode(); }
+ *     &#64;Override public FrequencyBindingAccess getFrequencyBindingAccess() { return binding; }
+ *     &#64;Override public void saveFrequencyBindingChanges()                 { saveChanges(); }
+ *     &#64;Override public void markFrequencyBindingForUpdate()               { markForUpdate(); }
  * }
  * </pre>
  *
  * <h2>Opening the binding UI from a custom screen</h2>
  * <pre>
- * public class MyMachineMenu extends AEBaseMenu implements FrequencyBindingMenuHost {
- *     // Open the menu with MenuOpener / MenuHostLocator so the server can resolve
- *     // the frequency host from the currently open menu instead of trusting
- *     // client-supplied positions.
+ * public class MyMachineMenu extends AbstractContainerMenu implements FrequencyBindingMenuHost {
+ *     &#64;Override public BlockPos getFrequencyBindingBlockPos() { return host.getBlockPos(); }
  * }
  *
  * // inside MyMachineScreen:

@@ -102,11 +102,11 @@ public class EjectModeSavedData extends SavedData {
             for (int i = 0; i < list.size(); i++) {
                 var ct = list.getCompound(i);
                 var iDim = ResourceKey.create(Registries.DIMENSION,
-                        ResourceLocation.tryParse(ct.getString(TAG_I_DIM)));
+                        new ResourceLocation(ct.getString(TAG_I_DIM)));
                 var iPos = BlockPos.of(ct.getLong(TAG_I_POS));
                 var iFace = Direction.from3DDataValue(ct.getInt(TAG_I_FACE));
                 var pDim = ResourceKey.create(Registries.DIMENSION,
-                        ResourceLocation.tryParse(ct.getString(TAG_P_DIM)));
+                        new ResourceLocation(ct.getString(TAG_P_DIM)));
                 var pPos = BlockPos.of(ct.getLong(TAG_P_POS));
                 data.entries.add(new PersistentReg(iDim, iPos, iFace, pDim, pPos));
             }

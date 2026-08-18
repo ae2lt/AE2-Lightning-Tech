@@ -1,6 +1,10 @@
 {
   "replace": false,
   "values": [
-    "ae2lt:silicon_block"
+    "ae2lt:silicon_block",
+    {
+      "id": "expatternprovider:silicon_block",
+      "required": false
+    }
   ]
 }

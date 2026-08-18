@@ -18,7 +18,7 @@ import net.minecraft.world.level.block.state.BlockState;
 
 import com.moakiee.ae2lt.grid.FrequencyBindingHelper;
 import com.moakiee.ae2lt.grid.FrequencyBindingHost;
-import com.moakiee.thunderbolt.ae2.channel.OverloadedGridNodeOwner;
+import com.moakiee.ae2lt.grid.OverloadedGridNodeOwner;
 import com.moakiee.ae2lt.registry.ModBlockEntities;
 import com.moakiee.ae2lt.registry.ModBlocks;
 
@@ -99,12 +99,6 @@ public class WirelessReceiverBlockEntity extends AENetworkBlockEntity
     public void setRemoved() {
         frequencyBinding.setRemoved();
         super.setRemoved();
-    }
-
-    @Override
-    public void onChunkUnloaded() {
-        frequencyBinding.onChunkUnloaded();
-        super.onChunkUnloaded();
     }
 
     @Override

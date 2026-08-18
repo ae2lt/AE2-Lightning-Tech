@@ -36,8 +36,7 @@ public final class OverloadProcessingRecipeInput extends RecipeContainerInput {
              slot++) {
             ItemStack stack = inventory.getStackInSlot(slot);
             if (!stack.isEmpty()) {
-                // SlotStack already takes a defensive copy.
-                slotStacks.add(new SlotStack(slot, stack));
+                slotStacks.add(new SlotStack(slot, stack.copy()));
             }
         }
         return new OverloadProcessingRecipeInput(List.copyOf(slotStacks), inputFluid.copy());

@@ -55,7 +55,7 @@ public class WirelessReceiverBlock extends AE2LTBaseEntityBlock<WirelessReceiver
                 NetworkHooks.openScreen(sp, new net.minecraft.world.SimpleMenuProvider(
                         (id, inv, p) -> new FrequencyMenu(id, inv, be),
                         be.getBlockState().getBlock().getName()
-                ), buf -> FrequencyMenu.writeExtraData(buf, be, false));
+                ), buf -> FrequencyMenu.writeExtraData(buf, be));
             }
             return InteractionResult.sidedSuccess(level.isClientSide);
         }

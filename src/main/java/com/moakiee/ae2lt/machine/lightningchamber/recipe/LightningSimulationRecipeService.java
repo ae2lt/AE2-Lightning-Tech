@@ -7,7 +7,6 @@ import java.util.Optional;
 
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.crafting.RecipeManager;
 import net.minecraft.world.level.Level;
 
 import com.moakiee.ae2lt.machine.lightningchamber.LightningSimulationChamberInventory;
@@ -25,39 +24,7 @@ public final class LightningSimulationRecipeService {
             .thenComparing(Comparator.comparingInt(LightningSimulationRecipe::totalInputCount).reversed())
             .thenComparing(recipe -> recipe.getId().toString());
 
-    private static RecipeManager cachedRecipeManager;
-    private static List<LightningSimulationRecipe> sortedRecipeCache;
-    private static int cachedRecipeOrderFingerprint;
-
     private LightningSimulationRecipeService() {
-    }
-
-    private static synchronized List<LightningSimulationRecipe> getSortedRecipes(Level level) {
-        RecipeManager recipeManager = level.getRecipeManager();
-        List<LightningSimulationRecipe> raw = recipeManager
-                .getAllRecipesFor(ModRecipeTypes.LIGHTNING_SIMULATION_TYPE.get());
-        int orderFingerprint = computeRecipeOrderFingerprint(raw);
-        if (recipeManager != cachedRecipeManager
-                || orderFingerprint != cachedRecipeOrderFingerprint
-                || sortedRecipeCache == null) {
-            sortedRecipeCache = new ArrayList<>(raw);
-            sortedRecipeCache.sort(RECIPE_ORDER);
-            cachedRecipeManager = recipeManager;
-            cachedRecipeOrderFingerprint = orderFingerprint;
-        }
-        return sortedRecipeCache;
-    }
-
-    private static int computeRecipeOrderFingerprint(List<LightningSimulationRecipe> recipes) {
-        int hash = 1;
-        for (LightningSimulationRecipe recipe : recipes) {
-            hash = 31 * hash + recipe.getId().hashCode();
-            hash = 31 * hash + System.identityHashCode(recipe);
-            hash = 31 * hash + recipe.priority();
-            hash = 31 * hash + recipe.inputs().size();
-            hash = 31 * hash + recipe.totalInputCount();
-        }
-        return hash;
     }
 
     public static Optional<LightningSimulationRecipeCandidate> findFirstProcessable(
@@ -74,7 +41,9 @@ public final class LightningSimulationRecipeService {
             return Optional.empty();
         }
 
-        List<LightningSimulationRecipe> recipes = getSortedRecipes(level);
+        List<LightningSimulationRecipe> recipes =
+                new ArrayList<>(level.getRecipeManager().getAllRecipesFor(ModRecipeTypes.LIGHTNING_SIMULATION_TYPE.get()));
+        recipes.sort(RECIPE_ORDER);
 
         for (LightningSimulationRecipe recipe : recipes) {
             Optional<LightningSimulationRecipeMatch> match = recipe.planMatch(input);

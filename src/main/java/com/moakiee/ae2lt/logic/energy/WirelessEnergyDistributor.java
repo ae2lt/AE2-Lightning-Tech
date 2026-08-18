@@ -13,6 +13,7 @@ import org.jetbrains.annotations.Nullable;
 
 import net.minecraft.server.level.ServerLevel;
 
+import appeng.api.networking.IGrid;
 import appeng.api.networking.IManagedGridNode;
 import appeng.api.networking.security.IActionSource;
 import appeng.api.networking.storage.IStorageService;

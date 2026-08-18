@@ -11,6 +11,7 @@ import appeng.blockentity.AEBaseBlockEntity;
 import appeng.blockentity.networking.CableBusBlockEntity;
 import appeng.client.gui.AESubScreen;
 import appeng.client.gui.Icon;
+import appeng.client.gui.widgets.ActionButton;
 import appeng.client.gui.widgets.TabButton;
 import appeng.menu.SlotSemantics;
 
@@ -31,9 +32,10 @@ public class OverloadProcessingFactoryOutputConfigScreen
         var label = Component.translatable("block.ae2lt.overload_processing_factory");
         widgets.add("return", new TabButton(Icon.ARROW_LEFT, label, btn -> returnToParent()));
 
-        var clear = new OutputSidesClearButton(
-                Component.translatable("ae2lt.gui.overload_factory.output_side.clear"),
-                button -> menu.clientClearOutputSides());
+        var clear = new ActionButton(appeng.api.config.ActionItems.CLOSE, button -> menu.clientClearOutputSides());
+        clear.setHalfSize(true);
+        clear.setDisableBackground(true);
+        clear.setMessage(Component.translatable("ae2lt.gui.overload_factory.output_side.clear"));
         widgets.add("clear", clear);
 
         this.frontButton = addSideButton("front", RelativeSide.FRONT, "gui.tooltips.ae2.SideFront");

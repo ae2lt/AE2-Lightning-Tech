@@ -1,5 +1,5 @@
 {
-  "parent": "ae2lt:item/covered_dense_cable_base",
+  "parent": "ae2:item/covered_dense_cable_base",
   "textures": {
     "base": "ae2lt:part/cable/overload/gray"
   }

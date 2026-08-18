@@ -29,7 +29,6 @@ import appeng.api.storage.MEStorage;
 import appeng.api.storage.StorageCells;
 import appeng.api.storage.cells.ISaveProvider;
 import appeng.api.storage.cells.StorageCell;
-import appeng.api.util.AECableType;
 import appeng.blockentity.grid.AENetworkBlockEntity;
 import appeng.menu.MenuOpener;
 import appeng.menu.locator.MenuLocator;
@@ -86,7 +85,7 @@ public class OverloadedPowerSupplyBlockEntity extends AENetworkBlockEntity
         }
 
         public static WirelessConnection fromTag(CompoundTag tag) {
-            var dim = ResourceKey.create(Registries.DIMENSION, ResourceLocation.tryParse(tag.getString(TAG_DIM)));
+            var dim = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(tag.getString(TAG_DIM)));
             var pos = BlockPos.of(tag.getLong(TAG_POS));
             int rawFace = tag.getInt(TAG_FACE);
             var face = (rawFace >= 0 && rawFace < Direction.values().length)
@@ -567,7 +566,6 @@ public class OverloadedPowerSupplyBlockEntity extends AENetworkBlockEntity
 
     @Override
     public void onChunkUnloaded() {
-        frequencyBinding.onChunkUnloaded();
         logic.flushBufferToNetwork();
         super.onChunkUnloaded();
     }
@@ -666,9 +664,4 @@ public class OverloadedPowerSupplyBlockEntity extends AENetworkBlockEntity
         }
         MenuOpener.open(OverloadedPowerSupplyMenu.TYPE, player, locator);
     }
-    @Override
-    public AECableType getCableConnectionType(Direction dir) {
-        return AECableType.SMART;
-    }
 }
-

@@ -4,14 +4,13 @@ import com.moakiee.ae2lt.config.AE2LTCommonConfig;
 import com.moakiee.ae2lt.item.FixedInfiniteCellItem;
 import com.moakiee.ae2lt.logic.LightningBlastTask;
 import com.moakiee.ae2lt.logic.LightningBlastTaskManager;
+import com.moakiee.ae2lt.registry.ModBlocks;
 import com.moakiee.ae2lt.registry.ModEntities;
 import com.moakiee.ae2lt.registry.ModItems;
 import java.util.List;
 import java.util.UUID;
 import javax.annotation.Nullable;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LightningBolt;
@@ -19,8 +18,8 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.item.PrimedTnt;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 
 public class OverloadTntEntity extends PrimedTnt {
@@ -54,6 +53,10 @@ public class OverloadTntEntity extends PrimedTnt {
         this.zo = z;
     }
 
+    public BlockState getRenderBlockState() {
+        return getDefaultBlockState();
+    }
+
     @Override
     @Nullable
     public LivingEntity getOwner() {
@@ -84,7 +87,7 @@ public class OverloadTntEntity extends PrimedTnt {
     @Override
     protected void explode() {
         if (this.level() instanceof ServerLevel serverLevel) {
-            if (AE2LTCommonConfig.easterEggEnabled()
+            if (AE2LTCommonConfig.overloadTntEnableMysteriousCellEasterEgg()
                     && tryTriggerEasterEgg(serverLevel)) {
                 return;
             }
@@ -100,26 +103,21 @@ public class OverloadTntEntity extends PrimedTnt {
                 EASTER_EGG_SCAN_RADIUS * 2.0D,
                 EASTER_EGG_SCAN_RADIUS * 2.0D,
                 EASTER_EGG_SCAN_RADIUS * 2.0D);
-        Item easterEggItem = configuredEasterEggItem();
-        if (easterEggItem == null) {
-            return false;
-        }
-
-        List<ItemEntity> triggerItems = serverLevel.getEntitiesOfClass(
+        List<ItemEntity> matrices = serverLevel.getEntitiesOfClass(
                 ItemEntity.class,
                 scanBox,
-                e -> e.isAlive() && e.getItem().is(easterEggItem));
-        if (triggerItems.isEmpty()) {
+                e -> e.isAlive() && e.getItem().is(ModItems.LIGHTNING_COLLAPSE_MATRIX.get()));
+        if (matrices.isEmpty()) {
             return false;
         }
 
-        ItemEntity triggerEntity = triggerItems.get(0);
-        ItemStack triggerStack = triggerEntity.getItem();
-        triggerStack.shrink(1);
-        if (triggerStack.isEmpty()) {
-            triggerEntity.discard();
+        ItemEntity matrixEntity = matrices.get(0);
+        ItemStack matrixStack = matrixEntity.getItem();
+        matrixStack.shrink(1);
+        if (matrixStack.isEmpty()) {
+            matrixEntity.discard();
         } else {
-            triggerEntity.setItem(triggerStack);
+            matrixEntity.setItem(matrixStack);
         }
 
         for (int i = 0; i < EASTER_EGG_LIGHTNING_COUNT; i++) {
@@ -151,10 +149,7 @@ public class OverloadTntEntity extends PrimedTnt {
         return true;
     }
 
-    @Nullable
-    private static Item configuredEasterEggItem() {
-        ResourceLocation id = ResourceLocation.tryParse(AE2LTCommonConfig.easterEggItem());
-        return id == null ? null : BuiltInRegistries.ITEM.getOptional(id).orElse(null);
+    private static BlockState getDefaultBlockState() {
+        return ModBlocks.OVERLOAD_TNT.get().defaultBlockState();
     }
-
 }

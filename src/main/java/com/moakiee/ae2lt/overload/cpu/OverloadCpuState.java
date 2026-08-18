@@ -233,7 +233,7 @@ public final class OverloadCpuState {
                     key,
                     owner,
                     patternReference,
-                    ResourceLocation.tryParse(pendingTag.getString(TAG_ITEM_ID)),
+                    new ResourceLocation(pendingTag.getString(TAG_ITEM_ID)),
                     loadExactExpectedKey(pendingTag),
                     pendingTag.getLong(TAG_REMAINING),
                     pendingTag.getBoolean(TAG_ROUTES_TO_REQUESTER),

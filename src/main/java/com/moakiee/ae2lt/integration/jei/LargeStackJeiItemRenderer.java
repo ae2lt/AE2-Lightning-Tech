@@ -11,7 +11,6 @@ import net.minecraft.world.item.TooltipFlag;
 
 import com.moakiee.ae2lt.client.gui.LargeStackCountRenderer;
 
-import mezz.jei.api.gui.builder.ITooltipBuilder;
 import mezz.jei.api.ingredients.IIngredientRenderer;
 
 public class LargeStackJeiItemRenderer implements IIngredientRenderer<ItemStack> {
@@ -41,16 +40,10 @@ public class LargeStackJeiItemRenderer implements IIngredientRenderer<ItemStack>
         LargeStackCountRenderer.renderCountAt(guiGraphics, getFontRenderer(Minecraft.getInstance(), ingredient), posX, posY, ingredient.getCount());
     }
 
-    @SuppressWarnings("removal") // JEI 15.20 still declares this deprecated method abstract.
     @Override
     public List<Component> getTooltip(ItemStack ingredient, TooltipFlag tooltipFlag) {
-        // 1.20.1: ItemStack#getTooltipLines(Player, TooltipFlag) has no TooltipContext.
-        return ingredient.getTooltipLines(Minecraft.getInstance().player, tooltipFlag);
-    }
-
-    @Override
-    public void getTooltip(ITooltipBuilder tooltip, ItemStack ingredient, TooltipFlag tooltipFlag) {
-        tooltip.addAll(ingredient.getTooltipLines(Minecraft.getInstance().player, tooltipFlag));
+        Minecraft minecraft = Minecraft.getInstance();
+        return ingredient.getTooltipLines(minecraft.player, tooltipFlag);
     }
 
     @Override

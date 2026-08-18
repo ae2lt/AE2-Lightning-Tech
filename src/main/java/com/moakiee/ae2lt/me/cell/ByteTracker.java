@@ -2,6 +2,7 @@ package com.moakiee.ae2lt.me.cell;
 
 import java.util.function.IntSupplier;
 
+import appeng.api.stacks.AEKey;
 import appeng.api.stacks.AEKeyType;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;

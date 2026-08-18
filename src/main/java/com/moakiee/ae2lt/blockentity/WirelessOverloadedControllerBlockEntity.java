@@ -1,10 +1,12 @@
 package com.moakiee.ae2lt.blockentity;
 
+import java.util.List;
 
 import org.jetbrains.annotations.Nullable;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
@@ -15,9 +17,9 @@ import appeng.api.networking.IManagedGridNode;
 import appeng.api.networking.pathing.ChannelMode;
 import appeng.me.GridConnection;
 
-import com.moakiee.thunderbolt.ae2.channel.WirelessConnectionCapProvider;
+import com.moakiee.ae2lt.grid.WirelessConnectionCapProvider;
 import com.moakiee.ae2lt.grid.FrequencyBindingHelper;
-import com.moakiee.thunderbolt.ae2.channel.OverloadedChannelOwnerHelper;
+import com.moakiee.ae2lt.grid.OverloadedChannelOwnerHelper;
 import com.moakiee.ae2lt.grid.WirelessFrequencyManager;
 import com.moakiee.ae2lt.registry.ModBlockEntities;
 import com.moakiee.ae2lt.registry.ModBlocks;
@@ -82,11 +84,10 @@ public class WirelessOverloadedControllerBlockEntity extends OverloadedControlle
 
     /**
      * Channels currently allocated across the grid.
-     * Uses our helper which de-duplicates multiblock clusters — AE2's
-     * pathingService.getUsedChannels() is bugged for overloaded-only networks
-     * (DFS in {@code PathingCalculation.propagateAssignments} uses
-     * {@code getMachineNodes(ControllerBlockEntity.class)} which misses our
-     * controller subclasses due to exact-class indexing).
+     * Uses our helper which de-duplicates multiblock clusters. AE2's
+     * {@code pathingService.getUsedChannels()} is also not reliable for
+     * overloaded-only networks because vanilla pathing indexes controller
+     * machines by exact class.
      */
     public int getGridUsedChannels() {
         var grid = getMainNode().getGrid();
@@ -109,7 +110,7 @@ public class WirelessOverloadedControllerBlockEntity extends OverloadedControlle
 
         int overloadedCount = 0;
         int vanillaCount = 0;
-        for (var node : com.moakiee.thunderbolt.ae2.channel.OverloadedChannelOwnerHelper.getAllControllerNodes(grid)) {
+        for (var node : com.moakiee.ae2lt.grid.OverloadedChannelOwnerHelper.getAllControllerNodes(grid)) {
             if (node.getOwner() instanceof OverloadedControllerBlockEntity) {
                 overloadedCount++;
             } else {
@@ -118,7 +119,7 @@ public class WirelessOverloadedControllerBlockEntity extends OverloadedControlle
         }
         int factor = Math.max(1, channelMode.getCableCapacityFactor());
         long cap = (long) overloadedCount
-                * com.moakiee.thunderbolt.ae2.channel.OverloadedChannelOwnerHelper.channelsPerController() * factor
+                * com.moakiee.ae2lt.grid.OverloadedChannelOwnerHelper.channelsPerController() * factor
                 + (long) vanillaCount * 32L * factor;
         return (int) Math.min(Integer.MAX_VALUE, cap);
     }

@@ -6,7 +6,6 @@ import java.util.List;
 import java.util.Optional;
 
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.RecipeManager;
 import net.minecraft.world.level.Level;
 import net.minecraftforge.fluids.FluidStack;
@@ -27,45 +26,23 @@ public final class OverloadProcessingRecipeService {
             .thenComparing(Comparator.comparingInt(OverloadProcessingRecipe::totalInputCount).reversed())
             .thenComparing(recipe -> recipe.getId().toString());
 
-    private static final Comparator<SelectionKey> SELECTION_KEY_ORDER = Comparator
-            .comparingInt(SelectionKey::parallel).reversed()
-            .thenComparing(Comparator.comparingInt(SelectionKey::priority).reversed())
-            .thenComparing(Comparator.comparingInt(SelectionKey::itemInputKinds).reversed())
-            .thenComparing(Comparator.comparingInt(SelectionKey::totalInputCount).reversed())
-            .thenComparing(SelectionKey::recipeId);
-
+    private static Object cachedRawRecipeList;
     private static RecipeManager cachedRecipeManager;
     private static List<OverloadProcessingRecipe> sortedRecipeCache;
-    private static int cachedRecipeOrderFingerprint;
 
     private OverloadProcessingRecipeService() {
     }
 
-    private static synchronized List<OverloadProcessingRecipe> getSortedRecipes(Level level) {
+    private static List<OverloadProcessingRecipe> getSortedRecipes(Level level) {
         RecipeManager recipeManager = level.getRecipeManager();
         var raw = RecipeManagerByTypeAccess.byType(recipeManager, ModRecipeTypes.OVERLOAD_PROCESSING_TYPE.get());
-        int orderFingerprint = computeRecipeOrderFingerprint(raw.values());
-        if (recipeManager != cachedRecipeManager
-                || orderFingerprint != cachedRecipeOrderFingerprint
-                || sortedRecipeCache == null) {
+        if (recipeManager != cachedRecipeManager || raw != cachedRawRecipeList || sortedRecipeCache == null) {
             sortedRecipeCache = new ArrayList<>(raw.values());
             sortedRecipeCache.sort(RECIPE_ORDER);
             cachedRecipeManager = recipeManager;
-            cachedRecipeOrderFingerprint = orderFingerprint;
+            cachedRawRecipeList = raw;
         }
         return sortedRecipeCache;
-    }
-
-    private static int computeRecipeOrderFingerprint(java.util.Collection<OverloadProcessingRecipe> recipes) {
-        int hash = 1;
-        for (var recipe : recipes) {
-            hash = 31 * hash + recipe.getId().hashCode();
-            hash = 31 * hash + System.identityHashCode(recipe);
-            hash = 31 * hash + recipe.priority();
-            hash = 31 * hash + recipe.itemInputs().size();
-            hash = 31 * hash + recipe.totalInputCount();
-        }
-        return hash;
     }
 
     public static Optional<OverloadProcessingRecipeCandidate> findFirstProcessable(
@@ -85,59 +62,34 @@ public final class OverloadProcessingRecipeService {
         }
 
         List<OverloadProcessingRecipe> recipes = getSortedRecipes(level);
-        int parallelCapacity = inventory.getInstalledParallelCapacity();
 
-        OverloadProcessingRecipeCandidate bestCandidate = null;
-        SelectionKey bestKey = null;
         for (OverloadProcessingRecipe recipe : recipes) {
-            Optional<OverloadProcessingRecipeCandidate> candidate = evaluateCandidate(
+            int parallel = findMaxParallel(
                     recipe,
                     input,
                     inventory,
                     outputFluid,
-                    parallelCapacity,
+                    inventory.getInstalledParallelCapacity(),
                     availableHighVoltage,
                     availableExtremeHighVoltage);
-            if (candidate.isEmpty()) {
+            if (parallel <= 0) {
                 continue;
             }
 
-            SelectionKey candidateKey = selectionKey(recipe, candidate.get().parallel());
-            if (bestKey == null || SELECTION_KEY_ORDER.compare(candidateKey, bestKey) < 0) {
-                bestCandidate = candidate.get();
-                bestKey = candidateKey;
+            Optional<OverloadProcessingRecipeMatch> match = recipe.planMatch(input, parallel);
+            if (match.isEmpty()) {
+                continue;
             }
-        }
-        return Optional.ofNullable(bestCandidate);
-    }
 
-    private static Optional<OverloadProcessingRecipeCandidate> evaluateCandidate(
-            OverloadProcessingRecipe recipe,
-            OverloadProcessingRecipeInput input,
-            OverloadProcessingFactoryInventory inventory,
-            FluidStack outputFluid,
-            int parallelCapacity,
-            long availableHighVoltage,
-            long availableExtremeHighVoltage) {
-        Optional<ParallelMatch> parallelMatch = findMaxParallel(
-                recipe,
-                input,
-                inventory,
-                outputFluid,
-                parallelCapacity,
-                availableHighVoltage,
-                availableExtremeHighVoltage);
-        if (parallelMatch.isEmpty()) {
-            return Optional.empty();
+            return Optional.of(new OverloadProcessingRecipeCandidate(
+                    recipe,
+                    match.get(),
+                    parallel,
+                    computeTotalEnergy(recipe.totalEnergy(), parallel),
+                    (long) recipe.lightningCost() * parallel));
         }
-        var match = parallelMatch.get();
 
-        return Optional.of(new OverloadProcessingRecipeCandidate(
-                recipe,
-                match.match(),
-                match.parallel(),
-                computeTotalEnergy(recipe.totalEnergy(), match.parallel()),
-                (long) recipe.lightningCost() * match.parallel()));
+        return Optional.empty();
     }
 
     public static Optional<OverloadProcessingRecipe> findRecipeById(Level level, ResourceLocation recipeId) {
@@ -173,6 +125,10 @@ public final class OverloadProcessingRecipeService {
             return Optional.empty();
         }
 
+        Optional<OverloadProcessingRecipeMatch> match = recipe.get().planMatch(input, lockedRecipe.parallel());
+        if (match.isEmpty()) {
+            return Optional.empty();
+        }
         if (computeTotalEnergy(recipe.get().totalEnergy(), lockedRecipe.parallel()) != lockedRecipe.totalEnergy()) {
             return Optional.empty();
         }
@@ -185,10 +141,6 @@ public final class OverloadProcessingRecipeService {
             return Optional.empty();
         }
         if (!canAcceptOutputs(inventory, recipe.get(), outputFluid, lockedRecipe.parallel())) {
-            return Optional.empty();
-        }
-        Optional<OverloadProcessingRecipeMatch> match = recipe.get().planMatch(input, lockedRecipe.parallel());
-        if (match.isEmpty()) {
             return Optional.empty();
         }
 
@@ -226,20 +178,6 @@ public final class OverloadProcessingRecipeService {
             long lightningCost,
             long availableHighVoltage,
             long availableExtremeHighVoltage) {
-        return resolveLightningConsumption(
-                inventory.hasLightningCollapseMatrix(),
-                lightningTier,
-                lightningCost,
-                availableHighVoltage,
-                availableExtremeHighVoltage);
-    }
-
-    static Optional<LightningConsumptionPlan> resolveLightningConsumption(
-            boolean hasLightningCollapseMatrix,
-            LightningKey.Tier lightningTier,
-            long lightningCost,
-            long availableHighVoltage,
-            long availableExtremeHighVoltage) {
         if (lightningCost <= 0L) {
             return Optional.empty();
         }
@@ -257,17 +195,14 @@ public final class OverloadProcessingRecipeService {
                     false));
         }
 
-        if (!hasLightningCollapseMatrix) {
+        if (!inventory.hasLightningCollapseMatrix()) {
             return Optional.empty();
         }
 
         long extremeUsed = availableExtremeHighVoltage;
         long remaining = lightningCost - extremeUsed;
-        if (remaining > Long.MAX_VALUE / EXTREME_TO_HIGH_RATIO) {
-            return Optional.empty();
-        }
         long highVoltageNeeded = remaining * EXTREME_TO_HIGH_RATIO;
-        if (availableHighVoltage < highVoltageNeeded) {
+        if (highVoltageNeeded < 0L || availableHighVoltage < highVoltageNeeded) {
             return Optional.empty();
         }
         if (extremeUsed > 0L) {
@@ -286,7 +221,7 @@ public final class OverloadProcessingRecipeService {
                 : lightningCost;
     }
 
-    private static Optional<ParallelMatch> findMaxParallel(
+    private static int findMaxParallel(
             OverloadProcessingRecipe recipe,
             OverloadProcessingRecipeInput input,
             OverloadProcessingFactoryInventory inventory,
@@ -296,97 +231,38 @@ public final class OverloadProcessingRecipeService {
             long availableExtremeHighVoltage) {
         int upper = parallelCapacity;
         if (upper <= 0) {
-            return Optional.empty();
+            return 0;
         }
 
         FluidStack requiredInputFluid = recipe.fluidInput();
         if (!requiredInputFluid.isEmpty()) {
             if (input.inputFluid().isEmpty()
                     || !FluidStackHelper.sameFluidAndTag(requiredInputFluid, input.inputFluid())) {
-                return Optional.empty();
+                return 0;
             }
             upper = Math.min(upper, input.inputFluid().getAmount() / requiredInputFluid.getAmount());
         }
 
         upper = Math.min(upper, maxLightningParallel(recipe, inventory, availableHighVoltage, availableExtremeHighVoltage));
         if (upper <= 0) {
-            return Optional.empty();
+            return 0;
         }
-
-        Optional<OverloadProcessingRecipe.MatchPlan> plan = recipe.prepareMatch(input);
-        if (plan.isEmpty()) {
-            return Optional.empty();
-        }
-
-        upper = (int) Math.min(upper, plan.get().maxOperationsByAvailability());
-        upper = (int) Math.min(upper, maxOutputParallel(inventory, recipe, outputFluid));
-        if (upper <= 0) {
-            return Optional.empty();
-        }
-
-        // The capacity bound above is exact for at most one item result (the
-        // current recipe limit); with several distinct results competing for
-        // empty slots, fall back to simulating output placement per probe.
-        boolean checkOutputsPerProbe = recipe.rawItemResults().size() > 1;
 
         int low = 1;
         int high = upper;
         int best = 0;
-        OverloadProcessingRecipeMatch bestMatch = null;
         while (low <= high) {
             int mid = (low + high) >>> 1;
-            if (checkOutputsPerProbe && !canAcceptOutputs(inventory, recipe, outputFluid, mid)) {
-                high = mid - 1;
-                continue;
-            }
-
-            Optional<OverloadProcessingRecipeMatch> match = plan.get().allocate(mid);
-            if (match.isPresent()) {
+            if (recipe.planMatch(input, mid).isPresent()
+                    && canAcceptOutputs(inventory, recipe, outputFluid, mid)
+                    && recipe.hasRequiredFluid(input.inputFluid(), mid)) {
                 best = mid;
-                bestMatch = match.get();
                 low = mid + 1;
             } else {
                 high = mid - 1;
             }
         }
-        return bestMatch == null ? Optional.empty() : Optional.of(new ParallelMatch(best, bestMatch));
-    }
-
-    /**
-     * Upper bound on parallel operations from output space: item output slot
-     * capacity plus output tank headroom. Mirrors canAcceptOutputs without
-     * allocating scaled result stacks per probe.
-     */
-    private static long maxOutputParallel(
-            OverloadProcessingFactoryInventory inventory,
-            OverloadProcessingRecipe recipe,
-            FluidStack outputFluid) {
-        long bound = Long.MAX_VALUE;
-
-        List<ItemStack> itemResults = recipe.rawItemResults();
-        if (itemResults.size() == 1) {
-            ItemStack result = itemResults.get(0);
-            bound = inventory.getOutputCapacityFor(result) / result.getCount();
-        }
-
-        FluidStack fluidResult = recipe.rawFluidResult();
-        if (!fluidResult.isEmpty()) {
-            long tankCapacity = com.moakiee.ae2lt.blockentity.OverloadProcessingFactoryBlockEntity.OUTPUT_TANK_CAPACITY;
-            long space;
-            if (outputFluid.isEmpty()) {
-                space = tankCapacity;
-            } else if (FluidStackHelper.sameFluidAndTag(outputFluid, fluidResult)) {
-                space = tankCapacity - outputFluid.getAmount();
-            } else {
-                space = 0L;
-            }
-            bound = Math.min(bound, Math.max(0L, space) / fluidResult.getAmount());
-        }
-
-        return bound;
-    }
-
-    private record ParallelMatch(int parallel, OverloadProcessingRecipeMatch match) {
+        return best;
     }
 
     private static int maxLightningParallel(
@@ -394,43 +270,23 @@ public final class OverloadProcessingRecipeService {
             OverloadProcessingFactoryInventory inventory,
             long availableHighVoltage,
             long availableExtremeHighVoltage) {
-        return maxLightningParallel(
-                recipe.lightningTier(),
-                recipe.lightningCost(),
-                inventory.hasLightningCollapseMatrix(),
-                availableHighVoltage,
-                availableExtremeHighVoltage);
-    }
-
-    static int maxLightningParallel(
-            LightningKey.Tier lightningTier,
-            int lightningCost,
-            boolean hasLightningCollapseMatrix,
-            long availableHighVoltage,
-            long availableExtremeHighVoltage) {
-        if (lightningCost <= 0 || availableHighVoltage < 0L || availableExtremeHighVoltage < 0L) {
+        if (recipe.lightningCost() <= 0) {
             return 0;
         }
-        if (lightningTier == LightningKey.Tier.HIGH_VOLTAGE) {
-            return (int) Math.min(Integer.MAX_VALUE, availableHighVoltage / lightningCost);
+
+        if (recipe.lightningTier() == LightningKey.Tier.HIGH_VOLTAGE) {
+            return (int) Math.min(Integer.MAX_VALUE, availableHighVoltage / recipe.lightningCost());
         }
 
-        long exactParallel = availableExtremeHighVoltage / lightningCost;
-        if (!hasLightningCollapseMatrix) {
+        long exactParallel = availableExtremeHighVoltage / recipe.lightningCost();
+        if (!inventory.hasLightningCollapseMatrix()) {
             return (int) Math.min(Integer.MAX_VALUE, exactParallel);
         }
 
-        long remainingExtreme = availableExtremeHighVoltage % lightningCost;
-        long equivalentCost = (long) lightningCost * EXTREME_TO_HIGH_RATIO;
-        long additionalParallel = availableHighVoltage / equivalentCost;
-        long remainingHighVoltage = availableHighVoltage % equivalentCost;
-        if (remainingExtreme * EXTREME_TO_HIGH_RATIO + remainingHighVoltage >= equivalentCost) {
-            additionalParallel++;
-        }
-        if (Long.MAX_VALUE - exactParallel < additionalParallel) {
-            return Integer.MAX_VALUE;
-        }
-        return (int) Math.min(Integer.MAX_VALUE, exactParallel + additionalParallel);
+        long substitutedParallel = availableHighVoltage / ((long) recipe.lightningCost() * EXTREME_TO_HIGH_RATIO);
+        long totalParallel = exactParallel + substitutedParallel;
+        if (totalParallel < 0L) totalParallel = Long.MAX_VALUE;
+        return (int) Math.min(Integer.MAX_VALUE, totalParallel);
     }
 
     private static boolean canAcceptOutputs(
@@ -464,24 +320,7 @@ public final class OverloadProcessingRecipeService {
         if (dividend <= 0L) {
             return 0L;
         }
-        return dividend / divisor + (dividend % divisor == 0L ? 0L : 1L);
-    }
-
-    private static SelectionKey selectionKey(OverloadProcessingRecipe recipe, int parallel) {
-        return new SelectionKey(
-                parallel,
-                recipe.priority(),
-                recipe.itemInputs().size(),
-                recipe.totalInputCount(),
-                recipe.getId());
-    }
-
-    private record SelectionKey(
-            int parallel,
-            int priority,
-            int itemInputKinds,
-            int totalInputCount,
-            ResourceLocation recipeId) {
+        return (dividend + divisor - 1L) / divisor;
     }
 
     public record LightningConsumptionPlan(

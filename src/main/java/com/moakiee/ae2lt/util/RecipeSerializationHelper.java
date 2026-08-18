@@ -31,7 +31,7 @@ public final class RecipeSerializationHelper {
     }
 
     public static Block blockFromJson(JsonObject json, String key) {
-        return blockFromId(ResourceLocation.tryParse(GsonHelper.getAsString(json, key)));
+        return blockFromId(new ResourceLocation(GsonHelper.getAsString(json, key)));
     }
 
     public static Block blockFromId(ResourceLocation id) {
@@ -62,11 +62,11 @@ public final class RecipeSerializationHelper {
     }
 
     public static ResourceLocation resourceLocationFromJson(JsonObject json, String key) {
-        return ResourceLocation.tryParse(GsonHelper.getAsString(json, key));
+        return new ResourceLocation(GsonHelper.getAsString(json, key));
     }
 
     public static ResourceLocation resourceLocationFromJson(JsonElement json) {
-        return ResourceLocation.tryParse(GsonHelper.convertToString(json, "resource_location"));
+        return new ResourceLocation(GsonHelper.convertToString(json, "resource_location"));
     }
 
     public static <T extends StringRepresentable> T enumFromJson(

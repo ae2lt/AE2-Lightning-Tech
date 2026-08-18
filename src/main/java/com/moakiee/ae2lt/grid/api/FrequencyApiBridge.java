@@ -10,6 +10,7 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import com.moakiee.ae2lt.api.frequency.FrequencyApiProvider;
 import com.moakiee.ae2lt.api.frequency.FrequencyBindingAccess;
 import com.moakiee.ae2lt.api.frequency.FrequencyBindingHost;
+import com.moakiee.ae2lt.api.frequency.FrequencyBindingMenuHost;
 import com.moakiee.ae2lt.api.frequency.FrequencyInfo;
 import com.moakiee.ae2lt.api.frequency.FrequencySecurity;
 import com.moakiee.ae2lt.api.frequency.TransmitterInfo;
@@ -83,9 +84,10 @@ public final class FrequencyApiBridge implements FrequencyApiProvider {
 
     @Override
     public void openBindingScreen(AbstractContainerMenu menu) {
-        // 1.20.1 port: the binding token/pos moved into the server-side menu host,
-        // so the client only announces "block mode" and the packet resolves the host.
-        NetworkInit.sendToServer(OpenFrequencyMenuPacket.forBlock());
+        var host = (FrequencyBindingMenuHost) menu;
+        NetworkInit.sendToServer(new OpenFrequencyMenuPacket(
+                host.getFrequencyBindingToken(),
+                host.getFrequencyBindingBlockPos()));
     }
 
     private static FrequencySecurity toApiSecurity(FrequencySecurityLevel level) {

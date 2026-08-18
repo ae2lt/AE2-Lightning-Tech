@@ -1,9 +1,15 @@
 {
   "parent": "ae2lt:main/lightning_simulation_room",
   "display": {
-    "icon": { "item": "ae2lt:lightning_assembly_chamber" },
-    "title": { "translate": "advancements.ae2lt.lightning_assembly_chamber.title" },
-    "description": { "translate": "advancements.ae2lt.lightning_assembly_chamber.description" },
+    "icon": {
+      "item": "ae2lt:lightning_assembly_chamber"
+    },
+    "title": {
+      "translate": "advancements.ae2lt.lightning_assembly_chamber.title"
+    },
+    "description": {
+      "translate": "advancements.ae2lt.lightning_assembly_chamber.description"
+    },
     "frame": "task",
     "show_toast": true,
     "announce_to_chat": false,
@@ -14,11 +20,19 @@
       "trigger": "minecraft:inventory_changed",
       "conditions": {
         "items": [
-          { "items": [ "ae2lt:lightning_assembly_chamber" ] }
+          {
+            "items": [
+              "ae2lt:lightning_assembly_chamber"
+            ]
+          }
         ]
       }
     }
   },
-  "requirements": [ [ "get_item" ] ],
+  "requirements": [
+    [
+      "get_item"
+    ]
+  ],
   "sends_telemetry_event": false
 }

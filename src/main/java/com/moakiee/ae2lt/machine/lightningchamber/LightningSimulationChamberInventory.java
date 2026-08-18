@@ -23,8 +23,6 @@ public class LightningSimulationChamberInventory extends LargeStackItemHandler {
 
     public static final int SLOT_COUNT = 5;
     public static final int LARGE_SLOT_LIMIT = 8192;
-    public static final int MATRIX_SLOT_LIMIT = 1;
-
     public LightningSimulationChamberInventory(@Nullable Runnable changeListener) {
         super(SLOT_COUNT, changeListener);
     }
@@ -32,7 +30,7 @@ public class LightningSimulationChamberInventory extends LargeStackItemHandler {
     @Override
     public int getSlotLimit(int slot) {
         validateSlotIndex(slot);
-        return slot == SLOT_CATALYST ? MATRIX_SLOT_LIMIT : LARGE_SLOT_LIMIT;
+        return LARGE_SLOT_LIMIT;
     }
 
     @Override

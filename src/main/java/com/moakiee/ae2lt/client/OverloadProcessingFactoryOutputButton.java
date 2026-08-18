@@ -33,7 +33,7 @@ public class OverloadProcessingFactoryOutputButton extends IconButton {
 
     @Override
     protected Icon getIcon() {
-        return Icon.TOOLBAR_BUTTON_BACKGROUND;
+        return null;
     }
 
     @Override
@@ -56,10 +56,16 @@ public class OverloadProcessingFactoryOutputButton extends IconButton {
             return;
         }
 
-        OutputSideButtonStyle.renderBackground(guiGraphics, getX(), getY(), on);
+        var yOffset = isHovered() ? 1 : 0;
+        Icon bgIcon = isHovered() ? Icon.TOOLBAR_BUTTON_BACKGROUND
+                : on ? Icon.TOOLBAR_BUTTON_BACKGROUND : Icon.TOOLBAR_BUTTON_BACKGROUND;
+        bgIcon.getBlitter()
+                .dest(getX() - 1, getY() + yOffset, 18, 20)
+                
+                .blit(guiGraphics);
 
         if (!display.isEmpty()) {
-            guiGraphics.renderItem(display, getX() + 1, getY() + 1, 0, 3);
+            guiGraphics.renderItem(display, getX(), getY() + 1 + yOffset, 0, 3);
         }
     }
 }

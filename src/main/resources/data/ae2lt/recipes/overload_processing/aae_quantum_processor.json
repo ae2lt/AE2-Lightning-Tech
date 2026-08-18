@@ -16,13 +16,13 @@
     },
     {
       "ingredient": {
-        "tag": "forge:storage_blocks/redstone"
+        "item": "minecraft:redstone_block"
       },
       "count": 4
     },
     {
       "ingredient": {
-        "tag": "forge:storage_blocks/silicon"
+        "tag": "c:storage_blocks/silicon"
       },
       "count": 4
     }

@@ -28,7 +28,8 @@ public class OverloadedPowerSupplyMenu extends AEBaseMenu implements FrequencyBi
             MenuTypeBuilder
                     .create(OverloadedPowerSupplyMenu::new, OverloadedPowerSupplyBlockEntity.class)
                     .withMenuTitle(host -> Component.translatable("block.ae2lt.overloaded_power_supply")),
-            new ResourceLocation(AE2LightningTech.MODID, "overloaded_power_supply"));
+            new ResourceLocation(
+                    AE2LightningTech.MODID, "overloaded_power_supply"));
 
     @GuiSync(0)
     public long bufferCapacity;
@@ -126,6 +127,10 @@ public class OverloadedPowerSupplyMenu extends AEBaseMenu implements FrequencyBi
         sendClientAction("cycleMode");
     }
 
+    @Override
+    public net.minecraft.core.BlockPos getFrequencyBindingBlockPos() {
+        return host.getBlockPos();
+    }
 
     public Component getModeButtonMessage() {
         return getMode() == OverloadedPowerSupplyBlockEntity.PowerMode.OVERLOAD

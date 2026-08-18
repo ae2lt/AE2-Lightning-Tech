@@ -1,14 +1,7 @@
 {
-  "parent": "ae2lt:block/drive/cells/lightning_storage_component_base",
-  "textures": { "cell": "ae2lt:block/drive/drive_cells" },
-  "elements": [
-    {
-      "from": [0, 0, 0], "to": [6, 2, 2],
-      "faces": {
-        "north": { "uv": [0, 6, 6, 8], "texture": "#cell", "cullface": "north" },
-        "up": { "uv": [6, 6, 0, 8], "texture": "#cell", "cullface": "north" },
-        "down": { "uv": [6, 6, 0, 8], "texture": "#cell", "cullface": "north" }
-      }
-    }
-  ]
+  "parent": "ae2:block/drive/cells/64k_item_cell",
+  "textures": {
+    "cell": "ae2lt:block/drive/drive_cells",
+    "particle": "ae2lt:block/drive/drive_cells"
+  }
 }

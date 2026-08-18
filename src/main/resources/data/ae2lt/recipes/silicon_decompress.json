@@ -3,7 +3,7 @@
   "category": "misc",
   "ingredients": [
     {
-      "item": "ae2lt:silicon_block"
+      "tag": "c:storage_blocks/silicon"
     }
   ],
   "result": {

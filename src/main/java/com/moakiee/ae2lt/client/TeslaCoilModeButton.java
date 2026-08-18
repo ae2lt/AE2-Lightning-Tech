@@ -15,14 +15,15 @@ import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.machine.teslacoil.TeslaCoilMode;
 
 public class TeslaCoilModeButton extends IconButton {
-    private static final ResourceLocation HV_TEXTURE = new ResourceLocation(AE2LightningTech.MODID, "textures/gui/buttons/lightning.png");
-    private static final ResourceLocation EHV_TEXTURE = new ResourceLocation(AE2LightningTech.MODID, "textures/gui/buttons/lightning_high_voltage.png");
+    private static final ResourceLocation HV_TEXTURE = new ResourceLocation(
+            AE2LightningTech.MODID, "textures/gui/buttons/lightning.png");
+    private static final ResourceLocation EHV_TEXTURE = new ResourceLocation(
+            AE2LightningTech.MODID, "textures/gui/buttons/lightning_high_voltage.png");
 
     private TeslaCoilMode mode = TeslaCoilMode.HIGH_VOLTAGE;
 
     public TeslaCoilModeButton(OnPress onPress) {
         super(onPress);
-        setDisableBackground(true);
     }
 
     public void setMode(TeslaCoilMode mode) {
@@ -31,7 +32,7 @@ public class TeslaCoilModeButton extends IconButton {
 
     @Override
     protected Icon getIcon() {
-        return Icon.TOOLBAR_BUTTON_BACKGROUND;
+        return null;
     }
 
     @Override
@@ -56,16 +57,19 @@ public class TeslaCoilModeButton extends IconButton {
             return;
         }
 
-        boolean wasActive = this.active;
-        this.active = true;
-        super.renderWidget(guiGraphics, mouseX, mouseY, partial);
-        this.active = wasActive;
+        int yOffset = isHovered() ? 1 : 0;
+        Icon bgIcon = isHovered() ? Icon.TOOLBAR_BUTTON_BACKGROUND
+                : mode == TeslaCoilMode.EXTREME_HIGH_VOLTAGE
+                        ? Icon.TOOLBAR_BUTTON_BACKGROUND
+                        : Icon.TOOLBAR_BUTTON_BACKGROUND;
+        bgIcon.getBlitter()
+                .dest(getX() - 1, getY() + yOffset, 18, 20)
+                .blit(guiGraphics);
 
         var texture = mode == TeslaCoilMode.EXTREME_HIGH_VOLTAGE ? EHV_TEXTURE : HV_TEXTURE;
-        var blitter = Blitter.texture(texture, 16, 16).src(0, 0, 16, 16);
-        if (!wasActive) {
-            blitter.opacity(0.5F);
-        }
-        blitter.dest(getX(), getY(), 16, 16).blit(guiGraphics);
+        Blitter.texture(texture, 16, 16)
+                .src(0, 0, 16, 16)
+                .dest(getX(), getY() + 1 + yOffset, 16, 16)
+                .blit(guiGraphics);
     }
 }

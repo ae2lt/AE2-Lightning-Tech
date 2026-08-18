@@ -10,13 +10,9 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
-import net.minecraft.network.chat.Component;
-import net.minecraft.world.entity.player.Player;
 
 import appeng.api.orientation.RelativeSide;
 import appeng.util.SettingsFrom;
-
-import com.moakiee.ae2lt.machine.common.LightningCollapseMatrixHost;
 
 /**
  * Shared helpers for packing/unpacking custom machine configuration into
@@ -35,7 +31,6 @@ public final class MemoryCardConfigSupport {
     private static final String TAG_MACHINE_CONFIG = "AE2LTMachineConfig";
     private static final String TAG_AUTO_EXPORT = "AutoExport";
     private static final String TAG_ALLOWED_OUTPUTS = "AllowedOutputs";
-    private static final String TAG_MATRIX_COUNT = "LightningCollapseMatrixCount";
 
     private MemoryCardConfigSupport() {}
 
@@ -195,24 +190,6 @@ public final class MemoryCardConfigSupport {
     public static void ifBoolean(CompoundTag tag, String key, Consumer<Boolean> setter) {
         if (tag.contains(key)) {
             setter.accept(tag.getBoolean(key));
-        }
-    }
-
-    // ── Lightning Collapse Matrix count persistence ─────────────────────
-
-    public static void writeMatrixCount(CompoundTag tag, LightningCollapseMatrixHost host) {
-        tag.putInt(TAG_MATRIX_COUNT, host.getInstalledMatrixCount());
-    }
-
-    public static void restoreMatrixCount(
-            CompoundTag tag, @Nullable Player player, LightningCollapseMatrixHost host) {
-        if (!tag.contains(TAG_MATRIX_COUNT)) {
-            return;
-        }
-        int missing = host.restoreMatricesFromMemoryCard(player, tag.getInt(TAG_MATRIX_COUNT));
-        if (missing > 0 && player != null && !player.level().isClientSide()) {
-            player.sendSystemMessage(Component.translatable(
-                    "message.ae2lt.memory_card.missing_matrices", missing));
         }
     }
 }
