@@ -68,7 +68,9 @@ item_ids:
 
 苍穹灵核是苍穹织雷护甲的核心。
 
-<ItemLink id="ae2lt:inactive_firmament_spirit_core" /> 有一定几率出现在末地城的宝藏箱中。将其投入苍穹转换核心加工即可**激活**，一次性分离出四种灵核各一枚：
+自然生成的苍穹转换核心有 **50%** 的几率在输出槽中遗留一枚 <ItemLink id="ae2lt:inactive_firmament_spirit_core" />，空手右键核心即可取出。失活灵核也有 **15%** 的几率出现在末地城的宝藏箱中。
+
+将失活灵核投入苍穹转换核心加工即可**激活**，一次性分离出四种灵核各一枚：
 
 <ItemGrid>
   <ItemIcon id="ae2lt:firmament_spirit_core_oculus" />
