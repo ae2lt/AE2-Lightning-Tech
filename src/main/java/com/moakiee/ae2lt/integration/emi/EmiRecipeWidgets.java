@@ -23,7 +23,9 @@ final class EmiRecipeWidgets {
     }
 
     static ResourceLocation syntheticId(String path) {
-        return new ResourceLocation(AE2LightningTech.MODID, "emi/" + path);
+        // EMI uses a leading slash to distinguish synthetic recipes from recipes
+        // that are expected to exist in Minecraft's RecipeManager.
+        return new ResourceLocation(AE2LightningTech.MODID, "/emi/" + path);
     }
 
     static EmiIngredient ingredient(Ingredient ingredient, long count) {
