@@ -40,19 +40,64 @@ public interface MachineAdapter {
     boolean canAccept(ServerLevel level, BlockPos pos, Direction face, IPatternDetails pattern);
 
     /**
+     * Capacity-aware form used by provider dispatch after it has resolved the
+     * exact AE2 storage target for the selected face.
+     */
+    default boolean canAccept(
+            ServerLevel level,
+            BlockPos pos,
+            Direction face,
+            IPatternDetails pattern,
+            @Nullable PatternProviderTarget cachedTarget) {
+        return canAccept(level, pos, face, pattern);
+    }
+
+    /**
+     * Whether this target supports aggregated copies. Dedicated crafting
+     * machines whose {@code pushPattern} call is itself the execution event
+     * should return {@code false} and remain on one-copy dispatch.
+     */
+    default boolean supportsBatch(
+            ServerLevel level, BlockPos pos, Direction face, IPatternDetails pattern) {
+        return true;
+    }
+
+    /**
      * Attempt to push up to {@code maxCopies} copies of the pattern's inputs.
      *
      * @param blocking      if {@code true}, refuse when the target already holds pattern inputs
      * @param patternInputs the union of all input keys (secondary dropped); used only when blocking
-     * @param cachedTarget  调用方预取的 target（命中缓存可避免重复外部存储能力查询）；
+     * @param cachedTarget  调用方预取的 target（命中缓存可避免重复 BlockCapability 查询）；
      *                      为 null 时实现需自行解析。仅 generic inventory 路径会用到。
-     * @return a {@link PushResult} containing the number of accepted copies and any overflow items
+     * @return a {@link PushResult} containing the number of copies whose
+     *         ownership was accepted and any provider-owned overflow
      */
     PushResult pushCopies(ServerLevel level, BlockPos pos, Direction face,
                           IPatternDetails pattern, KeyCounter[] inputs, int maxCopies,
                           boolean blocking, Set<AEKey> patternInputs,
                           IActionSource source,
                           @Nullable PatternProviderTarget cachedTarget);
+
+    /**
+     * Dispatch using an explicit input-acceptance contract. Existing external
+     * adapters retain their previous behavior unless they override this method.
+     */
+    default PushResult pushCopies(
+            ServerLevel level,
+            BlockPos pos,
+            Direction face,
+            IPatternDetails pattern,
+            KeyCounter[] inputs,
+            int maxCopies,
+            PatternInputAcceptance inputAcceptance,
+            boolean blocking,
+            Set<AEKey> patternInputs,
+            IActionSource source,
+            @Nullable PatternProviderTarget cachedTarget) {
+        return pushCopies(
+                level, pos, face, pattern, inputs, maxCopies,
+                blocking, patternInputs, source, cachedTarget);
+    }
 
     /**
      * Try to flush leftover items into the same target.
@@ -88,16 +133,41 @@ public interface MachineAdapter {
     }
 
     /**
-     * Extract items from the machine that match the allowed output keys.
-     * Only items accepted by {@code allowedOutputs} will be extracted — input
-     * materials, catalysts, upgrades etc. are left alone.
+     * Destination for outputs extracted by {@link #extractOutputs}. Lets the
+     * caller cap extraction up-front (power + storage limits) so items are
+     * never pulled out of a machine without a guaranteed place to go.
+     */
+    interface OutputSink {
+        /** Max amount of {@code what} the sink can accept right now; 0 skips extraction. */
+        long maxAccept(AEKey what, long available);
+
+        /** Store extracted items. Returns the amount actually stored. */
+        long accept(AEKey what, long amount);
+
+        /**
+         * Last-resort delivery for items that could neither be stored via
+         * {@link #accept} nor pushed back into the machine. Must not void them.
+         */
+        void acceptOverflow(AEKey what, long amount);
+    }
+
+    /**
+     * Extract items matching {@code allowedOutputs} from the machine and hand
+     * them to {@code sink}. Implementations must query {@link OutputSink#maxAccept}
+     * before each extract so items without a destination stay in the machine
+     * instead of being voided.
      *
      * @param allowedOutputs filter describing which outputs belong to currently
      *                       loaded patterns
-     * @return extracted stacks (already committed, caller must store them)
+     * @return whether output was extracted, absent, blocked, or unavailable
      */
-    default List<GenericStack> extractOutputs(ServerLevel level, BlockPos pos, Direction face,
-                                              AllowedOutputFilter allowedOutputs, IActionSource source) {
-        return List.of();
+    default OutputReturnResult extractOutputs(
+            ServerLevel level,
+            BlockPos pos,
+            Direction face,
+            AllowedOutputFilter allowedOutputs,
+            IActionSource source,
+            OutputSink sink) {
+        return OutputReturnResult.UNAVAILABLE;
     }
 }

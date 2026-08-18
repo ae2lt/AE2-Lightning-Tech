@@ -41,8 +41,7 @@ public class OverloadPatternEncoderMenu extends AEBaseMenu {
     public static final MenuType<OverloadPatternEncoderMenu> TYPE = Ae2ltMenuBuilder.buildUnregistered(
             MenuTypeBuilder
                     .create(OverloadPatternEncoderMenu::new, OverloadPatternEncoderHost.class),
-            new ResourceLocation(
-                    AE2LightningTech.MODID, "overload_pattern_encoder"));
+            new ResourceLocation(AE2LightningTech.MODID, "overload_pattern_encoder"));
 
     public static final int MAX_INPUT_SLOTS = 18;
     public static final int MAX_OUTPUT_SLOTS = 18;

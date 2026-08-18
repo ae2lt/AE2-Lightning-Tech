@@ -127,7 +127,7 @@ public final class OverloadProcessingLockedRecipe {
                 ? LightningKey.Tier.fromSerializedName(tag.getString(TAG_LIGHTNING_TIER))
                 : OverloadProcessingRecipe.DEFAULT_LIGHTNING_TIER;
         return new OverloadProcessingLockedRecipe(
-                new ResourceLocation(tag.getString(TAG_RECIPE_ID)),
+                ResourceLocation.tryParse(tag.getString(TAG_RECIPE_ID)),
                 totalEnergy,
                 totalLightningCost,
                 lightningTier,

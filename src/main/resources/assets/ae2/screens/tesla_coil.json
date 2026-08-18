@@ -47,7 +47,7 @@
   },
   "images": {
     "energyBar": {
-      "texture": "ae2:textures/guis/inscriber.png",
+      "texture": "ae2lt:textures/guis/tesla_coil.png",
       "srcRect": [176, 0, 6, 18]
     }
   },

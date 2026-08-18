@@ -45,8 +45,7 @@ public class OverloadedInterfaceMenu extends InterfaceMenu implements FrequencyB
 
     public static final MenuType<OverloadedInterfaceMenu> TYPE = Ae2ltMenuBuilder.buildUnregistered(
             MenuTypeBuilder.create(FACTORY, InterfaceLogicHost.class),
-            new ResourceLocation(
-                    AE2LightningTech.MODID, "overloaded_interface"));
+            new ResourceLocation(AE2LightningTech.MODID, "overloaded_interface"));
 
     private static final int SLOTS_PER_PAGE = 18;
 
@@ -105,7 +104,7 @@ public class OverloadedInterfaceMenu extends InterfaceMenu implements FrequencyB
         if (host instanceof OverloadedInterfaceBlockEntity be) {
             var filterSlot = new OverloadedFilterSlot(be.getFilterInv(), 0);
             filterSlot.setNotDraggable();
-            this.filterSlot = this.addSlot(filterSlot, SlotSemantics.UPGRADE);
+            this.filterSlot = this.addSlot(filterSlot, Ae2ltSlotSemantics.OVERLOADED_INTERFACE_FILTER);
             Ae2ltSlotBackgrounds.withBackground(this.filterSlot, Ae2ltSlotBackgrounds.FILTER_COMPONENT);
         }
 
@@ -125,6 +124,9 @@ public class OverloadedInterfaceMenu extends InterfaceMenu implements FrequencyB
         var cSlots = new HashSet<Slot>(storageSlotSet);
         cSlots.addAll(allConfigSlots);
         cSlots.addAll(getSlots(SlotSemantics.UPGRADE));
+        if (filterSlot != null) {
+            cSlots.add(filterSlot);
+        }
         this.containerSlotSet = cSlots;
 
         registerClientAction("nextPage", this::nextPage);
@@ -308,18 +310,11 @@ public class OverloadedInterfaceMenu extends InterfaceMenu implements FrequencyB
         return (unlimitedBits & (1L << slot)) != 0;
     }
 
-    @Override
-    public net.minecraft.core.BlockPos getFrequencyBindingBlockPos() {
-        if (host instanceof net.minecraft.world.level.block.entity.BlockEntity be) {
-            return be.getBlockPos();
-        }
-        throw new IllegalStateException("Frequency binding host is not a block entity: " + host);
-    }
 
-    // ══════════════════════════════════════════════════════════════════════
+    // 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲
     //  ME Terminal-style proxy slot interaction
     //  Storage slots are display-only; all click actions handled here.
-    // ══════════════════════════════════════════════════════════════════════
+    // 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲
 
     @Override
     public void clicked(int slotId, int button, ClickType clickType, Player player) {
@@ -522,7 +517,7 @@ public class OverloadedInterfaceMenu extends InterfaceMenu implements FrequencyB
         return ItemStack.EMPTY;
     }
 
-    // ══════════════════════════════════════════════════════════════════════
+    // 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲
 
     @Override
     public void openSetAmountMenu(int configSlot) {
@@ -585,4 +580,3 @@ public class OverloadedInterfaceMenu extends InterfaceMenu implements FrequencyB
         }
     }
 }
-

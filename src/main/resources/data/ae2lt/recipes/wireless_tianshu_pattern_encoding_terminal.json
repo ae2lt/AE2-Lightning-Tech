@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "conditions": [
+    {
+      "type": "forge:mod_loaded",
+      "modid": "ae2wtlib"
+    }
+  ],
+  "category": "misc",
+  "pattern": [
+    " W ",
+    " T ",
+    " C "
+  ],
+  "key": {
+    "W": { "item": "ae2:wireless_receiver" },
+    "T": { "item": "ae2lt:tianshu_pattern_encoding_terminal" },
+    "C": { "item": "ae2:dense_energy_cell" }
+  },
+  "result": {
+    "item": "ae2lt:wireless_tianshu_pattern_encoding_terminal",
+    "count": 1
+  }
+}

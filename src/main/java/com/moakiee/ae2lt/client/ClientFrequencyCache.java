@@ -18,8 +18,8 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
 
 /**
  * Client-side cache of all wireless frequencies. Populated by sync packets.
@@ -135,4 +135,3 @@ public final class ClientFrequencyCache {
         clear();
     }
 }
-

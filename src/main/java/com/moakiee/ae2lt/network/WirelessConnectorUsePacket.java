@@ -1,15 +1,15 @@
 package com.moakiee.ae2lt.network;
 
 import com.moakiee.ae2lt.block.OverloadedInterfaceBlock;
-import com.moakiee.ae2lt.block.OverloadedPatternProviderBlock;
 import com.moakiee.ae2lt.block.OverloadedPowerSupplyBlock;
 import com.moakiee.ae2lt.blockentity.OverloadedInterfaceBlockEntity;
-import com.moakiee.ae2lt.blockentity.OverloadedPatternProviderBlockEntity;
 import com.moakiee.ae2lt.blockentity.OverloadedPowerSupplyBlockEntity;
 import com.moakiee.ae2lt.item.OverloadedWirelessConnectorItem;
 import com.moakiee.ae2lt.logic.WirelessConnectionBatchEdit;
 import com.moakiee.ae2lt.logic.WirelessConnectionRange;
 import com.moakiee.ae2lt.logic.WirelessConnectorTargetHelper;
+import com.moakiee.ae2lt.api.patternprovider.WirelessPatternProviderHost;
+import com.moakiee.thunderbolt.api.wireless.WirelessConnectionRef;
 import java.util.ArrayList;
 import java.util.function.Supplier;
 import net.minecraft.ChatFormatting;
@@ -67,7 +67,7 @@ public record WirelessConnectorUsePacket(
 
         var state = level.getBlockState(pos);
         var targetBe = level.getBlockEntity(pos);
-        boolean isProvider = state.getBlock() instanceof OverloadedPatternProviderBlock;
+        boolean isProvider = targetBe instanceof WirelessPatternProviderHost;
         boolean isInterface = state.getBlock() instanceof OverloadedInterfaceBlock;
         boolean isPowerSupply = state.getBlock() instanceof OverloadedPowerSupplyBlock;
         boolean isHost = isProvider || isInterface || isPowerSupply;
@@ -77,8 +77,8 @@ public record WirelessConnectorUsePacket(
 
         // ── Clicking a host block: select it ─────────────────────────────
         if (isProvider) {
-            if (targetBe instanceof OverloadedPatternProviderBlockEntity provider
-                    && provider.getProviderMode() == OverloadedPatternProviderBlockEntity.ProviderMode.NORMAL) {
+            if (targetBe instanceof WirelessPatternProviderHost provider
+                    && !provider.isWirelessProvider()) {
                 player.displayClientMessage(
                         Component.translatable("ae2lt.connector.need_wireless").withStyle(ChatFormatting.GREEN), true);
                 return;
@@ -148,7 +148,7 @@ public record WirelessConnectorUsePacket(
             return;
         }
 
-        if (level.getBlockEntity(pos) instanceof OverloadedPatternProviderBlockEntity) {
+        if (level.getBlockEntity(pos) instanceof WirelessPatternProviderHost) {
             player.displayClientMessage(
                     Component.translatable("ae2lt.connector.cannot_bind_provider")
                             .withStyle(ChatFormatting.RED), true);
@@ -174,9 +174,9 @@ public record WirelessConnectorUsePacket(
                 targetDim,
                 provider.getConnections(),
                 face,
-                OverloadedPatternProviderBlockEntity.WirelessConnection::dimension,
-                OverloadedPatternProviderBlockEntity.WirelessConnection::pos,
-                OverloadedPatternProviderBlockEntity.WirelessConnection::boundFace);
+                WirelessConnectionRef::dimension,
+                WirelessConnectionRef::pos,
+                WirelessConnectionRef::boundFace);
 
         for (var targetPos : plan.disconnect()) {
             if (provider.removeConnection(targetDim, targetPos)) {
@@ -186,7 +186,7 @@ public record WirelessConnectorUsePacket(
 
         for (var targetPos : plan.update()) {
             if (!WirelessConnectionRange.isConnectorLinkInRange(
-                    level, provider.getBlockPos(), targetPos)) {
+                    level, provider.getProviderPos(), targetPos)) {
                 skippedOutOfRange++;
                 continue;
             }
@@ -197,7 +197,7 @@ public record WirelessConnectorUsePacket(
 
         for (var targetPos : plan.connect()) {
             if (!WirelessConnectionRange.isConnectorLinkInRange(
-                    level, provider.getBlockPos(), targetPos)) {
+                    level, provider.getProviderPos(), targetPos)) {
                 skippedOutOfRange++;
                 continue;
             }
@@ -208,7 +208,14 @@ public record WirelessConnectorUsePacket(
             }
         }
 
-        sendProviderConnectionFeedback(player, disconnected, updated, connected, skippedDueToLimit, skippedOutOfRange);
+        sendProviderConnectionFeedback(
+                player,
+                disconnected,
+                updated,
+                connected,
+                skippedDueToLimit,
+                skippedOutOfRange,
+                provider.getMaxWirelessConnections());
     }
 
     private void sendProviderConnectionFeedback(ServerPlayer player,
@@ -216,7 +223,8 @@ public record WirelessConnectorUsePacket(
                                                 ArrayList<BlockPos> updated,
                                                 ArrayList<BlockPos> connected,
                                                 int skippedDueToLimit,
-                                                int skippedOutOfRange) {
+                                                int skippedOutOfRange,
+                                                int maxConnections) {
         if (skippedOutOfRange > 0 && skippedDueToLimit > 0) {
             int changed = disconnected.size() + updated.size() + connected.size();
             if (changed > 0) {
@@ -226,7 +234,7 @@ public record WirelessConnectorUsePacket(
                         skippedOutOfRange,
                         WirelessConnectionRange.maxConnectorDistance(),
                         skippedDueToLimit,
-                        OverloadedPatternProviderBlockEntity.MAX_WIRELESS_CONNECTIONS)
+                        maxConnections)
                         .withStyle(ChatFormatting.GREEN), true);
                 return;
             }
@@ -235,7 +243,7 @@ public record WirelessConnectorUsePacket(
                     skippedOutOfRange,
                     WirelessConnectionRange.maxConnectorDistance(),
                     skippedDueToLimit,
-                    OverloadedPatternProviderBlockEntity.MAX_WIRELESS_CONNECTIONS)
+                    maxConnections)
                     .withStyle(ChatFormatting.RED), true);
             return;
         }
@@ -266,14 +274,14 @@ public record WirelessConnectorUsePacket(
                         "ae2lt.connector.provider_partial",
                         changed,
                         skippedDueToLimit,
-                        OverloadedPatternProviderBlockEntity.MAX_WIRELESS_CONNECTIONS)
+                        maxConnections)
                         .withStyle(ChatFormatting.GREEN), true);
                 return;
             }
             player.displayClientMessage(Component.translatable(
                     "ae2lt.connector.provider_full",
                     skippedDueToLimit,
-                    OverloadedPatternProviderBlockEntity.MAX_WIRELESS_CONNECTIONS)
+                    maxConnections)
                     .withStyle(ChatFormatting.RED), true);
             return;
         }

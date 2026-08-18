@@ -4,11 +4,14 @@
   "key": {
     "a": {
       "item": "minecraft:pink_wool"
+    },
+    "c": {
+      "item": "ae2lt:pigmee_core"
     }
   },
   "pattern": [
     "aaa",
-    "a a",
+    "aca",
     "aaa"
   ],
   "result": {

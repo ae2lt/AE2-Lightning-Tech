@@ -1,31 +1,52 @@
 {
   "multipart": [
     {
-      "when": {
-        "powered": "false"
-      },
-      "apply": {
-        "model": "ae2lt:block/lightning_assembler",
-        "y": 90
-      }
+      "when": { "facing": "north", "powered": "false" },
+      "apply": { "model": "ae2lt:block/lightning_assembler", "y": 90 }
     },
     {
-      "when": {
-        "powered": "true"
-      },
-      "apply": {
-        "model": "ae2lt:block/lightning_assembler_powered",
-        "y": 90
-      }
+      "when": { "facing": "east", "powered": "false" },
+      "apply": { "model": "ae2lt:block/lightning_assembler", "y": 180 }
     },
     {
-      "when": {
-        "powered": "true",
-        "working": "true"
-      },
-      "apply": {
-        "model": "ae2lt:block/lightning_assembler_lightnings"
-      }
+      "when": { "facing": "south", "powered": "false" },
+      "apply": { "model": "ae2lt:block/lightning_assembler", "y": 270 }
+    },
+    {
+      "when": { "facing": "west", "powered": "false" },
+      "apply": { "model": "ae2lt:block/lightning_assembler" }
+    },
+    {
+      "when": { "facing": "north", "powered": "true" },
+      "apply": { "model": "ae2lt:block/lightning_assembler_powered", "y": 90 }
+    },
+    {
+      "when": { "facing": "east", "powered": "true" },
+      "apply": { "model": "ae2lt:block/lightning_assembler_powered", "y": 180 }
+    },
+    {
+      "when": { "facing": "south", "powered": "true" },
+      "apply": { "model": "ae2lt:block/lightning_assembler_powered", "y": 270 }
+    },
+    {
+      "when": { "facing": "west", "powered": "true" },
+      "apply": { "model": "ae2lt:block/lightning_assembler_powered" }
+    },
+    {
+      "when": { "facing": "north", "powered": "true", "working": "true" },
+      "apply": { "model": "ae2lt:block/lightning_assembler_lightnings", "y": 90 }
+    },
+    {
+      "when": { "facing": "east", "powered": "true", "working": "true" },
+      "apply": { "model": "ae2lt:block/lightning_assembler_lightnings", "y": 180 }
+    },
+    {
+      "when": { "facing": "south", "powered": "true", "working": "true" },
+      "apply": { "model": "ae2lt:block/lightning_assembler_lightnings", "y": 270 }
+    },
+    {
+      "when": { "facing": "west", "powered": "true", "working": "true" },
+      "apply": { "model": "ae2lt:block/lightning_assembler_lightnings" }
     }
   ]
 }

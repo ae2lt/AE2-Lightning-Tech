@@ -1,0 +1,49 @@
+{
+  "parent": "ae2lt:main/pig_zip",
+  "display": {
+    "icon": { "item": "ae2lt:pigmee_mentalmath_unit" },
+    "title": { "translate": "advancements.ae2lt.pigmee_technology.title" },
+    "description": { "translate": "advancements.ae2lt.pigmee_technology.description" },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "pattern_provider": {
+      "trigger": "minecraft:recipe_crafted",
+      "conditions": { "recipe_id": "ae2lt:pigmee_pattern_provider" }
+    },
+    "molecular_assembler": {
+      "trigger": "minecraft:recipe_crafted",
+      "conditions": { "recipe_id": "ae2lt:pigmee_molecular_assembler" }
+    },
+    "mentalmath_unit": {
+      "trigger": "minecraft:recipe_crafted",
+      "conditions": { "recipe_id": "ae2lt:pigmee_mentalmath_unit" }
+    },
+    "item_cell_housing": {
+      "trigger": "minecraft:recipe_crafted",
+      "conditions": { "recipe_id": "ae2lt:pigmee_item_cell_housing" }
+    },
+    "storage_component": {
+      "trigger": "minecraft:recipe_crafted",
+      "conditions": { "recipe_id": "ae2lt:pigmee_storage_component" }
+    },
+    "storage_cell": {
+      "trigger": "minecraft:recipe_crafted",
+      "conditions": { "recipe_id": "ae2lt:pigmee_storage_cell_from_housing" }
+    }
+  },
+  "requirements": [
+    [
+      "pattern_provider",
+      "molecular_assembler",
+      "mentalmath_unit",
+      "item_cell_housing",
+      "storage_component",
+      "storage_cell"
+    ]
+  ],
+  "sends_telemetry_event": false
+}

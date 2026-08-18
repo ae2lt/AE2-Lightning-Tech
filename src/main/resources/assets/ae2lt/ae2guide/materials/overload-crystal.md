@@ -31,6 +31,10 @@ The main source of Overload Crystals is the clusters that grow naturally on the 
 
 Budding Overload Crystal is obtained by assembling a multiblock structure and triggering a **lightning strike** on the lightning rod that caps it. See the "Obtaining Budding Overload Crystal" section below for details.
 
+### ~~Obtaining from the Firmament Starship~~
+
+~~Clearing the early section of a Firmament Starship yields enough Certus, Fluix and Overload Crystal.~~
+
 ### Budding Tiers
 
 There are four tiers of Budding Overload Crystal:

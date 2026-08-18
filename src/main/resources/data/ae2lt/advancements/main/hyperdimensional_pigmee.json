@@ -1,0 +1,19 @@
+{
+  "parent": "ae2lt:main/lightning_collapse_matrix",
+  "display": {
+    "icon": { "item": "ae2lt:hyperdimensional_pigmee_fumo" },
+    "title": { "translate": "advancements.ae2lt.hyperdimensional_pigmee.title" },
+    "description": { "translate": "advancements.ae2lt.hyperdimensional_pigmee.description" },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": true
+  },
+  "criteria": {
+    "claim_ritual_pigmee": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "requirements": [ [ "claim_ritual_pigmee" ] ],
+  "sends_telemetry_event": false
+}

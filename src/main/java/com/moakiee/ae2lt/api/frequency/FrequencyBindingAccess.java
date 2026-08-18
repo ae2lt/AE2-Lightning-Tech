@@ -1,6 +1,9 @@
 package com.moakiee.ae2lt.api.frequency;
 
+import java.util.function.Consumer;
+
 import appeng.api.networking.IGridNodeListener;
+import appeng.util.SettingsFrom;
 import net.minecraft.nbt.CompoundTag;
 
 /**
@@ -36,23 +39,54 @@ public interface FrequencyBindingAccess {
     void clearRemoved();
 
     /**
-     * Call from the BE's main-node listener when the grid state changes. This
-     * triggers a reconnection attempt after events such as {@code GRID_BOOT}.
+     * Call from the BE's main-node listener when the grid state changes
+     * (e.g. {@code GRID_BOOT}); this triggers a reconnection attempt.
      */
     void onMainNodeStateChanged(IGridNodeListener.State reason);
 
-    /** Append the bound frequency id to the BE's NBT using key {@code "FrequencyId"}. */
+    /** Append the bound frequency id to the BE's NBT (key {@code "FrequencyId"}). */
     void save(CompoundTag tag);
 
     /** Restore the bound frequency id from the BE's NBT. */
     void load(CompoundTag tag);
+
+    /**
+     * Export the frequency and host-supplied fields through AE2LT's stable
+     * memory-card NBT data.
+     *
+     * <p>The callback is invoked only for a memory-card export. Keeping the
+     * payload format behind this public API lets addon hosts preserve cards
+     * written by older AE2LT-backed implementations without importing AE2LT
+     * registry or memory-card internals.
+     *
+     * <p>Forge 1.20.1 note: the newer branch exports through a data component;
+     * on 1.20.1 the same data travels as an NBT tag instead.
+     */
+    default void exportMemorySettings(
+            SettingsFrom mode,
+            CompoundTag output,
+            Consumer<CompoundTag> additionalWriter) {
+    }
+
+    /**
+     * Import the frequency and host-supplied fields from AE2LT's stable
+     * memory-card NBT data.
+     *
+     * <p>The callback is invoked only when compatible exported machine data is
+     * present on a memory card.
+     */
+    default void importMemorySettings(
+            SettingsFrom mode,
+            CompoundTag input,
+            Consumer<CompoundTag> additionalReader) {
+    }
 
     /** Channels currently allocated across the grid the host is part of. {@code 0} when not connected. */
     int getGridUsedChannels();
 
     /**
      * Maximum channels the grid could support. {@code 0} when not connected;
-     * {@code -1} when the grid is in INFINITE channel mode.
+     * {@code -1} sentinel when the grid is in INFINITE channel mode.
      */
     int getGridMaxChannels();
 }

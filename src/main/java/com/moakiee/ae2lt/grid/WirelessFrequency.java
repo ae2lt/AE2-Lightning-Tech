@@ -90,6 +90,23 @@ public class WirelessFrequency {
         }
     }
 
+    /**
+     * Returns true only when {@code s} is exactly 64 lowercase-hex
+     * characters — the shape produced by {@link #hashPassword}. Used to
+     * detect whether a persisted password is already hashed or is a
+     * legacy plaintext value that needs migrating on load.
+     * MAX_PASSWORD_LENGTH is 16, so no plaintext can collide with this
+     * shape.
+     */
+    private static boolean isHashShape(@Nonnull String s) {
+        if (s.length() != 64) return false;
+        for (int i = 0; i < 64; i++) {
+            char c = s.charAt(i);
+            if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'))) return false;
+        }
+        return true;
+    }
+
     // ── Getters / Setters ──
 
     public int getId() {
@@ -160,7 +177,11 @@ public class WirelessFrequency {
 
     @Nonnull
     public FrequencyAccessLevel getPlayerAccess(@Nonnull Player player) {
-        UUID uuid = player.getUUID();
+        return getPlayerAccess(player.getUUID());
+    }
+
+    @Nonnull
+    public FrequencyAccessLevel getPlayerAccess(@Nonnull UUID uuid) {
         FrequencyMember member = members.get(uuid);
         if (member != null) {
             return member.getAccessLevel();
@@ -342,7 +363,16 @@ public class WirelessFrequency {
             security = FrequencySecurityLevel.fromId(tag.getByte(TAG_SECURITY));
         }
         if (type == NBT_SAVE_ALL) {
-            password = tag.getString(TAG_PASSWORD);
+            // Auto-migrate legacy plaintext saves: pre-hash worlds stored
+            // the plaintext password directly. A SHA-256 hex digest is
+            // always 64 lowercase-hex chars, and MAX_PASSWORD_LENGTH is
+            // 16, so anything that doesn't match {@link #isHashShape}
+            // must be legacy plaintext — we re-hash it on load so old
+            // worlds keep working without a manual password reset.
+            String stored = tag.getString(TAG_PASSWORD);
+            password = (stored.isEmpty() || isHashShape(stored))
+                    ? stored
+                    : hashPassword(stored, id);
             members.clear();
             ListTag list = tag.getList(TAG_MEMBERS, Tag.TAG_COMPOUND);
             for (int i = 0; i < list.size(); i++) {

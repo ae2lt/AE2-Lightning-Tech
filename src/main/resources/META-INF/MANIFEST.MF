@@ -1,0 +1,3 @@
+Manifest-Version: 1.0
+MixinConfigs: ae2lt.mixins.json,ae2lt.mekanism.mixins.json,ae2lt.recipeviewer.mixins.json,ae2lt.ae2wtlib.mixins.json
+

@@ -1,0 +1,65 @@
+package com.moakiee.ae2lt.block;
+
+import com.moakiee.ae2lt.logic.craft.MatrixMultiblockComponent;
+
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.BooleanProperty;
+import net.minecraft.world.phys.shapes.Shapes;
+import net.minecraft.world.phys.shapes.VoxelShape;
+
+public class MatrixFormedBlock extends MatrixMultiblockSimpleBlock {
+    public static final BooleanProperty FORMED = MultiblockStateProperties.FORMED;
+
+    public MatrixFormedBlock(Properties properties, MatrixMultiblockComponent component) {
+        super(properties, component);
+        registerDefaultState(defaultBlockState().setValue(FORMED, Boolean.FALSE));
+    }
+
+    @Override
+    protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
+        super.createBlockStateDefinition(builder);
+        builder.add(FORMED);
+    }
+
+    @Override
+    public VoxelShape getOcclusionShape(BlockState state, BlockGetter level, BlockPos pos) {
+        return usesTransparentFormedModel(state) ? Shapes.empty() : super.getOcclusionShape(state, level, pos);
+    }
+
+    @Override
+    public boolean propagatesSkylightDown(BlockState state, BlockGetter level, BlockPos pos) {
+        return usesTransparentFormedModel(state) || super.propagatesSkylightDown(state, level, pos);
+    }
+
+    @Override
+    public int getLightBlock(BlockState state, BlockGetter level, BlockPos pos) {
+        return usesTransparentFormedModel(state) ? 0 : super.getLightBlock(state, level, pos);
+    }
+
+    @Override
+    public float getShadeBrightness(BlockState state, BlockGetter level, BlockPos pos) {
+        return usesTransparentFormedModel(state) ? 1.0F : super.getShadeBrightness(state, level, pos);
+    }
+
+    private boolean usesTransparentFormedModel(BlockState state) {
+        if (!state.getValue(FORMED)) {
+            return false;
+        }
+        return switch (matrixComponent(state)) {
+            case STABLE_MAIN_CORE,
+                    QUANTUM_MAIN_CORE,
+                    OVERLOAD_MAIN_CORE,
+                    MULTIDIMENSIONAL_MAIN_CORE,
+                    THREAD_UNIT_T1,
+                    THREAD_UNIT_T2,
+                    AMPLIFIER_UNIT,
+                    THERMAL_CONTROL_UNIT_T1,
+                    THERMAL_CONTROL_UNIT_T2 -> true;
+            default -> false;
+        };
+    }
+}

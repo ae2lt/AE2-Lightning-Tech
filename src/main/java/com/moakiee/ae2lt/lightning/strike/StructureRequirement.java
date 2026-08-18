@@ -17,7 +17,7 @@ public record StructureRequirement(BlockPos offset, Block block, boolean consume
             throw new JsonSyntaxException("Structure requirement offset must contain exactly 3 integers");
         }
 
-        Block block = BuiltInRegistries.BLOCK.getOptional(new ResourceLocation(GsonHelper.getAsString(json, "block")))
+        Block block = BuiltInRegistries.BLOCK.getOptional(ResourceLocation.tryParse(GsonHelper.getAsString(json, "block")))
                 .orElseThrow(() -> new JsonSyntaxException("Unknown block id: " + GsonHelper.getAsString(json, "block")));
 
         return new StructureRequirement(
@@ -30,9 +30,10 @@ public record StructureRequirement(BlockPos offset, Block block, boolean consume
     }
 
     public static StructureRequirement fromNetwork(FriendlyByteBuf buffer) {
+        BlockPos offset = buffer.readBlockPos();
         Block block = BuiltInRegistries.BLOCK.getOptional(buffer.readResourceLocation())
                 .orElseThrow(() -> new IllegalStateException("Received unknown block id in lightning strike recipe"));
-        return new StructureRequirement(buffer.readBlockPos(), block, buffer.readBoolean());
+        return new StructureRequirement(offset, block, buffer.readBoolean());
     }
 
     public void toNetwork(FriendlyByteBuf buffer) {

@@ -99,4 +99,3 @@ public final class LightningKeyRenderHandler implements AEKeyRenderHandler<Light
         return stack.getDisplayName();
     }
 }
-

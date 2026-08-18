@@ -2,7 +2,6 @@ package com.moakiee.ae2lt.grid;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -27,6 +26,8 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.saveddata.SavedData;
 
 import appeng.api.networking.IGridNode;
+
+import com.moakiee.ae2lt.me.GridNodeAccess;
 
 /**
  * Global registry of wireless frequencies and their transmitters.
@@ -93,7 +94,7 @@ public final class WirelessFrequencyManager extends SavedData {
 
     private final Int2ObjectOpenHashMap<WirelessFrequency> frequencies = new Int2ObjectOpenHashMap<>();
     private final Int2ObjectOpenHashMap<TransmitterEntry> transmitters = new Int2ObjectOpenHashMap<>();
-    private final Map<Integer, Set<DeviceEntry>> devices = new HashMap<>();
+    private final FrequencyDeviceIndex<DeviceEntry> devices = new FrequencyDeviceIndex<>();
     private final Map<Integer, List<TransmitterListener>> listeners = new HashMap<>();
     private final List<DeviceListener> deviceListeners = new ArrayList<>();
     private final Set<Integer> pendingDeviceNotifications = new HashSet<>();
@@ -174,7 +175,7 @@ public final class WirelessFrequencyManager extends SavedData {
                 }
             }
             transmitters.remove(id);
-            devices.remove(id);
+            devices.clearFrequency(id);
             fireListeners(id, false);
             queueDeviceListeners(id);
             setDirty();
@@ -257,22 +258,54 @@ public final class WirelessFrequencyManager extends SavedData {
 
         ServerLevel targetLevel = server.getLevel(entry.dimension());
         if (targetLevel == null) {
-            return entry.cachedNode();
+            return liveCachedNode(entry);
         }
 
-        // Chunk not loaded: fall back to cached node. Loaded but BE missing/wrong type: treat as invalid.
+        // A cached raw node may already have been destroyed by chunk unload. Only expose it while
+        // AE2 still considers its grid structurally available.
         var chunk = targetLevel.getChunkSource()
                 .getChunkNow(entry.pos().getX() >> 4, entry.pos().getZ() >> 4);
         if (chunk == null) {
-            return entry.cachedNode();
+            return liveCachedNode(entry);
         }
         var be = chunk.getBlockEntity(entry.pos());
         if (be instanceof WirelessTransmitterNodeProvider provider) {
             IGridNode node = provider.getWirelessGridNode();
+            if (GridNodeAccess.getGridIfPresent(node) == null) {
+                node = null;
+            }
             updateNode(freqId, node);
             return node;
         }
         return null;
+    }
+
+    @Nullable
+    private static IGridNode liveCachedNode(TransmitterEntry entry) {
+        var node = entry.cachedNode();
+        return GridNodeAccess.getGridIfPresent(node) != null ? node : null;
+    }
+
+    /**
+     * Whether the frequency's transmitter is an advanced wireless controller.
+     * Reads the persisted advanced flag, so it stays accurate even when the
+     * transmitter chunk is unloaded.
+     */
+    public boolean isAdvancedTransmitter(int freqId) {
+        var entry = transmitters.get(freqId);
+        return entry != null && entry.advanced();
+    }
+
+    /**
+     * Frequency-card variant of {@link #resolveNode}: only returns a node when
+     * the transmitter is an advanced controller. Frequency-card connectivity
+     * (terminal remote access, hand-held device links) is reserved for advanced
+     * controllers, so a normal-controller transmitter makes the card inert —
+     * this returns {@code null} as if the frequency had no transmitter.
+     */
+    @Nullable
+    public IGridNode resolveAdvancedNode(int freqId, MinecraftServer server) {
+        return isAdvancedTransmitter(freqId) ? resolveNode(freqId, server) : null;
     }
 
     // ── Listeners ──
@@ -303,39 +336,22 @@ public final class WirelessFrequencyManager extends SavedData {
 
     public void registerDevice(int freqId, DeviceEntry entry) {
         if (freqId <= 0) return;
-        var set = devices.computeIfAbsent(freqId, k -> new HashSet<>());
-        // replace any entry at the same position so flags (advanced, isController) stay current
-        var existing = set.stream()
-                .filter(d -> d.dimension().equals(entry.dimension()) && d.pos().equals(entry.pos()))
-                .findFirst()
-                .orElse(null);
-        if (entry.equals(existing)) {
-            return;
+        if (devices.put(freqId, entry.dimension().location().toString(), entry.pos().asLong(), entry)) {
+            setDirty();
+            queueDeviceListeners(freqId);
         }
-        if (existing != null) {
-            set.remove(existing);
-        }
-        set.add(entry);
-        setDirty();
-        queueDeviceListeners(freqId);
     }
 
     public void unregisterDevice(int freqId, ResourceKey<Level> dim, BlockPos pos) {
         if (freqId <= 0) return;
-        var set = devices.get(freqId);
-        if (set == null) return;
-        boolean removed = set.removeIf(d -> d.dimension().equals(dim) && d.pos().equals(pos));
-        if (removed) {
-            if (set.isEmpty()) devices.remove(freqId);
+        if (devices.remove(freqId, dim.location().toString(), pos.asLong())) {
             setDirty();
             queueDeviceListeners(freqId);
         }
     }
 
     public List<DeviceEntry> getDevices(int freqId) {
-        var set = devices.get(freqId);
-        if (set == null || set.isEmpty()) return Collections.emptyList();
-        return new ArrayList<>(set);
+        return devices.get(freqId);
     }
 
     public void addDeviceListener(DeviceListener l) {
@@ -387,7 +403,7 @@ public final class WirelessFrequencyManager extends SavedData {
             CompoundTag entry = txList.getCompound(i);
             int freqId = entry.getInt("freqId");
             var dimKey = ResourceKey.create(Registries.DIMENSION,
-                    new ResourceLocation(entry.getString("dim")));
+                    ResourceLocation.tryParse(entry.getString("dim")));
             BlockPos pos = BlockPos.of(entry.getLong("pos"));
             boolean adv = entry.getBoolean("advanced");
             transmitters.put(freqId, new TransmitterEntry(dimKey, pos, null, adv));
@@ -398,15 +414,15 @@ public final class WirelessFrequencyManager extends SavedData {
             CompoundTag entry = devList.getCompound(i);
             int freqId = entry.getInt("freqId");
             var dimKey = ResourceKey.create(Registries.DIMENSION,
-                    new ResourceLocation(entry.getString("dim")));
+                    ResourceLocation.tryParse(entry.getString("dim")));
             BlockPos pos = BlockPos.of(entry.getLong("pos"));
             boolean ctrl = entry.getBoolean("controller");
             boolean adv = entry.getBoolean("advanced");
             String deviceName = entry.contains("name")
                     ? entry.getString("name")
                     : DeviceEntry.defaultDeviceName(ctrl, adv);
-            devices.computeIfAbsent(freqId, k -> new HashSet<>())
-                    .add(new DeviceEntry(dimKey, pos, ctrl, adv, deviceName));
+            devices.put(freqId, dimKey.location().toString(), pos.asLong(),
+                    new DeviceEntry(dimKey, pos, ctrl, adv, deviceName));
         }
     }
 
@@ -434,19 +450,16 @@ public final class WirelessFrequencyManager extends SavedData {
         root.put("transmitters", txList);
 
         ListTag devList = new ListTag();
-        for (var e : devices.entrySet()) {
-            int freqId = e.getKey();
-            for (var d : e.getValue()) {
-                CompoundTag tag = new CompoundTag();
-                tag.putInt("freqId", freqId);
-                tag.putString("dim", d.dimension().location().toString());
-                tag.putLong("pos", d.pos().asLong());
-                tag.putBoolean("controller", d.isController());
-                tag.putBoolean("advanced", d.advanced());
-                tag.putString("name", d.deviceName());
-                devList.add(tag);
-            }
-        }
+        devices.forEach((freqId, d) -> {
+            CompoundTag tag = new CompoundTag();
+            tag.putInt("freqId", freqId);
+            tag.putString("dim", d.dimension().location().toString());
+            tag.putLong("pos", d.pos().asLong());
+            tag.putBoolean("controller", d.isController());
+            tag.putBoolean("advanced", d.advanced());
+            tag.putString("name", d.deviceName());
+            devList.add(tag);
+        });
         root.put("devices", devList);
 
         return root;

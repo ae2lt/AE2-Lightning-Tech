@@ -49,7 +49,7 @@ public sealed interface CrystalCatalyzerOutput
     static CrystalCatalyzerOutput fromJson(JsonObject json) {
         if (json.has("tag")) {
             return new OfTag(
-                    TagKey.create(Registries.ITEM, new ResourceLocation(GsonHelper.getAsString(json, "tag"))),
+                    TagKey.create(Registries.ITEM, ResourceLocation.tryParse(GsonHelper.getAsString(json, "tag"))),
                     GsonHelper.getAsInt(json, "count", 1));
         }
         return new OfItem(RecipeSerializationHelper.itemStackFromJson(json));

@@ -3,18 +3,31 @@ package com.moakiee.ae2lt.registry;
 import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.blockentity.AtmosphericIonizerBlockEntity;
 import com.moakiee.ae2lt.blockentity.CrystalCatalyzerBlockEntity;
+import com.moakiee.ae2lt.blockentity.FirmamentConversionCoreBlockEntity;
 import com.moakiee.ae2lt.blockentity.FumoBlockEntity;
 import com.moakiee.ae2lt.blockentity.GhostOutputBlockEntity;
+import com.moakiee.ae2lt.blockentity.ExtendedOverloadedPatternProviderBlockEntity;
 import com.moakiee.ae2lt.blockentity.LightningAssemblyChamberBlockEntity;
 import com.moakiee.ae2lt.blockentity.LightningCollectorBlockEntity;
 import com.moakiee.ae2lt.blockentity.LightningSimulationChamberBlockEntity;
+import com.moakiee.ae2lt.blockentity.MatrixControllerBlockEntity;
+import com.moakiee.ae2lt.blockentity.MatrixPatternStorageBlockEntity;
+import com.moakiee.ae2lt.blockentity.MatrixPortBlockEntity;
+import com.moakiee.ae2lt.blockentity.OverloadDeviceWorkbenchBlockEntity;
 import com.moakiee.ae2lt.blockentity.OverloadProcessingFactoryBlockEntity;
 import com.moakiee.ae2lt.blockentity.OverloadedControllerBlockEntity;
 import com.moakiee.ae2lt.blockentity.OverloadedInterfaceBlockEntity;
 import com.moakiee.ae2lt.blockentity.OverloadedPatternProviderBlockEntity;
 import com.moakiee.ae2lt.blockentity.OverloadedPowerSupplyBlockEntity;
+import com.moakiee.ae2lt.blockentity.PigmeeMentalmathUnitBlockEntity;
+import com.moakiee.ae2lt.blockentity.PigmeeMolecularAssemblerBlockEntity;
+import com.moakiee.ae2lt.blockentity.PigmeePatternProviderBlockEntity;
 import com.moakiee.ae2lt.blockentity.TeslaCoilBlockEntity;
 import com.moakiee.ae2lt.blockentity.TeslaCoilUpperBlockEntity;
+import com.moakiee.ae2lt.blockentity.TianshuSupercomputerControllerBlockEntity;
+import com.moakiee.ae2lt.blockentity.TianshuSupercomputerPortBlockEntity;
+import com.moakiee.ae2lt.blockentity.TianshuPatternStorageBlockEntity;
+import com.moakiee.ae2lt.blockentity.TianshuSeedStorageBlockEntity;
 import com.moakiee.ae2lt.blockentity.AdvancedWirelessOverloadedControllerBlockEntity;
 import com.moakiee.ae2lt.blockentity.WirelessOverloadedControllerBlockEntity;
 import com.moakiee.ae2lt.blockentity.WirelessReceiverBlockEntity;
@@ -34,6 +47,14 @@ public final class ModBlockEntities {
                     () -> BlockEntityType.Builder.of(
                             LightningCollectorBlockEntity::new,
                             ModBlocks.LIGHTNING_COLLECTOR.get())
+                            .build(null));
+
+    public static final RegistryObject<BlockEntityType<FirmamentConversionCoreBlockEntity>>
+            FIRMAMENT_CONVERSION_CORE = BLOCK_ENTITY_TYPES.register(
+                    "firmament_conversion_core",
+                    () -> BlockEntityType.Builder.of(
+                            FirmamentConversionCoreBlockEntity::new,
+                            ModBlocks.FIRMAMENT_CONVERSION_CORE.get())
                             .build(null));
 
     public static final RegistryObject<BlockEntityType<OverloadedControllerBlockEntity>>
@@ -108,6 +129,14 @@ public final class ModBlockEntities {
                             ModBlocks.OVERLOADED_PATTERN_PROVIDER.get())
                             .build(null));
 
+    public static final RegistryObject<BlockEntityType<ExtendedOverloadedPatternProviderBlockEntity>>
+            EXTENDED_OVERLOADED_PATTERN_PROVIDER = BLOCK_ENTITY_TYPES.register(
+                    "extended_overloaded_pattern_provider",
+                    () -> BlockEntityType.Builder.of(
+                            ExtendedOverloadedPatternProviderBlockEntity::new,
+                            ModBlocks.EXTENDED_OVERLOADED_PATTERN_PROVIDER.get())
+                            .build(null));
+
     public static final RegistryObject<BlockEntityType<OverloadedInterfaceBlockEntity>>
             OVERLOADED_INTERFACE = BLOCK_ENTITY_TYPES.register(
                     "overloaded_interface",
@@ -150,6 +179,83 @@ public final class ModBlockEntities {
                             ModBlocks.ADVANCED_WIRELESS_OVERLOADED_CONTROLLER.get())
                             .build(null));
 
+    public static final RegistryObject<BlockEntityType<PigmeeMentalmathUnitBlockEntity>>
+            PIGMEE_MENTALMATH_UNIT = BLOCK_ENTITY_TYPES.register(
+                    "pigmee_mentalmath_unit",
+                    () -> BlockEntityType.Builder.of(
+                            PigmeeMentalmathUnitBlockEntity::new,
+                            ModBlocks.PIGMEE_MENTALMATH_UNIT.get())
+                            .build(null));
+
+    public static final RegistryObject<BlockEntityType<PigmeePatternProviderBlockEntity>>
+            PIGMEE_PATTERN_PROVIDER = BLOCK_ENTITY_TYPES.register(
+                    "pigmee_pattern_provider",
+                    () -> BlockEntityType.Builder.of(
+                            PigmeePatternProviderBlockEntity::new,
+                            ModBlocks.PIGMEE_PATTERN_PROVIDER.get())
+                            .build(null));
+
+    public static final RegistryObject<BlockEntityType<PigmeeMolecularAssemblerBlockEntity>>
+            PIGMEE_MOLECULAR_ASSEMBLER = BLOCK_ENTITY_TYPES.register(
+                    "pigmee_molecular_assembler",
+                    () -> BlockEntityType.Builder.of(
+                            PigmeeMolecularAssemblerBlockEntity::new,
+                            ModBlocks.PIGMEE_MOLECULAR_ASSEMBLER.get())
+                            .build(null));
+
+    public static final RegistryObject<BlockEntityType<TianshuSupercomputerControllerBlockEntity>>
+            TIANSHU_SUPERCOMPUTER_CONTROLLER = BLOCK_ENTITY_TYPES.register(
+                    "tianshu_supercomputer_controller",
+                    () -> BlockEntityType.Builder.of(
+                            TianshuSupercomputerControllerBlockEntity::new,
+                            ModBlocks.TIANSHU_SUPERCOMPUTER_CONTROLLER.get()).build(null));
+
+    public static final RegistryObject<BlockEntityType<TianshuSupercomputerPortBlockEntity>>
+            TIANSHU_SUPERCOMPUTER_PORT = BLOCK_ENTITY_TYPES.register(
+                    "tianshu_supercomputer_port",
+                    () -> BlockEntityType.Builder.of(
+                            TianshuSupercomputerPortBlockEntity::new,
+                            ModBlocks.TIANSHU_SUPERCOMPUTER_PORT.get()).build(null));
+
+    public static final RegistryObject<BlockEntityType<TianshuSeedStorageBlockEntity>>
+            TIANSHU_SEED_STORAGE = BLOCK_ENTITY_TYPES.register(
+                    "closed_loop_seed_storage",
+                    () -> BlockEntityType.Builder.of(
+                            TianshuSeedStorageBlockEntity::new,
+                            ModBlocks.CLOSED_LOOP_SEED_STORAGE.get()).build(null));
+
+    public static final RegistryObject<BlockEntityType<TianshuPatternStorageBlockEntity>>
+            TIANSHU_PATTERN_STORAGE = BLOCK_ENTITY_TYPES.register(
+                    "closed_loop_pattern_storage",
+                    () -> BlockEntityType.Builder.of(
+                            TianshuPatternStorageBlockEntity::new,
+                            ModBlocks.CLOSED_LOOP_PATTERN_STORAGE.get()).build(null));
+
+    public static final RegistryObject<BlockEntityType<MatrixControllerBlockEntity>>
+            MATRIX_CONTROLLER = BLOCK_ENTITY_TYPES.register(
+                    "matter_warping_matrix_controller",
+                    () -> BlockEntityType.Builder.of(
+                            MatrixControllerBlockEntity::new,
+                            ModBlocks.MATTER_WARPING_MATRIX_CONTROLLER.get())
+                            .build(null));
+
+    public static final RegistryObject<BlockEntityType<MatrixPortBlockEntity>>
+            MATRIX_PORT = BLOCK_ENTITY_TYPES.register(
+                    "matter_warping_matrix_port",
+                    () -> BlockEntityType.Builder.of(
+                            MatrixPortBlockEntity::new,
+                            ModBlocks.MATTER_WARPING_MATRIX_PORT.get())
+                            .build(null));
+
+    public static final RegistryObject<BlockEntityType<MatrixPatternStorageBlockEntity>>
+            MATRIX_PATTERN_STORAGE = BLOCK_ENTITY_TYPES.register(
+                    "matter_warping_matrix_pattern_storage",
+                    () -> BlockEntityType.Builder.of(
+                            MatrixPatternStorageBlockEntity::new,
+                            ModBlocks.MATTER_WARPING_MATRIX_PATTERN_STORAGE_T1.get(),
+                            ModBlocks.MATTER_WARPING_MATRIX_PATTERN_STORAGE_T2.get())
+                            .build(null));
+
     @SuppressWarnings("DataFlowIssue")
     public static final RegistryObject<BlockEntityType<GhostOutputBlockEntity>>
             GHOST_OUTPUT = BLOCK_ENTITY_TYPES.register(
@@ -166,10 +272,19 @@ public final class ModBlockEntities {
                             FumoBlockEntity::new,
                             ModFumos.MOAKIEE_FUMO.get(),
                             ModFumos.CYSTRYSU_FUMO.get(),
-                            ModFumos.PIGMEE_FUMO.get())
+                            ModFumos.PIGMEE_FUMO.get(),
+                            ModFumos.CREATIVE_PIGMEE_FUMO.get(),
+                            ModFumos.HYPERDIMENSIONAL_PIGMEE_FUMO.get())
+                            .build(null));
+
+    public static final RegistryObject<BlockEntityType<OverloadDeviceWorkbenchBlockEntity>>
+            OVERLOAD_DEVICE_WORKBENCH = BLOCK_ENTITY_TYPES.register(
+                    "overload_device_workbench",
+                    () -> BlockEntityType.Builder.of(
+                            OverloadDeviceWorkbenchBlockEntity::new,
+                            ModBlocks.OVERLOAD_DEVICE_WORKBENCH.get())
                             .build(null));
 
     private ModBlockEntities() {
     }
 }
-

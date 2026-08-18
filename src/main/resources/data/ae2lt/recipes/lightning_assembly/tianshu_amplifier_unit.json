@@ -1,0 +1,45 @@
+{
+  "type": "ae2lt:lightning_assembly",
+  "priority": 0,
+  "inputs": [
+    {
+      "ingredient": { "item": "ae2:cell_component_256k" },
+      "count": 16
+    },
+    {
+      "ingredient": { "item": "ae2:singularity" },
+      "count": 192
+    },
+    {
+      "ingredient": { "item": "ae2lt:overload_processor" },
+      "count": 64
+    },
+    {
+      "ingredient": { "item": "ae2lt:overload_alloy_plate" },
+      "count": 16
+    },
+    {
+      "ingredient": { "item": "ae2lt:dense_topological_lattice" },
+      "count": 2
+    },
+    {
+      "ingredient": { "item": "ae2:crafting_accelerator" },
+      "count": 8
+    },
+    {
+      "ingredient": { "item": "ae2:speed_card" },
+      "count": 8
+    },
+    {
+      "ingredient": { "item": "ae2lt:tianshu_blank_unit" },
+      "count": 1
+    }
+  ],
+  "result": {
+    "id": "ae2lt:tianshu_amplifier_unit",
+    "count": 1
+  },
+  "totalEnergy": 48000000,
+  "lightningCost": 512,
+  "lightningTier": "high_voltage"
+}

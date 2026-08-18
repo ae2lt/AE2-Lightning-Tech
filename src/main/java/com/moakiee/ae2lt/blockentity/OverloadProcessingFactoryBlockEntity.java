@@ -22,20 +22,26 @@ import net.minecraftforge.fluids.FluidStack;
 import net.minecraftforge.fluids.capability.IFluidHandler;
 import net.minecraftforge.fluids.capability.IFluidHandler.FluidAction;
 import net.minecraftforge.items.IItemHandlerModifiable;
+import net.minecraftforge.common.capabilities.Capability;
+import net.minecraftforge.common.capabilities.ForgeCapabilities;
+import net.minecraftforge.common.util.LazyOptional;
+
+import org.jetbrains.annotations.Nullable;
+
+import com.moakiee.ae2lt.api.AE2LTCapabilities;
+import com.moakiee.ae2lt.me.GridLightningEnergyHandler;
 
 import appeng.api.config.Actionable;
 import appeng.api.networking.IGridNode;
 import appeng.api.networking.IGridNodeListener;
-import appeng.api.networking.IStackWatcher;
 import appeng.api.networking.security.IActionSource;
-import appeng.api.networking.storage.IStorageWatcherNode;
-import appeng.api.stacks.AEKey;
 import appeng.api.networking.ticking.IGridTickable;
 import appeng.api.orientation.BlockOrientation;
 import appeng.api.orientation.RelativeSide;
 import appeng.api.upgrades.IUpgradeInventory;
 import appeng.api.upgrades.IUpgradeableObject;
 import appeng.api.upgrades.UpgradeInventories;
+import appeng.api.util.AECableType;
 import appeng.blockentity.grid.AENetworkBlockEntity;
 import appeng.menu.MenuOpener;
 import appeng.menu.locator.MenuLocator;
@@ -48,6 +54,7 @@ import com.moakiee.ae2lt.logic.AdjacentItemAutoExportHelper;
 import com.moakiee.ae2lt.logic.FluidStackHelper;
 import com.moakiee.ae2lt.logic.MemoryCardConfigSupport;
 import com.moakiee.ae2lt.machine.common.GridRecipeMachineHost;
+import com.moakiee.ae2lt.machine.common.LightningCollapseMatrixHost;
 import com.moakiee.ae2lt.machine.overloadfactory.NotifyingFluidTank;
 import com.moakiee.ae2lt.machine.overloadfactory.OverloadProcessingFactoryAutomationInventory;
 import com.moakiee.ae2lt.machine.overloadfactory.OverloadProcessingFactoryEnergyStorage;
@@ -61,9 +68,11 @@ import com.moakiee.ae2lt.me.key.LightningKey;
 import com.moakiee.ae2lt.menu.OverloadProcessingFactoryMenu;
 import com.moakiee.ae2lt.registry.ModBlockEntities;
 import com.moakiee.ae2lt.registry.ModBlocks;
+import com.moakiee.ae2lt.util.NativeStackDropHelper;
 
 public class OverloadProcessingFactoryBlockEntity extends AENetworkBlockEntity
     implements IUpgradeableObject, FrequencyBindingHost,
+        LightningCollapseMatrixHost,
         GridRecipeMachineHost<OverloadProcessingLockedRecipe, OverloadProcessingRecipeCandidate> {
     private static final String TAG_INVENTORY = "Inventory";
     private static final String TAG_UPGRADES = "Upgrades";
@@ -76,8 +85,8 @@ public class OverloadProcessingFactoryBlockEntity extends AENetworkBlockEntity
     private static final String TAG_AUTO_EXPORT = "AutoExport";
     private static final String TAG_ALLOWED_OUTPUTS = "AllowedOutputs";
 
-    public static final int INPUT_TANK_CAPACITY = 512_000;
-    public static final int OUTPUT_TANK_CAPACITY = 512_000;
+    public static final int INPUT_TANK_CAPACITY = 1_024_000;
+    public static final int OUTPUT_TANK_CAPACITY = 1_024_000;
     public static final int SPEED_CARD_SLOTS = 4;
 
     private final OverloadProcessingFactoryInventory inventory =
@@ -112,18 +121,7 @@ public class OverloadProcessingFactoryBlockEntity extends AENetworkBlockEntity
         this.logic = new OverloadProcessingFactoryLogic(this);
         getMainNode()
                 .setIdlePowerUsage(0)
-                .addService(IGridTickable.class, logic)
-                .addService(IStorageWatcherNode.class, new IStorageWatcherNode() {
-                    @Override
-                    public void updateWatcher(IStackWatcher newWatcher) {
-                        configureLightningWatcher(newWatcher);
-                    }
-
-                    @Override
-                    public void onStackChange(AEKey what, long amount) {
-                        onLightningStackChanged(what);
-                    }
-                });
+                .addService(IGridTickable.class, logic);
     }
 
     public static void serverTick(Level level, BlockPos pos, BlockState state, OverloadProcessingFactoryBlockEntity be) {
@@ -160,6 +158,16 @@ public class OverloadProcessingFactoryBlockEntity extends AENetworkBlockEntity
 
     public OverloadProcessingFactoryInventory getInventory() {
         return inventory;
+    }
+
+    @Override
+    public IItemHandlerModifiable getMatrixInventory() {
+        return inventory;
+    }
+
+    @Override
+    public int getMatrixSlot() {
+        return OverloadProcessingFactoryInventory.SLOT_MATRIX;
     }
 
     public IItemHandlerModifiable getAutomationInventory() {
@@ -269,16 +277,22 @@ public class OverloadProcessingFactoryBlockEntity extends AENetworkBlockEntity
     }
 
     public void addConsumedEnergy(long amount) {
+        if (addConsumedEnergyUnchecked(amount)) {
+            saveChanges();
+            requestClientUpdate();
+        }
+    }
+
+    private boolean addConsumedEnergyUnchecked(long amount) {
         if (amount <= 0L) {
-            return;
+            return false;
         }
         if (amount > Long.MAX_VALUE - this.consumedEnergy) {
             this.consumedEnergy = Long.MAX_VALUE;
         } else {
             this.consumedEnergy += amount;
         }
-        saveChanges();
-        requestClientUpdate();
+        return true;
     }
 
     public void incrementProcessingTicksSpent() {
@@ -375,11 +389,20 @@ public class OverloadProcessingFactoryBlockEntity extends AENetworkBlockEntity
     }
 
     public boolean pushOutResult() {
-        if (allowedOutputs.isEmpty() || !(level instanceof ServerLevel serverLevel)) {
+        if (!hasAutoExportWork() || !(level instanceof ServerLevel serverLevel)) {
             return false;
         }
 
-        boolean pushedItem = AdjacentItemAutoExportHelper.pushOutResult(
+        boolean hasItemOutput = AdjacentItemAutoExportHelper.hasAnyOutput(
+                autoExport,
+                OverloadProcessingFactoryInventory.SLOT_OUTPUT_0,
+                OverloadProcessingFactoryInventory.OUTPUT_SLOT_COUNT,
+                inventory::getStackInSlot);
+        if (!hasItemOutput && outputTank.getFluid().isEmpty()) {
+            return false;
+        }
+
+        boolean pushedItem = hasItemOutput && AdjacentItemAutoExportHelper.pushOutResult(
                 this,
                 getOrientation(),
                 allowedOutputs,
@@ -389,21 +412,22 @@ public class OverloadProcessingFactoryBlockEntity extends AENetworkBlockEntity
                 (slot, amount) -> inventory.extractItem(slot, amount, false),
                 remainder -> {
                     if (!inventory.insertRecipeOutputs(List.of(remainder)) && !remainder.isEmpty() && level != null) {
-                        Block.popResource(level, worldPosition, remainder);
+                        NativeStackDropHelper.popResource(level, worldPosition, remainder);
                     }
                 },
                 direction -> getExportTarget(serverLevel, direction));
 
-        boolean pushedFluid = AdjacentItemAutoExportHelper.pushOutFluid(
-                this,
-                getOrientation(),
-                allowedOutputs,
-                outputTank::getFluid,
-                amount -> {
-                    FluidStack drained = outputTank.drain(amount, FluidAction.EXECUTE);
-                    return drained.getAmount();
-                },
-                direction -> getExportTarget(serverLevel, direction));
+        boolean pushedFluid = !outputTank.getFluid().isEmpty()
+                && AdjacentItemAutoExportHelper.pushOutFluid(
+                        this,
+                        getOrientation(),
+                        allowedOutputs,
+                        outputTank::getFluid,
+                        amount -> {
+                            FluidStack drained = outputTank.drain(amount, FluidAction.EXECUTE);
+                            return drained.getAmount();
+                        },
+                        direction -> getExportTarget(serverLevel, direction));
 
         return pushedItem || pushedFluid;
     }
@@ -572,7 +596,6 @@ public class OverloadProcessingFactoryBlockEntity extends AENetworkBlockEntity
 
         clearLockedRecipe();
         resetProgressState();
-        setWorking(false);
         pushOutResult();
         return true;
     }
@@ -589,8 +612,10 @@ public class OverloadProcessingFactoryBlockEntity extends AENetworkBlockEntity
         boolean changed = this.working != working;
         this.working = working;
         if (level != null) {
-            BlockState state = getBlockState();
-            if (state.hasProperty(OverloadProcessingFactoryBlock.WORKING)
+            BlockState state = level.getBlockState(worldPosition);
+            if (state.is(ModBlocks.OVERLOAD_PROCESSING_FACTORY.get())
+                    && level.getBlockEntity(worldPosition) == this
+                    && state.hasProperty(OverloadProcessingFactoryBlock.WORKING)
                     && state.getValue(OverloadProcessingFactoryBlock.WORKING) != working) {
                 level.setBlock(worldPosition, state.setValue(OverloadProcessingFactoryBlock.WORKING, working), Block.UPDATE_ALL);
             } else if (changed) {
@@ -610,6 +635,12 @@ public class OverloadProcessingFactoryBlockEntity extends AENetworkBlockEntity
     public void setRemoved() {
         frequencyBinding.setRemoved();
         super.setRemoved();
+    }
+
+    @Override
+    public void onChunkUnloaded() {
+        frequencyBinding.onChunkUnloaded();
+        super.onChunkUnloaded();
     }
 
     @Override
@@ -684,12 +715,12 @@ public class OverloadProcessingFactoryBlockEntity extends AENetworkBlockEntity
         for (int slot = 0; slot < inventory.getSlots(); slot++) {
             ItemStack stack = inventory.getStackInSlot(slot);
             if (!stack.isEmpty()) {
-                drops.add(stack.copy());
+                NativeStackDropHelper.addDrops(drops, stack);
             }
         }
         for (var upgrade : upgrades) {
             if (!upgrade.isEmpty()) {
-                drops.add(upgrade.copy());
+                NativeStackDropHelper.addDrops(drops, upgrade);
             }
         }
     }
@@ -708,8 +739,10 @@ public class OverloadProcessingFactoryBlockEntity extends AENetworkBlockEntity
                                net.minecraft.nbt.CompoundTag output,
                                @org.jetbrains.annotations.Nullable Player player) {
         super.exportSettings(mode, output, player);
-        MemoryCardConfigSupport.exportAutoExportSettings(mode, output, autoExport, allowedOutputs,
-                tag -> FrequencyBindingHelper.writeMemoryFrequency(tag, getFrequencyId()));
+        MemoryCardConfigSupport.exportAutoExportSettings(mode, output, autoExport, allowedOutputs, tag -> {
+            FrequencyBindingHelper.writeMemoryFrequency(tag, getFrequencyId());
+            MemoryCardConfigSupport.writeMatrixCount(tag, this);
+        });
     }
 
     @Override
@@ -720,7 +753,10 @@ public class OverloadProcessingFactoryBlockEntity extends AENetworkBlockEntity
         MemoryCardConfigSupport.importAutoExportSettings(mode, input,
                 v -> this.autoExport = v,
                 sides -> this.allowedOutputs = sides,
-                tag -> FrequencyBindingHelper.importMemoryFrequency(tag, this::setFrequency),
+                tag -> {
+                    FrequencyBindingHelper.importMemoryFrequency(tag, this::setFrequency);
+                    MemoryCardConfigSupport.restoreMatrixCount(tag, player, this);
+                },
                 () -> {
                     invalidateExportTargets();
                     saveChanges();
@@ -774,8 +810,13 @@ public class OverloadProcessingFactoryBlockEntity extends AENetworkBlockEntity
 
     @Override
     public void onEnergyConsumed(int consumed) {
-        addConsumedEnergy(consumed);
-        incrementProcessingTicksSpent();
+        if (consumed <= 0) {
+            return;
+        }
+        addConsumedEnergyUnchecked(consumed);
+        this.processingTicksSpent++;
+        saveChanges();
+        requestClientUpdate();
     }
 
     private boolean canAcceptFluidOutput(FluidStack stack) {
@@ -878,18 +919,6 @@ public class OverloadProcessingFactoryBlockEntity extends AENetworkBlockEntity
         logic.onStateChanged();
     }
 
-    private void configureLightningWatcher(IStackWatcher watcher) {
-        watcher.reset();
-        watcher.add(LightningKey.HIGH_VOLTAGE);
-        watcher.add(LightningKey.EXTREME_HIGH_VOLTAGE);
-    }
-
-    private void onLightningStackChanged(AEKey what) {
-        if (LightningKey.HIGH_VOLTAGE.equals(what) || LightningKey.EXTREME_HIGH_VOLTAGE.equals(what)) {
-            logic.onStateChanged();
-        }
-    }
-
     private void requestClientUpdate() {
         if (level == null) {
             markForUpdate();
@@ -904,4 +933,26 @@ public class OverloadProcessingFactoryBlockEntity extends AENetworkBlockEntity
         lastClientUpdateTick = gameTime;
         markForUpdate();
     }
+    @Override
+    public <T> LazyOptional<T> getCapability(Capability<T> cap, @Nullable Direction side) {
+        if (cap == ForgeCapabilities.ITEM_HANDLER) {
+            return LazyOptional.of(this::getAutomationInventory).cast();
+        }
+        if (cap == ForgeCapabilities.FLUID_HANDLER) {
+            return LazyOptional.of(() -> getFluidHandlerCapability(side)).cast();
+        }
+        if (cap == ForgeCapabilities.ENERGY) {
+            return LazyOptional.of(() -> getEnergyStorageCapability(side)).cast();
+        }
+        if (cap == AE2LTCapabilities.LIGHTNING_ENERGY_BLOCK) {
+            return LazyOptional.of(() -> new GridLightningEnergyHandler(this)).cast();
+        }
+        return super.getCapability(cap, side);
+    }
+
+    @Override
+    public AECableType getCableConnectionType(Direction dir) {
+        return AECableType.SMART;
+    }
 }
+

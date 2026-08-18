@@ -59,9 +59,9 @@ public final class SourcePatternSnapshot {
     public static SourcePatternSnapshot fromTag(CompoundTag tag) {
         ResourceLocation itemId;
         if (tag.contains(TAG_ITEM, Tag.TAG_STRING)) {
-            itemId = new ResourceLocation(tag.getString(TAG_ITEM));
+            itemId = ResourceLocation.tryParse(tag.getString(TAG_ITEM));
         } else if (tag.contains(TAG_STACK, Tag.TAG_COMPOUND)) {
-            itemId = new ResourceLocation(tag.getCompound(TAG_STACK).getString("id"));
+            itemId = ResourceLocation.tryParse(tag.getCompound(TAG_STACK).getString("id"));
         } else {
             throw new IllegalArgumentException("source pattern snapshot is missing an item id");
         }

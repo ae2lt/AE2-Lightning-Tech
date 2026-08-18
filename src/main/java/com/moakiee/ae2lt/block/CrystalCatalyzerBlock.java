@@ -20,7 +20,6 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 
 import appeng.api.orientation.IOrientationStrategy;
 import appeng.api.orientation.OrientationStrategies;
-import appeng.block.AEBaseEntityBlock;
 import appeng.menu.locator.MenuLocators;
 
 import com.moakiee.ae2lt.blockentity.CrystalCatalyzerBlockEntity;

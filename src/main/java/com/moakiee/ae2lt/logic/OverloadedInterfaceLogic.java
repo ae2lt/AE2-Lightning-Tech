@@ -35,6 +35,8 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
+import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
 
 public class OverloadedInterfaceLogic extends InterfaceLogic {
@@ -116,6 +118,10 @@ public class OverloadedInterfaceLogic extends InterfaceLogic {
         setField(F_UPGRADES, newUpgrades);
         this.ourUpgrades = newUpgrades;
 
+        // Relies on ClassToInstanceMap.putInstance last-write-wins to replace
+        // the stocking Ticker registered by the InterfaceLogic constructor; if
+        // AE2 ever rejects duplicate services, the vanilla ticker would return
+        // and ping-pong items through the proxied storage.
         mainNode.addService(IGridTickable.class, new ProxyTicker());
     }
 
@@ -226,13 +232,30 @@ public class OverloadedInterfaceLogic extends InterfaceLogic {
 
         @Override
         public TickingRequest getTickingRequest(IGridNode node) {
-            return new TickingRequest(MIN_TICKS, MAX_TICKS, false, false);
+            // The interface actively alerts this ticker whenever its mode,
+            // connection set or I/O configuration changes. AE2 15 rejects
+            // alertDevice calls unless canBeAlerted is enabled on the request.
+            return new TickingRequest(MIN_TICKS, MAX_TICKS, false, true);
         }
 
         @Override
         public TickRateModulation tickingRequest(IGridNode node, int ticksSinceLastCall) {
+            // Keep polling at the maximum interval while the node is inactive.
+            // Channel/power changes and remote eject targets do not reliably
+            // produce an alertDevice callback for this node, so SLEEP can leave
+            // the interface stuck after the external condition recovers.
             if (!mainNode.isActive()) return TickRateModulation.IDLE;
-            if (!ourUpgrades.isInstalled(AEItems.CRAFTING_CARD)) return TickRateModulation.IDLE;
+
+            boolean hasItemIoWork = owner.hasGridItemIoWork();
+            if (hasItemIoWork) {
+                owner.tickGridItemIo();
+            }
+
+            boolean craftingCardInstalled = ourUpgrades.isInstalled(AEItems.CRAFTING_CARD);
+            if (!craftingCardInstalled) {
+                return OverloadedInterfaceTickDecider.gridTickModulation(
+                        hasItemIoWork, false, false);
+            }
             var grid = mainNode.getGrid();
             if (grid == null) return TickRateModulation.IDLE;
 
@@ -252,7 +275,8 @@ public class OverloadedInterfaceLogic extends InterfaceLogic {
                     }
                 }
             }
-            return didWork ? TickRateModulation.URGENT : TickRateModulation.SLOWER;
+            return OverloadedInterfaceTickDecider.gridTickModulation(
+                    hasItemIoWork, true, didWork);
         }
     }
 
@@ -313,6 +337,12 @@ public class OverloadedInterfaceLogic extends InterfaceLogic {
                     owner.setSlotUnlimited(slot, false);
                 }
             }
+            if (owner != null) {
+                var level = owner.getLevel();
+                if (level != null && !level.isClientSide()) {
+                    owner.onGridIoConfigChanged();
+                }
+            }
         }
     }
 
@@ -331,8 +361,14 @@ public class OverloadedInterfaceLogic extends InterfaceLogic {
     public static class ProxiedStorageInv extends OverloadedConfigInv {
         private final OverloadedInterfaceLogic logic;
         private boolean proxying = false;
-        private final KeyCounter availableStacksCache = new KeyCounter();
+        /** Rebuilt (not reset) each refresh: KeyCounter.reset() keeps zeroed keys, which would leak 0-amount entries to callers. */
+        private KeyCounter availableStacksCache = new KeyCounter();
         private long availableStacksCacheTick = Long.MIN_VALUE;
+        /** Per-slot tick cache for the getStack/getAmount display path. External
+         *  IItemHandler pollers hit these every tick; without caching each call
+         *  re-simulates the whole ME network. -1 = not yet computed this tick. */
+        private final long[] displayAmountCache;
+        private long displayAmountCacheTick = Long.MIN_VALUE;
 
         ProxiedStorageInv(OverloadedInterfaceLogic logic,
                           Set<AEKeyType> supportedTypes,
@@ -340,6 +376,7 @@ public class OverloadedInterfaceLogic extends InterfaceLogic {
                           int size, @Nullable Runnable listener) {
             super(supportedTypes, slotFilter, GenericStackInv.Mode.STORAGE, size, listener);
             this.logic = logic;
+            this.displayAmountCache = new long[size];
         }
 
         @Override
@@ -367,8 +404,21 @@ public class OverloadedInterfaceLogic extends InterfaceLogic {
         }
 
         private long displayAmount(int slot, AEKey key) {
-            long cap = capForSlot(slot);
-            return visibleNetworkAmount(key, cap);
+            var be = logic.host.getBlockEntity();
+            var level = be != null ? be.getLevel() : null;
+            long now = level != null ? level.getGameTime() : Long.MIN_VALUE;
+            boolean cacheable = level != null && slot >= 0 && slot < displayAmountCache.length;
+            if (cacheable) {
+                if (now != displayAmountCacheTick) {
+                    Arrays.fill(displayAmountCache, -1L);
+                    displayAmountCacheTick = now;
+                }
+                long cached = displayAmountCache[slot];
+                if (cached >= 0) return cached;
+            }
+            long amt = visibleNetworkAmount(key, capForSlot(slot));
+            if (cacheable) displayAmountCache[slot] = amt;
+            return amt;
         }
 
         private long visibleNetworkAmount(AEKey key, long cap) {
@@ -404,15 +454,15 @@ public class OverloadedInterfaceLogic extends InterfaceLogic {
         private long exposedAmount(AEKey what) {
             var grid = logic.mainNode.getGrid();
             if (grid == null) return 0;
-            long total = 0;
+            // Aggregate caps first: same-key slots mirror the same network
+            // stock, so summing per-slot visible amounts would double-count
+            long capSum = 0;
             for (int i = 0; i < size(); i++) {
                 if (!matchesConfiguredSlot(i, what)) continue;
-                long cap = capForSlot(i);
-                long amount = visibleNetworkAmount(what, cap);
-                if (Long.MAX_VALUE - total < amount) return Long.MAX_VALUE;
-                total += amount;
+                capSum = OverloadedAmountMath.saturatingAdd(capSum, capForSlot(i));
+                if (capSum == Long.MAX_VALUE) break;
             }
-            return total;
+            return capSum > 0 ? visibleNetworkAmount(what, capSum) : 0;
         }
 
         // ── Display: server queries ME network & syncs stacks[]; client uses synced stacks[] ─
@@ -574,30 +624,57 @@ public class OverloadedInterfaceLogic extends InterfaceLogic {
             }
             proxying = true;
             try {
-                availableStacksCache.reset();
+                var fresh = new KeyCounter();
                 var cache = grid.getStorageService().getCachedInventory();
                 boolean fuzzy = logic.ourUpgrades.isInstalled(AEItems.FUZZY_CARD);
                 var fuzzyMode = fuzzy ? logic.getConfigManager().getSetting(Settings.FUZZY_MODE) : null;
+                // Aggregate caps per key: same-key slots mirror the same
+                // network stock and must not double-count
+                var capByKey = new LinkedHashMap<AEKey, Long>();
                 for (int slot = 0; slot < size(); slot++) {
                     var key = cfg().getKey(slot);
                     if (key == null) continue;
+                    capByKey.merge(
+                            key, capForSlot(slot), OverloadedAmountMath::saturatingAdd);
+                }
 
-                    long cap = capForSlot(slot);
-                    long configuredAmount = visibleNetworkAmount(key, cap);
-                    if (configuredAmount > 0) availableStacksCache.add(key, configuredAmount);
+                // A network variant can match several configured keys. Aggregate
+                // every matching slot cap, but retain only one copy of the
+                // physical network amount for that variant.
+                var capByVariant = new LinkedHashMap<AEKey, Long>();
+                var amountByVariant = new LinkedHashMap<AEKey, Long>();
+                for (var capEntry : capByKey.entrySet()) {
+                    var key = capEntry.getKey();
+                    long cap = capEntry.getValue();
+                    long configuredAmount = visibleNetworkAmount(key, Long.MAX_VALUE);
+                    OverloadedAmountMath.mergeSharedExposure(
+                            capByVariant, amountByVariant, key, cap, configuredAmount);
 
                     if (fuzzy && key.supportsFuzzyRangeSearch()) {
                         for (var entry : cache.findFuzzy(key, fuzzyMode)) {
-                            if (entry.getKey().equals(key)) continue;
-                            long amount = cap == Long.MAX_VALUE
-                                    ? entry.getLongValue()
-                                    : Math.min(cap, entry.getLongValue());
-                            if (amount > 0) availableStacksCache.add(entry.getKey(), amount);
+                            var variant = entry.getKey();
+                            // The exact key was already counted for this
+                            // configured entry above.
+                            if (variant.equals(key)) continue;
+                            OverloadedAmountMath.mergeSharedExposure(
+                                    capByVariant,
+                                    amountByVariant,
+                                    variant,
+                                    cap,
+                                    entry.getLongValue());
                         }
                     }
                 }
+                for (var exposedEntry : capByVariant.entrySet()) {
+                    var variant = exposedEntry.getKey();
+                    long cap = exposedEntry.getValue();
+                    long networkAmount = amountByVariant.getOrDefault(variant, 0L);
+                    long amount = OverloadedAmountMath.capVisibleAmount(networkAmount, cap);
+                    if (amount > 0) fresh.add(variant, amount);
+                }
+                availableStacksCache = fresh;
                 availableStacksCacheTick = now;
-                for (var entry : availableStacksCache) {
+                for (var entry : fresh) {
                     out.add(entry.getKey(), entry.getLongValue());
                 }
             } finally {

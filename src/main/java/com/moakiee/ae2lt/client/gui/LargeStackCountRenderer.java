@@ -40,11 +40,12 @@ public final class LargeStackCountRenderer {
         }
 
         var stack = slot.getItem();
-        if (stack.isEmpty() || stack.getCount() <= 1) {
+        long amount = ((LargeStackAppEngSlot) slot).getDisplayedAmount();
+        if (stack.isEmpty() || amount <= 1) {
             return;
         }
 
-        String text = formatCount(stack.getCount());
+        String text = formatCount(amount);
         renderLabel(guiGraphics, font, slot.x, slot.y, text);
     }
 
@@ -72,7 +73,7 @@ public final class LargeStackCountRenderer {
             return;
         }
 
-        appendCountTooltip(lines, slot.getItem().getCount());
+        appendCountTooltip(lines, ((LargeStackAppEngSlot) slot).getDisplayedAmount());
     }
 
     /**

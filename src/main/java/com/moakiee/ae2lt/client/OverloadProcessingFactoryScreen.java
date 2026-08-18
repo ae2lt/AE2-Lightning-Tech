@@ -72,7 +72,7 @@ public class OverloadProcessingFactoryScreen extends AEBaseScreen<OverloadProces
         addToLeftToolbar(this.autoExportButton);
 
         this.configureOutputButton = new ActionButton(
-                ActionItems.WRENCH,
+                ActionItems.TERMINAL_SETTINGS,
                 () -> switchToScreen(new OverloadProcessingFactoryOutputConfigScreen(this)));
         this.configureOutputButton.setMessage(
                 Component.translatable("ae2lt.gui.overload_factory.configure_output"));

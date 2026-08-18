@@ -1,0 +1,17 @@
+{
+  "required": false,
+  "minVersion": "0.8",
+  "package": "com.moakiee.ae2lt.mixin.recipeviewer",
+  "compatibilityLevel": "JAVA_17",
+  "refmap": "ae2lt.refmap.json",
+  "plugin": "com.moakiee.ae2lt.mixin.recipeviewer.RecipeViewerMixinPlugin",
+  "client": [
+    "jei.JeiEncodePatternTransferMixin",
+    "jei.JeiRecipeTransferButtonControllerMixin",
+    "emi.EmiEncodePatternTransferMixin",
+    "emi.EmiRecipeTransferResultAccessor"
+  ],
+  "injectors": {
+    "defaultRequire": 0
+  }
+}

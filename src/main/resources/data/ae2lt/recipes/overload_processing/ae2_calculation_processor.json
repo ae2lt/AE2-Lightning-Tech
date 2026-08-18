@@ -16,7 +16,7 @@
     },
     {
       "ingredient": {
-        "tag": "c:storage_blocks/silicon"
+        "tag": "forge:storage_blocks/silicon"
       },
       "count": 4
     }

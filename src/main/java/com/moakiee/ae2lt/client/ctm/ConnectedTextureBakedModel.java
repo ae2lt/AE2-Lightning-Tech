@@ -1,0 +1,158 @@
+package com.moakiee.ae2lt.client.ctm;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import org.jetbrains.annotations.Nullable;
+
+import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.block.model.BakedQuad;
+import net.minecraft.client.renderer.block.model.ItemOverrides;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.level.BlockAndTintGetter;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraftforge.client.ChunkRenderTypeSet;
+import net.minecraftforge.client.model.IDynamicBakedModel;
+import net.minecraftforge.client.model.data.ModelData;
+import net.minecraftforge.client.model.data.ModelProperty;
+
+/**
+ * Generic connected-texture baked model (Mekanism-style compact CTM).
+ *
+ * <p>Connection info is computed once per block in {@link #getModelData} (which has
+ * level/pos access) and carried via {@link #CONNECTION}; {@link #getQuads} then has
+ * no world access and only consumes that data. When the predicate is inactive
+ * (e.g. unformed glass) or there is no data (item rendering) the plain base texture
+ * is drawn instead of the CTM.
+ */
+public class ConnectedTextureBakedModel implements IDynamicBakedModel {
+
+    public static final ModelProperty<CtmConnectionState> CONNECTION = new ModelProperty<>();
+    private static final Direction[] DIRECTIONS = Direction.values();
+    private static final float OVERLAY_OFFSET = 1.0F / 1024.0F;
+    private final TextureAtlasSprite baseSprite;
+    private final TextureAtlasSprite ctmSprite;
+    @Nullable
+    private final TextureAtlasSprite overlaySprite;
+    private final ConnectionPredicate predicate;
+    private final ChunkRenderTypeSet renderTypes;
+    private final boolean ambientOcclusion;
+    private final boolean gui3d;
+    private final boolean usesBlockLight;
+
+    public ConnectedTextureBakedModel(TextureAtlasSprite baseSprite, TextureAtlasSprite ctmSprite,
+            @Nullable TextureAtlasSprite overlaySprite, ConnectionPredicate predicate,
+            ChunkRenderTypeSet renderTypes,
+            boolean ambientOcclusion, boolean gui3d, boolean usesBlockLight) {
+        this.baseSprite = baseSprite;
+        this.ctmSprite = ctmSprite;
+        this.overlaySprite = overlaySprite;
+        this.predicate = predicate;
+        this.renderTypes = renderTypes;
+        this.ambientOcclusion = ambientOcclusion;
+        this.gui3d = gui3d;
+        this.usesBlockLight = usesBlockLight;
+    }
+
+    @Override
+    public ModelData getModelData(BlockAndTintGetter level, BlockPos pos, BlockState state, ModelData modelData) {
+        if (!predicate.isActive(level, pos, state)) {
+            return modelData;
+        }
+        boolean[] culled = new boolean[DIRECTIONS.length];
+        int[] edges = new int[DIRECTIONS.length];
+        int[] corners = new int[DIRECTIONS.length];
+        for (Direction face : DIRECTIONS) {
+            int idx = face.get3DDataValue();
+            culled[idx] = predicate.connects(level, pos, state, face);
+            int mask = 0;
+            for (int edge = 0; edge < 4; edge++) {
+                if (predicate.connects(level, pos, state, CtmFaceGeometry.neighborDir(face, edge))) {
+                    mask |= (1 << edge);
+                }
+            }
+            edges[idx] = mask;
+            int cornerMask = 0;
+            for (var quadrant : CtmTileSelector.Quadrant.values()) {
+                if (predicate.connects(level, pos, state, CtmFaceGeometry.cornerPos(pos, face, quadrant))) {
+                    cornerMask |= 1 << quadrant.ordinal();
+                }
+            }
+            corners[idx] = cornerMask;
+        }
+        return modelData.derive().with(CONNECTION, new CtmConnectionState(culled, edges, corners)).build();
+    }
+
+    @Override
+    public List<BakedQuad> getQuads(@Nullable BlockState state, @Nullable Direction side, RandomSource rand,
+            ModelData extraData, @Nullable RenderType renderType) {
+        if (side == null) {
+            return List.of();
+        }
+        CtmConnectionState conn = extraData.get(CONNECTION);
+        if (conn == null) {
+            // Inactive (unformed) or no level (item) -> plain base face.
+            if (overlaySprite == null) {
+                return List.of(CtmFaceGeometry.fullFace(side, baseSprite));
+            }
+            return List.of(
+                    CtmFaceGeometry.fullFace(side, baseSprite),
+                    CtmFaceGeometry.fullFace(side, overlaySprite, OVERLAY_OFFSET));
+        }
+        if (conn.culled(side)) {
+            return List.of();
+        }
+        int edges = conn.edges(side);
+        int corners = conn.corners(side);
+        List<BakedQuad> quads = new ArrayList<>(4);
+        for (int sq = 0; sq < 2; sq++) {
+            for (int tq = 0; tq < 2; tq++) {
+                var tile = CtmTileSelector.select(CtmTileSelector.quadrant(sq, tq), edges, corners);
+                TextureAtlasSprite sprite = tile.source() == CtmTileSelector.Source.BASE ? baseSprite : ctmSprite;
+                quads.add(CtmFaceGeometry.quadrant(side, sq, tq, tile, sprite));
+            }
+        }
+        if (overlaySprite != null) {
+            quads.add(CtmFaceGeometry.fullFace(side, overlaySprite, OVERLAY_OFFSET));
+        }
+        return quads;
+    }
+
+    @Override
+    public ChunkRenderTypeSet getRenderTypes(BlockState state, RandomSource rand, ModelData data) {
+        return renderTypes;
+    }
+
+    @Override
+    public boolean useAmbientOcclusion() {
+        return ambientOcclusion;
+    }
+
+    @Override
+    public boolean isGui3d() {
+        return gui3d;
+    }
+
+    @Override
+    public boolean usesBlockLight() {
+        return usesBlockLight;
+    }
+
+    @Override
+    public boolean isCustomRenderer() {
+        return false;
+    }
+
+    @Override
+    public TextureAtlasSprite getParticleIcon() {
+        return baseSprite;
+    }
+
+    @Override
+    public ItemOverrides getOverrides() {
+        return ItemOverrides.EMPTY;
+    }
+}

@@ -1,0 +1,449 @@
+package com.moakiee.ae2lt.celestweave.module;
+
+import org.jetbrains.annotations.Nullable;
+
+import java.util.List;
+
+import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.ByteTag;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.Tag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.phys.Vec3;
+import net.minecraftforge.api.distmarker.Dist;
+
+import com.moakiee.ae2lt.config.AE2LTCommonConfig;
+import com.moakiee.ae2lt.celestweave.ArmorOverloadRules;
+import com.moakiee.ae2lt.celestweave.ArmorFlightSpeedRules;
+import com.moakiee.ae2lt.celestweave.CelestweaveArmorState;
+import com.moakiee.ae2lt.celestweave.PhaseFlightMovementGuard;
+import com.moakiee.ae2lt.celestweave.PhaseFlightControlRules;
+import com.moakiee.ae2lt.celestweave.PhaseFlightPlayerState;
+import com.moakiee.ae2lt.celestweave.PhaseWingFlight;
+import com.moakiee.ae2lt.celestweave.service.ArmorLightningService;
+import com.moakiee.ae2lt.celestweave.service.ArmorResourceFeedback;
+import com.moakiee.ae2lt.me.key.LightningKey;
+
+public final class PhaseFlightSubmodule extends AbstractCelestweaveArmorSubmodule {
+
+    public static final PhaseFlightSubmodule INSTANCE = new PhaseFlightSubmodule();
+
+    public static final String INERTIA_CONFIG_KEY = "flight_inertia";
+    public static final String PHASE_MODE_CONFIG_KEY = "phase_mode";
+
+    private static final String LEGACY_TAG_HAD_MAYFLY = "PhaseHadMayfly";
+    private static final String LEGACY_TAG_WAS_FLYING = "PhaseWasFlying";
+    private static final String TAG_PREVIOUS_SPEED = "PhasePreviousFlyingSpeed";
+    private static final String LEGACY_TAG_HAD_GAME_MODE_FLIGHT = "PhaseHadGameModeFlight";
+    private static final String PLAYER_PHASE_TAG = "ae2lt.phase_flight.active";
+    private static final String PLAYER_ESCAPE_TICKS_TAG = "ae2lt.phase_flight.escape_ticks";
+    private static final float DEFAULT_FLYING_SPEED = 0.05F;
+    private static final float SPEED_EPSILON = 1.0E-6F;
+    private static final int ESCAPE_PHASE_TICKS = 40;
+
+    private PhaseFlightSubmodule() {
+    }
+
+    @Override
+    public String id() {
+        return "phase_flight";
+    }
+
+    @Override
+    public String nameKey() {
+        return "ae2lt.celestweave.feature.phase_flight.name";
+    }
+
+    @Override
+    public String descriptionKey() {
+        return "ae2lt.celestweave.feature.phase_flight.desc";
+    }
+
+    @Override
+    public boolean defaultEnabled() {
+        return false;
+    }
+
+    @Override
+    public int getMaxInstallAmount() {
+        return 1;
+    }
+
+    @Override
+    public String installGroupId() {
+        return FlightSubmodule.INSTALL_GROUP;
+    }
+
+    @Override
+    public void onActivated(@Nullable Player player, Dist dist, ItemStack armor) {
+        if (player != null && dist == Dist.DEDICATED_SERVER) {
+            grantPhaseFlight(player, armor);
+        }
+    }
+
+    @Override
+    public void onDeactivated(@Nullable Player player, Dist dist, ItemStack armor) {
+        if (player != null && dist == Dist.DEDICATED_SERVER) {
+            revokePhaseFlight(player, armor);
+        }
+    }
+
+    @Override
+    public int tickActive(@Nullable Player player, Dist dist, ItemStack armor) {
+        if (player == null || dist != Dist.DEDICATED_SERVER) {
+            return 0;
+        }
+
+        maintainPhaseFlight(player, armor);
+        PhaseWingFlight.tickThrust(player);
+        return 0;
+    }
+
+    @Override
+    public List<CelestweaveArmorSubmoduleConfig> getConfigs(ItemStack armor) {
+        return List.of(
+                speedConfig(armor),
+                inertiaConfig(armor),
+                phaseModeConfig(armor));
+    }
+
+    @Override
+    public boolean setConfig(ItemStack armor, String key, @Nullable Tag value) {
+        if (FlightSpeedOption.CONFIG_KEY.equals(key)) {
+            var option = FlightSpeedOption.fromTag(value);
+            var options = getOptions(armor);
+            options.put(FlightSpeedOption.CONFIG_KEY, option.toTag());
+            setOptions(armor, options);
+            return true;
+        }
+        if (INERTIA_CONFIG_KEY.equals(key)) {
+            var options = getOptions(armor);
+            options.put(INERTIA_CONFIG_KEY, value instanceof ByteTag bt ? bt : ByteTag.valueOf(true));
+            setOptions(armor, options);
+            return true;
+        }
+        if (PHASE_MODE_CONFIG_KEY.equals(key)) {
+            var options = getOptions(armor);
+            options.put(key, value instanceof ByteTag bt ? bt : ByteTag.valueOf(true));
+            setOptions(armor, options);
+            return true;
+        }
+        return false;
+    }
+
+    public static double phaseSpeed(ItemStack armor) {
+        return selectedSpeed(armor).flyingSpeed();
+    }
+
+    public static FlightSpeedOption selectedSpeed(ItemStack armor) {
+        return INSTANCE.getSelectedSpeed(armor);
+    }
+
+    private CelestweaveArmorSubmoduleConfig speedConfig(ItemStack armor) {
+        return config(
+                FlightSpeedOption.CONFIG_KEY,
+                Component.translatable("ae2lt.celestweave.config.speed_multiplier"),
+                getSelectedSpeed(armor).toTag(),
+                speedChoices(),
+                Component.translatable("ae2lt.celestweave.config.speed_multiplier.hint"));
+    }
+
+    private List<CelestweaveArmorSubmoduleConfigChoice> speedChoices() {
+        return List.of(
+                choice(FlightSpeedOption.ONE.toTag(), Component.literal(FlightSpeedOption.ONE.label())),
+                choice(FlightSpeedOption.TWO.toTag(), Component.literal(FlightSpeedOption.TWO.label())),
+                choice(FlightSpeedOption.FOUR.toTag(), Component.literal(FlightSpeedOption.FOUR.label())));
+    }
+
+    private CelestweaveArmorSubmoduleConfig inertiaConfig(ItemStack armor) {
+        return config(
+                INERTIA_CONFIG_KEY,
+                Component.translatable("ae2lt.celestweave.config.flight_inertia"),
+                ByteTag.valueOf(isInertiaEnabled(armor)),
+                booleanChoices(),
+                Component.translatable("ae2lt.celestweave.config.flight_inertia.hint"));
+    }
+
+    public static boolean isInertiaEnabled(ItemStack armor) {
+        var options = INSTANCE.getOptions(armor);
+        if (!options.contains(INERTIA_CONFIG_KEY, Tag.TAG_BYTE)) {
+            return true;
+        }
+        return options.getBoolean(INERTIA_CONFIG_KEY);
+    }
+
+    public static boolean isPhaseModeEnabled(ItemStack armor) {
+        return booleanOption(armor, PHASE_MODE_CONFIG_KEY, true);
+    }
+
+    private CelestweaveArmorSubmoduleConfig phaseModeConfig(ItemStack armor) {
+        return config(
+                PHASE_MODE_CONFIG_KEY,
+                Component.translatable("ae2lt.celestweave.config.phase_mode"),
+                ByteTag.valueOf(isPhaseModeEnabled(armor)),
+                booleanChoices(),
+                Component.translatable("ae2lt.celestweave.config.phase_mode.hint"));
+    }
+
+    private static boolean booleanOption(ItemStack armor, String key, boolean defaultValue) {
+        var options = INSTANCE.getOptions(armor);
+        return options.contains(key, Tag.TAG_BYTE) ? options.getBoolean(key) : defaultValue;
+    }
+
+    private FlightSpeedOption getSelectedSpeed(ItemStack armor) {
+        var options = getOptions(armor);
+        return FlightSpeedOption.fromTag(options.get(FlightSpeedOption.CONFIG_KEY));
+    }
+
+    private static void grantPhaseFlight(Player player, ItemStack armor) {
+        var data = CelestweaveArmorState.getSubmoduleData(armor, INSTANCE);
+        var abilities = player.getAbilities();
+        ForgeFlightPermissionHandoff.cancelRelease(player);
+        PhaseFlightPlayerState.activate(player);
+        PhaseFlightPlayerState.setFlightLocked(player, PhaseLockSubmodule.isFlightLockEnabled(player));
+        updateMovementGuards(player, armor);
+        if (!data.contains(TAG_PREVIOUS_SPEED, Tag.TAG_FLOAT)) {
+            data.putFloat(TAG_PREVIOUS_SPEED, abilities.getFlyingSpeed());
+        }
+        clearLegacyFlightCapture(data);
+        CelestweaveArmorState.setSubmoduleData(armor, INSTANCE, data);
+        updateAbilitiesIfChanged(
+                player,
+                true,
+                PhaseFlightPlayerState.isFlying(player),
+                ArmorFlightSpeedRules.activeFlightSpeed(armor));
+        updatePhaseTraversal(player, armor);
+    }
+
+    private static void maintainPhaseFlight(Player player, ItemStack armor) {
+        ForgeFlightPermissionHandoff.cancelRelease(player);
+        PhaseFlightPlayerState.activate(player);
+        PhaseFlightPlayerState.setFlightLocked(player, PhaseLockSubmodule.isFlightLockEnabled(player));
+        updateMovementGuards(player, armor);
+        updateAbilitiesIfChanged(
+                player,
+                true,
+                PhaseFlightPlayerState.isFlying(player),
+                ArmorFlightSpeedRules.activeFlightSpeed(armor));
+        updatePhaseTraversal(player, armor);
+    }
+
+    private static void revokePhaseFlight(Player player, ItemStack armor) {
+        PhaseFlightMovementGuard.clearPhaseFlightState(player);
+        stopPhaseTraversal(player);
+        PhaseFlightPlayerState.setFlightLocked(player, false);
+        restoreStoredAbilities(player, armor);
+        PhaseFlightPlayerState.endControl(player);
+    }
+
+    public static boolean shouldUsePhaseTraversal(Player player, ItemStack armor) {
+        return player != null
+                && PhaseWingFlight.isFlightActive(player)
+                && isPhaseModeConfigured(armor);
+    }
+
+    private static void updatePhaseTraversal(Player player, ItemStack armor) {
+        if (shouldUsePhaseTraversal(player, armor)) {
+            clearEscapePhaseIfPresent(player);
+            applyTransientPhaseState(player);
+            return;
+        }
+        if (player.getPersistentData().getInt(PLAYER_ESCAPE_TICKS_TAG) > 0) {
+            tickEscapePhase(player, armor);
+            return;
+        }
+        stopPhaseTraversal(player);
+    }
+
+    private static boolean isPhaseModeConfigured(ItemStack armor) {
+        return AE2LTCommonConfig.overloadArmorPhaseFlightEnabled() && isPhaseModeEnabled(armor);
+    }
+
+    private static void stopPhaseTraversal(Player player) {
+        if (!hasTransientPhaseState(player)) {
+            return;
+        }
+        if (PhaseFlightControlRules.intersectsWorldCollision(player) && !escapeFromBlocks(player)) {
+            beginEscapePhase(player);
+            return;
+        }
+        clearTransientPhaseState(player);
+    }
+
+    private static void restoreStoredAbilities(Player player, ItemStack armor) {
+        var data = CelestweaveArmorState.getSubmoduleData(armor, INSTANCE);
+        float previousSpeed = data.contains(TAG_PREVIOUS_SPEED, Tag.TAG_FLOAT)
+                ? data.getFloat(TAG_PREVIOUS_SPEED)
+                : DEFAULT_FLYING_SPEED;
+        data.remove(TAG_PREVIOUS_SPEED);
+        clearLegacyFlightCapture(data);
+        CelestweaveArmorState.setSubmoduleData(armor, INSTANCE, data);
+
+        boolean siblingFlightActive = CelestweaveArmorState.isSubmoduleRuntimeActive(
+                armor,
+                FlightSubmodule.INSTANCE.id());
+        if (siblingFlightActive || player.isCreative() || player.isSpectator()) {
+            ForgeFlightPermissionHandoff.cancelRelease(player);
+        } else {
+            ForgeFlightPermissionHandoff.beginRelease(player);
+        }
+        updateAbilitiesIfChanged(
+                player,
+                true,
+                PhaseFlightPlayerState.isFlying(player),
+                siblingFlightActive
+                        ? ArmorFlightSpeedRules.activeFlightSpeed(armor)
+                        : previousSpeed > 0.0F ? previousSpeed : DEFAULT_FLYING_SPEED);
+    }
+
+    private static void clearLegacyFlightCapture(CompoundTag data) {
+        data.remove(LEGACY_TAG_HAD_MAYFLY);
+        data.remove(LEGACY_TAG_WAS_FLYING);
+        data.remove(LEGACY_TAG_HAD_GAME_MODE_FLIGHT);
+    }
+
+    private static boolean escapeFromBlocks(Player player) {
+        var level = player.level();
+        BlockPos origin = player.blockPosition();
+        var preferred = java.util.List.of(
+                origin,
+                origin.above(),
+                origin.below(),
+                origin.north(),
+                origin.south(),
+                origin.east(),
+                origin.west(),
+                origin.above().north(),
+                origin.above().south(),
+                origin.above().east(),
+                origin.above().west());
+        for (BlockPos candidate : preferred) {
+            if (tryTeleportToCollisionFree(player, candidate)) {
+                return true;
+            }
+        }
+        for (int radius = 0; radius <= 3; radius++) {
+            for (BlockPos candidate : BlockPos.betweenClosed(origin.offset(-radius, -radius, -radius),
+                    origin.offset(radius, radius, radius))) {
+                if (preferred.contains(candidate)) {
+                    continue;
+                }
+                if (tryTeleportToCollisionFree(player, candidate)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private static boolean tryTeleportToCollisionFree(Player player, BlockPos candidate) {
+        var level = player.level();
+        Vec3 target = Vec3.atBottomCenterOf(candidate);
+        if (!level.noCollision(player, player.getBoundingBox().move(target.subtract(player.position())))) {
+            return false;
+        }
+        PhaseFlightMovementGuard.runAsSelfMovement(
+                player,
+                () -> player.teleportTo(target.x, target.y, target.z));
+        return true;
+    }
+
+    public static boolean hasTransientPhaseState(Player player) {
+        return player.getPersistentData().getBoolean(PLAYER_PHASE_TAG);
+    }
+
+    public static void applyTransientPhaseState(Player player) {
+        player.noPhysics = true;
+        // Elytra travel still needs gravity for its pitch-dependent glide curve. Hovering and the
+        // bounded in-wall escape state remain gravity-free.
+        player.setNoGravity(!player.isFallFlying());
+        player.setOnGround(false);
+        player.fallDistance = 0.0F;
+        player.getPersistentData().putBoolean(PLAYER_PHASE_TAG, true);
+    }
+
+    public static void clearTransientPhaseState(Player player) {
+        player.noPhysics = player.isSpectator();
+        player.setNoGravity(player.isSpectator());
+        player.getPersistentData().remove(PLAYER_PHASE_TAG);
+        clearEscapePhase(player);
+    }
+
+    public static boolean tickEscapePhase(Player player, @Nullable ItemStack armor) {
+        int ticks = player.getPersistentData().getInt(PLAYER_ESCAPE_TICKS_TAG);
+        if (ticks <= 0) {
+            return false;
+        }
+        if (!PhaseFlightControlRules.intersectsWorldCollision(player)) {
+            clearTransientPhaseState(player);
+            return false;
+        }
+        if (player instanceof ServerPlayer serverPlayer
+                && !ArmorLightningService.consume(
+                        serverPlayer,
+                        armor,
+                        LightningKey.EXTREME_HIGH_VOLTAGE,
+                        ArmorOverloadRules.PHASE_FLIGHT_ESCAPE_COST_EHV_PER_TICK)) {
+            ArmorResourceFeedback.noExtremeHighVoltage(serverPlayer);
+            clearTransientPhaseState(player);
+            return false;
+        }
+        applyTransientPhaseState(player);
+        player.getPersistentData().putInt(PLAYER_ESCAPE_TICKS_TAG, ticks - 1);
+        if (ticks <= 1) {
+            clearTransientPhaseState(player);
+            return false;
+        }
+        return true;
+    }
+
+    private static void beginEscapePhase(Player player) {
+        applyTransientPhaseState(player);
+        player.getPersistentData().putInt(PLAYER_ESCAPE_TICKS_TAG, ESCAPE_PHASE_TICKS);
+    }
+
+    private static void updateMovementGuards(Player player, ItemStack armor) {
+        PhaseFlightMovementGuard.updatePhaseFlightState(
+                player,
+                isPhaseModeConfigured(armor),
+                PhaseWingFlight.isFlightActive(player));
+    }
+
+    private static void clearEscapePhase(Player player) {
+        player.getPersistentData().remove(PLAYER_ESCAPE_TICKS_TAG);
+    }
+
+    private static void clearEscapePhaseIfPresent(Player player) {
+        if (player.getPersistentData().contains(PLAYER_ESCAPE_TICKS_TAG)) {
+            clearEscapePhase(player);
+        }
+    }
+
+    private static boolean updateAbilitiesIfChanged(
+            Player player,
+            boolean mayfly,
+            boolean flying,
+            float desiredSpeed) {
+        var abilities = player.getAbilities();
+        boolean changed = false;
+        if (abilities.mayfly != mayfly) {
+            abilities.mayfly = mayfly;
+            changed = true;
+        }
+        if (abilities.flying != flying) {
+            abilities.flying = flying;
+            changed = true;
+        }
+        if (Math.abs(abilities.getFlyingSpeed() - desiredSpeed) > SPEED_EPSILON) {
+            abilities.setFlyingSpeed(desiredSpeed);
+            changed = true;
+        }
+        if (changed) {
+            player.onUpdateAbilities();
+        }
+        return changed;
+    }
+}

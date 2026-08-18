@@ -1,0 +1,49 @@
+{
+  "type": "ae2lt:lightning_assembly",
+  "priority": 0,
+  "inputs": [
+    {
+      "ingredient": { "item": "ae2lt:tianshu_quantum_main_core" },
+      "count": 2
+    },
+    {
+      "ingredient": { "item": "ae2lt:storage_supercomputing_unit" },
+      "count": 4
+    },
+    {
+      "ingredient": { "item": "ae2lt:parallel_supercomputing_unit" },
+      "count": 8
+    },
+    {
+      "ingredient": { "item": "ae2lt:tianshu_amplifier_unit" },
+      "count": 4
+    },
+    {
+      "ingredient": { "item": "ae2lt:hyperdimensional_topological_lattice" },
+      "count": 1
+    },
+    {
+      "ingredient": { "item": "ae2lt:lightning_collapse_matrix" },
+      "count": 32
+    },
+    {
+      "ingredient": { "item": "ae2lt:firmament_essence" },
+      "count": 32
+    },
+    {
+      "ingredient": { "item": "ae2lt:firmament_alloy_ingot" },
+      "count": 32
+    },
+    {
+      "ingredient": { "item": "ae2lt:firmament_superconducting_wire" },
+      "count": 8
+    }
+  ],
+  "result": {
+    "id": "ae2lt:tianshu_overload_main_core",
+    "count": 1
+  },
+  "totalEnergy": 120000000,
+  "lightningCost": 16384,
+  "lightningTier": "extreme_high_voltage"
+}

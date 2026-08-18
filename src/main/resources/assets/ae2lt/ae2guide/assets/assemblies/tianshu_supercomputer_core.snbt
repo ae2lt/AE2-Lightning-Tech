@@ -1,0 +1,39 @@
+{
+    DataVersion: 3337,
+    size: [7, 7, 7],
+    data: [
+        {pos: [2, 2, 2], state: "ae2lt:storage_supercomputing_unit{formed:false}"},
+        {pos: [3, 2, 2], state: "ae2lt:storage_supercomputing_unit{formed:false}"},
+        {pos: [4, 2, 2], state: "ae2lt:storage_supercomputing_unit{formed:false}"},
+        {pos: [2, 2, 3], state: "ae2lt:storage_supercomputing_unit{formed:false}"},
+        {pos: [3, 2, 3], state: "ae2lt:storage_supercomputing_unit{formed:false}"},
+        {pos: [4, 2, 3], state: "ae2lt:storage_supercomputing_unit{formed:false}"},
+        {pos: [2, 2, 4], state: "ae2lt:storage_supercomputing_unit{formed:false}"},
+        {pos: [3, 2, 4], state: "ae2lt:storage_supercomputing_unit{formed:false}"},
+        {pos: [4, 2, 4], state: "ae2lt:storage_supercomputing_unit{formed:false}"},
+        {pos: [2, 3, 2], state: "ae2lt:storage_supercomputing_unit{formed:false}"},
+        {pos: [3, 3, 2], state: "ae2lt:storage_supercomputing_unit{formed:false}"},
+        {pos: [4, 3, 2], state: "ae2lt:storage_supercomputing_unit{formed:false}"},
+        {pos: [2, 3, 3], state: "ae2lt:storage_supercomputing_unit{formed:false}"},
+        {pos: [3, 3, 3], state: "ae2lt:tianshu_baseline_main_core{formed:false}"},
+        {pos: [4, 3, 3], state: "ae2lt:storage_supercomputing_unit{formed:false}"},
+        {pos: [2, 3, 4], state: "ae2lt:storage_supercomputing_unit{formed:false}"},
+        {pos: [3, 3, 4], state: "ae2lt:storage_supercomputing_unit{formed:false}"},
+        {pos: [4, 3, 4], state: "ae2lt:parallel_supercomputing_unit{formed:false}"},
+        {pos: [2, 4, 2], state: "ae2lt:parallel_supercomputing_unit{formed:false}"},
+        {pos: [3, 4, 2], state: "ae2lt:parallel_supercomputing_unit{formed:false}"},
+        {pos: [4, 4, 2], state: "ae2lt:parallel_supercomputing_unit{formed:false}"},
+        {pos: [2, 4, 3], state: "ae2lt:parallel_supercomputing_unit{formed:false}"},
+        {pos: [3, 4, 3], state: "ae2lt:parallel_supercomputing_unit{formed:false}"},
+        {pos: [4, 4, 3], state: "ae2lt:parallel_supercomputing_unit{formed:false}"},
+        {pos: [2, 4, 4], state: "ae2lt:parallel_supercomputing_unit{formed:false}"},
+        {pos: [3, 4, 4], state: "ae2lt:parallel_supercomputing_unit{formed:false}"},
+        {pos: [4, 4, 4], state: "ae2lt:parallel_supercomputing_unit{formed:false}"}
+    ],
+    entities: [],
+    palette: [
+        "ae2lt:tianshu_baseline_main_core{formed:false}",
+        "ae2lt:storage_supercomputing_unit{formed:false}",
+        "ae2lt:parallel_supercomputing_unit{formed:false}"
+    ]
+}

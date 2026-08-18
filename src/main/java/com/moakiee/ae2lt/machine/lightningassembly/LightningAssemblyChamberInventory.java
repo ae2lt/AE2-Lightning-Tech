@@ -25,11 +25,12 @@ public class LightningAssemblyChamberInventory extends LargeStackItemHandler {
     public static final int SLOT_INPUT_6 = 6;
     public static final int SLOT_INPUT_7 = 7;
     public static final int SLOT_INPUT_8 = 8;
-    public static final int SLOT_CATALYST = 9;
+    public static final int SLOT_CATALYST = LightningAssemblySlotLimits.SLOT_CATALYST;
     public static final int SLOT_OUTPUT = 10;
 
     public static final int SLOT_COUNT = 11;
-    public static final int LARGE_SLOT_LIMIT = 8192;
+    public static final int LARGE_SLOT_LIMIT = LightningAssemblySlotLimits.LARGE_SLOT_LIMIT;
+    public static final int MATRIX_SLOT_LIMIT = LightningAssemblySlotLimits.MATRIX_SLOT_LIMIT;
 
     public LightningAssemblyChamberInventory(@Nullable Runnable changeListener) {
         super(SLOT_COUNT, changeListener);
@@ -38,7 +39,7 @@ public class LightningAssemblyChamberInventory extends LargeStackItemHandler {
     @Override
     public int getSlotLimit(int slot) {
         validateSlotIndex(slot);
-        return LARGE_SLOT_LIMIT;
+        return LightningAssemblySlotLimits.getSlotLimit(slot);
     }
 
     @Override

@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "formed=false": {
+      "model": "ae2lt:block/tianshu_supercomputer_casing"
+    },
+    "formed=true": {
+      "model": "ae2lt:block/tianshu_supercomputer_casing_formed"
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/cube_all",
+  "textures": {
+    "all": "ae2lt:block/closed_loop_pattern_storage"
+  }
+}

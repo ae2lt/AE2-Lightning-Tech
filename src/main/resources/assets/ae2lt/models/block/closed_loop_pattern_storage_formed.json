@@ -1,0 +1,11 @@
+{
+  "loader": "ae2lt:connected_texture",
+  "render_type": "minecraft:cutout_mipped",
+  "connection": "ae2lt:tianshu_formed_cooling_compatible",
+  "textures": {
+    "base": "ae2lt:block/tianshu/phase_change_cooling_unit_formed",
+    "ctm": "ae2lt:block/tianshu/phase_change_cooling_unit_ctm",
+    "overlay": "ae2lt:block/tianshu/closed_loop_pattern_storage_layer",
+    "particle": "ae2lt:block/tianshu/phase_change_cooling_unit_formed"
+  }
+}
