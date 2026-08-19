@@ -233,11 +233,17 @@ public abstract class ECOCraftingCpuLogicMixin {
     }
 
     @WrapOperation(
-            method = "executeCrafting",
+            method = {
+                    "executeCrafting",
+                    "tryPushSlowPattern"
+            },
             at = @At(
                     value = "INVOKE",
                     target = "Lappeng/api/networking/crafting/ICraftingProvider;pushPattern(Lappeng/api/crafting/IPatternDetails;[Lappeng/api/stacks/KeyCounter;)Z"),
-            remap = false)
+            remap = false,
+            require = 1,
+            expect = 1,
+            allow = 1)
     private boolean ae2lt$registerOverloadExpectedOutputs(ICraftingProvider provider, IPatternDetails details,
                                                           KeyCounter[] inputHolder, Operation<Boolean> original) {
         if (!AE2LT_ECO_AVAILABLE) {
