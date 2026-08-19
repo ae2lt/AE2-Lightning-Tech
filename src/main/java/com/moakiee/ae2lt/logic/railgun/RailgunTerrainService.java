@@ -114,6 +114,7 @@ public final class RailgunTerrainService {
 
     @SubscribeEvent
     public static void onServerTick(TickEvent.ServerTickEvent e) {
+        if (e.phase != TickEvent.Phase.END) return;
         if (PENDING.isEmpty()) return;
         var server = e.getServer();
         int budget = AE2LTCommonConfig.railgunTerrainBlocksPerTick();

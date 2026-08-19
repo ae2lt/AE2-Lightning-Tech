@@ -92,6 +92,7 @@ public final class RailgunBeamService {
 
     @SubscribeEvent
     public static void onServerTick(TickEvent.ServerTickEvent e) {
+        if (e.phase != TickEvent.Phase.END) return;
         if (ACTIVE.isEmpty()) return;
         var server = e.getServer();
         Iterator<Map.Entry<UUID, BeamState>> it = ACTIVE.entrySet().iterator();
