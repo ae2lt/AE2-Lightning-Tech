@@ -6,8 +6,15 @@ import java.util.Optional;
 import net.minecraft.world.item.ItemStack;
 
 import com.moakiee.ae2lt.item.OverloadPatternItem;
-import com.moakiee.ae2lt.overload.model.EncodedOverloadPattern;
-import com.moakiee.ae2lt.overload.model.MatchMode;
+import com.moakiee.ae2lt.overload.runtime.model.EncodedOverloadPattern;
+import com.moakiee.ae2lt.overload.runtime.model.MatchMode;
+import com.moakiee.ae2lt.overload.runtime.pattern.EditableOverloadPatternState;
+import com.moakiee.ae2lt.overload.runtime.pattern.OverloadPatternDetails;
+import com.moakiee.ae2lt.overload.runtime.pattern.OverloadPatternEditState;
+import com.moakiee.ae2lt.overload.runtime.pattern.OverloadPatternPayload;
+import com.moakiee.ae2lt.overload.runtime.pattern.ParsedPatternDefinition;
+import com.moakiee.ae2lt.overload.runtime.pattern.PatternExecutionHostKind;
+import com.moakiee.ae2lt.overload.runtime.pattern.PlainPatternResolver;
 
 /**
  * Converts plain-pattern parse results into overload-pattern payloads and item

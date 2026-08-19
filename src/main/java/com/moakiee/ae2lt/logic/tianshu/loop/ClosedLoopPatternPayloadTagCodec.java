@@ -74,7 +74,7 @@ public final class ClosedLoopPatternPayloadTagCodec {
                     "legacy seed-wave copies cannot encode execution repetition");
         }
         return new ClosedLoopMemberPattern(
-                com.moakiee.thunderbolt.ae2.overload.pattern.SourcePatternSnapshot.fromTag(patternTag),
+                com.moakiee.ae2lt.overload.runtime.pattern.SourcePatternSnapshot.fromTag(patternTag),
                 copies);
     }
 

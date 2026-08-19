@@ -11,6 +11,11 @@ import appeng.api.crafting.PatternDetailsHelper;
 import appeng.api.stacks.AEItemKey;
 
 import com.moakiee.ae2lt.item.OverloadPatternItem;
+import com.moakiee.ae2lt.overload.runtime.pattern.Ae2OverloadPatternDetails;
+import com.moakiee.ae2lt.overload.runtime.pattern.OverloadPatternDetails;
+import com.moakiee.ae2lt.overload.runtime.pattern.OverloadPatternSupport;
+import com.moakiee.ae2lt.overload.runtime.pattern.OverloadedProviderOnlyPatternDetails;
+import com.moakiee.ae2lt.overload.runtime.pattern.PatternExecutionHostKind;
 
 /**
  * Decoder that exposes overload patterns to AE2's crafting system.

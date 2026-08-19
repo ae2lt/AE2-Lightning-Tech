@@ -19,8 +19,8 @@ import com.moakiee.ae2lt.grid.FrequencyAccessLevel;
 import com.moakiee.ae2lt.grid.WirelessFrequencyManager;
 import com.moakiee.ae2lt.item.OverloadedFrequencyCardItem;
 import com.moakiee.ae2lt.me.GridNodeAccess;
-import com.moakiee.thunderbolt.ae2.channel.ChannelProviderRegistry;
-import com.moakiee.thunderbolt.ae2.channel.OverloadedChannelOwnerHelper;
+import com.moakiee.thunderbolt.api.channel.ChannelSourceRegistry;
+import com.moakiee.thunderbolt.core.channel.HighCapacityChannelSupport;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -920,9 +920,9 @@ public final class WirelessLinkRegistry extends SavedData {
 
         long capacity = 0;
         int factor = Math.max(1, mode.getCableCapacityFactor());
-        for (var node : OverloadedChannelOwnerHelper.getAllControllerNodes(grid)) {
-            if (ChannelProviderRegistry.isChannelProvider(node.getOwner())) {
-                capacity += (long) OverloadedChannelOwnerHelper.channelsPerController() * factor;
+        for (var node : HighCapacityChannelSupport.getAllControllerNodes(grid)) {
+            if (ChannelSourceRegistry.isChannelSource(node.getOwner())) {
+                capacity += (long) HighCapacityChannelSupport.channelsPerController() * factor;
             } else {
                 // Match BorrowedCapacityCalculator: every vanilla controller
                 // face leading out of the controller multiblock is an
@@ -939,7 +939,7 @@ public final class WirelessLinkRegistry extends SavedData {
                 break;
             }
         }
-        return OverloadedChannelOwnerHelper.countUsedChannels(grid) < capacity;
+        return HighCapacityChannelSupport.countUsedChannels(grid) < capacity;
     }
 
     private ClusterComponent addTargetToComponent(
@@ -1885,7 +1885,7 @@ public final class WirelessLinkRegistry extends SavedData {
         if (targetGrid == null || targetGrid == frequencyGrid) {
             return false;
         }
-        return !OverloadedChannelOwnerHelper.getAllControllerNodes(targetGrid).isEmpty();
+        return !HighCapacityChannelSupport.getAllControllerNodes(targetGrid).isEmpty();
     }
 
     private void registerDevice(WirelessLink link) {

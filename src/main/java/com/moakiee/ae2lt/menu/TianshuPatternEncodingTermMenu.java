@@ -34,6 +34,7 @@ import com.moakiee.ae2lt.logic.tianshu.terminal.ClosedLoopDraftStatus;
 import com.moakiee.ae2lt.logic.tianshu.terminal.ClosedLoopDraftSync;
 import com.moakiee.ae2lt.logic.tianshu.terminal.ClosedLoopResultPage;
 import com.moakiee.ae2lt.logic.tianshu.terminal.ClosedLoopTerminalDraft;
+import com.moakiee.ae2lt.logic.tianshu.terminal.ExtendedAEPlusEncodingCompat;
 import com.moakiee.ae2lt.logic.tianshu.terminal.SeedRefillSync;
 import com.moakiee.ae2lt.logic.tianshu.terminal.ProcessingPatternMultiplier;
 import com.moakiee.ae2lt.logic.tianshu.terminal.ProcessingPatternEncodingType;
@@ -43,7 +44,6 @@ import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuPatternTerminalHost;
 import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuTerminalTarget;
 import com.moakiee.ae2lt.logic.tianshu.terminal.MaintenanceEditorData;
 import com.moakiee.ae2lt.logic.tianshu.terminal.PatternEncodingDuplicateFilter;
-import com.moakiee.ae2lt.mixin.PatternEncodingTermMenuAccessor;
 import com.moakiee.ae2lt.me.GridNodeAccess;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.InventoryMaintenanceRule;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.InventoryMaintenanceStatus;
@@ -65,10 +65,10 @@ import com.moakiee.ae2lt.overload.pattern.PatternConversionService;
 import com.moakiee.ae2lt.registry.ModItems;
 import com.moakiee.ae2lt.item.ClosedLoopPatternItem;
 import com.moakiee.ae2lt.item.OverloadPatternItem;
-import com.moakiee.ae2lt.overload.model.EncodedOverloadPattern;
-import com.moakiee.ae2lt.overload.model.MatchMode;
-import com.moakiee.ae2lt.overload.pattern.Ae2PlainPatternResolver;
-import com.moakiee.ae2lt.overload.pattern.ParsedPatternDefinition;
+import com.moakiee.ae2lt.overload.runtime.model.EncodedOverloadPattern;
+import com.moakiee.ae2lt.overload.runtime.model.MatchMode;
+import com.moakiee.ae2lt.overload.runtime.pattern.Ae2PlainPatternResolver;
+import com.moakiee.ae2lt.overload.runtime.pattern.ParsedPatternDefinition;
 import net.minecraft.server.level.ServerPlayer;
 import com.moakiee.ae2lt.network.PacketSender;
 import appeng.helpers.patternprovider.PatternProviderLogicHost;
@@ -90,7 +90,7 @@ import java.util.EnumMap;
 import java.util.Map;
 import com.moakiee.ae2lt.network.tianshu.SaveGlobalReservePacket;
 import com.moakiee.ae2lt.network.tianshu.TianshuPacketLimits;
-import com.moakiee.thunderbolt.ae2.overload.pattern.SourcePatternSnapshot;
+import com.moakiee.ae2lt.overload.runtime.pattern.SourcePatternSnapshot;
 import net.minecraft.world.entity.player.Player;
 import org.anti_ad.mc.ipn.api.IPNIgnore;
 import net.minecraft.core.RegistryAccess;
@@ -208,6 +208,8 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     private int expectedDirectUploadTargetRevision;
     /** Prevents a committed encoding result from being mistaken for a manually inserted pattern. */
     private boolean ae2EncodingInProgress;
+    /** Exact encoded stack that still represents one blank pattern extracted by this menu. */
+    private ItemStack refundableEncodedPattern = ItemStack.EMPTY;
 
     public TianshuPatternEncodingTermMenu(
             int id, Inventory inventory, TianshuPatternTerminalHost host) {
@@ -1030,6 +1032,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     }
 
     private void finishUpload(boolean success) {
+        settleNetworkBlankCharge(success);
         uploadState = success ? 1 : 3;
         broadcastChanges();
     }
@@ -1154,6 +1157,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     }
 
     private void finishProviderUpload(ServerPlayer player, boolean success) {
+        settleNetworkBlankCharge(success);
         uploadState = success ? 1 : 3;
         refreshUploadTargetsNow();
         PacketSender.sendToPlayer(player,
@@ -1268,6 +1272,11 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
 
     private void refreshDerivedConfiguration() {
         var source = tianshuHost.getLogic().getEncodedPatternInv().getStackInSlot(0);
+        if (!refundableEncodedPattern.isEmpty()
+                && !ItemStack.isSameItemSameTags(refundableEncodedPattern, source)
+                && (!source.isEmpty() || uploadState != 2)) {
+            refundableEncodedPattern = ItemStack.EMPTY;
+        }
         if (ItemStack.matches(configuredSource, source)) return;
         boolean wasEncodedClosedLoop = configuredSource.getItem() instanceof ClosedLoopPatternItem;
         configuredSource = source.copy();
@@ -2312,23 +2321,32 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         if (!isServerSide()) return;
         boolean interceptDuplicates = Boolean.TRUE.equals(interceptDuplicateUpload);
         if (tianshuMode.isAe2Mode()) {
-            // Build the candidate exactly once. Some recipe integrations expose transient
-            // encoding state, so a second call can produce a different definition even though
-            // the visible draft has not changed. Duplicate detection must inspect the exact
-            // stack that will be committed to the encoded slot.
-            var candidate = previewAe2EncodingCandidate();
-            if (shouldInterceptDuplicateEncoding(candidate, interceptDuplicates)) {
-                notifyDuplicateEncodingIntercepted();
-                return;
-            }
+            var encodedInventory = tianshuHost.getLogic().getEncodedPatternInv();
+            boolean carriesNetworkBlank = isRefundableEncodedPattern(
+                    encodedInventory.getStackInSlot(0));
+            boolean stagedNetworkBlank = false;
             ae2EncodingInProgress = true;
             try {
-                commitAe2EncodingCandidate(candidate);
+                stagedNetworkBlank = stageNetworkBlankPattern();
+                try (var ignored = ExtendedAEPlusEncodingCompat.suppressAutomaticUpload(this)) {
+                    super.encode();
+                }
+                applyConfiguredProcessingConversion();
             } finally {
                 ae2EncodingInProgress = false;
+                if (stagedNetworkBlank) returnStagedBlankPatternToNetwork();
             }
-            var encoded = tianshuHost.getLogic().getEncodedPatternInv().getStackInSlot(0);
+            var encoded = encodedInventory.getStackInSlot(0);
             if (TianshuPatternUploadRouting.isValidEncodingResult(encoded, getPlayer().level())) {
+                if (stagedNetworkBlank || carriesNetworkBlank) {
+                    refundableEncodedPattern = encoded.copy();
+                }
+                if (shouldInterceptDuplicateEncoding(encoded, interceptDuplicates)) {
+                    rollbackRefundableEncodedPattern();
+                    notifyDuplicateEncodingIntercepted();
+                    broadcastChanges();
+                    return;
+                }
                 triggeredUploadAck++;
             }
             broadcastChanges();
@@ -2341,67 +2359,23 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
                 return;
             }
             var encodedInventory = tianshuHost.getLogic().getEncodedPatternInv();
-            if (encodedInventory.getStackInSlot(0).isEmpty() && !stageNetworkBlankPattern()) {
-                return;
+            boolean carriesNetworkBlank = isRefundableEncodedPattern(
+                    encodedInventory.getStackInSlot(0));
+            boolean stagedNetworkBlank = false;
+            if (encodedInventory.getStackInSlot(0).isEmpty()) {
+                stagedNetworkBlank = stageNetworkBlankPattern();
+                if (!stagedNetworkBlank) return;
             }
             if (tianshuMode == TianshuEncodingMode.CLOSED_LOOP) closedLoopEncodeState = 0;
             encodedInventory.setItemDirect(0, result);
+            if (stagedNetworkBlank || carriesNetworkBlank) {
+                refundableEncodedPattern = result.copy();
+            }
             if (TianshuPatternUploadRouting.isValidEncodingResult(result, getPlayer().level())) {
                 triggeredUploadAck++;
             }
             broadcastChanges();
         }
-    }
-
-    /**
-     * Applies AE2's encoded-slot and blank-pattern rules to a candidate that has already been
-     * built. Keeping this separate from candidate construction guarantees that duplicate checking
-     * and the committed stack use the same definition.
-     */
-    private void commitAe2EncodingCandidate(ItemStack candidate) {
-        var encodedInventory = tianshuHost.getLogic().getEncodedPatternInv();
-        var current = encodedInventory.getStackInSlot(0);
-        if (candidate == null || candidate.isEmpty()) {
-            if (PatternDetailsHelper.isEncodedPattern(current)) {
-                encodedInventory.setItemDirect(
-                        0, AEItems.BLANK_PATTERN.stack(current.getCount()));
-            }
-            return;
-        }
-        if (!current.isEmpty()
-                && !PatternDetailsHelper.isEncodedPattern(current)
-                && !AEItems.BLANK_PATTERN.isSameAs(current)) {
-            return;
-        }
-
-        boolean stagedNetworkBlank = false;
-        try {
-            if (current.isEmpty()) {
-                stagedNetworkBlank = stageNetworkBlankPattern();
-                if (!stagedNetworkBlank) {
-                    return;
-                }
-            }
-            encodedInventory.setItemDirect(0, candidate);
-        } finally {
-            // If committing failed after extraction, return only the still-blank staged stack.
-            if (stagedNetworkBlank) {
-                returnStagedBlankPatternToNetwork();
-            }
-        }
-    }
-
-    private ItemStack previewAe2EncodingCandidate() {
-        var candidate = ((PatternEncodingTermMenuAccessor) (Object) this)
-                .ae2lt$encodePatternCandidate();
-        if (candidate == null || candidate.isEmpty()
-                || tianshuMode != TianshuEncodingMode.PROCESSING
-                || processingEncodingType == ProcessingPatternEncodingType.NORMAL) {
-            return candidate == null ? ItemStack.EMPTY : candidate;
-        }
-        var converted = convertConfiguredProcessingPattern(
-                candidate, getAdvancedEncodingConfig(), getOverloadEncodingConfig());
-        return converted == null || converted.isEmpty() ? candidate : converted;
     }
 
     private boolean shouldInterceptDuplicateEncoding(ItemStack candidate, boolean enabled) {
@@ -2504,6 +2478,54 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         encodedInventory.setItemDirect(0, remainder);
     }
 
+    private boolean isRefundableEncodedPattern(ItemStack stack) {
+        return stack != null && !stack.isEmpty() && !refundableEncodedPattern.isEmpty()
+                && ItemStack.isSameItemSameTags(refundableEncodedPattern, stack);
+    }
+
+    /**
+     * Compensates a failed encode/upload by replacing exactly this menu's generated pattern with
+     * one blank pattern in network storage. If the network cannot accept the refund, the encoded
+     * pattern is restored to the terminal so no item is lost.
+     */
+    private boolean rollbackRefundableEncodedPattern() {
+        if (!isServerSide() || !isConnectedToNetwork()) return false;
+        var encodedInventory = tianshuHost.getLogic().getEncodedPatternInv();
+        var current = encodedInventory.getStackInSlot(0);
+        if (!isRefundableEncodedPattern(current)) {
+            refundableEncodedPattern = ItemStack.EMPTY;
+            return false;
+        }
+
+        var debt = refundableEncodedPattern.copy();
+        var removed = encodedInventory.extractItem(0, 1, false);
+        if (removed.isEmpty() || !ItemStack.isSameItemSameTags(debt, removed)) {
+            if (!removed.isEmpty()) encodedInventory.addItems(removed);
+            refundableEncodedPattern = ItemStack.EMPTY;
+            return false;
+        }
+
+        var blankPatternKey = AEItemKey.of(AEItems.BLANK_PATTERN.asItem());
+        long inserted = StorageHelper.poweredInsert(
+                powerSource, storage, blankPatternKey, 1, getActionSource());
+        if (inserted == 1) {
+            refundableEncodedPattern = ItemStack.EMPTY;
+            return true;
+        }
+
+        encodedInventory.addItems(removed);
+        refundableEncodedPattern = debt;
+        return false;
+    }
+
+    private void settleNetworkBlankCharge(boolean uploadSucceeded) {
+        if (uploadSucceeded) {
+            refundableEncodedPattern = ItemStack.EMPTY;
+        } else {
+            rollbackRefundableEncodedPattern();
+        }
+    }
+
     /** Clears a blank left by an older menu version that staged it in the hidden input inventory. */
     private void returnLegacyBlankPatternsToNetwork() {
         if (!isServerSide() || !isConnectedToNetwork()) return;
@@ -2522,6 +2544,20 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
     private ItemStack encodeDerivedPattern() {
         if (tianshuMode != TianshuEncodingMode.CLOSED_LOOP) return ItemStack.EMPTY;
         return encodeSelectedClosedLoopCandidate();
+    }
+
+    /** Applies the persistent processing configuration to the freshly encoded pattern. */
+    private void applyConfiguredProcessingConversion() {
+        if (tianshuMode != TianshuEncodingMode.PROCESSING
+                || processingEncodingType == ProcessingPatternEncodingType.NORMAL) return;
+        var inventory = tianshuHost.getLogic().getEncodedPatternInv();
+        var source = inventory.getStackInSlot(0);
+        if (source.isEmpty()) return;
+        var converted = convertConfiguredProcessingPattern(
+                source, getAdvancedEncodingConfig(), getOverloadEncodingConfig());
+        if (converted != null && !converted.isEmpty()) {
+            inventory.setItemDirect(0, converted);
+        }
     }
 
     @Nullable

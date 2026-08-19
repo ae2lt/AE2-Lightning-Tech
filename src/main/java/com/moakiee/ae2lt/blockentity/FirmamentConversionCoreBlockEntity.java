@@ -10,6 +10,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -32,6 +33,7 @@ import com.moakiee.ae2lt.machine.firmament.recipe.FirmamentConversionLockedRecip
 import com.moakiee.ae2lt.machine.firmament.recipe.FirmamentConversionRecipeCandidate;
 import com.moakiee.ae2lt.machine.firmament.recipe.FirmamentConversionRecipeService;
 import com.moakiee.ae2lt.registry.ModBlockEntities;
+import com.moakiee.ae2lt.registry.ModItems;
 import com.moakiee.ae2lt.util.NativeStackDropHelper;
 
 public class FirmamentConversionCoreBlockEntity extends BlockEntity {
@@ -40,6 +42,7 @@ public class FirmamentConversionCoreBlockEntity extends BlockEntity {
     private static final String TAG_INVENTORY = "Inventory";
     private static final String TAG_LOCKED_RECIPE = "LockedRecipe";
     private static final String TAG_PROGRESS = "Progress";
+    private static final String TAG_INITIAL_LOOT_ROLLED = "InitialLootRolled";
 
     private final FirmamentConversionInventory inventory =
             new FirmamentConversionInventory(this::onInventoryChanged);
@@ -47,6 +50,7 @@ public class FirmamentConversionCoreBlockEntity extends BlockEntity {
             new FirmamentConversionAutomationInventory(inventory);
     private FirmamentConversionLockedRecipe lockedRecipe;
     private int progress;
+    private boolean initialLootRolled;
     // Structure membership is fixed for a placed block; cache after first lookup.
     private Boolean insideStarship;
 
@@ -78,6 +82,17 @@ public class FirmamentConversionCoreBlockEntity extends BlockEntity {
 
     public boolean isInsideFirmamentStarship() {
         return canProcessHere();
+    }
+
+    public boolean hasInactiveSpiritCoreOutput() {
+        for (int slot = FirmamentConversionInventory.SLOT_OUTPUT_0;
+             slot <= FirmamentConversionInventory.SLOT_OUTPUT_3;
+             slot++) {
+            if (inventory.getStackInSlot(slot).is(ModItems.INACTIVE_FIRMAMENT_SPIRIT_CORE.get())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public boolean insertHeldItem(Player player, InteractionHand hand) {
@@ -180,6 +195,20 @@ public class FirmamentConversionCoreBlockEntity extends BlockEntity {
         } else {
             setChanged();
         }
+    }
+
+    public void initializeNaturalLoot(RandomSource random) {
+        if (initialLootRolled) {
+            return;
+        }
+
+        initialLootRolled = true;
+        if (random.nextBoolean()) {
+            inventory.setStackInSlot(
+                    FirmamentConversionInventory.SLOT_OUTPUT_0,
+                    new ItemStack(ModItems.INACTIVE_FIRMAMENT_SPIRIT_CORE.get()));
+        }
+        setChanged();
     }
 
     private Optional<FirmamentConversionLockedRecipe> lockCurrentRecipe() {
@@ -288,6 +317,7 @@ public class FirmamentConversionCoreBlockEntity extends BlockEntity {
         super.saveAdditional(tag);
         inventory.saveToTag(tag, TAG_INVENTORY);
         tag.putInt(TAG_PROGRESS, progress);
+        tag.putBoolean(TAG_INITIAL_LOOT_ROLLED, initialLootRolled);
         if (lockedRecipe != null) {
             tag.put(TAG_LOCKED_RECIPE, lockedRecipe.toTag());
         } else {
@@ -300,6 +330,7 @@ public class FirmamentConversionCoreBlockEntity extends BlockEntity {
         super.load(tag);
         inventory.loadFromTag(tag, TAG_INVENTORY);
         progress = Math.max(0, tag.getInt(TAG_PROGRESS));
+        initialLootRolled = tag.getBoolean(TAG_INITIAL_LOOT_ROLLED);
         if (tag.contains(TAG_LOCKED_RECIPE, Tag.TAG_COMPOUND)) {
             lockedRecipe = FirmamentConversionLockedRecipe.fromTag(tag.getCompound(TAG_LOCKED_RECIPE));
         } else {

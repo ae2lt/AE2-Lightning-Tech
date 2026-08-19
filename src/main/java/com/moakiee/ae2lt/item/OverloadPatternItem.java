@@ -14,13 +14,13 @@ import appeng.api.crafting.IPatternDetails;
 import appeng.api.stacks.AEItemKey;
 import appeng.crafting.pattern.EncodedPatternItem;
 
-import com.moakiee.ae2lt.api.patternprovider.EncodedPatternPayloadValidator;
-import com.moakiee.ae2lt.overload.model.EncodedOverloadPattern;
+import com.moakiee.ae2lt.overload.runtime.model.EncodedOverloadPattern;
 import com.moakiee.ae2lt.overload.pattern.OverloadPatternDecoder;
-import com.moakiee.ae2lt.overload.pattern.OverloadPatternPayload;
-import com.moakiee.ae2lt.overload.pattern.OverloadPatternPayloadTagCodec;
-import com.moakiee.ae2lt.overload.pattern.PatternExecutionHostKind;
-import com.moakiee.ae2lt.overload.pattern.SourcePatternSnapshot;
+import com.moakiee.ae2lt.overload.runtime.pattern.OverloadPatternPayload;
+import com.moakiee.ae2lt.overload.runtime.pattern.OverloadPatternPayloadTagCodec;
+import com.moakiee.ae2lt.overload.runtime.pattern.PatternExecutionHostKind;
+import com.moakiee.ae2lt.overload.runtime.pattern.SourcePatternSnapshot;
+import com.moakiee.ae2lt.api.patternprovider.EncodedPatternPayloadValidator;
 
 /**
  * Final item form of an overload pattern.

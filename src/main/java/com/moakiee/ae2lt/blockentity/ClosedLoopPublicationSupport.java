@@ -1,7 +1,7 @@
 package com.moakiee.ae2lt.blockentity;
 
 import appeng.api.stacks.AEKey;
-import com.moakiee.thunderbolt.ae2.timewheel.ReusableSeedPattern;
+import com.moakiee.thunderbolt.core.crafting.loop.ReusableSeedPattern;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;

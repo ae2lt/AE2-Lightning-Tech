@@ -8,6 +8,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -24,9 +25,9 @@ import appeng.api.stacks.GenericStack;
 import appeng.crafting.pattern.AEProcessingPattern;
 
 import com.moakiee.ae2lt.util.MixinReflectionSupport;
-import com.moakiee.thunderbolt.ae2.overload.model.MatchMode;
-import com.moakiee.thunderbolt.ae2.overload.pattern.OverloadedProviderOnlyPatternDetails;
-import com.moakiee.thunderbolt.ae2.overload.pattern.WrappedPatternDetails;
+import com.moakiee.ae2lt.overload.runtime.model.MatchMode;
+import com.moakiee.ae2lt.overload.runtime.pattern.OverloadedProviderOnlyPatternDetails;
+import com.moakiee.thunderbolt.core.crafting.pattern.IWrappedPatternDetails;
 
 /**
  * Runtime compatibility layer for AdvancedAE directional processing patterns.
@@ -55,6 +56,8 @@ public final class AdvancedAECompat {
             findSparseAccessor(ADV_PROCESSING_PATTERN_CLASS, "getSparseInputs");
     private static final @Nullable Method ADV_GET_SPARSE_OUTPUTS_METHOD =
             findSparseAccessor(ADV_PROCESSING_PATTERN_CLASS, "getSparseOutputs");
+    private static final @Nullable Method ADV_GET_DIRECTION_MAP_METHOD =
+            findSparseAccessor(ADV_PROCESSING_PATTERN_CLASS, "getDirectionMap");
     private static final @Nullable Method ADV_ENCODE_METHOD = findEncodeMethod();
 
     private static Boolean loaded;
@@ -85,6 +88,40 @@ public final class AdvancedAECompat {
                 advPattern,
                 "read AdvancedAE directional inputs");
         return result instanceof Boolean directional && directional;
+    }
+
+    /**
+     * Compares the recipe-bearing fields of two directional processing patterns while ignoring
+     * unrelated components added to the outer encoded-pattern item.
+     */
+    public static boolean samePatternSemantics(
+            @Nullable IPatternDetails stored, @Nullable IPatternDetails candidate) {
+        if (!isLoaded() || stored == null || candidate == null) return false;
+        var storedUnwrapped = unwrap(stored);
+        var candidateUnwrapped = unwrap(candidate);
+        if (ADV_PROCESSING_PATTERN_CLASS == null
+                || !ADV_PROCESSING_PATTERN_CLASS.isInstance(storedUnwrapped)
+                || !ADV_PROCESSING_PATTERN_CLASS.isInstance(candidateUnwrapped)
+                || ADV_GET_SPARSE_INPUTS_METHOD == null
+                || ADV_GET_SPARSE_OUTPUTS_METHOD == null
+                || ADV_GET_DIRECTION_MAP_METHOD == null) {
+            return false;
+        }
+        var storedInputs = asStackList(MixinReflectionSupport.invokeMethodSafe(
+                ADV_GET_SPARSE_INPUTS_METHOD, storedUnwrapped, "read AdvancedAE sparse inputs"));
+        var candidateInputs = asStackList(MixinReflectionSupport.invokeMethodSafe(
+                ADV_GET_SPARSE_INPUTS_METHOD, candidateUnwrapped, "read AdvancedAE sparse inputs"));
+        var storedOutputs = asStackList(MixinReflectionSupport.invokeMethodSafe(
+                ADV_GET_SPARSE_OUTPUTS_METHOD, storedUnwrapped, "read AdvancedAE sparse outputs"));
+        var candidateOutputs = asStackList(MixinReflectionSupport.invokeMethodSafe(
+                ADV_GET_SPARSE_OUTPUTS_METHOD, candidateUnwrapped, "read AdvancedAE sparse outputs"));
+        var storedDirections = MixinReflectionSupport.invokeMethodSafe(
+                ADV_GET_DIRECTION_MAP_METHOD, storedUnwrapped, "read AdvancedAE direction map");
+        var candidateDirections = MixinReflectionSupport.invokeMethodSafe(
+                ADV_GET_DIRECTION_MAP_METHOD, candidateUnwrapped, "read AdvancedAE direction map");
+        return Objects.equals(storedInputs, candidateInputs)
+                && Objects.equals(storedOutputs, candidateOutputs)
+                && Objects.equals(storedDirections, candidateDirections);
     }
 
     /**
@@ -139,7 +176,7 @@ public final class AdvancedAECompat {
 
     private static IPatternDetails unwrap(IPatternDetails pattern) {
         var current = pattern;
-        for (int depth = 0; depth < 8 && current instanceof WrappedPatternDetails wrapped; depth++) {
+        for (int depth = 0; depth < 8 && current instanceof IWrappedPatternDetails wrapped; depth++) {
             var next = wrapped.wrappedPatternDetails();
             if (next == null || next == current) {
                 break;

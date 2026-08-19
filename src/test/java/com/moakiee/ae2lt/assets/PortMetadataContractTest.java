@@ -24,7 +24,7 @@ class PortMetadataContractTest {
         assertEquals("[1.20.1,1.20.2)", properties.getProperty("minecraft_version_range"));
         assertEquals("[47.1.3,)", properties.getProperty("forge_version_range"));
         assertEquals("[15.4.10,16)", properties.getProperty("ae2_version_range"));
-        assertEquals("[1.0.6-beta.1]", properties.getProperty("thunderbolt_version_range"));
+        assertEquals("[2.0-alpha-1.20.1]", properties.getProperty("thunderbolt_version_range"));
     }
 
     @Test

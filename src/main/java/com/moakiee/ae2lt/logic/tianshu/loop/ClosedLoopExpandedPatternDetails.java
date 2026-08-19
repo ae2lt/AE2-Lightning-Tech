@@ -5,11 +5,12 @@ import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.GenericStack;
 import appeng.api.stacks.KeyCounter;
 import net.minecraft.world.level.Level;
-import com.moakiee.thunderbolt.ae2.timewheel.TimeWheelTaskPersistenceDefinition;
-import com.moakiee.thunderbolt.ae2.api.crafting.IPrioritizedCraftingTask;
-import com.moakiee.thunderbolt.ae2.api.crafting.IProviderLookupPattern;
-import com.moakiee.thunderbolt.ae2.api.crafting.ISeedPreservingCraftingTask;
-import com.moakiee.thunderbolt.ae2.api.crafting.IPlannedSeedSlotPattern;
+import com.moakiee.thunderbolt.core.crafting.loop.CraftingTaskPersistenceDefinition;
+import com.moakiee.thunderbolt.core.crafting.loop.IPrioritizedCraftingTask;
+import com.moakiee.thunderbolt.core.crafting.pattern.IProviderLookupPattern;
+import com.moakiee.thunderbolt.core.crafting.loop.ISeedPreservingCraftingTask;
+import com.moakiee.thunderbolt.core.crafting.loop.IPlannedSeedSlotPattern;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -19,7 +20,7 @@ import appeng.blockentity.crafting.IMolecularAssemblerSupportedPattern;
 
 /** Execution snapshot for one member of an already-planned closed loop. */
 public class ClosedLoopExpandedPatternDetails
-        implements IPatternDetails, TimeWheelTaskPersistenceDefinition, IPrioritizedCraftingTask,
+        implements IPatternDetails, CraftingTaskPersistenceDefinition, IPrioritizedCraftingTask,
         IProviderLookupPattern, ISeedPreservingCraftingTask, IPlannedSeedSlotPattern {
     public static final int CLOSED_LOOP_DISPATCH_PRIORITY = 1_000;
     protected final IPatternDetails delegate;
@@ -173,7 +174,7 @@ public class ClosedLoopExpandedPatternDetails
     }
 
     @Override
-    public AEItemKey timeWheelPersistenceDefinition() {
+    public AEItemKey craftingTaskPersistenceDefinition() {
         return persistenceDefinition;
     }
 
@@ -243,10 +244,10 @@ public class ClosedLoopExpandedPatternDetails
         for (int slot = 0; slot < source.length; slot++) {
             var input = source[slot];
             var possible = input.getPossibleInputs();
-            var providerDetails = com.moakiee.thunderbolt.ae2.api.crafting.CraftingPatternDelegates
+            var providerDetails = com.moakiee.thunderbolt.core.crafting.support.CraftingPatternDelegates
                     .forProviderLookup(details);
             boolean ignoreSecondary = providerDetails instanceof
-                    com.moakiee.thunderbolt.ae2.overload.pattern.OverloadedProviderOnlyPatternDetails overload
+                    com.moakiee.ae2lt.overload.runtime.pattern.OverloadedProviderOnlyPatternDetails overload
                     && overload.isFuzzyInput(slot);
             appeng.api.stacks.AEKey selected = null;
             long selectedAmount = 0L;
@@ -318,10 +319,10 @@ public class ClosedLoopExpandedPatternDetails
     private static IInput pinReusableSeedInput(
             IPatternDetails details, IInput input, int slot,
             appeng.api.stacks.AEKey selected) {
-        var providerDetails = com.moakiee.thunderbolt.ae2.api.crafting.CraftingPatternDelegates
+        var providerDetails = com.moakiee.thunderbolt.core.crafting.support.CraftingPatternDelegates
                 .forProviderLookup(details);
         boolean ignoreSecondary = providerDetails instanceof
-                com.moakiee.thunderbolt.ae2.overload.pattern.OverloadedProviderOnlyPatternDetails overload
+                com.moakiee.ae2lt.overload.runtime.pattern.OverloadedProviderOnlyPatternDetails overload
                 && overload.isFuzzyInput(slot);
         var possible = input.getPossibleInputs();
         GenericStack firstMatch = null;
@@ -437,7 +438,7 @@ public class ClosedLoopExpandedPatternDetails
             if (!seedAmounts.containsKey(key) || !key.equals(input.getRemainingKey(key))) continue;
             long amount = input.getMultiplier();
             returnedAsRemainder.merge(key, amount,
-                    com.moakiee.thunderbolt.core.planner.Sat::add);
+                    com.moakiee.thunderbolt.core.crafting.planner.Sat::add);
         }
         var result = new java.util.LinkedHashMap<appeng.api.stacks.AEKey, Long>();
         for (var entry : seedAmounts.entrySet()) {

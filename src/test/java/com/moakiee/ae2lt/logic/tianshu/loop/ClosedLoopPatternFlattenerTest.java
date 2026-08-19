@@ -9,7 +9,7 @@ import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.AEKeyType;
 import appeng.api.stacks.GenericStack;
-import com.moakiee.thunderbolt.ae2.overload.pattern.SourcePatternSnapshot;
+import com.moakiee.ae2lt.overload.runtime.pattern.SourcePatternSnapshot;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;

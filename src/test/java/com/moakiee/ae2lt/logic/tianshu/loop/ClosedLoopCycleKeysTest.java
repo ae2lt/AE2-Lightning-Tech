@@ -105,7 +105,7 @@ class ClosedLoopCycleKeysTest {
     @Test
     void expandedSliceCountUsesRequestedFiringsAndPrimitiveCopiesOnly() {
         assertEquals(6L, Ae2ClosedLoopPatternDetails.expandedSliceCount(3, 2));
-        assertEquals(com.moakiee.thunderbolt.core.planner.Sat.SAT,
+        assertEquals(com.moakiee.thunderbolt.core.crafting.planner.Sat.SAT,
                 Ae2ClosedLoopPatternDetails.expandedSliceCount(
                         Long.MAX_VALUE, Long.MAX_VALUE));
         assertEquals(0L, Ae2ClosedLoopPatternDetails.expandedSliceCount(1, 0));

@@ -8,7 +8,6 @@ import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.LivingEntity;
@@ -33,8 +32,9 @@ import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import com.moakiee.ae2lt.menu.TianshuSupercomputerControllerMenu;
+import appeng.menu.MenuOpener;
+import appeng.menu.locator.MenuLocators;
 import org.jetbrains.annotations.Nullable;
-import net.minecraftforge.network.NetworkHooks;
 
 public class TianshuSupercomputerControllerBlock extends Block
         implements EntityBlock, WrenchDisassemblableBlock {
@@ -104,10 +104,10 @@ public class TianshuSupercomputerControllerBlock extends Block
         if (!level.isClientSide && player instanceof ServerPlayer serverPlayer
                 && level.getBlockEntity(pos) instanceof TianshuSupercomputerControllerBlockEntity controller) {
             controller.scanNow();
-            NetworkHooks.openScreen(serverPlayer, new SimpleMenuProvider(
-                    (id, inv, p) -> new TianshuSupercomputerControllerMenu(id, inv, controller),
-                    state.getBlock().getName()),
-                    buf -> TianshuSupercomputerControllerMenu.writeExtraData(buf, controller));
+            MenuOpener.open(
+                    TianshuSupercomputerControllerMenu.TYPE,
+                    serverPlayer,
+                    MenuLocators.forBlockEntity(controller));
         }
         return InteractionResult.sidedSuccess(level.isClientSide);
     }

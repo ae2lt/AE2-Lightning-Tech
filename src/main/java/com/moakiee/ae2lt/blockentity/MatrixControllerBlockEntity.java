@@ -34,9 +34,9 @@ import com.moakiee.ae2lt.registry.ModBlockEntities;
 import com.moakiee.ae2lt.registry.ModBlocks;
 import com.moakiee.ae2lt.registry.ModItems;
 import com.moakiee.ae2lt.util.NativeStackDropHelper;
-import com.moakiee.thunderbolt.ae2.api.crafting.BatchDispatchMode;
-import com.moakiee.thunderbolt.core.craft.CraftingCoreHost;
-import com.moakiee.thunderbolt.core.craft.MolecularCopyAssembler;
+import com.moakiee.ae2lt.crafting.matrix.core.CraftingCoreHost;
+import com.moakiee.ae2lt.crafting.matrix.core.MolecularCopyAssembler;
+import com.moakiee.thunderbolt.api.crafting.batch.BatchDispatchMode;
 
 import appeng.api.crafting.IPatternDetails;
 import appeng.api.config.Actionable;
@@ -625,11 +625,6 @@ public class MatrixControllerBlockEntity extends BlockEntity
     @Override
     public long getGameTime() {
         return level != null ? level.getGameTime() : 0L;
-    }
-
-    @Override
-    public boolean isCraftingHostRemoved() {
-        return isRemoved();
     }
 
     @Override

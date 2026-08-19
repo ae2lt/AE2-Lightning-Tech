@@ -14,6 +14,7 @@ import appeng.util.SettingsFrom;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 
+import com.moakiee.thunderbolt.core.channel.HighCapacityChannelSupport;
 import com.moakiee.ae2lt.blockentity.OverloadedControllerBlockEntity;
 import com.moakiee.ae2lt.grid.wirelesslink.MultiblockLinkReadiness;
 import com.moakiee.ae2lt.grid.wirelesslink.WirelessLinkOps;
@@ -212,7 +213,7 @@ public final class FrequencyBindingHelper
         var grid = GridNodeAccess.getGridIfPresent(
                 host.getFrequencyBindingBlockEntity().getMainNode().getNode());
         if (grid == null) return 0;
-        return OverloadedChannelOwnerHelper.countUsedChannels(grid);
+        return HighCapacityChannelSupport.countUsedChannels(grid);
     }
 
     public int getGridMaxChannels() {
@@ -227,7 +228,7 @@ public final class FrequencyBindingHelper
 
         int overloadedCount = 0;
         int vanillaCount = 0;
-        for (var node : OverloadedChannelOwnerHelper.getAllControllerNodes(grid)) {
+        for (var node : HighCapacityChannelSupport.getAllControllerNodes(grid)) {
             if (node.getOwner() instanceof OverloadedControllerBlockEntity) {
                 overloadedCount++;
             } else {
@@ -236,7 +237,7 @@ public final class FrequencyBindingHelper
         }
 
         int factor = Math.max(1, channelMode.getCableCapacityFactor());
-        long cap = (long) overloadedCount * OverloadedChannelOwnerHelper.channelsPerController() * factor
+        long cap = (long) overloadedCount * HighCapacityChannelSupport.channelsPerController() * factor
                 + (long) vanillaCount * 32L * factor;
         return (int) Math.min(Integer.MAX_VALUE, cap);
     }
@@ -535,6 +536,6 @@ public final class FrequencyBindingHelper
         if (targetGrid == null || targetGrid == frequencyGrid) {
             return false;
         }
-        return !OverloadedChannelOwnerHelper.getAllControllerNodes(targetGrid).isEmpty();
+        return !HighCapacityChannelSupport.getAllControllerNodes(targetGrid).isEmpty();
     }
 }

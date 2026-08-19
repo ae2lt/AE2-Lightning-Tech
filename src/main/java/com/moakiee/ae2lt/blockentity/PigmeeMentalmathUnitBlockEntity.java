@@ -16,10 +16,9 @@ import appeng.me.helpers.MachineSource;
 
 import com.moakiee.ae2lt.registry.ModBlockEntities;
 import com.moakiee.ae2lt.registry.ModBlocks;
-import com.moakiee.thunderbolt.ae2.crafting.ExtendedCraftingCpuClusterProvider;
-import com.moakiee.thunderbolt.ae2.timewheel.TimeWheelCraftingCpuPool;
-import com.moakiee.thunderbolt.ae2.timewheel.TimeWheelCraftingCpuPoolHost;
-import com.moakiee.thunderbolt.ae2.timewheel.TimeWheelCraftingCpuPoolProvider;
+import com.moakiee.ae2lt.crafting.timewheel.TimeWheelCraftingCpuPool;
+import com.moakiee.ae2lt.crafting.timewheel.TimeWheelCraftingCpuPoolHost;
+import com.moakiee.ae2lt.crafting.timewheel.TimeWheelCraftingCpuPoolProvider;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -62,7 +61,9 @@ public final class PigmeeMentalmathUnitBlockEntity extends AENetworkBlockEntity
                 .setVisualRepresentation(ModBlocks.PIGMEE_MENTALMATH_UNIT.get())
                 .setIdlePowerUsage(1.0D)
                 .setFlags(GridFlags.REQUIRE_CHANNEL)
-                .addService(ExtendedCraftingCpuClusterProvider.class, this)
+                .addService(
+                        com.moakiee.thunderbolt.api.crafting.cpu.ExtendedCraftingCpuClusterProvider.class,
+                        this)
                 .addService(TimeWheelCraftingCpuPoolProvider.class, this);
     }
 

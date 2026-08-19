@@ -11,13 +11,13 @@ public final class WirelessConnectorTargetHelper {
     private WirelessConnectorTargetHelper() {}
 
     public static Set<BlockPos> collectTargets(Level level, BlockPos origin, boolean contiguous) {
-        return com.moakiee.thunderbolt.api.wireless.WirelessConnectorTargetHelper
+        return com.moakiee.ae2lt.logic.wireless.support.WirelessConnectorTargetHelper
                 .collectTargets(level, origin, contiguous);
     }
 
     public static Set<BlockPos> collectTargets(
             Level level, BlockPos origin, boolean contiguous, int maxTargets) {
-        return com.moakiee.thunderbolt.api.wireless.WirelessConnectorTargetHelper
+        return com.moakiee.ae2lt.logic.wireless.support.WirelessConnectorTargetHelper
                 .collectTargets(level, origin, contiguous, maxTargets);
     }
 }

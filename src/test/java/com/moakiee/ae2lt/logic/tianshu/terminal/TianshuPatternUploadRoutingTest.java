@@ -117,16 +117,14 @@ class TianshuPatternUploadRoutingTest {
         assertTrue(menu.contains(
                 "registerClientAction(\"encodeTianshu\", Boolean.class, "
                         + "this::encodeServerWithOptions)"));
-        assertTrue(menu.contains("sendClientAction(\"encodeTianshu\", triggerUpload"));
-        assertTrue(menu.contains(
-                "triggerUpload\n"
-                        + "                && com.moakiee.ae2lt.config.AE2LTClientConfig"
-                        + ".interceptDuplicatePatternEncoding()"));
-        assertTrue(menu.contains("encodeServerWithOptions(false);"));
-        assertTrue(menu.contains("previewAe2EncodingCandidate()"));
-        assertTrue(menu.contains(
-                "shouldInterceptDuplicateEncoding(candidate, interceptDuplicates)"));
-        assertTrue(menu.contains("commitAe2EncodingCandidate(candidate)"));
+        assertTrue(menu.contains("sendClientAction(\"encodeTianshu\","));
+        assertFalse(menu.contains("previewAe2EncodingCandidate()"));
+        int nativeEncode = menu.indexOf("super.encode();");
+        int actualDuplicateCheck = menu.indexOf(
+                "shouldInterceptDuplicateEncoding(encoded, interceptDuplicates)", nativeEncode);
+        assertTrue(nativeEncode >= 0);
+        assertTrue(actualDuplicateCheck > nativeEncode);
+        assertTrue(menu.contains("rollbackRefundableEncodedPattern();"));
         assertTrue(menu.contains(
                 "route == TianshuPatternUploadRouting.Route.INVALID"));
         assertTrue(clientConfig.contains(
@@ -136,8 +134,9 @@ class TianshuPatternUploadRoutingTest {
         assertTrue(duplicateFilter.contains("readClosedLoopPayload(candidate, level)"));
         assertTrue(duplicateFilter.contains("sameClosedLoopPayload("));
         assertTrue(duplicateFilter.contains("left.pattern().fingerprint()"));
-        assertTrue(duplicateFilter.contains(
-                "Objects.equals(stored.getDefinition(), candidate.getDefinition())"));
+        assertTrue(duplicateFilter.contains("AEItems.CRAFTING_PATTERN.isSameAs(candidate)"));
+        assertTrue(duplicateFilter.contains("AEItems.PROCESSING_PATTERN.isSameAs(candidate)"));
+        assertFalse(duplicateFilter.contains("stored.getDefinition()"));
 
         int processingUpload = menu.indexOf(
                 "public void uploadTianshuPatternToTarget(ServerPlayer player");

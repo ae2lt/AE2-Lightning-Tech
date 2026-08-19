@@ -7,9 +7,9 @@ import java.util.function.Predicate;
 import appeng.api.crafting.IPatternDetails;
 import appeng.blockentity.crafting.IMolecularAssemblerSupportedPattern;
 
-import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopBatchPatternDetails;
+import com.moakiee.thunderbolt.core.crafting.loop.ClosedLoopBatchPatternDetails;
 import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopExpandedPatternDetails;
-import com.moakiee.thunderbolt.ae2.overload.pattern.WrappedPatternDetails;
+import com.moakiee.thunderbolt.core.crafting.pattern.IWrappedPatternDetails;
 
 /**
  * Selects pattern types that may enter Thunderbolt's batch-provider dispatch.
@@ -38,7 +38,7 @@ public final class BatchPatternEligibility {
             if (isClosedLoop.test(current)) {
                 return isClosedLoopBatchSafe.test(current);
             }
-            if (current instanceof WrappedPatternDetails wrapped) {
+            if (current instanceof IWrappedPatternDetails wrapped) {
                 current = wrapped.wrappedPatternDetails();
                 continue;
             }

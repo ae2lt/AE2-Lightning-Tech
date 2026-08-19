@@ -18,7 +18,7 @@ import net.minecraft.world.level.block.state.BlockState;
 
 import com.moakiee.ae2lt.grid.FrequencyBindingHelper;
 import com.moakiee.ae2lt.grid.FrequencyBindingHost;
-import com.moakiee.thunderbolt.ae2.channel.OverloadedGridNodeOwner;
+import com.moakiee.thunderbolt.api.channel.HighCapacityChannelOwner;
 import com.moakiee.ae2lt.registry.ModBlockEntities;
 import com.moakiee.ae2lt.registry.ModBlocks;
 
@@ -28,7 +28,7 @@ import com.moakiee.ae2lt.registry.ModBlocks;
  * receiver-side frequency binding.
  */
 public class WirelessReceiverBlockEntity extends AENetworkBlockEntity
-        implements OverloadedGridNodeOwner, FrequencyBindingHost, ServerTickingBlockEntity {
+        implements HighCapacityChannelOwner, FrequencyBindingHost, ServerTickingBlockEntity {
 
     private final FrequencyBindingHelper frequencyBinding = new FrequencyBindingHelper(this);
 

@@ -17,7 +17,7 @@ import appeng.api.crafting.PatternDetailsHelper;
 import appeng.api.stacks.AEKey;
 import appeng.util.inv.AppEngInternalInventory;
 
-import com.moakiee.thunderbolt.ae2.api.crafting.CraftingPatternDelegates;
+import com.moakiee.thunderbolt.core.crafting.support.CraftingPatternDelegates;
 
 /**
  * Current decoded-pattern catalog for one overloaded pattern provider.

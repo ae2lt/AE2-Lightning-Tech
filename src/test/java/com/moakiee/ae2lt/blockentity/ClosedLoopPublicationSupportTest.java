@@ -6,7 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import appeng.api.stacks.AEKey;
-import com.moakiee.thunderbolt.ae2.timewheel.ReusableSeedPattern;
+import com.moakiee.thunderbolt.core.crafting.loop.ReusableSeedPattern;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;

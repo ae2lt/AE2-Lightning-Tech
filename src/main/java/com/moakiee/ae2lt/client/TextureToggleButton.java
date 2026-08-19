@@ -179,6 +179,7 @@ public class TextureToggleButton extends IconButton {
         INVENTORY_MAINTENANCE(texture("inventory_maintenance")),
         // 多方块控制器左侧操作栏。
         QUICK_BUILD(texture("quick_build")),
+        CPU_SELECTION(texture("quick_build")),
         QUICK_COMPUTE(texture("quick_compute_off"), texture("quick_compute_on")),
         PATTERN_STORAGE_UPGRADE(texture("pattern_storage_upgrade")),
         ADAPTIVE_BATCH(texture("adaptive_batch_off"), texture("adaptive_batch_on"));

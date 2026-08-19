@@ -3,7 +3,7 @@ package com.moakiee.ae2lt.logic.tianshu.loop;
 import appeng.api.crafting.IPatternDetails;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.GenericStack;
-import com.moakiee.thunderbolt.core.planner.Sat;
+import com.moakiee.thunderbolt.core.crafting.planner.Sat;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;

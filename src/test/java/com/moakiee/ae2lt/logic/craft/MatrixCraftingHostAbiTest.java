@@ -7,16 +7,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 
 import com.moakiee.ae2lt.blockentity.MatrixControllerBlockEntity;
-import com.moakiee.thunderbolt.core.craft.CraftingCoreHost;
+import com.moakiee.ae2lt.crafting.matrix.core.CraftingCoreHost;
 
 class MatrixCraftingHostAbiTest {
     @Test
-    void controllerDeclaresTheCrossJarRemovalBridgeExplicitly() {
+    void controllerUsesTheLocalCraftingCoreHostContract() {
         var method = assertDoesNotThrow(
-                () -> MatrixControllerBlockEntity.class.getDeclaredMethod(
-                        "isCraftingHostRemoved"));
+                () -> MatrixControllerBlockEntity.class.getMethod("isRemoved"));
 
         assertEquals(boolean.class, method.getReturnType());
-        assertTrue(CraftingCoreHost.class.isAssignableFrom(method.getDeclaringClass()));
+        assertTrue(CraftingCoreHost.class.isAssignableFrom(MatrixControllerBlockEntity.class));
     }
 }

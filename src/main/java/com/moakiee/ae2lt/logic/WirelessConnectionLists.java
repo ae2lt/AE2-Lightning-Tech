@@ -23,24 +23,24 @@ public final class WirelessConnectionLists {
     private WirelessConnectionLists() {}
 
     public static boolean isLocalDimension(Level level, ResourceKey<Level> dimension) {
-        return com.moakiee.thunderbolt.api.wireless.WirelessConnectionLists
+        return com.moakiee.ae2lt.logic.wireless.support.WirelessConnectionLists
                 .isLocalDimension(level, dimension);
     }
 
     public static <T extends WirelessConnectionRef> int indexOf(
             List<T> source, ResourceKey<Level> dimension, BlockPos pos) {
-        return com.moakiee.thunderbolt.api.wireless.WirelessConnectionLists
+        return com.moakiee.ae2lt.logic.wireless.support.WirelessConnectionLists
                 .indexOf(source, dimension, pos);
     }
 
     public static <T extends WirelessConnectionRef> boolean addOrReplace(
             List<T> source, T connection, int maxConnections) {
-        return com.moakiee.thunderbolt.api.wireless.WirelessConnectionLists
+        return com.moakiee.ae2lt.logic.wireless.support.WirelessConnectionLists
                 .addOrReplace(source, connection, maxConnections);
     }
 
     public static <T extends WirelessConnectionRef> ListTag writeTagList(List<T> connections) {
-        return com.moakiee.thunderbolt.api.wireless.WirelessConnectionLists
+        return com.moakiee.ae2lt.logic.wireless.support.WirelessConnectionLists
                 .writeTagList(connections);
     }
 
@@ -50,7 +50,7 @@ public final class WirelessConnectionLists {
             List<T> target,
             int maxConnections,
             TagReader<T> reader) {
-        com.moakiee.thunderbolt.api.wireless.WirelessConnectionLists.readTagList(
+        com.moakiee.ae2lt.logic.wireless.support.WirelessConnectionLists.readTagList(
                 data, tagName, target, maxConnections, reader::read);
     }
 
@@ -70,7 +70,7 @@ public final class WirelessConnectionLists {
             ServerLevel hostLevel,
             BlockPos hostPos,
             Predicate<T> removalGuard) {
-        var result = com.moakiee.thunderbolt.api.wireless.WirelessConnectionLists.prune(
+        var result = com.moakiee.ae2lt.logic.wireless.support.WirelessConnectionLists.prune(
                 connections,
                 cursor,
                 maxChecks,

@@ -15,21 +15,21 @@ import java.util.function.Function;
 import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.Nullable;
 import appeng.api.crafting.IPatternDetails;
-import com.moakiee.thunderbolt.ae2.crafting.PatternFiringExpander;
-import com.moakiee.thunderbolt.ae2.crafting.ExecuteLoopPattern;
-import com.moakiee.thunderbolt.ae2.api.crafting.CraftingPatternDelegates;
-import com.moakiee.thunderbolt.ae2.overload.pattern.OverloadedProviderOnlyPatternDetails;
-import com.moakiee.thunderbolt.core.planner.Sat;
-import com.moakiee.thunderbolt.ae2.timewheel.TimeWheelPoolRestrictedPattern;
-import com.moakiee.thunderbolt.ae2.timewheel.TimeWheelCraftingCpuPoolHost;
-import com.moakiee.thunderbolt.ae2.timewheel.ReusableSeedPattern;
+import com.moakiee.thunderbolt.api.crafting.cpu.ExtendedCraftingCpuClusterHost;
+import com.moakiee.thunderbolt.core.crafting.loop.PatternFiringExpander;
+import com.moakiee.ae2lt.crafting.runtime.ExecuteLoopPattern;
+import com.moakiee.thunderbolt.core.crafting.support.CraftingPatternDelegates;
+import com.moakiee.ae2lt.overload.runtime.pattern.OverloadedProviderOnlyPatternDetails;
+import com.moakiee.thunderbolt.core.crafting.planner.Sat;
+import com.moakiee.thunderbolt.core.crafting.loop.CraftingCpuRestrictedPattern;
+import com.moakiee.thunderbolt.core.crafting.loop.ReusableSeedPattern;
 import com.moakiee.ae2lt.logic.tianshu.TianshuCraftingCpuHost;
 import java.util.UUID;
 import net.minecraft.core.RegistryAccess;
 
 public final class Ae2ClosedLoopPatternDetails
         implements TianshuClosedLoopPatternDetails, PatternFiringExpander,
-        TimeWheelPoolRestrictedPattern, ReusableSeedPattern {
+        CraftingCpuRestrictedPattern, ReusableSeedPattern {
     private final AEItemKey definition;
     private final ClosedLoopPatternPayload payload;
     private final IInput[] inputs;
@@ -231,7 +231,7 @@ public final class Ae2ClosedLoopPatternDetails
     }
 
     @Override
-    public boolean acceptsTimeWheelPool(TimeWheelCraftingCpuPoolHost host) {
+    public boolean acceptsCraftingCpu(ExtendedCraftingCpuClusterHost host) {
         return owningTianshuId != null
                 && host instanceof TianshuCraftingCpuHost tianshu
                 && owningTianshuId.equals(tianshu.getTianshuId());

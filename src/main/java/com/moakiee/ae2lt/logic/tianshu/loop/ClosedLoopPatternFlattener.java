@@ -3,7 +3,7 @@ package com.moakiee.ae2lt.logic.tianshu.loop;
 import appeng.api.crafting.IPatternDetails;
 import appeng.api.crafting.PatternDetailsHelper;
 import com.moakiee.ae2lt.item.ClosedLoopPatternItem;
-import com.moakiee.thunderbolt.ae2.overload.pattern.SourcePatternSnapshot;
+import com.moakiee.ae2lt.overload.runtime.pattern.SourcePatternSnapshot;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.IdentityHashMap;

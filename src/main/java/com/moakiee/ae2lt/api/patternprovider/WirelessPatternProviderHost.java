@@ -7,7 +7,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
 
-import com.moakiee.thunderbolt.api.wireless.WirelessConnectionRef;
+import com.moakiee.ae2lt.logic.wireless.support.WirelessConnectionRef;
 
 /**
  * Public connector-facing contract for wireless pattern providers.

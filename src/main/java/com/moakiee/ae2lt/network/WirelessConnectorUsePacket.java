@@ -9,7 +9,7 @@ import com.moakiee.ae2lt.logic.WirelessConnectionBatchEdit;
 import com.moakiee.ae2lt.logic.WirelessConnectionRange;
 import com.moakiee.ae2lt.logic.WirelessConnectorTargetHelper;
 import com.moakiee.ae2lt.api.patternprovider.WirelessPatternProviderHost;
-import com.moakiee.thunderbolt.api.wireless.WirelessConnectionRef;
+import com.moakiee.ae2lt.logic.wireless.support.WirelessConnectionRef;
 import java.util.ArrayList;
 import java.util.function.Supplier;
 import net.minecraft.ChatFormatting;

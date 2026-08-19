@@ -5,7 +5,7 @@ import appeng.api.crafting.IPatternDetailsDecoder;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.AEItemKey;
 import com.moakiee.ae2lt.item.ClosedLoopPatternItem;
-import com.moakiee.thunderbolt.ae2.timewheel.ReusableSeedPattern;
+import com.moakiee.thunderbolt.core.crafting.loop.ReusableSeedPattern;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -43,7 +43,7 @@ public final class ClosedLoopPatternDecoder implements IPatternDetailsDecoder {
                 var delegate = decodedMembers.get(executionMember);
                 var seedAmounts = new java.util.LinkedHashMap<appeng.api.stacks.AEKey, Long>();
                 for (var seed : payload.seeds()) seedAmounts.merge(
-                        seed.what(), seed.amount(), com.moakiee.thunderbolt.core.planner.Sat::add);
+                        seed.what(), seed.amount(), com.moakiee.thunderbolt.core.crafting.planner.Sat::add);
                 var cycleKeys = ClosedLoopCycleKeys.analyze(decodedMembers, seedAmounts.keySet());
                 var analyzedMembers = new java.util.ArrayList<ClosedLoopPatternAnalyzer.Member>(
                         decodedMembers.size());

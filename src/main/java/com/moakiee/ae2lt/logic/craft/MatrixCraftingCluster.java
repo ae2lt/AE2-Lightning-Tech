@@ -13,12 +13,12 @@ import appeng.api.crafting.IPatternDetails;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.KeyCounter;
 
-import com.moakiee.thunderbolt.core.craft.CopyAssembler;
-import com.moakiee.thunderbolt.core.craft.CraftingCore;
-import com.moakiee.thunderbolt.core.craft.CraftingCoreHost;
-import com.moakiee.thunderbolt.core.craft.CraftingCoreRegistry;
-import com.moakiee.thunderbolt.ae2.api.crafting.BatchDispatchMode;
 import net.minecraft.core.RegistryAccess;
+import com.moakiee.ae2lt.crafting.matrix.core.CopyAssembler;
+import com.moakiee.ae2lt.crafting.matrix.core.CraftingCore;
+import com.moakiee.ae2lt.crafting.matrix.core.CraftingCoreHost;
+import com.moakiee.ae2lt.crafting.matrix.core.CraftingCoreRegistry;
+import com.moakiee.thunderbolt.api.crafting.batch.BatchDispatchMode;
 
 /**
  * Multiblock-side rate limiter that wraps a shared {@link CraftingCore} engine: it aggregates the
@@ -114,7 +114,7 @@ public final class MatrixCraftingCluster {
         long capacity = availableCapacity();
         capacity = Math.min(capacity,
                 Math.max(0L, energy.affordableOperations(capacity)));
-        if (details instanceof com.moakiee.thunderbolt.ae2.batch.BatchCopyLimitPattern limited) {
+        if (details instanceof com.moakiee.thunderbolt.core.crafting.batch.BatchCopyLimitPattern limited) {
             capacity = Math.min(capacity, Math.max(1, limited.maxBatchCopies()));
         }
         return capacity;
@@ -315,8 +315,8 @@ public final class MatrixCraftingCluster {
         }
 
         @Override
-        public boolean isCraftingHostRemoved() {
-            return delegate.isCraftingHostRemoved();
+        public boolean isRemoved() {
+            return delegate.isRemoved();
         }
 
         @Override
