@@ -45,12 +45,17 @@ public final class DeviceHubKeyMappings {
     }
 
     @Mod.EventBusSubscriber(modid = AE2LightningTech.MODID, bus = Mod.EventBusSubscriber.Bus.FORGE, value = Dist.CLIENT)
-    public static final class RuntimeHandler {
-        private RuntimeHandler() {
+    public static final class DeviceHubRuntimeHandler {
+        private DeviceHubRuntimeHandler() {
         }
 
         @SubscribeEvent
         public static void onClientTick(TickEvent.ClientTickEvent event) {
+            // NeoForge's ClientTickEvent.Post maps to Forge's END phase. Keeping this
+            // listener on one phase also prevents a held key from being observed twice.
+            if (event.phase != TickEvent.Phase.END) {
+                return;
+            }
             var minecraft = Minecraft.getInstance();
             if (minecraft.player == null || minecraft.screen != null) {
                 return;
