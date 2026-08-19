@@ -37,6 +37,9 @@ public final class FrequencyCardKeyMappings {
 
         @SubscribeEvent
         public static void onClientTick(TickEvent.ClientTickEvent event) {
+            if (event.phase != TickEvent.Phase.END) {
+                return;
+            }
             while (TOGGLE_AUTO_CONNECT.consumeClick()) {
                 NetworkInit.sendToServer(ToggleFrequencyCardAutoConnectPacket.forPreferredCard());
             }

@@ -63,6 +63,9 @@ public final class ShieldHitFeedbackClientState {
 
     @SubscribeEvent
     public static void onClientTick(TickEvent.ClientTickEvent event) {
+        if (event.phase != TickEvent.Phase.END) {
+            return;
+        }
         if (suppressTicks <= 0) {
             return;
         }
