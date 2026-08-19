@@ -130,9 +130,8 @@ public final class OverloadPatternDetails implements OverloadedProviderOnlyPatte
      * registration, mirror accounting — consistent with the wiped AE2-facing keys exposed by
      * {@code Ae2OverloadPatternDetails}.
      */
-    private static ItemStack wipeIfIdOnly(ItemStack stack, MatchMode matchMode) {
-        var tag = stack.getTag();
-        if (!matchMode.ignoresComponents() || tag == null || tag.isEmpty()) {
+    static ItemStack wipeIfIdOnly(ItemStack stack, MatchMode matchMode) {
+        if (!matchMode.ignoresComponents()) {
             return stack;
         }
         return new ItemStack(stack.getItem(), stack.getCount());

@@ -67,13 +67,12 @@ public final class Ae2OverloadPatternDetails
         return result;
     }
 
-    private static GenericStack wipeIfIdOnly(GenericStack stack, MatchMode matchMode) {
+    static GenericStack wipeIfIdOnly(GenericStack stack, MatchMode matchMode) {
         if (!matchMode.ignoresComponents()
-                || !(stack.what() instanceof AEItemKey itemKey)
-                || !itemKey.hasTag()) {
+                || !(stack.what() instanceof AEItemKey itemKey)) {
             return stack;
         }
-        return new GenericStack(AEItemKey.of(itemKey.getItem()), stack.amount());
+        return new GenericStack(itemKey.dropSecondary(), stack.amount());
     }
 
     @Override
