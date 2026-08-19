@@ -220,7 +220,7 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
         });
         boolean hasDraftInput = hasProcessingDraftInput();
         updateEncodingButton(advancedEncoding, ProcessingPatternEncodingType.ADVANCED,
-                processing && AdvancedAECompat.isLoaded(), hasDraftInput, "advanced");
+                processing && AdvancedAECompat.canEncode(), hasDraftInput, "advanced");
         updateEncodingButton(overloadEncoding, ProcessingPatternEncodingType.OVERLOAD,
                 processing, hasDraftInput, "overload");
         boolean closedLoop = selected == TianshuEncodingMode.CLOSED_LOOP;
