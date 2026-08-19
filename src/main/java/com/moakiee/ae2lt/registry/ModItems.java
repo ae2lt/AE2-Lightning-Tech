@@ -28,6 +28,7 @@ import com.moakiee.ae2lt.item.DigAffinitySubmoduleItem;
 import com.moakiee.ae2lt.item.ExtendedOverloadedPatternProviderUpgradeItem;
 import com.moakiee.ae2lt.item.FlightSubmoduleItem;
 import com.moakiee.ae2lt.item.FloatingMatterItem;
+import com.moakiee.ae2lt.item.MultidimensionalProtectionSubmoduleItem;
 import com.moakiee.ae2lt.item.MekanismProtectionSubmoduleItem;
 import com.moakiee.ae2lt.item.MovementAssistSubmoduleItem;
 import com.moakiee.ae2lt.item.NightVisionSubmoduleItem;
@@ -374,6 +375,12 @@ public final class ModItems {
             UndyingSubmoduleItem::new,
             new Item.Properties().rarity(Rarity.EPIC));
 
+    public static final RegistryObject<MultidimensionalProtectionSubmoduleItem>
+            CELESTWEAVE_SUBMODULE_MULTIDIMENSIONAL_PROTECTION = registerItem(
+                    "module_multidimensional_protection",
+                    MultidimensionalProtectionSubmoduleItem::new,
+                    new Item.Properties().rarity(Rarity.EPIC).fireResistant());
+
     public static final RegistryObject<DashSubmoduleItem> CELESTWEAVE_SUBMODULE_DASH = registerItem(
             "module_dash",
             DashSubmoduleItem::new,
@@ -510,6 +517,12 @@ public final class ModItems {
             () -> new RailgunModuleItem(
                     new Item.Properties().stacksTo(16).rarity(Rarity.EPIC),
                     RailgunModuleType.OVERLOAD_EXECUTION));
+
+    public static final RegistryObject<RailgunModuleItem> RAILGUN_MODULE_MULTIDIMENSIONAL_EXECUTION = ITEMS.register(
+            "railgun_module_multidimensional_execution",
+            () -> new RailgunModuleItem(
+                    new Item.Properties().stacksTo(16).rarity(Rarity.EPIC).fireResistant(),
+                    RailgunModuleType.MULTIDIMENSIONAL_EXECUTION));
 
     public static final RegistryObject<Item> MATTER_WARPING_MATRIX_PATTERN_STORAGE_UPGRADE =
             registerSimpleItem("matter_warping_matrix_pattern_storage_upgrade", new Item.Properties());

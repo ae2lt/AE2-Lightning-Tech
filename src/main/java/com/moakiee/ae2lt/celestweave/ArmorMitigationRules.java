@@ -34,7 +34,7 @@ public final class ArmorMitigationRules {
         }
         return switch (stage) {
             case "matrix_shield" -> applyMidStage(damageClass, incoming);
-            case "phase_shield" -> 0.0F;
+            case "phase_shield", "multidimensional_protection" -> 0.0F;
             default -> incoming;
         };
     }

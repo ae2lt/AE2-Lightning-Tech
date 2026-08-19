@@ -20,7 +20,7 @@ final class RailgunModuleRules {
 
     static int maxInstallAmount(RailgunModuleType type) {
         return switch (type) {
-            case CORE, OVERLOAD_EXECUTION -> 1;
+            case CORE, OVERLOAD_EXECUTION, MULTIDIMENSIONAL_EXECUTION -> 1;
             case COMPUTE, ACCELERATION, RANGE -> 2;
         };
     }
@@ -35,7 +35,7 @@ final class RailgunModuleRules {
             case COMPUTE -> DeviceSlotType.COMPUTE;
             case ACCELERATION -> DeviceSlotType.ACCELERATION;
             case RANGE -> DeviceSlotType.RANGE;
-            case OVERLOAD_EXECUTION -> DeviceSlotType.OVERLOAD_EXECUTION;
+            case OVERLOAD_EXECUTION, MULTIDIMENSIONAL_EXECUTION -> DeviceSlotType.OVERLOAD_EXECUTION;
         };
     }
 
@@ -56,6 +56,7 @@ final class RailgunModuleRules {
             case ACCELERATION -> List.of(new DeviceCapability.AccelerationFactor(0.30D));
             case RANGE -> List.of(new DeviceCapability.RangeMultiplier(2.0D));
             case OVERLOAD_EXECUTION -> List.of(new DeviceCapability.OverloadExecutionTuning(0.02D, 200, 8));
+            case MULTIDIMENSIONAL_EXECUTION -> List.of();
         };
     }
 }

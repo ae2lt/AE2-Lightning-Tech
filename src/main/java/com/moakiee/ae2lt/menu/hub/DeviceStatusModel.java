@@ -8,6 +8,7 @@ import net.minecraft.world.item.ItemStack;
 
 import com.moakiee.ae2lt.config.AE2LTCommonConfig;
 import com.moakiee.ae2lt.item.railgun.RailgunModuleStorage;
+import com.moakiee.ae2lt.item.railgun.RailgunExecutionMode;
 import com.moakiee.ae2lt.item.railgun.RailgunSettings;
 import com.moakiee.ae2lt.item.railgun.RailgunStructuralCore;
 import com.moakiee.ae2lt.logic.energy.AppFluxBridge;
@@ -31,10 +32,12 @@ public record DeviceStatusModel(
         int selectedModuleIndex,
         List<ModuleConfigInfo> moduleConfigs,
         boolean terrainDestruction, boolean pvp, boolean soundEnabled,
-        boolean chainDamage, boolean forceOverloadRemoval, boolean chargedSplash
+        boolean chainDamage, RailgunExecutionMode executionMode, boolean chargedSplash
 ) {
     public static final String RAILGUN_OVERLOAD_MODULE_KEY =
             "ae2lt.device_hub.module.railgun.overload_execution";
+    public static final String RAILGUN_MULTIDIMENSIONAL_MODULE_KEY =
+            "ae2lt.device_hub.module.railgun.multidimensional_execution";
 
     public record ModuleInfo(String nameKey, int count, boolean enabled) {
     }
@@ -44,7 +47,7 @@ public record DeviceStatusModel(
 
     public static final DeviceStatusModel EMPTY = new DeviceStatusModel(
             "", false, false, List.of(), -1, List.of(), false, false, false,
-            false, false, false);
+            false, RailgunExecutionMode.NORMAL, false);
 
     /** Build status snapshot from an armor stack worn by the player. */
     public static DeviceStatusModel fromArmorStack(ItemStack armor, ServerPlayer player) {
@@ -85,7 +88,7 @@ public record DeviceStatusModel(
 
         return new DeviceStatusModel(
                 name, snapshot.hasCore(), powered, modules, clampedModuleIndex, moduleConfigs, false, false, false,
-                false, false, false);
+                false, RailgunExecutionMode.NORMAL, false);
     }
 
     /** Build status snapshot from a railgun stack held by the player. */
@@ -135,13 +138,19 @@ public record DeviceStatusModel(
                     1,
                     true));
         }
+        if (entries.hasMultidimensionalExecution()) {
+            modules.add(new ModuleInfo(
+                    RAILGUN_MULTIDIMENSIONAL_MODULE_KEY,
+                    1,
+                    true));
+        }
 
         RailgunSettings settings = ModDataComponents.RAILGUN_SETTINGS.getOrDefault(railgun, RailgunSettings.DEFAULT);
         boolean terrainAllowed = AE2LTCommonConfig.railgunTerrainDestructionEnabled();
         return new DeviceStatusModel(
                 name, hasStructuralCore, powered, modules, -1, List.of(),
                 terrainAllowed && settings.terrainDestruction(), settings.pvp(), settings.soundEnabled(),
-                settings.chainDamage(), settings.forceOverloadRemoval(), settings.chargedSplash());
+                settings.chainDamage(), settings.executionMode(), settings.chargedSplash());
     }
 
     private static List<ModuleConfigInfo> moduleConfigs(ItemStack armor, ServerPlayer player, int selectedModuleIndex) {

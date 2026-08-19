@@ -21,6 +21,7 @@ import net.minecraft.world.level.gameevent.GameEvent;
 
 import com.moakiee.ae2lt.config.AE2LTCommonConfig;
 import com.moakiee.ae2lt.item.railgun.RailgunEnergyRules;
+import com.moakiee.ae2lt.item.railgun.RailgunExecutionMode;
 import com.moakiee.ae2lt.item.railgun.RailgunModuleEntries;
 import com.moakiee.ae2lt.item.railgun.RailgunSettings;
 import com.moakiee.ae2lt.celestweave.CelestweaveArmorUndyingHandler;
@@ -29,11 +30,12 @@ import com.moakiee.ae2lt.registry.ModDamageTypes;
 import com.moakiee.ae2lt.util.ItemStackTagSupport;
 
 /**
- * Overload Execution — "I remember you" HP-record model.
+ * Execution modules: Overload uses the "I remember you" HP-record model, while the
+ * multidimensional upgrade enters the same death settlement immediately and for free.
  *
- * <p><b>Activation:</b> the {@link RailgunModuleEntries#hasOverloadExecution()} flag
- * plus the {@code overloadExecution.enabled} config switch. Trigger is gated by the
- * caller (currently only EHv3 charged shots in {@code RailgunFireService.applyAll}).
+ * <p><b>Activation:</b> either execution module plus the {@code overloadExecution.enabled}
+ * config switch. Trigger is gated by the caller (currently only EHv3 charged shots in
+ * {@code RailgunFireService.applyAll}).
  *
  * <p><b>Model:</b> per railgun ItemStack, a small list of {@code (uuid, recordedHp,
  * lastHitTick)} entries is kept in the stack's NBT under {@code OverloadExecutionTargets}.
@@ -65,8 +67,11 @@ import com.moakiee.ae2lt.util.ItemStackTagSupport;
  * removes; direct-write path purges if the target died from the shot). Other-source
  * deaths are left for the 60-second decay to wash out.
  *
- * <p>Execution has two user-selectable modes. Normal death completes the already-started
- * damage flow with a lethal health write and the target's own
+ * <p>Execution has three user-selectable modes. OFF replaces execution with ordinary
+ * armor-piercing electromagnetic damage: 600 for Overload Execution and
+ * {@link Float#MAX_VALUE} for Multidimensional Execution. This damage stays in the
+ * target's normal {@code hurt} pipeline and never enters the explicit death/removal chain.
+ * Normal death completes the already-started damage flow with a lethal health write and the target's own
  * {@link LivingEntity#die(DamageSource)}, then leaves removal entirely to its death tick.
  * Forced removal runs the complete death, kill, discard and remove cleanup chain before
  * a final removal fallback. It gives normal loot settlement the first opportunity but
@@ -80,6 +85,8 @@ public final class OverloadExecutionService {
     private static final String TAG_UUID = "uuid";
     private static final String TAG_RECORDED_HP = "recordedHp";
     private static final String TAG_LAST_HIT_TICK = "lastHitTick";
+    private static final float OFF_OVERLOAD_DAMAGE = 600.0F;
+    private static final float OFF_MULTIDIMENSIONAL_DAMAGE = Float.MAX_VALUE;
 
     private OverloadExecutionService() {}
 
@@ -87,8 +94,9 @@ public final class OverloadExecutionService {
 
     /**
      * Called from {@code RailgunFireService.applyAll} when an EHv3 charged shot hits
-     * a living entity with the OVERLOAD module installed. Quietly returns when the
-     * master switch is off, the module is absent, or the target is creative/spectator.
+     * a living entity with an execution module installed. Multidimensional Execution
+     * bypasses the HP-record and module surcharge branches. Quietly returns when the master
+     * switch is off, the module is absent, or the target is creative/spectator.
      */
     public static void onHit(ServerLevel level, ServerPlayer player, ItemStack stack,
                              LivingEntity target, double damage) {
@@ -99,7 +107,26 @@ public final class OverloadExecutionService {
         if (!RailgunTargetRules.canAffect(player, target, allowPlayerTargets)) return;
 
         RailgunModuleEntries mods = ModDataComponents.RAILGUN_MODULE_ENTRIES.getOrDefault(stack, RailgunModuleEntries.EMPTY);
+        RailgunExecutionMode executionMode = settings.executionMode();
+        DamageSource damageSource =
+                new DamageSource(ModDamageTypes.electromagneticHolder(level), player, player);
+        if (mods.hasMultidimensionalExecution()) {
+            if (!executionMode.entersExecutionFlow()) {
+                applyOrdinaryDamage(target, damageSource, OFF_MULTIDIMENSIONAL_DAMAGE);
+            } else {
+                execute(
+                        target,
+                        Math.max(damage, target.getHealth()),
+                        damageSource,
+                        executionMode.forcesRemoval());
+            }
+            return;
+        }
         if (!mods.hasOverloadExecution()) return;
+        if (!executionMode.entersExecutionFlow()) {
+            applyOrdinaryDamage(target, damageSource, OFF_OVERLOAD_DAMAGE);
+            return;
+        }
         int maxTracked = AE2LTCommonConfig.overloadExecutionMaxTracked();
         int decayWindow = AE2LTCommonConfig.overloadExecutionDecayWindowTicks();
         double decayPower = AE2LTCommonConfig.overloadExecutionDecayPower();
@@ -153,8 +180,11 @@ public final class OverloadExecutionService {
             int idx = indexOf(targets, targetUuid);
             if (idx >= 0) targets.remove(idx);
             saveTargets(stack, root, targets);
-            DamageSource ds = new DamageSource(ModDamageTypes.electromagneticHolder(level), player, player);
-            execute(target, Math.max(damage, currentHp), ds, settings.forceOverloadRemoval());
+            execute(
+                    target,
+                    Math.max(damage, currentHp),
+                    damageSource,
+                    executionMode.forcesRemoval());
             return;
         }
 
@@ -201,10 +231,10 @@ public final class OverloadExecutionService {
     }
 
     /**
-     * Forced-execution entry point for a directly hit, non-living projectile target.
-     * The ordinary damage callback has already run in {@link RailgunFireService}; this
-     * method only supplies the opt-in EHv3 removal fallback and never participates in
-     * chains, penetration or local-area propagation.
+     * Execution-module entry point for a directly hit, non-living projectile target.
+     * The ordinary shot callback runs first. OFF can add its ordinary-damage fallback,
+     * FORCED can supply removal fallback, and NORMAL leaves the entity's damage behavior
+     * alone. This never participates in chains, penetration or local-area propagation.
      */
     public static void onDirectNonLivingHit(
             ServerLevel level,
@@ -217,25 +247,50 @@ public final class OverloadExecutionService {
         if (!RailgunTargetRules.canAffect(player, target, allowPlayerTargets)) return;
 
         RailgunModuleEntries mods = ModDataComponents.RAILGUN_MODULE_ENTRIES.getOrDefault(stack, RailgunModuleEntries.EMPTY);
-        if (!mods.hasOverloadExecution()) return;
+        boolean multidimensional = mods.hasMultidimensionalExecution();
+        if (!multidimensional && !mods.hasOverloadExecution()) return;
 
         RailgunSettings settings = ModDataComponents.RAILGUN_SETTINGS.getOrDefault(stack, RailgunSettings.DEFAULT);
-        if (!settings.forceOverloadRemoval()) return;
-
-        long feCost = RailgunEnergyRules.overloadExecutionCostFe();
-        RailgunEnergyBuffer.refillFromNetwork(
-                stack,
-                player,
-                Math.max(0L, feCost - RailgunEnergyBuffer.read(stack)));
-        if (!RailgunEnergyBuffer.tryConsume(stack, player, feCost)) {
-            RailgunFireService.sendFail(player, "ae2lt.railgun.fail.no_fe");
+        RailgunExecutionMode executionMode = settings.executionMode();
+        if (!executionMode.entersExecutionFlow()) {
+            DamageSource source =
+                    new DamageSource(ModDamageTypes.electromagneticHolder(level), player, player);
+            target.hurt(
+                    source,
+                    multidimensional ? OFF_MULTIDIMENSIONAL_DAMAGE : OFF_OVERLOAD_DAMAGE);
             return;
+        }
+        if (!executionMode.forcesRemoval()) return;
+
+        if (!multidimensional) {
+            long feCost = RailgunEnergyRules.overloadExecutionCostFe();
+            RailgunEnergyBuffer.refillFromNetwork(
+                    stack,
+                    player,
+                    Math.max(0L, feCost - RailgunEnergyBuffer.read(stack)));
+            if (!RailgunEnergyBuffer.tryConsume(stack, player, feCost)) {
+                RailgunFireService.sendFail(player, "ae2lt.railgun.fail.no_fe");
+                return;
+            }
         }
 
         forceRemoveNonLiving(target);
     }
 
     // ── Execution modes ─────────────────────────────────────────────────────
+
+    /**
+     * Applies the OFF-mode fallback through the ordinary damage event path. The
+     * electromagnetic damage type supplies armor bypass; this method deliberately does
+     * not set health, call die/kill, or remove the target.
+     */
+    private static void applyOrdinaryDamage(
+            LivingEntity target,
+            DamageSource source,
+            float damage) {
+        target.invulnerableTime = 0;
+        target.hurt(source, damage);
+    }
 
     private static void execute(
             LivingEntity target,

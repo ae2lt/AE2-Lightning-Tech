@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.moakiee.ae2lt.client.ClientNetworkPacketHandlers;
+import com.moakiee.ae2lt.item.railgun.RailgunExecutionMode;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.fml.DistExecutor;
@@ -20,7 +21,7 @@ public record DeviceHubSyncPacket(
         boolean pvp,
         boolean soundEnabled,
         boolean chainDamage,
-        boolean forceOverloadRemoval,
+        RailgunExecutionMode executionMode,
         boolean chargedSplash,
         List<String> moduleNameKeys,
         List<Integer> moduleCounts,
@@ -40,7 +41,7 @@ public record DeviceHubSyncPacket(
         boolean pvp = buf.readBoolean();
         boolean soundEnabled = buf.readBoolean();
         boolean chainDamage = buf.readBoolean();
-        boolean forceOverloadRemoval = buf.readBoolean();
+        RailgunExecutionMode executionMode = buf.readEnum(RailgunExecutionMode.class);
         boolean chargedSplash = buf.readBoolean();
         int count = buf.readVarInt();
         List<String> nameKeys = new ArrayList<>(count);
@@ -72,7 +73,7 @@ public record DeviceHubSyncPacket(
                 pvp,
                 soundEnabled,
                 chainDamage,
-                forceOverloadRemoval,
+                executionMode,
                 chargedSplash,
                 nameKeys,
                 counts,
@@ -93,7 +94,7 @@ public record DeviceHubSyncPacket(
         buf.writeBoolean(pvp);
         buf.writeBoolean(soundEnabled);
         buf.writeBoolean(chainDamage);
-        buf.writeBoolean(forceOverloadRemoval);
+        buf.writeEnum(executionMode);
         buf.writeBoolean(chargedSplash);
         int count = Math.min(Math.min(moduleNameKeys.size(), moduleCounts.size()), moduleEnabled.size());
         buf.writeVarInt(count);

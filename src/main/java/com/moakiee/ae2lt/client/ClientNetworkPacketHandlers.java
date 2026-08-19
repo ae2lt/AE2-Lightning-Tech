@@ -167,7 +167,7 @@ public final class ClientNetworkPacketHandlers {
                 packet.pvp(),
                 packet.soundEnabled(),
                 packet.chainDamage(),
-                packet.forceOverloadRemoval(),
+                packet.executionMode(),
                 packet.chargedSplash(),
                 packet.moduleNameKeys(),
                 packet.moduleCounts(),

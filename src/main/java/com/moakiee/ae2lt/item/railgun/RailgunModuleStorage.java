@@ -52,6 +52,11 @@ public final class RailgunModuleStorage implements DeviceModuleStorage {
         if (!RailgunStructuralCore.hasCore(device)) {
             return false;
         }
+        if ((module.moduleType() == RailgunModuleType.OVERLOAD_EXECUTION
+                || module.moduleType() == RailgunModuleType.MULTIDIMENSIONAL_EXECUTION)
+                && entries.hasAnyExecution()) {
+            return false;
+        }
         if (entries.getCount(module.moduleType()) >= module.getMaxInstallAmount()) {
             return false;
         }

@@ -39,4 +39,14 @@ final class ArmorMitigationRulesTest {
             assertEquals(0.0F, ArmorMitigationRules.apply("phase_shield", damageClass, 8.0F));
         }
     }
+
+    @Test
+    void multidimensionalProtectionCancelsEveryDamageClass() {
+        for (var damageClass : ArmorMitigationRules.DamageClass.values()) {
+            assertEquals(0.0F, ArmorMitigationRules.apply(
+                    "multidimensional_protection",
+                    damageClass,
+                    Float.MAX_VALUE));
+        }
+    }
 }

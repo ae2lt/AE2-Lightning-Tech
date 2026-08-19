@@ -56,6 +56,14 @@ public record RailgunModuleEntries(List<ItemStack> entries) {
         return getCount(RailgunModuleType.OVERLOAD_EXECUTION) > 0;
     }
 
+    public boolean hasMultidimensionalExecution() {
+        return getCount(RailgunModuleType.MULTIDIMENSIONAL_EXECUTION) > 0;
+    }
+
+    public boolean hasAnyExecution() {
+        return hasOverloadExecution() || hasMultidimensionalExecution();
+    }
+
     public int computeCount() {
         return getCount(RailgunModuleType.COMPUTE);
     }

@@ -19,6 +19,7 @@ import net.minecraftforge.common.extensions.IForgeMenuType;
 
 import com.moakiee.ae2lt.config.AE2LTCommonConfig;
 import com.moakiee.ae2lt.item.railgun.ElectromagneticRailgunItem;
+import com.moakiee.ae2lt.item.railgun.RailgunExecutionMode;
 import com.moakiee.ae2lt.item.railgun.RailgunSettings;
 import com.moakiee.ae2lt.network.hub.DeviceHubSyncPacket;
 import com.moakiee.ae2lt.celestweave.CelestweaveArmorState;
@@ -61,7 +62,7 @@ public class DeviceHubMenu extends AbstractContainerMenu {
     private boolean pvp;
     private boolean soundEnabled;
     private boolean chainDamage;
-    private boolean forceOverloadRemoval;
+    private RailgunExecutionMode executionMode = RailgunExecutionMode.NORMAL;
     private boolean chargedSplash;
     private List<String> moduleNameKeys = List.of();
     private List<Integer> moduleCounts = List.of();
@@ -175,7 +176,7 @@ public class DeviceHubMenu extends AbstractContainerMenu {
                 status.pvp(),
                 status.soundEnabled(),
                 status.chainDamage(),
-                status.forceOverloadRemoval(),
+                status.executionMode(),
                 status.chargedSplash(),
                 nameKeys,
                 counts,
@@ -216,7 +217,7 @@ public class DeviceHubMenu extends AbstractContainerMenu {
             boolean pvp,
             boolean soundEnabled,
             boolean chainDamage,
-            boolean forceOverloadRemoval,
+            RailgunExecutionMode executionMode,
             boolean chargedSplash,
             List<String> nameKeys,
             List<Integer> counts,
@@ -233,7 +234,7 @@ public class DeviceHubMenu extends AbstractContainerMenu {
         this.pvp = pvp;
         this.soundEnabled = soundEnabled;
         this.chainDamage = chainDamage;
-        this.forceOverloadRemoval = forceOverloadRemoval;
+        this.executionMode = executionMode;
         this.chargedSplash = chargedSplash;
         this.moduleNameKeys = List.copyOf(nameKeys);
         this.moduleCounts = List.copyOf(counts);
@@ -294,8 +295,8 @@ public class DeviceHubMenu extends AbstractContainerMenu {
         return chainDamage;
     }
 
-    public boolean isForceOverloadRemoval() {
-        return forceOverloadRemoval;
+    public RailgunExecutionMode getExecutionMode() {
+        return executionMode;
     }
 
     public boolean isChargedSplash() {
@@ -394,12 +395,14 @@ public class DeviceHubMenu extends AbstractContainerMenu {
         ModDataComponents.RAILGUN_SETTINGS.set(railgun, s.withChainDamage(!s.chainDamage()));
     }
 
-    public void toggleRailgunOverloadRemovalMode() {
+    public void cycleRailgunExecutionMode() {
         if (!(getPlayer() instanceof ServerPlayer player)) return;
         ItemStack railgun = findDevice(player, TAB_RAILGUN);
         if (railgun.isEmpty()) return;
         RailgunSettings s = ModDataComponents.RAILGUN_SETTINGS.getOrDefault(railgun, RailgunSettings.DEFAULT);
-        ModDataComponents.RAILGUN_SETTINGS.set(railgun, s.withForceOverloadRemoval(!s.forceOverloadRemoval()));
+        ModDataComponents.RAILGUN_SETTINGS.set(
+                railgun,
+                s.withExecutionMode(s.executionMode().next()));
     }
 
     public void toggleRailgunChargedSplash() {

@@ -327,8 +327,8 @@ public final class RailgunFireService {
         DamageSource source = new DamageSource(ModDamageTypes.electromagneticHolder(level), player, player);
         target.hurt(source, (float) damage);
 
-        // A normal hit gets the entity's own damage behavior first. Forced execution is
-        // a direct-hit-only EHv3 fallback for non-living projectile targets that survived.
+        // A normal hit gets the entity's own damage behavior first. The configured
+        // execution-module fallback is direct-hit-only for non-living projectile targets.
         if (tier == RailgunChargeTier.EHV3 && !railgunStack.isEmpty() && !target.isRemoved()) {
             OverloadExecutionService.onDirectNonLivingHit(
                     level, player, railgunStack, target, allowPlayerTargets);
