@@ -27,7 +27,7 @@ class CreativePigmeeDuplicationRecipeContractTest {
     }
 
     @Test
-    void convertsTheSixProgressionTargetsBeforeFallingBackToDuplication() throws Exception {
+    void convertsKnownProgressionTargetsBeforeFallingBackToDuplication() throws Exception {
         String creativeSource = Files.readString(Path.of(
                 "src/main/java/com/moakiee/ae2lt/recipe/CreativePigmeeDuplicationRecipe.java"));
         String conversionSource = Files.readString(Path.of(
@@ -48,6 +48,14 @@ class CreativePigmeeDuplicationRecipeContractTest {
                 "target.is(ModBlocks.MATTER_WARPING_MATRIX_OVERLOAD_MAIN_CORE.asItem())"));
         assertTrue(conversionSource.contains(
                 "new ItemStack(ModBlocks.MATTER_WARPING_MATRIX_MULTIDIMENSIONAL_MAIN_CORE.asItem())"));
+        assertTrue(conversionSource.contains(
+                "target.is(ModItems.RAILGUN_MODULE_OVERLOAD_EXECUTION.get())"));
+        assertTrue(conversionSource.contains(
+                "new ItemStack(ModItems.RAILGUN_MODULE_MULTIDIMENSIONAL_EXECUTION.get())"));
+        assertTrue(conversionSource.contains(
+                "target.is(ModItems.CELESTWEAVE_SUBMODULE_PHASE_SHIELD.get())"));
+        assertTrue(conversionSource.contains(
+                "new ItemStack(ModItems.CELESTWEAVE_SUBMODULE_MULTIDIMENSIONAL_PROTECTION.get())"));
         assertTrue(creativeSource.indexOf("PigmeeConversionLogic.createResult(target)")
                 < creativeSource.indexOf("target.copyWithCount(OUTPUT_COUNT)"));
         assertFalse(conversionSource.contains("HYPERDIMENSIONAL_PIGMEE_FUMO_ITEM"));

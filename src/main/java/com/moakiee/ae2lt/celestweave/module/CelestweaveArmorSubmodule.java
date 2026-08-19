@@ -1,6 +1,7 @@
 package com.moakiee.ae2lt.celestweave.module;
 
 import java.util.List;
+import java.util.Set;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -94,6 +95,15 @@ public interface CelestweaveArmorSubmodule extends OverloadDeviceSubmodule {
      */
     default String installGroupId() {
         return id();
+    }
+
+    /**
+     * Logical install groups occupied by this module. Most modules occupy one group, while a
+     * combined higher-tier module may replace several otherwise independent module families.
+     */
+    default Set<String> installGroupIds() {
+        String groupId = installGroupId();
+        return groupId == null || groupId.isBlank() ? Set.of() : Set.of(groupId);
     }
 
     /**

@@ -53,7 +53,7 @@ public sealed interface DeviceCapability {
         }
     }
 
-    /** Overload execution: cumulative damage tracker + forced kill sequence. */
+    /** Overload execution: configurable ordinary damage, HP tracking or forced settlement. */
     record OverloadExecutionTuning(double decayRate, int decayDelayTicks, int maxTrackedTargets) implements DeviceCapability {}
 
     // --- armor only ---

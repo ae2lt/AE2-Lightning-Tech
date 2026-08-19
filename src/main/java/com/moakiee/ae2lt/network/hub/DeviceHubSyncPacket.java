@@ -8,6 +8,7 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
+import com.moakiee.ae2lt.item.railgun.RailgunExecutionMode;
 import com.moakiee.ae2lt.menu.hub.DeviceHubMenu;
 import com.moakiee.ae2lt.network.NetworkInit;
 
@@ -21,7 +22,7 @@ public record DeviceHubSyncPacket(
         boolean pvp,
         boolean soundEnabled,
         boolean chainDamage,
-        boolean forceOverloadRemoval,
+        RailgunExecutionMode executionMode,
         boolean chargedSplash,
         List<String> moduleNameKeys,
         List<Integer> moduleCounts,
@@ -53,7 +54,7 @@ public record DeviceHubSyncPacket(
         boolean pvp = buf.readBoolean();
         boolean soundEnabled = buf.readBoolean();
         boolean chainDamage = buf.readBoolean();
-        boolean forceOverloadRemoval = buf.readBoolean();
+        RailgunExecutionMode executionMode = buf.readEnum(RailgunExecutionMode.class);
         boolean chargedSplash = buf.readBoolean();
         int count = buf.readVarInt();
         List<String> nameKeys = new ArrayList<>(count);
@@ -85,7 +86,7 @@ public record DeviceHubSyncPacket(
                 pvp,
                 soundEnabled,
                 chainDamage,
-                forceOverloadRemoval,
+                executionMode,
                 chargedSplash,
                 nameKeys,
                 counts,
@@ -106,7 +107,7 @@ public record DeviceHubSyncPacket(
         buf.writeBoolean(pvp);
         buf.writeBoolean(soundEnabled);
         buf.writeBoolean(chainDamage);
-        buf.writeBoolean(forceOverloadRemoval);
+        buf.writeEnum(executionMode);
         buf.writeBoolean(chargedSplash);
         int count = Math.min(Math.min(moduleNameKeys.size(), moduleCounts.size()), moduleEnabled.size());
         buf.writeVarInt(count);
@@ -140,7 +141,7 @@ public record DeviceHubSyncPacket(
                         pkt.pvp(),
                         pkt.soundEnabled(),
                         pkt.chainDamage(),
-                        pkt.forceOverloadRemoval(),
+                        pkt.executionMode(),
                         pkt.chargedSplash(),
                         pkt.moduleNameKeys(),
                         pkt.moduleCounts(),

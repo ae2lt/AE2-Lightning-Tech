@@ -306,6 +306,7 @@ public class AE2LightningTech {
                         output.accept(ModItems.CELESTWEAVE_SUBMODULE_PHASE_SHIELD);
                         output.accept(ModItems.CELESTWEAVE_SUBMODULE_REFLECT);
                         output.accept(ModItems.CELESTWEAVE_SUBMODULE_UNDYING);
+                        output.accept(ModItems.CELESTWEAVE_SUBMODULE_MULTIDIMENSIONAL_PROTECTION);
                         output.accept(ModItems.CELESTWEAVE_SUBMODULE_PURIFICATION);
                         output.accept(ModItems.CELESTWEAVE_SUBMODULE_RADIATION_PROTECTION);
                         output.accept(ModItems.CELESTWEAVE_SUBMODULE_LASER_PROTECTION);
@@ -327,6 +328,7 @@ public class AE2LightningTech {
                         output.accept(ModItems.RAILGUN_MODULE_ACCELERATION);
                         output.accept(ModItems.RAILGUN_MODULE_RANGE);
                         output.accept(ModItems.RAILGUN_MODULE_OVERLOAD_EXECUTION);
+                        output.accept(ModItems.RAILGUN_MODULE_MULTIDIMENSIONAL_EXECUTION);
 
                         // Fumo 收藏品（猪咪系列留在独立物品栏）
                         output.accept(ModFumos.MOAKIEE_FUMO_ITEM.get());

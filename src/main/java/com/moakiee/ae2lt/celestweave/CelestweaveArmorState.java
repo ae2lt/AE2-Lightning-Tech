@@ -121,12 +121,16 @@ public final class CelestweaveArmorState {
         if (id.isBlank()) {
             return false;
         }
-        String groupId = resolveSubmoduleGroupId(candidate);
-        if (!groupId.isBlank()) {
-            int installedInGroup = getInstalledGroupAmount(armor, registries, groupId);
-            int installedSameId = getInstalledAmount(armor, registries, id);
-            if (installedInGroup > installedSameId) {
-                return false;
+        Set<String> groupIds = resolveSubmoduleGroupIds(candidate);
+        if (!groupIds.isEmpty()) {
+            for (var installed : loadModuleStacks(armor, registries)) {
+                if (id.equals(resolveSubmoduleId(installed))) {
+                    continue;
+                }
+                var installedGroups = resolveSubmoduleGroupIds(installed);
+                if (groupIds.stream().anyMatch(installedGroups::contains)) {
+                    return false;
+                }
             }
         }
         int current = getInstalledAmount(armor, registries, id);
@@ -221,19 +225,6 @@ public final class CelestweaveArmorState {
             }
         }
         return 0;
-    }
-
-    private static int getInstalledGroupAmount(ItemStack armor, HolderLookup.Provider registries, String groupId) {
-        if (groupId == null || groupId.isBlank()) {
-            return 0;
-        }
-        int total = 0;
-        for (var stack : loadModuleStacks(armor, registries)) {
-            if (groupId.equals(resolveSubmoduleGroupId(stack))) {
-                total += Math.max(1, stack.getCount());
-            }
-        }
-        return total;
     }
 
     public static List<CelestweaveArmorSubmodule> collectSubmodules(ItemStack armor, HolderLookup.Provider registries) {
@@ -566,23 +557,26 @@ public final class CelestweaveArmorState {
         return provider.moduleTypeId(stack);
     }
 
-    private static String resolveSubmoduleGroupId(ItemStack stack) {
+    private static Set<String> resolveSubmoduleGroupIds(ItemStack stack) {
         if (stack != null && !stack.isEmpty() && stack.getItem() instanceof ArmorEnergyModuleItem) {
-            return ArmorEnergyModuleItem.MODULE_TYPE_ID;
+            return Set.of(ArmorEnergyModuleItem.MODULE_TYPE_ID);
         }
         if (stack == null || stack.isEmpty()) {
-            return "";
+            return Set.of();
         }
         if (!(stack.getItem() instanceof CelestweaveArmorSubmoduleItem provider)) {
-            return resolveSubmoduleId(stack);
+            String id = resolveSubmoduleId(stack);
+            return id.isBlank() ? Set.of() : Set.of(id);
         }
-        var ref = new String[]{""};
+        var groups = new HashSet<String>();
         provider.collectSubmodules(stack, submodule -> {
-            if (submodule != null && !submodule.installGroupId().isBlank() && ref[0].isEmpty()) {
-                ref[0] = submodule.installGroupId();
+            if (submodule != null) {
+                submodule.installGroupIds().stream()
+                        .filter(group -> group != null && !group.isBlank())
+                        .forEach(groups::add);
             }
         });
-        return ref[0];
+        return Set.copyOf(groups);
     }
 
     public static List<InstalledSubmodule> collectInstalledSubmoduleEntries(

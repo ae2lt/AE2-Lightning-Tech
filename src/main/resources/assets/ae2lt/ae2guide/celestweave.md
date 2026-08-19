@@ -21,6 +21,7 @@ item_ids:
   - ae2lt:module_phase_shield
   - ae2lt:module_reflect
   - ae2lt:module_undying
+  - ae2lt:module_multidimensional_protection
   - ae2lt:module_purification
   - ae2lt:module_radiation_protection
   - ae2lt:module_laser_protection
@@ -84,13 +85,14 @@ If FE or required Lightning is missing, the affected effects cannot be maintaine
 | Phase Shield | Blocks incoming damage completely and extinguishes fire, spending Extreme High Voltage Lightning based on prevented damage |
 | Reflect | Reflects up to 30% of attacker damage, spending FE and High Voltage Lightning |
 | Undying | Intercepts fatal damage, spending large amounts of FE and Extreme High Voltage Lightning |
+| Multidimensional Protection | Combines complete Phase Shield cancellation with the Undying fallback; neither path consumes FE or Lightning |
 | Purification | Removes and blocks configured status effects; by default, harmful effects only |
 | Radiation Assimilation | Prevents new exposure and radiation damage; while ambient radiation is present, restores 1-5 hearts per second depending on radiation severity |
 | Laser Protection | Absorbs Mekanism lasers completely and converts the actually absorbed Joules to FE using Mekanism's configured conversion ratio, filling the chestplate and then the rest of the equipped set |
 | Phase Lock | Provides three independently toggled features: Armor Lock, Block External Forces and Block External Teleports; see below |
 | Overload Core Module | Unlocks Lightning compensation for the armor set. Existing Extreme High Voltage Lightning is consumed first, then any shortfall is paid at 16 High Voltage Lightning per Extreme High Voltage Lightning |
 
-Matrix Shield and Phase Shield share the same install group, so only one of them can be installed on the chestplate.
+Multidimensional Protection conflicts with Matrix Shield, Phase Shield and Undying. None of those four modules can be installed together on the same chestplate.
 
 ### Phase Lock
 

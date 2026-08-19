@@ -22,6 +22,7 @@ import com.moakiee.ae2lt.config.AE2LTCommonConfig;
 import com.moakiee.ae2lt.device.capability.DeviceCapability;
 import com.moakiee.ae2lt.celestweave.service.ArmorModuleLightningPolicy;
 import com.moakiee.ae2lt.celestweave.module.UndyingSubmodule;
+import com.moakiee.ae2lt.celestweave.module.MultidimensionalProtectionSubmodule;
 import com.moakiee.ae2lt.celestweave.service.ArmorCapabilityCollector;
 import com.moakiee.ae2lt.celestweave.service.ArmorEnergyService;
 import com.moakiee.ae2lt.celestweave.service.ArmorLightningService;
@@ -159,6 +160,11 @@ public final class CelestweaveArmorUndyingHandler {
 
     private static boolean tryTrigger(ServerPlayer player, long now) {
         for (var active : collectActiveLastStand(player)) {
+            if (MultidimensionalProtectionSubmodule.ID.equals(active.submoduleId())) {
+                recordProtectionWindow(player, now);
+                restoreSurvivalState(player);
+                return true;
+            }
             int comboIndex = capComboIndexForWindow(
                     ArmorOverloadCombo.nextComboIndex(active.armor(), UndyingSubmodule.INSTANCE, now),
                     active.tuning().comboWindowTicks());

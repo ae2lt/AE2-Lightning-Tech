@@ -401,9 +401,7 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
 
     private String railgunSettingValue(int settingIndex) {
         String key = switch (settingIndex) {
-            case RAILGUN_SETTING_EXECUTION_MODE -> menu.isForceOverloadRemoval()
-                    ? "ae2lt.railgun.config.overload_execution_mode.forced"
-                    : "ae2lt.railgun.config.overload_execution_mode.normal";
+            case RAILGUN_SETTING_EXECUTION_MODE -> menu.getExecutionMode().translationKey();
             default -> "";
         };
         return key.isEmpty() ? "" : Component.translatable(key).getString();
@@ -590,7 +588,7 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
                     case RAILGUN_SETTING_CHARGED_SPLASH ->
                         DeviceHubActionPacket.ACTION_TOGGLE_CHARGED_SPLASH;
                     case RAILGUN_SETTING_EXECUTION_MODE ->
-                        DeviceHubActionPacket.ACTION_TOGGLE_OVERLOAD_REMOVAL_MODE;
+                        DeviceHubActionPacket.ACTION_CYCLE_EXECUTION_MODE;
                     default -> -1;
                 };
                 if (action >= 0) {
