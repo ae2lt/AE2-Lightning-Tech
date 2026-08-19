@@ -216,7 +216,7 @@ final class PhaseLockProjectionSynchronizer {
         for (Map.Entry<Enchantment, Integer> entry : enchantments.entrySet()) {
             CompoundTag entryTag = new CompoundTag();
             entryTag.putString("id", ForgeRegistries.ENCHANTMENTS.getKey(entry.getKey()).toString());
-            entryTag.putInt("lvl", entry.getValue());
+            entryTag.putShort("lvl", entry.getValue().shortValue());
             list.add(entryTag);
         }
         return list;
