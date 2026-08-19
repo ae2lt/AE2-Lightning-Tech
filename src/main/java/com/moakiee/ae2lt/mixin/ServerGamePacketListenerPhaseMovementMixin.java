@@ -4,6 +4,7 @@ import java.util.Set;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -64,28 +65,30 @@ public abstract class ServerGamePacketListenerPhaseMovementMixin {
         }
     }
 
-    @Inject(method = "handleMovePlayer", at = @At("HEAD"))
-    private void ae2lt$beginPlayerAuthorizedMove(ServerboundMovePlayerPacket packet, CallbackInfo ci) {
+    @WrapMethod(method = "handleMovePlayer")
+    private void ae2lt$runPlayerAuthorizedMove(
+            ServerboundMovePlayerPacket packet,
+            Operation<Void> original) {
         var player = ((ServerGamePacketListenerImpl) (Object) this).player;
         PhaseFlightMovementGuard.beginMovementPacket(player);
+        try {
+            original.call(packet);
+        } finally {
+            PhaseFlightMovementGuard.endMovementPacket(player);
+        }
     }
 
-    @Inject(method = "handleMovePlayer", at = @At("RETURN"))
-    private void ae2lt$endPlayerAuthorizedMove(ServerboundMovePlayerPacket packet, CallbackInfo ci) {
-        PhaseFlightMovementGuard.endMovementPacket(
-                ((ServerGamePacketListenerImpl) (Object) this).player);
-    }
-
-    @Inject(method = "handleCustomPayload", at = @At("HEAD"))
-    private void ae2lt$beginPlayerPayload(ServerboundCustomPayloadPacket packet, CallbackInfo ci) {
-        PhaseFlightMovementGuard.beginCustomPayload(
-                ((ServerGamePacketListenerImpl) (Object) this).player);
-    }
-
-    @Inject(method = "handleCustomPayload", at = @At("RETURN"))
-    private void ae2lt$endPlayerPayload(ServerboundCustomPayloadPacket packet, CallbackInfo ci) {
-        PhaseFlightMovementGuard.endCustomPayload(
-                ((ServerGamePacketListenerImpl) (Object) this).player);
+    @WrapMethod(method = "handleCustomPayload")
+    private void ae2lt$runPlayerPayload(
+            ServerboundCustomPayloadPacket packet,
+            Operation<Void> original) {
+        var player = ((ServerGamePacketListenerImpl) (Object) this).player;
+        PhaseFlightMovementGuard.beginCustomPayload(player);
+        try {
+            original.call(packet);
+        } finally {
+            PhaseFlightMovementGuard.endCustomPayload(player);
+        }
     }
 
     /** Vanilla simulates the player once, then restores the packet-owned position every tick. */

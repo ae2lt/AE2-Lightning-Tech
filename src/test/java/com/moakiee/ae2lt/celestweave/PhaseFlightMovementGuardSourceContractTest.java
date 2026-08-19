@@ -30,11 +30,10 @@ class PhaseFlightMovementGuardSourceContractTest {
         assertTrue(guard.contains("teleport_blocked.dimension"));
         assertTrue(guard.contains("CelestweaveArmorState.isAnyClientFlightControlActive()"));
         assertTrue(guard.contains("CelestweaveArmorState.getClientPhaseLockBlockExternalForces()"));
-        assertTrue(guard.contains("StackWalker.Option.RETAIN_CLASS_REFERENCE"));
-        assertTrue(guard.contains("MOVEMENT_PACKET_PLAYER.get() != player"));
-        assertTrue(guard.contains("frame.getDeclaringClass() == ServerGamePacketListenerImpl.class"));
-        assertTrue(guard.contains("frame.getMethodName().equals(\"handleMovePlayer\")"));
-        assertTrue(guard.contains("frame.getMethodName().equals(\"handleCustomPayload\")"));
+        assertFalse(guard.contains("StackWalker.Option.RETAIN_CLASS_REFERENCE"));
+        assertTrue(guard.contains("MOVEMENT_PACKET_PLAYER.get() == player"));
+        assertTrue(guard.contains("CUSTOM_PAYLOAD_PLAYER.get() == player"));
+        assertTrue(guard.contains("MOVEMENT_POSITION_UPDATE_DEPTH"));
         assertTrue(guard.contains("PLAYER_PAYLOAD_TELEPORT_DEPTH"));
         assertTrue(guard.contains("CommandSourceStack commandSource = COMMAND_SOURCE.get()"));
         assertTrue(guard.contains("commandSource.getEntity() == player"));
@@ -140,9 +139,10 @@ class PhaseFlightMovementGuardSourceContractTest {
                 "src/main/java/com/moakiee/ae2lt/mixin/ServerPlayerPhaseMovementMixin.java"));
 
         assertTrue(entityMixin.contains("notifyBlockedTeleport(serverPlayer, new Vec3(x, y, z))"));
-        assertTrue(entityMixin.contains("method = \"move(Lnet/minecraft/world/entity/MoverType;"));
+        assertTrue(entityMixin.contains("@WrapMethod(method = \"move(Lnet/minecraft/world/entity/MoverType;"));
         assertTrue(entityMixin.contains("PhaseFlightMovementGuard.blocksExternalForces(player)"));
-        assertTrue(entityMixin.contains("PhaseFlightMovementGuard.isMovementPositionUpdate()"));
+        assertTrue(entityMixin.contains("PhaseFlightMovementGuard.isMovementPositionUpdate(player)"));
+        assertTrue(entityMixin.contains("PhaseFlightMovementGuard.runAsMovementPositionUpdate("));
         assertTrue(entityMixin.contains("PhaseFlightMovementGuard.isSelfTeleportAuthorized(player)"));
         assertTrue(packetMixin.contains("relativeMovements.contains(RelativeMovement.X)"));
         assertTrue(packetMixin.contains("notifyBlockedTeleport(player, target)"));
@@ -153,17 +153,18 @@ class PhaseFlightMovementGuardSourceContractTest {
     }
 
     @Test
-    void movementPacketsUseAPlayerBoundStackCheckedAuthorization() throws Exception {
+    void movementPacketsUseAPlayerBoundFinallySafeAuthorization() throws Exception {
         String guard = Files.readString(Path.of(
                 "src/main/java/com/moakiee/ae2lt/celestweave/PhaseFlightMovementGuard.java"));
         String packetMixin = Files.readString(Path.of(
                 "src/main/java/com/moakiee/ae2lt/mixin/ServerGamePacketListenerPhaseMovementMixin.java"));
 
-        int identityFastReject = guard.indexOf("MOVEMENT_PACKET_PLAYER.get() != player");
-        int stackWalk = guard.indexOf("MOVEMENT_PACKET_STACK_WALKER.walk");
-        assertTrue(identityFastReject >= 0 && stackWalk > identityFastReject);
+        assertTrue(guard.contains("MOVEMENT_PACKET_PLAYER.get() == player"));
+        assertFalse(guard.contains("MOVEMENT_PACKET_STACK_WALKER"));
+        assertTrue(packetMixin.contains("@WrapMethod(method = \"handleMovePlayer\")"));
         assertTrue(packetMixin.contains("PhaseFlightMovementGuard.beginMovementPacket("));
         assertTrue(packetMixin.contains("PhaseFlightMovementGuard.endMovementPacket("));
+        assertTrue(packetMixin.contains("finally"));
         assertFalse(packetMixin.contains("beginSelfMovement("));
         assertFalse(packetMixin.contains("endSelfMovement("));
     }
@@ -176,7 +177,8 @@ class PhaseFlightMovementGuardSourceContractTest {
                 "src/main/java/com/moakiee/ae2lt/mixin/ServerGamePacketListenerPhaseMovementMixin.java"));
         String mixinConfig = Files.readString(Path.of("src/main/resources/ae2lt.mixins.json"));
 
-        assertTrue(guard.contains("CUSTOM_PAYLOAD_PLAYER.get() != player"));
+        assertTrue(guard.contains("CUSTOM_PAYLOAD_PLAYER.get() == player"));
+        assertTrue(packetMixin.contains("@WrapMethod(method = \"handleCustomPayload\")"));
         assertTrue(packetMixin.contains("PhaseFlightMovementGuard.beginCustomPayload("));
         assertTrue(packetMixin.contains("PhaseFlightMovementGuard.endCustomPayload("));
         assertTrue(packetMixin.contains("ServerboundCustomPayloadPacket"));
@@ -204,7 +206,7 @@ class PhaseFlightMovementGuardSourceContractTest {
         String mixinConfig = Files.readString(Path.of("src/main/resources/ae2lt.mixins.json"));
 
         assertTrue(commandMixin.contains("@Mixin(Commands.class)"));
-        assertTrue(commandMixin.contains("executeCommandInContext"));
+        assertTrue(commandMixin.contains("performPrefixedCommand"));
         assertTrue(commandMixin.contains("runAsCommandExecution("));
         assertTrue(commandMixin.contains("CommandSourceStack source"));
         assertTrue(guard.contains("CommandSourceStack previous = COMMAND_SOURCE.get()"));

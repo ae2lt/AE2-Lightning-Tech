@@ -13,8 +13,6 @@ import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.network.ServerGamePacketListenerImpl;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
 
@@ -32,12 +30,11 @@ public final class PhaseFlightMovementGuard {
             ThreadLocal.withInitial(IdentityHashMap::new);
     private static final ThreadLocal<IdentityHashMap<Player, Integer>> PLAYER_PAYLOAD_TELEPORT_DEPTH =
             ThreadLocal.withInitial(IdentityHashMap::new);
+    private static final ThreadLocal<IdentityHashMap<Player, Integer>> MOVEMENT_POSITION_UPDATE_DEPTH =
+            ThreadLocal.withInitial(IdentityHashMap::new);
     private static final ThreadLocal<Player> MOVEMENT_PACKET_PLAYER = new ThreadLocal<>();
     private static final ThreadLocal<Player> CUSTOM_PAYLOAD_PLAYER = new ThreadLocal<>();
     private static final ThreadLocal<CommandSourceStack> COMMAND_SOURCE = new ThreadLocal<>();
-    private static final StackWalker MOVEMENT_PACKET_STACK_WALKER =
-            StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
-    private static final int MOVEMENT_PACKET_STACK_SCAN_LIMIT = 24;
 
     private PhaseFlightMovementGuard() {
     }
@@ -105,6 +102,7 @@ public final class PhaseFlightMovementGuard {
         LAST_BLOCKED_TELEPORT_NOTICE.remove(player.getUUID());
         SELF_MOVEMENT_DEPTH.get().remove(player);
         PLAYER_PAYLOAD_TELEPORT_DEPTH.get().remove(player);
+        MOVEMENT_POSITION_UPDATE_DEPTH.get().remove(player);
         if (MOVEMENT_PACKET_PLAYER.get() == player) {
             MOVEMENT_PACKET_PLAYER.remove();
         }
@@ -205,9 +203,9 @@ public final class PhaseFlightMovementGuard {
      * Marks the exact player whose serverbound movement packet is currently being handled.
      *
      * <p>The identity check prevents one player's packet from authorizing movement of another
-     * player. The marker alone is deliberately insufficient: {@link #isCurrentMovementPacket}
-     * also verifies that the current stack is still inside vanilla's movement-packet handler, so
-     * an exceptional return cannot leave a stale ThreadLocal authorization behind.</p>
+     * player. The packet mixin owns this scope with a {@code try/finally} wrapper, avoiding both
+     * stale authorization and runtime method-name checks that do not survive Forge 1.20.1's
+     * production remapping.</p>
      */
     public static void beginMovementPacket(Player player) {
         if (player != null && !player.level().isClientSide()) {
@@ -234,25 +232,11 @@ public final class PhaseFlightMovementGuard {
     }
 
     private static boolean isCurrentMovementPacket(Player player) {
-        // This is the hot-path guard: do not walk the stack unless a movement-packet scope exists
-        // and it belongs to this exact ServerPlayer instance.
-        if (!(player instanceof ServerPlayer) || MOVEMENT_PACKET_PLAYER.get() != player) {
-            return false;
-        }
-        return MOVEMENT_PACKET_STACK_WALKER.walk(frames -> frames
-                .limit(MOVEMENT_PACKET_STACK_SCAN_LIMIT)
-                .anyMatch(frame -> frame.getDeclaringClass() == ServerGamePacketListenerImpl.class
-                        && frame.getMethodName().equals("handleMovePlayer")));
+        return player instanceof ServerPlayer && MOVEMENT_PACKET_PLAYER.get() == player;
     }
 
     private static boolean isCurrentCustomPayload(Player player) {
-        if (!(player instanceof ServerPlayer) || CUSTOM_PAYLOAD_PLAYER.get() != player) {
-            return false;
-        }
-        return MOVEMENT_PACKET_STACK_WALKER.walk(frames -> frames
-                .limit(MOVEMENT_PACKET_STACK_SCAN_LIMIT)
-                .anyMatch(frame -> frame.getDeclaringClass() == ServerGamePacketListenerImpl.class
-                        && frame.getMethodName().equals("handleCustomPayload")));
+        return player instanceof ServerPlayer && CUSTOM_PAYLOAD_PLAYER.get() == player;
     }
 
     /**
@@ -260,11 +244,9 @@ public final class PhaseFlightMovementGuard {
      * coordinate teleport. Unauthorized movement itself is handled at {@code Entity.move}; the
      * nested {@code setPosRaw} must not also be reported as a blocked teleport.
      */
-    public static boolean isMovementPositionUpdate() {
-        return MOVEMENT_PACKET_STACK_WALKER.walk(frames -> frames
-                .limit(MOVEMENT_PACKET_STACK_SCAN_LIMIT)
-                .anyMatch(frame -> frame.getDeclaringClass() == Entity.class
-                        && frame.getMethodName().equals("move")));
+    public static boolean isMovementPositionUpdate(Player player) {
+        return player != null
+                && MOVEMENT_POSITION_UPDATE_DEPTH.get().getOrDefault(player, 0) > 0;
     }
 
     public static void beginSelfMovement(Player player) {
@@ -296,6 +278,29 @@ public final class PhaseFlightMovementGuard {
             movement.run();
         } finally {
             endSelfMovement(player);
+        }
+    }
+
+    /** Marks only the nested position writes performed by {@code Entity.move}. */
+    public static void runAsMovementPositionUpdate(Player player, Runnable movement) {
+        if (player == null) {
+            movement.run();
+            return;
+        }
+        var depths = MOVEMENT_POSITION_UPDATE_DEPTH.get();
+        depths.merge(player, 1, Integer::sum);
+        try {
+            movement.run();
+        } finally {
+            int next = depths.getOrDefault(player, 0) - 1;
+            if (next <= 0) {
+                depths.remove(player);
+                if (depths.isEmpty()) {
+                    MOVEMENT_POSITION_UPDATE_DEPTH.remove();
+                }
+            } else {
+                depths.put(player, next);
+            }
         }
     }
 

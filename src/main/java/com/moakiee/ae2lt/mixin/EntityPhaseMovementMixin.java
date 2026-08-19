@@ -1,5 +1,7 @@
 package com.moakiee.ae2lt.mixin;
 
+import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -31,15 +33,22 @@ public abstract class EntityPhaseMovementMixin {
         }
     }
 
-    @Inject(
-            method = "move(Lnet/minecraft/world/entity/MoverType;Lnet/minecraft/world/phys/Vec3;)V",
-            at = @At("HEAD"),
-            cancellable = true)
-    private void ae2lt$blockExternalPhaseFlightMove(MoverType moverType, Vec3 movement, CallbackInfo ci) {
+    @WrapMethod(method = "move(Lnet/minecraft/world/entity/MoverType;Lnet/minecraft/world/phys/Vec3;)V")
+    private void ae2lt$guardPhaseFlightMove(
+            MoverType moverType,
+            Vec3 movement,
+            Operation<Void> original) {
         if ((Object) this instanceof Player player
                 && PhaseFlightMovementGuard.blocksExternalForces(player)
                 && !PhaseFlightMovementGuard.isSelfMovementAuthorized(player)) {
-            ci.cancel();
+            return;
+        }
+        if ((Object) this instanceof Player player) {
+            PhaseFlightMovementGuard.runAsMovementPositionUpdate(
+                    player,
+                    () -> original.call(moverType, movement));
+        } else {
+            original.call(moverType, movement);
         }
     }
 
@@ -60,7 +69,7 @@ public abstract class EntityPhaseMovementMixin {
         if (!((Object) this instanceof Player player)
                 || !PhaseFlightMovementGuard.blocksExternalTeleports(player)
                 || PhaseFlightMovementGuard.isSelfTeleportAuthorized(player)
-                || PhaseFlightMovementGuard.isMovementPositionUpdate()) {
+                || PhaseFlightMovementGuard.isMovementPositionUpdate(player)) {
             return;
         }
         Vec3 current = player.position();
