@@ -1,6 +1,7 @@
 package com.moakiee.ae2lt.celestweave.phase;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -128,11 +129,16 @@ final class PhaseLockProjectionSynchronizer {
                 continue;
             }
             Tag value;
-            if (TAG_ENCHANTMENTS.equals(key) && authoritativeArmor != null) {
-                // 1.20.1 附魔是 Map<Enchantment,Integer>:序列化为与 NBT "Enchantments" 一致
-                // 的 ListTag(id/lvl),保证深度比较与真实存储格式对齐。
-                value = enchantmentsToTag(
-                        projectionEnchantmentsForArmor(stack, authoritativeArmor, projectionCurses));
+            if (TAG_ENCHANTMENTS.equals(key)) {
+                // Canonicalize both sides. Vanilla removes an empty Enchantments tag, while a
+                // projection always carries two private curses that become empty after filtering.
+                Map<Enchantment, Integer> normalizedEnchantments = authoritativeArmor == null
+                        ? enchantments(stack)
+                        : projectionEnchantmentsForArmor(stack, authoritativeArmor, projectionCurses);
+                if (normalizedEnchantments.isEmpty()) {
+                    continue;
+                }
+                value = enchantmentsToTag(normalizedEnchantments);
             } else {
                 value = tag.get(key);
             }
@@ -213,7 +219,10 @@ final class PhaseLockProjectionSynchronizer {
     /** 1.20.1：把附魔 Map 编码成 vanilla "Enchantments" ListTag（id + lvl）。 */
     private static ListTag enchantmentsToTag(Map<Enchantment, Integer> enchantments) {
         ListTag list = new ListTag();
-        for (Map.Entry<Enchantment, Integer> entry : enchantments.entrySet()) {
+        var entries = new ArrayList<>(enchantments.entrySet());
+        entries.sort(Comparator.comparing(
+                entry -> ForgeRegistries.ENCHANTMENTS.getKey(entry.getKey()).toString()));
+        for (Map.Entry<Enchantment, Integer> entry : entries) {
             CompoundTag entryTag = new CompoundTag();
             entryTag.putString("id", ForgeRegistries.ENCHANTMENTS.getKey(entry.getKey()).toString());
             entryTag.putShort("lvl", entry.getValue().shortValue());

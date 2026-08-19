@@ -16,5 +16,7 @@ class PhaseLockProjectionNbtSourceContractTest {
 
         assertTrue(synchronizer.contains("entryTag.putShort(\"lvl\""));
         assertFalse(synchronizer.contains("entryTag.putInt(\"lvl\""));
+        assertTrue(synchronizer.contains("normalizedEnchantments.isEmpty()"));
+        assertTrue(synchronizer.contains("entries.sort(Comparator.comparing("));
     }
 }
