@@ -8,6 +8,7 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -20,6 +21,7 @@ import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.config.AE2LTCommonConfig;
 import com.moakiee.ae2lt.device.capability.DeviceCapability;
 import com.moakiee.ae2lt.celestweave.module.ResistanceSubmodule;
+import com.moakiee.ae2lt.celestweave.module.MultidimensionalProtectionSubmodule;
 import com.moakiee.ae2lt.celestweave.service.ArmorCapabilityCollector;
 import com.moakiee.ae2lt.celestweave.service.ArmorCapabilityCollector.ActiveCapability;
 import com.moakiee.ae2lt.celestweave.service.ArmorEnergyService;
@@ -86,7 +88,7 @@ public final class CelestweaveArmorDamageHandler {
                     event.setCanceled(true);
                     return;
                 }
-                if (!ResistanceSubmodule.isHitFeedbackEnabled(mitigation.armor(), staged.stage())) {
+                if (!isHitFeedbackEnabled(mitigation.armor(), staged.stage())) {
                     markSuppressShieldHitFeedback(player);
                 }
             }
@@ -154,6 +156,9 @@ public final class CelestweaveArmorDamageHandler {
             ActiveCapability mitigation,
             DeviceCapability.StagedMitigation staged,
             float preventedDamage) {
+        if (MultidimensionalProtectionSubmodule.ID.equals(staged.stage())) {
+            return true;
+        }
         if (!(player instanceof ServerPlayer serverPlayer) || preventedDamage <= 0.0F) {
             return true;
         }
@@ -200,6 +205,13 @@ public final class CelestweaveArmorDamageHandler {
                 AE2LTCommonConfig.overloadArmorShieldComboWindowTicks(),
                 comboIndex);
         return true;
+    }
+
+    private static boolean isHitFeedbackEnabled(ItemStack armor, String stage) {
+        if (MultidimensionalProtectionSubmodule.ID.equals(stage)) {
+            return MultidimensionalProtectionSubmodule.isHitFeedbackEnabled(armor);
+        }
+        return ResistanceSubmodule.isHitFeedbackEnabled(armor, stage);
     }
 
     private static boolean payPhaseShield(

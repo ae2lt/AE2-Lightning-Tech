@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "ae2lt:item/module_phase_shield",
+    "layer1": "ae2lt:item/hyperdimensional_topological_lattice"
+  }
+}

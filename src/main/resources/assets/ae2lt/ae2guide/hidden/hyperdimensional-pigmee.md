@@ -48,6 +48,8 @@ boundary-crossing conversion for you, then return to being an ordinary Pigmee.
 | Bulk Lightning Storage Component | Infinite Storage Cell |
 | Tianshu Overload Main Core | Multidimensional Tianshu Core |
 | Tianshu Matter Warping Matrix Overload Main Core | Multidimensional Matrix Core |
+| Overload Execution Module | Multidimensional Execution Module |
+| Phase Shield Module | Multidimensional Protection Module |
 
 The Creative Pigmee can perform the same conversions without losing its power, and it can also
 copy a Hyperdimensional Pigmee. JEI and EMI do not show these unusual recipes; this record is the

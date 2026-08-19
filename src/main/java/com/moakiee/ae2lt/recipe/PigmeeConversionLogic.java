@@ -35,6 +35,10 @@ final class PigmeeConversionLogic {
                     new ItemStack(ModBlocks.MULTIDIMENSIONAL_SUPERCOMPUTING_UNIT.asItem());
             case MULTIDIMENSIONAL_MATRIX ->
                     new ItemStack(ModBlocks.MATTER_WARPING_MATRIX_MULTIDIMENSIONAL_MAIN_CORE.asItem());
+            case MULTIDIMENSIONAL_EXECUTION ->
+                    new ItemStack(ModItems.RAILGUN_MODULE_MULTIDIMENSIONAL_EXECUTION.get());
+            case MULTIDIMENSIONAL_PROTECTION ->
+                    new ItemStack(ModItems.CELESTWEAVE_SUBMODULE_MULTIDIMENSIONAL_PROTECTION.get());
         };
     }
 
@@ -58,6 +62,12 @@ final class PigmeeConversionLogic {
         if (target.is(ModBlocks.MATTER_WARPING_MATRIX_OVERLOAD_MAIN_CORE.asItem())) {
             return Conversion.MULTIDIMENSIONAL_MATRIX;
         }
+        if (target.is(ModItems.RAILGUN_MODULE_OVERLOAD_EXECUTION.get())) {
+            return Conversion.MULTIDIMENSIONAL_EXECUTION;
+        }
+        if (target.is(ModItems.CELESTWEAVE_SUBMODULE_PHASE_SHIELD.get())) {
+            return Conversion.MULTIDIMENSIONAL_PROTECTION;
+        }
         return null;
     }
 
@@ -67,6 +77,8 @@ final class PigmeeConversionLogic {
         LIGHTNING_COLLAPSE_MATRIX,
         INFINITE_STORAGE,
         MULTIDIMENSIONAL_SUPERCOMPUTER,
-        MULTIDIMENSIONAL_MATRIX
+        MULTIDIMENSIONAL_MATRIX,
+        MULTIDIMENSIONAL_EXECUTION,
+        MULTIDIMENSIONAL_PROTECTION
     }
 }

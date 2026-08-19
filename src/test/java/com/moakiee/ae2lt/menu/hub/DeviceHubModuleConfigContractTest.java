@@ -45,11 +45,12 @@ final class DeviceHubModuleConfigContractTest {
         String screen = Files.readString(Path.of(
                 "src/main/java/com/moakiee/ae2lt/client/hub/DeviceHubScreen.java"));
 
-        assertTrue(status.contains("settings.forceOverloadRemoval()"));
+        assertTrue(status.contains("settings.executionMode()"));
         assertTrue(status.contains("settings.chargedSplash()"));
-        assertTrue(menu.contains("s.withForceOverloadRemoval(!s.forceOverloadRemoval())"));
+        assertTrue(menu.contains("s.withExecutionMode(s.executionMode().next())"));
         assertTrue(menu.contains("s.withChargedSplash(!s.chargedSplash())"));
         assertTrue(screen.contains("RAILGUN_SETTING_EXECUTION_MODE"));
+        assertTrue(screen.contains("menu.getExecutionMode().translationKey()"));
         assertTrue(screen.contains("RAILGUN_SETTING_CHARGED_SPLASH"));
     }
 
