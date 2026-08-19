@@ -28,10 +28,14 @@ public final class FrequencyBindingClient {
         return button;
     }
 
-    public static TextureToggleButton createCardAutoConnectToolbarButton() {
+    public static TextureToggleButton createCardAutoConnectToolbarButton(
+            TextureToggleButton.Listener stateListener) {
         var button = new TextureToggleButton(
                 TextureToggleButton.ButtonType.MODE,
-                ignored -> NetworkInit.sendToServer(ToggleFrequencyCardAutoConnectPacket.forTerminalCard()));
+                previousState -> {
+                    stateListener.onChange(previousState);
+                    NetworkInit.sendToServer(ToggleFrequencyCardAutoConnectPacket.forTerminalCard());
+                });
         button.setTooltipOff(List.of(Component.translatable("ae2lt.gui.button.auto_connect_off")));
         button.setTooltipOn(List.of(Component.translatable("ae2lt.gui.button.auto_connect_on")));
         return button;

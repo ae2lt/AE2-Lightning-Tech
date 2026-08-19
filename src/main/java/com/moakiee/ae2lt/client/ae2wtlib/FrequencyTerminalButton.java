@@ -1,5 +1,6 @@
 package com.moakiee.ae2lt.client.ae2wtlib;
 
+import net.minecraft.client.Minecraft;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.fml.ModList;
 
@@ -45,9 +46,7 @@ public final class FrequencyTerminalButton {
         // AEBaseScreen.init() will populate the toolbar into renderables after
         // this hook runs.
         var toolbar = ((AEBaseScreenAccessor) screen).ae2lt$getVerticalToolbar();
-        var buttons = new ToolbarButtons(
-                FrequencyBindingClient.createCardToolbarButton(),
-                FrequencyBindingClient.createCardAutoConnectToolbarButton());
+        var buttons = new ToolbarButtons(screen);
         toolbar.add(buttons.configureButton());
         toolbar.add(buttons.autoConnectButton());
         buttons.update(screen);
@@ -71,14 +70,58 @@ public final class FrequencyTerminalButton {
         return ItemStack.EMPTY;
     }
 
-    public record ToolbarButtons(TextureToggleButton configureButton, TextureToggleButton autoConnectButton) {
+    public static final class ToolbarButtons {
+        private static final int SYNC_GRACE_TICKS = 40;
+
+        private final TextureToggleButton configureButton;
+        private final TextureToggleButton autoConnectButton;
+        private Boolean pendingAutoConnect;
+        private int pendingUntilTick;
+
+        private ToolbarButtons(AEBaseScreen<?> screen) {
+            this.configureButton = FrequencyBindingClient.createCardToolbarButton();
+            this.autoConnectButton = FrequencyBindingClient.createCardAutoConnectToolbarButton(
+                    this::toggleAutoConnectOptimistically);
+            update(screen);
+        }
+
+        public TextureToggleButton configureButton() {
+            return configureButton;
+        }
+
+        public TextureToggleButton autoConnectButton() {
+            return autoConnectButton;
+        }
+
+        private void toggleAutoConnectOptimistically(int previousState) {
+            pendingAutoConnect = previousState == 0;
+            pendingUntilTick = Minecraft.getInstance().player == null
+                    ? 0
+                    : Minecraft.getInstance().player.tickCount + SYNC_GRACE_TICKS;
+            autoConnectButton.setState(pendingAutoConnect);
+        }
+
         public void update(AEBaseScreen<?> screen) {
             var card = findInstalledFrequencyCard(screen);
             boolean hasCard = !card.isEmpty();
             configureButton.setVisibility(hasCard);
             autoConnectButton.setVisibility(hasCard);
             if (hasCard) {
-                autoConnectButton.setState(OverloadedFrequencyCardItem.getData(card).autoConnect());
+                boolean observed = OverloadedFrequencyCardItem.getData(card).autoConnect();
+                var player = Minecraft.getInstance().player;
+                if (pendingAutoConnect != null && observed == pendingAutoConnect) {
+                    pendingAutoConnect = null;
+                } else if (pendingAutoConnect != null
+                        && player != null
+                        && player.tickCount <= pendingUntilTick) {
+                    autoConnectButton.setState(pendingAutoConnect);
+                    return;
+                } else {
+                    pendingAutoConnect = null;
+                }
+                autoConnectButton.setState(observed);
+            } else {
+                pendingAutoConnect = null;
             }
         }
     }

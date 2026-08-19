@@ -18,4 +18,14 @@ class FrequencyTerminalButtonSourceContractTest {
         assertTrue(source.contains("appEngSlot.getSlotInv().getStackInSlot(0)"));
         assertFalse(source.contains("var stack = slot.getItem()"));
     }
+
+    @Test
+    void autoConnectButtonKeepsOptimisticStateUntilTerminalStackSyncs() throws Exception {
+        String source = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/client/ae2wtlib/FrequencyTerminalButton.java"));
+
+        assertTrue(source.contains("pendingAutoConnect = previousState == 0"));
+        assertTrue(source.contains("observed == pendingAutoConnect"));
+        assertTrue(source.contains("player.tickCount <= pendingUntilTick"));
+    }
 }
