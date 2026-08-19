@@ -16,5 +16,6 @@ public record ShieldHitFeedbackSuppressionPacket(int entityId) {
     public static void handle(ShieldHitFeedbackSuppressionPacket payload, Supplier<NetworkEvent.Context> context) {
         NetworkEvent.Context ctx = context.get();
         ctx.enqueueWork(() -> ShieldHitFeedbackClientBridge.suppress(payload));
+        ctx.setPacketHandled(true);
     }
 }

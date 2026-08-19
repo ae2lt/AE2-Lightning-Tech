@@ -19,5 +19,6 @@ public record RailgunRecoilFxPacket(float pitchUp, int tierOrdinal) {
     public static void handle(RailgunRecoilFxPacket p, Supplier<NetworkEvent.Context> ctxSup) {
         NetworkEvent.Context ctx = ctxSup.get();
         ctx.enqueueWork(() -> RailgunClientBridge.recoil(p));
+        ctx.setPacketHandled(true);
     }
 }

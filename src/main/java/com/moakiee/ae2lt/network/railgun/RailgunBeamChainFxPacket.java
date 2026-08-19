@@ -57,6 +57,7 @@ public void write(FriendlyByteBuf buf) {
     public static void handle(RailgunBeamChainFxPacket p, Supplier<NetworkEvent.Context> ctxSup) {
         NetworkEvent.Context ctx = ctxSup.get();
         ctx.enqueueWork(() -> RailgunClientBridge.beamChainFx(p));
+        ctx.setPacketHandled(true);
     }
 
     /** Compile-time guard. */

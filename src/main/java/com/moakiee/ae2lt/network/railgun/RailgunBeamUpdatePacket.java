@@ -31,6 +31,7 @@ public void write(FriendlyByteBuf buf) {
     public static void handle(RailgunBeamUpdatePacket p, Supplier<NetworkEvent.Context> ctxSup) {
         NetworkEvent.Context ctx = ctxSup.get();
         ctx.enqueueWork(() -> RailgunClientBridge.beamUpdate(p));
+        ctx.setPacketHandled(true);
     }
 
     /** Compile-time guard. */

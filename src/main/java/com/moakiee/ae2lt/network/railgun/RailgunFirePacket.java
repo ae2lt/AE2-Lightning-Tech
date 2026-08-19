@@ -68,6 +68,7 @@ public void write(FriendlyByteBuf buf) {
     public static void handle(RailgunFirePacket p, Supplier<NetworkEvent.Context> ctxSup) {
         NetworkEvent.Context ctx = ctxSup.get();
         ctx.enqueueWork(() -> RailgunClientBridge.fire(p));
+        ctx.setPacketHandled(true);
     }
 
     /** Compile-time guard on unused imports. */
