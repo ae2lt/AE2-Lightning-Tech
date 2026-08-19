@@ -24,7 +24,7 @@ import com.moakiee.ae2lt.celestweave.CelestweaveArmorMaterials;
 import com.moakiee.ae2lt.celestweave.PhaseWingFlight;
 import com.moakiee.ae2lt.celestweave.phase.PhaseLockProjectionRules;
 import com.moakiee.ae2lt.celestweave.phase.PhaseLockService;
-import com.moakiee.ae2lt.client.CelestweaveHeadRenderExtensions;
+import com.moakiee.ae2lt.client.CelestweaveArmorRenderExtensions;
 
 /**
  * Armor-slot projection for a UUID-bound private armor stack. Its registry identity fixes the
@@ -53,9 +53,7 @@ public final class PhaseLockProjectionItem extends ArmorItem {
 
     @Override
     public void initializeClient(Consumer<IClientItemExtensions> consumer) {
-        if (equipmentSlot == EquipmentSlot.HEAD) {
-            consumer.accept(CelestweaveHeadRenderExtensions.INSTANCE);
-        }
+        consumer.accept(CelestweaveArmorRenderExtensions.INSTANCE);
     }
 
     @Override

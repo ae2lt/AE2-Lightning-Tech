@@ -8,12 +8,12 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.client.extensions.common.IClientItemExtensions;
 
-/** Prevents the 1.20.1 fallback armor layer from drawing Celestweave head equipment. */
-public final class CelestweaveHeadRenderExtensions implements IClientItemExtensions {
-    public static final CelestweaveHeadRenderExtensions INSTANCE =
-            new CelestweaveHeadRenderExtensions();
+/** Implements main's empty armor-material layers on Forge 1.20.1. */
+public final class CelestweaveArmorRenderExtensions implements IClientItemExtensions {
+    public static final CelestweaveArmorRenderExtensions INSTANCE =
+            new CelestweaveArmorRenderExtensions();
 
-    private CelestweaveHeadRenderExtensions() {
+    private CelestweaveArmorRenderExtensions() {
     }
 
     @Override
