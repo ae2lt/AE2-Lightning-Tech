@@ -348,37 +348,55 @@ public final class OverloadCpuStateManager {
     }
 
     public synchronized @Nullable CompoundTag writeToTag(CraftingCpuLogic logic, HolderLookup.Provider registries) {
-        return writeToTag((Object) logic, registries);
+        Objects.requireNonNull(registries, "registries");
+        return writeToTag((Object) logic);
     }
 
     public synchronized @Nullable CompoundTag writeToTag(Object logic, HolderLookup.Provider registries) {
-        Objects.requireNonNull(logic, "logic");
         Objects.requireNonNull(registries, "registries");
+        return writeToTag(logic);
+    }
+
+    public synchronized @Nullable CompoundTag writeToTag(CraftingCpuLogic logic) {
+        return writeToTag((Object) logic);
+    }
+
+    public synchronized @Nullable CompoundTag writeToTag(Object logic) {
+        Objects.requireNonNull(logic, "logic");
         var state = states.get(logic);
-        return state != null && !state.isEmpty() ? state.toTag(registries) : null;
+        return state != null && !state.isEmpty() ? state.toTag() : null;
     }
 
     public synchronized void readFromTag(CraftingCpuLogic logic, CompoundTag tag, HolderLookup.Provider registries) {
+        Objects.requireNonNull(registries, "registries");
+        readFromTag(logic, tag);
+    }
+
+    public synchronized void readFromTag(CraftingCpuLogic logic, CompoundTag tag) {
         var link = logic.getLastLink();
         if (link == null) {
             throw new IllegalStateException("crafting logic has no active link");
         }
-        readFromTag(logic, link.getCraftingID(), tag, registries);
+        readFromTag(logic, link.getCraftingID(), tag);
     }
 
     public synchronized void readFromTag(Object logic, UUID craftingId, CompoundTag tag,
                                          HolderLookup.Provider registries) {
+        Objects.requireNonNull(registries, "registries");
+        readFromTag(logic, craftingId, tag);
+    }
+
+    public synchronized void readFromTag(Object logic, UUID craftingId, CompoundTag tag) {
         Objects.requireNonNull(logic, "logic");
         Objects.requireNonNull(craftingId, "craftingId");
         Objects.requireNonNull(tag, "tag");
-        Objects.requireNonNull(registries, "registries");
 
         if (tag.isEmpty()) {
             states.remove(logic);
             return;
         }
 
-        states.put(logic, OverloadCpuState.fromTag(OverloadCpuOwner.from(craftingId, logic), tag, registries));
+        states.put(logic, OverloadCpuState.fromTag(OverloadCpuOwner.from(craftingId, logic), tag));
     }
 
     private static AEItemKey asItemKey(AEKey key) {

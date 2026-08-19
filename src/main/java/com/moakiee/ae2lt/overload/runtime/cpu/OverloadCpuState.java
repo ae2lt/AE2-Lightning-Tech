@@ -324,8 +324,7 @@ public final class OverloadCpuState {
         pendingByItemId.clear();
     }
 
-    public CompoundTag toTag(HolderLookup.Provider registries) {
-        Objects.requireNonNull(registries, "registries");
+    public CompoundTag toTag() {
         var tag = new CompoundTag();
         tag.putLong(TAG_NEXT_SEQUENCE, nextSequence);
 
@@ -357,10 +356,14 @@ public final class OverloadCpuState {
         return tag;
     }
 
-    public static OverloadCpuState fromTag(OverloadCpuOwner owner, CompoundTag tag, HolderLookup.Provider registries) {
+    public CompoundTag toTag(HolderLookup.Provider registries) {
+        Objects.requireNonNull(registries, "registries");
+        return toTag();
+    }
+
+    public static OverloadCpuState fromTag(OverloadCpuOwner owner, CompoundTag tag) {
         Objects.requireNonNull(owner, "owner");
         Objects.requireNonNull(tag, "tag");
-        Objects.requireNonNull(registries, "registries");
 
         var state = new OverloadCpuState(owner);
         state.nextSequence = Math.max(1L, tag.getLong(TAG_NEXT_SEQUENCE));
@@ -381,7 +384,7 @@ public final class OverloadCpuState {
                     owner,
                     patternReference,
                     parseRequiredId(pendingTag.getString(TAG_ITEM_ID)),
-                    loadExactExpectedKey(pendingTag, registries),
+                    loadExactExpectedKey(pendingTag),
                     pendingTag.getLong(TAG_REMAINING),
                     pendingTag.getBoolean(TAG_ROUTES_TO_REQUESTER),
                     pendingTag.getLong(TAG_REGISTERED_ORDER),
@@ -393,6 +396,14 @@ public final class OverloadCpuState {
         }
 
         return state;
+    }
+
+    public static OverloadCpuState fromTag(
+            OverloadCpuOwner owner,
+            CompoundTag tag,
+            HolderLookup.Provider registries) {
+        Objects.requireNonNull(registries, "registries");
+        return fromTag(owner, tag);
     }
 
     static void writeConsumerCredits(
@@ -435,7 +446,7 @@ public final class OverloadCpuState {
         return List.of();
     }
 
-    private static AEKey loadExactExpectedKey(CompoundTag pendingTag, HolderLookup.Provider registries) {
+    private static AEKey loadExactExpectedKey(CompoundTag pendingTag) {
         if (!pendingTag.contains(TAG_EXACT_TEMPLATE, CompoundTag.TAG_COMPOUND)) {
             throw new IllegalArgumentException("pending overload entry is missing an exact expected key");
         }
