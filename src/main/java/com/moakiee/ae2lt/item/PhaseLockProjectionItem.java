@@ -1,6 +1,7 @@
 package com.moakiee.ae2lt.item;
 
 import java.util.List;
+import java.util.function.Consumer;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -17,11 +18,13 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.Level;
+import net.minecraftforge.client.extensions.common.IClientItemExtensions;
 
 import com.moakiee.ae2lt.celestweave.CelestweaveArmorMaterials;
 import com.moakiee.ae2lt.celestweave.PhaseWingFlight;
 import com.moakiee.ae2lt.celestweave.phase.PhaseLockProjectionRules;
 import com.moakiee.ae2lt.celestweave.phase.PhaseLockService;
+import com.moakiee.ae2lt.client.CelestweaveHeadRenderExtensions;
 
 /**
  * Armor-slot projection for a UUID-bound private armor stack. Its registry identity fixes the
@@ -46,6 +49,13 @@ public final class PhaseLockProjectionItem extends ArmorItem {
 
     public EquipmentSlot equipmentSlot() {
         return equipmentSlot;
+    }
+
+    @Override
+    public void initializeClient(Consumer<IClientItemExtensions> consumer) {
+        if (equipmentSlot == EquipmentSlot.HEAD) {
+            consumer.accept(CelestweaveHeadRenderExtensions.INSTANCE);
+        }
     }
 
     @Override
