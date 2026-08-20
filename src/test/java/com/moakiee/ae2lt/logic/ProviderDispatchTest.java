@@ -2,6 +2,7 @@ package com.moakiee.ae2lt.logic;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
@@ -115,6 +116,52 @@ class ProviderDispatchTest {
 
         assertTrue(accepted);
         assertEquals(List.of(first, second), visited);
+    }
+
+    @Test
+    void wirelessDeadTargetReappearingInSameTopologyIsRequeued() {
+        var dispatch = new ProviderWirelessDispatch();
+        var connection = connection(0);
+        var unchangedTopology = List.of(connection);
+        dispatch.prepare(
+                unchangedTopology,
+                200L,
+                false,
+                WirelessDispatchMode.EVEN_DISTRIBUTION);
+
+        boolean acceptedWhileOffline = dispatch.dispatchSingleCopy(
+                WirelessDispatchMode.EVEN_DISTRIBUTION,
+                null,
+                200L,
+                false,
+                1,
+                ignored -> WirelessPushOutcome.HARD_FAIL,
+                ignored -> false,
+                ignored -> {
+                });
+
+        assertFalse(acceptedWhileOffline);
+        assertNull(dispatch.existingState(connection));
+
+        // Validation can observe the target alive again before ever publishing
+        // an empty topology. The same list must still rebuild the removed state.
+        dispatch.prepare(
+                unchangedTopology,
+                201L,
+                false,
+                WirelessDispatchMode.EVEN_DISTRIBUTION);
+        boolean acceptedAfterReload = dispatch.dispatchSingleCopy(
+                WirelessDispatchMode.EVEN_DISTRIBUTION,
+                null,
+                201L,
+                false,
+                1,
+                ignored -> WirelessPushOutcome.SUCCESS,
+                ignored -> true,
+                ignored -> {
+                });
+
+        assertTrue(acceptedAfterReload);
     }
 
     @Test
