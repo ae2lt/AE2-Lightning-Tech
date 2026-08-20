@@ -62,7 +62,7 @@ When Wireless Mode is disabled, these switches make the interface attempt to aut
 | Speed Tier | Adaptive Cooldown Range | Description |
 |------------|-------------------------|-------------|
 | Normal | 5 ~ 80 ticks | Suitable for general use |
-| Fast (Probe) | 1 ~ 40 ticks | Uses a probe mechanic to detect readiness early; requires a Speed Card |
+| Fast (Probe) | 1 ~ 40 ticks | Uses a probe mechanic to detect readiness early |
 
 The interface uses an adaptive cooldown — the cooldown shortens when items are available to move, and lengthens when there is nothing to do, balancing performance and responsiveness.
 
