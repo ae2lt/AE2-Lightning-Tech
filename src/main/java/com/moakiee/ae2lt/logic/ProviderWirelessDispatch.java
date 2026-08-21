@@ -157,7 +157,13 @@ final class ProviderWirelessDispatch {
         fairness.removeTarget(target);
         evenReady.remove(target);
         singleReady.remove(target);
-        states.remove(target);
+        if (states.remove(target) != null) {
+            // A transient hard failure can remove a target while the validated
+            // connection list still contains the same address. Force prepare()
+            // to rebuild even when the next topology snapshot compares equal,
+            // otherwise the recovered target is never added back to a ready queue.
+            structuresDirty = true;
+        }
     }
 
     void patternsChanged() {
