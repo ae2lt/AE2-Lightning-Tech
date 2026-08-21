@@ -14,12 +14,3 @@ The adapted implementation has been scoped to the Tianshu pattern terminal and r
 AE2 Lightning Tech's server-authoritative upload acknowledgement and target validation.
 The complete GNU LGPL 3.0 license text is distributed in `META-INF/LICENSE` inside the mod JAR
 and in the repository root `LICENSE` file.
-
-## MixinSquared
-
-AE2 Lightning Tech bundles MixinSquared for its third-party mixin cancellation facility.
-
-- Upstream repository: https://github.com/Bawnorton/MixinSquared
-- Upstream license: MIT
-
-The bundled MixinSquared artifact retains its upstream license file.
