@@ -41,11 +41,8 @@ import com.moakiee.ae2lt.block.TeslaCoilBlock;
 import com.moakiee.ae2lt.blockentity.AdvancedWirelessOverloadedControllerBlockEntity;
 import com.moakiee.ae2lt.blockentity.WirelessOverloadedControllerBlockEntity;
 import com.moakiee.ae2lt.blockentity.WirelessReceiverBlockEntity;
-import com.moakiee.ae2lt.compat.DataEnergisticsVersionPolicy;
-import com.moakiee.ae2lt.config.EarlyCompatibilityConfig;
 import com.moakiee.ae2lt.item.FixedInfiniteCellItem;
 import com.moakiee.ae2lt.item.FixedInfiniteCellItem.CellOutcome;
-import net.minecraft.ChatFormatting;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -56,7 +53,6 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
-import net.neoforged.fml.ModList;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
 import net.neoforged.fml.event.config.ModConfigEvent;
@@ -102,7 +98,6 @@ import com.moakiee.ae2lt.recipe.RecipeConflictScanner;
 import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternDecoder;
 
 import net.neoforged.neoforge.common.NeoForge;
-import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.server.ServerStartingEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
@@ -112,8 +107,6 @@ import org.slf4j.Logger;
 @Mod(AE2LightningTech.MODID)
 public class AE2LightningTech {
     public static final String MODID = "ae2lt";
-    private static final String DATA_ENERGISTICS_COMPATIBILITY_ISSUE =
-            "https://github.com/fish1145/DataEnergistics/issues/144";
     private static final Logger LOG = LogUtils.getLogger();
     private static final CraftingCoreRegistry CRAFTING_CORE_REGISTRY = new CraftingCoreRegistry();
 
@@ -387,60 +380,9 @@ public class AE2LightningTech {
         modContainer.registerConfig(ModConfig.Type.CLIENT,
                 com.moakiee.ae2lt.config.AE2LTClientConfig.SPEC, "ae2lt-client.toml");
 
-        warnAboutDataEnergistics();
-
         NeoForge.EVENT_BUS.addListener(this::onServerStarting);
         NeoForge.EVENT_BUS.addListener(this::onServerStopped);
         NeoForge.EVENT_BUS.addListener(this::onServerTickPost);
-        NeoForge.EVENT_BUS.addListener(this::onPlayerLoggedIn);
-    }
-
-    private void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
-        if (event.getEntity().level().isClientSide()) {
-            return;
-        }
-
-        var dataEnergistics = ModList.get().getModContainerById("data_energistics")
-                .filter(container -> DataEnergisticsVersionPolicy.shouldWarn(
-                        container.getModInfo().getVersion()));
-        if (dataEnergistics.isEmpty()) {
-            return;
-        }
-
-        String version = dataEnergistics.get().getModInfo().getVersion().toString();
-        String warningKey = EarlyCompatibilityConfig.dataEnergisticsMixinProtectionEnabled()
-                ? "ae2lt.compat.data_energistics.unsupported"
-                : "ae2lt.compat.data_energistics.protection_disabled";
-        event.getEntity().sendSystemMessage(Component.translatable(warningKey, version)
-                .withStyle(ChatFormatting.RED, ChatFormatting.BOLD));
-        event.getEntity().sendSystemMessage(Component.translatable(
-                        "ae2lt.compat.data_energistics.feedback_scope")
-                .withStyle(ChatFormatting.YELLOW));
-    }
-
-    private static void warnAboutDataEnergistics() {
-        var dataEnergistics = ModList.get().getModContainerById("data_energistics")
-                .filter(container -> DataEnergisticsVersionPolicy.shouldWarn(
-                        container.getModInfo().getVersion()));
-        if (dataEnergistics.isEmpty()) {
-            return;
-        }
-
-        String version = dataEnergistics.get().getModInfo().getVersion().toString();
-        if (EarlyCompatibilityConfig.dataEnergisticsMixinProtectionEnabled()) {
-            LOG.error("Legacy Data Energistics {} detected. AE2LT has taken the necessary measures "
-                    + "to mitigate compatibility problems where possible, but this version remains "
-                    + "unsupported. Versions built from cee32c9 onward (2.4.4+) do not trigger this "
-                    + "warning. To disable protection, set "
-                    + "compatibility.dataEnergisticsMixinProtection=false in ae2lt-common.toml and "
-                    + "fully restart the client or server. Compatibility details: {}", version,
-                    DATA_ENERGISTICS_COMPATIBILITY_ISSUE);
-        } else {
-            LOG.error("Legacy Data Energistics {} detected. AE2LT compatibility protection is "
-                    + "disabled by configuration, so no startup safeguards are active. This version "
-                    + "remains unsupported. Compatibility details: {}", version,
-                    DATA_ENERGISTICS_COMPATIBILITY_ISSUE);
-        }
     }
 
     // Prevents automation from accessing the workbench inventory

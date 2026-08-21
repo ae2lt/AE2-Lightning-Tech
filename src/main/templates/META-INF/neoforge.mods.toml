@@ -93,6 +93,14 @@ versionRange = "[19.2.17,19.3)"
 ordering = "AFTER"
 side = "BOTH"
 
+[[dependencies."${mod_id}"]]
+modId = "data_energistics"
+type = "incompatible"
+reason = "Data Energistics modifies shared AE2 internals and includes destructive world behavior that does not exclude AE2 Lightning Tech content."
+versionRange = "*"
+ordering = "NONE"
+side = "BOTH"
+
 # The embedded AE2WTLib API owns the AddTerminalEvent item-registry callback.
 # Load AE2LT before it so our terminal-registration handler is installed before
 # the API consumes that one-shot callback list.

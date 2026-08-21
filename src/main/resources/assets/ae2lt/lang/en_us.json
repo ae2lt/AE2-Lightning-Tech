@@ -1312,8 +1312,5 @@
   "ae2lt.tianshu.reserve.empty": "No global reserves configured",
   "ae2lt.tianshu.issue.chunks_unloaded": "The structure's chunks are not fully loaded",
   "ae2lt.gui.matrix_port.search": "Search matrix patterns",
-  "ae2lt.gui.matrix_port.title": "Pattern Management",
-  "ae2lt.compat.data_energistics.unsupported": "[AE2LT] Legacy Data Energistics %s was detected. AE2LT compatibility protection is active. Versions built from cee32c9 onward (2.4.4+) no longer show this warning. To disable protection, set compatibility.dataEnergisticsMixinProtection to false in ae2lt-common.toml and fully restart the client or server.",
-  "ae2lt.compat.data_energistics.protection_disabled": "[AE2LT] Legacy Data Energistics %s was detected. Compatibility protection is disabled by configuration, so no safeguards are active for this launch.",
-  "ae2lt.compat.data_energistics.feedback_scope": "Do not report problems caused by this legacy compatibility combination to either project. First update Data Energistics to 2.4.4 or newer, or reproduce the issue after removing one of the two mods."
+  "ae2lt.gui.matrix_port.title": "Pattern Management"
 }
