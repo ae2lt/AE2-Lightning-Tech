@@ -3,7 +3,6 @@
   "includes": [
     "pattern_encoding_terminal.json"
   ],
-  "helpTopic": "ae2lt:tianshu/pattern-encoding-terminal.md",
   "slots": {
     "TOOLBOX": {
       "$comment": "The network-tool toolbox is intentionally hidden on the Tianshu terminal.",

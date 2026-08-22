@@ -6,6 +6,7 @@ navigation:
   position: 40
 item_ids:
   - ae2lt:tianshu_pattern_encoding_terminal
+  - ae2lt:wireless_tianshu_pattern_encoding_terminal
   - ae2lt:closed_loop_pattern
 ---
 
