@@ -1,27 +1,24 @@
 package com.moakiee.ae2lt.network;
-import java.util.function.Supplier;
-import com.moakiee.ae2lt.item.OverloadedFrequencyCardItem;
-import com.moakiee.ae2lt.item.TerminalCardAccess;
+
 import java.util.Optional;
-import net.minecraftforge.network.NetworkEvent;
-import net.minecraft.ChatFormatting;
-import net.minecraftforge.network.NetworkEvent;
+import java.util.function.Supplier;
+
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.network.NetworkEvent;
+import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
-import net.minecraftforge.network.NetworkEvent;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.network.NetworkEvent;
 import net.minecraft.world.InteractionHand;
-import net.minecraftforge.network.NetworkEvent;
 import net.minecraft.world.item.ItemStack;
+import net.minecraftforge.network.NetworkEvent;
 
 import appeng.api.implementations.menuobjects.ItemMenuHost;
 import appeng.menu.AEBaseMenu;
-import appeng.menu.locator.MenuLocator;
+
+import com.moakiee.ae2lt.item.OverloadedFrequencyCardItem;
+import com.moakiee.ae2lt.item.TerminalCardAccess;
 
 public record ToggleFrequencyCardAutoConnectPacket(Optional<InteractionHand> hand, boolean terminalCard) {
-public static ToggleFrequencyCardAutoConnectPacket forHand(InteractionHand hand) {
+    public static ToggleFrequencyCardAutoConnectPacket forHand(InteractionHand hand) {
         return new ToggleFrequencyCardAutoConnectPacket(Optional.of(hand), false);
     }
 
@@ -108,18 +105,19 @@ public static ToggleFrequencyCardAutoConnectPacket forHand(InteractionHand hand)
             return;
         }
 
-        // 15.x has no ItemMenuHostLocator type: probe for an item-backed host.
-        MenuLocator locator = aeMenu.getLocator();
-        ItemMenuHost terminalHost = locator.locate(player, ItemMenuHost.class);
-        if (terminalHost == null) {
+        // Use the host already owned by the open menu. Resolving the locator
+        // again creates another ItemMenuHost (and another cached upgrade
+        // inventory) on AE2 15.x, so changes made through it are not observed
+        // by the upgrade slots that the current menu synchronizes.
+        if (!(aeMenu.getTarget() instanceof ItemMenuHost terminalHost)) {
             player.displayClientMessage(
                     Component.translatable("ae2lt.gui.error.rejected").withStyle(ChatFormatting.RED),
                     true);
             return;
         }
 
-        ItemStack terminal = terminalHost.getItemStack();
-        if (!TerminalCardAccess.hasCard(terminal)) {
+        var upgrades = terminalHost.getUpgrades();
+        if (!TerminalCardAccess.hasCard(upgrades)) {
             player.displayClientMessage(
                     Component.translatable("ae2lt.frequency_card.terminal_no_card")
                             .withStyle(ChatFormatting.RED),
@@ -127,7 +125,7 @@ public static ToggleFrequencyCardAutoConnectPacket forHand(InteractionHand hand)
             return;
         }
 
-        var data = TerminalCardAccess.readCardData(terminal);
+        var data = TerminalCardAccess.readCardData(upgrades);
         if (data.isBound() && !data.canBeUsedBy(player.getUUID())) {
             player.displayClientMessage(
                     Component.translatable("ae2lt.frequency_card.card_owner_mismatch")
@@ -136,7 +134,7 @@ public static ToggleFrequencyCardAutoConnectPacket forHand(InteractionHand hand)
             return;
         }
 
-        if (!TerminalCardAccess.updateCard(terminal, cardData -> cardData.toggleAutoConnect())) {
+        if (!TerminalCardAccess.updateCard(upgrades, cardData -> cardData.toggleAutoConnect())) {
             player.displayClientMessage(
                     Component.translatable("ae2lt.frequency_card.terminal_no_card")
                             .withStyle(ChatFormatting.RED),
@@ -144,7 +142,7 @@ public static ToggleFrequencyCardAutoConnectPacket forHand(InteractionHand hand)
             return;
         }
 
-        messageAutoConnectState(player, TerminalCardAccess.readCardData(terminal).autoConnect());
+        messageAutoConnectState(player, TerminalCardAccess.readCardData(upgrades).autoConnect());
     }
 
     private static void messageAutoConnectState(ServerPlayer player, boolean enabled) {

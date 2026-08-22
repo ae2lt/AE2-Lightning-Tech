@@ -4,6 +4,7 @@ import java.util.function.UnaryOperator;
 
 import net.minecraft.world.item.ItemStack;
 
+import appeng.api.upgrades.IUpgradeInventory;
 import appeng.api.upgrades.IUpgradeableItem;
 
 /**
@@ -31,8 +32,24 @@ public final class TerminalCardAccess {
                 : OverloadedFrequencyCardItem.getData(card);
     }
 
+    /**
+     * Reads the card from an already-open terminal host's authoritative upgrade
+     * inventory. Menu actions should prefer this overload so their changes are
+     * visible to the menu slots and are synchronized back to the client.
+     */
+    public static OverloadedFrequencyCardData readCardData(IUpgradeInventory upgrades) {
+        ItemStack card = findCard(upgrades);
+        return card.isEmpty()
+                ? OverloadedFrequencyCardData.empty()
+                : OverloadedFrequencyCardItem.getData(card);
+    }
+
     public static boolean hasCard(ItemStack terminalStack) {
         return !findCard(terminalStack).isEmpty();
+    }
+
+    public static boolean hasCard(IUpgradeInventory upgrades) {
+        return !findCard(upgrades).isEmpty();
     }
 
     /**
@@ -43,7 +60,13 @@ public final class TerminalCardAccess {
         if (terminalStack.isEmpty() || !(terminalStack.getItem() instanceof IUpgradeableItem upgradeable)) {
             return ItemStack.EMPTY;
         }
-        var upgrades = upgradeable.getUpgrades(terminalStack);
+        return findCard(upgradeable.getUpgrades(terminalStack));
+    }
+
+    /**
+     * Finds the frequency card in an existing terminal upgrade inventory.
+     */
+    public static ItemStack findCard(IUpgradeInventory upgrades) {
         for (int slot = 0; slot < upgrades.size(); slot++) {
             ItemStack card = upgrades.getStackInSlot(slot);
             if (card.getItem() instanceof OverloadedFrequencyCardItem) {
@@ -63,7 +86,17 @@ public final class TerminalCardAccess {
         if (terminalStack.isEmpty() || !(terminalStack.getItem() instanceof IUpgradeableItem upgradeable)) {
             return false;
         }
-        var upgrades = upgradeable.getUpgrades(terminalStack);
+        return updateCard(upgradeable.getUpgrades(terminalStack), mutation);
+    }
+
+    /**
+     * Updates a card through an already-open terminal host's upgrade inventory.
+     * This is the menu-safe path: {@code setItemDirect} both persists the outer
+     * terminal stack and marks the inventory used by the menu slots as changed.
+     */
+    public static boolean updateCard(
+            IUpgradeInventory upgrades,
+            UnaryOperator<OverloadedFrequencyCardData> mutation) {
         for (int slot = 0; slot < upgrades.size(); slot++) {
             ItemStack card = upgrades.getStackInSlot(slot);
             if (card.getItem() instanceof OverloadedFrequencyCardItem) {
