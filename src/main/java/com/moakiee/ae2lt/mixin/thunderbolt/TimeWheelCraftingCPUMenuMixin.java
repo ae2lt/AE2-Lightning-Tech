@@ -32,9 +32,6 @@ import com.moakiee.ae2lt.crafting.timewheel.TimeWheelCraftingCPU;
 
 @Mixin(value = CraftingCPUMenu.class, remap = false)
 public abstract class TimeWheelCraftingCPUMenuMixin extends AEBaseMenu {
-    @Unique
-    private static final long thunderbolt$PROGRESS_SCALE = Integer.MAX_VALUE;
-
     @Final
     @Shadow
     private IncrementalUpdateHelper incrementalUpdateHelper;
@@ -55,6 +52,9 @@ public abstract class TimeWheelCraftingCPUMenuMixin extends AEBaseMenu {
     @Unique
     private TimeWheelCraftingCPU thunderbolt$timeWheelCpu;
 
+    @Unique
+    private boolean thunderbolt$jobPresent;
+
     protected TimeWheelCraftingCPUMenuMixin(MenuType<?> menuType, int id, Inventory playerInventory, Object host) {
         super(menuType, id, playerInventory, host);
     }
@@ -64,6 +64,7 @@ public abstract class TimeWheelCraftingCPUMenuMixin extends AEBaseMenu {
         if (this.thunderbolt$timeWheelCpu != null) {
             this.thunderbolt$timeWheelCpu.getCraftingLogic().removeListener(cpuChangeListener);
             this.thunderbolt$timeWheelCpu = null;
+            this.thunderbolt$jobPresent = false;
         }
 
         if (!(selected instanceof TimeWheelCraftingCPU timeWheelCpu)) {
@@ -77,12 +78,9 @@ public abstract class TimeWheelCraftingCPUMenuMixin extends AEBaseMenu {
 
         this.incrementalUpdateHelper.reset();
         this.thunderbolt$timeWheelCpu = timeWheelCpu;
+        this.thunderbolt$jobPresent = timeWheelCpu.getCraftingLogic().hasJob();
 
-        var allItems = new KeyCounter();
-        timeWheelCpu.getCraftingLogic().getAllItems(allItems);
-        for (var entry : allItems) {
-            this.incrementalUpdateHelper.addChange(entry.getKey());
-        }
+        thunderbolt$queueAllItems(timeWheelCpu.getCraftingLogic());
         timeWheelCpu.getCraftingLogic().addListener(cpuChangeListener);
 
         ci.cancel();
@@ -115,6 +113,16 @@ public abstract class TimeWheelCraftingCPUMenuMixin extends AEBaseMenu {
         this.schedulingMode = this.thunderbolt$timeWheelCpu.getSelectionMode();
         this.cantStoreItems = logic.isCantStoreItems();
 
+        boolean jobPresent = logic.hasJob();
+        if (this.thunderbolt$jobPresent && !jobPresent) {
+            // The selected virtual CPU may leave the pool as soon as its job finishes. Preserve
+            // the 1.21 runtime semantics, but replace the 1.20 client's incremental view once at
+            // that lifecycle boundary so it cannot retain planned entries from the old job.
+            this.incrementalUpdateHelper.reset();
+            thunderbolt$queueAllItems(logic);
+        }
+        this.thunderbolt$jobPresent = jobPresent;
+
         if (this.incrementalUpdateHelper.hasChanges()) {
             var status = thunderbolt$createStatus(this.incrementalUpdateHelper, logic);
             this.incrementalUpdateHelper.commitChanges();
@@ -122,6 +130,16 @@ public abstract class TimeWheelCraftingCPUMenuMixin extends AEBaseMenu {
         }
     }
 
+    @Unique
+    private void thunderbolt$queueAllItems(Ae2LtTimeWheelCraftingCpuLogic logic) {
+        var allItems = new KeyCounter();
+        logic.getAllItems(allItems);
+        for (var entry : allItems) {
+            this.incrementalUpdateHelper.addChange(entry.getKey());
+        }
+    }
+
+    @SuppressWarnings("removal")
     @Unique
     private static CraftingStatus thunderbolt$createStatus(IncrementalUpdateHelper changes,
                                                             Ae2LtTimeWheelCraftingCpuLogic logic) {
@@ -152,19 +170,11 @@ public abstract class TimeWheelCraftingCPUMenuMixin extends AEBaseMenu {
         }
 
         var tracker = logic.getElapsedTimeTracker();
-        long remaining = thunderbolt$remainingProgressUnits(tracker.getProgress());
         return new CraftingStatus(
                 full,
                 tracker.getElapsedTime(),
-                remaining,
-                thunderbolt$PROGRESS_SCALE,
+                tracker.getRemainingItemCount(),
+                tracker.getStartItemCount(),
                 entries);
-    }
-
-    @Unique
-    private static long thunderbolt$remainingProgressUnits(float progress) {
-        long remaining = (long) (thunderbolt$PROGRESS_SCALE
-                - (double) progress * thunderbolt$PROGRESS_SCALE);
-        return Math.max(0L, Math.min(thunderbolt$PROGRESS_SCALE, remaining));
     }
 }
