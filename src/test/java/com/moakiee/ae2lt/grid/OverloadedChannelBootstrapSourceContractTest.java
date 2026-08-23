@@ -11,7 +11,9 @@ class OverloadedChannelBootstrapSourceContractTest {
     @Test
     void hostRegistersItsControllerFamilyAndForwardsConfiguredCapacity() throws Exception {
         String mod = Files.readString(Path.of(
-                "src/main/java/com/moakiee/ae2lt/AE2LightningTech.java"));
+                "src/main/java/com/moakiee/ae2lt/AE2LightningTech.java"))
+                .replace("\r\n", "\n")
+                .replace('\r', '\n');
 
         int setup = mod.indexOf("private void commonSetup(FMLCommonSetupEvent event)");
         int register = mod.indexOf("ChannelSourceRegistry.registerController(", setup);
