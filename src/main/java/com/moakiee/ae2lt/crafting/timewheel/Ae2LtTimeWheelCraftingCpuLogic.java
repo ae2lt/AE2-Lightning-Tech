@@ -1455,6 +1455,11 @@ public final class Ae2LtTimeWheelCraftingCpuLogic {
         }
         var changedCredits = loopSeedLedgers.recordDispatch(
                 loopPattern, copies, sharedBatch, actualInputSeed);
+        var activeJob = this.job;
+        if (sharedBatch && activeJob != null) {
+            activeJob.sharedBatchSeedConsumers.recordSuccessfulBatch(
+                    loopPattern.seedConsumerId());
+        }
         consumeRetainedFinalOutput(loopPattern, copies, sharedBatch, actualInputSeed);
         cpu.markDirty();
         return changedCredits;
@@ -1488,7 +1493,8 @@ public final class Ae2LtTimeWheelCraftingCpuLogic {
             long perCopy = loop.inputSeedAmountFor(key);
             if (perCopy <= 0) continue;
             demand = addSaturated(demand,
-                    multiplySaturated(perCopy, task.getValue().value));
+                    activeJob.sharedBatchSeedConsumers.pendingDemand(
+                            loop.seedConsumerId(), perCopy, task.getValue().value));
         }
         return demand;
     }
@@ -2958,6 +2964,8 @@ public final class Ae2LtTimeWheelCraftingCpuLogic {
         private final Set<AEKey> waitingKeys = new HashSet<>();
         private final KeyCounter pendingOutputs = new KeyCounter();
         private final Map<IPatternDetails, TaskProgress> tasks = new HashMap<>();
+        private final SharedBatchSeedConsumerState sharedBatchSeedConsumers =
+                new SharedBatchSeedConsumerState();
         private final ElapsedTimeTracker timeTracker;
         private GenericStack finalOutput;
         private long remainingAmount;
@@ -3033,6 +3041,7 @@ public final class Ae2LtTimeWheelCraftingCpuLogic {
             job.suspended = data.getBoolean(NBT_SUSPENDED);
             job.softCancelling = data.getBoolean(NBT_SOFT_CANCELLING);
             job.closedLoopJob = data.getBoolean(NBT_CLOSED_LOOP_JOB) || job.softCancelling;
+            job.sharedBatchSeedConsumers.readFromNBT(data);
             job.waitingFor.readFromNBT(data.getList(NBT_WAITING_FOR, Tag.TAG_COMPOUND), registries);
             job.rebuildWaitingKeys();
             job.tasks.clear();
@@ -3235,6 +3244,7 @@ public final class Ae2LtTimeWheelCraftingCpuLogic {
             data.putBoolean(NBT_SUSPENDED, suspended);
             data.putBoolean(NBT_SOFT_CANCELLING, softCancelling);
             data.putBoolean(NBT_CLOSED_LOOP_JOB, closedLoopJob);
+            sharedBatchSeedConsumers.writeToNBT(data);
             return data;
         }
 
