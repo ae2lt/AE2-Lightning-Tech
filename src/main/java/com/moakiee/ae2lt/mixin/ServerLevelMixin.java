@@ -1,6 +1,8 @@
 package com.moakiee.ae2lt.mixin;
 
+import com.llamalad7.mixinextras.injector.ModifyReceiver;
 import com.moakiee.ae2lt.celestweave.CelestweaveArmorUndyingHandler;
+import com.moakiee.ae2lt.event.LightningItemTransformationHandler;
 import com.moakiee.ae2lt.event.NaturalLightningTransformationHandler;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -20,7 +22,7 @@ public abstract class ServerLevelMixin {
             at = @At(
                     value = "INVOKE",
                     target = "Lnet/minecraft/server/level/ServerLevel;addFreshEntity(Lnet/minecraft/world/entity/Entity;)Z",
-                    // In 1.21.1 tickChunk spawns the skeleton horse trap first and the
+                    // In Forge 1.20.1 tickChunk spawns the skeleton horse trap first and the
                     // actual weather lightning bolt second. We must mark the lightning call.
                     ordinal = 1))
     private Entity ae2lt$markNaturalWeatherLightning(Entity entity) {
@@ -28,6 +30,24 @@ public abstract class ServerLevelMixin {
             lightningBolt.getPersistentData().putBoolean(
                     NaturalLightningTransformationHandler.NATURAL_WEATHER_LIGHTNING_TAG,
                     true);
+        }
+        return entity;
+    }
+
+    /**
+     * Dispatches lightning processing outside the bolt's virtual tick method. Modded lightning
+     * entities such as Ars Nouveau's override {@link LightningBolt#tick()} without invoking the
+     * vanilla implementation, so an injection into LightningBolt#tick cannot observe them.
+     */
+    @ModifyReceiver(
+            method = "tickNonPassenger",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/world/entity/Entity;tick()V"))
+    private Entity ae2lt$handleLightningTick(Entity entity) {
+        if (entity instanceof LightningBolt lightningBolt) {
+            NaturalLightningTransformationHandler.handleLightningTick(lightningBolt);
+            LightningItemTransformationHandler.handleLightningTick(lightningBolt);
         }
         return entity;
     }
