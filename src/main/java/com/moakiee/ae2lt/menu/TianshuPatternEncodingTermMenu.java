@@ -503,7 +503,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         if (!isServerSide() || config == null || config.directions() == null
                 || config.directions().length > getProcessingInputSlots().length
                 || !validDirections(config.directions())
-                || !AdvancedAECompat.isLoaded()
+                || !AdvancedAECompat.canEncode()
                 || tianshuMode != TianshuEncodingMode.PROCESSING) return;
         updateAdvancedEncodingConfig(config);
         persistProcessingDraft();
@@ -606,7 +606,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         if (draft == null) return;
         boolean supported = draft.type() != ProcessingPatternEncodingType.NORMAL
                 && (!draft.type().hasAdvanced()
-                        || AdvancedAECompat.isLoaded());
+                        || AdvancedAECompat.canEncode());
         if (tianshuMode == TianshuEncodingMode.PROCESSING
                 && supported
                 && draft.matches(snapshotProcessingInputs(), snapshotProcessingOutputs())) {

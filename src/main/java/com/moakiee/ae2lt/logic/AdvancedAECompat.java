@@ -5,9 +5,8 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.LinkedHashMap;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 
 import org.jetbrains.annotations.Nullable;
@@ -70,6 +69,10 @@ public final class AdvancedAECompat {
                     && GET_DIRECTION_SIDE_FOR_INPUT_KEY_METHOD != null;
         }
         return loaded;
+    }
+
+    public static boolean canEncode() {
+        return isLoaded() && ADV_ENCODE_METHOD != null;
     }
 
     /**
@@ -198,7 +201,7 @@ public final class AdvancedAECompat {
      */
     @Nullable
     public static ItemStack encodeWithDirections(ItemStack source, Level level, List<Integer> configuredSides) {
-        if (!isLoaded() || ADV_ENCODE_METHOD == null || source == null || source.isEmpty() || level == null) {
+        if (!canEncode() || source == null || source.isEmpty() || level == null) {
             return null;
         }
         var details = PatternDetailsHelper.decodePattern(source, level);
@@ -221,7 +224,7 @@ public final class AdvancedAECompat {
         } else {
             return null;
         }
-        var directions = new LinkedHashMap<AEKey, Direction>();
+        var directions = new HashMap<AEKey, Direction>();
         for (int i = 0; i < inputs.size(); i++) {
             var input = inputs.get(i);
             if (input == null) continue;
@@ -232,7 +235,9 @@ public final class AdvancedAECompat {
         }
         Object encoded = MixinReflectionSupport.invokeMethodSafe(
                 ADV_ENCODE_METHOD, null, "encode AdvancedAE processing pattern",
-                inputs, outputs, directions);
+                inputs.toArray(GenericStack[]::new),
+                outputs.toArray(GenericStack[]::new),
+                directions);
         return encoded instanceof ItemStack stack ? stack : null;
     }
 
@@ -321,7 +326,9 @@ public final class AdvancedAECompat {
             for (var method : ADV_ENCODER_CLASS.getDeclaredMethods()) {
                 if (method.getName().equals("encodeProcessingPattern")
                         && Modifier.isStatic(method.getModifiers())
-                        && method.getParameterCount() == 3) {
+                        && Arrays.equals(method.getParameterTypes(), new Class<?>[] {
+                                GenericStack[].class, GenericStack[].class, HashMap.class
+                        })) {
                     method.setAccessible(true);
                     return method;
                 }

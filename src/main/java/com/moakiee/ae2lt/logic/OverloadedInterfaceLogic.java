@@ -110,6 +110,9 @@ public class OverloadedInterfaceLogic extends InterfaceLogic {
                 () -> invokeQuietly(M_ON_STORAGE_CHANGED, this));
         setField(F_STORAGE, proxiedStorage);
         proxiedStorage.useRegisteredCapacities();
+        for (var type : AEKeyTypes.getAll()) {
+            proxiedStorage.setCapacity(type, overloadedCap(type));
+        }
 
         var newUpgrades = UpgradeInventories.forMachine(is, 4, () -> {
             invokeQuietly(M_ON_UPGRADES_CHANGED, this);

@@ -11,6 +11,13 @@ import com.moakiee.ae2lt.client.SettingToggleButtonAccess;
  * inject into AE2LT's overloaded pattern provider screens.
  */
 public final class PatternProviderToolbarButtonHider {
+    /**
+     * ExtendedAE Plus 1.5.5 for Forge 1.20.1 creates both its advanced-blocking
+     * and smart-doubling controls with the same anonymous SettingToggleButton
+     * subclass returned by GuiUtil#createToggle.
+     */
+    public static final String EXTENDED_AE_PLUS_SMART_FEATURE_BUTTON =
+            "com.extendedae_plus.util.GuiUtil$1";
     public static final String EXPANDED_AE_MODIFY_PATTERNS_BUTTON =
             "lu.kolja.expandedae.client.gui.widgets.ExpActionButton";
     public static final String EXPANDED_AE_BLOCKING_SETTING = "blocking_type";
@@ -19,6 +26,7 @@ public final class PatternProviderToolbarButtonHider {
     private static final Set<String> HIDDEN_SETTING_NAMES = ConcurrentHashMap.newKeySet();
 
     static {
+        registerHiddenButtonClassName(EXTENDED_AE_PLUS_SMART_FEATURE_BUTTON);
         registerHiddenButtonClassName(EXPANDED_AE_MODIFY_PATTERNS_BUTTON);
         registerHiddenSettingName(EXPANDED_AE_BLOCKING_SETTING);
     }

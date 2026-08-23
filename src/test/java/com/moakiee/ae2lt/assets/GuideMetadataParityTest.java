@@ -26,6 +26,8 @@ class GuideMetadataParityTest {
     private static final Pattern ITEM_ID = Pattern.compile("(?m)^\\s*-\\s+(ae2lt:[a-z0-9_./-]+)\\s*$");
     private static final Pattern ITEM_LINK = Pattern.compile(
             "<ItemLink\\s+[^>]*id=\\\"(ae2lt:[a-z0-9_./-]+)\\\"");
+    private static final Pattern NAMESPACED_HELP_TOPIC = Pattern.compile(
+            "\\\"helpTopic\\\"\\s*:\\s*\\\"[a-z0-9_.-]+:");
 
     @Test
     void translatedPagesPreserveItemIndexMetadata() throws IOException {
@@ -55,6 +57,25 @@ class GuideMetadataParityTest {
                 .filter(path -> !path.startsWith(CHINESE_GUIDE))
                 .toList());
         assertItemLinkOwners("zh_cn", guidePages(CHINESE_GUIDE));
+    }
+
+    @Test
+    void screenStylesDoNotUseNamespacedHelpTopics() throws IOException {
+        Path screens = Path.of("src", "main", "resources", "assets", "ae2", "screens");
+        List<Path> invalid = new ArrayList<>();
+
+        try (Stream<Path> paths = Files.walk(screens)) {
+            for (Path path : paths.filter(Files::isRegularFile)
+                    .filter(file -> file.toString().endsWith(".json"))
+                    .toList()) {
+                if (NAMESPACED_HELP_TOPIC.matcher(Files.readString(path)).find()) {
+                    invalid.add(path);
+                }
+            }
+        }
+
+        assertTrue(invalid.isEmpty(),
+                "AE2 15.4.10 treats namespaced helpTopic values as ae2 paths: " + invalid);
     }
 
     private static void assertItemLinkOwners(String language, List<Path> pages) throws IOException {
