@@ -3,13 +3,13 @@ package com.moakiee.ae2lt.client.ae2wtlib;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.fml.ModList;
 
+import appeng.api.implementations.menuobjects.ItemMenuHost;
 import appeng.client.gui.AEBaseScreen;
-import appeng.menu.SlotSemantics;
-import appeng.menu.slot.AppEngSlot;
 
 import com.moakiee.ae2lt.client.FrequencyBindingClient;
 import com.moakiee.ae2lt.client.TextureToggleButton;
 import com.moakiee.ae2lt.item.OverloadedFrequencyCardItem;
+import com.moakiee.ae2lt.item.TerminalCardAccess;
 import com.moakiee.ae2lt.mixin.client.AEBaseScreenAccessor;
 
 import de.mari_023.ae2wtlib.wut.IUniversalTerminalCapable;
@@ -55,20 +55,16 @@ public final class FrequencyTerminalButton {
     }
 
     private static ItemStack findInstalledFrequencyCard(AEBaseScreen<?> screen) {
-        for (var slot : screen.getMenu().getSlots(SlotSemantics.UPGRADE)) {
-            // AE2WTLib disables upgrade menu slots outside the scrolling panel's
-            // visible window. AppEngSlot#getItem then reports EMPTY even though
-            // the backing upgrade inventory still contains the card, so inspect
-            // the slot inventory rather than its presentation state.
-            if (!(slot instanceof AppEngSlot appEngSlot)) {
-                continue;
-            }
-            var stack = appEngSlot.getSlotInv().getStackInSlot(0);
-            if (stack.getItem() instanceof OverloadedFrequencyCardItem) {
-                return stack;
-            }
+        if (!(screen.getMenu().getTarget() instanceof ItemMenuHost terminalHost)) {
+            return ItemStack.EMPTY;
         }
-        return ItemStack.EMPTY;
+
+        // Match main's terminalScreen.getHost().getUpgrades() path. AE2WTLib
+        // 15.3 does not expose getHost() on IUniversalTerminalCapable, but the
+        // menu target is that same host and owns the complete upgrade inventory.
+        // Presentation slots outside the scrolling window are disabled and can
+        // be synchronized as EMPTY, so they are not an authoritative card source.
+        return TerminalCardAccess.findCard(terminalHost.getUpgrades());
     }
 
     public record ToolbarButtons(TextureToggleButton configureButton, TextureToggleButton autoConnectButton) {

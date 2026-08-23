@@ -1,4 +1,4 @@
-package com.moakiee.ae2lt.mixin.client;
+package com.moakiee.ae2lt.mixin.ae2wtlib.client;
 
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
@@ -15,7 +15,7 @@ import com.moakiee.ae2lt.client.ae2wtlib.FrequencyTerminalButton;
  * screen widgets. This matches how native toolbar buttons are created: add them
  * to {@code VerticalButtonBar} before {@code WidgetContainer.populateScreen}.
  */
-@Mixin(value = AEBaseScreen.class, remap = false)
+@Mixin(AEBaseScreen.class)
 public abstract class AEBaseScreenFrequencyTerminalButtonMixin {
     @Unique
     private boolean ae2lt$frequencyTerminalButtonAdded;
@@ -26,7 +26,9 @@ public abstract class AEBaseScreenFrequencyTerminalButtonMixin {
             method = "init",
             at = @At(
                     value = "INVOKE",
-                    target = "Lappeng/client/gui/WidgetContainer;populateScreen(Ljava/util/function/Consumer;Lnet/minecraft/client/renderer/Rect2i;Lappeng/client/gui/AEBaseScreen;)V"))
+                    target = "Lappeng/client/gui/WidgetContainer;populateScreen(Ljava/util/function/Consumer;Lnet/minecraft/client/renderer/Rect2i;Lappeng/client/gui/AEBaseScreen;)V",
+                    remap = false),
+            require = 1)
     private void ae2lt$addFrequencyTerminalButton(CallbackInfo ci) {
         if (ae2lt$frequencyTerminalButtonAdded) {
             return;
@@ -39,7 +41,7 @@ public abstract class AEBaseScreenFrequencyTerminalButtonMixin {
         }
     }
 
-    @Inject(method = "updateBeforeRender", at = @At("TAIL"))
+    @Inject(method = "updateBeforeRender", at = @At("TAIL"), require = 1, remap = false)
     private void ae2lt$updateFrequencyTerminalButtons(CallbackInfo ci) {
         var screen = (AEBaseScreen<?>) (Object) this;
         if (ae2lt$frequencyTerminalButtons != null) {
