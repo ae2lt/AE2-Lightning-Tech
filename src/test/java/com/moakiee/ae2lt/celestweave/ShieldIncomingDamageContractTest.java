@@ -11,19 +11,31 @@ import org.junit.jupiter.api.Test;
 final class ShieldIncomingDamageContractTest {
 
     @Test
-    void shieldsDecideAndPayAtTheEndOfLivingHurt() throws Exception {
+    void shieldsDecideAndPayBeforeVanillaDamageProcessing() throws Exception {
         String source = handlerSource();
-        int incomingStart = source.indexOf("public static void onShieldIncoming");
+        String mixin = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/mixin/LivingEntityIncomingDamageMixin.java"));
+        int incomingStart = source.indexOf("public static IncomingDamageResult onIncomingDamage");
         int preStart = source.indexOf("public static void onPre");
         String incoming = source.substring(incomingStart, preStart);
 
-        assertTrue(annotationBefore(source, incomingStart).contains(
-                "@SubscribeEvent(priority = EventPriority.LOWEST)"));
-        assertTrue(incoming.contains("float incoming = event.getAmount()"));
+        assertFalse(source.contains("LivingHurtEvent"));
+        assertTrue(mixin.contains("LivingEntity;isSleeping()Z"));
+        assertTrue(mixin.contains("@Local(argsOnly = true) LocalFloatRef mutableAmount"));
+        assertTrue(mixin.contains("mutableAmount.set(result.amount())"));
+        assertTrue(mixin.contains("cir.setReturnValue(false)"));
+        assertFalse(mixin.contains("@WrapMethod"));
+        assertTrue(mixin.contains("@WrapOperation("));
+        assertTrue(mixin.contains("LivingEntity;actuallyHurt"));
+        assertTrue(mixin.contains("beginOriginalDamage(entity, originalDamage.get())"));
+        assertTrue(mixin.contains("finishOriginalDamage(entity, initialDepth)"));
+        assertTrue(incoming.contains("DeviceCapability.DamageTypeImmunity"));
         assertTrue(incoming.contains("payMitigationLightning(player, mitigation, staged"));
-        assertTrue(incoming.contains("event.setAmount(afterMitigation)"));
-        assertTrue(incoming.contains("event.setCanceled(true)"));
-        assertTrue(incoming.indexOf("payMitigationLightning") < incoming.indexOf("event.setCanceled(true)"));
+        assertTrue(incoming.contains("IncomingDamageResult.pass(afterMitigation)"));
+        assertTrue(incoming.contains("IncomingDamageResult.cancel()"));
+        int payment = incoming.indexOf("payMitigationLightning");
+        int paidCancellation = incoming.indexOf("return IncomingDamageResult.cancel()", payment);
+        assertTrue(payment >= 0 && paidCancellation > payment);
     }
 
     @Test
@@ -36,6 +48,7 @@ final class ShieldIncomingDamageContractTest {
         assertTrue(annotationBefore(source, preStart).contains(
                 "@SubscribeEvent(priority = EventPriority.LOWEST)"));
         assertTrue(pre.contains("reflectIncomingDamage("));
+        assertTrue(pre.contains("currentIncomingDamage(player, event.getAmount())"));
         assertFalse(pre.contains("ArmorMitigationRules.apply("));
         assertFalse(pre.contains("payMitigationLightning("));
         assertFalse(pre.contains("setAmount("));

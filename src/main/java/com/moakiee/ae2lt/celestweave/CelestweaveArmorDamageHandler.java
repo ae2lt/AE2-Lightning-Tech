@@ -1,7 +1,8 @@
 package com.moakiee.ae2lt.celestweave;
-import com.moakiee.ae2lt.network.NetworkInit;
 
+import java.util.ArrayDeque;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.Set;
 
 import net.minecraft.tags.DamageTypeTags;
@@ -15,7 +16,6 @@ import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
 import net.minecraftforge.event.entity.living.LivingDamageEvent;
-import net.minecraftforge.event.entity.living.LivingHurtEvent;
 
 import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.config.AE2LTCommonConfig;
@@ -28,14 +28,16 @@ import com.moakiee.ae2lt.celestweave.service.ArmorEnergyService;
 import com.moakiee.ae2lt.celestweave.service.ArmorLightningService;
 import com.moakiee.ae2lt.celestweave.service.ArmorModuleLightningPolicy;
 import com.moakiee.ae2lt.celestweave.service.ArmorResourceFeedback;
+import com.moakiee.ae2lt.network.NetworkInit;
 import com.moakiee.ae2lt.network.ShieldHitFeedbackSuppressionPacket;
 import com.moakiee.ae2lt.registry.ModDamageTypes;
 
 /**
  * Applies staged mitigation and reflect tuning from active armor modules.
  *
- * <p>Shield payment and mitigation run at the end of Forge's pre-armor hurt event so a fully
- * blocked hit can be canceled before armor, absorption, and final-damage handlers run.
+ * <p>Forge 1.20.1 has no LivingIncomingDamageEvent. A narrow LivingEntity mixin supplies the
+ * matching pre-processing stage after vanilla invulnerability checks but before shield, cooldown,
+ * armor, absorption, and final-damage processing. Reflection remains on Forge's final-damage event.
  * {@code reflectPct} bounces pre-overload-shield damage back to LivingEntity attackers.
  * Environmental damage (fire/fall/drown) is never reflected.
  */
@@ -44,33 +46,27 @@ public final class CelestweaveArmorDamageHandler {
     private static final ThreadLocal<Boolean> REFLECTING_DAMAGE = ThreadLocal.withInitial(() -> Boolean.FALSE);
     private static final ThreadLocal<Set<Integer>> SUPPRESSING_SHIELD_HIT_FEEDBACK =
             ThreadLocal.withInitial(HashSet::new);
+    private static final ThreadLocal<IdentityHashMap<LivingEntity, ArrayDeque<Float>>> INCOMING_DAMAGE_STACKS =
+            ThreadLocal.withInitial(IdentityHashMap::new);
 
     private CelestweaveArmorDamageHandler() {}
 
-    // 1.20.1 has no LivingIncomingDamageEvent; LivingHurtEvent is its earliest hook (pre-armor).
-    @SubscribeEvent(priority = EventPriority.HIGHEST)
-    public static void onDamageTypeImmunity(LivingHurtEvent event) {
-        if (!(event.getEntity() instanceof Player player) || player.level().isClientSide()) {
-            return;
+    /** NeoForge 1.21 LivingIncomingDamageEvent semantics for Forge 1.20.1. */
+    public static IncomingDamageResult onIncomingDamage(
+            LivingEntity entity,
+            DamageSource source,
+            float incoming) {
+        if (!(entity instanceof Player player) || player.level().isClientSide()) {
+            return IncomingDamageResult.pass(incoming);
         }
         for (var active : ArmorCapabilityCollector.collectPerInstalledStack(player)) {
             if (active.capability() instanceof DeviceCapability.DamageTypeImmunity immunity
-                    && event.getSource().is(immunity.damageType())) {
-                event.setAmount(0.0F);
-                event.setCanceled(true);
-                return;
+                    && source.is(immunity.damageType())) {
+                return IncomingDamageResult.cancel();
             }
         }
-    }
-
-    @SubscribeEvent(priority = EventPriority.LOWEST)
-    public static void onShieldIncoming(LivingHurtEvent event) {
-        if (!(event.getEntity() instanceof Player player) || player.level().isClientSide()) {
-            return;
-        }
-        float incoming = event.getAmount();
         if (incoming <= 0.0F) {
-            return;
+            return IncomingDamageResult.pass(incoming);
         }
         var capabilities = ArmorCapabilityCollector.collectPerInstalledUnit(player);
         ActiveCapability mitigation = collectMitigation(capabilities);
@@ -78,30 +74,73 @@ public final class CelestweaveArmorDamageHandler {
                 && mitigation.capability() instanceof DeviceCapability.StagedMitigation staged) {
             float afterMitigation = ArmorMitigationRules.apply(
                     staged.stage(),
-                    classifyDamage(event.getSource()),
+                    classifyDamage(source),
                     incoming);
             if (payMitigationLightning(player, mitigation, staged, incoming - afterMitigation)) {
-                event.setAmount(afterMitigation);
                 if (afterMitigation <= 0.0F) {
                     if (!isReflectingDamage()) {
-                        reflectIncomingDamage(player, event.getSource(), incoming);
+                        reflectIncomingDamage(player, source, incoming);
                     }
-                    event.setCanceled(true);
-                    return;
+                    return IncomingDamageResult.cancel();
                 }
                 if (!isHitFeedbackEnabled(mitigation.armor(), staged.stage())) {
                     markSuppressShieldHitFeedback(player);
                 }
+                return IncomingDamageResult.pass(afterMitigation);
             }
         }
+        return IncomingDamageResult.pass(incoming);
     }
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void onPre(LivingDamageEvent event) {
         if (!(event.getEntity() instanceof Player player) || player.level().isClientSide()) return;
         if (!isReflectingDamage()) {
-            reflectIncomingDamage(player, event.getSource(), event.getAmount());
+            reflectIncomingDamage(player, event.getSource(), currentIncomingDamage(player, event.getAmount()));
         }
+    }
+
+    /** Begins the small scope in which Forge processes one call to actuallyHurt. */
+    public static int beginOriginalDamage(LivingEntity entity, float originalDamage) {
+        if (entity == null) {
+            return 0;
+        }
+        ArrayDeque<Float> stack = INCOMING_DAMAGE_STACKS.get().get(entity);
+        int initialDepth = stack == null ? 0 : stack.size();
+        INCOMING_DAMAGE_STACKS.get()
+                .computeIfAbsent(entity, ignored -> new ArrayDeque<>())
+                .push(originalDamage);
+        return initialDepth;
+    }
+
+    /** Restores the original-damage scope, including when another damage handler throws. */
+    public static void finishOriginalDamage(LivingEntity entity, int targetDepth) {
+        if (entity == null) {
+            return;
+        }
+        var stacks = INCOMING_DAMAGE_STACKS.get();
+        ArrayDeque<Float> stack = stacks.get(entity);
+        if (stack == null || stack.isEmpty()) {
+            if (stacks.isEmpty()) {
+                INCOMING_DAMAGE_STACKS.remove();
+            }
+            return;
+        }
+        int safeTargetDepth = Math.max(0, targetDepth);
+        while (stack.size() > safeTargetDepth) {
+            stack.pop();
+        }
+        if (stack.isEmpty()) {
+            stacks.remove(entity);
+        }
+        if (stacks.isEmpty()) {
+            INCOMING_DAMAGE_STACKS.remove();
+        }
+    }
+
+    private static float currentIncomingDamage(LivingEntity entity, float fallback) {
+        ArrayDeque<Float> stack = INCOMING_DAMAGE_STACKS.get().get(entity);
+        return stack == null || stack.isEmpty() ? fallback : stack.peek();
     }
 
     private static ActiveCapability collectMitigation(java.util.List<ActiveCapability> capabilities) {
@@ -332,6 +371,16 @@ public final class CelestweaveArmorDamageHandler {
             }
         }
         return reflected;
+    }
+
+    public record IncomingDamageResult(float amount, boolean canceled) {
+        private static IncomingDamageResult pass(float amount) {
+            return new IncomingDamageResult(amount, false);
+        }
+
+        private static IncomingDamageResult cancel() {
+            return new IncomingDamageResult(0.0F, true);
+        }
     }
 
 }

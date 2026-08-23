@@ -99,7 +99,7 @@ The Phase Lock Module uses the chestplate as its controller and exposes four ind
 
 * **Armor Lock:** Moves the currently worn Celestweave set into four player-bound private phase slots; each armor slot displays a Phase-Locked Projection to show that your corresponding armor is secured in private phase storage. The real armor keeps running inside the private slots, and newly worn Celestweave pieces join the lock automatically. Projections carry no enchantment glint and cannot be extracted or traded; replacing or removing one projection costs 1,000,000 FE and 16 Extreme High Voltage Lightning to rebuild it in place, and a failed payment releases the lock and re-equips the entire real set.
 `Think of this as soulbinding.`
-* **Flight Lock:** Freezes the current flight state, keeps flight active after landing, and rejects external state changes. It recognizes active Creative/Phase Flight modules, game-mode flight, and NeoForge's `CREATIVE_FLIGHT` attribute, but never grants flight by itself.
+* **Flight Lock:** Freezes the current flight state, keeps flight active after landing, and rejects external state changes. It recognizes active Creative/Phase Flight modules, game-mode flight, and the `mayfly` permission restored by other Forge mods, but never grants flight by itself.
 * **Block External Forces:** Blocks velocity changes from water, fans, knockback and similar external systems, while player input and armor-driven movement still work.
 `For example: ignores pushing and pulling from Create's Encased Fan.`
 * **Block External Teleports:** Blocks external coordinate rewrites, teleports and dimension changes, while normal player movement is unaffected.

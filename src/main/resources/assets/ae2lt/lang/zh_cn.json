@@ -823,7 +823,7 @@
   "ae2lt.celestweave.config.phase_mode": "相位模式",
   "ae2lt.celestweave.config.phase_mode.hint": "开启后，悬停与相位翼滑翔均可无碰撞穿墙；关闭后保留飞行但恢复正常碰撞。",
   "ae2lt.celestweave.config.flight_lock": "飞行锁定",
-  "ae2lt.celestweave.config.flight_lock.hint": "冻结当前飞行状态并阻止外部更改；识别飞行模块、游戏模式与 NeoForge 创造飞行属性，但不会自行授予飞行。",
+  "ae2lt.celestweave.config.flight_lock.hint": "冻结当前飞行状态并阻止外部更改；识别飞行模块、游戏模式与其他 Forge 模组恢复的 mayfly 权限，但不会自行授予飞行。",
   "ae2lt.celestweave.config.phase_armor_lock": "盔甲锁定",
   "ae2lt.celestweave.config.phase_armor_lock.hint": "将整套真实盔甲移入玩家 UUID 绑定的私有槽，并在装备栏维持无数据投影。",
   "ae2lt.celestweave.config.phase_block_external_forces": "阻止外力拉动",

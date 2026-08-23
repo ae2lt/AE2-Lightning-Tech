@@ -175,6 +175,8 @@ class PhaseFlightMovementGuardSourceContractTest {
                 "src/main/java/com/moakiee/ae2lt/celestweave/PhaseFlightMovementGuard.java"));
         String packetMixin = Files.readString(Path.of(
                 "src/main/java/com/moakiee/ae2lt/mixin/ServerGamePacketListenerPhaseMovementMixin.java"));
+        String contextMixin = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/mixin/NetworkEventContextPhaseTeleportMixin.java"));
         String mixinConfig = Files.readString(Path.of("src/main/resources/ae2lt.mixins.json"));
 
         assertTrue(guard.contains("CUSTOM_PAYLOAD_PLAYER.get() == player"));
@@ -182,7 +184,12 @@ class PhaseFlightMovementGuardSourceContractTest {
         assertTrue(packetMixin.contains("PhaseFlightMovementGuard.beginCustomPayload("));
         assertTrue(packetMixin.contains("PhaseFlightMovementGuard.endCustomPayload("));
         assertTrue(packetMixin.contains("ServerboundCustomPayloadPacket"));
+        assertTrue(contextMixin.contains("@Mixin(value = NetworkEvent.Context.class, remap = false)"));
+        assertTrue(contextMixin.contains("enqueueWork(Ljava/lang/Runnable;)"));
+        assertTrue(contextMixin.contains("ServerPlayer sender = getSender()"));
+        assertTrue(contextMixin.contains("PhaseFlightMovementGuard.runAsPlayerPayloadTeleport(sender, task)"));
         assertTrue(mixinConfig.contains("ServerGamePacketListenerPhaseMovementMixin"));
+        assertTrue(mixinConfig.contains("NetworkEventContextPhaseTeleportMixin"));
         assertFalse(mixinConfig.contains("ServerPayloadContextPhaseTeleportMixin"));
     }
 

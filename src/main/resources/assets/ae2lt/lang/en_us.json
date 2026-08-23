@@ -823,7 +823,7 @@
   "ae2lt.celestweave.config.phase_mode": "Phase Mode",
   "ae2lt.celestweave.config.phase_mode.hint": "Lets both hovering and phase-wing gliding pass through blocks; disabling it keeps flight with normal collision.",
   "ae2lt.celestweave.config.flight_lock": "Flight Lock",
-  "ae2lt.celestweave.config.flight_lock.hint": "Freezes the current flight state and rejects external changes; recognizes flight modules, game mode, and NeoForge creative-flight attributes without granting flight.",
+  "ae2lt.celestweave.config.flight_lock.hint": "Freezes the current flight state and rejects external changes; recognizes flight modules, game mode, and mayfly permission restored by other Forge mods without granting flight.",
   "ae2lt.celestweave.config.phase_armor_lock": "Armor Lock",
   "ae2lt.celestweave.config.phase_armor_lock.hint": "Moves the real armor set into private slots bound to the player's UUID and maintains data-free projections in the equipment slots.",
   "ae2lt.celestweave.config.phase_block_external_forces": "Block External Forces",
