@@ -7,6 +7,7 @@ import org.jetbrains.annotations.Nullable;
 
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.Entity;
@@ -49,6 +50,13 @@ public final class PhaseLockProjectionItem extends ArmorItem {
 
     public EquipmentSlot equipmentSlot() {
         return equipmentSlot;
+    }
+
+    @Override
+    public SoundEvent getEquipSound() {
+        // Projections are a hidden server-owned implementation detail. A client inventory echo or
+        // another mod replacing the equivalent stack must not sound like armor being equipped.
+        return SoundEvents.EMPTY;
     }
 
     @Override
