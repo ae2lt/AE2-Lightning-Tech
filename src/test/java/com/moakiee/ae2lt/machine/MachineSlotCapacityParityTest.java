@@ -12,6 +12,9 @@ class MachineSlotCapacityParityTest {
     private static final Path MACHINE_DIR = Path.of("src/main/java/com/moakiee/ae2lt/machine");
     private static final Path BLOCK_ENTITY_DIR =
             Path.of("src/main/java/com/moakiee/ae2lt/blockentity");
+    private static final Path ITEM_DIR = Path.of("src/main/java/com/moakiee/ae2lt/item");
+    private static final Path ITEM_REGISTRY =
+            Path.of("src/main/java/com/moakiee/ae2lt/registry/ModItems.java");
 
     @Test
     void itemSlotCapacitiesMatchTheMainProjectContract() throws Exception {
@@ -61,6 +64,21 @@ class MachineSlotCapacityParityTest {
             assertTrue(source.contains("MemoryCardConfigSupport.restoreMatrixCount(tag, player, this)"),
                     fileName + " must restore the installed matrix count");
         }
+    }
+
+    @Test
+    void matrixItemRetainsSneakUseInsertionBehavior() throws Exception {
+        String registrySource = Files.readString(ITEM_REGISTRY);
+        assertTrue(registrySource.contains("RegistryObject<LightningCollapseMatrixItem> LIGHTNING_COLLAPSE_MATRIX"),
+                "the matrix must be registered as its interactive item class");
+        assertTrue(registrySource.contains("LightningCollapseMatrixItem::new"),
+                "the matrix registry factory must construct the interactive item class");
+
+        String itemSource = Files.readString(ITEM_DIR.resolve("LightningCollapseMatrixItem.java"));
+        assertTrue(itemSource.contains("player.isSecondaryUseActive()"),
+                "direct matrix insertion must remain gated behind sneak-use");
+        assertTrue(itemSource.contains("host.insertMatricesFromHand(player, context.getHand())"),
+                "sneak-use must insert matrices into the clicked machine host");
     }
 
     private static void assertContains(String relativePath, String expected) throws Exception {
