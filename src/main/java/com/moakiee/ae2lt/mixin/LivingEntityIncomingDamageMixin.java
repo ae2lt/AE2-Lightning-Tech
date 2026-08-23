@@ -1,6 +1,7 @@
 package com.moakiee.ae2lt.mixin;
 
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
@@ -45,13 +46,39 @@ public abstract class LivingEntityIncomingDamageMixin {
             method = "hurt",
             at = @At(
                     value = "INVOKE",
-                    target = "Lnet/minecraft/world/entity/LivingEntity;actuallyHurt(Lnet/minecraft/world/damagesource/DamageSource;F)V"))
-    private void ae2lt$runWithOriginalDamageScope(
+                    target = "Lnet/minecraft/world/entity/LivingEntity;actuallyHurt(Lnet/minecraft/world/damagesource/DamageSource;F)V",
+                    ordinal = 0))
+    private void ae2lt$runCooldownDamageWithOriginalDamageScope(
             LivingEntity entity,
             DamageSource source,
             float amount,
             Operation<Void> original,
             @Share("ae2lt$originalDamage") LocalFloatRef originalDamage) {
+        ae2lt$runWithOriginalDamageScope(entity, source, amount, original, originalDamage);
+    }
+
+    @WrapOperation(
+            method = "hurt",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/world/entity/LivingEntity;actuallyHurt(Lnet/minecraft/world/damagesource/DamageSource;F)V",
+                    ordinal = 1))
+    private void ae2lt$runFreshDamageWithOriginalDamageScope(
+            LivingEntity entity,
+            DamageSource source,
+            float amount,
+            Operation<Void> original,
+            @Share("ae2lt$originalDamage") LocalFloatRef originalDamage) {
+        ae2lt$runWithOriginalDamageScope(entity, source, amount, original, originalDamage);
+    }
+
+    @Unique
+    private static void ae2lt$runWithOriginalDamageScope(
+            LivingEntity entity,
+            DamageSource source,
+            float amount,
+            Operation<Void> original,
+            LocalFloatRef originalDamage) {
         if (!(entity instanceof net.minecraft.world.entity.player.Player)) {
             original.call(entity, source, amount);
             return;
