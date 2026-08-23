@@ -7,6 +7,7 @@ import com.moakiee.ae2lt.item.DebugLightningRodItem;
 import com.moakiee.ae2lt.item.ElectroChimeCrystalItem;
 import com.moakiee.ae2lt.item.FixedInfiniteCellItem;
 import com.moakiee.ae2lt.item.InfiniteStorageCellItem;
+import com.moakiee.ae2lt.item.LightningCollapseMatrixItem;
 import com.moakiee.ae2lt.item.LightningStorageComponentItem;
 import com.moakiee.ae2lt.item.OverloadCrystalItem;
 import com.moakiee.ae2lt.item.OverloadPatternEncoderItem;
@@ -108,8 +109,10 @@ public final class ModItems {
     public static final RegistryObject<Item> ULTIMATE_OVERLOAD_CORE =
             registerSimpleItem("ultimate_overload_core", new Item.Properties());
 
-    public static final RegistryObject<Item> LIGHTNING_COLLAPSE_MATRIX =
-            registerSimpleItem("lightning_collapse_matrix", new Item.Properties());
+    public static final RegistryObject<LightningCollapseMatrixItem> LIGHTNING_COLLAPSE_MATRIX = registerItem(
+            "lightning_collapse_matrix",
+            LightningCollapseMatrixItem::new,
+            new Item.Properties());
 
     public static final RegistryObject<DebugLightningRodItem> DEBUG_LIGHTNING_ROD = registerItem(
             "debug_lightning_rod",
