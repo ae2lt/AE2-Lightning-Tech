@@ -1,6 +1,9 @@
 package com.moakiee.ae2lt.gametest;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
+import java.util.function.Consumer;
 
 import com.mojang.authlib.GameProfile;
 
@@ -10,13 +13,18 @@ import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
+import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.PlayLevelSoundEvent;
 import net.minecraftforge.event.entity.living.LivingDamageEvent;
 import net.minecraftforge.gametest.GameTestHolder;
 import net.minecraftforge.gametest.PrefixGameTestTemplate;
@@ -38,6 +46,46 @@ public final class CelestweavePhaseSemanticsGameTests {
     private static final float EPSILON = 1.0E-3F;
 
     private CelestweavePhaseSemanticsGameTests() {
+    }
+
+    @GameTest(templateNamespace = "minecraft", template = EMPTY_TEMPLATE, timeoutTicks = 20)
+    public static void repeatedPhaseLockProjectionEchoesRemainSilent(GameTestHelper helper) {
+        var wearer = helper.spawn(EntityType.ZOMBIE, new BlockPos(1, 2, 1));
+        List<SoundEvent> projectionSounds = new ArrayList<>();
+        Consumer<PlayLevelSoundEvent.AtPosition> soundListener = event -> {
+            if (event.getLevel() != helper.getLevel()
+                    || event.getSound() == null
+                    || event.getSource() != wearer.getSoundSource()
+                    || event.getPosition().distanceToSqr(wearer.position()) > 1.0E-6D) {
+                return;
+            }
+            SoundEvent sound = event.getSound().value();
+            if (sound == SoundEvents.EMPTY || sound == SoundEvents.ARMOR_EQUIP_GENERIC) {
+                projectionSounds.add(sound);
+            }
+        };
+        MinecraftForge.EVENT_BUS.addListener(soundListener);
+
+        // Wait until the entity's first tick has completed: vanilla intentionally suppresses
+        // equipment sounds during entity initialization. Different tags model successive client
+        // inventory echoes of the same server-owned projection.
+        helper.runAfterDelay(2, () -> equipProjectionEcho(wearer, 1));
+        helper.runAfterDelay(4, () -> equipProjectionEcho(wearer, 2));
+        helper.runAfterDelay(6, () -> equipProjectionEcho(wearer, 3));
+        helper.runAfterDelay(8, () -> {
+            MinecraftForge.EVENT_BUS.unregister(soundListener);
+            long genericEquipSounds = projectionSounds.stream()
+                    .filter(sound -> sound == SoundEvents.ARMOR_EQUIP_GENERIC)
+                    .count();
+            long emptySounds = projectionSounds.stream()
+                    .filter(sound -> sound == SoundEvents.EMPTY)
+                    .count();
+            helper.assertTrue(genericEquipSounds == 0,
+                    "Repeated projection echoes emitted " + genericEquipSounds + " audible equip sounds");
+            helper.assertTrue(emptySounds == 3,
+                    "Expected three silent projection equip transitions, observed " + emptySounds);
+            helper.succeed();
+        });
     }
 
     @GameTest(templateNamespace = "minecraft", template = EMPTY_TEMPLATE)
@@ -195,6 +243,12 @@ public final class CelestweavePhaseSemanticsGameTests {
         player.setItemSlot(EquipmentSlot.CHEST, chest);
         ArmorCapabilityCollector.clearCache(player);
         return chest;
+    }
+
+    private static void equipProjectionEcho(LivingEntity wearer, int revision) {
+        ItemStack projection = new ItemStack(ModItems.PHASE_LOCK_PROJECTION.get());
+        projection.getOrCreateTag().putInt("ae2lt_gametest_echo_revision", revision);
+        wearer.setItemSlot(EquipmentSlot.CHEST, projection);
     }
 
     private static void cleanupArmorState(ServerPlayer player, ItemStack chest) {
