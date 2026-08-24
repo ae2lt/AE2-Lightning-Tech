@@ -61,7 +61,7 @@ public record DeleteFrequencyPacket(int token, int frequencyId) implements Custo
             }
 
             manager.deleteFrequency(pkt.frequencyId, player.getServer());
-            UpdateFrequencyBasicPacket.broadcastToOpenMenus(
+            UpdateFrequencyBasicPacket.broadcastToPlayers(
                     player.getServer(), UpdateFrequencyBasicPacket.forDeletion(pkt.frequencyId));
         });
     }

@@ -117,7 +117,7 @@ public record EditFrequencyPacket(
                 freq.setPassword(pkt.password);
             }
             manager.markModified();
-            UpdateFrequencyBasicPacket.broadcastToOpenMenus(
+            UpdateFrequencyBasicPacket.broadcastToPlayers(
                     player.getServer(), UpdateFrequencyBasicPacket.forFrequency(freq));
         });
     }
