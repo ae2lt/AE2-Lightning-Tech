@@ -347,9 +347,9 @@ public final class OverloadExecutionService {
     }
 
     /**
-     * Invokes every generic cleanup layer even when an earlier layer already marked the
-     * entity removed. Forced mode deliberately favors complete third-party cleanup and a
-     * guaranteed final state over avoiding repeated, normally idempotent removal hooks.
+     * Settles death once, then invokes only the cleanup fallbacks that are still needed.
+     * In particular, a dynamic {@code kill} override may itself drop loot, so it must not
+     * run after {@code die} has already committed death and settled the normal loot path.
      */
     private static void forceRemove(LivingEntity target, DamageSource source, float damage) {
         prepareLethalState(target, source, damage);
@@ -360,29 +360,30 @@ public final class OverloadExecutionService {
                     target.getType(), error);
         }
 
-        try {
-            target.kill();
-        } catch (RuntimeException | LinkageError error) {
-            LOGGER.warn("Target kill callback failed for {}; continuing forced removal",
-                    target.getType(), error);
+        if (needsKillFallback(target.dead, target.isRemoved())) {
+            try {
+                target.kill();
+            } catch (RuntimeException | LinkageError error) {
+                LOGGER.warn("Target kill callback failed for {}; continuing forced removal",
+                        target.getType(), error);
+            }
         }
 
-        try {
-            target.discard();
-        } catch (RuntimeException | LinkageError error) {
-            LOGGER.warn("Target discard callback failed for {}; continuing forced removal",
-                    target.getType(), error);
-        }
-
-        try {
-            target.remove(Entity.RemovalReason.KILLED);
-        } catch (RuntimeException | LinkageError error) {
-            LOGGER.warn("Target remove callback failed for {}; applying final removal",
-                    target.getType(), error);
+        if (!target.isRemoved()) {
+            try {
+                target.remove(Entity.RemovalReason.KILLED);
+            } catch (RuntimeException | LinkageError error) {
+                LOGGER.warn("Target remove callback failed for {}; applying final removal",
+                        target.getType(), error);
+            }
         }
         if (!target.isRemoved()) {
             target.setRemoved(Entity.RemovalReason.KILLED);
         }
+    }
+
+    static boolean needsKillFallback(boolean deathCommitted, boolean removed) {
+        return !deathCommitted && !removed;
     }
 
     /**
