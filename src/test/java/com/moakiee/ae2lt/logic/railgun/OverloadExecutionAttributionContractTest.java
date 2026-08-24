@@ -34,25 +34,24 @@ class OverloadExecutionAttributionContractTest {
     }
 
     @Test
-    void forcedRemovalRunsCleanupLayersAndNeverNamesBossTypes() throws Exception {
+    void forcedRemovalUsesStateAwareFallbacksAndNeverNamesBossTypes() throws Exception {
         String source = Files.readString(Path.of(
                 "src/main/java/com/moakiee/ae2lt/logic/railgun/OverloadExecutionService.java"));
         String forcedRemoval = source.substring(
                 source.indexOf("private static void forceRemove("),
-                source.indexOf("private static void establishKillCredit("));
+                source.indexOf("private static void forceRemoveNonLiving("));
 
         assertTrue(forcedRemoval.contains("target.die(source)"));
         assertTrue(forcedRemoval.contains("target.kill()"));
-        assertTrue(forcedRemoval.contains("target.discard()"));
+        assertTrue(forcedRemoval.contains(
+                "needsKillFallback(target.dead, target.isRemoved())"));
+        assertFalse(forcedRemoval.contains("target.discard()"));
         assertTrue(forcedRemoval.contains("target.remove(Entity.RemovalReason.KILLED)"));
         assertTrue(forcedRemoval.contains("target.setRemoved(Entity.RemovalReason.KILLED)"));
         assertTrue(forcedRemoval.indexOf("target.die(source)")
                 < forcedRemoval.indexOf("target.kill()"));
         assertTrue(forcedRemoval.indexOf("target.kill()")
-                < forcedRemoval.indexOf("target.discard()"));
-        assertTrue(forcedRemoval.indexOf("target.discard()")
                 < forcedRemoval.indexOf("target.remove(Entity.RemovalReason.KILLED)"));
-        assertFalse(forcedRemoval.contains("if (target.isRemoved()) return"));
         assertFalse(forcedRemoval.contains("dropAllDeathLoot"));
 
         assertFalse(source.contains("EnderDragon"));
