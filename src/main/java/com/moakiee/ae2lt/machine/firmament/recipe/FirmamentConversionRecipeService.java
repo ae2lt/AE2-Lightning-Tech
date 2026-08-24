@@ -2,17 +2,17 @@ package com.moakiee.ae2lt.machine.firmament.recipe;
 
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.item.crafting.RecipeManager;
 import net.minecraft.world.level.Level;
 
 import com.moakiee.ae2lt.machine.firmament.FirmamentConversionInventory;
+import com.moakiee.ae2lt.registry.ModRecipeTypes;
+import com.moakiee.ae2lt.util.RecipeManagerByTypeAccess;
 
 public final class FirmamentConversionRecipeService {
     private static final Comparator<Map.Entry<ResourceLocation, FirmamentConversionRecipe>> RECIPE_ORDER = Comparator
@@ -25,21 +25,6 @@ public final class FirmamentConversionRecipeService {
             .thenComparing(entry -> entry.getKey().toString());
 
     private FirmamentConversionRecipeService() {
-    }
-
-    /**
-     * Indexes firmament conversion recipes by id. 1.20.1 exposes recipes without ids
-     * ({@code RecipeManager.getAllRecipesFor}), so the id map is rebuilt from
-     * {@code getRecipeIds() + byKey()}.
-     */
-    private static Map<ResourceLocation, FirmamentConversionRecipe> recipesById(RecipeManager manager) {
-        Map<ResourceLocation, FirmamentConversionRecipe> byId = new HashMap<>();
-        for (ResourceLocation id : manager.getRecipeIds().toList()) {
-            if (manager.byKey(id).orElse(null) instanceof FirmamentConversionRecipe recipe) {
-                byId.put(id, recipe);
-            }
-        }
-        return byId;
     }
 
     public static Optional<FirmamentConversionRecipeCandidate> findFirstProcessable(
@@ -55,7 +40,8 @@ public final class FirmamentConversionRecipeService {
         }
 
         List<Map.Entry<ResourceLocation, FirmamentConversionRecipe>> recipes =
-                new ArrayList<>(recipesById(level.getRecipeManager()).entrySet());
+                new ArrayList<>(RecipeManagerByTypeAccess.byType(
+                        level.getRecipeManager(), ModRecipeTypes.FIRMAMENT_CONVERSION_TYPE.get()).entrySet());
         recipes.sort(RECIPE_ORDER);
 
         for (Map.Entry<ResourceLocation, FirmamentConversionRecipe> entry : recipes) {
@@ -78,11 +64,11 @@ public final class FirmamentConversionRecipeService {
             return Optional.empty();
         }
 
-        FirmamentConversionRecipe recipe = recipesById(level.getRecipeManager()).get(recipeId);
-        if (recipe == null) {
-            return Optional.empty();
-        }
-        return Optional.of(new FirmamentConversionRecipeCandidate(recipeId, recipe, null));
+        return RecipeManagerByTypeAccess.findById(
+                        level.getRecipeManager(),
+                        ModRecipeTypes.FIRMAMENT_CONVERSION_TYPE.get(),
+                        recipeId)
+                .map(recipe -> new FirmamentConversionRecipeCandidate(recipeId, recipe, null));
     }
 
     public static Optional<FirmamentConversionRecipeCandidate> findLockedRecipeMatch(
