@@ -61,14 +61,16 @@ public final class FirmamentConversionRecipeService {
             return Optional.empty();
         }
 
-        for (RecipeHolder<FirmamentConversionRecipe> recipe
-                : level.getRecipeManager().getAllRecipesFor(ModRecipeTypes.FIRMAMENT_CONVERSION_TYPE.get())) {
-            if (recipe.id().equals(recipeId)) {
-                return Optional.of(recipe);
-            }
-        }
-
-        return Optional.empty();
+        return level.getRecipeManager()
+                .byKey(recipeId)
+                .flatMap(holder -> {
+                    var recipe = holder.value();
+                    if (!(recipe instanceof FirmamentConversionRecipe firmamentRecipe)
+                            || recipe.getType() != ModRecipeTypes.FIRMAMENT_CONVERSION_TYPE.get()) {
+                        return Optional.empty();
+                    }
+                    return Optional.of(new RecipeHolder<>(holder.id(), firmamentRecipe));
+                });
     }
 
     public static Optional<FirmamentConversionRecipeCandidate> findLockedRecipeMatch(
