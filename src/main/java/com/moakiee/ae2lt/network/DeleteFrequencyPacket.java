@@ -49,7 +49,7 @@ public record DeleteFrequencyPacket(int token, int frequencyId) {
             }
 
             manager.deleteFrequency(pkt.frequencyId, player.getServer());
-            UpdateFrequencyBasicPacket.broadcastToOpenMenus(
+            UpdateFrequencyBasicPacket.broadcastToPlayers(
                     player.getServer(), UpdateFrequencyBasicPacket.forDeletion(pkt.frequencyId));
         });
         ctx.setPacketHandled(true);

@@ -2,6 +2,7 @@ package com.moakiee.ae2lt.network;
 import java.util.function.Supplier;
 import com.moakiee.ae2lt.blockentity.AdvancedWirelessOverloadedControllerBlockEntity;
 import com.moakiee.ae2lt.blockentity.WirelessOverloadedControllerBlockEntity;
+import com.moakiee.ae2lt.grid.FrequencyDisplayName;
 import com.moakiee.ae2lt.grid.WirelessFrequencyManager;
 import com.moakiee.ae2lt.grid.wirelesslink.WirelessLinkRegistry;
 import com.moakiee.ae2lt.item.OverloadedFrequencyCardItem;
@@ -164,7 +165,7 @@ public static FrequencyCardUsePacket decode(FriendlyByteBuf buf) {
         player.displayClientMessage(
                 Component.translatable(
                                 "ae2lt.frequency_card.bound",
-                                FrequencyCardBindingMessage.displayName(frequencyId, frequency.getName()))
+                                FrequencyDisplayName.of(frequencyId, frequency.getName()))
                         .withStyle(ChatFormatting.GREEN),
                 true);
     }

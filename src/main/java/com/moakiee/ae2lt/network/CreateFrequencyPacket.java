@@ -61,7 +61,7 @@ public record CreateFrequencyPacket(
 
             var freq = manager.createFrequency(player, pkt.name, pkt.color, effectiveSecurity, pkt.password);
             if (freq != null) {
-                UpdateFrequencyBasicPacket.broadcastToOpenMenus(
+                UpdateFrequencyBasicPacket.broadcastToPlayers(
                         player.getServer(), UpdateFrequencyBasicPacket.forFrequency(freq));
                 // Push the member list to the creator immediately. The
                 // generic {@link SyncFrequencyDetailPacket#broadcastMembersTo}

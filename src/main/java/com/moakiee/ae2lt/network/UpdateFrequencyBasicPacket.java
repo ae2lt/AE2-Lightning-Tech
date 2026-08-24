@@ -6,7 +6,6 @@ import java.util.function.Supplier;
 import com.moakiee.ae2lt.client.ClientNetworkPacketHandlers;
 import com.moakiee.ae2lt.grid.FrequencySecurityLevel;
 import com.moakiee.ae2lt.grid.WirelessFrequency;
-import com.moakiee.ae2lt.menu.FrequencyMenu;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -67,13 +66,11 @@ public record UpdateFrequencyBasicPacket(
         return new UpdateFrequencyBasicPacket(frequencyId, true, "", 0, ZERO_UUID, FrequencySecurityLevel.PUBLIC);
     }
 
-    /** Push to every player with any FrequencyMenu open (list is the same for everyone). */
-    public static void broadcastToOpenMenus(MinecraftServer server, UpdateFrequencyBasicPacket pkt) {
+    /** Keep the lightweight client name cache current for card tooltips and frequency menus. */
+    public static void broadcastToPlayers(MinecraftServer server, UpdateFrequencyBasicPacket pkt) {
         if (server == null) return;
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-            if (player.containerMenu instanceof FrequencyMenu) {
-                NetworkInit.sendToPlayer(player, pkt);
-            }
+            NetworkInit.sendToPlayer(player, pkt);
         }
     }
 

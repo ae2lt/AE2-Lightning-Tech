@@ -1,6 +1,7 @@
 package com.moakiee.ae2lt.item;
 import com.moakiee.ae2lt.network.NetworkInit;
 
+import com.moakiee.ae2lt.grid.FrequencyDisplayName;
 import com.moakiee.ae2lt.network.FrequencyCardUsePacket;
 import java.util.ArrayList;
 import java.util.List;
@@ -170,7 +171,7 @@ public class OverloadedFrequencyCardItem extends UpgradeCardItem {
         String frequencyName = FMLEnvironment.dist == Dist.CLIENT
                 ? com.moakiee.ae2lt.client.FrequencyCardClientNames.frequencyName(frequencyId)
                 : null;
-        return FrequencyCardDisplayName.displayName(frequencyId, frequencyName);
+        return FrequencyDisplayName.of(frequencyId, frequencyName);
     }
 
     public static boolean hasMultipleAutoConnectCandidates(Player player) {

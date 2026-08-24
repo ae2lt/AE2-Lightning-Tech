@@ -16,6 +16,7 @@ import com.moakiee.ae2lt.blockentity.OverloadedControllerBlockEntity;
 import com.moakiee.ae2lt.blockentity.WirelessOverloadedControllerBlockEntity;
 import com.moakiee.ae2lt.config.AE2LTCommonConfig;
 import com.moakiee.ae2lt.grid.FrequencyAccessLevel;
+import com.moakiee.ae2lt.grid.FrequencyDisplayName;
 import com.moakiee.ae2lt.grid.WirelessFrequencyManager;
 import com.moakiee.ae2lt.item.OverloadedFrequencyCardItem;
 import com.moakiee.ae2lt.me.GridNodeAccess;
@@ -91,6 +92,32 @@ public final class WirelessLinkRegistry extends SavedData {
 
         public static ActionFeedback red(String key, Object... args) {
             return new ActionFeedback(key, ChatFormatting.RED, args);
+        }
+    }
+
+    /**
+     * Read-only view of the frequency-card links attached to one precisely
+     * targeted grid node. A target can be the node of a regular block, the
+     * centre cable in a cable bus, or one of the cable bus's sided parts.
+     *
+     * <p>{@code liveVirtualEntrance} is true only when that exact node owns one
+     * of the runtime virtual connections. {@code states} also contains a
+     * persisted logical entrance while it is waiting to reconnect, allowing
+     * diagnostics such as Jade to distinguish an absent entrance from a
+     * temporarily unavailable one without exposing link ownership data.</p>
+     */
+    public record InspectedTargetLink(int frequencyId, WirelessLinkState state) {
+    }
+
+    public record TargetLinkInspection(
+            boolean liveVirtualEntrance,
+            List<InspectedTargetLink> links) {
+        public TargetLinkInspection {
+            links = List.copyOf(links);
+        }
+
+        public boolean isPresent() {
+            return !links.isEmpty();
         }
     }
 
@@ -538,6 +565,62 @@ public final class WirelessLinkRegistry extends SavedData {
         return GridHelper.getNodeHost(level, pos) != null;
     }
 
+    /**
+     * Inspects the exact grid node selected by a world hit. This intentionally
+     * shares target resolution with frequency-card use, so multipart cable
+     * buses report the centre cable and each sided sub-part independently.
+     *
+     * <p>The method must be called on the server thread.</p>
+     */
+    public TargetLinkInspection inspectTarget(
+            ServerLevel level,
+            BlockPos pos,
+            @Nullable Direction face,
+            @Nullable Vec3 hitVec) {
+        var resolution = resolveTarget(level, pos, face, hitVec);
+        if (resolution.target() == null) {
+            return new TargetLinkInspection(false, List.of());
+        }
+
+        LinkTarget target = resolution.target();
+        var inspectedLinks = new ArrayList<InspectedTargetLink>();
+        var runtimeIds = runtimeLinksByAnchor.get(target.node());
+        if (runtimeIds != null) {
+            for (var linkId : runtimeIds) {
+                var link = links.get(linkId);
+                if (link != null) {
+                    inspectedLinks.add(new InspectedTargetLink(link.frequencyId(), link.state()));
+                }
+            }
+        }
+
+        String dimensionId = level.dimension().location().toString();
+        long posLong = pos.asLong();
+        for (var link : links.findAllAt(dimensionId, posLong)) {
+            if ((runtimeIds == null || !runtimeIds.contains(link.linkId()))
+                    && matchesPersistedTarget(link, target)) {
+                inspectedLinks.add(new InspectedTargetLink(link.frequencyId(), link.state()));
+            }
+        }
+        return new TargetLinkInspection(runtimeIds != null && !runtimeIds.isEmpty(), inspectedLinks);
+    }
+
+    private static boolean matchesPersistedTarget(
+            WirelessLink link,
+            LinkTarget target) {
+        if (link.mode() != target.mode()
+                || !link.blockId().equals(target.blockId())
+                || !link.blockEntityTypeId().equals(target.blockEntityTypeId())) {
+            return false;
+        }
+        if (target.mode() == WirelessLinkMode.DEVICE) {
+            return true;
+        }
+        return link.sideName().equals(target.sideName())
+                && link.partId().equals(target.partId())
+                && link.partClassName().equals(target.partClassName());
+    }
+
     private Optional<ActionFeedback> handleNativeFrequencyHost(
             ServerPlayer player,
             int frequencyId,
@@ -561,14 +644,16 @@ public final class WirelessLinkRegistry extends SavedData {
         var safety = evaluateNativeHostSafety(host, frequencyId, level.getServer());
         if (safety == NativeHostSafety.PENDING) {
             host.setFrequency(frequencyId);
-            return Optional.of(feedbackForNativeHostSafety(safety, false));
+            return Optional.of(feedbackForNativeHostSafety(safety, false, frequencyId));
         }
         if (safety != NativeHostSafety.READY) {
-            return Optional.of(feedbackForNativeHostSafety(safety, false));
+            return Optional.of(feedbackForNativeHostSafety(safety, false, frequencyId));
         }
 
         host.setFrequency(frequencyId);
-        return Optional.of(ActionFeedback.green("ae2lt.frequency_card.connected", frequencyId));
+        return Optional.of(ActionFeedback.green(
+                "ae2lt.frequency_card.connected",
+                frequencyDisplayName(frequencyId)));
     }
 
     private ActionFeedback connectOrDisconnectTarget(
@@ -619,7 +704,9 @@ public final class WirelessLinkRegistry extends SavedData {
                     pos.asLong(),
                     target));
             reconcileClusterComponent(component, level.getServer());
-            return ActionFeedback.green("ae2lt.frequency_card.disconnected_conflicting_frequency", frequencyId);
+            return ActionFeedback.green(
+                    "ae2lt.frequency_card.disconnected_conflicting_frequency",
+                    FrequencyDisplayName.of(frequencyId, frequency.getName()));
         }
 
         if (!sameFrequencyLinks.isEmpty()) {
@@ -667,7 +754,9 @@ public final class WirelessLinkRegistry extends SavedData {
                 level.getServer());
 
         if (updated.state() == WirelessLinkState.CONNECTED) {
-            return ActionFeedback.green("ae2lt.frequency_card.connected", frequencyId);
+            return ActionFeedback.green(
+                    "ae2lt.frequency_card.connected",
+                    FrequencyDisplayName.of(frequencyId, frequency.getName()));
         }
         return ActionFeedback.yellow("ae2lt.frequency_card.pending");
     }
@@ -1144,22 +1233,29 @@ public final class WirelessLinkRegistry extends SavedData {
             var safety = evaluateNativeHostSafety(host, frequencyId, level.getServer());
             if (safety == NativeHostSafety.PENDING) {
                 host.setFrequency(frequencyId);
-                return Optional.of(feedbackForNativeHostSafety(safety, true));
+                return Optional.of(feedbackForNativeHostSafety(safety, true, frequencyId));
             }
             if (safety != NativeHostSafety.READY) {
-                return Optional.of(feedbackForNativeHostSafety(safety, true));
+                return Optional.of(feedbackForNativeHostSafety(safety, true, frequencyId));
             }
             host.setFrequency(frequencyId);
-            return Optional.of(ActionFeedback.green("ae2lt.frequency_card.connected", frequencyId));
+            return Optional.of(ActionFeedback.green(
+                    "ae2lt.frequency_card.connected",
+                    frequencyDisplayName(frequencyId)));
         }
         return Optional.of(currentFrequency == frequencyId
                 ? ActionFeedback.green("ae2lt.frequency_card.auto_silent_skip")
                 : ActionFeedback.red("ae2lt.frequency_card.other_frequency"));
     }
 
-    private ActionFeedback feedbackForNativeHostSafety(NativeHostSafety safety, boolean automatic) {
+    private ActionFeedback feedbackForNativeHostSafety(
+            NativeHostSafety safety,
+            boolean automatic,
+            int frequencyId) {
         return switch (safety) {
-            case READY -> ActionFeedback.green("ae2lt.frequency_card.connected");
+            case READY -> ActionFeedback.green(
+                    "ae2lt.frequency_card.connected",
+                    frequencyDisplayName(frequencyId));
             case PENDING -> ActionFeedback.yellow("ae2lt.frequency_card.pending");
             case ALREADY_IN_FREQUENCY -> automatic
                     ? ActionFeedback.green("ae2lt.frequency_card.auto_silent_skip")
@@ -1168,6 +1264,12 @@ public final class WirelessLinkRegistry extends SavedData {
                     ? ActionFeedback.green("ae2lt.frequency_card.auto_silent_skip")
                     : ActionFeedback.red("ae2lt.frequency_card.controller_conflict");
         };
+    }
+
+    private static String frequencyDisplayName(int frequencyId) {
+        var manager = WirelessFrequencyManager.get();
+        var frequency = manager == null ? null : manager.getFrequency(frequencyId);
+        return FrequencyDisplayName.of(frequencyId, frequency == null ? null : frequency.getName());
     }
 
     private static boolean matchesExpectedPlacedPart(

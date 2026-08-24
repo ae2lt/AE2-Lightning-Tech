@@ -267,6 +267,9 @@ public final class FrequencyBindingHelper
         IGridNode remoteNode = manager == null
                 ? null
                 : manager.resolveNode(frequencyId, serverLevel.getServer());
+        if (myNode == null || remoteNode == null) {
+            return false;
+        }
         boolean alreadyInFrequencyGrid = isAlreadyInFrequencyGrid(myNode, remoteNode);
         return hasEffectiveConnection(
                 false,
