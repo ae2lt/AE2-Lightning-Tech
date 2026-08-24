@@ -36,7 +36,7 @@ public final class LightningAssemblyChamberLogic extends AbstractGridRecipeMachi
             case 1 -> 2_000L;
             case 2 -> 10_000L;
             case 3 -> 50_000L;
-            default -> 200_000L;
+            default -> 500_000L;
         };
     }
 

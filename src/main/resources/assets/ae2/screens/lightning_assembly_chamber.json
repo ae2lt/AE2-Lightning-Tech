@@ -45,11 +45,11 @@
     },
     "processOverlay": {
       "texture": "ae2lt:textures/guis/lightning_assembly_chamber.png",
-      "srcRect": [177, 48, 50, 46]
+      "srcRect": [176, 18, 31, 10]
     }
   },
   "widgets": {
-    "processArea": { "left": 83, "top": 22 },
+    "processArea": { "left": 85, "top": 52 },
     "energyBar": { "left": 148, "top": 48 },
     "lightningStatus": { "left": 156, "top": 4 }
   }
