@@ -37,19 +37,38 @@ body:
       required: true
 
   - type: dropdown
+    id: target-environment
+    attributes:
+      label: 目标环境 (Target environment)
+      description: 请选择建议适用的版本；若不依赖版本请选择全部支持版本。 / Select the version this request targets, or all supported versions if it is version-independent.
+      options:
+        - 全部支持版本 / All supported versions
+        - Minecraft 1.21.1 / NeoForge
+        - Minecraft 1.20.1 / Forge
+        - 其他 / Other
+    validations:
+      required: true
+
+  - type: dropdown
     id: affected-area
     attributes:
       label: 相关模块 (Affected area)
+      description: 请选择建议最主要涉及的模块。 / Select the area most directly related to the request.
       options:
-        - 闪电能源系统 / Lightning energy system
-        - 闪电机器 / Lightning machines
-        - 过载水晶 / Overload crystals
-        - 过载 ME 网络 / Overloaded ME network
-        - 无线频率系统 / Wireless frequency system
-        - 样板编码器或样板供应器 / Pattern encoder or pattern provider
-        - 配方、战利品或数据包 / Recipes, loot, or datapacks
-        - 指南书或文本 / Guidebook or localization
-        - Addon API 或模组联动 / Addon API or integration
+        - 安装、启动、配置或更新 / Installation, startup, configuration, or updating
+        - 闪电收集与存储 / Lightning collection and storage
+        - 加工机器 / Processing machines
+        - 材料与物品、配方或世界生成 / Materials and items, recipes, or world generation
+        - 过载网络（控制器、线缆、接口等） / Overloaded network (controller, cables, interfaces, etc.)
+        - 无线网络与过载频率卡 / Wireless network and Overloaded Frequency Card
+        - 样板编码器、样板供应器与自动合成 / Pattern encoders, pattern providers, and autocrafting
+        - 天枢超算阵列与闭环合成 / Tianshu Supercomputing Array and closed-loop crafting
+        - 天枢物质扭曲矩阵 / Tianshu Matter Warping Matrix
+        - 过载设备（苍穹织雷、电磁炮与模块） / Overload devices (Celestweave, electromagnetic railgun, and modules)
+        - 猪咪科技（猪咪、口算单元与存储） / Pigmee tech (Pigmee, Mentalmath Unit, and storage)
+        - 界面、渲染或音效 / UI, rendering, or audio
+        - 指南书或翻译 / Guidebook or translation
+        - 模组联动或 Addon API / Mod integration or Addon API
         - 其他 / Other
     validations:
       required: true

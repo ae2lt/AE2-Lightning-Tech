@@ -29,20 +29,23 @@ body:
       required: true
 
   - type: dropdown
-    id: minecraft-version
+    id: game-environment
     attributes:
-      label: Minecraft 版本 (Minecraft version)
+      label: 游戏环境 (Game environment)
+      description: 请选择 Minecraft 版本与对应的模组加载器。 / Select the Minecraft version and its corresponding mod loader.
       options:
-        - "1.21.1"
+        - "Minecraft 1.21.1 / NeoForge"
+        - "Minecraft 1.20.1 / Forge"
         - "其他 / Other"
     validations:
       required: true
 
   - type: input
-    id: neoforge-version
+    id: mod-loader-version
     attributes:
-      label: NeoForge 版本 (NeoForge version)
-      placeholder: "例如 / Example: 21.1.219"
+      label: 模组加载器版本 (Mod loader version)
+      description: 填写完整的 Forge 或 NeoForge 版本。 / Enter the full Forge or NeoForge version.
+      placeholder: "例如 / Example: NeoForge 21.1.220 or Forge 47.1.47"
     validations:
       required: true
 
@@ -50,7 +53,7 @@ body:
     id: ae2lt-version
     attributes:
       label: AE2 Lightning Tech 版本 (AE2 Lightning Tech version)
-      placeholder: "例如 / Example: 1.0.19"
+      placeholder: "例如 / Example: 2.1.0-beta.1"
     validations:
       required: true
 
@@ -86,11 +89,36 @@ body:
     id: minimal-reproduction
     attributes:
       label: 最小复现情况 (Minimal reproduction)
-      description: 是否能在只保留 AE2LT、AE2、NeoForge 和相关模组的实例中复现？ / Can it be reproduced with only AE2LT, AE2, NeoForge, and the related mod?
+      description: 是否能在只保留 AE2LT、AE2、所选模组加载器和相关模组的实例中复现？ / Can it be reproduced with only AE2LT, AE2, the selected mod loader, and the related mod?
       options:
         - 可以复现 / Reproduces with only relevant mods
         - 只在整合包中复现 / Only reproduces in a modpack
         - 还没有测试 / Not tested yet
+    validations:
+      required: true
+
+  - type: dropdown
+    id: affected-area
+    attributes:
+      label: 相关模块 (Affected area)
+      description: 请选择兼容性问题影响最直接的模块。 / Select the area most directly affected by the compatibility issue.
+      options:
+        - 安装、启动、配置或更新 / Installation, startup, configuration, or updating
+        - 闪电收集与存储 / Lightning collection and storage
+        - 加工机器 / Processing machines
+        - 材料与物品、配方或世界生成 / Materials and items, recipes, or world generation
+        - 过载网络（控制器、线缆、接口等） / Overloaded network (controller, cables, interfaces, etc.)
+        - 无线网络与过载频率卡 / Wireless network and Overloaded Frequency Card
+        - 样板编码器、样板供应器与自动合成 / Pattern encoders, pattern providers, and autocrafting
+        - 天枢超算阵列与闭环合成 / Tianshu Supercomputing Array and closed-loop crafting
+        - 天枢物质扭曲矩阵 / Tianshu Matter Warping Matrix
+        - 过载设备（苍穹织雷、电磁炮与模块） / Overload devices (Celestweave, electromagnetic railgun, and modules)
+        - 猪咪科技（猪咪、口算单元与存储） / Pigmee tech (Pigmee, Mentalmath Unit, and storage)
+        - 界面、渲染或音效 / UI, rendering, or audio
+        - 指南书或翻译 / Guidebook or translation
+        - 模组联动或 Addon API / Mod integration or Addon API
+        - 不确定 / Not sure
+        - 其他 / Other
     validations:
       required: true
 
