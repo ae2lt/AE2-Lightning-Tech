@@ -22,6 +22,7 @@ import com.moakiee.ae2lt.item.OverloadedFrequencyCardItem;
 import com.moakiee.thunderbolt.api.channel.ChannelSourceRegistry;
 import com.moakiee.thunderbolt.core.channel.HighCapacityChannelSupport;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
@@ -282,8 +283,16 @@ public final class WirelessLinkRegistry extends SavedData {
         instance = server.overworld().getDataStorage().computeIfAbsent(
                 new SavedData.Factory<>(WirelessLinkRegistry::new, WirelessLinkRegistry::new),
                 DATA_NAME);
-        for (var link : instance.links.values()) {
-            instance.registerDevice(link);
+        var manager = WirelessFrequencyManager.get();
+        for (var link : List.copyOf(instance.links.values())) {
+            if (manager != null && manager.isFrequencyValid(link.frequencyId())) {
+                instance.registerDevice(link);
+            } else {
+                // Repair orphaned links left by older versions. Do this before
+                // registering devices so a deleted frequency cannot reappear in
+                // the connection index after a server restart.
+                instance.removeLink(link);
+            }
         }
     }
 
@@ -309,6 +318,49 @@ public final class WirelessLinkRegistry extends SavedData {
     @Nullable
     public static WirelessLinkRegistry get() {
         return instance;
+    }
+
+    /**
+     * Permanently removes every frequency-card link owned by a deleted
+     * frequency. This runs synchronously on the server thread so no later tick
+     * can observe the frequency as deleted while its virtual entrances remain
+     * connected.
+     *
+     * @return the number of persisted links removed
+     */
+    public int removeFrequencyLinks(int frequencyId) {
+        if (frequencyId <= 0) {
+            return 0;
+        }
+
+        var frequencyLinks = List.copyOf(links.findAllForFrequency(frequencyId));
+        var removedLinkIds = new LinkedHashSet<UUID>();
+        for (var link : frequencyLinks) {
+            removedLinkIds.add(link.linkId());
+        }
+
+        // A topology change snapshots link inheritance for a delayed reconcile.
+        // Drop those snapshots before removing the live records; otherwise the
+        // reconcile can recreate a link for the just-deleted frequency.
+        discardPendingFrequencyInheritance(frequencyId, removedLinkIds);
+
+        return removeLinks(frequencyLinks);
+    }
+
+    private void discardPendingFrequencyInheritance(int frequencyId, Set<UUID> removedLinkIds) {
+        for (var pending : pendingClusterReconciles.values()) {
+            var removedInheritedSourceIds = new LinkedHashSet<UUID>();
+            pending.inheritedSeeds.removeIf(seed -> {
+                var inheritance = seed.inheritance();
+                if (inheritance != null && inheritance.frequencyId() == frequencyId) {
+                    removedInheritedSourceIds.add(inheritance.sourceLinkId());
+                    return true;
+                }
+                return false;
+            });
+            pending.sourceLinkIds.removeAll(removedLinkIds);
+            pending.sourceLinkIds.removeAll(removedInheritedSourceIds);
+        }
     }
 
     public void queueAutoConnect(ServerPlayer player, ResourceKey<Level> dimension, BlockPos pos, @Nullable Direction side, int delayTicks) {
@@ -1054,8 +1106,26 @@ public final class WirelessLinkRegistry extends SavedData {
             return;
         }
 
-        var allInheritance = new ArrayList<LinkInheritance>(component.inheritedLinks);
+        // Delayed topology work must never revive an inheritance snapshot after
+        // its frequency was deleted. Also remove any orphan that reached this
+        // path through an old save or an unexpected deletion caller.
+        var manager = WirelessFrequencyManager.get();
+        var validExisting = new ArrayList<WirelessLink>(existing.size());
         for (var link : existing) {
+            if (manager != null && manager.isFrequencyValid(link.frequencyId())) {
+                validExisting.add(link);
+            } else if (links.contains(link.linkId())) {
+                removeLink(link);
+            }
+        }
+
+        var allInheritance = new ArrayList<LinkInheritance>();
+        for (var inheritance : component.inheritedLinks) {
+            if (manager != null && manager.isFrequencyValid(inheritance.frequencyId())) {
+                allInheritance.add(inheritance);
+            }
+        }
+        for (var link : validExisting) {
             allInheritance.add(LinkInheritance.from(link));
         }
         long distinctFrequencies = allInheritance.stream()
@@ -1068,13 +1138,13 @@ public final class WirelessLinkRegistry extends SavedData {
                             + "suspending all frequency entrances until the physical cluster is split "
                             + "or one frequency is explicitly disconnected");
             long now = currentGameTime(server);
-            for (var link : existing) {
+            for (var link : validExisting) {
                 destroyRuntimeConnection(link, resolveRuntimeTargetNode(link));
                 if (links.contains(link.linkId())) {
                     links.put(link.withState(WirelessLinkState.CLUSTER_FREQUENCY_CONFLICT, now));
                 }
             }
-            if (!existing.isEmpty()) {
+            if (!validExisting.isEmpty()) {
                 setDirty();
             }
             return;
@@ -1088,11 +1158,11 @@ public final class WirelessLinkRegistry extends SavedData {
             return;
         }
 
-        var keep = existing.stream()
+        var keep = validExisting.stream()
                 .filter(link -> link.frequencyId() == winner.frequencyId())
                 .min(LINK_PREFERENCE)
                 .orElse(null);
-        for (var link : existing) {
+        for (var link : validExisting) {
             if (keep == null || !link.linkId().equals(keep.linkId())) {
                 if (links.contains(link.linkId())) {
                     removeLink(link);
@@ -1556,10 +1626,48 @@ public final class WirelessLinkRegistry extends SavedData {
     }
 
     private void removeLink(WirelessLink link) {
-        destroyRuntimeConnection(link, resolveRuntimeTargetNode(link));
-        links.remove(link.linkId());
-        unregisterDevice(link);
-        setDirty();
+        removeLinks(List.of(link));
+    }
+
+    /**
+     * Bulk removal intentionally tears down indexed runtime entrances first and
+     * sweeps the reverse anchor index only once. Deleting a large frequency must
+     * not turn into one full anchor-map scan (or chunk lookup) per link.
+     */
+    private int removeLinks(Collection<WirelessLink> candidates) {
+        var removedLinkIds = new LinkedHashSet<UUID>();
+        int removed = 0;
+        for (var candidate : candidates) {
+            var current = links.get(candidate.linkId());
+            if (current == null) {
+                continue;
+            }
+            destroyIndexedRuntimeConnections(current);
+            if (links.remove(current.linkId()) != null) {
+                removedLinkIds.add(current.linkId());
+                unregisterDevice(current);
+                removed++;
+            }
+        }
+        if (removed > 0) {
+            unregisterRuntimeAnchors(removedLinkIds);
+            setDirty();
+        }
+        return removed;
+    }
+
+    private void destroyIndexedRuntimeConnections(WirelessLink link) {
+        var runtime = runtimeConnections.remove(link.linkId());
+        pendingChannelExpansion.remove(link.linkId());
+        if (runtime == null) {
+            return;
+        }
+        for (var entry : new ArrayList<>(runtime.entries())) {
+            var anchor = entry.getKey();
+            unregisterRuntimeAnchor(link.linkId(), anchor);
+            WirelessLinkOps.destroy(entry.getValue(), anchor);
+            MultiblockLinkReadiness.refreshAfterVirtualConnectionRemoved(anchor);
+        }
     }
 
     private void destroyRuntimeConnection(WirelessLink link, @Nullable IGridNode targetNode) {
@@ -1601,6 +1709,20 @@ public final class WirelessLinkRegistry extends SavedData {
         while (iterator.hasNext()) {
             var entry = iterator.next();
             entry.getValue().remove(linkId);
+            if (entry.getValue().isEmpty()) {
+                iterator.remove();
+            }
+        }
+    }
+
+    private void unregisterRuntimeAnchors(Set<UUID> linkIds) {
+        if (linkIds.isEmpty()) {
+            return;
+        }
+        var iterator = runtimeLinksByAnchor.entrySet().iterator();
+        while (iterator.hasNext()) {
+            var entry = iterator.next();
+            entry.getValue().removeAll(linkIds);
             if (entry.getValue().isEmpty()) {
                 iterator.remove();
             }

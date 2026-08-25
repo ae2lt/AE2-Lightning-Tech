@@ -8,12 +8,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 
 final class WirelessLinkIndex {
     private static final int MIN_TOMBSTONES_BEFORE_COMPACT = 128;
 
     private final Map<UUID, WirelessLink> byId = new LinkedHashMap<>();
+    private final Int2ObjectOpenHashMap<LinkedHashMap<UUID, WirelessLink>> byFrequency =
+            new Int2ObjectOpenHashMap<>();
     private final Map<String, Long2ObjectOpenHashMap<LinkedHashMap<UUID, WirelessLink>>> byPosition =
             new HashMap<>();
     private final List<UUID> orderedIds = new ArrayList<>();
@@ -37,6 +40,11 @@ final class WirelessLinkIndex {
         return byId.values();
     }
 
+    Collection<WirelessLink> findAllForFrequency(int frequencyId) {
+        var matches = byFrequency.get(frequencyId);
+        return matches == null ? List.of() : matches.values();
+    }
+
     List<WirelessLink> findAllInDimension(String dimensionId) {
         var matches = new ArrayList<WirelessLink>();
         for (var link : byId.values()) {
@@ -58,6 +66,7 @@ final class WirelessLinkIndex {
 
     void clear() {
         byId.clear();
+        byFrequency.clear();
         byPosition.clear();
         orderedIds.clear();
         cursor = 0;
@@ -66,10 +75,16 @@ final class WirelessLinkIndex {
 
     void put(WirelessLink link) {
         var previous = byId.put(link.linkId(), link);
+        if (previous != null && previous.frequencyId() != link.frequencyId()) {
+            removeFromFrequencyIndex(previous);
+        }
         if (previous != null && (!previous.dimensionId().equals(link.dimensionId())
                 || previous.posLong() != link.posLong())) {
             removeFromPositionIndex(previous);
         }
+        byFrequency
+                .computeIfAbsent(link.frequencyId(), ignored -> new LinkedHashMap<>())
+                .put(link.linkId(), link);
         byPosition
                 .computeIfAbsent(link.dimensionId(), ignored -> new Long2ObjectOpenHashMap<>())
                 .computeIfAbsent(link.posLong(), ignored -> new LinkedHashMap<>())
@@ -84,10 +99,22 @@ final class WirelessLinkIndex {
         if (removed == null) {
             return null;
         }
+        removeFromFrequencyIndex(removed);
         removeFromPositionIndex(removed);
         tombstones++;
         compactOrderIfNeeded();
         return removed;
+    }
+
+    private void removeFromFrequencyIndex(WirelessLink link) {
+        var matches = byFrequency.get(link.frequencyId());
+        if (matches == null) {
+            return;
+        }
+        matches.remove(link.linkId());
+        if (matches.isEmpty()) {
+            byFrequency.remove(link.frequencyId());
+        }
     }
 
     private void removeFromPositionIndex(WirelessLink link) {

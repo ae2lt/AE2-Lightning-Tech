@@ -78,6 +78,48 @@ class WirelessClusterAnchorPersistenceTest {
     }
 
     @Test
+    void frequencyIndexTracksUpdatesMovesAndRemovals() {
+        UUID linkId = UUID.randomUUID();
+        UUID ownerId = UUID.randomUUID();
+        var original = WirelessLink.createDevice(
+                linkId,
+                7,
+                "minecraft:overworld",
+                88L,
+                "ae2:interface",
+                "ae2:interface",
+                ownerId,
+                1L);
+        var moved = WirelessLink.createDevice(
+                linkId,
+                9,
+                "minecraft:overworld",
+                88L,
+                "ae2:interface",
+                "ae2:interface",
+                ownerId,
+                1L);
+        var index = new WirelessLinkIndex();
+
+        index.put(original);
+        index.put(original.withState(WirelessLinkState.CONNECTED, 2L));
+
+        assertEquals(1, index.findAllForFrequency(7).size());
+        assertEquals(
+                WirelessLinkState.CONNECTED,
+                index.findAllForFrequency(7).iterator().next().state());
+
+        index.put(moved);
+
+        assertTrue(index.findAllForFrequency(7).isEmpty());
+        assertEquals(1, index.findAllForFrequency(9).size());
+
+        index.remove(linkId);
+
+        assertTrue(index.findAllForFrequency(9).isEmpty());
+    }
+
+    @Test
     void clusterFrequencyConflictSurvivesSaveAndReload() {
         var conflicted = WirelessLink.createDevice(
                         UUID.randomUUID(),

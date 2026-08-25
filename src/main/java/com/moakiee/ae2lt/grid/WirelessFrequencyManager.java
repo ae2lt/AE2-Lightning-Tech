@@ -27,6 +27,7 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.saveddata.SavedData;
 
 import appeng.api.networking.IGridNode;
+import com.moakiee.ae2lt.grid.wirelesslink.WirelessLinkRegistry;
 
 /**
  * Global registry of wireless frequencies and their transmitters.
@@ -162,6 +163,15 @@ public final class WirelessFrequencyManager extends SavedData {
     public boolean deleteFrequency(int id, MinecraftServer server) {
         WirelessFrequency removed = frequencies.remove(id);
         if (removed != null) {
+            // The frequency is already invalid at this point. Purge all
+            // frequency-card links before clearing the transmitter so the link
+            // registry can destroy and untrack its own virtual entrances while
+            // the controller node is still available.
+            var linkRegistry = WirelessLinkRegistry.get();
+            if (linkRegistry != null) {
+                linkRegistry.removeFrequencyLinks(id);
+            }
+
             // clear controller binding if transmitter is loaded
             TransmitterEntry txEntry = transmitters.get(id);
             if (txEntry != null && server != null) {
