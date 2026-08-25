@@ -262,7 +262,18 @@ tasks.named('processResources', ProcessResources).configure {
     // exploded development mod only exposes compiled classes and processed resources. Copy the
     // generated refmap so dev runs exercise the same remapped selectors as a published build.
     dependsOn compileJava
-    from(layout.buildDirectory.file("tmp/compileJava/${mod_id}.refmap.json"))
+    // MixinGradle 0.7.x writes the annotation-processor output as compileJava-refmap.json.
+    // Rename it to the name declared by every AE2LT mixin config before it enters resources;
+    // otherwise the published jar contains the mixin classes but no usable refmap.
+    def generatedRefmap = layout.buildDirectory.file("tmp/compileJava/compileJava-refmap.json")
+    from(generatedRefmap) {
+        rename { "${mod_id}.refmap.json" }
+    }
+    doFirst {
+        if (!generatedRefmap.get().asFile.isFile()) {
+            throw new GradleException("Missing generated Mixin refmap: ${generatedRefmap.get().asFile}")
+        }
+    }
 
     var replaceProperties = [
             minecraft_version: minecraft_version,
