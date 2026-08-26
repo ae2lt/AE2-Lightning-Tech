@@ -204,9 +204,8 @@ public class FirmamentConversionCoreBlockEntity extends BlockEntity {
 
         initialLootRolled = true;
         if (random.nextBoolean()) {
-            inventory.setStackInSlot(
-                    FirmamentConversionInventory.SLOT_OUTPUT_0,
-                    new ItemStack(ModItems.INACTIVE_FIRMAMENT_SPIRIT_CORE.get()));
+            inventory.insertRecipeOutput(
+                    new ItemStack(ModItems.INACTIVE_FIRMAMENT_SPIRIT_CORE.get()), false);
         }
         setChanged();
     }
