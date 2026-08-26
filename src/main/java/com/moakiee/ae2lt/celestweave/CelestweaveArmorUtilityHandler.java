@@ -68,6 +68,9 @@ public final class CelestweaveArmorUtilityHandler {
         if (removedArmor.isEmpty() || !(removedArmor.getItem() instanceof BaseCelestweaveArmorItem)) {
             return;
         }
+        if (PhaseLockService.keepsLogicallyEquipped(player, event.getSlot(), removedArmor)) {
+            return;
+        }
         if (!PhaseFlightArmorRemovalRules.shouldDeactivateRemovedArmor(
                 CelestweaveArmorState.getArmorId(removedArmor),
                 celestweaveArmorId(event.getTo()))) {

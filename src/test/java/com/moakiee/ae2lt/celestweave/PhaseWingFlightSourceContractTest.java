@@ -25,6 +25,19 @@ final class PhaseWingFlightSourceContractTest {
     }
 
     @Test
+    void phaseLockTransferDoesNotDeactivateLogicallyEquippedFlightArmor() throws Exception {
+        String handler = read(
+                "src/main/java/com/moakiee/ae2lt/celestweave/CelestweaveArmorUtilityHandler.java");
+        String service = read(
+                "src/main/java/com/moakiee/ae2lt/celestweave/phase/PhaseLockService.java");
+
+        assertTrue(handler.contains("PhaseLockService.keepsLogicallyEquipped"));
+        assertTrue(service.contains("TRANSFERRING_PLAYERS"));
+        assertTrue(service.contains("privateArmor == removedArmor"));
+        assertTrue(service.contains("removedId.equals(privateId)"));
+    }
+
+    @Test
     void remoteGlideNeverUsesTheObservingPlayersFlightCache() throws Exception {
         String wing = read("src/main/java/com/moakiee/ae2lt/celestweave/PhaseWingFlight.java");
 

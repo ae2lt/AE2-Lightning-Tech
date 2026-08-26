@@ -3,7 +3,9 @@ package com.moakiee.ae2lt.celestweave.phase;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BooleanSupplier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
@@ -32,6 +34,7 @@ public final class PhaseLockService {
             EquipmentSlot.CHEST,
             EquipmentSlot.LEGS,
             EquipmentSlot.FEET);
+    private static final Set<UUID> TRANSFERRING_PLAYERS = ConcurrentHashMap.newKeySet();
 
     private PhaseLockService() {
     }
@@ -148,6 +151,23 @@ public final class PhaseLockService {
         return armor == null ? ItemStack.EMPTY : armor;
     }
 
+    /** True while an armor stack remains logically equipped across a vanilla-slot transfer. */
+    public static boolean keepsLogicallyEquipped(
+            ServerPlayer player,
+            EquipmentSlot slot,
+            ItemStack removedArmor) {
+        if (TRANSFERRING_PLAYERS.contains(player.getUUID())) {
+            return true;
+        }
+        ItemStack privateArmor = getPrivateArmor(player, slot);
+        if (privateArmor == removedArmor) {
+            return true;
+        }
+        UUID removedId = CelestweaveArmorState.getArmorId(removedArmor);
+        UUID privateId = CelestweaveArmorState.getArmorId(privateArmor);
+        return removedId != null && removedId.equals(privateId);
+    }
+
     /** Explicit release path, also used when the module is disabled through the Device Hub. */
     public static boolean release(ServerPlayer player) {
         return release(player, false);
@@ -198,6 +218,15 @@ public final class PhaseLockService {
             return;
         }
 
+        TRANSFERRING_PLAYERS.add(player.getUUID());
+        try {
+            transferIntoVault(player, vault);
+        } finally {
+            TRANSFERRING_PLAYERS.remove(player.getUUID());
+        }
+    }
+
+    private static void transferIntoVault(ServerPlayer player, PhaseArmorVaultSavedData vault) {
         clearPlayerProjections(player);
         var armorToLock = new EnumMap<EquipmentSlot, ItemStack>(EquipmentSlot.class);
         for (EquipmentSlot slot : ARMOR_SLOTS) {
@@ -227,21 +256,26 @@ public final class PhaseLockService {
             ServerPlayer player,
             PhaseArmorVaultSavedData vault) {
         EnumSet<EquipmentSlot> newlyLocked = EnumSet.noneOf(EquipmentSlot.class);
-        for (EquipmentSlot slot : ARMOR_SLOTS) {
-            if (vault.contains(player.getUUID(), slot)) {
-                continue;
+        TRANSFERRING_PLAYERS.add(player.getUUID());
+        try {
+            for (EquipmentSlot slot : ARMOR_SLOTS) {
+                if (vault.contains(player.getUUID(), slot)) {
+                    continue;
+                }
+                ItemStack armor = player.getItemBySlot(slot);
+                if (!isRealArmorForSlot(armor, slot)) {
+                    continue;
+                }
+                player.setItemSlot(slot, ItemStack.EMPTY); // equipment source is cleared first
+                if (!vault.store(player.getUUID(), slot, armor)) {
+                    player.setItemSlot(slot, armor);
+                    continue;
+                }
+                player.setItemSlot(slot, createProjection(player, slot, armor));
+                newlyLocked.add(slot);
             }
-            ItemStack armor = player.getItemBySlot(slot);
-            if (!isRealArmorForSlot(armor, slot)) {
-                continue;
-            }
-            player.setItemSlot(slot, ItemStack.EMPTY); // equipment source is cleared first
-            if (!vault.store(player.getUUID(), slot, armor)) {
-                player.setItemSlot(slot, armor);
-                continue;
-            }
-            player.setItemSlot(slot, createProjection(player, slot, armor));
-            newlyLocked.add(slot);
+        } finally {
+            TRANSFERRING_PLAYERS.remove(player.getUUID());
         }
         if (!newlyLocked.isEmpty()) {
             ArmorCapabilityCollector.clearCache(player);
