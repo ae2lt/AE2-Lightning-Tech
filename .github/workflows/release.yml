@@ -1,0 +1,114 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  build:
+    name: Build release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    env:
+      TAG: ${{ github.event.release.tag_name }}
+      GITHUB_ACTOR: ${{ github.actor }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GITHUB_PACKAGES_TOKEN: ${{ secrets.GITHUB_PACKAGES_TOKEN || secrets.GITHUB_TOKEN }}
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Resolve release version
+        id: version
+        shell: bash
+        run: |
+          VERSION="$(./gradlew --no-daemon -q printProjectVersion)"
+          EXPECTED="${TAG#v}"
+          test "$VERSION" = "$EXPECTED"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      # Match AE2's release workflow: release packaging is independent from the
+      # timing-sensitive verification suite. Run the full suite in PR/branch CI.
+      - name: Build release
+        run: ./gradlew --no-daemon clean build -x check --max-workers 1
+
+      - name: Prepare distributable JAR
+        shell: bash
+        run: |
+          rm -rf release-artifacts
+          mkdir -p release-artifacts
+          mapfile -t jars < <(find build/libs -maxdepth 1 -type f -name '*.jar' \
+            ! -name '*-sources.jar' ! -name '*-javadoc.jar' ! -name '*-slim.jar' | sort)
+          if [ "${#jars[@]}" -ne 1 ]; then
+            printf 'Expected exactly one distributable JAR, found %s:\n' "${#jars[@]}"
+            printf '  %s\n' "${jars[@]}"
+            exit 1
+          fi
+          cp "${jars[0]}" release-artifacts/
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-artifacts
+          path: release-artifacts/*.jar
+          if-no-files-found: error
+          retention-days: 3
+
+  upload-github-release:
+    name: Upload GitHub Release asset
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      TAG: ${{ github.event.release.tag_name }}
+    steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: release-artifacts
+          path: release-artifacts
+
+      - name: Upload JAR to GitHub Release
+        shell: bash
+        run: gh release upload "$TAG" release-artifacts/*.jar --repo "$GITHUB_REPOSITORY" --clobber
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish-platforms:
+    name: Publish to CurseForge and Modrinth
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: release-artifacts
+          path: release-artifacts
+
+      - name: Publish mod files
+        uses: Kira-NT/mc-publish@52307b03863581dec6b652b83e597aec02ebb075 # v3.3.1
+        with:
+          modrinth-id: ArHeh5Fz
+          modrinth-token: ${{ secrets.MODRINTH_TOKEN || secrets.MODRINTH }}
+          curseforge-id: 1527395
+          curseforge-token: ${{ secrets.CURSEFORGE_TOKEN || secrets.CURSEFORGE }}
+          files: release-artifacts/*.jar
+          name: AE2 Lightning Tech ${{ needs.build.outputs.version }}
+          version: ${{ needs.build.outputs.version }}
+          changelog: ${{ github.event.release.body }}

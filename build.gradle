@@ -5,11 +5,36 @@ plugins {
     id 'net.neoforged.moddev' version '2.0.140'
 }
 
-version = mod_version
+def releaseTag = System.getenv('TAG')?.trim()
+if (releaseTag) {
+    if (!releaseTag.startsWith('v')) {
+        throw new GradleException("Release tags must start with v: ${releaseTag}")
+    }
+    version = releaseTag.substring(1)
+} else {
+    version = mod_version
+}
+def resolvedProjectVersion = project.version.toString()
 group = mod_group_id
+
+def githubPackagesUser = System.getenv('GITHUB_ACTOR') ?: project.findProperty('gpr.user')
+def githubPackagesToken = System.getenv('GITHUB_PACKAGES_TOKEN') ?: System.getenv('GITHUB_TOKEN') ?: project.findProperty('gpr.key')
 
 repositories {
     mavenLocal()
+    if (githubPackagesUser && githubPackagesToken) {
+        maven {
+            name = 'ThunderboltGitHubPackages'
+            url = uri('https://maven.pkg.github.com/ae2lt/Thunderbolt-Core')
+            credentials {
+                username = githubPackagesUser
+                password = githubPackagesToken
+            }
+            content {
+                includeGroup 'com.moakiee.thunderbolt'
+            }
+        }
+    }
     mavenCentral()
     maven {
         name = "Sleeping Town"
@@ -57,6 +82,14 @@ repositories {
 
 base {
     archivesName = mod_id
+}
+
+tasks.register('printProjectVersion') {
+    group = 'help'
+    description = 'Prints the version used for this build.'
+    doLast {
+        println resolvedProjectVersion
+    }
 }
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
@@ -204,9 +237,9 @@ dependencies {
     // Thunderbolt Core — the extracted AE2 infrastructure layer (fast crafting planner,
     // channel/batch/cell/matrix algorithms). Provided at runtime as a separate mod jar in the modpack,
     // so compileOnly here. Published to mavenLocal via `./gradlew publishToMavenLocal` in Thunderbolt Core.
-    compileOnly "com.moakiee.thunderbolt:thunderbolt:2.0.0-beta.1"
-    runtimeOnly "com.moakiee.thunderbolt:thunderbolt:2.0.0-beta.1"
-    testRuntimeOnly "com.moakiee.thunderbolt:thunderbolt:2.0.0-beta.1"
+    compileOnly "com.moakiee.thunderbolt:thunderbolt:${thunderbolt_version}"
+    runtimeOnly "com.moakiee.thunderbolt:thunderbolt:${thunderbolt_version}"
+    testRuntimeOnly "com.moakiee.thunderbolt:thunderbolt:${thunderbolt_version}"
     jdbProbeModPaths.each { runtimeOnly files(it) }
 
     implementation "curse.maven:applied-energistics-2-223794:7027323"
@@ -350,7 +383,8 @@ var generateModMetadata = tasks.register("generateModMetadata", ProcessResources
                              mod_id                 : mod_id,
                              mod_name               : mod_name,
                              mod_license            : mod_license,
-                             mod_version            : mod_version,
+                             mod_version            : project.version,
+                             thunderbolt_version_range: thunderbolt_version_range,
                              mod_authors            : mod_authors,
                              mod_description        : mod_description]
     inputs.properties replaceProperties
