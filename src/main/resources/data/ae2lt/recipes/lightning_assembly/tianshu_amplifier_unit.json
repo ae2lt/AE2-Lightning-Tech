@@ -11,7 +11,7 @@
       "count": 192
     },
     {
-      "ingredient": { "item": "ae2lt:overload_processor" },
+      "ingredient": { "item": "ae2:capacity_card" },
       "count": 64
     },
     {
@@ -28,7 +28,7 @@
     },
     {
       "ingredient": { "item": "ae2:speed_card" },
-      "count": 8
+      "count": 64
     },
     {
       "ingredient": { "item": "ae2lt:tianshu_blank_unit" },
