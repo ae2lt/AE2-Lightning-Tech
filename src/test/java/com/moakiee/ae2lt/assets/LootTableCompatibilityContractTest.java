@@ -62,7 +62,7 @@ class LootTableCompatibilityContractTest {
                 "ae2lt", "loot_modifiers", "inactive_firmament_spirit_core_end_city.json"));
         inspectForPost120Schema(modifier, readJson(modifier), problems);
 
-        assertEquals(69, tableCount, "The compatibility audit must cover every AE2LT loot table");
+        assertEquals(68, tableCount, "The compatibility audit must cover every AE2LT loot table");
         assertTrue(problems.isEmpty(), String.join(System.lineSeparator(), problems));
     }
 

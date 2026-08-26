@@ -144,7 +144,9 @@ public class AE2LightningTech {
                     .icon(() -> ModItems.OVERLOAD_CRYSTAL.get().getDefaultInstance())
                     .displayItems((parameters, output) -> {
                         // 基础方块与水晶生长
-                        acceptCreative(output, ModBlocks.SILICON_BLOCK);
+                        if (ModBlocks.hasSiliconBlock()) {
+                            acceptCreative(output, ModBlocks.SILICON_BLOCK);
+                        }
                         acceptCreative(output, ModBlocks.OVERLOAD_CRYSTAL_BLOCK);
                         acceptCreative(output, ModBlocks.OVERLOAD_MACHINE_FRAME);
                         acceptCreative(output, ModBlocks.FIRMAMENT_CONVERSION_CORE);
