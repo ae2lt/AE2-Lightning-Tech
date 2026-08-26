@@ -35,7 +35,7 @@ class PhaseFlightMovementGuardSourceContractTest {
         assertTrue(guard.contains("frame.getDeclaringClass() == ServerGamePacketListenerImpl.class"));
         assertTrue(guard.contains("frame.getMethodName().equals(\"handleMovePlayer\")"));
         assertTrue(guard.contains("frame.getMethodName().equals(\"handleCustomPayload\")"));
-        assertTrue(guard.contains("PLAYER_PAYLOAD_TELEPORT_DEPTH"));
+        assertTrue(guard.contains("ThreadLocal<ServerPlayer> MAIN_THREAD_PAYLOAD_PLAYER"));
         assertTrue(guard.contains("CommandSourceStack commandSource = COMMAND_SOURCE.get()"));
         assertTrue(guard.contains("commandSource.getEntity() == player"));
         assertTrue(guard.contains("commandSource.hasPermission(Commands.LEVEL_GAMEMASTERS)"));
@@ -176,20 +176,32 @@ class PhaseFlightMovementGuardSourceContractTest {
                 "src/main/java/com/moakiee/ae2lt/celestweave/PhaseFlightMovementGuard.java"));
         String packetMixin = Files.readString(Path.of(
                 "src/main/java/com/moakiee/ae2lt/mixin/ServerGamePacketListenerPhaseMovementMixin.java"));
+        Path oldPayloadMixin = Path.of(
+                "src/main/java/com/moakiee/ae2lt/mixin/ServerPayloadContextPhaseTeleportMixin.java");
         String payloadMixin = Files.readString(Path.of(
-                "src/main/java/com/moakiee/ae2lt/mixin/ServerPayloadContextPhaseTeleportMixin.java"));
+                "src/main/java/com/moakiee/ae2lt/mixin/MainThreadPayloadHandlerPhaseTeleportMixin.java"));
         String mixinConfig = Files.readString(Path.of("src/main/resources/ae2lt.mixins.json"));
 
         assertTrue(guard.contains("CUSTOM_PAYLOAD_PLAYER.get() != player"));
-        assertTrue(guard.contains("runAsPlayerPayloadTeleport(Player player, Runnable action)"));
-        assertTrue(guard.contains("runAsPlayerPayloadTeleport(Player player, Supplier<T> action)"));
+        assertTrue(guard.contains("MAIN_THREAD_PAYLOAD_PLAYER.get() == player"));
+        assertTrue(guard.contains("runAsPlayerPayloadHandler(ServerPlayer player, Runnable action)"));
+        assertTrue(guard.contains("ServerPlayer previous = MAIN_THREAD_PAYLOAD_PLAYER.get()"));
+        assertTrue(guard.contains("MAIN_THREAD_PAYLOAD_PLAYER.remove()"));
+        assertFalse(guard.contains("PLAYER_PAYLOAD_TELEPORT_DEPTH"));
         assertTrue(packetMixin.contains("PhaseFlightMovementGuard.beginCustomPayload("));
         assertTrue(packetMixin.contains("PhaseFlightMovementGuard.endCustomPayload("));
-        assertTrue(payloadMixin.contains("context.listener() instanceof ServerGamePacketListenerImpl playListener"));
-        assertTrue(payloadMixin.contains("ServerPlayer sender = playListener.player"));
-        assertFalse(payloadMixin.contains("((ServerPayloadContext) (Object) this).player()"));
-        assertTrue(payloadMixin.contains("runAsPlayerPayloadTeleport(sender, task)"));
-        assertTrue(mixinConfig.contains("ServerPayloadContextPhaseTeleportMixin"));
+        assertTrue(payloadMixin.contains("@Mixin(MainThreadPayloadHandler.class)"));
+        assertTrue(payloadMixin.contains("method = \"lambda$handle$0\""));
+        assertTrue(payloadMixin.contains("context instanceof ServerPayloadContext serverContext"));
+        assertTrue(payloadMixin.contains("serverContext.listener() instanceof ServerGamePacketListenerImpl playListener"));
+        assertTrue(payloadMixin.contains("runAsPlayerPayloadHandler("));
+        assertTrue(payloadMixin.contains("playListener.player"));
+        assertTrue(payloadMixin.contains("original.call(handler, payload, context)"));
+        assertFalse(payloadMixin.contains("enqueueWork"));
+        assertFalse(payloadMixin.contains("@ModifyVariable"));
+        assertFalse(Files.exists(oldPayloadMixin));
+        assertTrue(mixinConfig.contains("MainThreadPayloadHandlerPhaseTeleportMixin"));
+        assertFalse(mixinConfig.contains("ServerPayloadContextPhaseTeleportMixin"));
     }
 
     @Test
