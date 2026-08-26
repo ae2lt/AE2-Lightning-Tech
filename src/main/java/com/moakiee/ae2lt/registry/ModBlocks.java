@@ -18,6 +18,7 @@ import com.moakiee.ae2lt.block.OverloadProcessingFactoryBlock;
 import com.moakiee.ae2lt.block.OverloadTntBlock;
 import com.moakiee.ae2lt.block.OverloadCrystalClusterBlock;
 import com.moakiee.ae2lt.block.OverloadDeviceWorkbenchBlock;
+import com.moakiee.ae2lt.block.SiliconBlock;
 import com.moakiee.ae2lt.block.OverloadedControllerBlock;
 import com.moakiee.ae2lt.block.OverloadedInterfaceBlock;
 import com.moakiee.ae2lt.block.OverloadedPatternProviderBlock;
@@ -54,6 +55,7 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 
 public final class ModBlocks {
     private static final String APPFLUX_MODID = "appflux";
+    private static final String EXTENDEDAE_MODID = "extendedae";
 
     public static final DeferredRegister.Blocks BLOCKS = DeferredRegister.createBlocks(AE2LightningTech.MODID);
 
@@ -83,7 +85,8 @@ public final class ModBlocks {
             .strength(5.0F, 6.0F)
             .sound(SoundType.METAL)
             .forceSolidOn()
-            .requiresCorrectToolForDrops();
+            .requiresCorrectToolForDrops()
+            .noLootTable();
 
     private static final BlockBehaviour.Properties OVERLOAD_MACHINE_FRAME_PROPERTIES = BlockBehaviour.Properties.of()
             .mapColor(MapColor.METAL)
@@ -120,7 +123,10 @@ public final class ModBlocks {
             registerBlock("overload_crystal_block", () -> new Block(OVERLOAD_CRYSTAL_BLOCK_PROPERTIES));
 
     public static final DeferredBlock<Block> SILICON_BLOCK =
-            registerBlock("silicon_block", () -> new Block(SILICON_BLOCK_PROPERTIES));
+            registerBlock(
+                    "silicon_block",
+                    () -> new SiliconBlock(SILICON_BLOCK_PROPERTIES),
+                    ModBlocks::shouldRegisterSiliconBlock);
 
     public static final DeferredBlock<Block> OVERLOAD_MACHINE_FRAME =
             registerBlock("overload_machine_frame", () -> new Block(OVERLOAD_MACHINE_FRAME_PROPERTIES));
@@ -375,6 +381,14 @@ public final class ModBlocks {
 
     public static boolean hasOverloadedPowerSupply() {
         return OVERLOADED_POWER_SUPPLY != null;
+    }
+
+    public static boolean hasSiliconBlock() {
+        return SILICON_BLOCK != null;
+    }
+
+    private static boolean shouldRegisterSiliconBlock() {
+        return !ModList.get().isLoaded(EXTENDEDAE_MODID);
     }
 
     private static boolean isAppFluxLoaded() {
