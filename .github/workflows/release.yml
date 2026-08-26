@@ -15,7 +15,9 @@ jobs:
       TAG: ${{ github.event.release.tag_name }}
       GITHUB_ACTOR: ${{ github.actor }}
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      GITHUB_PACKAGES_TOKEN: ${{ secrets.GITHUB_PACKAGES_TOKEN || secrets.GITHUB_TOKEN }}
+      # Repository secret names cannot start with GITHUB_. Keep the environment
+      # variable name expected by Gradle, but store the PAT as an allowed secret.
+      GITHUB_PACKAGES_TOKEN: ${{ secrets.THUNDERBOLT_MAVEN_TOKEN || secrets.GITHUB_TOKEN }}
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
