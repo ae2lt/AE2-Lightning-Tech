@@ -35,6 +35,7 @@ logs/
 
 # Runtime / temporary files
 run/
+/run-gametest/
 out/
 tmp/
 bin/
