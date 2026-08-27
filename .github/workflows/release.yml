@@ -19,15 +19,59 @@ jobs:
       TAG: ${{ github.event.release.tag_name }}
     outputs:
       version: ${{ steps.version.outputs.version }}
+      platform_version: ${{ steps.version.outputs.platform_version }}
+      game_version: ${{ steps.target.outputs.game_version }}
+      mod_loader: ${{ steps.target.outputs.mod_loader }}
     steps:
       - name: Check out source
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
 
-      - name: Set up Java 21
+      - name: Detect release target
+        id: target
+        shell: bash
+        run: |
+          set -euo pipefail
+          GAME_VERSION="$(sed -n 's/^minecraft_version=//p' gradle.properties | tail -n 1 | tr -d '\r')"
+          case "$GAME_VERSION" in
+            1.21.1)
+              if [[ ! "$TAG" =~ ^v([0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?)$ ]]; then
+                echo "Minecraft 1.21.1 releases require tag v<version>; received: $TAG" >&2
+                exit 1
+              fi
+              EXPECTED_VERSION="${BASH_REMATCH[1]}"
+              JAVA_VERSION=21
+              MOD_LOADER=neoforge
+              METADATA_PATH=META-INF/neoforge.mods.toml
+              ;;
+            1.20.1)
+              if [[ ! "$TAG" =~ ^forge-1\.20\.1-v([0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?)$ ]]; then
+                echo "Minecraft 1.20.1 releases require tag forge-1.20.1-v<version>; received: $TAG" >&2
+                exit 1
+              fi
+              EXPECTED_VERSION="${BASH_REMATCH[1]}"
+              JAVA_VERSION=17
+              MOD_LOADER=forge
+              METADATA_PATH=META-INF/mods.toml
+              ;;
+            *)
+              echo "Unsupported Minecraft release target: $GAME_VERSION" >&2
+              exit 1
+              ;;
+          esac
+
+          echo "game_version=$GAME_VERSION" >> "$GITHUB_OUTPUT"
+          echo "java_version=$JAVA_VERSION" >> "$GITHUB_OUTPUT"
+          echo "mod_loader=$MOD_LOADER" >> "$GITHUB_OUTPUT"
+          echo "metadata_path=$METADATA_PATH" >> "$GITHUB_OUTPUT"
+          echo "expected_version=$EXPECTED_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Java ${{ steps.target.outputs.java_version }}
         uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: ${{ steps.target.outputs.java_version }}
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@48b5f213c81028ace310571dc5ec0fbbca0b2947 # v4
@@ -35,11 +79,22 @@ jobs:
       - name: Resolve release version
         id: version
         shell: bash
+        env:
+          EXPECTED: ${{ steps.target.outputs.expected_version }}
+          GAME_VERSION: ${{ steps.target.outputs.game_version }}
         run: |
+          set -euo pipefail
           VERSION="$(./gradlew --no-daemon -q printProjectVersion)"
-          EXPECTED="${TAG#v}"
-          test "$VERSION" = "$EXPECTED"
+          if [ "$VERSION" != "$EXPECTED" ]; then
+            echo "Tag version $EXPECTED does not match Gradle version $VERSION" >&2
+            exit 1
+          fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if [ "$GAME_VERSION" = 1.20.1 ]; then
+            echo "platform_version=$VERSION-forge.1.20.1" >> "$GITHUB_OUTPUT"
+          else
+            echo "platform_version=$VERSION" >> "$GITHUB_OUTPUT"
+          fi
 
       # Timing-sensitive checks are intentionally excluded from release packaging.
       # Deterministic JAR and metadata validation is performed below.
@@ -55,7 +110,9 @@ jobs:
         shell: bash
         env:
           VERSION: ${{ steps.version.outputs.version }}
+          METADATA_PATH: ${{ steps.target.outputs.metadata_path }}
         run: |
+          set -euo pipefail
           rm -rf release-artifacts
           mkdir -p release-artifacts
           mapfile -t jars < <(find build/libs -maxdepth 1 -type f -name '*.jar' \
@@ -68,7 +125,7 @@ jobs:
 
           jar_entries="$(jar tf "${jars[0]}")"
           grep -Fxq 'com/moakiee/ae2lt/AE2LightningTech.class' <<< "$jar_entries"
-          metadata="$(unzip -p "${jars[0]}" META-INF/neoforge.mods.toml)"
+          metadata="$(unzip -p "${jars[0]}" "$METADATA_PATH")"
           compact_metadata="$(tr -d '[:space:]' <<< "$metadata")"
           grep -Fq 'modId="ae2lt"' <<< "$compact_metadata"
           grep -Fq "version=\"$VERSION\"" <<< "$compact_metadata"
@@ -102,6 +159,7 @@ jobs:
       - name: Upload JAR to GitHub Release
         shell: bash
         run: |
+          set -euo pipefail
           existing_dir="$(mktemp -d)"
           trap 'rm -rf "$existing_dir"' EXIT
           for asset in release-artifacts/*.jar release-artifacts/SHA256SUMS; do
@@ -141,6 +199,8 @@ jobs:
           curseforge-id: 1527395
           curseforge-token: ${{ secrets.CURSEFORGE_TOKEN || secrets.CURSEFORGE }}
           files: release-artifacts/*.jar
-          name: AE2 Lightning Tech ${{ needs.build.outputs.version }}
-          version: ${{ needs.build.outputs.version }}
+          name: AE2 Lightning Tech ${{ needs.build.outputs.version }} (${{ needs.build.outputs.mod_loader }} ${{ needs.build.outputs.game_version }})
+          version: ${{ needs.build.outputs.platform_version }}
+          loaders: ${{ needs.build.outputs.mod_loader }}
+          game-versions: ${{ needs.build.outputs.game_version }}
           changelog: ${{ github.event.release.body }}
