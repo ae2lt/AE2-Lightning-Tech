@@ -33,6 +33,12 @@ import com.moakiee.ae2lt.AE2LightningTech;
 @Mod.EventBusSubscriber(modid = AE2LightningTech.MODID, value = Dist.CLIENT)
 public final class RailgunArcRenderer {
 
+    /** Above the railgun's supported range, an arc is malformed rather than useful FX. */
+    private static final double MAX_ARC_SPAN = 512.0D;
+    /** Preserves full detail at the maximum supported 256-block range (about 307 segments). */
+    private static final int MAX_SEGMENTS = 384;
+    private static final int MAX_ACTIVE_ARCS = 512;
+
     /** A single live arc instance. */
     public static final class Arc {
         final List<Vec3> points;
@@ -127,7 +133,14 @@ public final class RailgunArcRenderer {
                              float coreR, float coreG, float coreB,
                              float glowR, float glowG, float glowB,
                              float coreWidth, float glowWidth) {
-        if (segments < 2) segments = 2;
+        if (!isRenderableSegment(from, to)
+                || !Float.isFinite(spread) || spread < 0.0F
+                || !Float.isFinite(coreWidth) || coreWidth <= 0.0F
+                || !Float.isFinite(glowWidth) || glowWidth <= 0.0F
+                || lifetime <= 0) {
+            return;
+        }
+        segments = Math.max(2, Math.min(MAX_SEGMENTS, segments));
         Vec3 axis = to.subtract(from);
         double len = axis.length();
         if (len < 1.0E-3) return;
@@ -152,6 +165,10 @@ public final class RailgunArcRenderer {
         }
         pts.add(to);
 
+        int overflow = ACTIVE.size() - MAX_ACTIVE_ARCS + 1;
+        if (overflow > 0) {
+            ACTIVE.subList(0, overflow).clear();
+        }
         ACTIVE.add(new Arc(pts, lifetime,
                 coreR, coreG, coreB,
                 glowR, glowG, glowB,
@@ -237,19 +254,30 @@ public final class RailgunArcRenderer {
     private static void addSegmentBillboard(BufferBuilder bb, org.joml.Matrix4f matrix,
                                             Vec3 a, Vec3 b, Vec3 camPos, float width,
                                             float r, float g, float bCol, float alpha) {
+        if (!isRenderableSegment(a, b)
+                || !isFinite(camPos)
+                || !Float.isFinite(width) || width <= 0.0F
+                || !Float.isFinite(r) || !Float.isFinite(g) || !Float.isFinite(bCol)
+                || !Float.isFinite(alpha)) {
+            return;
+        }
         Vec3 axis = b.subtract(a);
-        if (axis.lengthSqr() < 1.0E-9) return;
+        double axisLengthSqr = axis.lengthSqr();
+        if (!Double.isFinite(axisLengthSqr) || axisLengthSqr < 1.0E-9D) return;
         Vec3 dir = axis.normalize();
         Vec3 mid = a.add(b).scale(0.5D);
         Vec3 toCam = camPos.subtract(mid);
         Vec3 side = dir.cross(toCam);
-        if (side.lengthSqr() < 1.0E-9) {
+        double sideLengthSqr = side.lengthSqr();
+        if (!Double.isFinite(sideLengthSqr) || sideLengthSqr < 1.0E-9D) {
             side = dir.cross(new Vec3(0.0D, 1.0D, 0.0D));
-            if (side.lengthSqr() < 1.0E-9) {
+            sideLengthSqr = side.lengthSqr();
+            if (!Double.isFinite(sideLengthSqr) || sideLengthSqr < 1.0E-9D) {
                 side = dir.cross(new Vec3(1.0D, 0.0D, 0.0D));
             }
         }
         side = side.normalize().scale(width);
+        if (!isFinite(side)) return;
         Vec3 a1 = a.add(side);
         Vec3 a2 = a.subtract(side);
         Vec3 b1 = b.add(side);
@@ -258,5 +286,18 @@ public final class RailgunArcRenderer {
         bb.vertex(matrix, (float) a2.x, (float) a2.y, (float) a2.z).color(r, g, bCol, alpha).endVertex();
         bb.vertex(matrix, (float) b2.x, (float) b2.y, (float) b2.z).color(r, g, bCol, alpha).endVertex();
         bb.vertex(matrix, (float) b1.x, (float) b1.y, (float) b1.z).color(r, g, bCol, alpha).endVertex();
+    }
+
+    static boolean isRenderableSegment(Vec3 from, Vec3 to) {
+        if (!isFinite(from) || !isFinite(to)) return false;
+        double lengthSqr = from.distanceToSqr(to);
+        return Double.isFinite(lengthSqr) && lengthSqr <= MAX_ARC_SPAN * MAX_ARC_SPAN;
+    }
+
+    static boolean isFinite(Vec3 value) {
+        return value != null
+                && Double.isFinite(value.x)
+                && Double.isFinite(value.y)
+                && Double.isFinite(value.z);
     }
 }

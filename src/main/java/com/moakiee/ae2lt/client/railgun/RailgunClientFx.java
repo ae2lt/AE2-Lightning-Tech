@@ -32,6 +32,10 @@ public final class RailgunClientFx {
         if (mc.level == null) return;
 
         Vec3 hit = p.firstHit();
+        // Packet and integration boundaries are untrusted geometry. Ordinary railgun shots
+        // are unchanged; only non-finite or far-out-of-range effects are discarded before
+        // they can allocate a huge arc or feed unsafe native vertex writes.
+        if (!RailgunArcRenderer.isRenderableSegment(p.from(), hit)) return;
         boolean isMax = p.isMax();
         int tier = Math.max(1, p.tier());
 
