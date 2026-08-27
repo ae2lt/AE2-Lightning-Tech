@@ -2,6 +2,7 @@ package com.moakiee.ae2lt.crafting.runtime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 
 import java.util.List;
 import java.util.Map;
@@ -26,6 +27,8 @@ import appeng.api.stacks.KeyCounter;
 
 import com.moakiee.thunderbolt.core.crafting.loop.ISeedPreservingCraftingTask;
 import com.moakiee.thunderbolt.core.crafting.loop.CraftingTaskPersistenceDefinition;
+import com.moakiee.thunderbolt.core.crafting.pattern.IProviderLookupPattern;
+import com.moakiee.thunderbolt.core.crafting.support.CraftingPatternDelegates;
 
 import org.junit.jupiter.api.Test;
 
@@ -62,6 +65,16 @@ class ExecuteLoopPatternEqualityTest {
                 CONSUMER, 1, 2, 3, 4));
     }
 
+    @Test
+    void batchExecutionKeepsClosedLoopSemanticsWhileProviderLookupReachesTheRecipe() {
+        var provider = new FakeSeedPattern("provider", GROUP);
+        var execution = new FakeProviderLookupSeedPattern("execution", GROUP, provider);
+        var task = pattern(execution, CONSUMER, 1, 2, 3, 4);
+
+        assertSame(execution, CraftingPatternDelegates.forBatchExecution(task));
+        assertSame(provider, CraftingPatternDelegates.forProviderLookup(task));
+    }
+
     private static ExecuteLoopPattern pattern(
             IPatternDetails delegate,
             UUID consumer,
@@ -94,6 +107,20 @@ class ExecuteLoopPatternEqualityTest {
         @Override public Set<AEKey> reusableSeedCycleKeys() { return Set.of(SEED); }
         @Override public boolean hasSingleSeedInputPerMember() { return true; }
         @Override public AEItemKey craftingTaskPersistenceDefinition() { return null; }
+    }
+
+    private record FakeProviderLookupSeedPattern(
+            String identity, UUID group, IPatternDetails provider)
+            implements IPatternDetails, ISeedPreservingCraftingTask,
+            CraftingTaskPersistenceDefinition, IProviderLookupPattern {
+        @Override public AEItemKey getDefinition() { return null; }
+        @Override public IInput[] getInputs() { return new IInput[0]; }
+        @Override public List<GenericStack> getOutputs() { return List.of(); }
+        @Override public UUID reusableSeedGroupId() { return group; }
+        @Override public Set<AEKey> reusableSeedCycleKeys() { return Set.of(SEED); }
+        @Override public boolean hasSingleSeedInputPerMember() { return true; }
+        @Override public AEItemKey craftingTaskPersistenceDefinition() { return null; }
+        @Override public IPatternDetails providerLookupPattern() { return provider; }
     }
 
     private static final class TestKey extends AEKey {

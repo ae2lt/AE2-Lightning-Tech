@@ -269,6 +269,29 @@ class ParallelBatchCpuHelperTest {
     }
 
     @Test
+    void ordinaryFallbackScalesTheFullOutputWhenInputsWereNotShared() {
+        var template = key("smithing_template_fallback");
+        var diamond = key("diamond_fallback");
+        var inv = inventory();
+        inv.insert(template, 5, Actionable.MODULATE);
+        inv.insert(diamond, 35, Actionable.MODULATE);
+        var pattern = new FakeRegeneratedSeedPattern(
+                new IPatternDetails.IInput[] {
+                        input(stack(template, 1), 1), input(stack(diamond, 7), 1)
+                }, template);
+
+        var result = ParallelBatchCpuHelper.bulkExtract(
+                pattern, inv, 5, false, Map.of(), null);
+        var waiting = inventory();
+
+        assertNotNull(result);
+        ParallelBatchCpuHelper.registerExpectedOutputs(
+                new FakeBatchJobView(waiting), pattern, result, 5);
+
+        assertEquals(10, waiting.extract(template, Long.MAX_VALUE, Actionable.SIMULATE));
+    }
+
+    @Test
     void sharedAndConsumableSlotsUsingSameKeyReserveSeedBeforeScaling() {
         var key = key("same_key");
         var inv = inventory();

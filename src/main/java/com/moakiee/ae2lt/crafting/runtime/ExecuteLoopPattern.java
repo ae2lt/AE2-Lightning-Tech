@@ -6,6 +6,7 @@ import appeng.api.stacks.AEKey;
 import appeng.api.stacks.GenericStack;
 import appeng.api.stacks.KeyCounter;
 import com.moakiee.thunderbolt.core.crafting.pattern.IProviderLookupPattern;
+import com.moakiee.thunderbolt.core.crafting.pattern.IBatchExecutionPattern;
 import com.moakiee.thunderbolt.core.crafting.loop.IPlannedSeedSlotPattern;
 import com.moakiee.thunderbolt.core.crafting.loop.IPrioritizedCraftingTask;
 import com.moakiee.thunderbolt.core.crafting.loop.ISeedPreservingCraftingTask;
@@ -31,6 +32,7 @@ import java.util.UUID;
  * {@code outputSeedCredits} remain ordinary public outputs.
  */
 public final class ExecuteLoopPattern implements IPatternDetails, IProviderLookupPattern,
+        IBatchExecutionPattern,
         IPrioritizedCraftingTask, ISeedPreservingCraftingTask,
         CraftingTaskPersistenceDefinition, SharedBatchInputPattern {
     /** Runtime account used by fuzzy-output metadata for a safely shareable cycle boundary. */
@@ -133,6 +135,9 @@ public final class ExecuteLoopPattern implements IPatternDetails, IProviderLooku
     }
 
     public IPatternDetails delegate() { return delegate; }
+
+    @Override
+    public IPatternDetails batchExecutionPattern() { return delegate; }
 
     @Override
     public boolean isSharedBatchInput(int slot, AEKey concreteKey) {
