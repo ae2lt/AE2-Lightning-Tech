@@ -30,8 +30,8 @@ import net.minecraftforge.network.simple.SimpleChannel;
 import java.util.Optional;
 
 public final class NetworkInit {
-    // Version 2 adds paged closed-loop result request/response messages.
-    private static final String PROTOCOL_VERSION = "2";
+    // Version 3 adds the research-note screen message.
+    private static final String PROTOCOL_VERSION = "3";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             id("main"),
             () -> PROTOCOL_VERSION,
@@ -360,6 +360,14 @@ public final class NetworkInit {
                 (pkt, buf) -> pkt.write(buf),
                 ClosedLoopResultPagePacket::decode,
                 ClosedLoopResultPagePacket::handle,
+                Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+
+        CHANNEL.registerMessage(
+                nextPacketId++,
+                OpenResearchNotePacket.class,
+                (pkt, buf) -> pkt.write(buf),
+                OpenResearchNotePacket::decode,
+                OpenResearchNotePacket::handle,
                 Optional.of(NetworkDirection.PLAY_TO_CLIENT));
     }
 
