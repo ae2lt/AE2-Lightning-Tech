@@ -203,4 +203,6 @@ jobs:
           version: ${{ needs.build.outputs.platform_version }}
           loaders: ${{ needs.build.outputs.mod_loader }}
           game-versions: ${{ needs.build.outputs.game_version }}
+          dependencies: |
+            thunderbolt-core(required){modrinth:M5jhzZXH}{curseforge:1631756}
           changelog: ${{ github.event.release.body }}
