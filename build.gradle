@@ -17,10 +17,31 @@ plugins {
 apply plugin: 'org.spongepowered.mixin'
 
 group = mod_group_id
-version = mod_version
+def releaseTag = System.getenv('TAG')?.trim()
+if (releaseTag) {
+    def releaseTagMatcher = releaseTag =~ /^forge-1\.20\.1-v([0-9]+\.[0-9]+\.[0-9]+(?:[.-][0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?)$/
+    if (!releaseTagMatcher.matches()) {
+        throw new GradleException("Minecraft 1.20.1 release tags must match forge-1.20.1-v<version>: ${releaseTag}")
+    }
+    version = releaseTagMatcher.group(1)
+} else {
+    version = mod_version
+}
+def resolvedProjectVersion = project.version.toString()
+
+def githubPackagesUser = System.getenv('GITHUB_ACTOR') ?: project.findProperty('gpr.user')
+def githubPackagesToken = System.getenv('GITHUB_PACKAGES_TOKEN') ?: System.getenv('GITHUB_TOKEN') ?: project.findProperty('gpr.key')
 
 base {
     archivesName = "${mod_id}-forge-${minecraft_version}"
+}
+
+tasks.register('printProjectVersion') {
+    group = 'help'
+    description = 'Prints the version used for this build.'
+    doLast {
+        println resolvedProjectVersion
+    }
 }
 
 java {
@@ -80,6 +101,19 @@ sourceSets.main.resources { srcDir 'src/generated/resources' }
 
 repositories {
     mavenLocal()
+    if (githubPackagesUser && githubPackagesToken) {
+        maven {
+            name = 'ThunderboltGitHubPackages'
+            url = uri('https://maven.pkg.github.com/ae2lt/Thunderbolt-Core')
+            credentials {
+                username = githubPackagesUser
+                password = githubPackagesToken
+            }
+            content {
+                includeGroup 'com.moakiee.thunderbolt'
+            }
+        }
+    }
     mavenCentral()
     maven {
         url = 'https://modmaven.dev/'
@@ -185,10 +219,10 @@ dependencies {
 
     // Thunderbolt Core — AE2 infrastructure layer (fast crafting planner, channel/batch algorithms).
     // Provided at runtime as a separate mod jar in the modpack.
-    compileOnly(fg.deobf("com.moakiee.thunderbolt:thunderbolt:${thunderbolt_version}")) {
+    compileOnly(fg.deobf("com.moakiee.thunderbolt:${thunderbolt_artifact_id}:${thunderbolt_version}")) {
         transitive = false
     }
-    runtimeOnly(fg.deobf("com.moakiee.thunderbolt:thunderbolt:${thunderbolt_version}")) {
+    runtimeOnly(fg.deobf("com.moakiee.thunderbolt:${thunderbolt_artifact_id}:${thunderbolt_version}")) {
         transitive = false
     }
 
@@ -244,7 +278,7 @@ dependencies {
     // Keep portable resource and pure-logic regressions executable on the Forge 1.20.1 port.
     testImplementation platform("org.junit:junit-bom:5.10.2")
     testImplementation "org.junit.jupiter:junit-jupiter"
-    testImplementation(fg.deobf("com.moakiee.thunderbolt:thunderbolt:${thunderbolt_version}")) {
+    testImplementation(fg.deobf("com.moakiee.thunderbolt:${thunderbolt_artifact_id}:${thunderbolt_version}")) {
         transitive = false
     }
     testRuntimeOnly "org.junit.platform:junit-platform-launcher"
@@ -284,7 +318,7 @@ tasks.named('processResources', ProcessResources).configure {
             mod_id: mod_id,
             mod_name: mod_name,
             mod_license: mod_license,
-            mod_version: mod_version,
+            mod_version: project.version,
             mod_authors: mod_authors,
             mod_description: mod_description,
             ae2_version_range: ae2_version_range,
