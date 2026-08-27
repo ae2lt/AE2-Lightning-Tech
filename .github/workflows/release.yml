@@ -1,0 +1,206 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+concurrency:
+  group: ae2lt-release-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    env:
+      TAG: ${{ github.event.release.tag_name }}
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      platform_version: ${{ steps.version.outputs.platform_version }}
+      game_version: ${{ steps.target.outputs.game_version }}
+      mod_loader: ${{ steps.target.outputs.mod_loader }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Detect release target
+        id: target
+        shell: bash
+        run: |
+          set -euo pipefail
+          GAME_VERSION="$(sed -n 's/^minecraft_version=//p' gradle.properties | tail -n 1 | tr -d '\r')"
+          case "$GAME_VERSION" in
+            1.21.1)
+              if [[ ! "$TAG" =~ ^v([0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?)$ ]]; then
+                echo "Minecraft 1.21.1 releases require tag v<version>; received: $TAG" >&2
+                exit 1
+              fi
+              EXPECTED_VERSION="${BASH_REMATCH[1]}"
+              JAVA_VERSION=21
+              MOD_LOADER=neoforge
+              METADATA_PATH=META-INF/neoforge.mods.toml
+              ;;
+            1.20.1)
+              if [[ ! "$TAG" =~ ^forge-1\.20\.1-v([0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?)$ ]]; then
+                echo "Minecraft 1.20.1 releases require tag forge-1.20.1-v<version>; received: $TAG" >&2
+                exit 1
+              fi
+              EXPECTED_VERSION="${BASH_REMATCH[1]}"
+              JAVA_VERSION=17
+              MOD_LOADER=forge
+              METADATA_PATH=META-INF/mods.toml
+              ;;
+            *)
+              echo "Unsupported Minecraft release target: $GAME_VERSION" >&2
+              exit 1
+              ;;
+          esac
+
+          echo "game_version=$GAME_VERSION" >> "$GITHUB_OUTPUT"
+          echo "java_version=$JAVA_VERSION" >> "$GITHUB_OUTPUT"
+          echo "mod_loader=$MOD_LOADER" >> "$GITHUB_OUTPUT"
+          echo "metadata_path=$METADATA_PATH" >> "$GITHUB_OUTPUT"
+          echo "expected_version=$EXPECTED_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Java ${{ steps.target.outputs.java_version }}
+        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: ${{ steps.target.outputs.java_version }}
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@48b5f213c81028ace310571dc5ec0fbbca0b2947 # v4
+
+      - name: Resolve release version
+        id: version
+        shell: bash
+        env:
+          EXPECTED: ${{ steps.target.outputs.expected_version }}
+          GAME_VERSION: ${{ steps.target.outputs.game_version }}
+        run: |
+          set -euo pipefail
+          VERSION="$(./gradlew --no-daemon -q printProjectVersion)"
+          if [ "$VERSION" != "$EXPECTED" ]; then
+            echo "Tag version $EXPECTED does not match Gradle version $VERSION" >&2
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if [ "$GAME_VERSION" = 1.20.1 ]; then
+            echo "platform_version=$VERSION-forge.1.20.1" >> "$GITHUB_OUTPUT"
+          else
+            echo "platform_version=$VERSION" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Timing-sensitive checks are intentionally excluded from release packaging.
+      # Deterministic JAR and metadata validation is performed below.
+      - name: Build release
+        run: ./gradlew --no-daemon clean build -x check --max-workers 1
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          # Repository secret names cannot start with GITHUB_. Keep the environment
+          # variable name expected by Gradle, but store the PAT as an allowed secret.
+          GITHUB_PACKAGES_TOKEN: ${{ secrets.THUNDERBOLT_MAVEN_TOKEN || secrets.GITHUB_TOKEN }}
+
+      - name: Prepare distributable JAR
+        shell: bash
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          METADATA_PATH: ${{ steps.target.outputs.metadata_path }}
+        run: |
+          set -euo pipefail
+          rm -rf release-artifacts
+          mkdir -p release-artifacts
+          mapfile -t jars < <(find build/libs -maxdepth 1 -type f -name '*.jar' \
+            ! -name '*-sources.jar' ! -name '*-javadoc.jar' ! -name '*-slim.jar' | sort)
+          if [ "${#jars[@]}" -ne 1 ]; then
+            printf 'Expected exactly one distributable JAR, found %s:\n' "${#jars[@]}"
+            printf '  %s\n' "${jars[@]}"
+            exit 1
+          fi
+
+          jar_entries="$(jar tf "${jars[0]}")"
+          grep -Fxq 'com/moakiee/ae2lt/AE2LightningTech.class' <<< "$jar_entries"
+          metadata="$(unzip -p "${jars[0]}" "$METADATA_PATH")"
+          compact_metadata="$(tr -d '[:space:]' <<< "$metadata")"
+          grep -Fq 'modId="ae2lt"' <<< "$compact_metadata"
+          grep -Fq "version=\"$VERSION\"" <<< "$compact_metadata"
+
+          cp "${jars[0]}" release-artifacts/
+          (cd release-artifacts && sha256sum "$(basename "${jars[0]}")" > SHA256SUMS)
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: release-artifacts
+          path: release-artifacts/*
+          if-no-files-found: error
+          retention-days: 3
+
+  upload-github-release:
+    name: Upload GitHub Release asset
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      TAG: ${{ github.event.release.tag_name }}
+    steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: release-artifacts
+          path: release-artifacts
+
+      - name: Upload JAR to GitHub Release
+        shell: bash
+        run: |
+          set -euo pipefail
+          existing_dir="$(mktemp -d)"
+          trap 'rm -rf "$existing_dir"' EXIT
+          for asset in release-artifacts/*.jar release-artifacts/SHA256SUMS; do
+            name="$(basename "$asset")"
+            if gh release download "$TAG" --repo "$GITHUB_REPOSITORY" \
+              --pattern "$name" --dir "$existing_dir" >/dev/null 2>&1; then
+              if ! cmp -s "$asset" "$existing_dir/$name"; then
+                echo "Refusing to replace existing release asset with different content: $name"
+                exit 1
+              fi
+              echo "Release asset already exists with identical content: $name"
+            else
+              gh release upload "$TAG" "$asset" --repo "$GITHUB_REPOSITORY"
+            fi
+          done
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish-platforms:
+    name: Publish to CurseForge and Modrinth
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: release-artifacts
+          path: release-artifacts
+
+      - name: Publish mod files
+        uses: Kira-NT/mc-publish@52307b03863581dec6b652b83e597aec02ebb075 # v3.3.1
+        with:
+          modrinth-id: ArHeh5Fz
+          modrinth-token: ${{ secrets.MODRINTH_TOKEN || secrets.MODRINTH }}
+          curseforge-id: 1527395
+          curseforge-token: ${{ secrets.CURSEFORGE_TOKEN || secrets.CURSEFORGE }}
+          files: release-artifacts/*.jar
+          name: AE2 Lightning Tech ${{ needs.build.outputs.version }} (${{ needs.build.outputs.mod_loader }} ${{ needs.build.outputs.game_version }})
+          version: ${{ needs.build.outputs.platform_version }}
+          loaders: ${{ needs.build.outputs.mod_loader }}
+          game-versions: ${{ needs.build.outputs.game_version }}
+          changelog: ${{ github.event.release.body }}
