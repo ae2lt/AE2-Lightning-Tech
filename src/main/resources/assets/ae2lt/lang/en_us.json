@@ -1061,7 +1061,7 @@
   "block.ae2lt.tianshu_supercomputer_glass": "Tianshu Supercomputing Array Glass",
   "block.ae2lt.tianshu_supercomputer_controller": "Tianshu Supercomputing Array Controller",
   "block.ae2lt.tianshu_supercomputer_port": "Tianshu Supercomputing Array Port",
-  "ae2lt.tianshu.cpu_name": "Tianshu Supercomputing Array",
+  "ae2lt.tianshu.cpu_name": "Tianshu Array",
   "ae2lt.tianshu.formed": "Tianshu Supercomputing Array formed (%s)",
   "ae2lt.tianshu.scan_failed": "Tianshu Supercomputing Array formation failed: %s",
   "block.ae2lt.tianshu_baseline_main_core": "Tianshu Baseline Main Core",
