@@ -39,7 +39,7 @@ class CreativePigmeeDuplicationRecipeContractTest {
         assertTrue(conversionSource.contains("CellOutcome.EXTREME_HIGH_VOLTAGE"));
         assertTrue(conversionSource.contains("target.is(ModItems.LIGHTNING_COLLAPSE_MATRIX.get())"));
         assertTrue(conversionSource.contains("CellOutcome.LIGHTNING_COLLAPSE_MATRIX"));
-        assertTrue(conversionSource.contains("target.is(ModItems.BULK_LIGHTNING_STORAGE_COMPONENT.get())"));
+        assertTrue(conversionSource.contains("target.is(ModItems.BULK_LIGHTNING_CELL_COMPONENT.get())"));
         assertTrue(conversionSource.contains("new ItemStack(ModItems.INFINITE_STORAGE_CELL.get())"));
         assertTrue(conversionSource.contains("target.is(ModBlocks.OVERLOAD_SUPERCOMPUTING_UNIT.asItem())"));
         assertTrue(conversionSource.contains(

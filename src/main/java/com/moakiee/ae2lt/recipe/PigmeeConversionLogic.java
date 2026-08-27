@@ -53,7 +53,7 @@ final class PigmeeConversionLogic {
         if (target.is(ModItems.LIGHTNING_COLLAPSE_MATRIX.get())) {
             return Conversion.LIGHTNING_COLLAPSE_MATRIX;
         }
-        if (target.is(ModItems.BULK_LIGHTNING_STORAGE_COMPONENT.get())) {
+        if (target.is(ModItems.BULK_LIGHTNING_CELL_COMPONENT.get())) {
             return Conversion.INFINITE_STORAGE;
         }
         if (target.is(ModBlocks.OVERLOAD_SUPERCOMPUTING_UNIT.asItem())) {
