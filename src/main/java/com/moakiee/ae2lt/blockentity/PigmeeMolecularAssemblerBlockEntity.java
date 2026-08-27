@@ -228,7 +228,6 @@ public final class PigmeeMolecularAssemblerBlockEntity extends AENetworkInvBlock
             return TickRateModulation.IDLE;
         }
 
-        output.onCraftedBy(level, null, 1);
         CraftingEvent.fireAutoCraftingEvent(level, activePattern, output, craftingGrid);
         var remainders = activePattern.getRemainingItems(craftingGrid);
 
