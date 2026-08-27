@@ -25,7 +25,7 @@
     "PlayerPhaseFlightMixin",
     "BlockItemPhasePlacementMixin",
     "ServerGamePacketListenerPhaseMovementMixin",
-    "NetworkEventContextPhaseTeleportMixin",
+    "SimpleChannelMessageBuilderPhaseTeleportMixin",
     "ServerGamePacketListenerCelestweaveCreativeSyncMixin",
     "thunderbolt.accessor.ElapsedTimeTrackerAccessor",
     "thunderbolt.accessor.ExecutingCraftingJobAccessor",

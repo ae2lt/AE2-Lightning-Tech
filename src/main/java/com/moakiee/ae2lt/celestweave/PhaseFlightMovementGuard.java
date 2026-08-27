@@ -28,8 +28,7 @@ public final class PhaseFlightMovementGuard {
             new ConcurrentHashMap<>();
     private static final ThreadLocal<IdentityHashMap<Player, Integer>> SELF_MOVEMENT_DEPTH =
             ThreadLocal.withInitial(IdentityHashMap::new);
-    private static final ThreadLocal<IdentityHashMap<Player, Integer>> PLAYER_PAYLOAD_TELEPORT_DEPTH =
-            ThreadLocal.withInitial(IdentityHashMap::new);
+    private static final ThreadLocal<ServerPlayer> MAIN_THREAD_PAYLOAD_PLAYER = new ThreadLocal<>();
     private static final ThreadLocal<IdentityHashMap<Player, Integer>> MOVEMENT_POSITION_UPDATE_DEPTH =
             ThreadLocal.withInitial(IdentityHashMap::new);
     private static final ThreadLocal<Player> MOVEMENT_PACKET_PLAYER = new ThreadLocal<>();
@@ -101,7 +100,9 @@ public final class PhaseFlightMovementGuard {
         SERVER_SETTINGS.remove(player.getUUID());
         LAST_BLOCKED_TELEPORT_NOTICE.remove(player.getUUID());
         SELF_MOVEMENT_DEPTH.get().remove(player);
-        PLAYER_PAYLOAD_TELEPORT_DEPTH.get().remove(player);
+        if (MAIN_THREAD_PAYLOAD_PLAYER.get() == player) {
+            MAIN_THREAD_PAYLOAD_PLAYER.remove();
+        }
         MOVEMENT_POSITION_UPDATE_DEPTH.get().remove(player);
         if (MOVEMENT_PACKET_PLAYER.get() == player) {
             MOVEMENT_PACKET_PLAYER.remove();
@@ -184,7 +185,7 @@ public final class PhaseFlightMovementGuard {
             return false;
         }
         if (SELF_MOVEMENT_DEPTH.get().getOrDefault(player, 0) > 0
-                || PLAYER_PAYLOAD_TELEPORT_DEPTH.get().getOrDefault(player, 0) > 0) {
+                || MAIN_THREAD_PAYLOAD_PLAYER.get() == player) {
             return true;
         }
         CommandSourceStack commandSource = COMMAND_SOURCE.get();
@@ -304,21 +305,18 @@ public final class PhaseFlightMovementGuard {
         }
     }
 
-    public static void runAsPlayerPayloadTeleport(Player player, Runnable action) {
-        beginPlayerPayloadTeleport(player);
+    /** Runs a main-thread payload handler with its exact sending player bound to this call scope. */
+    public static void runAsPlayerPayloadHandler(ServerPlayer player, Runnable action) {
+        ServerPlayer previous = MAIN_THREAD_PAYLOAD_PLAYER.get();
+        MAIN_THREAD_PAYLOAD_PLAYER.set(player);
         try {
             action.run();
         } finally {
-            endPlayerPayloadTeleport(player);
-        }
-    }
-
-    public static <T> T runAsPlayerPayloadTeleport(Player player, Supplier<T> action) {
-        beginPlayerPayloadTeleport(player);
-        try {
-            return action.get();
-        } finally {
-            endPlayerPayloadTeleport(player);
+            if (previous == null) {
+                MAIN_THREAD_PAYLOAD_PLAYER.remove();
+            } else {
+                MAIN_THREAD_PAYLOAD_PLAYER.set(previous);
+            }
         }
     }
 
@@ -346,28 +344,6 @@ public final class PhaseFlightMovementGuard {
             } else {
                 COMMAND_SOURCE.set(previous);
             }
-        }
-    }
-
-    private static void beginPlayerPayloadTeleport(Player player) {
-        if (player != null && !player.level().isClientSide()) {
-            PLAYER_PAYLOAD_TELEPORT_DEPTH.get().merge(player, 1, Integer::sum);
-        }
-    }
-
-    private static void endPlayerPayloadTeleport(Player player) {
-        if (player == null) {
-            return;
-        }
-        var depths = PLAYER_PAYLOAD_TELEPORT_DEPTH.get();
-        int next = depths.getOrDefault(player, 0) - 1;
-        if (next <= 0) {
-            depths.remove(player);
-            if (depths.isEmpty()) {
-                PLAYER_PAYLOAD_TELEPORT_DEPTH.remove();
-            }
-        } else {
-            depths.put(player, next);
         }
     }
 

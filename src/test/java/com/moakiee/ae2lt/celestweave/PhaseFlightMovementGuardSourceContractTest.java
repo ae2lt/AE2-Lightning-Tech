@@ -34,7 +34,7 @@ class PhaseFlightMovementGuardSourceContractTest {
         assertTrue(guard.contains("MOVEMENT_PACKET_PLAYER.get() == player"));
         assertTrue(guard.contains("CUSTOM_PAYLOAD_PLAYER.get() == player"));
         assertTrue(guard.contains("MOVEMENT_POSITION_UPDATE_DEPTH"));
-        assertTrue(guard.contains("PLAYER_PAYLOAD_TELEPORT_DEPTH"));
+        assertTrue(guard.contains("ThreadLocal<ServerPlayer> MAIN_THREAD_PAYLOAD_PLAYER"));
         assertTrue(guard.contains("CommandSourceStack commandSource = COMMAND_SOURCE.get()"));
         assertTrue(guard.contains("commandSource.getEntity() == player"));
         assertTrue(guard.contains("commandSource.hasPermission(Commands.LEVEL_GAMEMASTERS)"));
@@ -175,21 +175,34 @@ class PhaseFlightMovementGuardSourceContractTest {
                 "src/main/java/com/moakiee/ae2lt/celestweave/PhaseFlightMovementGuard.java"));
         String packetMixin = Files.readString(Path.of(
                 "src/main/java/com/moakiee/ae2lt/mixin/ServerGamePacketListenerPhaseMovementMixin.java"));
-        String contextMixin = Files.readString(Path.of(
-                "src/main/java/com/moakiee/ae2lt/mixin/NetworkEventContextPhaseTeleportMixin.java"));
+        Path oldContextMixin = Path.of(
+                "src/main/java/com/moakiee/ae2lt/mixin/NetworkEventContextPhaseTeleportMixin.java");
+        String payloadMixin = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/mixin/SimpleChannelMessageBuilderPhaseTeleportMixin.java"));
         String mixinConfig = Files.readString(Path.of("src/main/resources/ae2lt.mixins.json"));
 
         assertTrue(guard.contains("CUSTOM_PAYLOAD_PLAYER.get() == player"));
+        assertTrue(guard.contains("MAIN_THREAD_PAYLOAD_PLAYER.get() == player"));
+        assertTrue(guard.contains("runAsPlayerPayloadHandler(ServerPlayer player, Runnable action)"));
+        assertTrue(guard.contains("ServerPlayer previous = MAIN_THREAD_PAYLOAD_PLAYER.get()"));
+        assertTrue(guard.contains("MAIN_THREAD_PAYLOAD_PLAYER.remove()"));
+        assertFalse(guard.contains("PLAYER_PAYLOAD_TELEPORT_DEPTH"));
+        assertFalse(guard.contains("runAsPlayerPayloadTeleport"));
         assertTrue(packetMixin.contains("@WrapMethod(method = \"handleCustomPayload\")"));
         assertTrue(packetMixin.contains("PhaseFlightMovementGuard.beginCustomPayload("));
         assertTrue(packetMixin.contains("PhaseFlightMovementGuard.endCustomPayload("));
         assertTrue(packetMixin.contains("ServerboundCustomPayloadPacket"));
-        assertTrue(contextMixin.contains("@Mixin(value = NetworkEvent.Context.class, remap = false)"));
-        assertTrue(contextMixin.contains("enqueueWork(Ljava/lang/Runnable;)"));
-        assertTrue(contextMixin.contains("ServerPlayer sender = getSender()"));
-        assertTrue(contextMixin.contains("PhaseFlightMovementGuard.runAsPlayerPayloadTeleport(sender, task)"));
+        assertTrue(payloadMixin.contains("@Mixin(value = SimpleChannel.MessageBuilder.class, remap = false)"));
+        assertTrue(payloadMixin.contains("method = \"lambda$consumerMainThread$1\""));
+        assertTrue(payloadMixin.contains("BiConsumer;accept(Ljava/lang/Object;Ljava/lang/Object;)V"));
+        assertTrue(payloadMixin.contains("ServerPlayer sender = context.getSender()"));
+        assertTrue(payloadMixin.contains("runAsPlayerPayloadHandler("));
+        assertTrue(payloadMixin.contains("original.call(handler, message, contextArgument)"));
+        assertFalse(payloadMixin.contains("enqueueWork"));
+        assertFalse(Files.exists(oldContextMixin));
         assertTrue(mixinConfig.contains("ServerGamePacketListenerPhaseMovementMixin"));
-        assertTrue(mixinConfig.contains("NetworkEventContextPhaseTeleportMixin"));
+        assertTrue(mixinConfig.contains("SimpleChannelMessageBuilderPhaseTeleportMixin"));
+        assertFalse(mixinConfig.contains("NetworkEventContextPhaseTeleportMixin"));
         assertFalse(mixinConfig.contains("ServerPayloadContextPhaseTeleportMixin"));
     }
 

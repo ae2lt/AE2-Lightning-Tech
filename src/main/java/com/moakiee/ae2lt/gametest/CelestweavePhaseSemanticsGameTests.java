@@ -181,7 +181,7 @@ public final class CelestweavePhaseSemanticsGameTests {
     }
 
     @GameTest(templateNamespace = "minecraft", template = EMPTY_TEMPLATE)
-    public static void payloadTeleportAuthorizationIsSenderBoundAndFinallySafe(GameTestHelper helper) {
+    public static void payloadHandlerAuthorizationIsSenderBoundAndFinallySafe(GameTestHelper helper) {
         ServerPlayer sender = new ServerPlayer(
                 helper.getLevel().getServer(),
                 helper.getLevel(),
@@ -193,23 +193,23 @@ public final class CelestweavePhaseSemanticsGameTests {
 
         helper.assertFalse(PhaseFlightMovementGuard.isSelfTeleportAuthorized(sender),
                 "The sender started with stale payload authorization");
-        PhaseFlightMovementGuard.runAsPlayerPayloadTeleport(sender, () -> {
+        PhaseFlightMovementGuard.runAsPlayerPayloadHandler(sender, () -> {
             helper.assertTrue(PhaseFlightMovementGuard.isSelfTeleportAuthorized(sender),
-                    "The sending player was not authorized inside its payload task");
+                    "The sending player was not authorized inside its payload handler");
             helper.assertFalse(PhaseFlightMovementGuard.isSelfTeleportAuthorized(other),
                     "One player's payload authorized a different player");
-            PhaseFlightMovementGuard.runAsPlayerPayloadTeleport(sender, () ->
+            PhaseFlightMovementGuard.runAsPlayerPayloadHandler(sender, () ->
                     helper.assertTrue(PhaseFlightMovementGuard.isSelfTeleportAuthorized(sender),
                             "Nested payload authorization lost the outer sender"));
             helper.assertTrue(PhaseFlightMovementGuard.isSelfTeleportAuthorized(sender),
                     "Closing a nested payload scope cleared the outer scope");
         });
         helper.assertFalse(PhaseFlightMovementGuard.isSelfTeleportAuthorized(sender),
-                "A completed payload task leaked teleport authorization");
+                "A completed payload handler leaked teleport authorization");
 
         boolean threw = false;
         try {
-            PhaseFlightMovementGuard.runAsPlayerPayloadTeleport(sender, () -> {
+            PhaseFlightMovementGuard.runAsPlayerPayloadHandler(sender, () -> {
                 throw new ExpectedPayloadException();
             });
         } catch (ExpectedPayloadException expected) {
@@ -220,7 +220,7 @@ public final class CelestweavePhaseSemanticsGameTests {
         }
         helper.assertTrue(threw, "The exceptional payload path was not exercised");
         helper.assertFalse(PhaseFlightMovementGuard.isSelfTeleportAuthorized(sender),
-                "An exceptional payload task leaked teleport authorization");
+                "An exceptional payload handler leaked teleport authorization");
         helper.succeed();
     }
 
