@@ -49,4 +49,16 @@ final class RailgunBeamRenderClientTest {
         assertTrue(renderer.contains("public static void spawnHighVoltageChain("));
         assertTrue(renderer.contains("blue-cyan HV glow"));
     }
+
+    @Test
+    void arcRendererBoundsUntrustedGeometryWithoutReducingSupportedRangeDetail() throws Exception {
+        String renderer = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/client/railgun/RailgunArcRenderer.java"));
+
+        assertTrue(renderer.contains("private static final double MAX_ARC_SPAN = 512.0D;"));
+        assertTrue(renderer.contains("private static final int MAX_SEGMENTS = 384;"));
+        assertTrue(renderer.contains("segments = Math.max(2, Math.min(MAX_SEGMENTS, segments));"));
+        assertTrue(renderer.contains("Double.isFinite(value.x)"));
+        assertTrue(renderer.contains("Float.isFinite(width)"));
+    }
 }

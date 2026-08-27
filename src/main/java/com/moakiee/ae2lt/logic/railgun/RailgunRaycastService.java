@@ -19,6 +19,9 @@ import com.moakiee.ae2lt.config.RailgunDefaults;
 /** Shared block and entity raycast for continuous beams and charged shots. */
 public final class RailgunRaycastService {
 
+    /** Allows for ordinary voxel-hit rounding without accepting unrelated coordinates. */
+    private static final double BLOCK_HIT_RAY_TOLERANCE_SQR = 1.0D;
+
     private RailgunRaycastService() {}
 
     /**
@@ -41,10 +44,53 @@ public final class RailgunRaycastService {
             Predicate<Entity> filter) {
         BlockHitResult blockHit = level.clip(new ClipContext(
                 from, to, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, shooter));
-        Vec3 blockEnd = blockHit.getType() == HitResult.Type.MISS ? to : blockHit.getLocation();
+        Vec3 rawBlockEnd = blockHit.getType() == HitResult.Type.MISS ? to : blockHit.getLocation();
+        Vec3 blockEnd = sanitizeBlockEnd(from, to, rawBlockEnd);
         EntityHitResult entityHit = traceEntities(
                 level, shooter, from, blockEnd, queryPadding, targetInflation, filter);
-        return new Result(blockHit, blockEnd, entityHit);
+        // Keep a finite raw endpoint for block mutation. Some level implementations store
+        // interactive blocks in another coordinate space while returning their hit through
+        // the normal clip API. That coordinate must never leak into entity queries or FX,
+        // but it may still be the correct coordinate for the owning level's block access.
+        Vec3 terrainEnd = isFinite(rawBlockEnd) ? rawBlockEnd : blockEnd;
+        return new Result(blockHit, blockEnd, terrainEnd, entityHit);
+    }
+
+    /**
+     * Accepts normal hit locations unchanged and rejects coordinates that do not describe a
+     * point on the requested ray segment. This is deliberately implementation-agnostic: any
+     * level, mixin, or raycast provider can return an alternate coordinate space.
+     */
+    static Vec3 sanitizeBlockEnd(Vec3 from, Vec3 to, Vec3 candidate) {
+        if (!isFinite(from) || !isFinite(to) || !isFinite(candidate)) {
+            return isFinite(to) ? to : Vec3.ZERO;
+        }
+
+        Vec3 ray = to.subtract(from);
+        double rayLengthSqr = ray.lengthSqr();
+        if (!Double.isFinite(rayLengthSqr) || rayLengthSqr <= 1.0E-12D) {
+            return from;
+        }
+
+        Vec3 offset = candidate.subtract(from);
+        double progress = offset.dot(ray) / rayLengthSqr;
+        if (!Double.isFinite(progress) || progress < 0.0D || progress > 1.0D) {
+            return to;
+        }
+
+        Vec3 nearest = from.add(ray.scale(progress));
+        double offRayDistanceSqr = candidate.distanceToSqr(nearest);
+        if (!Double.isFinite(offRayDistanceSqr) || offRayDistanceSqr > BLOCK_HIT_RAY_TOLERANCE_SQR) {
+            return to;
+        }
+        return candidate;
+    }
+
+    private static boolean isFinite(Vec3 value) {
+        return value != null
+                && Double.isFinite(value.x)
+                && Double.isFinite(value.y)
+                && Double.isFinite(value.z);
     }
 
     @Nullable
@@ -91,5 +137,6 @@ public final class RailgunRaycastService {
     public record Result(
             BlockHitResult blockHit,
             Vec3 blockEnd,
+            Vec3 terrainEnd,
             @Nullable EntityHitResult entityHit) {}
 }

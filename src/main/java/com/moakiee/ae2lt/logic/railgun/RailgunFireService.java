@@ -228,7 +228,12 @@ public final class RailgunFireService {
 
         // 4. Terrain
         if (AE2LTCommonConfig.railgunTerrainDestructionEnabled() && settings.terrainDestruction()) {
-            RailgunTerrainService.queueDestroy(level, firstHitPos, tier, player, stack);
+            // Entity hits use their world-space location. Block hits retain the raw finite
+            // coordinate supplied by the level because a level implementation may expose
+            // interactive storage in a coordinate space that is unsuitable for FX/raycasting
+            // but still correct for its own block mutation methods.
+            Vec3 terrainCenter = ehr != null ? firstHitPos : raycast.terrainEnd();
+            RailgunTerrainService.queueDestroy(level, terrainCenter, tier, player, stack);
             if (tier.isMax()) {
                 List<Vec3> tunnel = new ArrayList<>();
                 for (var h : hits) {
