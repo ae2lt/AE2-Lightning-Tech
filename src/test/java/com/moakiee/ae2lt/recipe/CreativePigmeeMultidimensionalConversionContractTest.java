@@ -16,6 +16,8 @@ final class CreativePigmeeMultidimensionalConversionContractTest {
                 "src/main/java/com/moakiee/ae2lt/recipe/PigmeeConversionLogic.java");
 
         assertTrue(conversion.contains(
+                "target.is(ModItems.BULK_LIGHTNING_CELL_COMPONENT.get())"));
+        assertTrue(conversion.contains(
                 "target.is(ModItems.RAILGUN_MODULE_OVERLOAD_EXECUTION.get())"));
         assertTrue(conversion.contains(
                 "new ItemStack(ModItems.RAILGUN_MODULE_MULTIDIMENSIONAL_EXECUTION.get())"));
