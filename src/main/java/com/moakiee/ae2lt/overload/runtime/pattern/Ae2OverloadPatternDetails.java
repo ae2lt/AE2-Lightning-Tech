@@ -1,7 +1,6 @@
 package com.moakiee.ae2lt.overload.runtime.pattern;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Objects;
 
@@ -45,35 +44,10 @@ public final class Ae2OverloadPatternDetails
         for (int slot = 0; slot < sourceInputs.length; slot++) {
             this.inputs[slot] = wrapInput(sourceInputs[slot], overloadDetails.inputMode(slot));
         }
-        this.outputs = wipeIdOnlyOutputs(sourceDetails.getOutputs(), overloadDetails);
-    }
-
-    /**
-     * An ID_ONLY slot is NBT-agnostic by contract, so the AE2-facing view erases the captured
-     * components ("仅id ⇒ 抹除NBT"): the declared key becomes the bare item. For an output slot this
-     * key is what indexes the pattern in the crafting service and what the CPU mirrors into its
-     * waiting list — the product must be requestable/consumable as the plain item, and must
-     * <em>not</em> satisfy strict demand for the originally captured variant (the machine may return
-     * any NBT). STRICT slots keep their exact captured keys. Output list positions are preserved:
-     * CPU-side code correlates {@code getOutputs()} entries with
-     * {@link OverloadPatternDetails.OutputSlot#slotIndex()} by index.
-     */
-    private static List<GenericStack> wipeIdOnlyOutputs(List<GenericStack> sourceOutputs,
-                                                        OverloadPatternDetails overloadDetails) {
-        var result = new ArrayList<GenericStack>(sourceOutputs.size());
-        for (int slot = 0; slot < sourceOutputs.size(); slot++) {
-            result.add(wipeIfIdOnly(sourceOutputs.get(slot), overloadDetails.outputMode(slot)));
-        }
-        return List.copyOf(result);
-    }
-
-    private static GenericStack wipeIfIdOnly(GenericStack stack, MatchMode matchMode) {
-        if (!matchMode.ignoresComponents()
-                || !(stack.what() instanceof AEItemKey itemKey)
-                || !itemKey.hasComponents()) {
-            return stack;
-        }
-        return new GenericStack(AEItemKey.of(itemKey.getItem()), stack.amount());
+        // Match mode is metadata about the set of runtime keys. Keep the ordinary concrete output
+        // as AE2's catalog/waiting identity; the overload CPU side separately reconciles an actual
+        // same-id result against this concrete expected key.
+        this.outputs = List.copyOf(sourceDetails.getOutputs());
     }
 
     @Override
@@ -146,22 +120,12 @@ public final class Ae2OverloadPatternDetails
         private OverloadInput(IInput sourceInput, MatchMode matchMode) {
             this.sourceInput = sourceInput;
             this.matchMode = matchMode;
-            // Expose the component-wiped templates (see wipeIfIdOnly): the declared demand of an
-            // ID_ONLY slot is the bare item. Runtime acceptance is unchanged — isValid matches by
-            // item id, and CPU extraction resolves concrete variants through findFuzzyTemplates.
-            this.possibleInputs = wipePossibleInputs(sourceInput.getPossibleInputs(), matchMode);
+            // Preserve AE2's concrete discovery anchors. Runtime membership remains broader through
+            // isValid, while acceptsSameIdVariants supplies the separate same-id closure declaration.
+            this.possibleInputs = sourceInput.getPossibleInputs().clone();
             // Keep the ORIGINAL captured keys for getRemainingKey: the source input only understands
             // the templates it declared.
             this.itemKeys = collectItemKeys(sourceInput.getPossibleInputs());
-        }
-
-        private static GenericStack[] wipePossibleInputs(GenericStack[] source, MatchMode matchMode) {
-            var byKey = new LinkedHashMap<AEKey, GenericStack>(source.length);
-            for (var possible : source) {
-                var wiped = wipeIfIdOnly(possible, matchMode);
-                byKey.putIfAbsent(wiped.what(), wiped);
-            }
-            return byKey.values().toArray(new GenericStack[0]);
         }
 
         @Override
