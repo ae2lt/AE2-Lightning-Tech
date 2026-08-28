@@ -52,9 +52,9 @@ import org.junit.jupiter.api.Test;
  * Locks the planner-side supply matrix of overload ID_ONLY slots ("误报缺失" regression):
  * <ul>
  *   <li>an ID_ONLY input can be supplied by any producer pattern sharing the item id — strict
- *       plain, strict overload, or (wiped) ID_ONLY overload outputs all appear to the planner as
+ *       plain, strict overload, or ID_ONLY overload outputs all appear to the planner as
  *       "a craftable same-id variant" and must be discovered even with zero stock of any variant;</li>
- *   <li>a STRICT slot must NOT borrow a same-id variant whose components differ;</li>
+ *   <li>a STRICT slot whose {@code isValid} rejects sibling components must not borrow them;</li>
  *   <li>stocked same-id variants keep satisfying ID_ONLY slots (pre-existing behavior).</li>
  * </ul>
  * Uses a key type whose {@code getId()} is shared across "component variants" while equality is
@@ -140,7 +140,7 @@ class FastCraftingPlannerIdOnlyCraftableVariantTest {
         });
         // Same shape, but the overload slot is STRICT: components differ -> must stay missing.
         IPatternDetails consumer = new FakeOverloadPattern(TARGET, new IPatternDetails.IInput[] {
-                new FakeInput(MAT_DECLARED, 1)
+                new StrictInput(MAT_DECLARED, 1)
         }, Set.of());
 
         var service = new FakeCraftingService()
@@ -214,6 +214,18 @@ class FastCraftingPlannerIdOnlyCraftableVariantTest {
         @Override public long getMultiplier() { return 1; }
         @Override public boolean isValid(AEKey candidate, Level level) {
             return candidate.getId().equals(key.getId());
+        }
+        @Override public AEKey getRemainingKey(AEKey template) { return null; }
+    }
+
+    private record StrictInput(AEKey key, long amount) implements IPatternDetails.IInput {
+        @Override public appeng.api.stacks.GenericStack[] getPossibleInputs() {
+            return new appeng.api.stacks.GenericStack[] {
+                    new appeng.api.stacks.GenericStack(key, amount) };
+        }
+        @Override public long getMultiplier() { return 1; }
+        @Override public boolean isValid(AEKey candidate, Level level) {
+            return key.equals(candidate);
         }
         @Override public AEKey getRemainingKey(AEKey template) { return null; }
     }
