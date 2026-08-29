@@ -847,6 +847,9 @@ public class AE2LightningTech {
      * so that newBlockEntity() and getBlockEntity() work correctly.
      */
     private void commonSetup(FMLCommonSetupEvent event) {
+        // AE2LT is a Thunderbolt channel consumer. Declare this before any grid
+        // can be created so the default MOD activation mode is deterministic.
+        CoreConfig.requireChannelMaxFlow();
         FrequencyApi.setProvider(new FrequencyApiBridge());
         BatchExecutor.registerBatchEligibilityRule(BatchPatternEligibility::isEligible);
         event.enqueueWork(() -> {
