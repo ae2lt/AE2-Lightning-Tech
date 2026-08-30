@@ -47,6 +47,7 @@ import com.moakiee.thunderbolt.core.crafting.loop.CraftingCpuRestrictedPattern;
 import com.moakiee.thunderbolt.core.crafting.loop.PatternFiringExpander;
 import com.moakiee.thunderbolt.core.crafting.loop.ReusableSeedPattern;
 import com.moakiee.thunderbolt.core.crafting.plan.LoopCraftingPlan;
+import com.moakiee.thunderbolt.core.crafting.support.CraftingPatternDelegates;
 
 /** Integration coverage for closed-loop jobs whose provider consumes one shared seed per batch. */
 @GameTestHolder(AE2LightningTech.MODID)
@@ -435,8 +436,18 @@ public final class ClosedLoopSharedSeedBatchGameTests {
         public long pushBatch(
                 IPatternDetails details, KeyCounter[] oneCopyTemplate, long maxCraft) {
             lastAccepted = maxCraft;
-            if (details != pattern) {
-                validationFailure = "The batch provider must receive its registered physical pattern";
+            // Provider lookup unwraps to the registered pattern, but batch execution must retain
+            // the member wrapper that identifies the shared seed input and its returned output.
+            if (CraftingPatternDelegates.forProviderLookup(details) != pattern) {
+                validationFailure = "The execution pattern must resolve to the registered provider pattern";
+            } else if (maxCraft > 1L
+                    && (!(details instanceof SharedBatchInputPattern shared)
+                            || !shared.isSharedBatchInput(0, seed)
+                            || shared.isSharedBatchInput(1, ingredient)
+                            || shared.sharedBatchOutputAmount(seed) != 1L)) {
+                validationFailure = "Shared batch execution must preserve one reusable seed and ordinary ingredients";
+            } else if (maxCraft == 1L && details != pattern) {
+                validationFailure = "Ordinary fallback must still receive the registered physical pattern";
             } else if (index >= dispatches.length || maxCraft != dispatches[index]) {
                 validationFailure = "The provider received an unexpected scripted batch size";
             } else if (oneCopyTemplate.length != 2
