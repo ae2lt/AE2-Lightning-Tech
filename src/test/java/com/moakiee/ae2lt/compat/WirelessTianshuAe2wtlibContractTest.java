@@ -11,25 +11,7 @@ import org.junit.jupiter.api.Test;
 class WirelessTianshuAe2wtlibContractTest {
     private static final Path MAIN = Path.of("src/main");
 
-    @Test
-    void hostRestoresAndPersistsAe2wtlibSegmentedInventories() throws Exception {
-        String host = readJava("integration/ae2wtlib/TianshuWTMenuHost.java");
-        String fallback = readJava(
-                "logic/tianshu/terminal/TianshuWirelessPatternEncodingTermMenuHost.java");
-
-        assertTrue(host.contains("readFromNbt();"));
-        assertTrue(host.contains("super.readFromNbt();"));
-        assertTrue(host.contains("super.saveChanges();"));
-        assertTrue(host.contains("public void markForSave()"));
-        assertTrue(host.contains("saveChanges();"));
-        assertFalse(host.contains("new AppEngInternalInventory(null, 5)"));
-        assertTrue(host.contains("getMainMenuIcon()"));
-
-        assertTrue(fallback.contains("InternalInventoryHost"));
-        assertTrue(fallback.contains("new AppEngInternalInventory(this, 5)"));
-        assertTrue(fallback.contains("onChangeInventory(InternalInventory inventory, int slot)"));
-    }
-
+    // Actual host persistence is covered by TianshuTerminalStateGameTests in the Forge runtime.
     @Test
     void menuAndStyleExposeTheEntangledSingularity() throws Exception {
         String menu = readJava("menu/TianshuWirelessPatternEncodingTermMenu.java");
@@ -53,26 +35,26 @@ class WirelessTianshuAe2wtlibContractTest {
     }
 
     @Test
-    void frequencyRouteControlsOpeningStorageAndRangeValidation() throws Exception {
+    void frequencyAdaptersKeepNativeFallbackAndRemoteDrainHooks() throws Exception {
         String item = readJava("integration/ae2wtlib/TianshuWTItem.java");
         String integration = readJava("integration/ae2wtlib/Ae2wtlibIntegration.java");
         String link = readJava("integration/ae2wtlib/WirelessTerminalFrequencyLink.java");
         String mixin = readJava("mixin/ae2wtlib/WTMenuHostMixin.java");
 
         assertTrue(item.contains("checkUniversalPreconditions(ItemStack stack, Player player)"));
-        assertTrue(item.contains("WirelessTerminalFrequencyLink.resolve(player, stack)"));
+        assertTrue(item.contains("WirelessTerminalFrequencyLink.resolveRoute(player, stack)"));
         assertTrue(item.contains("super.checkUniversalPreconditions(stack, player)"));
         assertTrue(integration.contains("terminal()::tryOpen"));
         assertFalse(integration.contains("MenuOpener.open"));
 
         assertTrue(link.contains("WUTHandler.getUpgradeCardCount()"));
         assertTrue(link.contains("resolveAdvancedNode"));
-        assertTrue(link.contains("node != null && node.isPowered()"));
-        assertFalse(link.contains("node.getGrid()"));
+        // Resolution and power semantics are executed in WirelessTerminalFrequencyLinkTest.
         assertTrue(mixin.contains("method = \"getActionableNode\""));
         assertTrue(mixin.contains("method = \"rangeCheck\""));
         assertTrue(mixin.contains("rangeCheck = false;"));
-        assertTrue(mixin.contains("WirelessTerminalFrequencyLink.isNetworkPowered(node)"));
+        assertTrue(mixin.contains("route.isNetworkPowered()"));
+        assertTrue(mixin.contains("resolveRoute(self.getPlayer(), self.getUpgrades())"));
     }
 
     private static String readJava(String relativePath) throws Exception {

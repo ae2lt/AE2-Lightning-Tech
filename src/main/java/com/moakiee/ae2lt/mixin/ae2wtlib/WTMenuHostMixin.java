@@ -28,24 +28,24 @@ public abstract class WTMenuHostMixin {
 
     @Inject(method = "getActionableNode", at = @At("HEAD"), cancellable = true)
     private void ae2lt$redirectToFrequencyNode(CallbackInfoReturnable<IGridNode> cir) {
-        IGridNode node = ae2lt$resolveFrequencyNode();
-        if (node != null) {
-            cir.setReturnValue(node);
+        var route = ae2lt$resolveFrequencyRoute();
+        if (route.usesFrequencyRoute()) {
+            cir.setReturnValue(route.node());
         }
     }
 
     @Inject(method = "rangeCheck", at = @At("HEAD"), cancellable = true)
     private void ae2lt$validateFrequencyRange(CallbackInfoReturnable<Boolean> cir) {
-        IGridNode node = ae2lt$resolveFrequencyNode();
-        if (node != null) {
+        var route = ae2lt$resolveFrequencyRoute();
+        if (route.usesFrequencyRoute()) {
             rangeCheck = false;
-            cir.setReturnValue(WirelessTerminalFrequencyLink.isNetworkPowered(node));
+            cir.setReturnValue(route.isNetworkPowered());
         }
     }
 
     @Unique
-    private IGridNode ae2lt$resolveFrequencyNode() {
+    private WirelessTerminalFrequencyLink.Resolution ae2lt$resolveFrequencyRoute() {
         WTMenuHost self = (WTMenuHost) (Object) this;
-        return WirelessTerminalFrequencyLink.resolve(self.getPlayer(), self.getUpgrades());
+        return WirelessTerminalFrequencyLink.resolveRoute(self.getPlayer(), self.getUpgrades());
     }
 }

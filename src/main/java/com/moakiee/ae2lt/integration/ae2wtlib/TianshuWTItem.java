@@ -43,9 +43,9 @@ public final class TianshuWTItem extends ItemWT {
 
         // A resolved frequency route is authoritative. In particular, do not open against an
         // unrelated native wireless link when the selected frequency network is out of power.
-        var frequencyNode = WirelessTerminalFrequencyLink.resolve(player, stack);
-        if (frequencyNode != null) {
-            return WirelessTerminalFrequencyLink.isNetworkPowered(frequencyNode);
+        var frequencyRoute = WirelessTerminalFrequencyLink.resolveRoute(player, stack);
+        if (frequencyRoute.usesFrequencyRoute()) {
+            return frequencyRoute.isNetworkPowered();
         }
         return super.checkUniversalPreconditions(stack, player);
     }

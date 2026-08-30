@@ -13,7 +13,7 @@ import appeng.api.upgrades.IUpgradeableItem;
  *
  * <p>Writes go through the terminal's {@link appeng.api.upgrades.IUpgradeInventory}
  * (via {@code setItemDirect}), which AE2 persists immediately into the terminal
- * stack's data components. Mutating a stack returned by {@code getStackInSlot}
+ * stack's NBT. Mutating a stack returned by {@code getStackInSlot}
  * in place would be lost, so callers must use {@link #updateCard}.</p>
  */
 public final class TerminalCardAccess {

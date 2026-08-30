@@ -5,7 +5,6 @@ import java.util.function.BiConsumer;
 import org.jetbrains.annotations.Nullable;
 
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.Tag;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
@@ -20,36 +19,29 @@ import appeng.util.inv.AppEngInternalInventory;
 import appeng.util.inv.InternalInventoryHost;
 
 /**
- * Wireless host for the Tianshu terminal.
+ * Legacy AE2-only wireless host, retained for source and binary compatibility.
  *
- * <p>Built on AE2's own {@link WirelessTerminalMenuHost} so the host works
- * without ae2wtlib. When ae2wtlib is loaded, the registered item dispatches to
- * {@code com.moakiee.ae2lt.integration.ae2wtlib.TianshuWTMenuHost} instead, which
- * extends ae2wtlib's {@code WTMenuHost} and carries the same state logic for the
- * frequency-card remote link.
+ * <p>This branch does not register an AE2-only wireless item or menu. Its registered wireless
+ * terminal uses {@code com.moakiee.ae2lt.integration.ae2wtlib.TianshuWTMenuHost} and requires
+ * AE2WTLib. This class is not a runtime fallback and must not be wired into that registration.
  *
  * <p>AE2's pattern logic and Tianshu's authoring state are stored in the terminal item's NBT
  * (under {@value #TAG_PATTERN_LOGIC}), so closing and reopening the wireless item keeps the
- * same draft as the part version.</p>
+ * same draft as the part version. Its legacy nested view-cell storage is intentionally distinct
+ * from AE2WTLib's root view-cell storage.</p>
+ *
+ * @deprecated No registered terminal uses this host. Retained for existing external callers.
  */
+@Deprecated(forRemoval = false)
 public class TianshuWirelessPatternEncodingTermMenuHost extends WirelessTerminalMenuHost
         implements TianshuPatternTerminalHost, IPatternTerminalLogicHost, IViewCellStorage,
         InternalInventoryHost {
     private static final String TAG_PATTERN_LOGIC = "patternEncodingLogic";
-    private static final String TAG_TIANSHU_MODE = "tianshuMode";
-    private static final String TAG_MAINTAINABLE_VIEW = "tianshuMaintainableView";
-    private static final String TAG_CLOSED_LOOP_DRAFT = "tianshuClosedLoopDraft";
-    private static final String TAG_PROCESSING_DRAFT = "tianshuProcessingDraft";
     private static final String TAG_VIEW_CELLS = "viewcells";
 
     private final PatternEncodingLogic logic = new PatternEncodingLogic(this);
     private final AppEngInternalInventory viewCells = new AppEngInternalInventory(this, 5);
-    private TianshuEncodingMode tianshuMode = TianshuEncodingMode.CRAFTING;
-    private boolean maintainableView;
-    @Nullable
-    private ClosedLoopTerminalDraft closedLoopDraft;
-    @Nullable
-    private ProcessingPatternTerminalDraft processingDraft;
+    private final TianshuTerminalState terminalState = new TianshuTerminalState();
 
     public TianshuWirelessPatternEncodingTermMenuHost(
             Player player,
@@ -62,7 +54,7 @@ public class TianshuWirelessPatternEncodingTermMenuHost extends WirelessTerminal
         if (data != null) {
             logic.readFromNBT(data);
             viewCells.readFromNBT(data, TAG_VIEW_CELLS);
-            readTianshuState(data);
+            terminalState.read(data, TianshuTerminalState.NbtFormat.WIRELESS);
         }
 
         // Tianshu pulls blank patterns from ME storage and stages only the pattern being encoded.
@@ -87,18 +79,7 @@ public class TianshuWirelessPatternEncodingTermMenuHost extends WirelessTerminal
         CompoundTag data = getItemStack().getOrCreateTagElement(TAG_PATTERN_LOGIC);
         logic.writeToNBT(data);
         viewCells.writeToNBT(data, TAG_VIEW_CELLS);
-        data.putString(TAG_TIANSHU_MODE, tianshuMode.name());
-        data.putBoolean(TAG_MAINTAINABLE_VIEW, maintainableView);
-        if (closedLoopDraft != null) {
-            data.put(TAG_CLOSED_LOOP_DRAFT, closedLoopDraft.write());
-        } else {
-            data.remove(TAG_CLOSED_LOOP_DRAFT);
-        }
-        if (processingDraft != null) {
-            data.put(TAG_PROCESSING_DRAFT, processingDraft.write());
-        } else {
-            data.remove(TAG_PROCESSING_DRAFT);
-        }
+        terminalState.write(data, TianshuTerminalState.NbtFormat.WIRELESS);
     }
 
     @Override
@@ -118,70 +99,49 @@ public class TianshuWirelessPatternEncodingTermMenuHost extends WirelessTerminal
 
     @Override
     public TianshuEncodingMode getTianshuEncodingMode() {
-        return tianshuMode;
+        return terminalState.getEncodingMode();
     }
 
     @Override
     public void setTianshuEncodingMode(TianshuEncodingMode mode) {
-        if (mode != null && mode != tianshuMode) {
-            tianshuMode = mode;
+        if (terminalState.setEncodingMode(mode)) {
             markForSave();
         }
     }
 
     @Override
     public boolean isMaintainableView() {
-        return maintainableView;
+        return terminalState.isMaintainableView();
     }
 
     @Override
     public void setMaintainableView(boolean enabled) {
-        if (maintainableView != enabled) {
-            maintainableView = enabled;
+        if (terminalState.setMaintainableView(enabled)) {
             markForSave();
         }
     }
 
     @Override
     public ClosedLoopTerminalDraft getClosedLoopTerminalDraft() {
-        return closedLoopDraft;
+        return terminalState.getClosedLoopDraft();
     }
 
     @Override
     public void setClosedLoopTerminalDraft(@Nullable ClosedLoopTerminalDraft draft) {
-        if (ClosedLoopTerminalDraft.sameState(closedLoopDraft, draft)) {
-            return;
+        if (terminalState.setClosedLoopDraft(draft)) {
+            markForSave();
         }
-        closedLoopDraft = draft;
-        markForSave();
     }
 
     @Override
     public ProcessingPatternTerminalDraft getProcessingPatternTerminalDraft() {
-        return processingDraft;
+        return terminalState.getProcessingDraft();
     }
 
     @Override
     public void setProcessingPatternTerminalDraft(@Nullable ProcessingPatternTerminalDraft draft) {
-        if (ProcessingPatternTerminalDraft.sameState(processingDraft, draft)) {
-            return;
+        if (terminalState.setProcessingDraft(draft)) {
+            markForSave();
         }
-        processingDraft = draft;
-        markForSave();
-    }
-
-    private void readTianshuState(CompoundTag data) {
-        try {
-            tianshuMode = TianshuEncodingMode.valueOf(data.getString(TAG_TIANSHU_MODE));
-        } catch (IllegalArgumentException ignored) {
-            tianshuMode = TianshuEncodingMode.CRAFTING;
-        }
-        maintainableView = data.getBoolean(TAG_MAINTAINABLE_VIEW);
-        closedLoopDraft = data.contains(TAG_CLOSED_LOOP_DRAFT, Tag.TAG_COMPOUND)
-                ? ClosedLoopTerminalDraft.read(data.getCompound(TAG_CLOSED_LOOP_DRAFT))
-                : null;
-        processingDraft = data.contains(TAG_PROCESSING_DRAFT, Tag.TAG_COMPOUND)
-                ? ProcessingPatternTerminalDraft.read(data.getCompound(TAG_PROCESSING_DRAFT))
-                : null;
     }
 }

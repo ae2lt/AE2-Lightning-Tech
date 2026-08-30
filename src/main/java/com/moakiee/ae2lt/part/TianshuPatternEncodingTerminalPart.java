@@ -11,6 +11,7 @@ import com.moakiee.ae2lt.logic.tianshu.terminal.ClosedLoopTerminalDraft;
 import com.moakiee.ae2lt.logic.tianshu.terminal.ProcessingPatternTerminalDraft;
 import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuEncodingMode;
 import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuPatternTerminalHost;
+import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuTerminalState;
 import com.moakiee.ae2lt.menu.TianshuPatternEncodingTermMenu;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
@@ -30,14 +31,7 @@ public final class TianshuPatternEncodingTerminalPart extends PatternEncodingTer
     private static final IPartModel MODELS_HAS_CHANNEL = new PartModel(
             MODEL_BASE, MODEL_ON, MODEL_STATUS_HAS_CHANNEL);
 
-    private static final String TAG_MODE = "TianshuEncodingMode";
-    private static final String TAG_MAINTAINABLE_VIEW = "MaintainableView";
-    private static final String TAG_CLOSED_LOOP_DRAFT = "ClosedLoopDraft";
-    private static final String TAG_PROCESSING_DRAFT = "ProcessingDraft";
-    private TianshuEncodingMode tianshuMode = TianshuEncodingMode.CRAFTING;
-    private boolean maintainableView;
-    @Nullable private ClosedLoopTerminalDraft closedLoopDraft;
-    @Nullable private ProcessingPatternTerminalDraft processingDraft;
+    private final TianshuTerminalState terminalState = new TianshuTerminalState();
 
     public TianshuPatternEncodingTerminalPart(IPartItem<?> partItem) {
         super(partItem);
@@ -64,26 +58,24 @@ public final class TianshuPatternEncodingTerminalPart extends PatternEncodingTer
 
     @Override
     public TianshuEncodingMode getTianshuEncodingMode() {
-        return tianshuMode;
+        return terminalState.getEncodingMode();
     }
 
     @Override
     public void setTianshuEncodingMode(TianshuEncodingMode mode) {
-        if (mode != null && tianshuMode != mode) {
-            tianshuMode = mode;
+        if (terminalState.setEncodingMode(mode)) {
             markForSave();
         }
     }
 
     @Override
     public boolean isMaintainableView() {
-        return maintainableView;
+        return terminalState.isMaintainableView();
     }
 
     @Override
     public void setMaintainableView(boolean enabled) {
-        if (maintainableView != enabled) {
-            maintainableView = enabled;
+        if (terminalState.setMaintainableView(enabled)) {
             markForSave();
         }
     }
@@ -91,62 +83,39 @@ public final class TianshuPatternEncodingTerminalPart extends PatternEncodingTer
     @Nullable
     @Override
     public ClosedLoopTerminalDraft getClosedLoopTerminalDraft() {
-        return closedLoopDraft;
+        return terminalState.getClosedLoopDraft();
     }
 
     @Override
     public void setClosedLoopTerminalDraft(@Nullable ClosedLoopTerminalDraft draft) {
-        if (ClosedLoopTerminalDraft.sameState(closedLoopDraft, draft)) return;
-        closedLoopDraft = draft;
-        markForSave();
+        if (terminalState.setClosedLoopDraft(draft)) {
+            markForSave();
+        }
     }
 
     @Nullable
     @Override
     public ProcessingPatternTerminalDraft getProcessingPatternTerminalDraft() {
-        return processingDraft;
+        return terminalState.getProcessingDraft();
     }
 
     @Override
     public void setProcessingPatternTerminalDraft(
             @Nullable ProcessingPatternTerminalDraft draft) {
-        if (ProcessingPatternTerminalDraft.sameState(processingDraft, draft)) return;
-        processingDraft = draft;
-        markForSave();
+        if (terminalState.setProcessingDraft(draft)) {
+            markForSave();
+        }
     }
 
     @Override
     public void readFromNBT(CompoundTag data) {
         super.readFromNBT(data);
-        try {
-            tianshuMode = TianshuEncodingMode.valueOf(data.getString(TAG_MODE));
-        } catch (IllegalArgumentException ignored) {
-            tianshuMode = TianshuEncodingMode.CRAFTING;
-        }
-        maintainableView = data.getBoolean(TAG_MAINTAINABLE_VIEW);
-        closedLoopDraft = data.contains(TAG_CLOSED_LOOP_DRAFT, net.minecraft.nbt.Tag.TAG_COMPOUND)
-                ? ClosedLoopTerminalDraft.read(data.getCompound(TAG_CLOSED_LOOP_DRAFT))
-                : null;
-        processingDraft = data.contains(TAG_PROCESSING_DRAFT, net.minecraft.nbt.Tag.TAG_COMPOUND)
-                ? ProcessingPatternTerminalDraft.read(
-                        data.getCompound(TAG_PROCESSING_DRAFT))
-                : null;
+        terminalState.read(data, TianshuTerminalState.NbtFormat.PART);
     }
 
     @Override
     public void writeToNBT(CompoundTag data) {
         super.writeToNBT(data);
-        data.putString(TAG_MODE, tianshuMode.name());
-        data.putBoolean(TAG_MAINTAINABLE_VIEW, maintainableView);
-        if (closedLoopDraft != null) {
-            data.put(TAG_CLOSED_LOOP_DRAFT, closedLoopDraft.write());
-        } else {
-            data.remove(TAG_CLOSED_LOOP_DRAFT);
-        }
-        if (processingDraft != null) {
-            data.put(TAG_PROCESSING_DRAFT, processingDraft.write());
-        } else {
-            data.remove(TAG_PROCESSING_DRAFT);
-        }
+        terminalState.write(data, TianshuTerminalState.NbtFormat.PART);
     }
 }
