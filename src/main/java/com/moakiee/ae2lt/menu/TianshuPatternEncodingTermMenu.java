@@ -363,12 +363,20 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
 
     @Override
     public void setMode(EncodingMode mode) {
-        if (mode != null) {
-            var extended = TianshuEncodingMode.fromAe2(mode);
-            if (isClientSide()) sendClientAction("setTianshuMode", extended);
-            else setTianshuModeServer(extended);
+        if (mode == null) {
+            super.setMode(null);
+            return;
         }
-        super.setMode(mode);
+        var extended = TianshuEncodingMode.fromAe2(mode);
+        if (isClientSide()) {
+            // AE2's recipe-viewer helper immediately follows this mode change with fake-slot
+            // updates and may encode in the same input event. Send its authoritative logic-mode
+            // action before the Tianshu mirror so the server never observes a stale native mode.
+            super.setMode(mode);
+            sendClientAction("setTianshuMode", extended);
+        } else {
+            alignNativeModeServer(extended, mode);
+        }
     }
 
     public boolean consumeTriggeredUpload() {
@@ -448,11 +456,25 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
 
     private void setTianshuModeServer(TianshuEncodingMode mode) {
         if (!isServerSide() || mode == null) return;
+        if (mode.ae2Mode() != null) {
+            alignNativeModeServer(mode, mode.ae2Mode());
+        } else {
+            applyTianshuModeState(mode);
+        }
+        broadcastChanges();
+    }
+
+    private void alignNativeModeServer(TianshuEncodingMode mode, EncodingMode nativeMode) {
+        applyTianshuModeState(mode);
+        var logic = tianshuHost.getLogic();
+        if (logic.getMode() != nativeMode) logic.setMode(nativeMode);
+        if (getMode() != nativeMode) super.setMode(nativeMode);
+    }
+
+    private void applyTianshuModeState(TianshuEncodingMode mode) {
         if (tianshuMode != mode) resetProcessingEncodingType();
         tianshuMode = mode;
         tianshuHost.setTianshuEncodingMode(mode);
-        if (mode.ae2Mode() != null && getMode() != mode.ae2Mode()) super.setMode(mode.ae2Mode());
-        broadcastChanges();
     }
 
     public void multiplyProcessing(int factor) {
