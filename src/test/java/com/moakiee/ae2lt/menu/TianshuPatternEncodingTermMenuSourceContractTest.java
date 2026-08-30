@@ -66,6 +66,34 @@ class TianshuPatternEncodingTermMenuSourceContractTest {
     }
 
     @Test
+    void recipeViewerModeChangeAlignsNativeLogicBeforeImmediateEncoding() throws Exception {
+        String menu = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/menu/TianshuPatternEncodingTermMenu.java"));
+
+        int setMode = menu.indexOf("public void setMode(EncodingMode mode)");
+        int alignMethod = menu.indexOf("private void alignNativeModeServer(", setMode);
+        String clientPath = menu.substring(setMode, alignMethod);
+        int nativeAction = clientPath.indexOf("super.setMode(mode);");
+        int tianshuAction = clientPath.indexOf(
+                "sendClientAction(\"setTianshuMode\", extended)");
+        assertTrue(nativeAction >= 0 && tianshuAction > nativeAction);
+
+        int alignEnd = menu.indexOf("private void applyTianshuModeState(", alignMethod);
+        String serverPath = menu.substring(alignMethod, alignEnd);
+        int logicMode = serverPath.indexOf("logic.setMode(nativeMode)");
+        int menuMode = serverPath.indexOf("super.setMode(nativeMode)");
+        assertTrue(logicMode >= 0 && menuMode > logicMode);
+
+        int serverAction = menu.indexOf("private void setTianshuModeServer(", setMode);
+        int serverActionEnd = menu.indexOf("private void alignNativeModeServer(", serverAction);
+        String serverActionPath = menu.substring(serverAction, serverActionEnd);
+        int serverAlign = serverActionPath.indexOf(
+                "alignNativeModeServer(mode, mode.ae2Mode())");
+        int broadcast = serverActionPath.indexOf("broadcastChanges()");
+        assertTrue(serverAlign >= 0 && broadcast > serverAlign);
+    }
+
+    @Test
     void processingPatternConfigurationPersistsAndTracksTheCurrentDraft() throws Exception {
         String menu = Files.readString(Path.of(
                 "src/main/java/com/moakiee/ae2lt/menu/TianshuPatternEncodingTermMenu.java"));
