@@ -1,0 +1,9 @@
+{
+  "type": "ae2lt:crystal_catalyzer",
+  "pigmee": true,
+  "catalyst": { "item": "minecraft:amethyst_block" },
+  "catalystCount": 64,
+  "output": { "id": "minecraft:amethyst_shard", "count": 16 },
+  "energyPerCycle": 0,
+  "lightningCost": 0
+}

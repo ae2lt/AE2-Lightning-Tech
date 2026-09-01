@@ -38,7 +38,9 @@ public abstract class AbstractGridRecipeMachineLogic<
             return TickRateModulation.SLEEP;
         }
 
-        rechargeFromAppliedFlux();
+        if (shouldRechargeFromAppliedFlux()) {
+            rechargeFromAppliedFlux();
+        }
 
         if (!host.hasLockedRecipe()) {
             tryStartProcessing();
@@ -119,6 +121,21 @@ public abstract class AbstractGridRecipeMachineLogic<
     protected abstract Optional<C> validateLockedRecipe(L lockedRecipe);
 
     /**
+     * Lets a machine opt out of the optional Applied Flux network refill. This
+     * is used by recipes whose processing cost is explicitly zero FE.
+     */
+    protected boolean shouldRechargeFromAppliedFlux() {
+        return true;
+    }
+
+    /**
+     * Advances a recipe that has a time requirement but no energy requirement.
+     * Energy-backed machines keep their existing tick accounting path.
+     */
+    protected void onEnergyFreeProcessingTick() {
+    }
+
+    /**
      * Returns whether the machine can currently accept the locked recipe's
      * output. When this returns false, both recipe validation and energy
      * consumption are skipped for the tick, so we fall through to auto-export
@@ -129,7 +146,20 @@ public abstract class AbstractGridRecipeMachineLogic<
     }
 
     private TickRateModulation tickActiveRecipe(L lockedRecipe, C lockedCandidate) {
-        if (host.getConsumedEnergy() >= getTotalEnergy(lockedRecipe)) {
+        long totalEnergy = getTotalEnergy(lockedRecipe);
+        if (totalEnergy <= 0L) {
+            int requiredTicks = Math.max(1, getMinProcessTicks());
+            onEnergyFreeProcessingTick();
+            if (host.getProcessingTicksSpent() >= requiredTicks) {
+                completeRecipe(lockedRecipe, lockedCandidate);
+                return host.hasLockedRecipe() ? TickRateModulation.SLOWER : TickRateModulation.URGENT;
+            }
+
+            host.pushOutResult();
+            return TickRateModulation.URGENT;
+        }
+
+        if (host.getConsumedEnergy() >= totalEnergy) {
             completeRecipe(lockedRecipe, lockedCandidate);
             return host.hasLockedRecipe() ? TickRateModulation.SLOWER : TickRateModulation.URGENT;
         }

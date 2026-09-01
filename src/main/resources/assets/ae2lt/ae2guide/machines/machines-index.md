@@ -8,7 +8,7 @@ navigation:
 
 # Processing Machines
 
-AE2 Lightning Tech provides several processing machines for different material chains. Except for the Atmospheric Ionizer, which consumes AE energy from the ME network, these machines connect to an ME network, use external FE, and require stored Lightning for their recipes.
+AE2 Lightning Tech provides several processing machines for different material chains. Except for the Atmospheric Ionizer, which consumes AE energy from the ME network, these machines connect to an ME network and use external FE. The regular processing machines require stored Lightning; the Pigmee Crystal Catalyzer is the water-only, zero-FE exception.
 
 <SubPages />
 

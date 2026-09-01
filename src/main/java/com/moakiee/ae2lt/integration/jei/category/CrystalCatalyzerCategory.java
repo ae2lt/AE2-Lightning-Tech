@@ -133,10 +133,13 @@ public class CrystalCatalyzerCategory implements IRecipeCategory<CrystalCatalyze
                     .addItemStacks(expandIngredient(catalyst, perInstance))
                     .addRichTooltipCallback((recipeSlotView, tooltip) -> {
                         LargeStackCountRenderer.appendCountTooltip(tooltip, perInstance);
-                        tooltip.add(Component.translatable(
-                                "jei.ae2lt.crystal_catalyzer.catalyst_parallel",
+                        tooltip.add(Component.translatable(recipe.pigmee()
+                                ? "jei.ae2lt.crystal_catalyzer.catalyst_pigmee"
+                                : "jei.ae2lt.crystal_catalyzer.catalyst_parallel",
                                 perInstance,
-                                CrystalCatalyzerInventory.CATALYST_SLOT_LIMIT));
+                                recipe.pigmee()
+                                        ? CrystalCatalyzerInventory.PIGMEE_CATALYST_SLOT_LIMIT
+                                        : CrystalCatalyzerInventory.CATALYST_SLOT_LIMIT));
                     });
         });
 
@@ -149,10 +152,14 @@ public class CrystalCatalyzerCategory implements IRecipeCategory<CrystalCatalyze
                 .addItemStack(baseOutput)
                 .addRichTooltipCallback((recipeSlotView, tooltip) -> {
                     LargeStackCountRenderer.appendCountTooltip(tooltip, baseCount);
-                    tooltip.add(Component.translatable(
-                            "jei.ae2lt.crystal_catalyzer.output_base", baseCount, matrixMultiplier));
-                    tooltip.add(Component.translatable(
-                            "jei.ae2lt.crystal_catalyzer.output_parallel", catalystPerInstance));
+                    tooltip.add(recipe.pigmee()
+                            ? Component.translatable("jei.ae2lt.crystal_catalyzer.output_pigmee", baseCount)
+                            : Component.translatable(
+                                    "jei.ae2lt.crystal_catalyzer.output_base", baseCount, matrixMultiplier));
+                    if (!recipe.pigmee()) {
+                        tooltip.add(Component.translatable(
+                                "jei.ae2lt.crystal_catalyzer.output_parallel", catalystPerInstance));
+                    }
                 });
     }
 
@@ -174,28 +181,34 @@ public class CrystalCatalyzerCategory implements IRecipeCategory<CrystalCatalyze
         int energyX = (WIDTH - font.width(energyText)) / 2;
         guiGraphics.drawString(font, energyText, energyX, ENERGY_TEXT_Y, 0x404040, false);
 
-        String timeStr = recipe.mode() == Mode.CRYSTAL ? "1s" : "2s";
+        String timeStr = recipe.pigmee() ? "15s" : recipe.mode() == Mode.CRYSTAL ? "1s" : "2s";
         var timeText = Component.translatable(
                 "jei.ae2lt.crystal_catalyzer.time", timeStr);
         int timeX = (WIDTH - font.width(timeText)) / 2;
         guiGraphics.drawString(font, timeText, timeX, TIME_TEXT_Y, 0x404040, false);
 
-        var lightningText = Component.translatable(
-                "jei.ae2lt.crystal_catalyzer.lightning",
-                recipe.lightningCost(),
-                Component.translatable(recipe.lightningTier() == LightningKey.Tier.EXTREME_HIGH_VOLTAGE
-                        ? "ae2lt.gui.lightning_simulation.tier.extreme_high_voltage"
-                        : "ae2lt.gui.lightning_simulation.tier.high_voltage"));
+        var lightningText = recipe.pigmee()
+                ? Component.translatable("jei.ae2lt.crystal_catalyzer.lightning_none")
+                : Component.translatable(
+                        "jei.ae2lt.crystal_catalyzer.lightning",
+                        recipe.lightningCost(),
+                        Component.translatable(recipe.lightningTier() == LightningKey.Tier.EXTREME_HIGH_VOLTAGE
+                                ? "ae2lt.gui.lightning_simulation.tier.extreme_high_voltage"
+                                : "ae2lt.gui.lightning_simulation.tier.high_voltage"));
         int lightningX = (WIDTH - font.width(lightningText)) / 2;
         guiGraphics.drawString(font, lightningText, lightningX, LIGHTNING_TEXT_Y, 0x404040, false);
 
-        var matrixLine1 = Component.translatable("jei.ae2lt.crystal_catalyzer.matrix_note_line1");
+        var matrixLine1 = Component.translatable(recipe.pigmee()
+                ? "jei.ae2lt.crystal_catalyzer.pigmee_note_line1"
+                : "jei.ae2lt.crystal_catalyzer.matrix_note_line1");
         int matrixLine1X = (WIDTH - font.width(matrixLine1)) / 2;
         guiGraphics.drawString(font, matrixLine1, matrixLine1X, MATRIX_LINE1_Y, 0x404040, false);
 
-        var matrixLine2 = Component.translatable(
-                "jei.ae2lt.crystal_catalyzer.matrix_note_line2",
-                CrystalCatalyzerBlockEntity.MATRIX_OUTPUT_MULTIPLIER);
+        var matrixLine2 = recipe.pigmee()
+                ? Component.translatable("jei.ae2lt.crystal_catalyzer.pigmee_note_line2")
+                : Component.translatable(
+                        "jei.ae2lt.crystal_catalyzer.matrix_note_line2",
+                        CrystalCatalyzerBlockEntity.MATRIX_OUTPUT_MULTIPLIER);
         int matrixLine2X = (WIDTH - font.width(matrixLine2)) / 2;
         guiGraphics.drawString(font, matrixLine2, matrixLine2X, MATRIX_LINE2_Y, 0x404040, false);
     }

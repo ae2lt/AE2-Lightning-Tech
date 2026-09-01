@@ -27,6 +27,14 @@ public final class CrystalCatalyzerRecipeService {
             @Nullable Level level,
             CrystalCatalyzerInventory inventory,
             Mode mode) {
+        return findRecipe(level, inventory, mode, false);
+    }
+
+    public static Optional<CrystalCatalyzerRecipeCandidate> findRecipe(
+            @Nullable Level level,
+            CrystalCatalyzerInventory inventory,
+            Mode mode,
+            boolean pigmee) {
         if (level == null) {
             return Optional.empty();
         }
@@ -34,7 +42,7 @@ public final class CrystalCatalyzerRecipeService {
         CrystalCatalyzerRecipeInput input = CrystalCatalyzerRecipeInput.fromMachine(inventory);
         for (RecipeHolder<CrystalCatalyzerRecipe> holder : getRecipes(level)) {
             CrystalCatalyzerRecipe recipe = holder.value();
-            if (recipe.mode() != mode) {
+            if (recipe.mode() != mode || recipe.pigmee() != pigmee) {
                 continue;
             }
             if (recipe.getOutputTemplate().isEmpty()) {
@@ -63,12 +71,17 @@ public final class CrystalCatalyzerRecipeService {
     }
 
     public static boolean isKnownCatalyst(@Nullable Level level, ItemStack stack, Mode mode) {
+        return isKnownCatalyst(level, stack, mode, false);
+    }
+
+    public static boolean isKnownCatalyst(
+            @Nullable Level level, ItemStack stack, Mode mode, boolean pigmee) {
         if (level == null || stack.isEmpty()) {
             return false;
         }
         for (RecipeHolder<CrystalCatalyzerRecipe> holder : getRecipes(level)) {
             CrystalCatalyzerRecipe recipe = holder.value();
-            if (recipe.mode() != mode) {
+            if (recipe.mode() != mode || recipe.pigmee() != pigmee) {
                 continue;
             }
             if (recipe.getOutputTemplate().isEmpty()) {

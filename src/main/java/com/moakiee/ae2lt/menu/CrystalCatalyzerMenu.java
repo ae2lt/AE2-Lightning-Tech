@@ -25,12 +25,16 @@ import appeng.menu.implementations.MenuTypeBuilder;
 import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.blockentity.CrystalCatalyzerBlockEntity;
 import com.moakiee.ae2lt.machine.crystalcatalyzer.CrystalCatalyzerInventory;
+import com.moakiee.ae2lt.machine.crystalcatalyzer.CrystalCatalyzerLogic;
 import com.moakiee.ae2lt.machine.crystalcatalyzer.recipe.Mode;
 
 public class CrystalCatalyzerMenu extends AEBaseMenu implements FrequencyBindingMenu {
     public static final MenuType<CrystalCatalyzerMenu> TYPE = MenuTypeBuilder
             .create(CrystalCatalyzerMenu::new, CrystalCatalyzerBlockEntity.class)
-            .withMenuTitle(host -> Component.translatable("block.ae2lt.crystal_catalyzer"))
+            .withMenuTitle(host -> Component.translatable(
+                    host.isPigmeeVariant()
+                            ? "block.ae2lt.pigmee_crystal_catalyzer"
+                            : "block.ae2lt.crystal_catalyzer"))
             .buildUnregistered(ResourceLocation.fromNamespaceAndPath(
                     AE2LightningTech.MODID,
                     "crystal_catalyzer"));
@@ -57,12 +61,16 @@ public class CrystalCatalyzerMenu extends AEBaseMenu implements FrequencyBinding
     public long highVoltageAvailable;
     @GuiSync(30)
     public long extremeHighVoltageAvailable;
+    @GuiSync(31)
+    public boolean pigmeeVariant;
+    @GuiSync(32)
+    public int processingTicksSpent;
 
     private static final RelativeSide[] OUTPUT_SIDES = RelativeSide.values();
 
     private final CrystalCatalyzerBlockEntity host;
     private final Slot catalystSlot;
-    private final Slot matrixSlot;
+    private final LargeStackAppEngSlot matrixSlot;
     private final Slot outputSlot;
 
     public CrystalCatalyzerMenu(int id, Inventory playerInventory, CrystalCatalyzerBlockEntity host) {
@@ -73,9 +81,9 @@ public class CrystalCatalyzerMenu extends AEBaseMenu implements FrequencyBinding
         this.catalystSlot = addSlot(
                 new LargeStackAppEngSlot(inventory, CrystalCatalyzerInventory.SLOT_CATALYST),
                 Ae2ltSlotSemantics.CRYSTAL_CATALYZER_CATALYST);
-        this.matrixSlot = addSlot(
-                new LargeStackAppEngSlot(inventory, CrystalCatalyzerInventory.SLOT_MATRIX),
-                Ae2ltSlotSemantics.CRYSTAL_CATALYZER_MATRIX);
+        this.matrixSlot = new LargeStackAppEngSlot(inventory, CrystalCatalyzerInventory.SLOT_MATRIX);
+        addSlot(this.matrixSlot, Ae2ltSlotSemantics.CRYSTAL_CATALYZER_MATRIX);
+        this.matrixSlot.setActive(!host.isPigmeeVariant());
         Ae2ltSlotBackgrounds.withBackground(this.matrixSlot, Ae2ltSlotBackgrounds.LIGHTNING_COLLAPSE_MATRIX);
         this.outputSlot = addSlot(
                 new LargeStackAppEngSlot(inventory, CrystalCatalyzerInventory.SLOT_OUTPUT),
@@ -109,6 +117,8 @@ public class CrystalCatalyzerMenu extends AEBaseMenu implements FrequencyBinding
             modeOrdinal = host.getMode().ordinal();
             highVoltageAvailable = host.getAvailableHighVoltage();
             extremeHighVoltageAvailable = host.getAvailableExtremeHighVoltage();
+            pigmeeVariant = host.isPigmeeVariant();
+            processingTicksSpent = host.getProcessingTicksSpent();
         }
         super.broadcastChanges();
     }
@@ -193,7 +203,10 @@ public class CrystalCatalyzerMenu extends AEBaseMenu implements FrequencyBinding
 
     public double getProgress() {
         if (totalEnergy <= 0L) {
-            return 0.0D;
+            return pigmeeVariant
+                    ? Math.min(1.0D, (double) processingTicksSpent
+                            / (double) CrystalCatalyzerLogic.PIGMEE_PROCESS_TICKS)
+                    : 0.0D;
         }
         return Math.min(1.0D, (double) consumedEnergy / (double) totalEnergy);
     }
@@ -222,6 +235,10 @@ public class CrystalCatalyzerMenu extends AEBaseMenu implements FrequencyBinding
     public Mode getMode() {
         Mode[] values = Mode.values();
         return modeOrdinal >= 0 && modeOrdinal < values.length ? values[modeOrdinal] : Mode.CRYSTAL;
+    }
+
+    public boolean isPigmeeVariant() {
+        return pigmeeVariant;
     }
 
     public long getHighVoltageAvailable() {

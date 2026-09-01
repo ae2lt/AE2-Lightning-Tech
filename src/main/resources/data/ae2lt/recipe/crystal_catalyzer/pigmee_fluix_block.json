@@ -1,0 +1,9 @@
+{
+  "type": "ae2lt:crystal_catalyzer",
+  "pigmee": true,
+  "catalyst": { "item": "ae2:fluix_block" },
+  "catalystCount": 64,
+  "output": { "id": "ae2:fluix_crystal", "count": 16 },
+  "energyPerCycle": 0,
+  "lightningCost": 0
+}

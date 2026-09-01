@@ -1,5 +1,6 @@
 package com.moakiee.ae2lt.machine.crystalcatalyzer;
 
+import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 
 import org.jetbrains.annotations.Nullable;
@@ -27,6 +28,8 @@ public class CrystalCatalyzerInventory extends LargeStackItemHandler {
     public static final int SLOT_COUNT = 3;
 
     public static final int CATALYST_SLOT_LIMIT = 256;
+    /** Pigmee catalyzer consumes a single full stack as its fixed input. */
+    public static final int PIGMEE_CATALYST_SLOT_LIMIT = 64;
     public static final int OUTPUT_SLOT_LIMIT = 1024;
     public static final int MATRIX_SLOT_LIMIT = 1;
 
@@ -34,14 +37,23 @@ public class CrystalCatalyzerInventory extends LargeStackItemHandler {
     private Level level;
 
     private final Supplier<Mode> modeSupplier;
+    private final BooleanSupplier pigmeeVariantSupplier;
 
     public CrystalCatalyzerInventory(@Nullable Runnable changeListener) {
-        this(changeListener, () -> Mode.CRYSTAL);
+        this(changeListener, () -> Mode.CRYSTAL, () -> false);
     }
 
     public CrystalCatalyzerInventory(@Nullable Runnable changeListener, Supplier<Mode> modeSupplier) {
+        this(changeListener, modeSupplier, () -> false);
+    }
+
+    public CrystalCatalyzerInventory(
+            @Nullable Runnable changeListener,
+            Supplier<Mode> modeSupplier,
+            BooleanSupplier pigmeeVariantSupplier) {
         super(SLOT_COUNT, changeListener);
         this.modeSupplier = modeSupplier != null ? modeSupplier : () -> Mode.CRYSTAL;
+        this.pigmeeVariantSupplier = pigmeeVariantSupplier != null ? pigmeeVariantSupplier : () -> false;
     }
 
     public void setLevel(@Nullable Level level) {
@@ -52,7 +64,9 @@ public class CrystalCatalyzerInventory extends LargeStackItemHandler {
     public int getSlotLimit(int slot) {
         validateSlotIndex(slot);
         return switch (slot) {
-            case SLOT_CATALYST -> CATALYST_SLOT_LIMIT;
+            case SLOT_CATALYST -> pigmeeVariantSupplier.getAsBoolean()
+                    ? PIGMEE_CATALYST_SLOT_LIMIT
+                    : CATALYST_SLOT_LIMIT;
             case SLOT_MATRIX -> MATRIX_SLOT_LIMIT;
             case SLOT_OUTPUT -> OUTPUT_SLOT_LIMIT;
             default -> OUTPUT_SLOT_LIMIT;
@@ -67,8 +81,9 @@ public class CrystalCatalyzerInventory extends LargeStackItemHandler {
         }
 
         return switch (slot) {
-            case SLOT_MATRIX -> isLightningCollapseMatrix(stack);
-            case SLOT_CATALYST -> CrystalCatalyzerRecipeService.isKnownCatalyst(level, stack, modeSupplier.get());
+            case SLOT_MATRIX -> !pigmeeVariantSupplier.getAsBoolean() && isLightningCollapseMatrix(stack);
+            case SLOT_CATALYST -> CrystalCatalyzerRecipeService.isKnownCatalyst(
+                    level, stack, modeSupplier.get(), pigmeeVariantSupplier.getAsBoolean());
             case SLOT_OUTPUT -> false;
             default -> false;
         };

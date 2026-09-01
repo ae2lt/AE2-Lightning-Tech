@@ -74,20 +74,30 @@ public class CrystalCatalyzerScreen extends AEBaseScreen<CrystalCatalyzerMenu> {
                 Component.translatable("ae2lt.gui.crystal_catalyzer.mode.tooltip.dust")));
         addToLeftToolbar(this.modeButton);
 
-        widgets.add("lightningStatus", new LightningStatusIconWidget(() -> List.of(
-                LightningStatusLines.title(),
-                LightningStatusLines.status(menu.isWorking()),
-                LightningStatusLines.progress(menu.getProgress()),
-                LightningStatusLines.energy(menu.getStoredEnergy(), menu.getEnergyCapacity()),
-                LightningStatusLines.highVoltage(menu.getHighVoltageAvailable()),
-                LightningStatusLines.extremeHighVoltage(menu.getExtremeHighVoltageAvailable()))));
+        widgets.add("lightningStatus", new LightningStatusIconWidget(() -> menu.isPigmeeVariant()
+                ? List.of(
+                        LightningStatusLines.title(),
+                        LightningStatusLines.status(menu.isWorking()),
+                        LightningStatusLines.progress(menu.getProgress()),
+                        LightningStatusLines.energy(menu.getStoredEnergy(), menu.getEnergyCapacity()))
+                : List.of(
+                        LightningStatusLines.title(),
+                        LightningStatusLines.status(menu.isWorking()),
+                        LightningStatusLines.progress(menu.getProgress()),
+                        LightningStatusLines.energy(menu.getStoredEnergy(), menu.getEnergyCapacity()),
+                        LightningStatusLines.highVoltage(menu.getHighVoltageAvailable()),
+                        LightningStatusLines.extremeHighVoltage(menu.getExtremeHighVoltageAvailable()))));
     }
 
     @Override
     protected void updateBeforeRender() {
         super.updateBeforeRender();
+        setTextContent("dialog_title", Component.translatable(menu.isPigmeeVariant()
+                ? "block.ae2lt.pigmee_crystal_catalyzer"
+                : "block.ae2lt.crystal_catalyzer"));
         this.autoExportButton.setState(menu.isAutoExportEnabled());
         this.configureOutputButton.setVisibility(menu.isAutoExportEnabled());
+        this.modeButton.setVisibility(!menu.isPigmeeVariant());
         this.modeButton.setState(menu.getMode() == Mode.DUST);
     }
 
