@@ -12,8 +12,9 @@ import java.util.Set;
  *
  * <p>Checking {@code IGridConnection.isInWorld()} is not sufficient: AE2 uses
  * non-world connections for legitimate cable-bus part-to-cable edges as well.
- * The frequency layer therefore explicitly tracks only the bridges it creates,
- * and every other AE2 connection remains part of the physical cluster.</p>
+ * The frequency layer therefore explicitly tracks only the bridges it creates;
+ * known integration-owned channel nodes are also omitted because they are
+ * bookkeeping children, not physical entrance locations.</p>
  */
 final class PhysicalGridCluster {
     private PhysicalGridCluster() {
@@ -37,7 +38,9 @@ final class PhysicalGridCluster {
                 } catch (IllegalArgumentException ignored) {
                     continue;
                 }
-                if (other != null && visited.add(other)) {
+                if (other != null
+                        && !KnownInternalGridNodes.isSupplementalEntranceExcluded(other)
+                        && visited.add(other)) {
                     queue.addLast(other);
                 }
             }
@@ -63,7 +66,9 @@ final class PhysicalGridCluster {
                 } catch (IllegalArgumentException ignored) {
                     continue;
                 }
-                if (other != null && !changed.contains(other)) {
+                if (other != null
+                        && !KnownInternalGridNodes.isSupplementalEntranceExcluded(other)
+                        && !changed.contains(other)) {
                     neighbours.add(other);
                 }
             }

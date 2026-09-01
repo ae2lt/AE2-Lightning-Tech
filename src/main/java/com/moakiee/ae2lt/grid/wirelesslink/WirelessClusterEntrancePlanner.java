@@ -22,7 +22,8 @@ final class WirelessClusterEntrancePlanner {
      * physical cluster. A carrying node is preferred because one new entrance
      * can then serve its local subtree. If the remaining device cannot carry
      * channels and has no unused relay nearby, linking that device directly is
-     * the final fallback.
+     * the final fallback. Integration-owned channel bookkeeping nodes are
+     * intentionally ignored as both roots and relay candidates.
      */
     static @Nullable IGridNode findSupplementalEntrance(
             Set<IGridNode> cluster,
@@ -32,6 +33,9 @@ final class WirelessClusterEntrancePlanner {
         IGridNode directFallback = null;
 
         for (var node : cluster) {
+            if (KnownInternalGridNodes.isSupplementalEntranceExcluded(node)) {
+                continue;
+            }
             if (!node.hasFlag(GridFlags.REQUIRE_CHANNEL) || node.meetsChannelRequirements()) {
                 continue;
             }
@@ -61,7 +65,10 @@ final class WirelessClusterEntrancePlanner {
                 } catch (IllegalArgumentException ignored) {
                     continue;
                 }
-                if (other != null && cluster.contains(other) && visited.add(other)) {
+                if (other != null
+                        && !KnownInternalGridNodes.isSupplementalEntranceExcluded(other)
+                        && cluster.contains(other)
+                        && visited.add(other)) {
                     queue.addLast(other);
                 }
             }
