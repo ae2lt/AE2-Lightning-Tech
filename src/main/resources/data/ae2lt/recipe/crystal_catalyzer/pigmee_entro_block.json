@@ -1,0 +1,10 @@
+{
+  "neoforge:conditions": [{ "type": "neoforge:mod_loaded", "modid": "extendedae" }],
+  "type": "ae2lt:crystal_catalyzer",
+  "pigmee": true,
+  "catalyst": { "item": "extendedae:entro_block" },
+  "catalystCount": 64,
+  "output": { "id": "extendedae:entro_crystal", "count": 16 },
+  "energyPerCycle": 0,
+  "lightningCost": 0
+}

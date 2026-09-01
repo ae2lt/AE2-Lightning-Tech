@@ -339,6 +339,7 @@ public class AE2LightningTech {
                     .displayItems((parameters, output) -> {
                         output.accept(ModFumos.PIGMEE_FUMO_ITEM.get());
                         output.accept(ModFumos.CREATIVE_PIGMEE_FUMO_ITEM.get());
+                        output.accept(ModBlocks.PIGMEE_CRYSTAL_CATALYZER);
                         output.accept(ModBlocks.PIGMEE_MENTALMATH_UNIT);
                         output.accept(ModBlocks.PIGMEE_PATTERN_PROVIDER);
                         output.accept(ModBlocks.PIGMEE_MOLECULAR_ASSEMBLER);
@@ -833,6 +834,14 @@ public class AE2LightningTech {
                     null,
                     CrystalCatalyzerBlockEntity::serverTick);
 
+            var pigmeeCrystalCatalyzerBlock = ModBlocks.PIGMEE_CRYSTAL_CATALYZER.get();
+            var pigmeeCrystalCatalyzerBeType = ModBlockEntities.PIGMEE_CRYSTAL_CATALYZER.get();
+            pigmeeCrystalCatalyzerBlock.setBlockEntity(
+                    CrystalCatalyzerBlockEntity.class,
+                    pigmeeCrystalCatalyzerBeType,
+                    null,
+                    CrystalCatalyzerBlockEntity::serverTick);
+
             var block = ModBlocks.OVERLOADED_PATTERN_PROVIDER.get();
             var beType = ModBlockEntities.OVERLOADED_PATTERN_PROVIDER.get();
             block.setBlockEntity(
@@ -966,6 +975,9 @@ public class AE2LightningTech {
             appeng.blockentity.AEBaseBlockEntity.registerBlockEntityItem(
                     crystalCatalyzerBeType,
                     crystalCatalyzerBlock.asItem());
+            appeng.blockentity.AEBaseBlockEntity.registerBlockEntityItem(
+                    pigmeeCrystalCatalyzerBeType,
+                    pigmeeCrystalCatalyzerBlock.asItem());
 
             setupWirelessControllerBlock(
                     ModBlocks.WIRELESS_OVERLOADED_CONTROLLER.get(),

@@ -43,6 +43,9 @@ public final class ModEntityRenderers {
                 ModBlockEntities.CRYSTAL_CATALYZER.get(),
                 CrystalCatalyzerRenderer::new);
         event.registerBlockEntityRenderer(
+                ModBlockEntities.PIGMEE_CRYSTAL_CATALYZER.get(),
+                CrystalCatalyzerRenderer::new);
+        event.registerBlockEntityRenderer(
                 ModBlockEntities.FUMO.get(),
                 FumoBlockRenderer::new);
         event.registerBlockEntityRenderer(

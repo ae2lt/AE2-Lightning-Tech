@@ -43,7 +43,9 @@ final class AE2LTEmiCategories {
         addCategory(registry, LIGHTNING_SIMULATION, ModBlocks.LIGHTNING_SIMULATION_CHAMBER.toStack());
         addCategory(registry, OVERLOAD_PROCESSING, ModBlocks.OVERLOAD_PROCESSING_FACTORY.toStack());
         addCategory(registry, TESLA_COIL, ModBlocks.TESLA_COIL.toStack());
-        addCategory(registry, CRYSTAL_CATALYZER, ModBlocks.CRYSTAL_CATALYZER.toStack());
+        addCategory(registry, CRYSTAL_CATALYZER,
+                ModBlocks.CRYSTAL_CATALYZER.toStack(),
+                ModBlocks.PIGMEE_CRYSTAL_CATALYZER.toStack());
         addCategory(registry, FIRMAMENT_CONVERSION, ModBlocks.FIRMAMENT_CONVERSION_CORE.toStack());
 
         EmiOverloadGrowthRecipe.registerAll(registry);

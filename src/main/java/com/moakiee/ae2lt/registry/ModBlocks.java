@@ -26,6 +26,7 @@ import com.moakiee.ae2lt.block.OverloadedPowerSupplyBlock;
 import com.moakiee.ae2lt.block.PigmeeMentalmathUnitBlock;
 import com.moakiee.ae2lt.block.PigmeeMolecularAssemblerBlock;
 import com.moakiee.ae2lt.block.PigmeePatternProviderBlock;
+import com.moakiee.ae2lt.block.PigmeeCrystalCatalyzerBlock;
 import com.moakiee.ae2lt.block.TeslaCoilBlock;
 import com.moakiee.ae2lt.block.TianshuSeedStorageBlock;
 import com.moakiee.ae2lt.block.TianshuPatternStorageBlock;
@@ -159,6 +160,9 @@ public final class ModBlocks {
 
     public static final DeferredBlock<CrystalCatalyzerBlock> CRYSTAL_CATALYZER =
             registerBlock("crystal_catalyzer", CrystalCatalyzerBlock::new);
+
+    public static final DeferredBlock<PigmeeCrystalCatalyzerBlock> PIGMEE_CRYSTAL_CATALYZER =
+            registerBlock("pigmee_crystal_catalyzer", PigmeeCrystalCatalyzerBlock::new);
 
     public static final DeferredBlock<OverloadedControllerBlock> OVERLOADED_CONTROLLER =
             registerBlock("overloaded_controller", OverloadedControllerBlock::new);

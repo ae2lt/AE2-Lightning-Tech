@@ -1,0 +1,30 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "AEA",
+    "DCD",
+    "ABA"
+  ],
+  "key": {
+    "A": {
+      "item": "ae2:charged_certus_quartz_crystal"
+    },
+    "B": {
+      "item": "ae2:vibration_chamber"
+    },
+    "C": {
+      "item": "ae2:growth_accelerator"
+    },
+    "D": {
+      "item": "ae2lt:pigmee_fumo"
+    },
+    "E": {
+      "item": "ae2:crystal_resonance_generator"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "ae2lt:pigmee_crystal_catalyzer"
+  }
+}

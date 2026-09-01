@@ -1,0 +1,10 @@
+{
+  "neoforge:conditions": [{ "type": "neoforge:mod_loaded", "modid": "oritech" }],
+  "type": "ae2lt:crystal_catalyzer",
+  "pigmee": true,
+  "catalyst": { "item": "oritech:fluxite_block" },
+  "catalystCount": 64,
+  "output": { "id": "oritech:fluxite", "count": 16 },
+  "energyPerCycle": 0,
+  "lightningCost": 0
+}
