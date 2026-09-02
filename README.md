@@ -25,7 +25,7 @@ This branch is the maintained Forge 1.20.1 port. The primary project targets new
 | Minecraft 1.20.1 | Required |
 | Forge 47.1.3+ | Required |
 | Applied Energistics 2 15.4.10+ | Required |
-| Thunderbolt Core 2.0.0-beta.1 to `<2.1.0` | Required |
+| Thunderbolt Core 2.0.0-beta.3 to `<2.1.0` | Required |
 | JEI or EMI, Jade | Optional integration |
 | AdvancedAE, ExtendedAE, Applied Flux, AE2WTLib | Optional integration |
 | Mekanism, Curios, Flux Networks, Polymorph | Optional integration |
@@ -40,7 +40,7 @@ Use Java 17 and run:
 .\gradlew.bat test build
 ```
 
-The distributable artifact is `build/libs/ae2lt-forge-1.20.1-2.1.0-beta.1.jar`.
+The distributable artifact is `build/libs/ae2lt-forge-1.20.1-2.1.0-beta.3.jar`.
 The `-slim.jar` artifact is an intermediate development artifact and must not be distributed.
 
 ## Public API

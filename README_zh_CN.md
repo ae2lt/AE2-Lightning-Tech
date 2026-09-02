@@ -25,7 +25,7 @@
 | Minecraft 1.20.1 | 必需 |
 | Forge 47.1.3+ | 必需 |
 | Applied Energistics 2 15.4.10+ | 必需 |
-| Thunderbolt Core 2.0.0-beta.1 至 `<2.1.0` | 必需 |
+| Thunderbolt Core 2.0.0-beta.3 至 `<2.1.0` | 必需 |
 | JEI 或 EMI、Jade | 可选联动 |
 | AdvancedAE、ExtendedAE、Applied Flux、AE2WTLib | 可选联动 |
 | Mekanism、Curios、Flux Networks、Polymorph | 可选联动 |
@@ -40,7 +40,7 @@
 .\gradlew.bat test build
 ```
 
-可发布制品位于 `build/libs/ae2lt-forge-1.20.1-2.1.0-beta.1.jar`。
+可发布制品位于 `build/libs/ae2lt-forge-1.20.1-2.1.0-beta.3.jar`。
 带 `-slim.jar` 后缀的是开发中间制品，不应对外发布。
 
 ## 公开 API
