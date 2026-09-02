@@ -35,6 +35,8 @@ public final class PhaseFlightMovementGuard {
             ThreadLocal.withInitial(IdentityHashMap::new);
     private static final ThreadLocal<IdentityHashMap<Player, Integer>> VANILLA_TRAVEL_MOVEMENT_DEPTH =
             ThreadLocal.withInitial(IdentityHashMap::new);
+    private static final ThreadLocal<IdentityHashMap<Player, Integer>> VANILLA_TRAVEL_SCOPE_DEPTH =
+            ThreadLocal.withInitial(IdentityHashMap::new);
     private static final ThreadLocal<Player> MOVEMENT_PACKET_PLAYER = new ThreadLocal<>();
     private static final ThreadLocal<Player> CUSTOM_PAYLOAD_PLAYER = new ThreadLocal<>();
     private static final ThreadLocal<CommandSourceStack> COMMAND_SOURCE = new ThreadLocal<>();
@@ -110,6 +112,7 @@ public final class PhaseFlightMovementGuard {
         MOVEMENT_POSITION_UPDATE_DEPTH.get().remove(player);
         ENVIRONMENT_MOVEMENT_DEPTH.get().remove(player);
         VANILLA_TRAVEL_MOVEMENT_DEPTH.get().remove(player);
+        VANILLA_TRAVEL_SCOPE_DEPTH.get().remove(player);
         if (MOVEMENT_PACKET_PLAYER.get() == player) {
             MOVEMENT_PACKET_PLAYER.remove();
         }
@@ -338,6 +341,38 @@ public final class PhaseFlightMovementGuard {
                 permits.put(player, previous);
             }
         }
+    }
+
+    /**
+     * Marks execution of vanilla {@code LivingEntity.travel} without granting movement by itself.
+     * Mixins at known vanilla helper call sites use this marker to issue one consumable permit for
+     * each original mutation. Arbitrary callbacks nested in travel therefore remain unauthorized.
+     */
+    public static void runInVanillaTravelScope(Player player, Runnable travel) {
+        if (player == null) {
+            travel.run();
+            return;
+        }
+        var depths = VANILLA_TRAVEL_SCOPE_DEPTH.get();
+        depths.merge(player, 1, Integer::sum);
+        try {
+            travel.run();
+        } finally {
+            int next = depths.getOrDefault(player, 0) - 1;
+            if (next <= 0) {
+                depths.remove(player);
+                if (depths.isEmpty()) {
+                    VANILLA_TRAVEL_SCOPE_DEPTH.remove();
+                }
+            } else {
+                depths.put(player, next);
+            }
+        }
+    }
+
+    public static boolean isVanillaTravelScopeActive(Player player) {
+        return player != null
+                && VANILLA_TRAVEL_SCOPE_DEPTH.get().getOrDefault(player, 0) > 0;
     }
 
     private static boolean consumeVanillaTravelMovement(Player player) {

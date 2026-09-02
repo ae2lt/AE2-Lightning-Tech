@@ -19,6 +19,9 @@ final class PhaseEnvironmentMovementSourceContractTest {
         assertTrue(guard.contains("VANILLA_TRAVEL_MOVEMENT_DEPTH"));
         assertTrue(guard.contains("runAsVanillaTravelMovement(Player player, Runnable movement)"));
         assertTrue(guard.contains("consumeVanillaTravelMovement(player)"));
+        assertTrue(guard.contains("VANILLA_TRAVEL_SCOPE_DEPTH"));
+        assertTrue(guard.contains("runInVanillaTravelScope(Player player, Runnable travel)"));
+        assertTrue(guard.contains("isVanillaTravelScopeActive(Player player)"));
         assertTrue(guard.contains("try {"));
         assertTrue(guard.contains("finally {"));
         assertFalse(guard.contains("isInWater() || isInLava()"));
@@ -59,10 +62,14 @@ final class PhaseEnvironmentMovementSourceContractTest {
                 "src/main/java/com/moakiee/ae2lt/mixin/PlayerPhaseFlightMixin.java"));
 
         assertTrue(livingMixin.contains("method = \"travel\""));
+        assertTrue(livingMixin.contains("@WrapMethod(method = \"travel\")"));
+        assertTrue(livingMixin.contains("PhaseFlightMovementGuard.runInVanillaTravelScope("));
         assertTrue(livingMixin.contains("LivingEntity;move("));
+        assertTrue(livingMixin.contains("LivingEntity;moveRelative("));
+        assertTrue(livingMixin.contains("handleRelativeFrictionAndCalculateMovement"));
         assertTrue(livingMixin.contains("LivingEntity;setDeltaMovement(Lnet/minecraft/world/phys/Vec3;)V"));
         assertTrue(livingMixin.contains("LivingEntity;setDeltaMovement(DDD)V"));
-        assertTrue(livingMixin.contains("runAsVanillaTravelMovement(entity"));
+        assertTrue(livingMixin.contains("runAsScopedVanillaTravelMovement("));
         assertFalse(livingMixin.contains("moveInFluid"));
 
         assertTrue(playerMixin.contains("method = \"travel\""));

@@ -92,6 +92,46 @@ public abstract class EntityPhaseMovementMixin {
         original.call(dragDown);
     }
 
+    @WrapOperation(
+            method = "move(Lnet/minecraft/world/entity/MoverType;Lnet/minecraft/world/phys/Vec3;)V",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/world/entity/Entity;setDeltaMovement(Lnet/minecraft/world/phys/Vec3;)V"))
+    private void ae2lt$authorizeVanillaTravelMoveVelocity(
+            Entity entity,
+            Vec3 movement,
+            Operation<Void> original) {
+        if ((Object) this instanceof Player player
+                && PhaseFlightMovementGuard.isVanillaTravelScopeActive(player)) {
+            PhaseFlightMovementGuard.runAsVanillaTravelMovement(
+                    player,
+                    () -> original.call(entity, movement));
+            return;
+        }
+        original.call(entity, movement);
+    }
+
+    @WrapOperation(
+            method = "move(Lnet/minecraft/world/entity/MoverType;Lnet/minecraft/world/phys/Vec3;)V",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/world/entity/Entity;setDeltaMovement(DDD)V"))
+    private void ae2lt$authorizeVanillaTravelMoveVelocityComponents(
+            Entity entity,
+            double x,
+            double y,
+            double z,
+            Operation<Void> original) {
+        if ((Object) this instanceof Player player
+                && PhaseFlightMovementGuard.isVanillaTravelScopeActive(player)) {
+            PhaseFlightMovementGuard.runAsVanillaTravelMovement(
+                    player,
+                    () -> original.call(entity, x, y, z));
+            return;
+        }
+        original.call(entity, x, y, z);
+    }
+
     @WrapMethod(method = "move(Lnet/minecraft/world/entity/MoverType;Lnet/minecraft/world/phys/Vec3;)V")
     private void ae2lt$guardPhaseFlightMove(
             MoverType moverType,
