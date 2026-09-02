@@ -39,18 +39,22 @@ final class PhaseEnvironmentMovementSourceContractTest {
         String mixin = Files.readString(Path.of(
                 "src/main/java/com/moakiee/ae2lt/mixin/EntityPhaseMovementMixin.java"));
 
-        assertTrue(mixin.contains("updateFluidHeightAndDoFluidPushing()V"));
+        assertTrue(mixin.contains("\"updateFluidHeightAndDoFluidPushing()V\""));
         assertTrue(mixin.contains(
-                "updateFluidHeightAndDoFluidPushing(Ljava/util/function/Predicate;)V"));
+                "\"updateFluidHeightAndDoFluidPushing(Ljava/util/function/Predicate;)V\""));
+        assertTrue(mixin.contains("@WrapOperation"));
         assertTrue(mixin.contains("Object2ObjectMap;forEach"));
+        assertTrue(mixin.contains("Object2ObjectArrayMap;forEach"));
+        assertTrue(mixin.contains("remap = false"));
+        assertTrue(mixin.contains("require = 0"));
+        assertFalse(mixin.contains("MutableTriple"));
+        assertFalse(mixin.contains("FluidCalcs"));
         assertFalse(mixin.contains("lambda$updateFluidHeightAndDoFluidPushing$"));
-        assertTrue(mixin.contains("fluidType == ForgeMod.WATER_TYPE.get()"));
-        assertTrue(mixin.contains("fluidType == ForgeMod.LAVA_TYPE.get()"));
+        assertTrue(mixin.contains("ForgeMod.WATER_TYPE.get()"));
+        assertTrue(mixin.contains("ForgeMod.LAVA_TYPE.get()"));
         assertTrue(mixin.contains("onAboveBubbleCol(Z)V"));
         assertTrue(mixin.contains("onInsideBubbleColumn(Z)V"));
         assertTrue(mixin.contains("PhaseFlightMovementGuard.runAsEnvironmentMovement"));
-        assertFalse(mixin.contains("isInWater()"));
-        assertFalse(mixin.contains("isInLava()"));
         assertFalse(mixin.contains("isFreezing()"));
     }
 
