@@ -1,6 +1,8 @@
 package com.moakiee.ae2lt.mixin;
 
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Final;
@@ -146,14 +148,34 @@ public abstract class PlayerPhaseFlightMixin implements PhaseFlightPlayerState.A
         ci.cancel();
     }
 
-    @Inject(method = "travel", at = @At("HEAD"))
-    private void ae2lt$beginPlayerAuthorizedTravel(Vec3 travelVector, CallbackInfo ci) {
-        PhaseFlightMovementGuard.beginSelfMovement((Player) (Object) this);
+    @WrapOperation(
+            method = "travel",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/world/entity/player/Player;setDeltaMovement(Lnet/minecraft/world/phys/Vec3;)V"))
+    private void ae2lt$authorizePlayerTravelVelocity(
+            Player player,
+            Vec3 movement,
+            Operation<Void> original) {
+        PhaseFlightMovementGuard.runAsVanillaTravelMovement(
+                player,
+                () -> original.call(player, movement));
     }
 
-    @Inject(method = "travel", at = @At("RETURN"))
-    private void ae2lt$endPlayerAuthorizedTravel(Vec3 travelVector, CallbackInfo ci) {
-        PhaseFlightMovementGuard.endSelfMovement((Player) (Object) this);
+    @WrapOperation(
+            method = "travel",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/world/entity/player/Player;setDeltaMovement(DDD)V"))
+    private void ae2lt$authorizePlayerTravelVelocityComponents(
+            Player player,
+            double x,
+            double y,
+            double z,
+            Operation<Void> original) {
+        PhaseFlightMovementGuard.runAsVanillaTravelMovement(
+                player,
+                () -> original.call(player, x, y, z));
     }
 
     @Inject(

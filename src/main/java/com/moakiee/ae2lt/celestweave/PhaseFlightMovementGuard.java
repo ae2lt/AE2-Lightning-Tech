@@ -31,6 +31,10 @@ public final class PhaseFlightMovementGuard {
     private static final ThreadLocal<ServerPlayer> MAIN_THREAD_PAYLOAD_PLAYER = new ThreadLocal<>();
     private static final ThreadLocal<IdentityHashMap<Player, Integer>> MOVEMENT_POSITION_UPDATE_DEPTH =
             ThreadLocal.withInitial(IdentityHashMap::new);
+    private static final ThreadLocal<IdentityHashMap<Player, Integer>> ENVIRONMENT_MOVEMENT_DEPTH =
+            ThreadLocal.withInitial(IdentityHashMap::new);
+    private static final ThreadLocal<IdentityHashMap<Player, Integer>> VANILLA_TRAVEL_MOVEMENT_DEPTH =
+            ThreadLocal.withInitial(IdentityHashMap::new);
     private static final ThreadLocal<Player> MOVEMENT_PACKET_PLAYER = new ThreadLocal<>();
     private static final ThreadLocal<Player> CUSTOM_PAYLOAD_PLAYER = new ThreadLocal<>();
     private static final ThreadLocal<CommandSourceStack> COMMAND_SOURCE = new ThreadLocal<>();
@@ -104,6 +108,8 @@ public final class PhaseFlightMovementGuard {
             MAIN_THREAD_PAYLOAD_PLAYER.remove();
         }
         MOVEMENT_POSITION_UPDATE_DEPTH.get().remove(player);
+        ENVIRONMENT_MOVEMENT_DEPTH.get().remove(player);
+        VANILLA_TRAVEL_MOVEMENT_DEPTH.get().remove(player);
         if (MOVEMENT_PACKET_PLAYER.get() == player) {
             MOVEMENT_PACKET_PLAYER.remove();
         }
@@ -169,11 +175,16 @@ public final class PhaseFlightMovementGuard {
         if (player == null) {
             return false;
         }
-        if (SELF_MOVEMENT_DEPTH.get().getOrDefault(player, 0) > 0) {
+        if (SELF_MOVEMENT_DEPTH.get().getOrDefault(player, 0) > 0
+                || ENVIRONMENT_MOVEMENT_DEPTH.get().getOrDefault(player, 0) > 0) {
+            return true;
+        }
+        if (consumeVanillaTravelMovement(player)) {
             return true;
         }
         return isCurrentMovementPacket(player);
     }
+
 
     /**
      * Teleport authorization is intentionally broader than force authorization. A serverbound
@@ -280,6 +291,70 @@ public final class PhaseFlightMovementGuard {
         } finally {
             endSelfMovement(player);
         }
+    }
+
+    /** Runs only the original fluid and bubble-column velocity updates for this player. */
+    public static void runAsEnvironmentMovement(Player player, Runnable movement) {
+        if (player == null) {
+            movement.run();
+            return;
+        }
+        var depths = ENVIRONMENT_MOVEMENT_DEPTH.get();
+        depths.merge(player, 1, Integer::sum);
+        try {
+            movement.run();
+        } finally {
+            int next = depths.getOrDefault(player, 0) - 1;
+            if (next <= 0) {
+                depths.remove(player);
+                if (depths.isEmpty()) {
+                    ENVIRONMENT_MOVEMENT_DEPTH.remove();
+                }
+            } else {
+                depths.put(player, next);
+            }
+        }
+    }
+
+
+    /** Authorizes one direct vanilla travel mutation without authorizing nested third-party code. */
+    public static void runAsVanillaTravelMovement(Player player, Runnable movement) {
+        if (player == null) {
+            movement.run();
+            return;
+        }
+        var permits = VANILLA_TRAVEL_MOVEMENT_DEPTH.get();
+        int previous = permits.getOrDefault(player, 0);
+        permits.put(player, previous + 1);
+        try {
+            movement.run();
+        } finally {
+            if (previous == 0) {
+                permits.remove(player);
+                if (permits.isEmpty()) {
+                    VANILLA_TRAVEL_MOVEMENT_DEPTH.remove();
+                }
+            } else {
+                permits.put(player, previous);
+            }
+        }
+    }
+
+    private static boolean consumeVanillaTravelMovement(Player player) {
+        var permits = VANILLA_TRAVEL_MOVEMENT_DEPTH.get();
+        int remaining = permits.getOrDefault(player, 0);
+        if (remaining <= 0) {
+            return false;
+        }
+        if (remaining == 1) {
+            permits.remove(player);
+            if (permits.isEmpty()) {
+                VANILLA_TRAVEL_MOVEMENT_DEPTH.remove();
+            }
+        } else {
+            permits.put(player, remaining - 1);
+        }
+        return true;
     }
 
     /** Marks only the nested position writes performed by {@code Entity.move}. */

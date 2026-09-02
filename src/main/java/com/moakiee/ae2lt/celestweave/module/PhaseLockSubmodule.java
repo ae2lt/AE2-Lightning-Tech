@@ -105,7 +105,13 @@ public final class PhaseLockSubmodule extends AbstractCelestweaveArmorSubmodule 
             return false;
         }
         var options = getOptions(armor);
-        options.put(key, value instanceof ByteTag byteTag ? byteTag : ByteTag.valueOf(true));
+        if (value == null) {
+            options.remove(key);
+        } else if (value instanceof ByteTag byteTag) {
+            options.put(key, ByteTag.valueOf(byteTag.getAsByte() != 0));
+        } else {
+            options.put(key, ByteTag.valueOf(defaultValue(key)));
+        }
         setOptions(armor, options);
         return true;
     }
@@ -191,7 +197,19 @@ public final class PhaseLockSubmodule extends AbstractCelestweaveArmorSubmodule 
 
     private static boolean booleanOption(ItemStack armor, String key) {
         var options = INSTANCE.getOptions(armor);
-        return !options.contains(key, Tag.TAG_BYTE) || options.getBoolean(key);
+        return options.contains(key, Tag.TAG_BYTE)
+                ? options.getBoolean(key)
+                : defaultValue(key);
+    }
+
+    private static boolean defaultValue(String key) {
+        return switch (key) {
+            case ARMOR_LOCK_CONFIG_KEY,
+                    FLIGHT_LOCK_CONFIG_KEY,
+                    BLOCK_EXTERNAL_FORCES_CONFIG_KEY,
+                    BLOCK_EXTERNAL_TELEPORTS_CONFIG_KEY -> false;
+            default -> false;
+        };
     }
 
     private static void updateMovementProtection(Player player, ItemStack armor) {

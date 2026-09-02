@@ -23,7 +23,11 @@ class GuideMetadataParityTest {
             "src", "main", "resources", "assets", "ae2lt", "ae2guide");
     private static final Path CHINESE_GUIDE = GUIDE.resolve("_zh_cn");
     private static final Pattern FRONTMATTER = Pattern.compile("(?s)^---\\s*\\R(.*?)\\R---");
-    private static final Pattern ITEM_ID = Pattern.compile("(?m)^\\s*-\\s+(ae2lt:[a-z0-9_./-]+)\\s*$");
+    private static final Pattern ITEM_IDS = Pattern.compile(
+            "(?m)^item_ids:[ \\t]*\\R((?:[ \\t]*-[ \\t]+[^\\r\\n]+\\R?)*)");
+    private static final Pattern ITEM_IDS_DECLARATION = Pattern.compile("(?m)^item_ids[ \\t]*:");
+    private static final Pattern ITEM_ID = Pattern.compile(
+            "\\s*-\\s+([a-z0-9_.-]+:[a-z0-9_./-]+)\\s*");
     private static final Pattern ITEM_LINK = Pattern.compile(
             "<ItemLink\\s+[^>]*id=\\\"(ae2lt:[a-z0-9_./-]+)\\\"");
     private static final Pattern NAMESPACED_HELP_TOPIC = Pattern.compile(
@@ -57,6 +61,22 @@ class GuideMetadataParityTest {
                 .filter(path -> !path.startsWith(CHINESE_GUIDE))
                 .toList());
         assertItemLinkOwners("zh_cn", guidePages(CHINESE_GUIDE));
+    }
+
+    @Test
+    void globalItemIndexOnlyClaimsAe2ltItems() throws IOException {
+        List<String> invalid = new ArrayList<>();
+
+        for (Path page : guidePages(GUIDE)) {
+            for (String itemId : itemIds(page)) {
+                if (!itemId.startsWith("ae2lt:")) {
+                    invalid.add(GUIDE.relativize(page) + ": " + itemId);
+                }
+            }
+        }
+
+        assertEquals(List.of(), invalid,
+                "Foreign items belong in ItemLink content, not GuideME item_ids ownership");
     }
 
     @Test
@@ -114,10 +134,30 @@ class GuideMetadataParityTest {
             return Set.of();
         }
 
+        String metadata = frontmatter.group(1);
+        Matcher itemIdsBlock = ITEM_IDS.matcher(metadata);
+        if (!itemIdsBlock.find()) {
+            if (ITEM_IDS_DECLARATION.matcher(metadata).find()) {
+                throw new AssertionError(page + " must use a non-empty item_ids block list");
+            }
+            return Set.of();
+        }
+
         Set<String> result = new HashSet<>();
-        Matcher itemIds = ITEM_ID.matcher(frontmatter.group(1));
-        while (itemIds.find()) {
-            result.add(itemIds.group(1));
+        for (String line : itemIdsBlock.group(1).split("\\R")) {
+            if (line.isBlank()) {
+                continue;
+            }
+            Matcher itemId = ITEM_ID.matcher(line);
+            if (!itemId.matches()) {
+                throw new AssertionError(page + " has a non-canonical item_ids entry: " + line.trim());
+            }
+            if (!result.add(itemId.group(1))) {
+                throw new AssertionError(page + " repeats item_ids entry " + itemId.group(1));
+            }
+        }
+        if (result.isEmpty()) {
+            throw new AssertionError(page + " has an empty item_ids block");
         }
         return result;
     }

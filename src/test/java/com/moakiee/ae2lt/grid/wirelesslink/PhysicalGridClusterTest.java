@@ -2,6 +2,8 @@ package com.moakiee.ae2lt.grid.wirelesslink;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import appeng.api.networking.IGridConnection;
@@ -68,6 +70,34 @@ class PhysicalGridClusterTest {
         connect(c, a, true);
 
         assertEquals(3, PhysicalGridCluster.collect(a).size());
+    }
+
+    @Test
+    void reusesExistingVirtualConnectionByEndpointIdentity() {
+        var target = node("target");
+        var transmitter = node("transmitter");
+        var existing = connect(target, transmitter, false);
+
+        var result = WirelessLinkOps.createVirtualConnection(target, transmitter);
+
+        assertSame(existing, result);
+        assertTrue(WirelessLinkOps.isWirelessBridge(existing));
+        assertEquals(1, connections.get(target).size());
+        assertEquals(1, connections.get(transmitter).size());
+    }
+
+    @Test
+    void rejectsExistingPhysicalConnectionBetweenSameEndpoints() {
+        var target = node("target");
+        var transmitter = node("transmitter");
+        var physical = connect(target, transmitter, true);
+
+        assertThrows(
+                IllegalStateException.class,
+                () -> WirelessLinkOps.createVirtualConnection(target, transmitter));
+        assertFalse(WirelessLinkOps.isWirelessBridge(physical));
+        assertEquals(1, connections.get(target).size());
+        assertEquals(1, connections.get(transmitter).size());
     }
 
     @Test
