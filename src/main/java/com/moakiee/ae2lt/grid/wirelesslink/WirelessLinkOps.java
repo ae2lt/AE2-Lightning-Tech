@@ -94,10 +94,7 @@ public final class WirelessLinkOps {
         if (connection.isInWorld()) {
             throw new IllegalStateException("A physical connection already exists between the target and transmitter.");
         }
-        if (!isWirelessBridge(connection)) {
-            throw new IllegalStateException(
-                    "A virtual connection owned by another system already exists between the target and transmitter.");
-        }
+        trackWirelessBridge(connection);
         return connection;
     }
 

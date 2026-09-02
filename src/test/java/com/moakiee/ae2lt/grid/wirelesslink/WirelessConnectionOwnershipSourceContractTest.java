@@ -41,8 +41,9 @@ class WirelessConnectionOwnershipSourceContractTest {
         assertTrue(ops.contains("catch (IllegalStateException duplicateCandidate)"));
         assertTrue(ops.contains("throw duplicateCandidate;"));
         assertTrue(ops.contains("isDuplicateConnectionFailure(duplicateCandidate)"));
-        assertTrue(ops.contains("!isWirelessBridge(connection)"));
-        assertTrue(ops.contains("A virtual connection owned by another system already exists"));
+        assertFalse(ops.contains("!isWirelessBridge(connection)"));
+        assertFalse(ops.contains("A virtual connection owned by another system already exists"));
+        assertEquals(2, occurrences(ops, "trackWirelessBridge(connection);"));
         assertEquals(1, occurrences(ops, "GridConnection.create("));
     }
 

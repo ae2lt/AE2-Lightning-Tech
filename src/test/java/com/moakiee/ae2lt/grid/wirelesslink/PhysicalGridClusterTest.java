@@ -88,15 +88,15 @@ class PhysicalGridClusterTest {
     }
 
     @Test
-    void rejectsUnownedVirtualConnectionBetweenSameEndpoints() {
+    void adoptsExistingVirtualConnectionBetweenSameEndpoints() {
         var target = node("target");
         var transmitter = node("transmitter");
         var external = connect(target, transmitter, false);
 
-        assertThrows(
-                IllegalStateException.class,
-                () -> WirelessLinkOps.createVirtualConnection(target, transmitter));
-        assertFalse(WirelessLinkOps.isWirelessBridge(external));
+        var result = WirelessLinkOps.createVirtualConnection(target, transmitter);
+
+        assertSame(external, result);
+        assertTrue(WirelessLinkOps.isWirelessBridge(external));
         assertEquals(1, connections.get(target).size());
         assertEquals(1, connections.get(transmitter).size());
     }
