@@ -41,8 +41,7 @@
     "EjectGhostBEMixin",
     "MenuTypeBuilderAccessor",
     "AEBaseMenuAccessor",
-    "ShulkerBulletMixin",
-    "BroadcastFrequencyBandMixin"
+    "ShulkerBulletMixin"
   ],
   "client": [
     "client.CableBusRenderStateMixin",

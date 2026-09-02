@@ -39,7 +39,7 @@ public final class WirelessLinkOps {
                 && connection.getOtherSide(node) == other;
     }
 
-    public static @Nullable IGridConnection findConnection(IGridNode node, IGridNode other) {
+    private static @Nullable IGridConnection findConnection(IGridNode node, IGridNode other) {
         for (var connection : node.getConnections()) {
             if (connection.getOtherSide(node) == other && hasLiveConnection(connection, other)) {
                 return connection;
@@ -48,22 +48,24 @@ public final class WirelessLinkOps {
         return null;
     }
 
-    public static void destroy(@Nullable IGridConnection connection, @Nullable IGridNode node) {
-        WIRELESS_BRIDGES.remove(connection);
+    public static synchronized void destroy(@Nullable IGridConnection connection, @Nullable IGridNode node) {
+        if (connection == null || !WIRELESS_BRIDGES.remove(connection)) {
+            return;
+        }
         if (hasLiveConnection(connection, node) && !connection.isInWorld()) {
             connection.destroy();
         }
     }
 
-    public static boolean isWirelessBridge(@Nullable IGridConnection connection) {
+    public static synchronized boolean isWirelessBridge(@Nullable IGridConnection connection) {
         return connection != null && WIRELESS_BRIDGES.contains(connection);
     }
 
-    static void trackWirelessBridge(IGridConnection connection) {
+    static synchronized void trackWirelessBridge(IGridConnection connection) {
         WIRELESS_BRIDGES.add(connection);
     }
 
-    public static void clearWirelessBridgeTracking() {
+    public static synchronized void clearWirelessBridgeTracking() {
         WIRELESS_BRIDGES.clear();
     }
 
@@ -92,7 +94,10 @@ public final class WirelessLinkOps {
         if (connection.isInWorld()) {
             throw new IllegalStateException("A physical connection already exists between the target and transmitter.");
         }
-        trackWirelessBridge(connection);
+        if (!isWirelessBridge(connection)) {
+            throw new IllegalStateException(
+                    "A virtual connection owned by another system already exists between the target and transmitter.");
+        }
         return connection;
     }
 
