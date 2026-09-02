@@ -207,7 +207,7 @@ public final class PhaseLockSubmodule extends AbstractCelestweaveArmorSubmodule 
             case ARMOR_LOCK_CONFIG_KEY,
                     FLIGHT_LOCK_CONFIG_KEY,
                     BLOCK_EXTERNAL_FORCES_CONFIG_KEY,
-                    BLOCK_EXTERNAL_TELEPORTS_CONFIG_KEY -> false;
+                    BLOCK_EXTERNAL_TELEPORTS_CONFIG_KEY -> true;
             default -> false;
         };
     }

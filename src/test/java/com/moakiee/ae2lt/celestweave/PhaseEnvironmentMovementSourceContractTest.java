@@ -10,12 +10,12 @@ import org.junit.jupiter.api.Test;
 
 final class PhaseEnvironmentMovementSourceContractTest {
     @Test
-    void forceScopesArePlayerBoundFinallySafeAndSeparatedFromTeleport() throws Exception {
+    void forceAuthorizationIsPlayerBoundFinallySafeAndSeparatedFromTeleport() throws Exception {
         String guard = Files.readString(Path.of(
                 "src/main/java/com/moakiee/ae2lt/celestweave/PhaseFlightMovementGuard.java"));
 
-        assertTrue(guard.contains("ENVIRONMENT_MOVEMENT_DEPTH"));
-        assertTrue(guard.contains("runAsEnvironmentMovement(Player player, Runnable movement)"));
+        assertFalse(guard.contains("ENVIRONMENT_MOVEMENT_DEPTH"));
+        assertFalse(guard.contains("runAsEnvironmentMovement"));
         assertTrue(guard.contains("VANILLA_TRAVEL_MOVEMENT_DEPTH"));
         assertTrue(guard.contains("runAsVanillaTravelMovement(Player player, Runnable movement)"));
         assertTrue(guard.contains("consumeVanillaTravelMovement(player)"));
@@ -30,32 +30,23 @@ final class PhaseEnvironmentMovementSourceContractTest {
                 guard,
                 "public static boolean isSelfTeleportAuthorized",
                 "private static boolean isPrivilegedCommandExecution");
-        assertFalse(teleportAuthorization.contains("ENVIRONMENT_MOVEMENT_DEPTH"));
         assertFalse(teleportAuthorization.contains("VANILLA_TRAVEL_MOVEMENT_DEPTH"));
     }
 
     @Test
-    void vanillaFluidAndBubbleSourcesUseNarrowEnvironmentScopes() throws Exception {
+    void fluidAndBubbleForcesRemainExternal() throws Exception {
         String mixin = Files.readString(Path.of(
                 "src/main/java/com/moakiee/ae2lt/mixin/EntityPhaseMovementMixin.java"));
 
-        assertTrue(mixin.contains("\"updateFluidHeightAndDoFluidPushing()V\""));
-        assertTrue(mixin.contains(
-                "\"updateFluidHeightAndDoFluidPushing(Ljava/util/function/Predicate;)V\""));
-        assertTrue(mixin.contains("@WrapOperation"));
-        assertTrue(mixin.contains("Object2ObjectMap;forEach"));
-        assertTrue(mixin.contains("Object2ObjectArrayMap;forEach"));
-        assertTrue(mixin.contains("remap = false"));
-        assertTrue(mixin.contains("require = 0"));
-        assertFalse(mixin.contains("MutableTriple"));
-        assertFalse(mixin.contains("FluidCalcs"));
-        assertFalse(mixin.contains("lambda$updateFluidHeightAndDoFluidPushing$"));
-        assertTrue(mixin.contains("ForgeMod.WATER_TYPE.get()"));
-        assertTrue(mixin.contains("ForgeMod.LAVA_TYPE.get()"));
-        assertTrue(mixin.contains("onAboveBubbleCol(Z)V"));
-        assertTrue(mixin.contains("onInsideBubbleColumn(Z)V"));
-        assertTrue(mixin.contains("PhaseFlightMovementGuard.runAsEnvironmentMovement"));
-        assertFalse(mixin.contains("isFreezing()"));
+        assertFalse(mixin.contains("updateFluidHeightAndDoFluidPushing"));
+        assertFalse(mixin.contains("Object2ObjectMap;forEach"));
+        assertFalse(mixin.contains("Object2ObjectArrayMap;forEach"));
+        assertFalse(mixin.contains("ForgeMod.WATER_TYPE.get()"));
+        assertFalse(mixin.contains("ForgeMod.LAVA_TYPE.get()"));
+        assertFalse(mixin.contains("onAboveBubbleCol"));
+        assertFalse(mixin.contains("onInsideBubbleColumn"));
+        assertFalse(mixin.contains("runAsEnvironmentMovement"));
+        assertTrue(mixin.contains("PhaseFlightMovementGuard.blocksExternalForces(player)"));
     }
 
     @Test

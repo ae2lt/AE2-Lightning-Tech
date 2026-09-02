@@ -1,12 +1,8 @@
 package com.moakiee.ae2lt.mixin;
 
-import java.util.function.BiConsumer;
-
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import it.unimi.dsi.fastutil.objects.Object2ObjectArrayMap;
-import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -36,86 +32,6 @@ public abstract class EntityPhaseMovementMixin {
                         player.isShiftKeyDown())) {
             cir.setReturnValue(true);
         }
-    }
-
-    @WrapOperation(
-            method = {
-                "updateFluidHeightAndDoFluidPushing()V",
-                "updateFluidHeightAndDoFluidPushing(Ljava/util/function/Predicate;)V"
-            },
-            at = @At(
-                    value = "INVOKE",
-                    target = "Lit/unimi/dsi/fastutil/objects/Object2ObjectMap;forEach(Ljava/util/function/BiConsumer;)V",
-                    remap = false),
-            remap = false,
-            require = 0)
-    private void ae2lt$authorizeLegacyVanillaFluidPushes(
-            Object2ObjectMap<?, ?> fluidData,
-            BiConsumer<?, ?> consumer,
-            Operation<Void> original) {
-        ae2lt$authorizeVanillaFluidPushes(fluidData, consumer, original);
-    }
-
-    @WrapOperation(
-            method = {
-                "updateFluidHeightAndDoFluidPushing()V",
-                "updateFluidHeightAndDoFluidPushing(Ljava/util/function/Predicate;)V"
-            },
-            at = @At(
-                    value = "INVOKE",
-                    target = "Lit/unimi/dsi/fastutil/objects/Object2ObjectArrayMap;forEach(Ljava/util/function/BiConsumer;)V",
-                    remap = false),
-            remap = false,
-            require = 0)
-    private void ae2lt$authorizeModernVanillaFluidPushes(
-            Object2ObjectArrayMap<?, ?> fluidData,
-            BiConsumer<?, ?> consumer,
-            Operation<Void> original) {
-        ae2lt$authorizeVanillaFluidPushes(fluidData, consumer, original);
-    }
-
-    @SuppressWarnings({"rawtypes", "unchecked"})
-    private void ae2lt$authorizeVanillaFluidPushes(
-            Object fluidData,
-            BiConsumer consumer,
-            Operation<Void> original) {
-        Player player = (Object) this instanceof Player currentPlayer ? currentPlayer : null;
-        original.call(fluidData, (BiConsumer<Object, Object>) (fluidType, data) -> {
-            if (player != null && isVanillaFluidType(fluidType)) {
-                PhaseFlightMovementGuard.runAsEnvironmentMovement(
-                        player,
-                        () -> consumer.accept(fluidType, data));
-            } else {
-                consumer.accept(fluidType, data);
-            }
-        });
-    }
-
-    private static boolean isVanillaFluidType(Object fluidType) {
-        return fluidType == net.minecraftforge.common.ForgeMod.WATER_TYPE.get()
-                || fluidType == net.minecraftforge.common.ForgeMod.LAVA_TYPE.get();
-    }
-
-    @WrapMethod(method = "onAboveBubbleCol(Z)V")
-    private void ae2lt$authorizeAboveBubbleMovement(boolean dragDown, Operation<Void> original) {
-        if ((Object) this instanceof Player player) {
-            PhaseFlightMovementGuard.runAsEnvironmentMovement(
-                    player,
-                    () -> original.call(dragDown));
-            return;
-        }
-        original.call(dragDown);
-    }
-
-    @WrapMethod(method = "onInsideBubbleColumn(Z)V")
-    private void ae2lt$authorizeInsideBubbleMovement(boolean dragDown, Operation<Void> original) {
-        if ((Object) this instanceof Player player) {
-            PhaseFlightMovementGuard.runAsEnvironmentMovement(
-                    player,
-                    () -> original.call(dragDown));
-            return;
-        }
-        original.call(dragDown);
     }
 
     @WrapOperation(
