@@ -8,12 +8,26 @@ import java.nio.file.Path;
 
 import org.junit.jupiter.api.Test;
 
+import com.moakiee.ae2lt.celestweave.module.PhaseLockSubmodule;
+
 final class PhaseLockSubmoduleSourceContractTest {
     private static final Path SOURCE = Path.of(
             "src/main/java/com/moakiee/ae2lt/celestweave/module/PhaseLockSubmodule.java");
 
     @Test
-    void everyFeatureHasAnExplicitIndependentDefault() throws Exception {
+    void missingOptionsEnableTheModuleAndAllMainFeatures() throws Exception {
+        assertTrue(PhaseLockSubmodule.INSTANCE.defaultEnabled());
+        var defaultValue = PhaseLockSubmodule.class.getDeclaredMethod("defaultValue", String.class);
+        defaultValue.setAccessible(true);
+        assertTrue((boolean) defaultValue.invoke(null, PhaseLockSubmodule.ARMOR_LOCK_CONFIG_KEY));
+        assertTrue((boolean) defaultValue.invoke(null, PhaseLockSubmodule.FLIGHT_LOCK_CONFIG_KEY));
+        assertTrue((boolean) defaultValue.invoke(null, PhaseLockSubmodule.BLOCK_EXTERNAL_FORCES_CONFIG_KEY));
+        assertTrue((boolean) defaultValue.invoke(null, PhaseLockSubmodule.BLOCK_EXTERNAL_TELEPORTS_CONFIG_KEY));
+        assertFalse((boolean) defaultValue.invoke(null, "unknown"));
+    }
+
+    @Test
+    void everyFeatureDefaultsToMainProtectionSemantics() throws Exception {
         String source = Files.readString(SOURCE);
 
         int defaults = source.indexOf("private static boolean defaultValue(String key)");
@@ -22,8 +36,8 @@ final class PhaseLockSubmoduleSourceContractTest {
         assertTrue(defaultBody.contains(
                 "case ARMOR_LOCK_CONFIG_KEY, FLIGHT_LOCK_CONFIG_KEY, "
                         + "BLOCK_EXTERNAL_FORCES_CONFIG_KEY, "
-                        + "BLOCK_EXTERNAL_TELEPORTS_CONFIG_KEY -> false;"));
-        assertFalse(defaultBody.contains("-> true"));
+                        + "BLOCK_EXTERNAL_TELEPORTS_CONFIG_KEY -> true;"));
+        assertTrue(defaultBody.contains("default -> false;"));
         assertFalse(source.contains("!options.contains(key, Tag.TAG_BYTE) || options.getBoolean(key)"));
         assertTrue(source.contains("options.contains(key, Tag.TAG_BYTE)"));
     }
