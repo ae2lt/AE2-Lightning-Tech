@@ -39,6 +39,15 @@ public final class WirelessLinkOps {
                 && connection.getOtherSide(node) == other;
     }
 
+    public static @Nullable IGridConnection findConnection(IGridNode node, IGridNode other) {
+        for (var connection : node.getConnections()) {
+            if (connection.getOtherSide(node) == other && hasLiveConnection(connection, other)) {
+                return connection;
+            }
+        }
+        return null;
+    }
+
     public static void destroy(@Nullable IGridConnection connection, @Nullable IGridNode node) {
         WIRELESS_BRIDGES.remove(connection);
         if (hasLiveConnection(connection, node) && !connection.isInWorld()) {
@@ -58,18 +67,37 @@ public final class WirelessLinkOps {
         WIRELESS_BRIDGES.clear();
     }
 
-    public static IGridConnection createVirtualConnection(IGridNode targetNode, IGridNode transmitterNode) {
-        for (var connection : targetNode.getConnections()) {
-            if (connection.getOtherSide(targetNode) == transmitterNode) {
-                if (!connection.isInWorld()) {
-                    trackWirelessBridge(connection);
-                    return connection;
-                }
-                throw new IllegalStateException("A physical connection already exists between the target and transmitter.");
-            }
+    public static synchronized IGridConnection createVirtualConnection(IGridNode targetNode, IGridNode transmitterNode) {
+        var existing = findConnection(targetNode, transmitterNode);
+        if (existing != null) {
+            return reuseVirtualConnection(existing);
         }
-        var connection = GridConnection.create(targetNode, transmitterNode, null);
+
+        try {
+            var connection = GridConnection.create(targetNode, transmitterNode, null);
+            trackWirelessBridge(connection);
+            return connection;
+        } catch (IllegalStateException duplicateCandidate) {
+            existing = findConnection(targetNode, transmitterNode);
+            if (isDuplicateConnectionFailure(duplicateCandidate)
+                    && existing != null
+                    && !existing.isInWorld()) {
+                return reuseVirtualConnection(existing);
+            }
+            throw duplicateCandidate;
+        }
+    }
+
+    private static IGridConnection reuseVirtualConnection(IGridConnection connection) {
+        if (connection.isInWorld()) {
+            throw new IllegalStateException("A physical connection already exists between the target and transmitter.");
+        }
         trackWirelessBridge(connection);
         return connection;
+    }
+
+    private static boolean isDuplicateConnectionFailure(IllegalStateException exception) {
+        var message = exception.getMessage();
+        return message != null && message.contains("already exists");
     }
 }

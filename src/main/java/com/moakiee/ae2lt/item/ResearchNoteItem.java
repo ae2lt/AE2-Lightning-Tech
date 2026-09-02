@@ -7,13 +7,14 @@ import org.jetbrains.annotations.Nullable;
 
 import com.moakiee.ae2lt.logic.research.ResearchNoteData;
 import com.moakiee.ae2lt.logic.research.ResearchNoteGenerator;
+import com.moakiee.ae2lt.network.OpenResearchNotePacket;
+import com.moakiee.ae2lt.network.PacketSender;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.network.protocol.game.ClientboundOpenBookPacket;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.stats.Stats;
@@ -69,13 +70,8 @@ public class ResearchNoteItem extends AE2LTItem {
         // 即便被强行堆,也不在此处处理)。
         applyGeneratedState(heldStack, data);
 
-        // ServerPlayer#openItemGui 只认 vanilla Items.WRITTEN_BOOK，直接拿我们的自定义
-        // 物品去走那条分支会提前 return。所以这里手动走一遍官方链路：先 resolve 书页
-        // 里的动态组件（实体选择器之类），再把 ClientboundOpenBookPacket 直接发给客户端。
-        // 客户端随后会基于当前手持物上的 written-book NBT 打开阅读界面。
         if (player instanceof ServerPlayer serverPlayer) {
-            WrittenBookItem.resolveBookComponents(heldStack, serverPlayer.createCommandSourceStack(), serverPlayer);
-            serverPlayer.connection.send(new ClientboundOpenBookPacket(hand));
+            PacketSender.sendToPlayer(serverPlayer, new OpenResearchNotePacket(heldStack.copy()));
         }
         player.awardStat(Stats.ITEM_USED.get(this));
         return InteractionResultHolder.sidedSuccess(heldStack, false);

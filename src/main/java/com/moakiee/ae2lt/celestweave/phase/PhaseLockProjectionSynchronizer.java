@@ -207,6 +207,10 @@ final class PhaseLockProjectionSynchronizer {
             ItemStack projection,
             ProjectionCurses projectionCurses) {
         Map<Enchantment, Integer> enchantments = enchantments(projection);
+        if (enchantments.getOrDefault(projectionCurses.binding(), 0) == 1
+                && enchantments.getOrDefault(projectionCurses.vanishing(), 0) == 1) {
+            return;
+        }
         enchantments.put(projectionCurses.binding(), 1);
         enchantments.put(projectionCurses.vanishing(), 1);
         setEnchantments(projection, enchantments);

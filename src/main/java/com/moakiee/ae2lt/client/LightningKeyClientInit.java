@@ -33,6 +33,7 @@ public final class LightningKeyClientInit {
     public static void onClientSetup(FMLClientSetupEvent event) {
         event.enqueueWork(() -> {
             RailgunClientBootstrap.install();
+            ResearchNoteClientBootstrap.install();
             ShieldHitFeedbackClientBootstrap.install();
             if (ModList.get().isLoaded("curios")) {
                 PigmeeCuriosClientBridge.registerRenderers();
