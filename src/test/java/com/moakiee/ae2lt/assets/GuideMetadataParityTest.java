@@ -81,7 +81,7 @@ class GuideMetadataParityTest {
 
     @Test
     void screenStylesDoNotUseNamespacedHelpTopics() throws IOException {
-        Path screens = Path.of("src", "main", "resources", "assets", "ae2", "screens");
+        Path screens = Path.of("src", "main", "resources", "assets", "ae2lt", "screens");
         List<Path> invalid = new ArrayList<>();
 
         try (Stream<Path> paths = Files.walk(screens)) {

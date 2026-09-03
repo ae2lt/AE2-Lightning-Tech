@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test;
 
 class MachinePlayerInventoryLayoutContractTest {
     private static final Path SCREEN_ROOT =
-            Path.of("src/main/resources/assets/ae2/screens");
+            Path.of("src/main/resources/assets/ae2lt/screens");
 
     @Test
     void importedMachineBackgroundsUseTheirTwoPixelHigherInventoryBaseline() throws Exception {

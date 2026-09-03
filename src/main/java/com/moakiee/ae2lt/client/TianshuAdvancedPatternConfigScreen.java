@@ -41,7 +41,7 @@ final class TianshuAdvancedPatternConfigScreen<M extends TianshuPatternEncodingT
     private final List<DirectionInputButton[]> rowButtons = new ArrayList<>();
 
     TianshuAdvancedPatternConfigScreen(TianshuPatternEncodingTermScreen<M> parent) {
-        super(parent, "/screens/tianshu_advanced_pattern_config.json");
+        super(parent, "ae2lt:screens/tianshu_advanced_pattern_config.json");
         imageWidth = TianshuPatternConfigLayout.GUI_WIDTH;
         imageHeight = TianshuPatternConfigLayout.GUI_HEIGHT;
 

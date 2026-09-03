@@ -15,7 +15,7 @@ import org.junit.jupiter.api.Test;
 
 class Ae2TexturePortCompatibilityTest {
     private static final Path RESOURCES = Path.of("src", "main", "resources");
-    private static final Path AE2_SCREENS = RESOURCES.resolve(Path.of("assets", "ae2", "screens"));
+    private static final Path AE2_SCREENS = RESOURCES.resolve(Path.of("assets", "ae2lt", "screens"));
     private static final Path AE2LT_MODELS = RESOURCES.resolve(Path.of("assets", "ae2lt", "models"));
 
     @Test

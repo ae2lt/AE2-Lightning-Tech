@@ -16,7 +16,7 @@ import appeng.client.gui.widgets.ITooltip;
  * 机器 GUI 上的闪电状态图标 widget(16×16)。
  *
  * <p>以标准 AE2 widget 的方式挂到 {@link appeng.client.gui.AEBaseScreen},
- * 位置由 {@code ae2/screens/*.json} 里 {@code widgets.lightningStatus} 配置,
+ * 位置由 {@code ae2lt:screens/*.json} 里 {@code widgets.lightningStatus} 配置,
  * 悬停时通过 {@link ITooltip} 机制显示机器状态 / 网络内闪电库存等信息。</p>
  *
  * <p>原本这些信息是直接 {@code drawString} 画在 GUI 空白区里的,

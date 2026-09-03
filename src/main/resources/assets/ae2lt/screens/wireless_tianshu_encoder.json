@@ -1,0 +1,7 @@
+{
+  "$schema": "schema.json",
+  "includes": [
+    "terminals/tianshu_encoder.json",
+    "ae2:screens/wtlib/universal_terminal_with_viewcells.json"
+  ]
+}

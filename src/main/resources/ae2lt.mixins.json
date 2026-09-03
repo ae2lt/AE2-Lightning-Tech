@@ -44,6 +44,7 @@
     "ShulkerBulletMixin"
   ],
   "client": [
+    "client.AESubScreenStyleMixin",
     "client.CableBusRenderStateMixin",
     "client.CableBusContainerRenderMixin",
     "client.CableBusBakedModelMixin",

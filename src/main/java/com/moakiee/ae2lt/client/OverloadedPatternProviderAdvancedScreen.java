@@ -26,7 +26,7 @@ public final class OverloadedPatternProviderAdvancedScreen<M extends OverloadedP
     private final TextureToggleButton filteredImportButton;
 
     public OverloadedPatternProviderAdvancedScreen(OverloadedPatternProviderScreen<M> parent) {
-        super(parent, "/screens/overloaded_pattern_provider_advanced.json");
+        super(parent, "ae2lt:screens/overloaded_pattern_provider_advanced.json");
 
         var backLabel = Component.translatable(parent.getMenu().getTitleTranslationKey());
         widgets.add("return", new TabButton(Icon.ARROW_LEFT, backLabel, btn -> returnToParent()));

@@ -34,7 +34,7 @@ import org.lwjgl.glfw.GLFW;
 /** EA2-native provider picker modelled after EAEP ClientPlus' provider-list sub-screen. */
 public final class TianshuUploadTargetScreen<M extends TianshuPatternEncodingTermMenu>
         extends AESubScreen<M, TianshuPatternEncodingTermScreen<M>> {
-    private static final String STYLE = "/screens/tianshu_upload_targets.json";
+    private static final String STYLE = "ae2lt:screens/tianshu_upload_targets.json";
     private static final ResourceLocation TEXTURE = new ResourceLocation(AE2LightningTech.MODID, "textures/gui/tianshu_upload_targets.png");
     private static final int TEXTURE_SIZE = 256;
     private static final int GUI_WIDTH = 190;

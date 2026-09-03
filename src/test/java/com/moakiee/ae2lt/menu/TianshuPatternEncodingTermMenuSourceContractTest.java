@@ -201,8 +201,8 @@ class TianshuPatternEncodingTermMenuSourceContractTest {
         String panel = Files.readString(Path.of(
                 "src/main/java/com/moakiee/ae2lt/client/TianshuClosedLoopEncodingPanel.java"));
         String layout = Files.readString(Path.of(
-                "src/main/resources/assets/ae2/screens/terminals/"
-                        + "tianshu_pattern_encoding_terminal.json"));
+                "src/main/resources/assets/ae2lt/screens/terminals/"
+                        + "tianshu_encoder.json"));
 
         assertTrue(menu.contains("new ClosedLoopMemberSlot(closedLoopMemberInventory"));
         assertTrue(menu.contains("new ClosedLoopOutputSlot(closedLoopOutputInventory"));
@@ -278,7 +278,7 @@ class TianshuPatternEncodingTermMenuSourceContractTest {
         String screen = Files.readString(Path.of(
                 "src/main/java/com/moakiee/ae2lt/client/TianshuGlobalReserveScreen.java"));
         String layout = Files.readString(Path.of(
-                "src/main/resources/assets/ae2/screens/tianshu_inventory_overview.json"));
+                "src/main/resources/assets/ae2lt/screens/tianshu_inventory_overview.json"));
 
         assertTrue(menu.contains("new FakeSlot(globalReserveMarkInventory, 0)"));
         assertTrue(menu.contains(

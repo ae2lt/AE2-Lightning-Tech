@@ -1,16 +1,17 @@
 package com.moakiee.ae2lt.client;
 
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.MenuScreens;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.client.event.RegisterClientReloadListenersEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 
-import appeng.client.gui.style.StyleManager;
-
 import com.moakiee.ae2lt.AE2LightningTech;
+import com.moakiee.ae2lt.client.gui.AE2LTStyleManager;
 import com.moakiee.ae2lt.client.gui.FrequencyScreen;
 import com.moakiee.ae2lt.client.hub.DeviceHubScreen;
 import com.moakiee.ae2lt.integration.ae2wtlib.TianshuWirelessTerminalFactory;
@@ -48,6 +49,7 @@ public class ModScreens {
     @SubscribeEvent
     public static void registerScreens(FMLClientSetupEvent event) {
         event.enqueueWork(() -> {
+            AE2LTStyleManager.initialize(Minecraft.getInstance().getResourceManager());
             MenuScreens.register(OverloadedPatternProviderMenu.TYPE, ModScreens::createOverloadedPatternProviderScreen);
             MenuScreens.register(PigmeePatternProviderMenu.TYPE, ModScreens::createPigmeePatternProviderScreen);
             MenuScreens.register(PigmeeMolecularAssemblerMenu.TYPE, ModScreens::createPigmeeMolecularAssemblerScreen);
@@ -79,100 +81,105 @@ public class ModScreens {
         });
     }
 
+    @SubscribeEvent
+    public static void registerReloadListeners(RegisterClientReloadListenersEvent event) {
+        event.registerReloadListener(AE2LTStyleManager.INSTANCE);
+    }
+
     private static TianshuPatternEncodingTermScreen<TianshuPatternEncodingTermMenu> createTianshuPatternEncodingTermScreen(
             TianshuPatternEncodingTermMenu menu, Inventory inv, Component title) {
-        var style = StyleManager.loadStyleDoc("/screens/terminals/tianshu_pattern_encoding_terminal.json");
+        var style = AE2LTStyleManager.loadStyleDoc("ae2lt:screens/terminals/tianshu_encoder.json");
         return new TianshuPatternEncodingTermScreen<>(menu, inv, title, style);
     }
 
     private static TianshuWirelessPatternEncodingTermScreen createTianshuWirelessPatternEncodingTermScreen(
             TianshuWirelessPatternEncodingTermMenu menu, Inventory inv, Component title) {
-        var style = StyleManager.loadStyleDoc(
-                "/screens/wireless_tianshu_pattern_encoding_terminal.json");
+        var style = AE2LTStyleManager.loadStyleDoc(
+                "ae2lt:screens/wireless_tianshu_encoder.json");
         return new TianshuWirelessPatternEncodingTermScreen(menu, inv, title, style);
     }
 
     private static TianshuSeedStorageScreen createTianshuSeedStorageScreen(
             TianshuSeedStorageMenu menu, Inventory inv, Component title) {
-        var style = StyleManager.loadStyleDoc("/screens/tianshu_seed_storage.json");
+        var style = AE2LTStyleManager.loadStyleDoc("ae2lt:screens/tianshu_seed_storage.json");
         return new TianshuSeedStorageScreen(menu, inv, title, style);
     }
 
     private static VoidCellScreen createVoidCellScreen(
             VoidCellMenu menu, Inventory inv, Component title) {
-        var style = StyleManager.loadStyleDoc("/screens/void_cell.json");
+        var style = AE2LTStyleManager.loadStyleDoc("ae2lt:screens/void_cell.json");
         return new VoidCellScreen(menu, inv, title, style);
     }
 
     private static OverloadedPatternProviderScreen<OverloadedPatternProviderMenu> createOverloadedPatternProviderScreen(
             OverloadedPatternProviderMenu menu, Inventory inv, Component title) {
-        var style = StyleManager.loadStyleDoc("/screens/overloaded_pattern_provider.json");
+        var style = AE2LTStyleManager.loadStyleDoc("ae2lt:screens/overloaded_pattern_provider.json");
         return new OverloadedPatternProviderScreen<>(menu, inv, title, style);
     }
 
     private static PigmeePatternProviderScreen createPigmeePatternProviderScreen(
             PigmeePatternProviderMenu menu, Inventory inv, Component title) {
-        var style = StyleManager.loadStyleDoc("/screens/pigmee_pattern_provider.json");
+        var style = AE2LTStyleManager.loadStyleDoc("ae2lt:screens/pigmee_pattern_provider.json");
         return new PigmeePatternProviderScreen(menu, inv, title, style);
     }
 
     private static PigmeeMolecularAssemblerScreen createPigmeeMolecularAssemblerScreen(
             PigmeeMolecularAssemblerMenu menu, Inventory inv, Component title) {
-        var style = StyleManager.loadStyleDoc("/screens/pigmee_molecular_assembler.json");
+        var style = AE2LTStyleManager.loadStyleDoc("ae2lt:screens/pigmee_molecular_assembler.json");
         return new PigmeeMolecularAssemblerScreen(menu, inv, title, style);
     }
 
     private static OverloadedInterfaceScreen createOverloadedInterfaceScreen(
             OverloadedInterfaceMenu menu, Inventory inv, Component title) {
-        var style = StyleManager.loadStyleDoc("/screens/overloaded_interface.json");
+        var style = AE2LTStyleManager.loadStyleDoc("ae2lt:screens/overloaded_interface.json");
         return new OverloadedInterfaceScreen(menu, inv, title, style);
     }
 
     private static OverloadedPowerSupplyScreen createOverloadedPowerSupplyScreen(
             OverloadedPowerSupplyMenu menu, Inventory inv, Component title) {
-        var style = StyleManager.loadStyleDoc("/screens/overloaded_power_supply.json");
+        var style = AE2LTStyleManager.loadStyleDoc("ae2lt:screens/overloaded_power_supply.json");
         return new OverloadedPowerSupplyScreen(menu, inv, title, style);
     }
 
     private static LightningSimulationChamberScreen createLightningSimulationChamberScreen(
             LightningSimulationChamberMenu menu, Inventory inv, Component title) {
-        var style = StyleManager.loadStyleDoc("/screens/lightning_simulation_room.json");
+        var style = AE2LTStyleManager.loadStyleDoc("ae2lt:screens/lightning_simulation_room.json");
         return new LightningSimulationChamberScreen(menu, inv, title, style);
     }
 
     private static LightningAssemblyChamberScreen createLightningAssemblyChamberScreen(
             LightningAssemblyChamberMenu menu, Inventory inv, Component title) {
-        var style = StyleManager.loadStyleDoc("/screens/lightning_assembly_chamber.json");
+        var style = AE2LTStyleManager.loadStyleDoc("ae2lt:screens/lightning_assembly_chamber.json");
         return new LightningAssemblyChamberScreen(menu, inv, title, style);
     }
 
     private static LightningCollectorScreen createLightningCollectorScreen(
             LightningCollectorMenu menu, Inventory inv, Component title) {
-        var style = StyleManager.loadStyleDoc("/screens/lightning_collector.json");
+        var style = AE2LTStyleManager.loadStyleDoc("ae2lt:screens/lightning_collector.json");
         return new LightningCollectorScreen(menu, inv, title, style);
     }
 
     private static OverloadProcessingFactoryScreen createOverloadProcessingFactoryScreen(
             OverloadProcessingFactoryMenu menu, Inventory inv, Component title) {
-        var style = StyleManager.loadStyleDoc("/screens/overload_processing_factory.json");
+        var style = AE2LTStyleManager.loadStyleDoc("ae2lt:screens/overload_processing_factory.json");
         return new OverloadProcessingFactoryScreen(menu, inv, title, style);
     }
 
     private static TeslaCoilScreen createTeslaCoilScreen(
             TeslaCoilMenu menu, Inventory inv, Component title) {
-        var style = StyleManager.loadStyleDoc("/screens/tesla_coil.json");
+        var style = AE2LTStyleManager.loadStyleDoc("ae2lt:screens/tesla_coil.json");
         return new TeslaCoilScreen(menu, inv, title, style);
     }
 
     private static AtmosphericIonizerScreen createAtmosphericIonizerScreen(
             AtmosphericIonizerMenu menu, Inventory inv, Component title) {
-        var style = StyleManager.loadStyleDoc("/screens/atmospheric_ionizer.json");
+        var style = AE2LTStyleManager.loadStyleDoc("ae2lt:screens/atmospheric_ionizer.json");
         return new AtmosphericIonizerScreen(menu, inv, title, style);
     }
 
     private static CrystalCatalyzerScreen createCrystalCatalyzerScreen(
             CrystalCatalyzerMenu menu, Inventory inv, Component title) {
-        var style = StyleManager.loadStyleDoc("/screens/crystal_catalyzer.json");
+        var style = AE2LTStyleManager.loadStyleDoc("ae2lt:screens/crystal_catalyzer.json");
         return new CrystalCatalyzerScreen(menu, inv, title, style);
     }
 

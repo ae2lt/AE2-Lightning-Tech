@@ -26,7 +26,7 @@ public class CrystalCatalyzerOutputConfigScreen
     private final LightningSimulationOutputButton bottomButton;
 
     public CrystalCatalyzerOutputConfigScreen(CrystalCatalyzerScreen parent) {
-        super(parent, "/screens/crystal_catalyzer_output_config.json");
+        super(parent, "ae2lt:screens/crystal_catalyzer_output_config.json");
 
         var label = Component.translatable("block.ae2lt.crystal_catalyzer");
         widgets.add("return", new TabButton(Icon.ARROW_LEFT, label, btn -> returnToParent()));

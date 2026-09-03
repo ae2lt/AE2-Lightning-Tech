@@ -1,0 +1,74 @@
+{
+  "$schema": "schema.json",
+  "includes": ["ae2:screens/common/common.json", "common/legacy_player_inventory.json"],
+  "background": {
+    "texture": "ae2lt:textures/guis/overloaded_interface.png",
+    "srcRect": [0, 0, 176, 253]
+  },
+  "slots": {
+    "OL_1": {
+      "left": 8,
+      "top": 53,
+      "grid": "HORIZONTAL"
+    },
+    "OL_2": {
+      "left": 8,
+      "top": 71,
+      "grid": "HORIZONTAL"
+    },
+    "OL_3": {
+      "left": 8,
+      "top": 113,
+      "grid": "HORIZONTAL"
+    },
+    "OL_4": {
+      "left": 8,
+      "top": 131,
+      "grid": "HORIZONTAL"
+    },
+    "OL_5": {
+      "left": 8,
+      "top": 53,
+      "grid": "HORIZONTAL"
+    },
+    "OL_6": {
+      "left": 8,
+      "top": 71,
+      "grid": "HORIZONTAL"
+    },
+    "OL_7": {
+      "left": 8,
+      "top": 113,
+      "grid": "HORIZONTAL"
+    },
+    "OL_8": {
+      "left": 8,
+      "top": 131,
+      "grid": "HORIZONTAL"
+    }
+  },
+  "text": {
+    "dialog_title": {
+      "text": {
+        "translate": "block.ae2lt.overloaded_interface"
+      },
+      "position": {
+        "left": 8,
+        "top": 6
+      }
+    }
+  },
+  "widgets": {
+    "openPriority": {
+      "left": 152,
+      "top": -5,
+      "width": 20,
+      "height": 20
+    },
+    "overloadedFilter": {
+      "$comment": "Align below the four-slot upgrades panel (86 px tall) with a 2 px gap.",
+      "right": -2,
+      "top": 88
+    }
+  }
+}

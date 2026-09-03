@@ -16,7 +16,7 @@ class OverloadedInterfaceSidebarLayoutContractTest {
         String menu = Files.readString(Path.of(
                 "src/main/java/com/moakiee/ae2lt/menu/OverloadedInterfaceMenu.java"));
         String style = Files.readString(Path.of(
-                "src/main/resources/assets/ae2/screens/overloaded_interface.json"));
+                "src/main/resources/assets/ae2lt/screens/overloaded_interface.json"));
 
         assertTrue(screen.contains("Ae2ltSlotSemantics.OVERLOADED_INTERFACE_FILTER"));
         assertTrue(menu.contains(

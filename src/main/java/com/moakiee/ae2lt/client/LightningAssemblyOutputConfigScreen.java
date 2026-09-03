@@ -26,7 +26,7 @@ public class LightningAssemblyOutputConfigScreen
     private final LightningSimulationOutputButton bottomButton;
 
     public LightningAssemblyOutputConfigScreen(LightningAssemblyChamberScreen parent) {
-        super(parent, "/screens/lightning_assembly_output_config.json");
+        super(parent, "ae2lt:screens/lightning_assembly_output_config.json");
 
         var label = Component.translatable("block.ae2lt.lightning_assembly_chamber");
         widgets.add("return", new TabButton(Icon.ARROW_LEFT, label, btn -> returnToParent()));

@@ -13,7 +13,7 @@ class TianshuPatternEncodingTerminalLayoutContractTest {
     private static final Path CLIENT_ROOT =
             Path.of("src/main/java/com/moakiee/ae2lt/client");
     private static final Path SCREEN_ROOT =
-            Path.of("src/main/resources/assets/ae2/screens/terminals");
+            Path.of("src/main/resources/assets/ae2lt/screens/terminals");
 
     @Test
     void nativeModesUseTheAe2Forge120PanelGeometry() throws Exception {
@@ -45,7 +45,7 @@ class TianshuPatternEncodingTerminalLayoutContractTest {
         String screen = Files.readString(
                 CLIENT_ROOT.resolve("TianshuPatternEncodingTermScreen.java"));
         String style = Files.readString(
-                SCREEN_ROOT.resolve("tianshu_pattern_encoding_terminal.json"));
+                SCREEN_ROOT.resolve("tianshu_encoder.json"));
 
         assertTrue(screen.contains("panel.getTabIconItem()"));
         assertTrue(Files.readString(CLIENT_ROOT.resolve("TianshuCraftingEncodingPanel.java"))
@@ -67,7 +67,7 @@ class TianshuPatternEncodingTerminalLayoutContractTest {
     @Test
     void processingExtensionsStayInTheGapBetweenInputsAndOutputs() throws Exception {
         String style = Files.readString(
-                SCREEN_ROOT.resolve("tianshu_pattern_encoding_terminal.json"));
+                SCREEN_ROOT.resolve("tianshu_encoder.json"));
 
         assertFalse(style.contains("\"processingClearPattern\""));
         assertFalse(style.contains("\"processingCycleOutput\""));
@@ -91,7 +91,7 @@ class TianshuPatternEncodingTerminalLayoutContractTest {
     @Test
     void closedLoopScrollbarUsesTheAe2ProcessingGridBaseline() throws Exception {
         String style = Files.readString(
-                SCREEN_ROOT.resolve("tianshu_pattern_encoding_terminal.json"));
+                SCREEN_ROOT.resolve("tianshu_encoder.json"));
 
         assertTrue(style.contains(
                 "\"closedLoopScrollbar\": { \"left\": 16, \"bottom\": 157, \"height\": 52 }"));

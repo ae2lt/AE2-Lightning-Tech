@@ -1,0 +1,21 @@
+{
+  "$schema": "schema.json",
+  "includes": ["ae2:screens/common/common.json", "ae2:screens/common/player_inventory.json"],
+  "background": {
+    "texture": "guis/drive.png",
+    "srcRect": [0, 0, 176, 199]
+  },
+  "slots": {
+    "STORAGE_CELL": {
+      "left": 71,
+      "top": 14,
+      "grid": "BREAK_AFTER_2COLS"
+    }
+  },
+  "text": {
+    "dialog_title": {
+      "text": { "translate": "block.ae2lt.closed_loop_seed_storage" },
+      "position": { "left": 8, "top": 6 }
+    }
+  }
+}

@@ -132,9 +132,9 @@ class PortResourceIntegrityTest {
                 sha256(providerTexture));
 
         String interfaceScreen = Files.readString(
-                RESOURCES.resolve(Path.of("assets", "ae2", "screens", "overloaded_interface.json")));
+                RESOURCES.resolve(Path.of("assets", "ae2lt", "screens", "overloaded_interface.json")));
         String providerScreen = Files.readString(
-                RESOURCES.resolve(Path.of("assets", "ae2", "screens", "overloaded_pattern_provider.json")));
+                RESOURCES.resolve(Path.of("assets", "ae2lt", "screens", "overloaded_pattern_provider.json")));
         assertTrue(interfaceScreen.contains("ae2lt:textures/guis/overloaded_interface.png"));
         assertTrue(providerScreen.contains("ae2lt:textures/guis/overloaded_pattern_provider.png"));
         assertFalse(interfaceScreen.contains("guis/ex_interface.png"));

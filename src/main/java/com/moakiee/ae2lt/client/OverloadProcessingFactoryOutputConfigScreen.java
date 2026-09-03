@@ -26,7 +26,7 @@ public class OverloadProcessingFactoryOutputConfigScreen
     private final OverloadProcessingFactoryOutputButton bottomButton;
 
     public OverloadProcessingFactoryOutputConfigScreen(OverloadProcessingFactoryScreen parent) {
-        super(parent, "/screens/overload_processing_output_config.json");
+        super(parent, "ae2lt:screens/overload_processing_output_config.json");
 
         var label = Component.translatable("block.ae2lt.overload_processing_factory");
         widgets.add("return", new TabButton(Icon.ARROW_LEFT, label, btn -> returnToParent()));

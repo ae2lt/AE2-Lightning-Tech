@@ -21,7 +21,7 @@ public final class TianshuTerminalSettingsScreen<M extends TianshuPatternEncodin
     private AE2Button duplicateEncodingButton;
 
     public TianshuTerminalSettingsScreen(TerminalSettingsScreen<M> parent) {
-        super(parent, "/screens/tianshu_terminal_settings.json");
+        super(parent, "ae2lt:screens/tianshu_terminal_settings.json");
         hideTerminalSlots();
         widgets.add("back", new TabButton(Icon.ARROW_LEFT,
                 Component.translatable("gui.back"), ignored -> returnToParent()));

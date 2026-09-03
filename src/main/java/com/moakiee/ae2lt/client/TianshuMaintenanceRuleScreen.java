@@ -51,7 +51,7 @@ public final class TianshuMaintenanceRuleScreen<M extends TianshuPatternEncoding
 
     public TianshuMaintenanceRuleScreen(
             AEBaseScreen<M> parent, MaintenanceEditorData data) {
-        super(parent, "/screens/tianshu_maintenance_rule.json");
+        super(parent, "ae2lt:screens/tianshu_maintenance_rule.json");
         draft = new Draft(data);
 
         lower = numberField("lower", data.lowerThreshold());
@@ -459,8 +459,8 @@ public final class TianshuMaintenanceRuleScreen<M extends TianshuPatternEncoding
                 List<MaintenanceEditorData.VariantEntry> variants,
                 EditorState state) {
             super(parent, state.selectedMode() == ReservedStockMatchMode.IGNORE_SECONDARY
-                    ? "/screens/tianshu_reserve_edit_expanded.json"
-                    : "/screens/tianshu_reserve_edit.json");
+                    ? "ae2lt:screens/tianshu_reserve_edit_expanded.json"
+                    : "ae2lt:screens/tianshu_reserve_edit.json");
             this.reserve = reserve;
             this.variants = List.copyOf(variants);
             global = state.global;

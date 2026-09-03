@@ -70,7 +70,7 @@ final class TianshuClosedLoopPatternConfigScreen<M extends TianshuPatternEncodin
     private int requestedResultOffset = -1;
 
     TianshuClosedLoopPatternConfigScreen(TianshuPatternEncodingTermScreen<M> parent) {
-        super(parent, "/screens/tianshu_closed_loop_pattern_config.json");
+        super(parent, "ae2lt:screens/tianshu_closed_loop_pattern_config.json");
         imageWidth = TianshuPatternConfigLayout.GUI_WIDTH;
         imageHeight = TianshuPatternConfigLayout.GUI_HEIGHT;
 

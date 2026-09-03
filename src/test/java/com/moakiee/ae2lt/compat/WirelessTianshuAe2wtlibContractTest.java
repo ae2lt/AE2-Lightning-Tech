@@ -17,9 +17,9 @@ class WirelessTianshuAe2wtlibContractTest {
         String menu = readJava("menu/TianshuWirelessPatternEncodingTermMenu.java");
         String screen = readJava("client/TianshuWirelessPatternEncodingTermScreen.java");
         String style = Files.readString(MAIN.resolve(Path.of(
-                "resources/assets/ae2/screens/wireless_tianshu_pattern_encoding_terminal.json")));
+                "resources/assets/ae2lt/screens/wireless_tianshu_encoder.json")));
         String terminalStyle = Files.readString(MAIN.resolve(Path.of(
-                "resources/assets/ae2/screens/terminals/tianshu_pattern_encoding_terminal.json")));
+                "resources/assets/ae2lt/screens/terminals/tianshu_encoder.json")));
         String guidePage = Files.readString(MAIN.resolve(Path.of(
                 "resources/assets/ae2lt/ae2guide/tianshu/pattern-encoding-terminal.md")));
 
@@ -29,7 +29,9 @@ class WirelessTianshuAe2wtlibContractTest {
         assertTrue(menu.contains("public IGridNode getNetworkNode()"));
         assertTrue(menu.contains("return wirelessHost.getActionableNode();"));
         assertTrue(screen.contains("new BackgroundPanel(style.getImage(\"singularityBackground\"))"));
-        assertTrue(style.contains("wtlib/universal_terminal_with_viewcells.json"));
+        assertTrue(style.contains("ae2:screens/wtlib/universal_terminal_with_viewcells.json"));
+        assertTrue(style.contains("terminals/tianshu_encoder.json"));
+        assertTrue(terminalStyle.contains("ae2:screens/terminals/pattern_encoding_terminal.json"));
         assertFalse(terminalStyle.contains("\"helpTopic\""));
         assertTrue(guidePage.contains("- ae2lt:wireless_tianshu_pattern_encoding_terminal"));
     }

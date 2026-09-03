@@ -55,7 +55,7 @@ public final class TianshuGlobalReserveScreen<M extends TianshuPatternEncodingTe
     private int requestedRuleEditorRevision;
 
     public TianshuGlobalReserveScreen(TianshuPatternEncodingTermScreen<M> parent) {
-        super(parent, "/screens/tianshu_inventory_overview.json");
+        super(parent, "ae2lt:screens/tianshu_inventory_overview.json");
         restoreMaintainableView = menu.maintainableView;
         if (restoreMaintainableView) menu.setMaintainableViewTemporarily(false);
 
@@ -511,8 +511,8 @@ public final class TianshuGlobalReserveScreen<M extends TianshuPatternEncodingTe
                 List<ReserveVariant> variants,
                 EditorState state) {
             super(parent, state.mode == ReservedStockMatchMode.IGNORE_SECONDARY
-                    ? "/screens/tianshu_reserve_edit_expanded.json"
-                    : "/screens/tianshu_reserve_edit.json");
+                    ? "ae2lt:screens/tianshu_reserve_edit_expanded.json"
+                    : "ae2lt:screens/tianshu_reserve_edit.json");
             this.entry = entry;
             this.variants = List.copyOf(variants);
             this.mode = state.mode;
