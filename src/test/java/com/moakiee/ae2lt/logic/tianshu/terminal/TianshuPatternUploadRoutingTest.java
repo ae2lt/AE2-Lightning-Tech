@@ -101,6 +101,23 @@ class TianshuPatternUploadRoutingTest {
     }
 
     @Test
+    void processingUploadUsesTheBoundGroupAndSlotSnapshot() throws Exception {
+        String menu = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/menu/TianshuPatternEncodingTermMenu.java"));
+        int methodStart = menu.indexOf(
+                "public void uploadTianshuPatternToTarget(ServerPlayer player");
+        int methodEnd = menu.indexOf("private void uploadCraftingPatternServer", methodStart);
+        String upload = menu.substring(methodStart, methodEnd);
+
+        assertTrue(upload.contains("boundUploadTargets.get(group)"));
+        assertTrue(upload.contains("binding.slot()"));
+        assertFalse(upload.contains("refreshUploadTargetsNow()"));
+        assertFalse(upload.contains("getTerminalGroup()"));
+        assertFalse(upload.contains("firstFreePatternSlot("));
+        assertTrue(menu.contains("summary.slots.add(new BoundUploadSlot(target, i))"));
+    }
+
+    @Test
     void duplicateFilteringOnlyInterceptsTriggeredUploadsAndCanBeDisabledByTheClient()
             throws Exception {
         String menu = Files.readString(Path.of(
