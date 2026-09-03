@@ -1,0 +1,6 @@
+{
+  "$schema": "schema.json",
+  "includes": [
+    "wireless_tianshu_pattern_encoding_terminal.json"
+  ]
+}

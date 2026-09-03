@@ -81,14 +81,14 @@ public class ModScreens {
 
     private static TianshuPatternEncodingTermScreen<TianshuPatternEncodingTermMenu> createTianshuPatternEncodingTermScreen(
             TianshuPatternEncodingTermMenu menu, Inventory inv, Component title) {
-        var style = StyleManager.loadStyleDoc("/screens/terminals/tianshu_pattern_encoding_terminal.json");
+        var style = StyleManager.loadStyleDoc("/screens/terminals/tianshu_terminal_entry.json");
         return new TianshuPatternEncodingTermScreen<>(menu, inv, title, style);
     }
 
     private static TianshuWirelessPatternEncodingTermScreen createTianshuWirelessPatternEncodingTermScreen(
             TianshuWirelessPatternEncodingTermMenu menu, Inventory inv, Component title) {
         var style = StyleManager.loadStyleDoc(
-                "/screens/wireless_tianshu_pattern_encoding_terminal.json");
+                "/screens/wireless_tianshu_terminal_entry.json");
         return new TianshuWirelessPatternEncodingTermScreen(menu, inv, title, style);
     }
 

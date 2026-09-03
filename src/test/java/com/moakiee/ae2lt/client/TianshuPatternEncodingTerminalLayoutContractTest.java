@@ -12,8 +12,26 @@ import org.junit.jupiter.api.Test;
 class TianshuPatternEncodingTerminalLayoutContractTest {
     private static final Path CLIENT_ROOT =
             Path.of("src/main/java/com/moakiee/ae2lt/client");
+    private static final Path SCREEN_BASE =
+            Path.of("src/main/resources/assets/ae2/screens");
     private static final Path SCREEN_ROOT =
-            Path.of("src/main/resources/assets/ae2/screens/terminals");
+            SCREEN_BASE.resolve("terminals");
+
+    @Test
+    void styleEntryPointsDoNotMatchExpandedAePatternTerminalRewrite() throws Exception {
+        String screens = Files.readString(CLIENT_ROOT.resolve("ModScreens.java"));
+        String wiredEntry = "/screens/terminals/tianshu_terminal_entry.json";
+        String wirelessEntry = "/screens/wireless_tianshu_terminal_entry.json";
+
+        assertTrue(screens.contains(wiredEntry));
+        assertTrue(screens.contains(wirelessEntry));
+        assertFalse(wiredEntry.contains("pattern_encoding_terminal.json"));
+        assertFalse(wirelessEntry.contains("pattern_encoding_terminal.json"));
+        assertTrue(Files.readString(SCREEN_ROOT.resolve("tianshu_terminal_entry.json"))
+                .contains("tianshu_pattern_encoding_terminal.json"));
+        assertTrue(Files.readString(SCREEN_BASE.resolve("wireless_tianshu_terminal_entry.json"))
+                .contains("wireless_tianshu_pattern_encoding_terminal.json"));
+    }
 
     @Test
     void nativeModesUseTheAe2Forge120PanelGeometry() throws Exception {
