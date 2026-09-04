@@ -31,6 +31,7 @@ final class WirelessInterfaceIoStressModel {
     static final int REPORT_SCHEMA = 1;
 
     private static final int IMPORT_FLUSH_INTERVAL = 5;
+    private static final int IMPORT_FLUSH_MAX_KEYS = 16_384;
     private static final int STOP_IMPORT_TTL = 20;
     private static final int FIXED_STACK_LIMIT = 64;
     private static final AEKeyType ITEM_TYPE = AEKeyType.items();
@@ -518,6 +519,8 @@ final class WirelessInterfaceIoStressModel {
         long pendingBufferKeys;
         long maxBufferKeys;
         long lastBufferFlushTick = Long.MIN_VALUE;
+        long remainingBufferKeysAfterFlush;
+        boolean bufferFlushLimited;
         long keyTypeLockedUntil;
 
         long blockedAfterAcceptance;
@@ -685,26 +688,40 @@ final class WirelessInterfaceIoStressModel {
             if (pendingBufferAmount <= 0) {
                 return;
             }
-            if (lastBufferFlushTick != Long.MIN_VALUE
+            boolean continueLimitedFlush = bufferFlushLimited && pendingBufferKeys > 0;
+            if (!continueLimitedFlush && lastBufferFlushTick != Long.MIN_VALUE
                     && tick - lastBufferFlushTick < IMPORT_FLUSH_INTERVAL) {
                 return;
             }
             lastBufferFlushTick = tick;
             bufferFlushes++;
-            bufferInsertCalls += pendingBufferKeys;
-            workAt[tick] += 2L * pendingBufferKeys;
+            long flushLimit = IMPORT_FLUSH_MAX_KEYS;
+            if (bufferFlushLimited) {
+                long newKeys = Math.max(0, pendingBufferKeys - remainingBufferKeysAfterFlush);
+                flushLimit = newKeys > 0
+                        ? Math.max(IMPORT_FLUSH_MAX_KEYS, newKeys)
+                        : pendingBufferKeys;
+            }
+            long attemptedKeys = Math.min(pendingBufferKeys, flushLimit);
+            long attemptedAmount = pendingBufferAmount;
+            if (pendingBufferKeys > attemptedKeys && pendingBufferKeys > 0) {
+                attemptedAmount = Math.max(1L,
+                        pendingBufferAmount * attemptedKeys / pendingBufferKeys);
+            }
+            bufferInsertCalls += attemptedKeys;
+            workAt[tick] += 2L * attemptedKeys;
 
             int acceptance = scenario.networkAcceptancePercent(tick);
-            long acceptedKeys = pendingBufferKeys * acceptance / 100;
-            long acceptedAmount = pendingBufferAmount * acceptance / 100;
-            if (acceptance > 0 && pendingBufferKeys > 0 && acceptedKeys == 0) {
+            long acceptedKeys = attemptedKeys * acceptance / 100;
+            long acceptedAmount = attemptedAmount * acceptance / 100;
+            if (acceptance > 0 && attemptedKeys > 0 && acceptedKeys == 0) {
                 acceptedKeys = 1;
             }
-            if (acceptance > 0 && pendingBufferAmount > 0 && acceptedAmount == 0) {
+            if (acceptance > 0 && attemptedAmount > 0 && acceptedAmount == 0) {
                 acceptedAmount = 1;
             }
-            acceptedKeys = Math.min(acceptedKeys, pendingBufferKeys);
-            acceptedAmount = Math.min(acceptedAmount, pendingBufferAmount);
+            acceptedKeys = Math.min(acceptedKeys, attemptedKeys);
+            acceptedAmount = Math.min(acceptedAmount, attemptedAmount);
 
             if (acceptedAmount > 0) {
                 importedToNetwork += acceptedAmount;
@@ -719,6 +736,10 @@ final class WirelessInterfaceIoStressModel {
                 rejectedBufferFlushes++;
                 keyTypeLockedUntil = tick + STOP_IMPORT_TTL;
             }
+            bufferFlushLimited = acceptedAmount > 0
+                    && pendingBufferKeys > 0
+                    && attemptedKeys >= flushLimit;
+            remainingBufferKeysAfterFlush = bufferFlushLimited ? pendingBufferKeys : 0;
         }
 
         private void runImport(int tick) {

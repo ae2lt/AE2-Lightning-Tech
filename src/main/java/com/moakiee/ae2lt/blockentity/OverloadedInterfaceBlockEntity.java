@@ -136,6 +136,8 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
 
     private static final float[] PROBE_LEVELS = {5f, 3f, 2f, 1f, 0.5f, 0.3f, 0.1f};
     private static final int IMPORT_FLUSH_INTERVAL = 5;
+    /** Bound the number of remote insert attempts performed by one flush. */
+    private static final int IMPORT_FLUSH_MAX_KEYS = 16_384;
     private static final int STOP_IMPORT_TTL = 20;
     private static final double NORMAL_TARGET_FILL = 0.85;
     private static final double RATE_EMA_ALPHA = 0.2;
@@ -161,6 +163,9 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
     private static final int FAST_PHASE_SPREAD_MAX = 15;
     private static final int FAST_IDLE_MIN_SUCCESS_STREAK = 32;
     private static final int FAST_SLOW_PRODUCER_INTERVAL = 10;
+    /** A bounded catch-up window for a producer that resumed after a long gap. */
+    private static final int FAST_CATCH_UP_GAP = FAST_SLOW_PRODUCER_INTERVAL * 3;
+    private static final int FAST_CATCH_UP_RETRIES = 10;
 
     /** Scan buffer for import — replaced after scans to avoid large-map clear costs. */
     private KeyCounter scanBuffer = new KeyCounter();
@@ -168,6 +173,8 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
     private final Map<AEKeyType, Long> keyTypeLockUntil = new IdentityHashMap<>();
     private final Map<AEKeyType, List<ExportConfigEntry>> exportConfigCache = new IdentityHashMap<>();
     private long importBufferLastFlushTick = Long.MIN_VALUE;
+    private boolean importBufferFlushLimited;
+    private int importBufferRemainingKeys;
     private long exportConfigCacheTick = Long.MIN_VALUE;
     private int exportConfigCacheHash;
     private boolean exportConfigCacheValid;
@@ -630,6 +637,8 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         IoPhase phase;
         long pacingAnchorTick = Long.MIN_VALUE;
         int pacingInterval;
+        long catchUpAnchorTick = Long.MIN_VALUE;
+        int catchUpRetries;
 
         IoScheduledEntry(WirelessConnection conn, ConnectionState state,
                          AEKeyType keyType, IoDirection direction,
@@ -645,6 +654,8 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         void clearPacing() {
             pacingAnchorTick = Long.MIN_VALUE;
             pacingInterval = 0;
+            catchUpAnchorTick = Long.MIN_VALUE;
+            catchUpRetries = 0;
         }
     }
 
@@ -1533,6 +1544,11 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
             return nextCooldownTick(cd, now);
         }
 
+        if (entry.direction == IoDirection.IMPORT
+                && shouldRunCatchUpRetry(entry, cd, now)) {
+            return saturatingAdd(now, 1);
+        }
+
         // The adaptive cooldown is intentionally not a lower bound here.  A
         // previous empty attempt may have expanded it to many ticks; using it
         // would preserve exactly the cold-start starvation this pacing path is
@@ -1548,6 +1564,29 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         return nextAlignedIdlePoll(now);
     }
 
+    private static boolean shouldRunCatchUpRetry(
+            IoScheduledEntry entry, CooldownTracker cd, long now) {
+        var model = entry.state.modelFor(entry.keyType);
+        if (model.lastSuccessfulExtractStreak >= FAST_IDLE_MIN_SUCCESS_STREAK) {
+            return false;
+        }
+        if (entry.catchUpRetries > 0) {
+            entry.catchUpRetries--;
+            return true;
+        }
+        long lastSuccess = cd.lastSuccessTick();
+        if (lastSuccess < 0
+                || entry.catchUpAnchorTick == lastSuccess
+                || now < saturatingAdd(lastSuccess, FAST_CATCH_UP_GAP)) {
+            return false;
+        }
+        // Arm once per successful run. If the target stays empty, the normal
+        // watchdog resumes after this finite window instead of hot-polling.
+        entry.catchUpAnchorTick = lastSuccess;
+        entry.catchUpRetries = FAST_CATCH_UP_RETRIES - 1;
+        return true;
+    }
+
     private static long targetRecoveryDeadline(
             IoScheduledEntry entry, CooldownTracker cd, long now) {
         // A transient target flap should be retried on the next tick so a
@@ -1561,6 +1600,10 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
 
     private static void clearStalePacingOnHotSuccess(
             IoScheduledEntry entry, CooldownTracker cd) {
+        if (cd.consecutiveFailures() == 0) {
+            entry.catchUpAnchorTick = Long.MIN_VALUE;
+            entry.catchUpRetries = 0;
+        }
         // A short success interval means the producer is hot again.  Drop a
         // previously learned slow phase immediately so a workload transition
         // back to continuous production cannot be held to the old cadence.
@@ -2004,7 +2047,8 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
 
     private void flushImportBuffer(MEStorage me, IActionSource src, long now) {
         if (importBuffer.isEmpty()) return;
-        if (importBufferLastFlushTick != Long.MIN_VALUE
+        boolean continueLimitedFlush = importBufferFlushLimited && !importBuffer.isEmpty();
+        if (!continueLimitedFlush && importBufferLastFlushTick != Long.MIN_VALUE
                 && now - importBufferLastFlushTick < IMPORT_FLUSH_INTERVAL) {
             return;
         }
@@ -2014,8 +2058,19 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         var typeFullyRejected = new IdentityHashMap<AEKeyType, Boolean>();
         boolean changed = false;
 
+        int flushLimit = IMPORT_FLUSH_MAX_KEYS;
+        if (importBufferFlushLimited) {
+            int newKeys = Math.max(0, importBuffer.size() - importBufferRemainingKeys);
+            flushLimit = newKeys > 0
+                    ? Math.max(IMPORT_FLUSH_MAX_KEYS, newKeys)
+                    : importBuffer.size();
+        }
+
         var it = importBuffer.entrySet().iterator();
-        while (it.hasNext()) {
+        int attemptedKeys = 0;
+        var rotated = new ArrayList<AEKey>();
+        while (it.hasNext() && attemptedKeys < flushLimit) {
+            attemptedKeys++;
             var buffered = it.next();
             var key = buffered.getKey();
             long amount = buffered.getValue();
@@ -2038,7 +2093,24 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
             } else {
                 typeFullyRejected.putIfAbsent(type, true);
             }
+
+            if (importBuffer.containsKey(key)) {
+                rotated.add(key);
+            }
         }
+
+        // Move unfinished entries behind the untouched tail so a single
+        // rejected key cannot monopolize every bounded flush slice.
+        boolean hasUntouchedEntries = it.hasNext();
+        for (var key : rotated) {
+            var remaining = importBuffer.remove(key);
+            if (remaining != null) {
+                importBuffer.put(key, remaining);
+            }
+        }
+
+        importBufferFlushLimited = changed && hasUntouchedEntries;
+        importBufferRemainingKeys = importBufferFlushLimited ? importBuffer.size() : 0;
 
         for (var type : typeProgressed.keySet()) {
             if (keyTypeLockUntil.remove(type) != null) {
@@ -2072,12 +2144,16 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
             buffered.getKey().addDrops(buffered.getValue(), drops, getLevel(), getBlockPos());
         }
         importBuffer.clear();
+        importBufferFlushLimited = false;
+        importBufferRemainingKeys = 0;
     }
 
     public void clearImportBuffer() {
         importBuffer.clear();
         keyTypeLockUntil.clear();
         importBufferLastFlushTick = Long.MIN_VALUE;
+        importBufferFlushLimited = false;
+        importBufferRemainingKeys = 0;
     }
 
     // ══════════════════════════════════════════════════════════════════════
@@ -2397,6 +2473,8 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         filterInv.readFromNBT(d, TAG_FILTER_INV, r);
         rebuildFilter();
         importBuffer.clear();
+        importBufferFlushLimited = false;
+        importBufferRemainingKeys = 0;
         if (d.contains(TAG_IMPORT_BUFFER, Tag.TAG_LIST)) {
             var buffered = d.getList(TAG_IMPORT_BUFFER, Tag.TAG_COMPOUND);
             for (int i = 0; i < buffered.size(); i++) {
