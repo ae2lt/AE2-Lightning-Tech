@@ -1163,7 +1163,7 @@ final class WirelessInterfaceSchedulingPressureModel {
             if (!scenario.targetAvailableAt(tick)) {
                 idleVisits++;
                 machine.state.cdFor(ITEM_TYPE, IoDirection.IMPORT)
-                        .onFail(tick, IOSpeedMode.FAST);
+                        .onFail(tick, IOSpeedMode.FAST, true);
                 machine.importDue = OverloadedInterfaceBlockEntity.nextIoSchedule(
                         machine.importEntry, tick);
                 return;
@@ -1212,7 +1212,7 @@ final class WirelessInterfaceSchedulingPressureModel {
             var cooldown = machine.state.cdFor(ITEM_TYPE, IoDirection.EXPORT);
             if (!scenario.targetAvailableAt(tick)) {
                 idleVisits++;
-                cooldown.onFail(tick, IOSpeedMode.FAST);
+                cooldown.onFail(tick, IOSpeedMode.FAST, true);
                 machine.exportDue = OverloadedInterfaceBlockEntity.nextIoSchedule(
                         machine.exportEntry, tick);
                 return;

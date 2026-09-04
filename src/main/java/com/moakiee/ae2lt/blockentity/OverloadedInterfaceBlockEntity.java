@@ -215,6 +215,10 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         private int consecutiveFailures;
         private int consecutiveSuccesses;
         private int lastSuccessStreak;
+        /** Consecutive target-resolution failures, kept separate from empty I/O. */
+        private int consecutiveTargetFailures;
+        /** Set by a target failure so the next wheel deadline can recover quickly. */
+        private boolean targetRecoveryPending;
 
         long cooldownUntil() {
             return cooldownUntil;
@@ -236,6 +240,10 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
             return lastSuccessStreak;
         }
 
+        int consecutiveTargetFailures() {
+            return consecutiveTargetFailures;
+        }
+
         boolean isFastMode() {
             return mode == IOSpeedMode.FAST;
         }
@@ -249,6 +257,8 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
             consecutiveFailures = 0;
             consecutiveSuccesses = 0;
             lastSuccessStreak = 0;
+            consecutiveTargetFailures = 0;
+            targetRecoveryPending = false;
         }
 
         void onSuccess(long now, IOSpeedMode newMode, @Nullable KeyModel model) {
@@ -265,6 +275,8 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
                 cooldownN = predictNormalCooldown(model);
             }
             consecutiveFailures = 0;
+            consecutiveTargetFailures = 0;
+            targetRecoveryPending = false;
             if (consecutiveSuccesses < Integer.MAX_VALUE) {
                 consecutiveSuccesses++;
             }
@@ -273,9 +285,22 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         }
 
         void onFail(long now, IOSpeedMode newMode) {
+            onFail(now, newMode, false);
+        }
+
+        void onFail(long now, IOSpeedMode newMode, boolean targetUnavailable) {
             ensureMode(newMode);
             if (consecutiveFailures < Integer.MAX_VALUE) {
                 consecutiveFailures++;
+            }
+            if (targetUnavailable) {
+                if (consecutiveTargetFailures < Integer.MAX_VALUE) {
+                    consecutiveTargetFailures++;
+                }
+                targetRecoveryPending = true;
+            } else {
+                consecutiveTargetFailures = 0;
+                targetRecoveryPending = false;
             }
             lastSuccessStreak = Math.max(lastSuccessStreak, consecutiveSuccesses);
             consecutiveSuccesses = 0;
@@ -289,6 +314,14 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
                 cooldownN = Math.max(NORMAL_CD_MIN, cooldownN / 2);
             }
             cooldownUntil = saturatingAdd(now, cooldownN);
+        }
+
+        boolean consumeTargetRecoveryPending() {
+            if (!targetRecoveryPending) {
+                return false;
+            }
+            targetRecoveryPending = false;
+            return true;
         }
 
         private void ensureMode(IOSpeedMode newMode) {
@@ -1289,7 +1322,8 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
 
             var targetLevel = resolveTargetLevel(sl, entry.conn);
             if (targetLevel == null) {
-                entry.state.cdFor(entry.keyType, entry.direction).onFail(now, ioSpeedMode);
+                entry.state.cdFor(entry.keyType, entry.direction)
+                        .onFail(now, ioSpeedMode, true);
                 rescheduleEntry(entry, now);
                 continue;
             }
@@ -1297,7 +1331,8 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
             var wrappers = entry.state.resolveWrappers(targetLevel, entry.conn);
             var wrapper = wrappers != null ? wrappers.get(entry.keyType) : null;
             if (wrapper == null) {
-                entry.state.cdFor(entry.keyType, entry.direction).onFail(now, ioSpeedMode);
+                entry.state.cdFor(entry.keyType, entry.direction)
+                        .onFail(now, ioSpeedMode, true);
                 rescheduleEntry(entry, now);
                 continue;
             }
@@ -1411,6 +1446,11 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
     static long nextIoSchedule(IoScheduledEntry entry, long now) {
         var cd = entry.state.cdFor(entry.keyType, entry.direction);
         clearStalePacingOnHotSuccess(entry, cd);
+        if (cd.consumeTargetRecoveryPending()) {
+            entry.phase = IoPhase.EXTRACT;
+            entry.clearPacing();
+            return targetRecoveryDeadline(entry, cd, now);
+        }
         if (entry.direction == IoDirection.EXPORT) {
             entry.phase = IoPhase.EXTRACT;
             return fastIdleDeadline(entry, cd, now);
@@ -1455,19 +1495,6 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         } else {
             entry.phase = IoPhase.EXTRACT;
             return cdUntil;
-        }
-    }
-
-    private static void clearStalePacingOnHotSuccess(
-            IoScheduledEntry entry, CooldownTracker cd) {
-        // A short success interval means the producer is hot again.  Drop a
-        // previously learned slow phase immediately so a workload transition
-        // back to continuous production cannot be held to the old cadence.
-        if (cd.consecutiveFailures() == 0
-                && entry.pacingInterval > 0
-                && cd.lastSuccessInterval() > 0
-                && cd.lastSuccessInterval() < FAST_IDLE_POLL_INTERVAL * 2) {
-            entry.clearPacing();
         }
     }
 
@@ -1519,6 +1546,30 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
             return nextPacedDeadline(entry, cd, now);
         }
         return nextAlignedIdlePoll(now);
+    }
+
+    private static long targetRecoveryDeadline(
+            IoScheduledEntry entry, CooldownTracker cd, long now) {
+        // A transient target flap should be retried on the next tick so a
+        // producer is not forced to wait through the normal empty-I/O backoff.
+        // A persistent outage is still bounded after a few quick retries.
+        if (cd.consecutiveTargetFailures() <= 4) {
+            return saturatingAdd(now, 1);
+        }
+        return nextAlignedIdlePoll(now);
+    }
+
+    private static void clearStalePacingOnHotSuccess(
+            IoScheduledEntry entry, CooldownTracker cd) {
+        // A short success interval means the producer is hot again.  Drop a
+        // previously learned slow phase immediately so a workload transition
+        // back to continuous production cannot be held to the old cadence.
+        if (cd.consecutiveFailures() == 0
+                && entry.pacingInterval > 0
+                && cd.lastSuccessInterval() > 0
+                && cd.lastSuccessInterval() < FAST_IDLE_POLL_INTERVAL * 2) {
+            entry.clearPacing();
+        }
     }
 
     private static long nextPacedDeadline(
