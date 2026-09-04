@@ -1576,7 +1576,7 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
             IoScheduledEntry entry, CooldownTracker cd, long now) {
         int cadence = cd.lastSuccessInterval() >= FAST_SLOW_PRODUCER_INTERVAL
                 ? slowCadence(cd.lastSuccessInterval())
-                : FAST_SLOW_PRODUCER_INTERVAL * 2;
+                : FAST_IDLE_POLL_INTERVAL;
         if (entry.pacingInterval != cadence
                 || entry.pacingAnchorTick == Long.MIN_VALUE) {
             entry.pacingInterval = cadence;
@@ -1600,13 +1600,12 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
     }
 
     private static int slowCadence(long lastSuccessInterval) {
-        if (lastSuccessInterval >= FAST_SLOW_PRODUCER_INTERVAL) {
-            // The pressure matrix's slow producers are 20-tick producers.
-            // Twenty is also a safe upper bound for a bounded retry phase.
-            return FAST_IDLE_POLL_INTERVAL * 4;
-        }
-        return Math.max(FAST_IDLE_POLL_INTERVAL,
-                (int) Math.min(lastSuccessInterval, FAST_IDLE_POLL_INTERVAL * 4L));
+        // Do not use the last successful service interval as the next sleep:
+        // it includes scheduler phase and can be much longer than the real
+        // producer period after one miss.  A short fixed watchdog prevents
+        // 20-tick backoff aliasing while the phase offset keeps idle scans
+        // distributed across the wheel.
+        return FAST_IDLE_POLL_INTERVAL;
     }
 
     private static boolean usesSlowProducerPacing(

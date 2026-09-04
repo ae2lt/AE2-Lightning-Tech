@@ -1027,6 +1027,23 @@ build/reports/wireless-interface-io-comparison/model-comparison.md
 
 验证结果：`compileJava compileTestJava` 通过，完整 `wirelessInterfaceIoModel` 的 25 个语义场景和 178 个压力场景均通过守恒、容量与矩阵完整性检查。严格压力门槛由基线的 34 个失败降为 32 个：2 个目标反复短断场景已通过；剩余失败为 7 个周期边界、6 个单 tick 脉冲、5 个四 tick 突发、6 个 10 tick 抖动、2 个 20 tick 抖动和 6 个速率切换场景。由于严格门槛仍未归零，`wirelessInterfaceIoModelAcceptance` 目前仍应失败；本候选不应被记录为最终验收通过。
 
+### 12.2 2026-09-04 慢源 watchdog 调度优化记录
+
+本轮在 12.1 的目标恢复修复之上继续优化空闲无线 I/O 调度，未修改任何验收阈值或负载模型：
+
+- 未识别成功周期的慢源，以及已经识别为慢源但刚发生空读的连接，统一使用 5 tick watchdog；不再把上一次带有调度相位和漏读影响的成功间隔直接当作下一次睡眠周期。
+- 继续使用连接哈希相位扩散，避免 1024 个连接在同一 tick 同时扫描；目标失效恢复、导出退避、import buffer 和传输语义路径不变。
+- 该策略主要消除固定 20 tick 重试与 9/10/11/19 tick 周期、抖动源之间的相位别名，优先降低输出出现后的服务等待；代价是慢源空闲期间的扫描次数增加。
+
+以当前 HEAD `3be2e12c` 的调度参数作为对照，完整模型结果如下：
+
+- 25 个语义场景的所有权、守恒、槽位容量和负数状态检查全部通过；其中 `import-fast-1024-burst-20t` 的严格工作量比为 `p99/mean=4.563`，高于该场景 `4.0` 的建议门槛，因此语义报告有 1 个 acceptance failure，但不是正确性失败。
+- 178 个压力场景中 167 个达到严格门槛，失败数由对照的 32 个降至 11 个。
+- 剩余 11 个为 5 个四 tick 突发场景和 6 个 `20→1→20` 速率切换场景。突发场景的批次 P99/需求等待为 4～5 tick，但滑动吞吐和最差机器吞吐仍受窗口边界影响；速率切换场景的批次 P99 为 4～5 tick，但最差滑动吞吐约为 95.0%～95.4%，尚未达到 99% 门槛。
+- `wirelessInterfaceIoModel` 和 `wirelessInterfaceIoModelQuick` 均以报告模式成功退出；`wirelessInterfaceIoModelAcceptance` 按预期以非零退出，表示严格调度门槛尚未全部通过。
+
+本轮执行并通过：`compileJava compileTestJava`、`test`（793 tests，0 failures，0 errors）、`wirelessInterfaceIoModelQuick` 和完整 `wirelessInterfaceIoModel`。报告保存在 `build/reports/wireless-interface-io/`。本轮未运行五轮真实服务器 MSPT/GameTest 控制组与压力组，因此不能据此宣称第 8、9 节的实时性能或回归标准已经通过。
+
 ## 13. 结果记录模板
 
 ```text
