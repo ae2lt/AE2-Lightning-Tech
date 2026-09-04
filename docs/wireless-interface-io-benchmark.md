@@ -1143,6 +1143,47 @@ build/reports/wireless-interface-io-live-comparison/live-comparison.md
 
 这组测试是外部行为契约，不假设未来一定使用哪种 dirty 标记或唤醒队列；当前版本依靠 watchdog 通过，未来实现需求驱动唤醒后仍必须保持它们为绿。测试还保留 pulse 的 idle visits 诊断，但不把“减少 idle visits”写成新的 acceptance 阈值，因此不会把测试新增本身误报为性能收益。新增测试当前通过；真实 MSPT、TPS 和无线 I/O 延迟仍以第 12.5 节记录的五轮 GameTest 为准。
 
+### 12.7 需求驱动唤醒优化遥测基线
+
+行为护栏之外，`WirelessInterfaceDemandWakeOptimizationTest` 还提供一个可用于指导生产优化的固定遥测矩阵。运行：
+
+```powershell
+.\gradlew.bat test `
+  --tests com.moakiee.ae2lt.blockentity.WirelessInterfaceDemandWakeOptimizationTest `
+  --rerun-tasks
+```
+
+报告写入：
+
+```text
+build/reports/wireless-interface-io-wake/demand-wake-optimization.csv
+build/reports/wireless-interface-io-wake/demand-wake-optimization.md
+```
+
+为了保留可复用的前后对照，可给测试传入独立目录；测试不会覆盖已有报告：
+
+```powershell
+.\gradlew.bat test `
+  --tests com.moakiee.ae2lt.blockentity.WirelessInterfaceDemandWakeOptimizationTest `
+  -Dae2lt.wirelessIo.wakeReportDir=benchmark-results/wireless-io-wake/<label> `
+  --rerun-tasks
+```
+
+本次只增加该诊断测试和文档，没有根据遥测修改生产调度；后续若实现候选，应使用同一组 9 行分别保存 baseline/candidate，先比较
+这些工作量与访问指标，再按第 12.5 节要求运行真实 GameTest 五轮控制/压力对。
+
+矩阵的用途和当前生产基线如下；所有 work 数值都是模型工作量单位，不是毫秒：
+
+- `wake-opt-zero-1024` 是 1024 连接、无生产需求的纯空闲基线：`16384` 次 scheduler visits 全部为空闲，`mean/p99/max work=1642/8196/8196`。
+- `wake-opt-one-pulse-1/64/1024-sync` 固定一个 tick pulse 并改变连接数，用来观察扫描成本是否随空闲连接线性放大：总/空闲 visits 分别为 `24/23`、`1572/1508`、`25243/24219`，idle visits 每 connection-tick 分别为 `0.287500`、`0.294531`、`0.295642`。
+- `wake-opt-one-pulse-1024-hashed-io-first` 检查另一种 tick 顺序和哈希相位，当前总/空闲 visits 为 `18899/17997`，批次 P99/需求等待为 `5/5` tick。
+- 两个 640 tick FOUR_TICK_BURST 行是性能优化的不可回退护栏：当前窗口/机器吞吐均为 `1.000000/1.000000`、压力为 `0`，其余 work/visits 指标用于比较批处理峰值。
+- `wake-opt-target-outage-1024` 和 `wake-opt-hot-restart-1024` 分别覆盖无显式需求信号的 watchdog 恢复和重新变热：需求等待当前为 `40` 与 `1` tick，不能为了减少 idle visits 而丢失恢复。
+
+下一次生产候选应复用完全相同的 9 行，比较 `scheduler_visits`、`idle_visits`、`idle_visits_per_machine_tick`、`mean_work`、`p99_work`、`max_work` 和 `p99_mean_ratio`；这些指标应下降或不恶化，同时吞吐、压力、P99 延迟、最大需求等待、所有权和负数状态保持不变。该报告是优化诊断，不会加入 acceptance 聚合，也不能替代真实 GameTest MSPT/TPS。
+
+测试夹具曾短暂使用 160 tick 的 burst 窗口并从 tick 40 开始统计，IO_THEN_MACHINE 行得到 `min_window/min_machine=0.800000/0.833333`、压力比例 `0.166667`，HASHED 行得到 `0.908537/0.833333`、压力比例 `0.075684`。这是把首个边界 burst 纳入过短诊断窗口造成的夹具伪影，不是新的生产回归；原始数值保留在此，当前已对齐正式矩阵的 `acceptanceStart=80` 和 640 tick，并重新验证为 `1.000000/1.000000`、零压力。
+
 ## 13. 结果记录模板
 
 ```text
