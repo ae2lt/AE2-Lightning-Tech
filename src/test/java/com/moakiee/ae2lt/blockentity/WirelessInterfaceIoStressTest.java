@@ -96,7 +96,15 @@ class WirelessInterfaceIoStressTest {
                 .append("defined in the benchmark specification for TPS acceptance.\n\n")
                 .append("Suite: `").append(suite).append("`; semantic scenarios: ")
                 .append(results.size()).append("; scheduling-pressure scenarios: ")
-                .append(pressureResults.size()).append(".\n\n")
+                .append(pressureResults.size()).append(".\n")
+                .append("RATE_SWITCH acceptance excludes a bounded ")
+                .append(WirelessInterfaceSchedulingPressureModel
+                        .RATE_SWITCH_TRANSITION_GRACE_TICKS)
+                .append("-tick grace after the configured transitions at ticks ")
+                .append(WirelessInterfaceSchedulingPressureModel.RATE_SWITCH_FIRST_TICK)
+                .append(" and ")
+                .append(WirelessInterfaceSchedulingPressureModel.RATE_SWITCH_SECOND_TICK)
+                .append("; raw transition pressure remains in the CSV diagnostics.\n\n")
                 .append("## Transfer semantics and fault scenarios\n\n```text\n");
         for (var result : results) {
             summary.append(result.summaryLine()).append('\n');

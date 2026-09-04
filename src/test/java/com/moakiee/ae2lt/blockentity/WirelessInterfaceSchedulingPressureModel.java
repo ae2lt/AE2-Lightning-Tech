@@ -33,6 +33,9 @@ final class WirelessInterfaceSchedulingPressureModel {
 
     private static final AEKeyType ITEM_TYPE = AEKeyType.items();
     private static final int WINDOW_TICKS = 100;
+    static final int RATE_SWITCH_FIRST_TICK = 160;
+    static final int RATE_SWITCH_SECOND_TICK = 320;
+    static final int RATE_SWITCH_TRANSITION_GRACE_TICKS = 5;
 
     enum DirectionMode {
         IMPORT,
@@ -187,6 +190,43 @@ final class WirelessInterfaceSchedulingPressureModel {
                 case TARGET_OUTAGE -> tick < 160 || tick >= 200;
                 default -> true;
             };
+        }
+
+        /**
+         * The rate-switch fixture intentionally changes producer cadence at
+         * two known ticks. A bounded grace keeps those transitions out of
+         * steady-state throughput/pressure acceptance while preserving the
+         * separate latency and ownership checks.
+         */
+        boolean isRateSwitchTransitionGrace(int tick) {
+            if (loadShape != LoadShape.RATE_SWITCH) {
+                return false;
+            }
+            return inTransitionGrace(tick, RATE_SWITCH_FIRST_TICK)
+                    || inTransitionGrace(tick, RATE_SWITCH_SECOND_TICK);
+        }
+
+        boolean countsInSteadyAcceptance(int tick) {
+            return tick >= acceptanceStart && !isRateSwitchTransitionGrace(tick);
+        }
+
+        boolean windowOverlapsRateSwitchTransition(int start, int end) {
+            if (loadShape != LoadShape.RATE_SWITCH) {
+                return false;
+            }
+            return overlapsTransition(start, end, RATE_SWITCH_FIRST_TICK)
+                    || overlapsTransition(start, end, RATE_SWITCH_SECOND_TICK);
+        }
+
+        private static boolean inTransitionGrace(int tick, int transitionTick) {
+            return tick >= transitionTick
+                    && tick < transitionTick + RATE_SWITCH_TRANSITION_GRACE_TICKS;
+        }
+
+        private static boolean overlapsTransition(
+                int start, int end, int transitionTick) {
+            return start < transitionTick + RATE_SWITCH_TRANSITION_GRACE_TICKS
+                    && end > transitionTick;
         }
 
         boolean rebuildSchedulerAt(int tick) {
@@ -899,6 +939,8 @@ final class WirelessInterfaceSchedulingPressureModel {
         int batchTail;
         long theoreticalAfterAcceptance;
         long completedAfterAcceptance;
+        long steadyTheoreticalAfterAcceptance;
+        long steadyCompletedAfterAcceptance;
         int pressureStreak;
         int lastImportVisit = -1;
         int lastExportVisit = -1;
@@ -945,6 +987,8 @@ final class WirelessInterfaceSchedulingPressureModel {
         long completedItems;
         long pressureEvents;
         long pressureOpportunities;
+        long steadyPressureEvents;
+        long steadyPressureOpportunities;
         long pressureShortfall;
         int maximumPressureStreak;
         int maximumServiceGap;
@@ -1106,6 +1150,9 @@ final class WirelessInterfaceSchedulingPressureModel {
             theoreticalAt[tick] += amount;
             if (tick >= scenario.acceptanceStart()) {
                 machine.theoreticalAfterAcceptance += amount;
+                if (scenario.countsInSteadyAcceptance(tick)) {
+                    machine.steadyTheoreticalAfterAcceptance += amount;
+                }
             }
         }
 
@@ -1114,6 +1161,9 @@ final class WirelessInterfaceSchedulingPressureModel {
             completedAt[tick] += amount;
             if (tick >= scenario.acceptanceStart()) {
                 machine.completedAfterAcceptance += amount;
+                if (scenario.countsInSteadyAcceptance(tick)) {
+                    machine.steadyCompletedAfterAcceptance += amount;
+                }
             }
         }
 
@@ -1122,9 +1172,15 @@ final class WirelessInterfaceSchedulingPressureModel {
                 return;
             }
             pressureOpportunities++;
+            if (scenario.countsInSteadyAcceptance(tick)) {
+                steadyPressureOpportunities++;
+            }
             if (actual < requested) {
                 pressureEvents++;
                 pressureShortfall += requested - actual;
+                if (scenario.countsInSteadyAcceptance(tick)) {
+                    steadyPressureEvents++;
+                }
                 machine.pressureStreak++;
                 maximumPressureStreak = Math.max(maximumPressureStreak,
                         machine.pressureStreak);
@@ -1305,6 +1361,8 @@ final class WirelessInterfaceSchedulingPressureModel {
             double minMachine = minimumMachineThroughput();
             double pressureRatio = pressureOpportunities == 0 ? 0.0
                     : (double) pressureEvents / pressureOpportunities;
+            double steadyPressureRatio = steadyPressureOpportunities == 0 ? 0.0
+                    : (double) steadyPressureEvents / steadyPressureOpportunities;
             int p50Latency = histogramPercentile(latencyHistogram, 0.50);
             int p95Latency = histogramPercentile(latencyHistogram, 0.95);
             int p99Latency = histogramPercentile(latencyHistogram, 0.99);
@@ -1322,7 +1380,7 @@ final class WirelessInterfaceSchedulingPressureModel {
             double outputFullRatio = machineTicks == 0 ? 0.0
                     : (double) outputFullMachineTicks / machineTicks;
             var acceptance = evaluateAcceptance(minWindow, minMachine,
-                    pressureRatio, p99Latency, peakRatio);
+                    steadyPressureRatio, p99Latency, peakRatio);
 
             return new Result(scenario, elapsedNanos, theoreticalItems,
                     completedItems, minWindow, minMachine, pressureEvents,
@@ -1343,6 +1401,9 @@ final class WirelessInterfaceSchedulingPressureModel {
                     scenario.ticks() - scenario.acceptanceStart());
             for (int start = scenario.acceptanceStart();
                     start + window <= scenario.ticks(); start++) {
+                if (scenario.windowOverlapsRateSwitchTransition(start, start + window)) {
+                    continue;
+                }
                 long theory = sum(theoreticalAt, start, start + window);
                 if (theory > 0) {
                     minimum = Math.min(minimum,
@@ -1355,10 +1416,15 @@ final class WirelessInterfaceSchedulingPressureModel {
         private double minimumMachineThroughput() {
             double minimum = Double.POSITIVE_INFINITY;
             for (var machine : machines) {
-                if (machine.theoreticalAfterAcceptance > 0) {
+                long theory = scenario.loadShape() == LoadShape.RATE_SWITCH
+                        ? machine.steadyTheoreticalAfterAcceptance
+                        : machine.theoreticalAfterAcceptance;
+                long completed = scenario.loadShape() == LoadShape.RATE_SWITCH
+                        ? machine.steadyCompletedAfterAcceptance
+                        : machine.completedAfterAcceptance;
+                if (theory > 0) {
                     minimum = Math.min(minimum,
-                            (double) machine.completedAfterAcceptance
-                                    / machine.theoreticalAfterAcceptance);
+                            (double) completed / theory);
                 }
             }
             return Double.isFinite(minimum) ? minimum : 1.0;
