@@ -25,6 +25,17 @@
 
 当前暂行策略：调度改动以确定性模型、模型验收和长稳验收作为自动门槛；没有固定压力世界或专用测试 capability 时，真实服务端矩阵必须记录为“未测试”，不能把模型结果写成真实 MSPT/TPS 通过。后续可以使用 GameTest 自动创建集成夹具，减少手工搭建，但 GameTest 的测试线程本身不能直接替代正式实时性能测量，具体边界见第 2.4 节。
 
+### 0.1.1 当前实现状态
+
+截至候选提交 `95a16d3d`（`perf: optimize wireless interface scheduling`），当前状态如下：
+
+- 已完成 FAST 无线 I/O 调度优化：空闲连接有界重试、慢生产者相位错峰、冷启动恢复和导出拒绝退避；对应模型已同步更新。
+- `compileJava compileTestJava`、普通 `test`、Quick/Full 模型、模型验收和 20,000 tick 耐久验收均成功。
+- 确定性模型结果为语义场景 `25/25` 通过、调度压力场景 `99/99` 通过、耐久验收 `3/3` 通过。
+- `checkWirelessIoModelRegression` 尚未通过：报告为 `102 improvements / 24 regressions`。剩余回归主要是空闲降频后访问间隔增加，以及周期 20 tick 负载错峰后单连接服务间隔和 P99 延迟增加；因此当前候选不能宣称“模型回归全绿”。
+- 真实 `runWirelessIoBenchmarkServer` 五轮控制/压力矩阵尚未执行。`run-wireless-io-benchmark` 目前没有固定压力世界、真实负载发生器或无线 I/O GameTest 夹具，相关结果必须记为“未测试”。
+- GameTest 的 Gradle 运行配置已经存在，但仓库尚未注册对应测试；后续若补充原生测试夹具，应按第 2.4 节使用，并单独标明其与正式 MSPT/TPS 基准的区别。
+
 ### 0.2 第一次接手时建立不可覆盖的基线
 
 先确认基准分支能够编译，并记录原始提交和工作树状态：
