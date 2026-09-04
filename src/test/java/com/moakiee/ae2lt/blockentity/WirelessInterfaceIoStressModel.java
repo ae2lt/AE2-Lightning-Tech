@@ -286,6 +286,39 @@ final class WirelessInterfaceIoStressModel {
         require(cd.cooldownUntil() == largeTick + 1,
                 "large game tick must keep an exact FAST deadline");
 
+        cd.onSuccess(Long.MAX_VALUE, IOSpeedMode.FAST, state.modelFor(ITEM_TYPE));
+        require(cd.cooldownUntil() == Long.MAX_VALUE,
+                "FAST success at Long.MAX_VALUE must saturate instead of wrapping");
+        entry.phase = IoPhase.EXTRACT;
+        require(OverloadedInterfaceBlockEntity.nextIoSchedule(entry, Long.MAX_VALUE)
+                        == Long.MAX_VALUE,
+                "production deadline must not wrap at Long.MAX_VALUE");
+
+        var idleState = new ConnectionState();
+        var idleEntry = new IoScheduledEntry(connection, idleState, ITEM_TYPE,
+                IoDirection.IMPORT, 2);
+        var idleCd = idleState.cdFor(ITEM_TYPE, IoDirection.IMPORT);
+        idleCd.reset(IOSpeedMode.FAST);
+        idleState.modelFor(ITEM_TYPE).onExtract(0, 0, Long.MAX_VALUE - 3);
+        idleCd.onFail(Long.MAX_VALUE - 3, IOSpeedMode.FAST);
+        require(OverloadedInterfaceBlockEntity.nextIoSchedule(
+                        idleEntry, Long.MAX_VALUE - 2) == Long.MAX_VALUE,
+                "aligned idle polling must saturate near Long.MAX_VALUE");
+
+        var reject = new ExportRejectState();
+        reject.reject(100, false);
+        require(reject.failures == 1 && reject.untilTick == 110,
+                "first export rejection must use the 10-tick backoff");
+        reject.reject(110, false);
+        require(reject.failures == 2 && reject.untilTick == 130,
+                "second export rejection must use the 20-tick backoff");
+        reject.reject(130, true);
+        require(reject.failures == 3 && reject.untilTick == 135,
+                "FAST export retry must override accumulated key backoff");
+        reject.reject(Long.MAX_VALUE - 2, true);
+        require(reject.untilTick == Long.MAX_VALUE,
+                "export reject deadline must saturate instead of wrapping");
+
         require(OverloadedInterfaceBlockEntity.hasWirelessConnectionCapacity(0),
                 "zero connections must have capacity");
         require(OverloadedInterfaceBlockEntity.hasWirelessConnectionCapacity(1023),

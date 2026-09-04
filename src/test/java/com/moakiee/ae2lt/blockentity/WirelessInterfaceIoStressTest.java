@@ -118,6 +118,7 @@ class WirelessInterfaceIoStressTest {
                                 "%.3f%%", result.pressureEventRatio() * 100.0))
                         .append(" streak=").append(result.maximumPressureStreak())
                         .append(" latencyP99=").append(result.p99ImportLatency())
+                        .append(" demandWait=").append(result.maximumDemandWait())
                         .append('\n'));
         summary.append("```\n\n### Largest tick-work concentration\n\n```text\n");
         pressureResults.stream()
@@ -143,6 +144,24 @@ class WirelessInterfaceIoStressTest {
                         .append(" idle=").append(result.idleVisits())
                         .append(" total=").append(result.schedulerVisits())
                         .append(" productive=").append(result.productiveVisits())
+                        .append(" ratio=").append(String.format(java.util.Locale.ROOT,
+                                "%.3f%%", result.idleVisitRatio() * 100.0))
+                        .append('\n'));
+        summary.append("```\n\n### Largest output backlog exposure\n\n```text\n");
+        pressureResults.stream()
+                .filter(result -> result.backlogItemTicks() > 0)
+                .sorted((left, right) -> Long.compare(
+                        right.backlogItemTicks(), left.backlogItemTicks()))
+                .limit(10)
+                .forEach(result -> summary.append(result.scenario().id())
+                        .append(" itemTicks=").append(result.backlogItemTicks())
+                        .append(" nonempty=").append(String.format(
+                                java.util.Locale.ROOT, "%.3f%%",
+                                result.outputNonemptyRatio() * 100.0))
+                        .append(" full=").append(String.format(
+                                java.util.Locale.ROOT, "%.3f%%",
+                                result.outputFullRatio() * 100.0))
+                        .append(" demandWait=").append(result.maximumDemandWait())
                         .append('\n'));
         summary.append("```\n\n## Model acceptance\n\n");
         if (acceptanceFailures.isEmpty()) {

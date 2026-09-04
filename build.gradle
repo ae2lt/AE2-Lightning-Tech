@@ -195,6 +195,25 @@ neoForge {
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }
 
+        // Fully generated wireless-I/O fixture: no saved world or manual block setup.
+        wirelessIoGameTestServer {
+            type = "gameTestServer"
+            gameDirectory = project.file('run-wireless-io-gametest')
+            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+            systemProperty 'ae2lt.wirelessIoBenchmark', 'true'
+            systemProperty 'ae2lt.wirelessIoBenchmark.warmupTicks',
+                    providers.gradleProperty('ae2ltBenchmarkWarmupTicks').getOrElse('40')
+            systemProperty 'ae2lt.wirelessIoBenchmark.sampleTicks',
+                    providers.gradleProperty('ae2ltBenchmarkSampleTicks').getOrElse('300')
+            systemProperty 'ae2lt.wirelessIoBenchmark.scenario',
+                    providers.gradleProperty('ae2ltBenchmarkScenario')
+                            .getOrElse('gametest-import-1024x27-continuous')
+            systemProperty 'ae2lt.wirelessIoBenchmark.commit',
+                    providers.gradleProperty('ae2ltBenchmarkCommit').getOrElse('working-tree')
+            systemProperty 'ae2lt.wirelessIoGameTest.control',
+                    providers.gradleProperty('ae2ltBenchmarkControl').getOrElse('false')
+        }
+
         data {
             data()
 
@@ -238,6 +257,22 @@ neoForge {
 sourceSets.main.resources { srcDir 'src/generated/resources' }
 sourceSets.test.compileClasspath += sourceSets.main.compileClasspath
 sourceSets.test.runtimeClasspath += sourceSets.main.runtimeClasspath
+
+// Keep the GameTest structure source reviewable as text while providing the
+// compressed NBT resource expected by Minecraft in the development output.
+def wirelessIoGameTestStructure = file(
+        'src/jdb/resources/data/ae2lt/structure/wireless_io_empty.nbt.base64')
+tasks.named('processJdbResources', ProcessResources) {
+    inputs.file wirelessIoGameTestStructure
+    exclude '**/*.nbt.base64'
+    doLast {
+        File target = new File(destinationDir,
+                'data/ae2lt/structure/wireless_io_empty.nbt')
+        target.parentFile.mkdirs()
+        target.bytes = Base64.decoder.decode(
+                wirelessIoGameTestStructure.getText('UTF-8').trim())
+    }
+}
 
 // Optional real-mod jars for JDB integration probes. Kept opt-in so normal builds and
 // published artifacts never depend on machine-local modpack paths.
@@ -436,10 +471,31 @@ tasks.register('wirelessInterfaceIoModelEnduranceAcceptance', Test) {
             'reports/wireless-interface-io-endurance')
 }
 
+def wirelessIoDefaultBaselineDirectory = file(
+        'benchmark-results/wireless-io-model-baseline-v2').absolutePath
+def wirelessIoDefaultCandidateDirectory = file(
+        'benchmark-results/wireless-io-model-candidate-v2').absolutePath
+
+tasks.register('recordWirelessIoModelBaseline', Test) {
+    description = 'Records the current full wireless I/O model as the v2 optimization baseline.'
+    group = 'verification'
+    configureWirelessInterfaceIoStress(delegate, false, 'full',
+            'reports/wireless-interface-io-baseline-v2')
+    systemProperty 'ae2lt.wirelessIo.reportDir', wirelessIoDefaultBaselineDirectory
+}
+
+tasks.register('recordWirelessIoModelCandidate', Test) {
+    description = 'Records a full wireless I/O candidate for one-command regression comparison.'
+    group = 'verification'
+    configureWirelessInterfaceIoStress(delegate, false, 'full',
+            'reports/wireless-interface-io-candidate-v2')
+    systemProperty 'ae2lt.wirelessIo.reportDir', wirelessIoDefaultCandidateDirectory
+}
+
 def wirelessIoBaselineModelDirArg = providers.gradleProperty(
-        'ae2ltBenchmarkBaselineModelDir').getOrElse('')
+        'ae2ltBenchmarkBaselineModelDir').getOrElse(wirelessIoDefaultBaselineDirectory)
 def wirelessIoCandidateModelDirArg = providers.gradleProperty(
-        'ae2ltBenchmarkCandidateModelDir').getOrElse('')
+        'ae2ltBenchmarkCandidateModelDir').getOrElse(wirelessIoDefaultCandidateDirectory)
 def wirelessIoModelComparisonOutput = layout.buildDirectory
         .dir('reports/wireless-interface-io-comparison').get().asFile.absolutePath
 
@@ -512,28 +568,33 @@ tasks.register('checkWirelessIoModelRegression') {
             (baseline.keySet().intersect(candidate.keySet()) as List).sort().each { scenario ->
                 def before = baseline[scenario]
                 def after = candidate[scenario]
-                rules.each { rule ->
-                    String field = rule.field as String
-                    double oldValue = number(before, field)
-                    double newValue = number(after, field)
-                    double absoluteTolerance = rule.absoluteTolerance as double
-                    double relativeTolerance = rule.relativeTolerance as double
-                    double tolerance = Math.max(absoluteTolerance,
-                            Math.abs(oldValue) * relativeTolerance)
-                    boolean lowerIsBetter = rule.lowerIsBetter as boolean
-                    double delta = newValue - oldValue
-                    boolean regressed = lowerIsBetter
-                            ? delta > tolerance : delta < -tolerance
-                    boolean improved = lowerIsBetter
-                            ? delta < -tolerance : delta > tolerance
-                    if (regressed) {
-                        regressions << String.format(java.util.Locale.ROOT,
-                                '%s %s: %.6f -> %.6f', scenario, field,
-                                oldValue, newValue)
-                    } else if (improved) {
-                        improvements << String.format(java.util.Locale.ROOT,
-                                '%s %s: %.6f -> %.6f', scenario, field,
-                                oldValue, newValue)
+                if (before.schema != after.schema) {
+                    regressions << "${scenario} report schema: ${before.schema} -> ${after.schema}; "
+                            + 'record a new baseline with the current test suite'
+                } else {
+                    rules.each { rule ->
+                        String field = rule.field as String
+                        double oldValue = number(before, field)
+                        double newValue = number(after, field)
+                        double absoluteTolerance = rule.absoluteTolerance as double
+                        double relativeTolerance = rule.relativeTolerance as double
+                        double tolerance = Math.max(absoluteTolerance,
+                                Math.abs(oldValue) * relativeTolerance)
+                        boolean lowerIsBetter = rule.lowerIsBetter as boolean
+                        double delta = newValue - oldValue
+                        boolean regressed = lowerIsBetter
+                                ? delta > tolerance : delta < -tolerance
+                        boolean improved = lowerIsBetter
+                                ? delta < -tolerance : delta > tolerance
+                        if (regressed) {
+                            regressions << String.format(java.util.Locale.ROOT,
+                                    '%s %s: %.6f -> %.6f', scenario, field,
+                                    oldValue, newValue)
+                        } else if (improved) {
+                            improvements << String.format(java.util.Locale.ROOT,
+                                    '%s %s: %.6f -> %.6f', scenario, field,
+                                    oldValue, newValue)
+                        }
                     }
                 }
                 if (before.acceptance == 'PASS' && after.acceptance != 'PASS') {
@@ -575,8 +636,16 @@ tasks.register('checkWirelessIoModelRegression') {
                  absoluteTolerance: 0.0, relativeTolerance: 0.0],
                 [field: 'latency_p99', lowerIsBetter: true,
                  absoluteTolerance: 1.0, relativeTolerance: 0.0],
-                [field: 'max_service_gap', lowerIsBetter: true,
+                [field: 'max_demand_wait', lowerIsBetter: true,
                  absoluteTolerance: 1.0, relativeTolerance: 0.0],
+                [field: 'output_full_ratio', lowerIsBetter: true,
+                 absoluteTolerance: 0.001, relativeTolerance: 0.0],
+                [field: 'backlog_item_ticks', lowerIsBetter: true,
+                 absoluteTolerance: 1.0, relativeTolerance: 0.10],
+                [field: 'scheduler_visits', lowerIsBetter: true,
+                 absoluteTolerance: 1.0, relativeTolerance: 0.05],
+                [field: 'idle_visits', lowerIsBetter: true,
+                 absoluteTolerance: 1.0, relativeTolerance: 0.05],
                 [field: 'mean_work', lowerIsBetter: true,
                  absoluteTolerance: 1.0, relativeTolerance: 0.10],
                 [field: 'p99_work', lowerIsBetter: true,
@@ -615,6 +684,22 @@ tasks.register('checkWirelessIoModelRegression') {
     }
 }
 
+tasks.named('checkWirelessIoModelRegression') {
+    mustRunAfter tasks.named('recordWirelessIoModelCandidate')
+}
+
+tasks.register('wirelessInterfaceIoOptimizationCheck') {
+    description = 'Records a candidate, compares it with the saved v2 baseline, and enforces all model gates.'
+    group = 'verification'
+    dependsOn tasks.named('recordWirelessIoModelCandidate')
+    dependsOn tasks.named('checkWirelessIoModelRegression')
+    dependsOn tasks.named('wirelessInterfaceIoModelAcceptance')
+}
+
+tasks.named('wirelessInterfaceIoModelAcceptance') {
+    mustRunAfter tasks.named('checkWirelessIoModelRegression')
+}
+
 def wirelessIoStressReportArg = providers.gradleProperty('ae2ltBenchmarkStressReport').getOrElse('')
 def wirelessIoControlReportArg = providers.gradleProperty('ae2ltBenchmarkControlReport').getOrElse('')
 def wirelessIoStressReportPath = wirelessIoStressReportArg
@@ -622,7 +707,7 @@ def wirelessIoStressReportPath = wirelessIoStressReportArg
 def wirelessIoControlReportPath = wirelessIoControlReportArg
         ? file(wirelessIoControlReportArg).absolutePath : ''
 def wirelessIoMaxP99Ms = providers.gradleProperty('ae2ltBenchmarkMaxIoP99Ms')
-        .getOrElse('15.0')
+        .getOrElse('12.0')
 
 tasks.register('checkWirelessIoBenchmark') {
     description = 'Checks live server MSPT/TPS reports against the wireless I/O performance budget.'
@@ -664,12 +749,12 @@ tasks.register('checkWirelessIoBenchmark') {
         if (control.partial || control.samples < 1200) {
             failures << "control report is partial or has fewer than 1200 samples"
         }
-        requireAtMost('stress mean MSPT', stress.tickMs.mean as double, 40.0)
-        requireAtMost('stress p95 MSPT', stress.tickMs.p95 as double, 45.0)
-        requireAtMost('stress p99 MSPT', stress.tickMs.p99 as double, 50.0)
-        requireAtMost('ticks over 50 ms ratio', stress.ticksOver50MsRatio as double, 0.01)
+        requireAtMost('stress mean MSPT', stress.tickMs.mean as double, 25.0)
+        requireAtMost('stress p95 MSPT', stress.tickMs.p95 as double, 35.0)
+        requireAtMost('stress p99 MSPT', stress.tickMs.p99 as double, 45.0)
+        requireAtMost('ticks over 50 ms ratio', stress.ticksOver50MsRatio as double, 0.001)
         requireAtMost('GC pause ratio',
-                (stress.gcMillis as double) / ((stress.samples as double) * 50.0), 0.05)
+                (stress.gcMillis as double) / ((stress.samples as double) * 50.0), 0.02)
         requireAtLeast('capacity TPS', stress.capacityTps as double, 19.8)
         requireAtMost('mean MSPT delta from control',
                 (stress.tickMs.mean as double) - (control.tickMs.mean as double), 10.0)
@@ -804,24 +889,27 @@ tasks.register('checkWirelessIoBenchmarkRegression') {
             }
         }
 
-        atMost('candidate median mean MSPT', candidate.mean, 40.0)
-        atMost('candidate median p95 MSPT', candidate.p95, 45.0)
-        atMost('candidate median p99 MSPT', candidate.p99, 50.0)
-        atMost('candidate median >50 ms ratio', candidate.over50, 0.01)
-        atMost('candidate median GC pause ratio', candidate.gcRatio, 0.05)
+        atMost('candidate median mean MSPT', candidate.mean, 25.0)
+        atMost('candidate median p95 MSPT', candidate.p95, 35.0)
+        atMost('candidate median p99 MSPT', candidate.p99, 45.0)
+        atMost('candidate median >50 ms ratio', candidate.over50, 0.001)
+        atMost('candidate median GC pause ratio', candidate.gcRatio, 0.02)
+        atMost('candidate paired control-adjusted mean MSPT', candidate.adjustedMean, 10.0)
+        atMost('candidate paired control-adjusted p99 MSPT', candidate.adjustedP99, 15.0)
+        atMost('candidate median wireless I/O p99', candidate.ioP99, 12.0)
         if ((candidate.capacityTps as double) < 19.8) {
             failures << "candidate median capacity TPS ${candidate.capacityTps} < 19.8"
         }
-        noRegression('median mean MSPT', baseline.mean, candidate.mean, 0.05, 0.25)
-        noRegression('median p99 MSPT', baseline.p99, candidate.p99, 0.10, 0.5)
+        noRegression('median mean MSPT', baseline.mean, candidate.mean, 0.03, 0.20)
+        noRegression('median p99 MSPT', baseline.p99, candidate.p99, 0.05, 0.5)
         noRegression('paired control-adjusted mean MSPT', baseline.adjustedMean,
-                candidate.adjustedMean, 0.05, 0.25)
+                candidate.adjustedMean, 0.03, 0.20)
         noRegression('paired control-adjusted p99 MSPT', baseline.adjustedP99,
-                candidate.adjustedP99, 0.10, 0.5)
+                candidate.adjustedP99, 0.05, 0.5)
         noRegression('median >50 ms ratio', baseline.over50, candidate.over50,
-                0.0, 2.0 / 1200.0)
+                0.0, 1.0 / 1200.0)
         noRegression('median wireless I/O p99', baseline.ioP99, candidate.ioP99,
-                0.10, 0.05)
+                0.05, 0.05)
         noRegression('median GC pause ratio', baseline.gcRatio, candidate.gcRatio,
                 0.10, 0.001)
         noRegression('median heap peak', baseline.heap, candidate.heap, 0.10,

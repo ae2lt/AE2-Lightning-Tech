@@ -1926,6 +1926,32 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         alertGridTicker();
     }
 
+    /** Read-only observation used by the self-contained development GameTest fixture. */
+    long benchmarkBufferedImportAmount() {
+        long total = 0;
+        for (long amount : importBuffer.values()) {
+            total = total > Long.MAX_VALUE - amount ? Long.MAX_VALUE : total + amount;
+        }
+        return total;
+    }
+
+    /** Read-only observation used by the self-contained development GameTest fixture. */
+    int benchmarkBufferedImportKeys() {
+        return importBuffer.size();
+    }
+
+    /** Read-only scheduler observation used by the development GameTest fixture. */
+    String benchmarkWirelessIoState() {
+        return "mode=" + interfaceMode + "/" + ioSpeedMode + "/" + importMode
+                + ", connections=" + connections.size()
+                + ", valid=" + validConnectionsCache.size()
+                + ", states=" + connectionStates.size()
+                + ", entries=" + ioEntries.size()
+                + ", wheelDirty=" + ioWheelDirty
+                + ", bufferedKeys=" + importBuffer.size()
+                + ", bufferedAmount=" + benchmarkBufferedImportAmount();
+    }
+
     private void flushImportBuffer(MEStorage me, IActionSource src, long now) {
         if (importBuffer.isEmpty()) return;
         if (importBufferLastFlushTick != Long.MIN_VALUE

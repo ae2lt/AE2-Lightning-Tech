@@ -40,6 +40,7 @@ logs/
 run/
 /run-gametest/
 /run-wireless-io-benchmark/
+/run-wireless-io-gametest/
 /benchmark-results/
 out/
 tmp/
