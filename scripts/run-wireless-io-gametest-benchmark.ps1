@@ -68,7 +68,7 @@ function Invoke-BenchmarkRun {
         throw "No JSON report was generated for $scenario"
     }
 
-    $csv = [IO.Path]::ChangeExtension($json.FullName, $null) + "-ticks.csv"
+    $csv = Join-Path $json.DirectoryName ($json.BaseName + "-ticks.csv")
     if (-not (Test-Path -LiteralPath $csv -PathType Leaf)) {
         throw "No tick CSV was generated for $scenario"
     }
