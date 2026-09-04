@@ -1081,6 +1081,58 @@ build/reports/wireless-interface-io-comparison/model-comparison.md
 - `compileJava compileTestJava test`、`wirelessInterfaceIoModelQuick` 和完整 `wirelessInterfaceIoModel` 已通过；普通测试为 `793` 个测试、`0` failures、`0` errors。固定 `wireless-io-model-baseline-v2` 未覆盖，本轮没有把旧口径基线当作当前口径回归结论。
 - 本轮没有运行五轮真实 GameTest 控制组/压力组，因此确定性模型的 work、idle visits 和 elapsed 不能解释为真实 MSPT/TPS；第 8、9 节的实时性能结论仍需后续五轮独立 JVM 运行。
 
+### 12.5 2026-09-04 单 tick pulse catch-up 一次性学习窗口
+
+本轮提出并验证一个生产优化假设：慢源的 catch-up 应是一次性学习窗口，而不是每隔一个固定慢生产周期反复重新聚合。`IoScheduledEntry` 在观察到成功间隔至少为 `10 tick` 后记录 `slowCatchUpSuppressed`，后续同一慢源不再重复启动 catch-up 重试；已有的 5 tick watchdog 仍负责普通空闲检查。若出现短成功间隔，现有的 hot-success pacing 清理会同时清除该标记，使重新变热的源重新获得 catch-up。这样只改变无效空读的节奏，不改变连接容量、输出槽、物品所有权或传输数量。
+
+候选筛选中还保留了以下失败尝试的原始诊断，但均未进入生产代码：
+
+- 把 cold-start watchdog 拆成两个 5 tick 相位，单 tick pulse 的工作量比仍约为 `21.9/22.63`，并新增四 tick/大堆场景吞吐失败（约 `75%` 的相关场景失败），撤回。
+- 把 catch-up gap 从 `30` 拉长到 `45 tick`，同步 IO_THEN_MACHINE 的四 tick 突发最低窗口吞吐降至 `0.7303`、最差机器吞吐 `0.5`、压力比例 `0.2112`，且工作量比 `9.0497`，撤回。
+- 用“连续成功至少 2 次”才允许 catch-up，两个同步 pulse 通过（工作量比 `6.4888/6.7974`），但同步、staggered 和 hashed 的四 tick 突发共 5 个场景失败；将相位上限改为 3 仍有同类回归，撤回。
+- 将 catch-up 分成 2 条或 4 条 lane：2 lane 保住突发吞吐但 pulse 工作量比仍为 `15.564/15.674`；4 lane 降至 `11.0328/11.3247`，却使同步及 staggered/hashed 突发吞吐再次低于门槛，撤回。
+- 增加成功后的确认访问，pulse 通过但四 tick 突发仍有 5 个失败；每 5 tick 对齐 watchdog 后追加配对重试时，pulse 比降至 `6.356/6.343`，但 staggered/hashed 突发窗口仅约 `0.945～0.956`、最差机器为 `0.5` 并出现压力，撤回。
+- 允许“连续成功至少 2 次或最近成功间隔小于 10 tick”绕过 catch-up，仍保留 5 个四 tick 突发失败，撤回。
+
+这些尝试都只以确定性模型筛选；任何会牺牲 FOUR_TICK_BURST 吞吐/机器公平性的方案，即使能降低 pulse 的 idle visits，也不作为生产优化。最终保留的方案是本节的一次性学习窗口，并继续接受真实 GameTest 的相对回归和绝对门槛检查。
+
+确定性模型结果（对照为 12.4 的 d5045 工作树原始数据）：
+
+| 场景 | 窗口/机器吞吐 | 压力比例 | 批次 P99 / 最大需求等待 | p99/mean work | scheduler visits（productive/idle） | backlog item-ticks | 结果 |
+|---|---:|---:|---:|---:|---:|---:|---|
+| synchronized MACHINE_THEN_IO | 1.0000/1.0000 → 1.0000/1.0000 | 0 → 0 | 0/0 → 4/4 | 22.4771 → 6.3788 | 249621（15360/234261） → 154867（15360/139507） | 3428992 → 824096 | FAIL → PASS |
+| synchronized IO_THEN_MACHINE | 1.0000/1.0000 → 1.0000/1.0000 | 0 → 0 | 5/5 → 5/5 | 22.7376 → 6.7372 | 243929（15360/228569） → 151597（15360/136237） | 5886592 → 1509504 | FAIL → PASS |
+
+25 个语义场景继续通过所有权、守恒、槽位容量和负数状态检查；178 个压力场景全部达到当前严格模型门槛。六个 FOUR_TICK_BURST 组合继续保持窗口/最差机器吞吐 `100%/100%`、压力比例 `0`，批次 P99/需求等待仍为 `4～5/4～5 tick`。模型报告当前保存在 `build/reports/wireless-interface-io/`；12.4 中记录的两个原始失败及其原始数据保留不变。
+
+真实 GameTest 使用同一台机器、同一 Java 21.0.11、20 个处理器和同一 AC Balanced 电源策略。基线和候选均为 5 轮、每轮预热 200 tick、采样 1200 tick，脚本按 C1→S1→…→C5→S5 启动新的 GameTestServer JVM。原始结果目录分别为：
+
+```text
+benchmark-results/wireless-io-live-baseline/
+benchmark-results/wireless-io-live-candidate/
+build/reports/wireless-interface-io-live-comparison/live-comparison.md
+```
+
+所有 20 份 JSON 均完整，所有 20 份逐 tick CSV 均为 1200 行且覆盖 sample 0～1199；每行的 `interface_calls=1`、`fast_interface_calls=1`、`configured_connections=1024`，摘要计数与 CSV 求和一致。压力组中位数及五轮最差值如下：
+
+| 指标 | 基线中位数（最差轮） | 候选中位数（最差轮） |
+|---|---:|---:|
+| mean MSPT | 27.399339（34.841301） | 26.598924（29.702980） |
+| P95 MSPT | 35.2012（52.4869） | 31.2122（48.0333） |
+| P99 MSPT | 45.8025（57.0232） | 35.3509（51.7711） |
+| max MSPT | 102.2935（130.0934） | 85.0264（99.1098） |
+| wireless I/O P99 | 33.5297（42.4577） | 26.4324（38.6118） |
+| 容量 TPS | 20.000（20.000） | 20.000（20.000） |
+| >50 ms 比例 | 0.001667（0.101667） | 0.000833（0.025000） |
+| GC 次数 / GC ms | 240 / 615（369 / 989） | 212 / 548（266 / 645） |
+| 堆峰值 bytes | 910027520（1166627912） | 973153216（1050243008） |
+
+控制校正按同轮压力组减去控制组计算：mean MSPT 中位数/最差轮由 `27.094355/34.437166` 变为 `26.278219/29.368692`，P99 MSPT 由 `44.4805/55.4429` 变为 `33.7228/50.2144`。原始控制组的中位数 mean/P99 MSPT 为 `0.332702/1.5803`，候选为 `0.350718/1.8155`；该小样本低负载波动单独保留在 JSON/CSV 中，不能替代压力组的控制校正结果。
+
+比较任务给出 `MEASURABLE_IMPROVEMENT`，但仍为 `FAIL`：候选绝对门槛仍失败于 mean MSPT `26.598924 > 25`、控制校正 mean `26.278219 > 10`、控制校正 P99 `33.722800 > 15` 和 wireless I/O P99 `26.432400 > 12`。因此本轮是有真实相对收益的阶段性候选，不是严格 acceptance 通过；没有降低门槛、删除场景、缩短采样或修改 acceptance 逻辑。
+
+本轮同时修正了 `scripts/run-wireless-io-gametest-benchmark.ps1` 的 CSV 路径拼接：当前 PowerShell/.NET 下，旧的 `ChangeExtension(..., $null) + "-ticks.csv"` 会得到带额外句点的路径，而 GameTest 实际写出的是 `<base>-ticks.csv`。新写法只修正报告收集，基线首次运行即保留了原始 JSON/CSV 并逐 tick 核对；它没有改变 GameTest 夹具、聚合、阈值或生产负载。
+
 ## 13. 结果记录模板
 
 ```text

@@ -639,6 +639,7 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         int pacingInterval;
         long catchUpAnchorTick = Long.MIN_VALUE;
         int catchUpRetries;
+        boolean slowCatchUpSuppressed;
 
         IoScheduledEntry(WirelessConnection conn, ConnectionState state,
                          AEKeyType keyType, IoDirection direction,
@@ -656,6 +657,7 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
             pacingInterval = 0;
             catchUpAnchorTick = Long.MIN_VALUE;
             catchUpRetries = 0;
+            slowCatchUpSuppressed = false;
         }
     }
 
@@ -1570,6 +1572,9 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         if (model.lastSuccessfulExtractStreak >= FAST_IDLE_MIN_SUCCESS_STREAK) {
             return false;
         }
+        if (entry.slowCatchUpSuppressed) {
+            return false;
+        }
         if (entry.catchUpRetries > 0) {
             entry.catchUpRetries--;
             return true;
@@ -1603,6 +1608,9 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         if (cd.consecutiveFailures() == 0) {
             entry.catchUpAnchorTick = Long.MIN_VALUE;
             entry.catchUpRetries = 0;
+            if (cd.lastSuccessInterval() >= FAST_SLOW_PRODUCER_INTERVAL) {
+                entry.slowCatchUpSuppressed = true;
+            }
         }
         // A short success interval means the producer is hot again.  Drop a
         // previously learned slow phase immediately so a workload transition
