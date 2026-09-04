@@ -379,15 +379,20 @@ tasks.register('adaptiveBatchStress', Test) {
     shouldRunAfter tasks.named('test')
 }
 
-def configureWirelessInterfaceIoStress = { Test stressTask, boolean enforceAcceptance ->
+def configureWirelessInterfaceIoStress = {
+    Test stressTask, boolean enforceAcceptance, String suite, String reportDirectory ->
     stressTask.testClassesDirs = sourceSets.test.output.classesDirs
     stressTask.classpath = sourceSets.test.runtimeClasspath
     stressTask.useJUnitPlatform {
         includeTags 'wireless-interface-io-stress'
     }
     stressTask.systemProperty 'ae2lt.wirelessIo.enforce', enforceAcceptance.toString()
+    stressTask.systemProperty 'ae2lt.wirelessIo.suite', suite
+    def configuredReportDirectory = providers.gradleProperty('ae2ltBenchmarkModelReportDir')
+            .map { file(it).absolutePath }
+            .getOrElse(layout.buildDirectory.dir(reportDirectory).get().asFile.absolutePath)
     stressTask.systemProperty 'ae2lt.wirelessIo.reportDir',
-            layout.buildDirectory.dir('reports/wireless-interface-io').get().asFile.absolutePath
+            configuredReportDirectory
     stressTask.maxHeapSize = '2g'
     stressTask.testLogging {
         events 'passed', 'failed'
@@ -397,15 +402,217 @@ def configureWirelessInterfaceIoStress = { Test stressTask, boolean enforceAccep
 }
 
 tasks.register('wirelessInterfaceIoModel', Test) {
-    description = 'Runs the deterministic overloaded-interface wireless I/O workload model and writes reports.'
+    description = 'Runs the full deterministic wireless I/O semantics and scheduling-pressure matrix.'
     group = 'verification'
-    configureWirelessInterfaceIoStress(delegate, false)
+    configureWirelessInterfaceIoStress(delegate, false, 'full',
+            'reports/wireless-interface-io')
 }
 
 tasks.register('wirelessInterfaceIoModelAcceptance', Test) {
     description = 'Enforces deterministic wireless I/O throughput, latency and work-amplification model gates.'
     group = 'verification'
-    configureWirelessInterfaceIoStress(delegate, true)
+    configureWirelessInterfaceIoStress(delegate, true, 'full',
+            'reports/wireless-interface-io')
+}
+
+tasks.register('wirelessInterfaceIoModelQuick', Test) {
+    description = 'Runs the compact wireless I/O scheduling pressure matrix for fast iteration.'
+    group = 'verification'
+    configureWirelessInterfaceIoStress(delegate, false, 'quick',
+            'reports/wireless-interface-io-quick')
+}
+
+tasks.register('wirelessInterfaceIoModelEndurance', Test) {
+    description = 'Runs the full wireless I/O matrix plus 20,000-tick endurance scenarios.'
+    group = 'verification'
+    configureWirelessInterfaceIoStress(delegate, false, 'endurance',
+            'reports/wireless-interface-io-endurance')
+}
+
+tasks.register('wirelessInterfaceIoModelEnduranceAcceptance', Test) {
+    description = 'Enforces all wireless I/O gates including the 20,000-tick endurance scenarios.'
+    group = 'verification'
+    configureWirelessInterfaceIoStress(delegate, true, 'endurance',
+            'reports/wireless-interface-io-endurance')
+}
+
+def wirelessIoBaselineModelDirArg = providers.gradleProperty(
+        'ae2ltBenchmarkBaselineModelDir').getOrElse('')
+def wirelessIoCandidateModelDirArg = providers.gradleProperty(
+        'ae2ltBenchmarkCandidateModelDir').getOrElse('')
+def wirelessIoModelComparisonOutput = layout.buildDirectory
+        .dir('reports/wireless-interface-io-comparison').get().asFile.absolutePath
+
+tasks.register('checkWirelessIoModelRegression') {
+    description = 'Compares baseline and candidate wireless I/O model reports and rejects functional or work regressions.'
+    group = 'verification'
+    inputs.property 'baselineModelDirectory', wirelessIoBaselineModelDirArg
+    inputs.property 'candidateModelDirectory', wirelessIoCandidateModelDirArg
+    inputs.property 'projectDirectory', projectDir.absolutePath
+    outputs.dir wirelessIoModelComparisonOutput
+    doLast {
+        String baselineDirectory = inputs.properties.baselineModelDirectory as String
+        String candidateDirectory = inputs.properties.candidateModelDirectory as String
+        if (!baselineDirectory || !candidateDirectory) {
+            throw new GradleException(
+                    'Pass -Pae2ltBenchmarkBaselineModelDir=<directory> and '
+                            + '-Pae2ltBenchmarkCandidateModelDir=<directory>.')
+        }
+        File rawBaselineDirectory = new File(baselineDirectory)
+        File baselineDirectoryFile = rawBaselineDirectory.isAbsolute()
+                ? rawBaselineDirectory
+                : new File(inputs.properties.projectDirectory as String, baselineDirectory)
+        File rawCandidateDirectory = new File(candidateDirectory)
+        File candidateDirectoryFile = rawCandidateDirectory.isAbsolute()
+                ? rawCandidateDirectory
+                : new File(inputs.properties.projectDirectory as String, candidateDirectory)
+
+        def parseCsv = { File file ->
+            if (!file.isFile()) {
+                throw new GradleException("Missing model report: ${file}")
+            }
+            def lines = file.readLines('UTF-8').findAll { !it.isBlank() }
+            if (lines.size() < 2) {
+                throw new GradleException("Empty model report: ${file}")
+            }
+            def headers = lines.first().split(',', -1) as List
+            def rows = [:]
+            lines.drop(1).each { line ->
+                def values = line.split(',', -1) as List
+                if (values.size() != headers.size()) {
+                    throw new GradleException(
+                            "Malformed CSV row in ${file}: expected ${headers.size()} columns, got ${values.size()}")
+                }
+                def row = [:]
+                for (int i = 0; i < headers.size(); i++) {
+                    row[headers[i]] = values[i]
+                }
+                rows[row.scenario] = row
+            }
+            return rows
+        }
+        def number = { row, field ->
+            if (!row.containsKey(field) || row[field] == '') {
+                throw new GradleException("Missing numeric field '${field}' for ${row.scenario}")
+            }
+            return (row[field] as String).toDouble()
+        }
+        def compareFile = { String filename, List<Map<String, Object>> rules,
+                            List<String> regressions, List<String> improvements ->
+            def baseline = parseCsv(new File(baselineDirectoryFile, filename))
+            def candidate = parseCsv(new File(candidateDirectoryFile, filename))
+            def missing = baseline.keySet() - candidate.keySet()
+            def extra = candidate.keySet() - baseline.keySet()
+            if (!missing.isEmpty()) {
+                regressions << "${filename}: candidate is missing scenarios ${missing.sort()}"
+            }
+            if (!extra.isEmpty()) {
+                regressions << "${filename}: candidate added scenarios not present in baseline ${extra.sort()}"
+            }
+            (baseline.keySet().intersect(candidate.keySet()) as List).sort().each { scenario ->
+                def before = baseline[scenario]
+                def after = candidate[scenario]
+                rules.each { rule ->
+                    String field = rule.field as String
+                    double oldValue = number(before, field)
+                    double newValue = number(after, field)
+                    double absoluteTolerance = rule.absoluteTolerance as double
+                    double relativeTolerance = rule.relativeTolerance as double
+                    double tolerance = Math.max(absoluteTolerance,
+                            Math.abs(oldValue) * relativeTolerance)
+                    boolean lowerIsBetter = rule.lowerIsBetter as boolean
+                    double delta = newValue - oldValue
+                    boolean regressed = lowerIsBetter
+                            ? delta > tolerance : delta < -tolerance
+                    boolean improved = lowerIsBetter
+                            ? delta < -tolerance : delta > tolerance
+                    if (regressed) {
+                        regressions << String.format(java.util.Locale.ROOT,
+                                '%s %s: %.6f -> %.6f', scenario, field,
+                                oldValue, newValue)
+                    } else if (improved) {
+                        improvements << String.format(java.util.Locale.ROOT,
+                                '%s %s: %.6f -> %.6f', scenario, field,
+                                oldValue, newValue)
+                    }
+                }
+                if (before.acceptance == 'PASS' && after.acceptance != 'PASS') {
+                    regressions << "${scenario} acceptance: PASS -> ${after.acceptance}"
+                } else if (before.acceptance != 'PASS' && after.acceptance == 'PASS') {
+                    improvements << "${scenario} acceptance: ${before.acceptance} -> PASS"
+                }
+            }
+        }
+
+        def regressions = []
+        def improvements = []
+        def semanticRules = [
+                [field: 'min_window_100', lowerIsBetter: false,
+                 absoluteTolerance: 0.001, relativeTolerance: 0.0],
+                [field: 'min_target', lowerIsBetter: false,
+                 absoluteTolerance: 0.001, relativeTolerance: 0.0],
+                [field: 'blocked_after_acceptance', lowerIsBetter: true,
+                 absoluteTolerance: 0.0, relativeTolerance: 0.0],
+                [field: 'max_block_streak', lowerIsBetter: true,
+                 absoluteTolerance: 0.0, relativeTolerance: 0.0],
+                [field: 'restart_latency', lowerIsBetter: true,
+                 absoluteTolerance: 1.0, relativeTolerance: 0.0],
+                [field: 'drain_latency', lowerIsBetter: true,
+                 absoluteTolerance: 1.0, relativeTolerance: 0.0],
+                [field: 'mean_work', lowerIsBetter: true,
+                 absoluteTolerance: 1.0, relativeTolerance: 0.10],
+                [field: 'p99_work', lowerIsBetter: true,
+                 absoluteTolerance: 1.0, relativeTolerance: 0.10]
+        ]
+        def pressureRules = [
+                [field: 'min_window', lowerIsBetter: false,
+                 absoluteTolerance: 0.001, relativeTolerance: 0.0],
+                [field: 'min_machine', lowerIsBetter: false,
+                 absoluteTolerance: 0.001, relativeTolerance: 0.0],
+                [field: 'pressure_ratio', lowerIsBetter: true,
+                 absoluteTolerance: 0.0001, relativeTolerance: 0.0],
+                [field: 'max_pressure_streak', lowerIsBetter: true,
+                 absoluteTolerance: 0.0, relativeTolerance: 0.0],
+                [field: 'latency_p99', lowerIsBetter: true,
+                 absoluteTolerance: 1.0, relativeTolerance: 0.0],
+                [field: 'max_service_gap', lowerIsBetter: true,
+                 absoluteTolerance: 1.0, relativeTolerance: 0.0],
+                [field: 'mean_work', lowerIsBetter: true,
+                 absoluteTolerance: 1.0, relativeTolerance: 0.10],
+                [field: 'p99_work', lowerIsBetter: true,
+                 absoluteTolerance: 1.0, relativeTolerance: 0.10]
+        ]
+        compareFile('model-metrics.csv', semanticRules, regressions, improvements)
+        compareFile('scheduling-pressure.csv', pressureRules, regressions, improvements)
+
+        File outputDirectory = new File(wirelessIoModelComparisonOutput)
+        outputDirectory.mkdirs()
+        File markdown = new File(outputDirectory, 'model-comparison.md')
+        def body = new StringBuilder('# Wireless I/O model comparison\n\n')
+                .append("Baseline: `${baselineDirectoryFile.absolutePath}`\n\n")
+                .append("Candidate: `${candidateDirectoryFile.absolutePath}`\n\n")
+                .append("Result: **${regressions.isEmpty() ? 'PASS' : 'FAIL'}**\n\n")
+                .append("Improvements: ${improvements.size()}; regressions: ${regressions.size()}.\n\n")
+                .append('## Regressions\n\n')
+        if (regressions.isEmpty()) {
+            body.append('- None\n')
+        } else {
+            regressions.each { body.append("- ${it}\n") }
+        }
+        body.append('\n## Improvements\n\n')
+        if (improvements.isEmpty()) {
+            body.append('- None\n')
+        } else {
+            improvements.each { body.append("- ${it}\n") }
+        }
+        markdown.setText(body.toString(), 'UTF-8')
+        println "Wireless I/O model comparison: improvements=${improvements.size()}, regressions=${regressions.size()}"
+        println "Report: ${markdown}"
+        if (!regressions.isEmpty()) {
+            throw new GradleException('Wireless I/O model regression check failed:\n'
+                    + regressions.join('\n'))
+        }
+    }
 }
 
 def wirelessIoStressReportArg = providers.gradleProperty('ae2ltBenchmarkStressReport').getOrElse('')
@@ -484,6 +691,176 @@ tasks.register('checkWirelessIoBenchmark') {
             throw new GradleException('Wireless I/O live benchmark failed:\n' + failures.join('\n'))
         }
         println 'Wireless I/O live MSPT/TPS acceptance: PASS'
+    }
+}
+
+def wirelessIoLiveBaselineStressArg = providers.gradleProperty(
+        'ae2ltBenchmarkBaselineStressReports').getOrElse('')
+def wirelessIoLiveBaselineControlArg = providers.gradleProperty(
+        'ae2ltBenchmarkBaselineControlReports').getOrElse('')
+def wirelessIoLiveCandidateStressArg = providers.gradleProperty(
+        'ae2ltBenchmarkCandidateStressReports').getOrElse('')
+def wirelessIoLiveCandidateControlArg = providers.gradleProperty(
+        'ae2ltBenchmarkCandidateControlReports').getOrElse('')
+def wirelessIoLiveComparisonOutput = layout.buildDirectory
+        .dir('reports/wireless-interface-io-live-comparison').get().asFile.absolutePath
+
+tasks.register('checkWirelessIoBenchmarkRegression') {
+    description = 'Compares five paired baseline and candidate live wireless I/O benchmark runs.'
+    group = 'verification'
+    inputs.property 'baselineStressReports', wirelessIoLiveBaselineStressArg
+    inputs.property 'baselineControlReports', wirelessIoLiveBaselineControlArg
+    inputs.property 'candidateStressReports', wirelessIoLiveCandidateStressArg
+    inputs.property 'candidateControlReports', wirelessIoLiveCandidateControlArg
+    inputs.property 'projectDirectory', projectDir.absolutePath
+    outputs.dir wirelessIoLiveComparisonOutput
+    doLast {
+        def splitReports = { value, label ->
+            def paths = (value as String).split(';').collect { it.trim() }
+                    .findAll { !it.isEmpty() }
+            if (paths.size() != 5) {
+                throw new GradleException("${label} must contain exactly five JSON paths separated by ';'")
+            }
+            def parser = new groovy.json.JsonSlurper()
+            return paths.collect { path ->
+                File rawFile = new File(path)
+                File file = rawFile.isAbsolute()
+                        ? rawFile : new File(inputs.properties.projectDirectory as String, path)
+                if (!file.isFile()) {
+                    throw new GradleException("Missing live benchmark report: ${file}")
+                }
+                def report = parser.parse(file)
+                if (report.partial || (report.samples as int) < 1200) {
+                    throw new GradleException("Incomplete live benchmark report: ${file}")
+                }
+                if ((report.interfaceCalls as long) <= 0
+                        || (report.fastInterfaceCalls as long) != (report.interfaceCalls as long)) {
+                    throw new GradleException("Report is not a measured pure-FAST run: ${file}")
+                }
+                return report
+            }
+        }
+        def median = { values ->
+            def sorted = values.collect { it as double }.sort()
+            return sorted[sorted.size().intdiv(2)] as double
+        }
+        def summarize = { stress, control ->
+            def pairedMean = []
+            def pairedP99 = []
+            for (int i = 0; i < stress.size(); i++) {
+                pairedMean << ((stress[i].tickMs.mean as double)
+                        - (control[i].tickMs.mean as double))
+                pairedP99 << ((stress[i].tickMs.p99 as double)
+                        - (control[i].tickMs.p99 as double))
+            }
+            return [
+                    mean: median(stress.collect { it.tickMs.mean }),
+                    p95: median(stress.collect { it.tickMs.p95 }),
+                    p99: median(stress.collect { it.tickMs.p99 }),
+                    over50: median(stress.collect { it.ticksOver50MsRatio }),
+                    capacityTps: median(stress.collect { it.capacityTps }),
+                    ioP99: median(stress.collect { it.wirelessIoMs.p99 }),
+                    gcRatio: median(stress.collect {
+                        (it.gcMillis as double) / ((it.samples as double) * 50.0)
+                    }),
+                    heap: median(stress.collect { it.peakUsedHeapBytes }),
+                    adjustedMean: median(pairedMean),
+                    adjustedP99: median(pairedP99)
+            ]
+        }
+        def baselineStress = splitReports(inputs.properties.baselineStressReports,
+                'baseline stress reports')
+        def baselineControl = splitReports(inputs.properties.baselineControlReports,
+                'baseline control reports')
+        def candidateStress = splitReports(inputs.properties.candidateStressReports,
+                'candidate stress reports')
+        def candidateControl = splitReports(inputs.properties.candidateControlReports,
+                'candidate control reports')
+        def baseline = summarize(baselineStress, baselineControl)
+        def candidate = summarize(candidateStress, candidateControl)
+        def failures = []
+        def notes = []
+        def atMost = { label, actualValue, limitValue ->
+            double actual = actualValue as double
+            double limit = limitValue as double
+            if (actual > limit) {
+                failures << String.format(java.util.Locale.ROOT,
+                        '%s %.6f > %.6f', label, actual, limit)
+            }
+        }
+        def noRegression = { label, beforeValue, afterValue,
+                             relativeTolerance, absoluteTolerance ->
+            double before = beforeValue as double
+            double after = afterValue as double
+            double tolerance = Math.max(absoluteTolerance as double,
+                    Math.abs(before) * (relativeTolerance as double))
+            if (after > before + tolerance) {
+                failures << String.format(java.util.Locale.ROOT,
+                        '%s regressed %.6f -> %.6f (tolerance %.6f)',
+                        label, before, after, tolerance)
+            } else if (after < before - tolerance) {
+                notes << String.format(java.util.Locale.ROOT,
+                        '%s improved %.6f -> %.6f', label, before, after)
+            }
+        }
+
+        atMost('candidate median mean MSPT', candidate.mean, 40.0)
+        atMost('candidate median p95 MSPT', candidate.p95, 45.0)
+        atMost('candidate median p99 MSPT', candidate.p99, 50.0)
+        atMost('candidate median >50 ms ratio', candidate.over50, 0.01)
+        atMost('candidate median GC pause ratio', candidate.gcRatio, 0.05)
+        if ((candidate.capacityTps as double) < 19.8) {
+            failures << "candidate median capacity TPS ${candidate.capacityTps} < 19.8"
+        }
+        noRegression('median mean MSPT', baseline.mean, candidate.mean, 0.05, 0.25)
+        noRegression('median p99 MSPT', baseline.p99, candidate.p99, 0.10, 0.5)
+        noRegression('paired control-adjusted mean MSPT', baseline.adjustedMean,
+                candidate.adjustedMean, 0.05, 0.25)
+        noRegression('paired control-adjusted p99 MSPT', baseline.adjustedP99,
+                candidate.adjustedP99, 0.10, 0.5)
+        noRegression('median >50 ms ratio', baseline.over50, candidate.over50,
+                0.0, 2.0 / 1200.0)
+        noRegression('median wireless I/O p99', baseline.ioP99, candidate.ioP99,
+                0.10, 0.05)
+        noRegression('median GC pause ratio', baseline.gcRatio, candidate.gcRatio,
+                0.10, 0.001)
+        noRegression('median heap peak', baseline.heap, candidate.heap, 0.10,
+                1024.0 * 1024.0)
+
+        boolean measurableImprovement = notes.any {
+            it.startsWith('median mean MSPT improved')
+                    || it.startsWith('median p99 MSPT improved')
+                    || it.startsWith('paired control-adjusted mean MSPT improved')
+                    || it.startsWith('paired control-adjusted p99 MSPT improved')
+                    || it.startsWith('median wireless I/O p99 improved')
+        }
+        File outputDirectory = new File(wirelessIoLiveComparisonOutput)
+        outputDirectory.mkdirs()
+        File markdown = new File(outputDirectory, 'live-comparison.md')
+        def body = new StringBuilder('# Wireless I/O live comparison\n\n')
+                .append("Result: **${failures.isEmpty() ? 'PASS' : 'FAIL'}**\n\n")
+                .append("Optimization status: **${measurableImprovement
+                        ? 'MEASURABLE_IMPROVEMENT' : 'NO_MEASURABLE_IMPROVEMENT'}**\n\n")
+                .append('| metric | baseline median | candidate median |\n')
+                .append('|---|---:|---:|\n')
+        ['mean', 'p95', 'p99', 'adjustedMean', 'adjustedP99', 'over50',
+         'capacityTps', 'ioP99', 'gcRatio', 'heap'].each { metric ->
+            body.append("| ${metric} | ${baseline[metric]} | ${candidate[metric]} |\n")
+        }
+        body.append('\n## Failures\n\n')
+        if (failures.isEmpty()) body.append('- None\n')
+        else failures.each { body.append("- ${it}\n") }
+        body.append('\n## Improvements outside tolerance\n\n')
+        if (notes.isEmpty()) body.append('- None\n')
+        else notes.each { body.append("- ${it}\n") }
+        markdown.setText(body.toString(), 'UTF-8')
+        println("Live benchmark comparison: ${failures.isEmpty() ? 'PASS' : 'FAIL'}, "
+                + "optimization=${measurableImprovement ? 'MEASURABLE' : 'NOT_MEASURABLE'}")
+        println "Report: ${markdown}"
+        if (!failures.isEmpty()) {
+            throw new GradleException('Wireless I/O live regression check failed:\n'
+                    + failures.join('\n'))
+        }
     }
 }
 

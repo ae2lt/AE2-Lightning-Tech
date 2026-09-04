@@ -9,13 +9,16 @@
 | 能力 | 是否自动 | 使用方式 |
 |---|---:|---|
 | 编译和普通单元测试 | 是 | `compileJava`、`compileTestJava`、`test` |
-| 25 个确定性压力场景 | 是 | `wirelessInterfaceIoModel` |
+| 25 个传输语义/故障场景 + 99 个调度压力场景 | 是 | `wirelessInterfaceIoModel` |
 | 强制执行模型门槛 | 是 | `wirelessInterfaceIoModelAcceptance` |
+| 快速迭代子集 | 是 | `wirelessInterfaceIoModelQuick` |
+| 20,000 tick 长稳矩阵 | 是 | `wirelessInterfaceIoModelEndurance` |
+| 基线/候选模型回归比较 | 是 | `checkWirelessIoModelRegression` |
 | 真实服务端 tick 与无线 I/O 计时 | 是 | `runWirelessIoBenchmarkServer` 启用探针 |
 | 创建 1/64/256/1024 台真实机器和物品负载 | 否 | 按第 3～5 节在基准世界或专用测试 capability 中准备 |
 | 自动切换控制组/压力组 | 否 | 每轮启动服务器前恢复相同世界快照并切换负载 |
 | 比较一对真实 JSON 是否达标 | 是 | `checkWirelessIoBenchmark` |
-| 汇总五次独立 JVM 运行 | 否 | 按第 10.5 节取中位数并保留最差轮 |
+| 汇总并比较基线/候选各五对真实运行 | 是 | `checkWirelessIoBenchmarkRegression` |
 
 特别注意：`-Pae2ltBenchmarkScenario=...` **只是写入报告的场景标签**，不会在世界中生成机器、设置过载接口或注入物品。仅启动一个空服务器得到的不是压力测试。探针必须观察到真实的无线接口 I/O 调用后才开始预热和采样。
 
@@ -24,25 +27,27 @@
 先确认基准分支能够编译，并记录原始提交和工作树状态：
 
 ```powershell
-git rev-parse HEAD
+$baselineCommit = git rev-parse HEAD
 git status --short
 .\gradlew.bat compileJava compileTestJava
 .\gradlew.bat test
-.\gradlew.bat wirelessInterfaceIoModel --rerun-tasks
+.\gradlew.bat wirelessInterfaceIoModel --rerun-tasks `
+  "-Pae2ltBenchmarkModelReportDir=benchmark-results\baseline-$baselineCommit"
 ```
 
 这一步的有效结果应满足：
 
 - 所有命令均成功；普通 `test` 不包含压力标签，压力模型由独立任务执行。
 - `wirelessInterfaceIoModel` 退出码为 0，报告中没有 `correctness failure`。
-- 当前未优化基线允许出现第 12 节列出的三个建议门槛失败；这不是测试环境损坏。
+- 当前未优化基线允许出现第 12 节列出的已知建议门槛失败；这不是测试环境损坏。
 - 记录 `git rev-parse HEAD` 的值。若工作树非空，必须保存 diff；不得把未知本地修改当作优化效果。
 
-模型报告会被下一次运行覆盖。立即把以下两个文件复制到构建目录之外，并用提交号命名：
+上面的 `ae2ltBenchmarkModelReportDir` 已把三个模型报告直接保存到不会被 `clean` 删除的基线目录：
 
 ```text
-build/reports/wireless-interface-io/model-summary.md
-build/reports/wireless-interface-io/model-metrics.csv
+benchmark-results/baseline-<commit>/model-summary.md
+benchmark-results/baseline-<commit>/model-metrics.csv
+benchmark-results/baseline-<commit>/scheduling-pressure.csv
 ```
 
 推荐保存结构：
@@ -52,14 +57,16 @@ build/reports/wireless-interface-io/model-metrics.csv
 ├─ baseline-<commit>/
 │  ├─ model-summary.md
 │  ├─ model-metrics.csv
+│  ├─ scheduling-pressure.csv
 │  └─ live/<scenario>/<run-1..5>/
 └─ candidate-<commit>/
    ├─ model-summary.md
    ├─ model-metrics.csv
+   ├─ scheduling-pressure.csv
    └─ live/<scenario>/<run-1..5>/
 ```
 
-不要把这个结果目录放进 `build/`，因为 `clean` 会删除它；也不要提交大型实时 CSV。
+`benchmark-results/` 已被 Git 忽略。不要把基线放进 `build/`，因为 `clean` 会删除它；也不要提交大型实时 CSV。旧版只包含两个文件的基线不能与新版比较，必须在本测试提交上重新生成包含 `scheduling-pressure.csv` 的基线。
 
 ### 0.3 每次调度改动后的快速循环
 
@@ -68,21 +75,32 @@ build/reports/wireless-interface-io/model-metrics.csv
 ```powershell
 .\gradlew.bat compileJava compileTestJava
 .\gradlew.bat test
-.\gradlew.bat wirelessInterfaceIoModel --rerun-tasks
+.\gradlew.bat wirelessInterfaceIoModelQuick --rerun-tasks
 ```
 
 然后检查：
 
 1. `model-summary.md` 中的正确性不变量必须全部通过。
-2. 对比候选与基线 `model-metrics.csv`，确认堵槽、最差机器服务间隔、访问量和物理操作数没有被转移或隐藏。
-3. 若报告仍有建议门槛失败，必须说明具体场景和指标，不能只汇报 Gradle 任务成功。
-4. 当报告中的建议门槛全部达到后，执行：
+2. 阅读 quick 报告；若改动进入候选，再运行完整矩阵并保存候选报告：
+
+```powershell
+$candidateCommit = git rev-parse HEAD
+.\gradlew.bat wirelessInterfaceIoModel --rerun-tasks `
+  "-Pae2ltBenchmarkModelReportDir=benchmark-results\candidate-$candidateCommit"
+.\gradlew.bat checkWirelessIoModelRegression `
+  "-Pae2ltBenchmarkBaselineModelDir=benchmark-results\baseline-$baselineCommit" `
+  "-Pae2ltBenchmarkCandidateModelDir=benchmark-results\candidate-$candidateCommit"
+```
+
+3. 比较器同时读取 `model-metrics.csv` 和 `scheduling-pressure.csv`，自动拒绝吞吐、受阻率、最长受阻、批次 P99 延迟、最差连接服务间隔以及 mean/P99 工作量的回归。比较报告位于 `build/reports/wireless-interface-io-comparison/model-comparison.md`。
+4. 若报告仍有建议门槛失败，必须说明具体场景和指标，不能只汇报 Gradle 任务成功。
+5. 当报告中的建议门槛全部达到后，执行：
 
 ```powershell
 .\gradlew.bat wirelessInterfaceIoModelAcceptance --rerun-tasks
 ```
 
-`wirelessInterfaceIoModelAcceptance` 成功是进入正式实时验收的必要条件，不是最终性能结论。模型中的 `meanProxyWork`、`p99ProxyWork` 是可解释的工作量代理，不是毫秒，也不能换算为 TPS。
+`wirelessInterfaceIoModelAcceptance` 成功是进入正式实时验收的必要条件，不是最终性能结论。模型中的 `mean_work`、`p99_work` 是可解释的工作量代理，不是毫秒，也不能换算为 TPS。
 
 为了保持基准可比性，调度优化期间遵循以下修改边界：
 
@@ -144,15 +162,34 @@ run-wireless-io-benchmark/benchmark-reports/wireless-interface-io/
 
 正式比较必须为控制组和压力组各启动一个新 JVM，不能在同一服务器进程中先空载再加压。建议按 `C1 → S1 → C2 → S2 … → C5 → S5` 交错执行，减少温度和后台负载随时间漂移带来的偏差。每一对都先运行验收器，最终再按第 10.5 节比较五轮中位数。
 
+收齐基线和候选各五对报告后，使用分号分隔同组的五个 JSON；四组中的第 N 个路径必须来自第 N 轮配对运行：
+
+```powershell
+.\gradlew.bat checkWirelessIoBenchmarkRegression `
+  '-Pae2ltBenchmarkBaselineStressReports=C:\b\s1.json;C:\b\s2.json;C:\b\s3.json;C:\b\s4.json;C:\b\s5.json' `
+  '-Pae2ltBenchmarkBaselineControlReports=C:\b\c1.json;C:\b\c2.json;C:\b\c3.json;C:\b\c4.json;C:\b\c5.json' `
+  '-Pae2ltBenchmarkCandidateStressReports=C:\n\s1.json;C:\n\s2.json;C:\n\s3.json;C:\n\s4.json;C:\n\s5.json' `
+  '-Pae2ltBenchmarkCandidateControlReports=C:\n\c1.json;C:\n\c2.json;C:\n\c3.json;C:\n\c4.json;C:\n\c5.json'
+```
+
+该任务检查每份报告是否完整且为纯 FAST，计算基线/候选五轮中位数和逐轮控制组校正值，自动拒绝绝对 MSPT/TPS 超标，以及平均 MSPT、P99、超 50 ms tick、无线 I/O P99、GC 和堆峰值回归。输出为：
+
+```text
+build/reports/wireless-interface-io-live-comparison/live-comparison.md
+```
+
+`Optimization status: MEASURABLE_IMPROVEMENT` 表示至少一个 mean/P99/控制校正/wireless I/O 指标改善超过容差；`NO_MEASURABLE_IMPROVEMENT` 即使没有回归也不能宣称“提高了速度”。最终目标不是只把门槛跑绿，而是在所有正确性、吞吐和延迟约束通过后，继续降低控制校正后的 mean/P99 MSPT 和 wireless I/O P99。
+
 ### 0.5 优化期间与发布前分别跑多少场景
 
 日常迭代不需要每改一行就手工跑完整真实矩阵：
 
 | 阶段 | 必跑内容 | 用途 |
 |---|---|---|
-| 每个候选提交 | `test` + `wirelessInterfaceIoModel` | 快速发现守恒、堵槽、公平性和工作放大回归 |
+| 每个小改动 | `test` + `wirelessInterfaceIoModelQuick` | 快速发现核心守恒、冷启动堵槽和工作放大回归 |
+| 每个候选提交 | 完整模型 + `checkWirelessIoModelRegression` | 执行全部 124 个模型场景并和固定基线比较 |
 | 有希望的候选 | 模型验收 + R1、R1024、E1024、B1 各一对控制/压力冒烟 | 淘汰真实 MSPT 明显恶化的方案 |
-| 最终候选 | 第 5 节完整矩阵；关键连续场景各 5 对独立 JVM | 作最终通过结论 |
+| 最终候选 | endurance + 第 5 节真实矩阵；关键场景各 5 对独立 JVM | 检查长期状态并作最终通过结论 |
 | 任何缓存/连接状态改动 | 额外强制 R-CACHE、R-FILTER、断网、断目标、重启恢复 | 防止只优化稳定热路径 |
 
 最终候选不能只选择对自己有利的场景。若某个真实场景因测试机器 capability 限制无法搭建，应标记为“未测试”，不能写成“通过”；对应确定性模型结果仍须保留。
@@ -180,10 +217,11 @@ run-wireless-io-benchmark/benchmark-reports/wireless-interface-io/
 MSPT/P99、避免 TPS 下降，同时保持吞吐、公平性、恢复能力和物品守恒。
 
 先在未修改代码上执行第 0.2 节，保存提交号、工作树状态和模型报告作为基线。
-当前基线的 wirelessInterfaceIoModel 应成功，但第 12 节列出的三个建议门槛可能失败；
+当前基线的 wirelessInterfaceIoModel 应成功，但第 12 节列出的建议门槛会失败；
 不要把它们当成测试设施故障，也不要修改测试门槛来消除失败。
 
 每个候选改动后执行第 0.3 节。任何 correctness、容量、堵槽或公平性回归都应先停止性能比较。
+完整候选必须通过 checkWirelessIoModelRegression；最终候选还要运行 wirelessInterfaceIoModelEndurance。
 模型指标不是 MSPT；候选模型达标后，按第 0.4、0.5 节使用相同世界快照运行控制组和压力组。
 ae2ltBenchmarkScenario 只负责报告命名，不会自动生成负载。
 
@@ -262,6 +300,7 @@ ae2ltBenchmarkScenario 只负责报告命名，不会自动生成负载。
 ```text
 build/reports/wireless-interface-io/model-summary.md
 build/reports/wireless-interface-io/model-metrics.csv
+build/reports/wireless-interface-io/scheduling-pressure.csv
 ```
 
 优化后强制执行模型门槛：
@@ -272,16 +311,34 @@ build/reports/wireless-interface-io/model-metrics.csv
 
 模型使用生产代码中的 `CooldownTracker`、探测状态和 `nextIoSchedule`，并以可复现的机器负载代替世界/capability。它记录扫描、抽取、缓冲刷新和发配调用数，用于解释 MSPT 变化，不把这些计数换算成真实 TPS。
 
-模型入口当前自动覆盖 25 个场景。每个场景都执行以下硬性校验：
+完整入口当前自动覆盖 124 个场景：25 个传输语义、缓存、故障和恢复场景，加上 99 个调度压力场景。压力矩阵对主要维度做边界值和成对组合覆盖，而不是只跑一个“1024 台连续生产”样例。测试还硬性验证矩阵没有丢失连接规模、槽位、单槽堆叠上限、单 tick 数量、物品基数、方向、tick 顺序、生产相位、负载形态和多接口拓扑。
+
+三个运行档位：
+
+```powershell
+# 日常小改动；输出到 build/reports/wireless-interface-io-quick/
+.\gradlew.bat wirelessInterfaceIoModelQuick
+
+# 完整 124 场景；输出到 build/reports/wireless-interface-io/
+.\gradlew.bat wirelessInterfaceIoModel
+
+# 完整矩阵再加回收、发配、双向各 20,000 tick；输出到 endurance 目录
+.\gradlew.bat wirelessInterfaceIoModelEndurance
+```
+
+每个场景都执行以下硬性校验：
 
 ```text
 producedOutput = recoveredOutput + finalMachineOutput
 recoveredOutput = importedToNetwork + finalImportBuffer
 dispatchedInput = consumedInput + finalMachineInput
 0 <= occupiedOutputSlots <= configuredOutputSlots
+unique scenario IDs and required matrix dimensions are present
 ```
 
-基线模式只要上述正确性不变量通过就返回成功；建议门槛写入报告但不令任务失败。`wirelessInterfaceIoModelAcceptance` 才强制执行建议门槛，适合优化完成后或 CI 专项任务使用。
+`scheduling-pressure.csv` 另外记录理论/实际物品数、生产或消费受阻次数和短缺量、受阻机会比例、最长连续受阻、每批输出等待回收的 P50/P95/P99/max、最差连接服务间隔、输出槽峰值占用、每 tick 工作分布和空闲访问量。这些字段是后续调度优化的主要对照数据。
+
+基线模式只要上述正确性不变量和矩阵完整性通过就返回成功；建议门槛写入报告但不令任务失败。`wirelessInterfaceIoModelAcceptance` 才强制执行建议门槛，适合优化完成后或 CI 专项任务使用。长期候选使用 `wirelessInterfaceIoModelEnduranceAcceptance`。
 
 ### 2.2 真实服务端 MSPT/TPS 基准
 
@@ -440,6 +497,28 @@ machineSeed = baseSeed + machineIndex
 
 ## 5. 强制场景矩阵
 
+自动调度压力矩阵不是所有维度的笛卡尔积；那会产生大量重复且难以日常执行的组合。它使用边界值与成对组合覆盖，保证每个关键维度的两端、临界点和高风险交互至少出现一次。完整任务启动时会验证下列维度仍然存在，少一个就直接测试失败：
+
+| 维度 | 自动覆盖值 |
+|---|---|
+| 总连接数 | `0/1/64/256/1023/1024` |
+| 过载接口数 | `1/2/4/16`，总连接数保持 1024 |
+| 回收/发配方向 | 仅回收、仅发配、双向同时运行 |
+| 动态输出 key 数 | `0/1/8/31/32/35/36/255/256/257` |
+| 输出槽 | `0/1/31/32/33/63/64/65` |
+| 单槽堆叠上限 | `64/1024/10000/65536` |
+| 每 tick 每 key 产出/消费数量 | `1/64/1024/10000`，总量使用 `long` |
+| 输出行为 | 每轮全新 key、固定可堆叠 key；原子生产、允许部分生产 |
+| 机器与接口 tick 顺序 | 机器先执行、接口先执行 |
+| 生产相位 | 全同步、按机器编号均匀错开、固定哈希错开 |
+| 生产周期 | 每 `1/5/20` tick |
+| 负载形态 | 持续、周期、冷态首次启动、热态空闲后恢复、反复启停、零工作 |
+| 发配配置 | `0/1/35/36` key；其中活跃需求为 `0/1/全部` |
+| 目标输入容量 | 每 key `1/2/64` |
+| 长稳态 | 回收、发配、双向各 20,000 tick |
+
+此外，原有 25 个语义场景覆盖 ME 完全拒收/半速接收、远端不可达、ME 缺货、缓存 `255/256/257`、精确过滤、稀疏发配、持久 import buffer、故障恢复和 5,000 tick 双向守恒。两组场景合在一起才是完整模型基准。
+
 ### 5.1 无线自动回收
 
 | 场景 | 连接数 | 每台机器产出 | 输出槽 | 目的 |
@@ -452,11 +531,16 @@ machineSeed = baseSeed + machineIndex
 | R-MIX | 1024 | 各三分之一每 1/5/20 tick 产出 8 个 key | 64 | 快慢机器公平性 |
 | R-BURST | 1024 | 每 20 tick 同步突发 32 个 key | 64 | 时间轮同步峰值 |
 | R-IDLE | 1024 | 40 tick 热产出、120 tick 空闲、再热产出 | 64 | 空闲退避与唤醒延迟 |
+| R-COLD-SLOT | 1024 | 前 160 tick 无输出，随后每 tick 32 个新 key | 32/33/63/64/65 | 冷退避后的堵槽复现 |
+| R-SLOT | 256/1024 | 每 tick 32 个新 key | 0/1/31/32/33/63/64/65 | 原子/部分生产容量边界 |
+| R-ORDER-PHASE | 1024 | 每 1/5/20 tick 32 个新 key | 64 | 两种 tick 顺序和三种机器相位 |
+| R-MULTI | 1024 总连接 | 1/2/4/16 台接口分担 | 64 | 多接口共享服务器和 ME 网络 |
+| R-LARGE-STACK | 1024 | 36 个固定 key，每 key 每 tick 64/1024/10000 | 单槽上限 64/1024/10000/65536 | 大堆叠数量、批量回收和 `long` 计数 |
 | R-FILTER | 1024 | 36 个固定 key | 36×64 | 无过滤、精确、模糊、反向过滤 |
 
 “不同物品”必须在 AEKey 层面不同；可以是不同物品 ID，也可以是合法且可持久化的不同数据组件。不能用同一 key 的数量增长代替高基数压力。
 
-各回收场景统一以输出槽两 tick 容量为正常起点，避免仅因固定 tick 相位造成必然堵塞。R-K 的“至少两 tick 容量”具体为 `2 × K` 个槽；如果测试机器不支持这么多真实槽，必须使用能等价暴露 K 个 AEKey 的测试 capability，不能缩减 K。
+常规吞吐场景以输出槽两 tick 容量为正常起点；R-SLOT 和 R-COLD-SLOT 则有意测试不足一批、恰好一批、一批以上不足两批、恰好两批和两批以上的边界。R-K 的“至少两 tick 容量”具体为 `2 × K` 个槽；如果测试机器不支持这么多真实槽，必须使用能等价暴露 K 个 AEKey 的测试 capability，不能缩减 K。
 
 时间线：
 
@@ -465,6 +549,11 @@ machineSeed = baseSeed + machineIndex
 - R-MIX：机器编号 `% 3` 决定 1/5/20 tick 周期；每个目标的完成率按自身理论量归一化。
 - R-BURST：所有目标同相位在 `tick % 20 == 0` 生产，专门观察同步 P99 尖峰；另跑目标相位均匀分散的诊断组，但分散组不能替代同相位正式结果。
 - R-IDLE：前 40 tick 每 tick 生产，随后 120 tick 完全停止，再恢复持续生产。分别统计空闲访问比例和恢复延迟。
+- R-COLD-SLOT：接口先空转至冷退避稳定，再突然让全部机器每 tick 生产。该场景直接检查“为了减少空闲扫描而退避后，机器输出槽是否在重新唤醒前堵住”。
+- R-SLOT：原子生产若连一批输出都容不下，应由 `EXPECT_BACKPRESSURE` 自检确认发生堵塞；能容下一批及以上的场景属于可持续场景，不允许以容量不足解释调度延迟。
+- R-ORDER-PHASE：机器先执行是正式保守结果；接口先执行是诊断对照。周期 5/20 的同步与错相结果用于判断 P99 峰值究竟来自总工作量还是同 tick 聚集。
+- R-MULTI：总连接和负载不变，仅改变接口分组，分离每接口固定成本与每连接成本。
+- R-LARGE-STACK：固定 key 可堆叠，不用增加 key 数来伪造大数量；分别跑持续热态和空转 160 tick 后冷启动。报告按物品数量统计吞吐、短缺和回收延迟，不能只按“处理了一个 key”计成功。
 - R-FILTER：四次独立运行无过滤、精确、模糊、反向过滤；允许输出集合保持一致，避免过滤语义改变负载总量。
 
 ### 5.2 无线自动发配
@@ -475,6 +564,8 @@ machineSeed = baseSeed + machineIndex
 | D-SPARSE | 1024 | 36 个 key | 只有 1 个 key 每 tick 消费 | 逐 key 拒绝退避成本 |
 | D-CAP1 | 1024 | 36 个 key，每 key 容量 1 | 每 tick 每 key 1 | 最小容量与每 tick 唤醒 |
 | D-IDLE | 1024 | 36 个 key | 40 tick 消费、120 tick 停止、再消费 | 满机器空闲扫描与恢复 |
+| D-COLD | 1024 | 36 个 key，容量 1/2/64 | 前 160 tick 无需求，随后每 tick 消费 | 冷退避后的欠料复现 |
+| D-LARGE-STACK | 1024 | 36 个 key，容量 64/1024/10000/65536 | 每 tick 每 key 消费 64/64/1024/10000 | 大堆叠批量发配和数量正确性 |
 | D-MISSING | 256 | 36 个 key | ME 缺货 80 tick 后恢复 | 源端缺货退避 |
 
 还必须分别覆盖配置数量 `0/1/35/36`、普通数量/无限数量、目标完整接收/部分接收/零接收，以及某些 key 永久不被目标接受。
@@ -485,6 +576,8 @@ machineSeed = baseSeed + machineIndex
 - D-SPARSE：36 个 key 均可装入，但只有第 0 个 key 持续消费；其余 35 个保持满仓，观察逐 key 拒绝缓存是否仍造成整目标热轮询。
 - D-CAP1：每个 key 只有 1 容量，任何晚一个 tick 的补货都会直接表现为机器欠料。
 - D-IDLE：前 40 tick 消费，120 tick 完全停止，之后恢复；空闲期间目标保持满仓。
+- D-COLD：接口在空目标上先退避，tick 160 同时启动所有机器；容量 1 和 2 会把调度唤醒延迟直接表现为欠料，容量 64 用作充足缓冲对照。
+- D-LARGE-STACK：每个 key 的需求量与容量独立变化，防止实现只在小数量或容量等于消费量时正确；理论消费、实际消费、发配量和最终库存都必须使用 `long` 守恒。
 - D-MISSING：机器持续消费，ME 在 `[80,160)` 不提供配置 key，tick 160 恢复；记录首次重新发配和机器恢复满速的两个延迟。
 
 配置边界 `0/1/35/36` 已进入确定性模型。真实服务器至少跑 `0` 和 `36` 两端；若调度实现后续改成按配置量分支，则四个边界全部升级为真实强制场景。
@@ -506,7 +599,12 @@ machineSeed = baseSeed + machineIndex
 
 | 类别 | 确定性模型 | 真实服务器正式要求 |
 |---|---|---|
-| 1/64/1024 持续回收 | 自动 | R1、R64、R1024 |
+| 0/1/64/256/1023/1024 持续回收 | 自动 | R1、R64、R256、R1024；0/1023 为模型边界 |
+| 0/1/31/32/33/63/64/65 输出槽 | 自动 | 32/64 及当前真实机器实际槽数强制 |
+| 冷启动、热重启、反复启停 | 自动 | 冷启动和热重启强制 |
+| 两种 tick 顺序、三种生产相位 | 自动 | 真实顺序 + 机器先执行的最不利顺序 |
+| 1/2/4/16 台接口共享 1024 连接 | 自动 | 至少 1×1024 与 4×256 |
+| 单槽 64/1024/10000/65536，批量 1/64/1024/10000 | 自动 | 1024 与 10000 两档强制 |
 | 255/256/257 key | 自动 | 三组均运行 |
 | 混合周期、同步突发、热空闲恢复 | 自动 | 均运行 |
 | 精确过滤 | 自动 | 运行 |
@@ -514,7 +612,7 @@ machineSeed = baseSeed + machineIndex
 | ME 0%/50% 接收、目标不可达 | 自动 | 0% 和目标不可达运行；50% 为韧性诊断 |
 | 0/1/35/36 发配配置 | 自动 | 0、36 强制；1、35 在分支实现变化时强制 |
 | 持续、稀疏、容量 1、空闲恢复发配 | 自动 | 均运行 |
-| 1024 双向、5000 tick 长稳态 | 自动 | B1 强制；B-LONG 至少一次 |
+| 1024 双向、5000/20000 tick 长稳态 | 自动 | B1 强制；B-LONG 至少一次 |
 | item/fluid/FE、部分插入、卸载重载 | 规范/现有单元测试互补 | 发布前真实运行 |
 
 模型“自动”只表示调度行为和守恒自动执行，不表示真实 MSPT 已经测量。
@@ -549,9 +647,14 @@ fairnessSpread = max(targetRatio) - min(targetRatio)
 
 ```text
 blockedRatio = blockedProductionEvents / theoreticalProductionEvents
+pressureEventRatio = (blockedProductionEvents + underfilledProcessEvents) / scheduledOpportunities
+pressureShortfall = sum(theoreticalItems - completedItems for pressured opportunities)
+batchLatency = extractionTick - successfulProductionTick
 restartLatency = firstSuccessfulTransferTick - workloadResumeTick
 drainLatency = firstSteadyOutputTick - dependencyRecoveryTick
 ```
+
+模型按物品数量加权统计 `batchLatency` 的 P50/P95/P99/max，并分别保留 `pressureEvents` 和 `pressureShortfall`。因此一次只少 1 个物品的部分生产，不会和一次整批 32 个物品完全失败混为同样严重。
 
 “稳态输出”定义为所有目标输出槽占用回到故障前 P95 水位以内，并连续保持至少 20 tick；仅偶然清空一 tick 不算排空。
 
@@ -581,6 +684,10 @@ wirelessShare  = wirelessIoNanos / tickNanos
 - D1/D-CAP1：理论消费量的至少 99% 被满足；D-SPARSE 至少 99%。
 - B1/B-LONG：理论加工机会的至少 95% 完成。
 - 在 ME 可写、目标可达的持续场景中，阻塞生产机会不超过 0.1%，任一机器连续堵槽不得超过 2 tick。
+- 自动模型的可持续场景使用更严格的确定性门槛：受阻机会必须为 0；真实服务器允许的 0.1% 只用于吸收负载发生器和区块生命周期的非调度噪声。
+- R-SLOT 在槽位少于一整批时必须确实观察到 backpressure，借此验证负载发生器不会把失败生产误报为成功；这类 `EXPECT_BACKPRESSURE` 自检不参与可持续吞吐结论。
+- 持续热态的回收批次 P99 等待不超过 2 tick；冷态首次启动、热恢复和反复启停不超过 5 tick。
+- R-COLD-SLOT 中能容纳至少一整批的槽位不得发生生产受阻；D-COLD 容量 1/2 不得发生欠料。容量充足的对照组不能掩盖小容量结果。
 - R-IDLE/D-IDLE 恢复工作后，P99 首次成功回收/发配延迟不超过 5 tick。
 - ME 或目标恢复后，所有机器输出槽在 25 tick 内回到稳态水位；发配恢复不超过 40 tick。
 - 同构目标的 100-tick 完成率最大值与最小值之差不超过 5 个百分点；不得存在长期零服务目标。
@@ -655,15 +762,16 @@ wirelessShare  = wirelessIoNanos / tickNanos
 ```powershell
 .\gradlew.bat compileJava compileTestJava
 .\gradlew.bat test
-.\gradlew.bat wirelessInterfaceIoModel
+.\gradlew.bat wirelessInterfaceIoModelQuick
 ```
 
-预期：编译和默认测试成功；模型基线任务成功；`model-summary.md` 可以包含建议门槛失败，但不得包含 correctness failure。
+预期：编译和默认测试成功；quick 模型任务成功；`build/reports/wireless-interface-io-quick/model-summary.md` 可以包含建议门槛失败，但不得包含 correctness failure。
 
 ### 10.2 优化完成后的模型门槛
 
 ```powershell
 .\gradlew.bat wirelessInterfaceIoModelAcceptance
+.\gradlew.bat wirelessInterfaceIoModelEnduranceAcceptance
 ```
 
 该任务失败时先阅读：
@@ -671,10 +779,12 @@ wirelessShare  = wirelessIoNanos / tickNanos
 ```text
 build/reports/wireless-interface-io/model-summary.md
 build/reports/wireless-interface-io/model-metrics.csv
+build/reports/wireless-interface-io/scheduling-pressure.csv
 build/reports/tests/wirelessInterfaceIoModelAcceptance/index.html
+build/reports/wireless-interface-io-endurance/
 ```
 
-禁止通过删除场景、缩短测试窗口、调低机器数或放宽门槛来让任务变绿；若规范确需调整，必须在提交中说明负载假设为何不成立。
+完整模型验收先执行；通过后再执行长稳验收。禁止通过删除场景、缩短测试窗口、调低机器数或放宽门槛来让任务变绿；若规范确需调整，必须在提交中说明负载假设为何不成立。
 
 ### 10.3 真实基准准备
 
@@ -704,7 +814,7 @@ $commit = git rev-parse HEAD
 
 ### 10.5 五次结果汇总
 
-每轮都先单独运行 `checkWirelessIoBenchmark`。之后按场景取五轮中位数，并保留：
+每轮都先单独运行 `checkWirelessIoBenchmark`，收齐后运行 `checkWirelessIoBenchmarkRegression`。后者自动计算下列中位数并检查回归；原始 JSON/CSV 仍必须保留：
 
 - mean/P95/P99 MSPT 中位数。
 - >50 ms tick 比例中位数和最差值。
@@ -745,7 +855,29 @@ sample,tick_nanos,wireless_io_nanos,interface_calls,fast_interface_calls,configu
 
 ### 11.3 模型 CSV
 
-模型 CSV 记录每个场景的吞吐、堵槽、恢复、扫描、缓冲和发配计数。`elapsed_nanos` 只是测试程序诊断字段，不进入 MSPT/TPS 验收。
+`model-metrics.csv` 记录 25 个传输语义/故障场景的吞吐、堵槽、恢复、扫描、缓冲和发配计数。
+
+`scheduling-pressure.csv` 记录 99 个调度压力场景及其全部输入维度，并包含：
+
+- `min_window`、`min_machine`：最差滑动窗口和最差机器吞吐。
+- `pressure_events`、`pressure_shortfall`、`pressure_ratio`、`max_pressure_streak`。
+- `latency_p50/p95/p99/max`：成功生产的物品等待回收 tick 数。
+- `max_service_gap`：同一连接两次调度访问的最大间隔。
+- `mean_work/p99_work/max_work/p99_mean_ratio`：模型工作量分布。
+- `scheduler_visits/productive_visits/idle_visits` 和输出槽峰值占用。
+- `output_amount_per_key`、`output_stack_capacity`、`input_capacity`、`consumption_per_key`，用于确认大堆叠场景没有退化成小数量测试。
+
+两份 CSV 中的 `elapsed_nanos` 都只是测试程序自身诊断字段，不稳定、不参与 MSPT/TPS 验收，也不进入基线回归比较。
+
+### 11.4 模型回归比较报告
+
+`checkWirelessIoModelRegression` 要求基线和候选具有完全相同的场景集合。它生成：
+
+```text
+build/reports/wireless-interface-io-comparison/model-comparison.md
+```
+
+该任务对吞吐、受阻、最长连续受阻、恢复/排空延迟、批次 P99、最差服务间隔和工作量分别比较；功能指标不允许恶化，mean/P99 工作量默认允许最多 10% 浮动，以便候选用少量平均工作换取明显更好的尾延迟。它不比较 `elapsed_nanos`，也不能代替真实 MSPT。
 
 ## 12. 当前基线预期
 
@@ -755,12 +887,18 @@ sample,tick_nanos,wireless_io_nanos,interface_calls,fast_interface_calls,configu
 - R-BURST 的 P99 代理工作约为平均值的 11.2 倍，高于模型建议的 4 倍峰值门槛。
 - R-IDLE 在热态转空闲后仍访问 100% 目标，高于 25% 空闲访问门槛。
 - D-IDLE 在热态转满仓空闲后仍访问 100% 目标，高于 25% 空闲访问门槛。
+- 冷态首次启动后，32/33/63 槽回收场景有 8% 的生产机会受阻，任一机器最长连续受阻 16 tick，最差机器只完成 92%；总短缺 524,288 个物品。
+- 冷态首次启动后，64/65 槽场景仍有 7.5% 的生产机会受阻，最长连续受阻 15 tick，回收批次 P99 等待 15 tick；总短缺 491,520 个物品。
+- 冷态发配容量 1/2 分别有 6%/5.5% 的消费机会欠料，最长连续欠料 12/11 tick；容量 64 的对照组通过。
+- 大堆叠持续热态全部通过；冷启动场景仍会因当前退避产生短缺，其中单槽上限 10,000、每 tick 每 key 产出 1,024 时短缺 301,989,888 个物品，单槽上限 65,536、每 tick 每 key 产出 10,000 时短缺 4,055,040,000 个物品。
+- 周期 20 tick 的同步和错相回收、错相发配共 7 个场景超过 P99/平均工作量门槛，说明冷却探测工作仍会集中在少数 tick。
 
 因此：
 
-- `wirelessInterfaceIoModel` 应成功并报告上述三项建议门槛失败。
+- `wirelessInterfaceIoModel` 应成功并报告 3 个原语义场景和 18 个调度压力场景未达到建议门槛。
 - `wirelessInterfaceIoModelAcceptance` 在未优化分支上应失败。
-- 这三项只能视为待真实 MSPT 验证的基线问题；不能从代理工作单位直接推断具体损失了多少 TPS。
+- 冷启动小槽位场景已经在确定性模型中复现了最初描述的“机器输出槽容易卡住”；这是逻辑 tick、吞吐和槽位层面的证据。
+- 工作量峰值只能视为待真实 MSPT 验证的性能风险；不能从代理工作单位直接推断具体损失了多少 TPS。
 
 ## 13. 结果记录模板
 
@@ -769,6 +907,11 @@ Date:
 Commit:
 Dirty worktree: yes/no
 Scenario:
+Model suite: quick/full/endurance
+Baseline model directory:
+Candidate model directory:
+Model regression comparison: pass/fail
+Remaining model acceptance failures:
 World snapshot hash:
 Mods/config hash:
 CPU / power mode:
@@ -790,6 +933,8 @@ Median GC ms / worst heap peak:
 Minimum sliding throughput:
 Minimum target throughput:
 Blocked event ratio / maximum streak:
+Pressure shortfall / batch latency P50/P95/P99/max:
+Maximum scheduler service gap:
 Restart / drain latency:
 Ownership invariant: pass/fail
 
