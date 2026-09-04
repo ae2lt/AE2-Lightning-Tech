@@ -52,6 +52,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
 import net.neoforged.bus.api.IEventBus;
+import net.neoforged.bus.api.EventPriority;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
@@ -78,6 +79,7 @@ import com.moakiee.ae2lt.api.AE2LTCapabilities;
 import com.moakiee.ae2lt.api.frequency.FrequencyApi;
 import com.moakiee.ae2lt.grid.WirelessFrequencyManager;
 import com.moakiee.ae2lt.grid.wirelesslink.WirelessLinkRegistry;
+import com.moakiee.ae2lt.debug.WirelessIoPerformanceProbe;
 import com.moakiee.ae2lt.grid.api.FrequencyApiBridge;
 import com.moakiee.ae2lt.me.GridLightningEnergyHandler;
 import com.moakiee.ae2lt.me.cell.BulkLightningCellHandler;
@@ -384,6 +386,10 @@ public class AE2LightningTech {
 
         NeoForge.EVENT_BUS.addListener(this::onServerStarting);
         NeoForge.EVENT_BUS.addListener(this::onServerStopped);
+        if (WirelessIoPerformanceProbe.shouldMeasure()) {
+            NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, this::onServerTickPre);
+            NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, this::onBenchmarkServerTickPost);
+        }
         NeoForge.EVENT_BUS.addListener(this::onServerTickPost);
     }
 
@@ -1106,10 +1112,15 @@ public class AE2LightningTech {
     }
 
     private void onServerStopped(ServerStoppedEvent event) {
+        WirelessIoPerformanceProbe.finish(event.getServer());
         WirelessLinkRegistry.onServerStop();
         WirelessFrequencyManager.onServerStop();
         CRAFTING_CORE_REGISTRY.clear();
         com.moakiee.ae2lt.registry.ModDamageTypes.clearCache();
+    }
+
+    private void onServerTickPre(ServerTickEvent.Pre event) {
+        WirelessIoPerformanceProbe.beginServerTick();
     }
 
     private void onServerTickPost(ServerTickEvent.Post event) {
@@ -1119,6 +1130,10 @@ public class AE2LightningTech {
         if (registry != null) {
             registry.tick(event.getServer());
         }
+    }
+
+    private void onBenchmarkServerTickPost(ServerTickEvent.Post event) {
+        WirelessIoPerformanceProbe.endServerTick(event.getServer());
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})

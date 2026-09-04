@@ -171,6 +171,22 @@ neoForge {
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }
 
+        wirelessIoBenchmarkServer {
+            server()
+            programArgument '--nogui'
+            gameDirectory = project.file('run-wireless-io-benchmark')
+            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+            systemProperty 'ae2lt.wirelessIoBenchmark', 'true'
+            systemProperty 'ae2lt.wirelessIoBenchmark.warmupTicks',
+                    providers.gradleProperty('ae2ltBenchmarkWarmupTicks').getOrElse('200')
+            systemProperty 'ae2lt.wirelessIoBenchmark.sampleTicks',
+                    providers.gradleProperty('ae2ltBenchmarkSampleTicks').getOrElse('1200')
+            systemProperty 'ae2lt.wirelessIoBenchmark.scenario',
+                    providers.gradleProperty('ae2ltBenchmarkScenario').getOrElse('manual')
+            systemProperty 'ae2lt.wirelessIoBenchmark.commit',
+                    providers.gradleProperty('ae2ltBenchmarkCommit').getOrElse('working-tree')
+        }
+
         // This run config launches GameTestServer and runs all registered gametests, then exits.
         // By default, the server will crash when no gametests are provided.
         // The gametest system is also enabled by default for other run configs under the /test command.
@@ -348,6 +364,7 @@ dependencies {
 tasks.named('test', Test) {
     useJUnitPlatform {
         excludeTags 'adaptive-batch-stress'
+        excludeTags 'wireless-interface-io-stress'
     }
 }
 
@@ -360,6 +377,114 @@ tasks.register('adaptiveBatchStress', Test) {
         includeTags 'adaptive-batch-stress'
     }
     shouldRunAfter tasks.named('test')
+}
+
+def configureWirelessInterfaceIoStress = { Test stressTask, boolean enforceAcceptance ->
+    stressTask.testClassesDirs = sourceSets.test.output.classesDirs
+    stressTask.classpath = sourceSets.test.runtimeClasspath
+    stressTask.useJUnitPlatform {
+        includeTags 'wireless-interface-io-stress'
+    }
+    stressTask.systemProperty 'ae2lt.wirelessIo.enforce', enforceAcceptance.toString()
+    stressTask.systemProperty 'ae2lt.wirelessIo.reportDir',
+            layout.buildDirectory.dir('reports/wireless-interface-io').get().asFile.absolutePath
+    stressTask.maxHeapSize = '2g'
+    stressTask.testLogging {
+        events 'passed', 'failed'
+        showStandardStreams = true
+    }
+    stressTask.shouldRunAfter tasks.named('test')
+}
+
+tasks.register('wirelessInterfaceIoModel', Test) {
+    description = 'Runs the deterministic overloaded-interface wireless I/O workload model and writes reports.'
+    group = 'verification'
+    configureWirelessInterfaceIoStress(delegate, false)
+}
+
+tasks.register('wirelessInterfaceIoModelAcceptance', Test) {
+    description = 'Enforces deterministic wireless I/O throughput, latency and work-amplification model gates.'
+    group = 'verification'
+    configureWirelessInterfaceIoStress(delegate, true)
+}
+
+def wirelessIoStressReportArg = providers.gradleProperty('ae2ltBenchmarkStressReport').getOrElse('')
+def wirelessIoControlReportArg = providers.gradleProperty('ae2ltBenchmarkControlReport').getOrElse('')
+def wirelessIoStressReportPath = wirelessIoStressReportArg
+        ? file(wirelessIoStressReportArg).absolutePath : ''
+def wirelessIoControlReportPath = wirelessIoControlReportArg
+        ? file(wirelessIoControlReportArg).absolutePath : ''
+def wirelessIoMaxP99Ms = providers.gradleProperty('ae2ltBenchmarkMaxIoP99Ms')
+        .getOrElse('15.0')
+
+tasks.register('checkWirelessIoBenchmark') {
+    description = 'Checks live server MSPT/TPS reports against the wireless I/O performance budget.'
+    group = 'verification'
+    inputs.property 'stressReportPath', wirelessIoStressReportPath
+    inputs.property 'controlReportPath', wirelessIoControlReportPath
+    inputs.property 'maxIoP99Ms', wirelessIoMaxP99Ms
+    doLast {
+        def stressPath = inputs.properties.stressReportPath as String
+        def controlPath = inputs.properties.controlReportPath as String
+        if (!stressPath || !controlPath) {
+            throw new GradleException(
+                    'Pass -Pae2ltBenchmarkStressReport=<json> and '
+                            + '-Pae2ltBenchmarkControlReport=<json>.')
+        }
+
+        def parser = new groovy.json.JsonSlurper()
+        def stress = parser.parse(new File(stressPath))
+        def control = parser.parse(new File(controlPath))
+        def failures = []
+        def requireAtMost = { label, actualValue, maximumValue ->
+            double actual = actualValue as double
+            double maximum = maximumValue as double
+            if (actual > maximum) {
+                failures << "${label} ${String.format(java.util.Locale.ROOT, '%.3f', actual)} > ${maximum}"
+            }
+        }
+        def requireAtLeast = { label, actualValue, minimumValue ->
+            double actual = actualValue as double
+            double minimum = minimumValue as double
+            if (actual < minimum) {
+                failures << "${label} ${String.format(java.util.Locale.ROOT, '%.3f', actual)} < ${minimum}"
+            }
+        }
+
+        if (stress.partial || stress.samples < 1200) {
+            failures << "stress report is partial or has fewer than 1200 samples"
+        }
+        if (control.partial || control.samples < 1200) {
+            failures << "control report is partial or has fewer than 1200 samples"
+        }
+        requireAtMost('stress mean MSPT', stress.tickMs.mean as double, 40.0)
+        requireAtMost('stress p95 MSPT', stress.tickMs.p95 as double, 45.0)
+        requireAtMost('stress p99 MSPT', stress.tickMs.p99 as double, 50.0)
+        requireAtMost('ticks over 50 ms ratio', stress.ticksOver50MsRatio as double, 0.01)
+        requireAtMost('GC pause ratio',
+                (stress.gcMillis as double) / ((stress.samples as double) * 50.0), 0.05)
+        requireAtLeast('capacity TPS', stress.capacityTps as double, 19.8)
+        requireAtMost('mean MSPT delta from control',
+                (stress.tickMs.mean as double) - (control.tickMs.mean as double), 10.0)
+        requireAtMost('p99 MSPT delta from control',
+                (stress.tickMs.p99 as double) - (control.tickMs.p99 as double), 15.0)
+        double maxIoP99 = (inputs.properties.maxIoP99Ms as String).toDouble()
+        requireAtMost('wireless I/O p99', stress.wirelessIoMs.p99 as double, maxIoP99)
+        if ((stress.fastInterfaceCalls as long) != (stress.interfaceCalls as long)) {
+            failures << 'not every measured wireless interface call used FAST mode'
+        }
+        if ((stress.interfaceCalls as long) <= 0L) {
+            failures << 'stress report did not measure any wireless interface calls'
+        }
+
+        println "Live wireless I/O benchmark: stress=${stress.scenario}, control=${control.scenario}"
+        println("MSPT mean/p95/p99=${stress.tickMs.mean}/${stress.tickMs.p95}/${stress.tickMs.p99}, "
+                + "wirelessIoP99=${stress.wirelessIoMs.p99}, capacityTPS=${stress.capacityTps}")
+        if (!failures.isEmpty()) {
+            throw new GradleException('Wireless I/O live benchmark failed:\n' + failures.join('\n'))
+        }
+        println 'Wireless I/O live MSPT/TPS acceptance: PASS'
+    }
 }
 
 // Keep the source and adapted third-party licensing notices inside every published mod jar.

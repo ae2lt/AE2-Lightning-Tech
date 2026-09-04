@@ -14,6 +14,9 @@ Jar/
 .docs/
 archive/
 docs/
+!docs/
+docs/*
+!docs/wireless-interface-io-benchmark.md
 
 # Bundled source mirrors / references
 Source Code/
@@ -36,6 +39,7 @@ logs/
 # Runtime / temporary files
 run/
 /run-gametest/
+/run-wireless-io-benchmark/
 out/
 tmp/
 bin/

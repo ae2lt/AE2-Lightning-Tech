@@ -30,6 +30,7 @@ import com.moakiee.ae2lt.logic.WirelessConnectionRef;
 import com.moakiee.ae2lt.logic.WirelessConnectionValidator;
 import com.moakiee.ae2lt.logic.energy.AppFluxBridge;
 import com.moakiee.ae2lt.logic.energy.PowerCostUtil;
+import com.moakiee.ae2lt.debug.WirelessIoPerformanceProbe;
 import com.moakiee.ae2lt.logic.energy.WirelessEnergyAPI;
 import com.moakiee.ae2lt.logic.energy.WirelessEnergyDistributor;
 import com.moakiee.ae2lt.menu.OverloadedInterfaceMenu;
@@ -839,7 +840,7 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
             saveChanges(); markForUpdate();
             return true;
         }
-        if (connections.size() >= MAX_WIRELESS_CONNECTIONS) {
+        if (!hasWirelessConnectionCapacity(connections.size())) {
             return false;
         }
         connections.add(conn);
@@ -848,6 +849,11 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         recomputeIdlePower();
         saveChanges(); markForUpdate();
         return true;
+    }
+
+    static boolean hasWirelessConnectionCapacity(int currentConnections) {
+        return currentConnections >= 0
+                && currentConnections < MAX_WIRELESS_CONNECTIONS;
     }
 
     public boolean removeConnection(ResourceKey<Level> dim, BlockPos pos, Direction face) {
@@ -1081,7 +1087,19 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
             return;
         }
         if (interfaceMode == InterfaceMode.WIRELESS) {
-            tickWirelessIO(sl);
+            if (WirelessIoPerformanceProbe.shouldMeasure()) {
+                long started = System.nanoTime();
+                try {
+                    tickWirelessIO(sl);
+                } finally {
+                    WirelessIoPerformanceProbe.recordWirelessInterfaceIo(
+                            System.nanoTime() - started,
+                            connections.size(),
+                            ioSpeedMode == IOSpeedMode.FAST);
+                }
+            } else {
+                tickWirelessIO(sl);
+            }
         } else {
             tickNormalIO(sl);
         }
@@ -1296,11 +1314,21 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
     }
 
     private void rescheduleEntry(IoScheduledEntry entry, long now) {
+        scheduleEntryAt(entry, nextIoSchedule(entry, now));
+    }
+
+    /**
+     * Computes the next deadline for one wireless item-I/O entry.
+     *
+     * <p>This is deliberately package-visible so the deterministic stress
+     * harness can exercise the exact production cadence state machine. It
+     * does not expose or alter any runtime scheduling policy.</p>
+     */
+    static long nextIoSchedule(IoScheduledEntry entry, long now) {
         var cd = entry.state.cdFor(entry.keyType, entry.direction);
         if (entry.direction == IoDirection.EXPORT) {
             entry.phase = IoPhase.EXTRACT;
-            scheduleEntryAt(entry, nextCooldownTick(cd, now));
-            return;
+            return nextCooldownTick(cd, now);
         }
 
         var probe = entry.state.probeStateFor(entry.keyType);
@@ -1309,12 +1337,11 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
             entry.phase = IoPhase.EXTRACT;
             if (probeHit) {
                 probe.reset();
-                scheduleEntryAt(entry, now + 1);
+                return now + 1;
             } else {
                 probe.levelIdx = Math.min(probe.levelIdx + 1, PROBE_LEVELS.length - 1);
-                scheduleEntryAt(entry, nextCooldownTick(cd, now));
+                return nextCooldownTick(cd, now);
             }
-            return;
         }
 
         long cdUntil = nextCooldownTick(cd, now);
@@ -1322,10 +1349,10 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         if (probeAt > now && probeAt < cdUntil
                 && cdUntil - now >= probeEnableThreshold(entry.keyType)) {
             entry.phase = IoPhase.PROBE;
-            scheduleEntryAt(entry, probeAt);
+            return probeAt;
         } else {
             entry.phase = IoPhase.EXTRACT;
-            scheduleEntryAt(entry, cdUntil);
+            return cdUntil;
         }
     }
 
@@ -1334,7 +1361,7 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         return until > now ? until : now + 1;
     }
 
-    private long computeProbeInsertTick(ProbeState probe, long cdUntil, long now) {
+    private static long computeProbeInsertTick(ProbeState probe, long cdUntil, long now) {
         float level = PROBE_LEVELS[probe.levelIdx];
         if (level >= 1.0f) {
             return cdUntil - (long) level;
