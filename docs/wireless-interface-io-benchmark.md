@@ -17,10 +17,13 @@
 | 真实服务端 tick 与无线 I/O 计时 | 是 | `runWirelessIoBenchmarkServer` 启用探针 |
 | 创建 1/64/256/1024 台真实机器和物品负载 | 否 | 按第 3～5 节在基准世界或专用测试 capability 中准备 |
 | 自动切换控制组/压力组 | 否 | 每轮启动服务器前恢复相同世界快照并切换负载 |
+| GameTest 自动搭建集成夹具 | 暂未启用 | `runGameTestServer` 运行配置已存在，但尚无无线 I/O 专用 GameTest 夹具 |
 | 比较一对真实 JSON 是否达标 | 是 | `checkWirelessIoBenchmark` |
 | 汇总并比较基线/候选各五对真实运行 | 是 | `checkWirelessIoBenchmarkRegression` |
 
 特别注意：`-Pae2ltBenchmarkScenario=...` **只是写入报告的场景标签**，不会在世界中生成机器、设置过载接口或注入物品。仅启动一个空服务器得到的不是压力测试。探针必须观察到真实的无线接口 I/O 调用后才开始预热和采样。
+
+当前暂行策略：调度改动以确定性模型、模型验收和长稳验收作为自动门槛；没有固定压力世界或专用测试 capability 时，真实服务端矩阵必须记录为“未测试”，不能把模型结果写成真实 MSPT/TPS 通过。后续可以使用 GameTest 自动创建集成夹具，减少手工搭建，但 GameTest 的测试线程本身不能直接替代正式实时性能测量，具体边界见第 2.4 节。
 
 ### 0.2 第一次接手时建立不可覆盖的基线
 
@@ -391,6 +394,21 @@ ServerTickEvent.Pre (HIGHEST)
 Windows 下必须把每个 `-Pname=value` 作为一个完整参数加引号，否则 `.bat`/PowerShell 组合可能把值误解析成 Gradle 任务名。
 
 验收器检查完整样本数、FAST 模式纯度、绝对 MSPT、相对控制组增量、容量 TPS、GC 暂停比例和无线 I/O P99。它不读取模型 CSV，因此吞吐/堵槽和 TPS 两类结果都必须单独通过。
+
+### 2.4 GameTest 自动化路径（暂不替代真实 MSPT）
+
+GameTest 适合解决真实场景难以重复搭建的问题，但应作为“自动化集成/调度夹具”，而不是直接把测试线程的耗时当成生产服务器性能结论。当前项目已经有 `runGameTestServer` 运行配置，不过还没有注册无线 I/O 专用 GameTest 或负载方块。
+
+推荐的 GameTest 夹具由原生 Java 测试方块实体组成，而不是每 tick 用 KubeJS 遍历 1,024 个目标。夹具至少应具备：
+
+- 可被无线接口解析的 item capability，并支持导入、导出和固定方向。
+- 可切换的生产/消费开关、1/5/20 tick 周期和输出容量。
+- `theoreticalProduction`、`actualProduction`、堵槽、理论消费和实际消费等计数器。
+- 可在 GameTest 中直接放置 1/64/256/1024 个目标，并直接调用连接 API，避免依赖 GUI 和手工连接工具。
+
+GameTest 可以自动执行 200 tick 预热、1,200 tick 采样或 20,000 tick 长稳检查，并断言守恒、吞吐、公平性、冷启动和恢复延迟。它可以替代手工搭建来验证真实方块实体、capability 和无线连接是否协同正确。
+
+若要从 GameTest 获取可比较的性能数据，应分成两个阶段：GameTest 只负责搭建并把夹具置为 `READY`，进入采样窗口后停止测试逻辑和结构操作，再由独立 tick probe 采集无线 I/O。即便如此，结果仍应标注为自动化服务端集成基准；绝对 MSPT/TPS 和正式五轮控制组校正仍按第 0.4 节使用独立 JVM。不能用普通 GameTest 的总耗时替代 `runWirelessIoBenchmarkServer` 报告。
 
 ## 3. 统一运行条件
 
@@ -960,5 +978,7 @@ Notes:
 - 服务端事件计时覆盖绝大多数 tick 工作，但同优先级且在探针 `Post` 之后注册的极少量监听器可能不在范围内；压力/控制使用相同模组顺序可抵消该偏差。
 - `configuredConnectionVisits` 是接口调用时连接列表长度，不等于本 tick 实际走到 capability 的目标数；精确热点仍需结合模型或 profiler。
 - 自动模型不构造完整 Minecraft 世界，不覆盖 capability 实现自身的第三方性能差异。
+- GameTest 可以自动构造并验证集成夹具，但测试调度和结构操作会污染普通 GameTest 的 tick 耗时；除非使用独立的 READY/采样阶段，否则不能将其作为绝对 MSPT/TPS 证据。
+- 当前仓库尚未提供无线 I/O GameTest 夹具或真实负载发生器；在此设施完成前，缺少固定世界的真实场景必须明确记录为“未测试”。
 - 模糊/反向过滤、fluid、Applied Flux FE 和部分插入属于真实服务器/现有专项测试互补项，不应从 item-only 模型外推。
 - 绝对 MSPT 门槛以本项目目标服务器为准；更慢硬件仍必须记录控制组，但不能只凭相对增量忽略整服已低于 20 TPS。

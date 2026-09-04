@@ -935,6 +935,8 @@ final class WirelessInterfaceSchedulingPressureModel {
             observeGap(machine.lastExportVisit, tick);
             machine.lastExportVisit = tick;
             var cooldown = machine.state.cdFor(ITEM_TYPE, IoDirection.EXPORT);
+            boolean fastRejectRetry = cooldown.consecutiveFailures()
+                    >= OverloadedInterfaceBlockEntity.EXPORT_REJECT_FAST_RETRY_THRESHOLD;
             long moved = 0;
             for (int key = 0; key < scenario.exportKeys(); key++) {
                 workAt[tick]++;
@@ -946,7 +948,7 @@ final class WirelessInterfaceSchedulingPressureModel {
                 workAt[tick] += 2;
                 if (free <= 0) {
                     var state = new ExportRejectState();
-                    state.reject(tick);
+                    state.reject(tick, fastRejectRetry);
                     machine.exportRejects[key] = state;
                     continue;
                 }

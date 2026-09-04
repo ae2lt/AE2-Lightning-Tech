@@ -783,6 +783,8 @@ final class WirelessInterfaceIoStressModel {
                 exportVisitsAt[tick]++;
                 workAt[tick]++;
                 var cd = machine.state.cdFor(ITEM_TYPE, IoDirection.EXPORT);
+                boolean fastRejectRetry = cd.consecutiveFailures()
+                        >= OverloadedInterfaceBlockEntity.EXPORT_REJECT_FAST_RETRY_THRESHOLD;
                 if (!scenario.targetReachable(tick)) {
                     cd.onFail(tick, IOSpeedMode.FAST);
                     machine.exportDue = OverloadedInterfaceBlockEntity.nextIoSchedule(
@@ -813,7 +815,7 @@ final class WirelessInterfaceIoStressModel {
                     long free = scenario.inputCapacityPerKey() - machine.input[key];
                     if (free <= 0) {
                         var rejected = new ExportRejectState();
-                        rejected.reject(tick);
+                        rejected.reject(tick, fastRejectRetry);
                         machine.exportRejects[key] = rejected;
                         continue;
                     }

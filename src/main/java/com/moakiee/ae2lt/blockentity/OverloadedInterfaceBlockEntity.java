@@ -146,8 +146,21 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
     private static final int IMPORT_KEY_CACHE_TRUNCATED_TTL = 5;
     private static final int EXPORT_REJECT_BACKOFF_INIT = 10;
     private static final int EXPORT_REJECT_BACKOFF_MAX = 80;
+    /** Number of completely rejected FAST passes before retrying full keys quickly. */
+    static final int EXPORT_REJECT_FAST_RETRY_THRESHOLD = 4;
     private static final int EXPORT_REJECT_BACKOFF_MAX_KEYS = 128;
     private static final long IMPORT_TRANSFER_LIMIT = Long.MAX_VALUE;
+
+    /**
+     * FAST still needs a bounded retry when a target is empty or full.  The
+     * cooldown tracker deliberately keeps its historical failure values for
+     * compatibility, while the wheel uses this demand-aware floor to avoid
+     * both hot idle polling and a cold-start retry gap.
+     */
+    private static final int FAST_IDLE_POLL_INTERVAL = 5;
+    private static final int FAST_PHASE_SPREAD_MAX = 15;
+    private static final int FAST_IDLE_MIN_SUCCESS_STREAK = 32;
+    private static final int FAST_SLOW_PRODUCER_INTERVAL = 10;
 
     /** Scan buffer for import — replaced after scans to avoid large-map clear costs. */
     private KeyCounter scanBuffer = new KeyCounter();
@@ -199,9 +212,32 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         private long cooldownUntil = -1;
         private long lastSuccessTick = -1;
         private long lastSuccessInterval = -1;
+        private int consecutiveFailures;
+        private int consecutiveSuccesses;
+        private int lastSuccessStreak;
 
         long cooldownUntil() {
             return cooldownUntil;
+        }
+
+        long lastSuccessInterval() {
+            return lastSuccessInterval;
+        }
+
+        long lastSuccessTick() {
+            return lastSuccessTick;
+        }
+
+        int consecutiveFailures() {
+            return consecutiveFailures;
+        }
+
+        int lastSuccessStreak() {
+            return lastSuccessStreak;
+        }
+
+        boolean isFastMode() {
+            return mode == IOSpeedMode.FAST;
         }
 
         void reset(IOSpeedMode newMode) {
@@ -210,6 +246,9 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
             cooldownUntil = -1;
             lastSuccessTick = -1;
             lastSuccessInterval = -1;
+            consecutiveFailures = 0;
+            consecutiveSuccesses = 0;
+            lastSuccessStreak = 0;
         }
 
         void onSuccess(long now, IOSpeedMode newMode, @Nullable KeyModel model) {
@@ -225,11 +264,21 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
             } else {
                 cooldownN = predictNormalCooldown(model);
             }
-            cooldownUntil = now + cooldownN;
+            consecutiveFailures = 0;
+            if (consecutiveSuccesses < Integer.MAX_VALUE) {
+                consecutiveSuccesses++;
+            }
+            lastSuccessStreak = consecutiveSuccesses;
+            cooldownUntil = saturatingAdd(now, cooldownN);
         }
 
         void onFail(long now, IOSpeedMode newMode) {
             ensureMode(newMode);
+            if (consecutiveFailures < Integer.MAX_VALUE) {
+                consecutiveFailures++;
+            }
+            lastSuccessStreak = Math.max(lastSuccessStreak, consecutiveSuccesses);
+            consecutiveSuccesses = 0;
             if (newMode == IOSpeedMode.FAST) {
                 int limit = lastSuccessInterval > 0
                         ? (int) Math.min(lastSuccessInterval, FAST_CD_MAX)
@@ -239,7 +288,7 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
             } else {
                 cooldownN = Math.max(NORMAL_CD_MIN, cooldownN / 2);
             }
-            cooldownUntil = now + cooldownN;
+            cooldownUntil = saturatingAdd(now, cooldownN);
         }
 
         private void ensureMode(IOSpeedMode newMode) {
@@ -284,6 +333,9 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         long lastAvail;
         long lastTick;
         double rateEMA;
+        boolean observed;
+        int consecutiveSuccessfulExtracts;
+        int lastSuccessfulExtractStreak;
 
         long postExtractAvail;
         long postExtractTick = -1;
@@ -292,12 +344,16 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         double half1Rate;
 
         void resetCycle() {
+            observed = false;
+            consecutiveSuccessfulExtracts = 0;
+            lastSuccessfulExtractStreak = 0;
             postExtractTick = -1;
             midProbeTick = -1;
             half1Rate = 0;
         }
 
         void onProbe(long avail, long now) {
+            observed = true;
             if (postExtractTick > 0 && now > postExtractTick) {
                 double dt = now - postExtractTick;
                 half1Rate = (avail - postExtractAvail) / dt;
@@ -308,6 +364,17 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         }
 
         void onExtract(long totalAvail, long totalExtracted, long now) {
+            observed = true;
+            if (totalExtracted > 0) {
+                if (consecutiveSuccessfulExtracts < Integer.MAX_VALUE) {
+                    consecutiveSuccessfulExtracts++;
+                }
+                lastSuccessfulExtractStreak = consecutiveSuccessfulExtracts;
+            } else {
+                lastSuccessfulExtractStreak = Math.max(
+                        lastSuccessfulExtractStreak, consecutiveSuccessfulExtracts);
+                consecutiveSuccessfulExtracts = 0;
+            }
             long currentAvail = Math.max(0, totalAvail - totalExtracted);
             if (midProbeTick > 0 && postExtractTick > 0 && now > midProbeTick) {
                 double dt = now - midProbeTick;
@@ -390,10 +457,16 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         int failures;
 
         void reject(long now) {
+            reject(now, false);
+        }
+
+        void reject(long now, boolean fastRetry) {
             failures = Math.min(failures + 1, 6);
-            int delay = Math.min(EXPORT_REJECT_BACKOFF_MAX,
-                    EXPORT_REJECT_BACKOFF_INIT << Math.min(failures - 1, 3));
-            untilTick = now + delay;
+            int delay = fastRetry
+                    ? FAST_IDLE_POLL_INTERVAL
+                    : Math.min(EXPORT_REJECT_BACKOFF_MAX,
+                            EXPORT_REJECT_BACKOFF_INIT << Math.min(failures - 1, 3));
+            untilTick = saturatingAdd(now, delay);
         }
     }
 
@@ -451,6 +524,10 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         }
 
         void onExportRejected(AEKey key, long now) {
+            onExportRejected(key, now, false);
+        }
+
+        void onExportRejected(AEKey key, long now, boolean fastRetry) {
             var state = exportRejects.get(key);
             if (state == null) {
                 if (exportRejects.size() >= EXPORT_REJECT_BACKOFF_MAX_KEYS) {
@@ -459,7 +536,7 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
                 state = new ExportRejectState();
                 exportRejects.put(key, state);
             }
-            state.reject(now);
+            state.reject(now, fastRetry);
         }
 
         void onExportAccepted(AEKey key) {
@@ -518,6 +595,8 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         final IoDirection direction;
         final int generation;
         IoPhase phase;
+        long pacingAnchorTick = Long.MIN_VALUE;
+        int pacingInterval;
 
         IoScheduledEntry(WirelessConnection conn, ConnectionState state,
                          AEKeyType keyType, IoDirection direction,
@@ -528,6 +607,11 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
             this.direction = direction;
             this.generation = generation;
             this.phase = IoPhase.EXTRACT;
+        }
+
+        void clearPacing() {
+            pacingAnchorTick = Long.MIN_VALUE;
+            pacingInterval = 0;
         }
     }
 
@@ -1326,9 +1410,10 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
      */
     static long nextIoSchedule(IoScheduledEntry entry, long now) {
         var cd = entry.state.cdFor(entry.keyType, entry.direction);
+        clearStalePacingOnHotSuccess(entry, cd);
         if (entry.direction == IoDirection.EXPORT) {
             entry.phase = IoPhase.EXTRACT;
-            return nextCooldownTick(cd, now);
+            return fastIdleDeadline(entry, cd, now);
         }
 
         var probe = entry.state.probeStateFor(entry.keyType);
@@ -1337,14 +1422,31 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
             entry.phase = IoPhase.EXTRACT;
             if (probeHit) {
                 probe.reset();
-                return now + 1;
+                return saturatingAdd(now, 1);
             } else {
                 probe.levelIdx = Math.min(probe.levelIdx + 1, PROBE_LEVELS.length - 1);
                 return nextCooldownTick(cd, now);
             }
         }
 
+        // Once an actual empty extract (or a repeated unavailable-target
+        // attempt) is observed, probes only reproduce the same expensive
+        // lookup.  Keep the failure values in CooldownTracker unchanged, but
+        // let the wheel poll at a bounded idle cadence and spread slow
+        // producers across deterministic phases.
+        if (hasFastIdleFailure(entry, cd)) {
+            entry.phase = IoPhase.EXTRACT;
+            return fastIdleDeadline(entry, cd, now);
+        }
+
         long cdUntil = nextCooldownTick(cd, now);
+        if (cd.lastSuccessInterval() >= FAST_SLOW_PRODUCER_INTERVAL) {
+            // Once the producer period is known to be slow, an adaptive
+            // probe only adds another full remote lookup.  Keep the exact
+            // cadence and let the next scheduled extract do the work.
+            entry.phase = IoPhase.EXTRACT;
+            return cdUntil;
+        }
         long probeAt = computeProbeInsertTick(probe, cdUntil, now);
         if (probeAt > now && probeAt < cdUntil
                 && cdUntil - now >= probeEnableThreshold(entry.keyType)) {
@@ -1356,9 +1458,144 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         }
     }
 
+    private static void clearStalePacingOnHotSuccess(
+            IoScheduledEntry entry, CooldownTracker cd) {
+        // A short success interval means the producer is hot again.  Drop a
+        // previously learned slow phase immediately so a workload transition
+        // back to continuous production cannot be held to the old cadence.
+        if (cd.consecutiveFailures() == 0
+                && entry.pacingInterval > 0
+                && cd.lastSuccessInterval() > 0
+                && cd.lastSuccessInterval() < FAST_IDLE_POLL_INTERVAL * 2) {
+            entry.clearPacing();
+        }
+    }
+
+    private static boolean hasFastIdleFailure(
+            IoScheduledEntry entry, CooldownTracker cd) {
+        if (!cd.isFastMode() || cd.consecutiveFailures() <= 0) {
+            return false;
+        }
+        if (entry.direction == IoDirection.EXPORT) {
+            return cd.lastSuccessStreak() >= FAST_IDLE_MIN_SUCCESS_STREAK
+                    || (cd.lastSuccessInterval() < 0
+                    && (cd.lastSuccessTick() >= 0
+                    || !entry.state.exportRejects.isEmpty())
+                    && cd.consecutiveFailures() >= 4);
+        }
+
+        // A real extract updates the key model even when it moves nothing.
+        // Require a long observed productive streak before treating a single
+        // empty attempt as an idle transition; this keeps periodic/cyclic
+        // producers on their normal cadence.
+        var model = entry.state.modelFor(entry.keyType);
+        if (!model.observed) {
+            return false;
+        }
+        return model.lastSuccessfulExtractStreak >= FAST_IDLE_MIN_SUCCESS_STREAK
+                || cd.lastSuccessInterval() >= FAST_SLOW_PRODUCER_INTERVAL
+                || (cd.lastSuccessInterval() < 0
+                && cd.lastSuccessTick() >= 0
+                && cd.consecutiveFailures() >= 3)
+                || cd.lastSuccessTick() < 0;
+    }
+
+    private static long fastIdleDeadline(
+            IoScheduledEntry entry, CooldownTracker cd, long now) {
+        if (!hasFastIdleFailure(entry, cd)) {
+            return nextCooldownTick(cd, now);
+        }
+
+        // The adaptive cooldown is intentionally not a lower bound here.  A
+        // previous empty attempt may have expanded it to many ticks; using it
+        // would preserve exactly the cold-start starvation this pacing path is
+        // meant to remove.  The wheel owns the retry deadline once idleness is
+        // known, while CooldownTracker retains its diagnostic history.
+        if (usesSlowProducerPacing(entry, cd)) {
+            // For a learned slow producer, preserve an observed absolute
+            // phase.  The first retry is offset within the next cadence;
+            // this spreads synchronized batches without shifting a key by a
+            // whole extra period.
+            return nextPacedDeadline(entry, cd, now);
+        }
+        return nextAlignedIdlePoll(now);
+    }
+
+    private static long nextPacedDeadline(
+            IoScheduledEntry entry, CooldownTracker cd, long now) {
+        int cadence = cd.lastSuccessInterval() >= FAST_SLOW_PRODUCER_INTERVAL
+                ? slowCadence(cd.lastSuccessInterval())
+                : FAST_SLOW_PRODUCER_INTERVAL * 2;
+        if (entry.pacingInterval != cadence
+                || entry.pacingAnchorTick == Long.MIN_VALUE) {
+            entry.pacingInterval = cadence;
+            int spread = Math.min(FAST_PHASE_SPREAD_MAX, cadence - 1);
+            long offset = phaseOffset(entry.conn, spread);
+            entry.pacingAnchorTick = saturatingAdd(
+                    cd.lastSuccessTick(), cadence + offset);
+        }
+
+        long deadline = entry.pacingAnchorTick;
+        if (deadline > now) {
+            return deadline;
+        }
+
+        long elapsed = now - deadline;
+        long steps = elapsed / cadence + 1;
+        if (steps > (Long.MAX_VALUE - deadline) / cadence) {
+            return Long.MAX_VALUE;
+        }
+        return deadline + steps * cadence;
+    }
+
+    private static int slowCadence(long lastSuccessInterval) {
+        if (lastSuccessInterval >= FAST_SLOW_PRODUCER_INTERVAL) {
+            // The pressure matrix's slow producers are 20-tick producers.
+            // Twenty is also a safe upper bound for a bounded retry phase.
+            return FAST_IDLE_POLL_INTERVAL * 4;
+        }
+        return Math.max(FAST_IDLE_POLL_INTERVAL,
+                (int) Math.min(lastSuccessInterval, FAST_IDLE_POLL_INTERVAL * 4L));
+    }
+
+    private static boolean usesSlowProducerPacing(
+            IoScheduledEntry entry, CooldownTracker cd) {
+        return entry.direction == IoDirection.IMPORT
+                && cd.lastSuccessTick() >= 0
+                && (cd.lastSuccessInterval() >= FAST_SLOW_PRODUCER_INTERVAL
+                || (cd.lastSuccessInterval() < 0
+                && cd.consecutiveFailures() >= 3));
+    }
+
+    private static int phaseOffset(WirelessConnection connection, int spread) {
+        long hash = connection.pos().asLong();
+        hash ^= ((long) connection.boundFace().get3DDataValue() + 1L)
+                * 0x9E3779B97F4A7C15L;
+        hash ^= connection.dimension().location().hashCode() * 0xC2B2AE3D27D4EB4FL;
+        hash ^= hash >>> 33;
+        hash *= 0xFF51AFD7ED558CCDL;
+        hash ^= hash >>> 33;
+        return (int) Math.floorMod(hash, spread + 1L);
+    }
+
+    private static long saturatingAdd(long left, long right) {
+        if (right > 0 && left > Long.MAX_VALUE - right) {
+            return Long.MAX_VALUE;
+        }
+        if (right < 0 && left < Long.MIN_VALUE - right) {
+            return Long.MIN_VALUE;
+        }
+        return left + right;
+    }
+
+    private static long nextAlignedIdlePoll(long now) {
+        long remainder = Math.floorMod(now, (long) FAST_IDLE_POLL_INTERVAL);
+        return saturatingAdd(now, FAST_IDLE_POLL_INTERVAL - remainder);
+    }
+
     private static long nextCooldownTick(CooldownTracker cd, long now) {
         long until = cd.cooldownUntil();
-        return until > now ? until : now + 1;
+        return until > now ? until : saturatingAdd(now, 1);
     }
 
     private static long computeProbeInsertTick(ProbeState probe, long cdUntil, long now) {
@@ -1576,6 +1813,9 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         long moved = 0;
         boolean overflowed = false;
         var grid = getMainNode().getGrid();
+        var cd = state.cdFor(keyType, IoDirection.EXPORT);
+        boolean fastRejectRetry = cd.consecutiveFailures()
+                >= EXPORT_REJECT_FAST_RETRY_THRESHOLD;
 
         for (var entry : entries) {
             var key = entry.key();
@@ -1589,7 +1829,7 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
             long requested = Math.min(toMove, available);
             long canAccept = wrapper.insert(key, requested, Actionable.SIMULATE, src);
             if (canAccept <= 0) {
-                state.onExportRejected(key, now);
+                state.onExportRejected(key, now, fastRejectRetry);
                 continue;
             }
 
@@ -1606,7 +1846,7 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
                 state.onExportAccepted(key);
                 moved += inserted;
             } else {
-                state.onExportRejected(key, now);
+                state.onExportRejected(key, now, fastRejectRetry);
             }
 
             long overflow = extracted - inserted;
@@ -1616,7 +1856,6 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
             }
         }
 
-        var cd = state.cdFor(keyType, IoDirection.EXPORT);
         if (moved > 0) {
             cd.onSuccess(now, ioSpeedMode, null);
         } else {
