@@ -1133,6 +1133,16 @@ build/reports/wireless-interface-io-live-comparison/live-comparison.md
 
 本轮同时修正了 `scripts/run-wireless-io-gametest-benchmark.ps1` 的 CSV 路径拼接：当前 PowerShell/.NET 下，旧的 `ChangeExtension(..., $null) + "-ticks.csv"` 会得到带额外句点的路径，而 GameTest 实际写出的是 `<base>-ticks.csv`。新写法只修正报告收集，基线首次运行即保留了原始 JSON/CSV 并逐 tick 核对；它没有改变 GameTest 夹具、聚合、阈值或生产负载。
 
+### 12.6 需求驱动唤醒候选的行为契约测试
+
+本轮只增加测试，没有实现需求驱动 dirty/wake 调度，也没有修改生产代码。新增 `WirelessInterfaceDemandWakeContractTest`，用现有生产状态机和现有 178 个场景中的代表场景建立三组行为契约：
+
+- 长空闲后的单 tick demand/pulse、hot restart、target flap、target outage 和 scheduler rebuild 必须在既有需求等待上限内恢复。
+- 同步、交错和哈希三种相位下的单 tick pulse 与 FOUR_TICK_BURST（共 12 个组合）必须保持吞吐、公平性、零压力、延迟和工作量门槛。
+- target flap、target outage 和 scheduler rebuild 的双向路径必须保持输入/输出所有权守恒，不得重复或丢失物品。
+
+这组测试是外部行为契约，不假设未来一定使用哪种 dirty 标记或唤醒队列；当前版本依靠 watchdog 通过，未来实现需求驱动唤醒后仍必须保持它们为绿。测试还保留 pulse 的 idle visits 诊断，但不把“减少 idle visits”写成新的 acceptance 阈值，因此不会把测试新增本身误报为性能收益。新增测试当前通过；真实 MSPT、TPS 和无线 I/O 延迟仍以第 12.5 节记录的五轮 GameTest 为准。
+
 ## 13. 结果记录模板
 
 ```text
