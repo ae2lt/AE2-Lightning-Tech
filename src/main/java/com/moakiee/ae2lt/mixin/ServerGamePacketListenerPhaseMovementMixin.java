@@ -17,6 +17,7 @@ import net.minecraft.network.protocol.game.ServerboundCustomPayloadPacket;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import net.minecraft.world.entity.RelativeMovement;
+import net.minecraft.world.level.GameType;
 import net.minecraft.world.phys.Vec3;
 
 import com.moakiee.ae2lt.celestweave.PhaseFlightMovementGuard;
@@ -63,6 +64,21 @@ public abstract class ServerGamePacketListenerPhaseMovementMixin {
             PhaseFlightMovementGuard.notifyBlockedTeleport(player, target);
             ci.cancel();
         }
+    }
+
+    @WrapOperation(
+            method = "handleMovePlayer",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/server/network/ServerGamePacketListenerImpl;isSingleplayerOwner()Z"))
+    private boolean ae2lt$allowCreativeAndSpectatorMovement(
+            ServerGamePacketListenerImpl listener,
+            Operation<Boolean> original) {
+        ServerPlayer player = ((ServerGamePacketListenerImpl) (Object) this).player;
+        GameType gameType = player.gameMode.getGameModeForPlayer();
+        return original.call(listener)
+                || gameType == GameType.CREATIVE
+                || gameType == GameType.SPECTATOR;
     }
 
     @WrapMethod(method = "handleMovePlayer")

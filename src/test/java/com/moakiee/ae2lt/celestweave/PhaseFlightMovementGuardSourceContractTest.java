@@ -170,6 +170,26 @@ class PhaseFlightMovementGuardSourceContractTest {
     }
 
     @Test
+    void serverMovementSpeedCheckAllowsCreativeAndSpectatorPlayers() throws Exception {
+        String packetMixin = Files.readString(Path.of(
+                "src/main/java/com/moakiee/ae2lt/mixin/ServerGamePacketListenerPhaseMovementMixin.java"));
+
+        assertTrue(packetMixin.contains("@WrapOperation("));
+        assertTrue(packetMixin.contains("method = \"handleMovePlayer\""));
+        assertTrue(packetMixin.contains(
+                "target = \"Lnet/minecraft/server/network/ServerGamePacketListenerImpl;isSingleplayerOwner()Z\""));
+        assertTrue(packetMixin.contains("Operation<Boolean> original"));
+        assertTrue(packetMixin.contains("return original.call(listener)"));
+        assertTrue(packetMixin.contains("gameType == GameType.CREATIVE"));
+        assertTrue(packetMixin.contains("gameType == GameType.SPECTATOR"));
+        assertTrue(packetMixin.contains("@WrapMethod(method = \"handleMovePlayer\")"));
+        assertTrue(packetMixin.contains("PhaseFlightMovementGuard.beginMovementPacket(player)"));
+        assertTrue(packetMixin.contains("PhaseFlightMovementGuard.endMovementPacket(player)"));
+        assertTrue(packetMixin.contains("finally"));
+        assertFalse(packetMixin.contains("method = \"handlePlayerAction\""));
+    }
+
+    @Test
     void customPayloadTeleportAuthorizationIsBoundToTheSendingPlayerOnly() throws Exception {
         String guard = Files.readString(Path.of(
                 "src/main/java/com/moakiee/ae2lt/celestweave/PhaseFlightMovementGuard.java"));
