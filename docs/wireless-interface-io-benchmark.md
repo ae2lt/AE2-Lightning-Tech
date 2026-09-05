@@ -1743,3 +1743,155 @@ GameTest 失败。历史普通 `fastimport256transitions` 失败仍按 16.5 记�
 完成的项目是固定等产出量的高基数五轮性能对照、第三方 capability 的端到端时间戳、
 新的正式 profiler 轮，以及 NORMAL + EXPORT 的完整真实模式切换场景。任何后续性能
 结论都必须先补齐这些对照，不能把本节的背压差异写成无条件吞吐提升。
+
+### 16.7 2026-09-05 ce601b9d 持续补货背压、两段延迟与等负载复验
+
+本轮审查对象是提交 `ce601b9d`，从分支
+`test/wireless-interface-io-benchmark` 的实际工作树继续。先检查工作树并保留了已有
+修改；仓库根目录没有适用的 `AGENTS.md`。唯一发现的
+`Source Code/1.21.1/SuperFactoryManager-1.21.1/docs/AGENTS.md` 属于嵌套第三方工程，
+内容为转交其自身 1.19.2 说明，未套用到本仓库。本节之前已阅读并以 16.6 的结论为
+起点，尤其保留了“高基数拒收旧对照不等负载、不能据此宣称收益”的限制。
+
+#### 先复现：已有键补货会重启拒收观察
+
+旧实现的真实生产 helper 测试先复现了问题：在 `49,152` 个同类型键全部拒收时，
+每轮给已访问键和未访问键追加数量，并同时加入新键，旧的
+`onBuffered(key, false)` 会把 `untestedKeys` 重置为新的 `pendingKeys`。实际测试在
+`attempts=49,152` 后仍剩 `untested=2`，而 buffer 已到 `49,164`，拒收遍历不能收敛。
+这不是由模型推断出来的故障。
+
+新增的 `OverloadedInterfaceBufferPathTest` 共 11 个测试，直接调用生产
+`flushImportBufferEntries`，以可编程 `MEStorage` 实现拒收、部分接收、恢复和混合类型，
+不复制一份测试算法。覆盖内容包括：
+
+- `16,385` 和 `49,152` 个同类型键全拒收，逐片访问不超过 `16,384`；
+- 每轮分别给已测试键、未测试键追加数量，同时追加新键，观察轮最终收敛并建立类型锁；
+- 前片拒收、未访问尾部可接收时，尾部访问前不建立锁；网络恢复后逐键守恒；
+- 部分接收、混合类型、FAST/NORMAL 重试门槛，以及实际模式/唤醒重置观察轮次。
+
+最终生产修复按类型维护 `pendingKeys`、`untestedKeys`、进度和拒收轮状态。已有键的
+数量合并不再使整轮观察重启；拒收轮开始后新出现的键只进入稀疏 `lateKeys` 集合，
+完成对应新键尝试后释放集合。任何进度都会重建待观察计数；模式切换和无线唤醒仍会
+显式重置观察轮。这样拒收片仍保持有界的 `16,384` 真实尝试，不扫描 untouched tail，
+不丢弃 buffer，也不无条件锁住整个类型；未访问的可接收尾部必须先被尝试。无拒收的
+排空路径仍允许一次处理剩余尾部，而不是被简单的每 tick 上限削弱。
+
+#### 延迟口径修正与实际观测
+
+`HighCardWorkloadState` 的诊断分支现在按目标/键观察真实桶库存下降，而不是把每个
+tick 的抽取增量误当成累计抽取量。一次诊断运行确实暴露了这个观测器 bug：在
+`extracted=0, buffered=1,769,472` 的空闲观察 tick 产生了假负网络归属；修复为使用
+tracker 的累计值后，等负载和高基数诊断均重跑通过。该失败运行被排除，没有当作生产
+故障或性能数据。
+
+两段数据明确分开：
+
+- 产出 → 接口 buffer：诊断模式逐目标/逐键观察 barrel 数量下降，归属为
+  `target-key-observed`；这是本夹具可观测范围内的真实段延迟。正式计时不执行每 tick
+  的目标/键扫描，报告写 `not-recorded-formal`，避免诊断开销污染 MSPT。
+- 产出 → 真正进入 ME 网络：从累计抽取与当前 buffer 的差额得到网络归属，并用生产
+  批次队列做 FIFO 估算，报告明确写 `aggregate-delta-fifo-estimate`，不能把它当作
+  真实逐目标/逐键 P99。未完成批次数、最大等待、当前/最大 buffer 和最终剩余量仍保留。
+
+同键合并的约定写入报告：`earliest_active_batch_owns_merged_amount`。新增的真实
+`fastImportOutOfOrderTargetAttribution` 会先阻塞早目标、再生产晚目标，并实际切换
+`OFF → AUTO`；候选和干净 ce601b9d 基线都验证晚目标先完成，证明不能用全局 FIFO 把
+这个分布当作真实搬运顺序。高基数拒收诊断报告记录了 buffer P99 `251` tick、网络段
+估算 P99 `243` tick（恢复阶段）；两者含义不同，不能合并成一个端到端 P99。
+
+诊断原始产物为：
+
+- `benchmark-results/wireless-io-equal-recovery-diagnostics-final-f6e3/`；
+- `benchmark-results/wireless-io-high-reject-diagnostics-final-f6e3/`。
+
+高基数拒收 stress 诊断中计划产出 `424,673,280`、实际产出 `12,386,304`，记录了
+`238,592` 次源端受阻；这是保留背压行为场景的证据，不是等负载性能对照，也没有把
+生产计划随候选抽取速度静默减少。
+
+#### 固定负载的五轮真实对照
+
+新增并固定了三种真实 GameTest 夹具：恢复、部分接收恢复、网络可接收期间的持续
+负载。control 与 stress 使用完全相同的目标集合、初始状态、生产计划和恢复 tick；
+区别只保留为正式探针是否计时的 control/stress 运行。没有扩大生产槽位或接口 buffer，
+部分接收的有限 1K cell 保留在 drive slot 0，恢复时把无限 cell 放到 slot 1，避免覆盖
+已被接受的物品。
+
+基线使用干净 `ce601b9d` 生产代码，候选为本节最终生产改动；每个 profile 均为 5 个
+control/stress 对、每次独立 JVM、200 tick 预热和 1200 tick 采样。所有 manifest 的
+完整 Git HEAD 都是 `ce601b9d88e2f872c3db4fe550037870ef5aebb9`，Java 为 21.0.11，
+服务端为 1.21.1；基线与候选 JSON/CSV 分目录保存。主要目录为：
+
+- recovery：基线 `benchmark-results/wireless-io-equal-recovery-baseline-f5/`，候选
+  `benchmark-results/wireless-io-equal-recovery-candidate-final-f6e4/`；
+- partial：基线 `C:\Project\AE2-Lightning-Tech-baseline-ce601b9d\benchmark-results\wireless-io-equal-partial-baseline-f5/`，
+  候选 `benchmark-results/wireless-io-equal-partial-candidate-final-f6e4/`；
+- sustained：基线 `C:\Project\AE2-Lightning-Tech-baseline-ce601b9d\benchmark-results\wireless-io-equal-sustained-baseline-f5/`，
+  候选 `benchmark-results/wireless-io-equal-sustained-candidate-final-f6e4/`。
+
+每个目录有 10 份完整 JSON 和 10 份逐 tick CSV，`samples=1200`、`partial=false`。固定
+负载守恒为：恢复/部分接收均计划、实际、抽取、入网 `1,769,472`，共 `27,648` 个
+键，恢复 tick `1300`，最终剩余 `0`；持续负载均为 `30,081,024`，固定键集合、
+80 tick 周期，计划与实际相等，最终剩余 `0`。三个候选组的最差窗口/目标吞吐均为
+`1.0`，没有用大量空闲 tick 稀释平均值。
+
+stress 五轮中位数如下，单位为 ms；百分比是候选相对基线的变化：
+
+| Profile | mean MSPT 基线 → 候选 | P95 基线 → 候选 | P99 基线 → 候选 | wireless I/O P99 基线 → 候选 | GC ms 基线 → 候选 | 峰值堆基线 → 候选 |
+|---|---:|---:|---:|---:|---:|---:|
+| recovery | 0.865868 → 0.826980（−4.49%） | 3.2815 → 3.1597 | 5.3789 → 4.2870（−20.30%） | 4.7339 → 3.8738（−18.17%） | 58 → 47 | 1,039,784,880 → 872,294,448 B |
+| partial | 0.899162 → 0.870999（−3.13%） | 3.2782 → 3.2531 | 4.8292 → 5.0252（+4.06%） | 4.1738 → 4.1363（−0.90%） | 133 → 59 | 1,475,273,920 → 834,754,560 B |
+| sustained | 0.807921 → 0.772669（−4.36%） | 4.978499 → 4.8833 | 7.3774 → 7.7356（+4.86%） | 6.087601 → 6.0149（−1.19%） | 81 → 35 | 1,596,439,608 → 715,554,912 B |
+
+五轮 `max MSPT` 中位数依次为 recovery `67.1899 → 62.1531`、partial
+`64.8956 → 59.9115`、sustained `14.9253 → 12.6533`；超过 50 ms 的 tick 为
+`1/1`、`1/1`、`0/0`（基线/候选）。GC 暂停占 1200×50 ms 采样时长的比例分别为
+recovery `0.0967% → 0.0783%`、partial `0.2217% → 0.0983%`、sustained
+`0.1350% → 0.0583%`。因此三组的实测 MSPT、尾部和 GC 绝对值均在既定门槛内；
+这不改变 sustained 的相对 P99 回归，也不把由 mean MSPT 推导的 `capacityTps` 当成
+TPS 实测。
+
+完整比较器结果为：recovery `PASS / MEASURABLE_IMPROVEMENT`，partial
+`PASS / MEASURABLE_IMPROVEMENT`，sustained `FAIL / NO_MEASURABLE_IMPROVEMENT`。
+sustained 的控制校正 P99 从 `−0.453602` 变为 `0.083100`，超过既定 `0.5 ms` 绝对
+容差；partial 和 sustained 的原始压力 P99 也分别上升 `4.06%`、`4.86%`，虽未超过
+回归容差，不能被平均 MSPT、GC 或堆峰值掩盖。比较报告保存在：
+
+- `benchmark-results/wireless-io-equal-recovery-comparison-final-f6e4.md`；
+- `benchmark-results/wireless-io-equal-partial-comparison-final-f6e4.md`；
+- `benchmark-results/wireless-io-equal-sustained-comparison-final-f6e4.md`。
+
+因此本轮的真实性结论是：语义、守恒、生产计划和恢复吞吐通过；恢复/部分 profile
+有实际相对改善证据，但持续负载 profile 未通过完整回归门槛，不能宣称该生产候选在
+整体上降低了 MSPT、掉 TPS 或端到端延迟。报告中的 `capacityTps=20.000` 均明确标为
+`derived_from_mean_mspt_not_measured_tps`，没有用它替代实测 TPS，也没有用配置连接数
+替代 capability 访问证据。
+
+#### 最终验证、已知失败与未完成项
+
+本轮最终验证包括：
+
+- `OverloadedInterfaceBufferPathTest`：11/11 PASS；
+- `test wirelessInterfaceIoModelAcceptance`：25 个语义场景、178 个压力场景全部 PASS；
+- `wirelessInterfaceIoModelEnduranceAcceptance`：20,000 tick import/export/bidirectional
+  全部 PASS；
+- 固定九行 outcome 未改动，原有语义/压力矩阵未删除或放宽；
+- 最终候选普通 `runGameTestServer` 与干净 ce601b9d 基线均为 6 个测试中 5 个 PASS，
+  只有既有 `fastimport256transitions` 失败。基线阻塞率 `0.1337209302`，候选
+  `0.1337512112`，状态、连接数和 buffer 状态一致且都最终有网络量；这只是
+  `0.0000302809` 的测量差异，按既有失败归类。新增 out-of-order、模式切换及其它生产
+  覆盖没有新增回归；
+- `wireless-io-equal-recovery-diagnostics-final-f6e3` 和
+  `wireless-io-high-reject-diagnostics-final-f6e3` 均真实服务端通过。
+
+保留的失败候选和负结论包括：逐拒收键 full `HashSet`、释放时机变体和自定义完整
+开放寻址集合曾分别增加堆/GC或出现相对回归；“全局无 untouched gate”的标量方案又
+无法保证 `>16K` 尾部收敛。没有重复缺乏新证据的 phase/watchdog、cache TTL、历史
+cadence 或批量能源核算方案。
+
+未完成项仍明确保留：第三方真实 capability 的逐物品端点时间戳、正式 profiler/JFR
+对最终候选热路径的新一轮采样、NORMAL + EXPORT 的完整真实模式切换、以及把持续负载
+控制校正 P99 回归消除后的下一候选。正式计时故意不采集逐目标最大 item buffer 和
+逐目标网络 P99；这些只能在诊断模式或加入可信端点事件后补齐。下一轮应继续以实际
+刷新/扫描/抽取/类型状态维护/对象分配成本为证据选择单一候选，而不是先固定每 tick
+上限或以空闲样本制造收益。

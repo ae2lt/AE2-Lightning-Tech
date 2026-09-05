@@ -185,6 +185,12 @@ neoForge {
                     providers.gradleProperty('ae2ltBenchmarkScenario').getOrElse('manual')
             systemProperty 'ae2lt.wirelessIoBenchmark.commit',
                     providers.gradleProperty('ae2ltBenchmarkCommit').getOrElse('working-tree')
+            systemProperty 'ae2lt.wirelessIoBenchmark.gitHead',
+                    providers.gradleProperty('ae2ltBenchmarkGitHead').getOrElse('unknown')
+            systemProperty 'ae2lt.wirelessIoBenchmark.worktreeDirty',
+                    providers.gradleProperty('ae2ltBenchmarkWorktreeDirty').getOrElse('false')
+            systemProperty 'ae2lt.wirelessIoBenchmark.diagnostics',
+                    providers.gradleProperty('ae2ltBenchmarkDiagnostics').getOrElse('false')
         }
 
         // This run config launches GameTestServer and runs all registered gametests, then exits.
@@ -210,6 +216,12 @@ neoForge {
                             .getOrElse('gametest-import-1024x27-continuous')
             systemProperty 'ae2lt.wirelessIoBenchmark.commit',
                     providers.gradleProperty('ae2ltBenchmarkCommit').getOrElse('working-tree')
+            systemProperty 'ae2lt.wirelessIoBenchmark.gitHead',
+                    providers.gradleProperty('ae2ltBenchmarkGitHead').getOrElse('unknown')
+            systemProperty 'ae2lt.wirelessIoBenchmark.worktreeDirty',
+                    providers.gradleProperty('ae2ltBenchmarkWorktreeDirty').getOrElse('false')
+            systemProperty 'ae2lt.wirelessIoBenchmark.diagnostics',
+                    providers.gradleProperty('ae2ltBenchmarkDiagnostics').getOrElse('false')
             systemProperty 'ae2lt.wirelessIoGameTest.control',
                     providers.gradleProperty('ae2ltBenchmarkControl').getOrElse('false')
         }

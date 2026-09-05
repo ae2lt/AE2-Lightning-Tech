@@ -37,6 +37,12 @@ public final class WirelessIoPerformanceProbe {
             "ae2lt.wirelessIoBenchmark.scenario", "manual");
     private static final String COMMIT = System.getProperty(
             "ae2lt.wirelessIoBenchmark.commit", "working-tree");
+    private static final String GIT_HEAD = System.getProperty(
+            "ae2lt.wirelessIoBenchmark.gitHead", COMMIT);
+    private static final boolean WORKTREE_DIRTY = Boolean.parseBoolean(System.getProperty(
+            "ae2lt.wirelessIoBenchmark.worktreeDirty", "false"));
+    private static final boolean DIAGNOSTICS = Boolean.parseBoolean(System.getProperty(
+            "ae2lt.wirelessIoBenchmark.diagnostics", "false"));
     private static final Path OUTPUT_DIRECTORY = Path.of(System.getProperty(
             "ae2lt.wirelessIoBenchmark.output", "benchmark-reports/wireless-interface-io"));
 
@@ -62,21 +68,42 @@ public final class WirelessIoPerformanceProbe {
     private static long workloadExtractedItems;
     private static long workloadNetworkImportedItems;
     private static long workloadBufferedItems;
-    private static long workloadMaxBufferedItems;
-    private static long workloadMaxBufferedKeys;
-    private static long workloadExtractLatencyP50 = -1;
-    private static long workloadExtractLatencyP95 = -1;
-    private static long workloadExtractLatencyP99 = -1;
-    private static long workloadExtractLatencyMax = -1;
+    private static long workloadMaxBufferedItems = -1;
+    private static long workloadMaxBufferedKeys = -1;
+    private static String workloadBufferLatencyAttribution = "not-recorded";
+    private static long workloadBufferLatencySamples = -1;
+    private static long workloadBufferLatencyP50 = -1;
+    private static long workloadBufferLatencyP95 = -1;
+    private static long workloadBufferLatencyP99 = -1;
+    private static long workloadBufferLatencyMax = -1;
+    private static long workloadBufferPendingBatches = -1;
+    private static long workloadBufferMaxPendingWait = -1;
+    private static String workloadNetworkLatencyAttribution = "not-recorded";
+    private static long workloadNetworkLatencySamples = -1;
     private static long workloadNetworkLatencyP50 = -1;
     private static long workloadNetworkLatencyP95 = -1;
     private static long workloadNetworkLatencyP99 = -1;
     private static long workloadNetworkLatencyMax = -1;
+    private static long workloadNetworkPendingBatches = -1;
+    private static long workloadNetworkMaxPendingWait = -1;
+    private static long workloadPlannedProductionItems = -1;
+    private static long workloadActualProductionItems = -1;
+    private static long workloadBlockedProductionEvents = -1;
+    private static long workloadProductionOpportunities = -1;
+    private static double workloadMinimumWindowThroughput = -1.0;
+    private static double workloadMinimumTargetThroughput = -1.0;
+    private static long workloadRecoveryTick = -1;
+    private static long workloadBufferDrainTick = -1;
+    private static long workloadFinalRemainingItems = -1;
 
     private WirelessIoPerformanceProbe() {
     }
 
     public static boolean shouldMeasure() {
+        return ENABLED && !reportWritten && samples < SAMPLE_TICKS;
+    }
+
+    private static boolean acceptsWorkloadObservation() {
         return ENABLED && !reportWritten;
     }
 
@@ -125,31 +152,76 @@ public final class WirelessIoPerformanceProbe {
             long bufferedItems,
             long maxBufferedItems,
             long maxBufferedKeys,
-            long extractLatencyP50,
-            long extractLatencyP95,
-            long extractLatencyP99,
-            long extractLatencyMax,
+            String bufferLatencyAttribution,
+            long bufferLatencySamples,
+            long bufferLatencyP50,
+            long bufferLatencyP95,
+            long bufferLatencyP99,
+            long bufferLatencyMax,
+            long bufferPendingBatches,
+            long bufferMaxPendingWait,
+            String networkLatencyAttribution,
+            long networkLatencySamples,
             long networkLatencyP50,
             long networkLatencyP95,
             long networkLatencyP99,
-            long networkLatencyMax) {
-        if (!shouldMeasure()) {
+            long networkLatencyMax,
+            long networkPendingBatches,
+            long networkMaxPendingWait) {
+        if (!acceptsWorkloadObservation()) {
             return;
         }
         workloadProducedItems = Math.max(0L, producedItems);
         workloadExtractedItems = Math.max(0L, extractedItems);
         workloadNetworkImportedItems = Math.max(0L, networkImportedItems);
         workloadBufferedItems = Math.max(0L, bufferedItems);
-        workloadMaxBufferedItems = Math.max(workloadMaxBufferedItems, maxBufferedItems);
-        workloadMaxBufferedKeys = Math.max(workloadMaxBufferedKeys, maxBufferedKeys);
-        workloadExtractLatencyP50 = extractLatencyP50;
-        workloadExtractLatencyP95 = extractLatencyP95;
-        workloadExtractLatencyP99 = extractLatencyP99;
-        workloadExtractLatencyMax = extractLatencyMax;
+        if (maxBufferedItems >= 0) {
+            workloadMaxBufferedItems = Math.max(workloadMaxBufferedItems, maxBufferedItems);
+        }
+        if (maxBufferedKeys >= 0) {
+            workloadMaxBufferedKeys = Math.max(workloadMaxBufferedKeys, maxBufferedKeys);
+        }
+        workloadBufferLatencyAttribution = safeAttribution(bufferLatencyAttribution);
+        workloadBufferLatencySamples = bufferLatencySamples;
+        workloadBufferLatencyP50 = bufferLatencyP50;
+        workloadBufferLatencyP95 = bufferLatencyP95;
+        workloadBufferLatencyP99 = bufferLatencyP99;
+        workloadBufferLatencyMax = bufferLatencyMax;
+        workloadBufferPendingBatches = bufferPendingBatches;
+        workloadBufferMaxPendingWait = bufferMaxPendingWait;
+        workloadNetworkLatencyAttribution = safeAttribution(networkLatencyAttribution);
+        workloadNetworkLatencySamples = networkLatencySamples;
         workloadNetworkLatencyP50 = networkLatencyP50;
         workloadNetworkLatencyP95 = networkLatencyP95;
         workloadNetworkLatencyP99 = networkLatencyP99;
         workloadNetworkLatencyMax = networkLatencyMax;
+        workloadNetworkPendingBatches = networkPendingBatches;
+        workloadNetworkMaxPendingWait = networkMaxPendingWait;
+    }
+
+    /** Records a fixed producer plan without making it part of tick timing. */
+    public static void recordProductionPlan(
+            long plannedItems,
+            long actualItems,
+            long blockedEvents,
+            long opportunities,
+            double minimumWindowThroughput,
+            double minimumTargetThroughput,
+            long recoveryTick,
+            long bufferDrainTick,
+            long finalRemainingItems) {
+        if (!acceptsWorkloadObservation()) {
+            return;
+        }
+        workloadPlannedProductionItems = plannedItems;
+        workloadActualProductionItems = actualItems;
+        workloadBlockedProductionEvents = blockedEvents;
+        workloadProductionOpportunities = opportunities;
+        workloadMinimumWindowThroughput = minimumWindowThroughput;
+        workloadMinimumTargetThroughput = minimumTargetThroughput;
+        workloadRecoveryTick = recoveryTick;
+        workloadBufferDrainTick = bufferDrainTick;
+        workloadFinalRemainingItems = finalRemainingItems;
     }
 
     public static void endServerTick(MinecraftServer server) {
@@ -173,14 +245,11 @@ public final class WirelessIoPerformanceProbe {
         fastInterfaceCalls[samples] = currentFastInterfaceCalls;
         connectionVisits[samples] = currentConnectionVisits;
         samples++;
-        if (samples == SAMPLE_TICKS) {
-            writeReport(server, false);
-        }
     }
 
     public static void finish(MinecraftServer server) {
         if (ENABLED && workloadSeen && !reportWritten && samples > 0) {
-            writeReport(server, true);
+            writeReport(server, samples < SAMPLE_TICKS);
         }
     }
 
@@ -231,9 +300,11 @@ public final class WirelessIoPerformanceProbe {
             long over50ms, long over100ms, double capacityTps,
             long gcCollections, long gcMillis) {
         return "{\n"
-                + "  \"schema\": 1,\n"
+                + "  \"schema\": 2,\n"
                 + "  \"scenario\": \"" + escapeJson(SCENARIO) + "\",\n"
                 + "  \"commit\": \"" + escapeJson(COMMIT) + "\",\n"
+                + "  \"gitHead\": \"" + escapeJson(GIT_HEAD) + "\",\n"
+                + "  \"workingTreeDirty\": " + WORKTREE_DIRTY + ",\n"
                 + "  \"partial\": " + partial + ",\n"
                 + "  \"samples\": " + count + ",\n"
                 + "  \"warmupTicks\": " + warmupSeen + ",\n"
@@ -248,6 +319,9 @@ public final class WirelessIoPerformanceProbe {
                 + "  \"tickMs\": " + tick.json() + ",\n"
                 + "  \"wirelessIoMs\": " + io.json() + ",\n"
                 + "  \"capacityTps\": " + decimal(capacityTps) + ",\n"
+                + "  \"capacityTpsKind\": \"derived_from_mean_mspt_not_measured_tps\",\n"
+                + "  \"workloadObservationMode\": \""
+                + (DIAGNOSTICS ? "diagnostic_target_key" : "formal_aggregate_only") + "\",\n"
                 + "  \"ticksOver50Ms\": " + over50ms + ",\n"
                 + "  \"ticksOver100Ms\": " + over100ms + ",\n"
                 + "  \"ticksOver50MsRatio\": " + decimal(ratio(over50ms, count)) + ",\n"
@@ -263,14 +337,34 @@ public final class WirelessIoPerformanceProbe {
                 + "  \"workloadBufferedItems\": " + workloadBufferedItems + ",\n"
                 + "  \"workloadMaxBufferedItems\": " + workloadMaxBufferedItems + ",\n"
                 + "  \"workloadMaxBufferedKeys\": " + workloadMaxBufferedKeys + ",\n"
-                + "  \"workloadExtractLatencyTicks\": {\"p50\": "
-                + workloadExtractLatencyP50 + ", \"p95\": " + workloadExtractLatencyP95
-                + ", \"p99\": " + workloadExtractLatencyP99 + ", \"max\": "
-                + workloadExtractLatencyMax + "},\n"
-                + "  \"workloadNetworkLatencyTicks\": {\"p50\": "
+                + "  \"workloadPlannedProductionItems\": " + workloadPlannedProductionItems + ",\n"
+                + "  \"workloadActualProductionItems\": " + workloadActualProductionItems + ",\n"
+                + "  \"workloadBlockedProductionEvents\": " + workloadBlockedProductionEvents + ",\n"
+                + "  \"workloadProductionOpportunities\": " + workloadProductionOpportunities + ",\n"
+                + "  \"workloadMinimumWindowThroughput\": "
+                + decimal(workloadMinimumWindowThroughput) + ",\n"
+                + "  \"workloadMinimumTargetThroughput\": "
+                + decimal(workloadMinimumTargetThroughput) + ",\n"
+                + "  \"workloadRecoveryTick\": " + workloadRecoveryTick + ",\n"
+                + "  \"workloadBufferDrainTick\": " + workloadBufferDrainTick + ",\n"
+                + "  \"workloadBufferDrainTickMeaning\": \"first_tick_buffer_keys_zero_not_me_network_empty\",\n"
+                + "  \"workloadSameKeyBatchConvention\": \"earliest_active_batch_owns_merged_amount\",\n"
+                + "  \"workloadFinalRemainingItems\": " + workloadFinalRemainingItems + ",\n"
+                + "  \"workloadOutputToBufferLatencyTicks\": {\"attribution\": \""
+                + escapeJson(workloadBufferLatencyAttribution) + "\", \"samples\": "
+                + workloadBufferLatencySamples + ", \"p50\": " + workloadBufferLatencyP50
+                + ", \"p95\": " + workloadBufferLatencyP95 + ", \"p99\": "
+                + workloadBufferLatencyP99 + ", \"max\": " + workloadBufferLatencyMax
+                + ", \"pendingBatches\": " + workloadBufferPendingBatches
+                + ", \"maxPendingWait\": " + workloadBufferMaxPendingWait + "},\n"
+                + "  \"workloadOutputToNetworkLatencyTicks\": {\"attribution\": \""
+                + escapeJson(workloadNetworkLatencyAttribution) + "\", \"samples\": "
+                + workloadNetworkLatencySamples + ", \"p50\": "
                 + workloadNetworkLatencyP50 + ", \"p95\": " + workloadNetworkLatencyP95
                 + ", \"p99\": " + workloadNetworkLatencyP99 + ", \"max\": "
-                + workloadNetworkLatencyMax + "}\n"
+                + workloadNetworkLatencyMax + ", \"pendingBatches\": "
+                + workloadNetworkPendingBatches + ", \"maxPendingWait\": "
+                + workloadNetworkMaxPendingWait + "}\n"
                 + "}\n";
     }
 
@@ -340,6 +434,10 @@ public final class WirelessIoPerformanceProbe {
 
     private static String escapeJson(String value) {
         return value.replace("\\", "\\\\").replace("\"", "\\\"");
+    }
+
+    private static String safeAttribution(String value) {
+        return value == null || value.isBlank() ? "not-recorded" : value;
     }
 
     private static String decimal(double value) {

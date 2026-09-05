@@ -655,6 +655,9 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
             int pendingKeys;
             int untestedKeys;
             boolean progressed;
+            boolean rejectionPassComplete;
+            boolean passStarted;
+            Set<AEKey> lateKeys;
         }
 
         private final Map<AEKeyType, TypeState> types = new IdentityHashMap<>();
@@ -676,6 +679,9 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
             }
             for (var state : types.values()) {
                 state.untestedKeys = state.pendingKeys;
+                state.rejectionPassComplete = false;
+                state.passStarted = false;
+                state.lateKeys = null;
             }
             initialized = true;
             previousFlushHadRejection = false;
@@ -695,22 +701,22 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
 
             if (newKey) {
                 state.pendingKeys++;
-                // A key appended after a rejection pass began belongs to the
-                // next pass.  Keeping it out of the current counter lets a
-                // continuous producer reach the same backpressure decision
-                // instead of making the pass impossible to finish.
-            } else if (state.untestedKeys > 0) {
-                // A new amount for an already pending key invalidates the
-                // current observation for that type.  Revisit its snapshot
-                // after this flush without scanning the map.
-                state.untestedKeys = state.pendingKeys;
-                state.progressed = false;
+                if (state.passStarted || state.rejectionPassComplete) {
+                    if (state.lateKeys == null) {
+                        state.lateKeys = new HashSet<>();
+                    }
+                    state.lateKeys.add(key);
+                } else {
+                    state.untestedKeys++;
+                }
             }
         }
 
-        void onAttempt(AEKeyType type, boolean progressed, boolean removed) {
+        void onAttempt(AEKeyType type, AEKey key, boolean progressed, boolean removed) {
             var state = types.computeIfAbsent(type, ignored -> new TypeState());
-            if (state.untestedKeys > 0) {
+            state.passStarted = true;
+            boolean late = state.lateKeys != null && state.lateKeys.remove(key);
+            if (!late && state.untestedKeys > 0) {
                 state.untestedKeys--;
             }
             if (removed && state.pendingKeys > 0) {
@@ -730,16 +736,28 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
             boolean progressed = state.progressed;
             boolean rejectionPassComplete = !progressed
                     && state.pendingKeys > 0
-                    && state.untestedKeys == 0;
+                    && state.untestedKeys == 0
+                    && (state.lateKeys == null || state.lateKeys.isEmpty());
             if (progressed) {
                 if (state.pendingKeys == 0) {
                     types.remove(type);
                 } else {
                     state.progressed = false;
                     state.untestedKeys = state.pendingKeys;
+                    state.rejectionPassComplete = false;
+                    state.passStarted = false;
+                    state.lateKeys = null;
                 }
             } else if (state.pendingKeys == 0) {
                 types.remove(type);
+            } else if (rejectionPassComplete) {
+                // The current rejection pass has consumed all conservative
+                // observation debt. New keys are tracked sparsely, while
+                // merged updates to an existing key do not restart the pass
+                // or scan the untouched tail. Release the sparse set after
+                // the pass has accounted for it.
+                state.rejectionPassComplete = true;
+                state.lateKeys = null;
             }
             return new TypeFlushDecision(progressed, rejectionPassComplete);
         }
@@ -764,6 +782,9 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
             for (var state : types.values()) {
                 state.progressed = false;
                 state.untestedKeys = state.pendingKeys;
+                state.rejectionPassComplete = false;
+                state.passStarted = false;
+                state.lateKeys = null;
             }
             previousFlushHadRejection = false;
         }
@@ -2185,6 +2206,12 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         importBuffer.merge(key, amount, (oldAmount, added) ->
                 oldAmount > Long.MAX_VALUE - added ? Long.MAX_VALUE : oldAmount + added);
         importBufferFlushState.onBuffered(key, newKey);
+        if (newKey) {
+            // A newly observed key is not covered by an earlier type-wide
+            // rejection. Do not leave it behind the lock until the next TTL
+            // merely because it arrived after the rejection pass closed.
+            keyTypeLockUntil.remove(key.getType());
+        }
         alertGridTicker();
     }
 
@@ -2281,7 +2308,7 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
             long amount = buffered.getValue();
             if (amount <= 0) {
                 it.remove();
-                flushState.onAttempt(type, true, true);
+                flushState.onAttempt(type, key, true, true);
                 changed = true;
                 continue;
             }
@@ -2289,14 +2316,14 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
             long inserted = me.insert(key, amount, Actionable.MODULATE, src);
             if (inserted >= amount) {
                 it.remove();
-                flushState.onAttempt(type, true, true);
+                flushState.onAttempt(type, key, true, true);
                 changed = true;
             } else if (inserted > 0) {
                 buffered.setValue(amount - inserted);
-                flushState.onAttempt(type, true, false);
+                flushState.onAttempt(type, key, true, false);
                 changed = true;
             } else {
-                flushState.onAttempt(type, false, false);
+                flushState.onAttempt(type, key, false, false);
                 hadRejection = true;
             }
 

@@ -8,12 +8,19 @@ param(
     [ValidateRange(200, 1200)]
     [int] $SampleTicks = 1200,
 
-    [ValidateSet("1024x27", "high-cardinality-reject")]
+    [ValidateSet(
+        "1024x27",
+        "high-cardinality-reject",
+        "equal-load-recovery",
+        "equal-load-partial-recovery",
+        "equal-load-sustained")]
     [string] $Profile = "1024x27",
 
     [string] $Commit = "",
 
-    [string] $OutputDirectory = ""
+    [string] $OutputDirectory = "",
+
+    [switch] $Diagnostics
 )
 
 $ErrorActionPreference = "Stop"
@@ -28,6 +35,8 @@ $sourceDirectory = Join-Path $projectDirectory `
 if ([string]::IsNullOrWhiteSpace($Commit)) {
     $Commit = (& git -C $projectDirectory rev-parse --short=12 HEAD).Trim()
 }
+$gitHead = (& git -C $projectDirectory rev-parse HEAD).Trim()
+$gitDirty = -not [string]::IsNullOrWhiteSpace((& git -C $projectDirectory status --porcelain).Trim())
 if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
     $OutputDirectory = Join-Path $projectDirectory `
         "benchmark-results\wireless-io-gametest-$Commit"
@@ -51,6 +60,9 @@ function Invoke-BenchmarkRun {
         "-Pae2ltBenchmarkCommit=$Commit",
         "-Pae2ltBenchmarkWarmupTicks=$WarmupTicks",
         "-Pae2ltBenchmarkSampleTicks=$SampleTicks",
+        "-Pae2ltBenchmarkDiagnostics=$($Diagnostics.IsPresent.ToString().ToLowerInvariant())",
+        "-Pae2ltBenchmarkGitHead=$gitHead",
+        "-Pae2ltBenchmarkWorktreeDirty=$($gitDirty.ToString().ToLowerInvariant())",
         "--no-daemon"
     )
     if ($Kind -eq "control") {
@@ -94,6 +106,9 @@ $manifest = [ordered]@{
     warmupTicks = $WarmupTicks
     sampleTicks = $SampleTicks
     profile = $Profile
+    diagnostics = $Diagnostics.IsPresent
+    gitHead = $gitHead
+    workingTreeDirty = $gitDirty
     generatedAt = (Get-Date).ToUniversalTime().ToString("o")
 }
 $manifest | ConvertTo-Json | Set-Content -LiteralPath `
