@@ -171,6 +171,7 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
     private KeyCounter scanBuffer = new KeyCounter();
     private final Map<AEKey, Long> importBuffer = new LinkedHashMap<>();
     private final Map<AEKeyType, Long> keyTypeLockUntil = new IdentityHashMap<>();
+    private final ImportBufferFlushState importBufferFlushState = new ImportBufferFlushState();
     private final Map<AEKeyType, List<ExportConfigEntry>> exportConfigCache = new IdentityHashMap<>();
     private long importBufferLastFlushTick = Long.MIN_VALUE;
     private boolean importBufferFlushLimited;
@@ -637,7 +638,144 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
             long lastFlushTick,
             boolean flushLimited,
             int remainingKeys,
-            boolean changed) {}
+            boolean changed,
+            int visitedKeys) {}
+
+    /**
+     * Cross-slice state for the persistent import buffer.
+     *
+     * <p>The buffer is a rotating insertion-ordered map.  A flush can inspect
+     * only a prefix, so the absence of progress in that prefix is not enough
+     * to lock an entire key type.  This state counts the positive entries in
+     * the current rejection pass and lets the next slice finish that pass
+     * without walking the untouched tail just to discover its types.</p>
+     */
+    static final class ImportBufferFlushState {
+        private static final class TypeState {
+            int pendingKeys;
+            int untestedKeys;
+            boolean progressed;
+        }
+
+        private final Map<AEKeyType, TypeState> types = new IdentityHashMap<>();
+        private boolean initialized;
+        private boolean previousFlushHadRejection;
+
+        void ensureInitialized(Map<AEKey, Long> importBuffer) {
+            if (!initialized) {
+                rebuildFrom(importBuffer);
+            }
+        }
+
+        void rebuildFrom(Map<AEKey, Long> importBuffer) {
+            types.clear();
+            for (var entry : importBuffer.entrySet()) {
+                if (entry.getValue() <= 0) continue;
+                var type = entry.getKey().getType();
+                types.computeIfAbsent(type, ignored -> new TypeState()).pendingKeys++;
+            }
+            for (var state : types.values()) {
+                state.untestedKeys = state.pendingKeys;
+            }
+            initialized = true;
+            previousFlushHadRejection = false;
+        }
+
+        void onBuffered(AEKey key, boolean newKey) {
+            initialized = true;
+            var type = key.getType();
+            var state = types.get(type);
+            if (state == null) {
+                state = new TypeState();
+                state.pendingKeys = 1;
+                state.untestedKeys = 1;
+                types.put(type, state);
+                return;
+            }
+
+            if (newKey) {
+                state.pendingKeys++;
+                // A key appended after a rejection pass began belongs to the
+                // next pass.  Keeping it out of the current counter lets a
+                // continuous producer reach the same backpressure decision
+                // instead of making the pass impossible to finish.
+            } else if (state.untestedKeys > 0) {
+                // A new amount for an already pending key invalidates the
+                // current observation for that type.  Revisit its snapshot
+                // after this flush without scanning the map.
+                state.untestedKeys = state.pendingKeys;
+                state.progressed = false;
+            }
+        }
+
+        void onAttempt(AEKeyType type, boolean progressed, boolean removed) {
+            var state = types.computeIfAbsent(type, ignored -> new TypeState());
+            if (state.untestedKeys > 0) {
+                state.untestedKeys--;
+            }
+            if (removed && state.pendingKeys > 0) {
+                state.pendingKeys--;
+            }
+            if (progressed) {
+                state.progressed = true;
+            }
+        }
+
+        TypeFlushDecision finishType(AEKeyType type) {
+            var state = types.get(type);
+            if (state == null) {
+                return new TypeFlushDecision(false, false);
+            }
+
+            boolean progressed = state.progressed;
+            boolean rejectionPassComplete = !progressed
+                    && state.pendingKeys > 0
+                    && state.untestedKeys == 0;
+            if (progressed) {
+                if (state.pendingKeys == 0) {
+                    types.remove(type);
+                } else {
+                    state.progressed = false;
+                    state.untestedKeys = state.pendingKeys;
+                }
+            } else if (state.pendingKeys == 0) {
+                types.remove(type);
+            }
+            return new TypeFlushDecision(progressed, rejectionPassComplete);
+        }
+
+        int untestedKeys() {
+            long total = 0;
+            for (var state : types.values()) {
+                total = Math.min(Integer.MAX_VALUE, total + state.untestedKeys);
+            }
+            return (int) total;
+        }
+
+        boolean previousFlushHadRejection() {
+            return previousFlushHadRejection;
+        }
+
+        void recordFlush(boolean hadRejection) {
+            previousFlushHadRejection = hadRejection;
+        }
+
+        void resetPasses() {
+            for (var state : types.values()) {
+                state.progressed = false;
+                state.untestedKeys = state.pendingKeys;
+            }
+            previousFlushHadRejection = false;
+        }
+
+        void clear() {
+            types.clear();
+            initialized = true;
+            previousFlushHadRejection = false;
+        }
+
+        record TypeFlushDecision(boolean progressed, boolean rejectionPassComplete) {}
+    }
 
     static final class IoScheduledEntry {
         final WirelessConnection conn;
@@ -894,6 +1032,7 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
     public void setInterfaceMode(InterfaceMode m) {
         if (interfaceMode == m) return; interfaceMode = m;
         invalidateConnectionCache(); refreshEjectRegistrations();
+        wakeWirelessIo();
         recomputeIdlePower();
         saveChanges(); markForUpdate();
     }
@@ -1109,6 +1248,7 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
             state.resetWirelessIo(ioSpeedMode);
         }
         keyTypeLockUntil.clear();
+        importBufferFlushState.resetPasses();
         resetIOWheel();
         alertGridTicker();
     }
@@ -2039,8 +2179,12 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
 
     private void addToImportBuffer(AEKey key, long amount) {
         if (amount <= 0) return;
+        importBufferFlushState.ensureInitialized(importBuffer);
+        Long existingAmount = importBuffer.get(key);
+        boolean newKey = existingAmount == null || existingAmount <= 0;
         importBuffer.merge(key, amount, (oldAmount, added) ->
                 oldAmount > Long.MAX_VALUE - added ? Long.MAX_VALUE : oldAmount + added);
+        importBufferFlushState.onBuffered(key, newKey);
         alertGridTicker();
     }
 
@@ -2076,6 +2220,7 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
             long importBufferLastFlushTick,
             boolean importBufferFlushLimited,
             int importBufferRemainingKeys,
+            ImportBufferFlushState flushState,
             MEStorage me,
             IActionSource src,
             long now,
@@ -2085,7 +2230,8 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
                     importBufferLastFlushTick,
                     importBufferFlushLimited,
                     importBufferRemainingKeys,
-                    false);
+                    false,
+                    0);
         }
         boolean continueLimitedFlush = importBufferFlushLimited && !importBuffer.isEmpty();
         if (!continueLimitedFlush && importBufferLastFlushTick != Long.MIN_VALUE
@@ -2094,48 +2240,64 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
                     importBufferLastFlushTick,
                     importBufferFlushLimited,
                     importBufferRemainingKeys,
-                    false);
+                    false,
+                    0);
         }
+        flushState.ensureInitialized(importBuffer);
         importBufferLastFlushTick = now;
 
-        var typeProgressed = new IdentityHashMap<AEKeyType, Boolean>();
-        var typeFullyRejected = new IdentityHashMap<AEKeyType, Boolean>();
+        var touchedTypes = new IdentityHashMap<AEKeyType, Boolean>();
         boolean changed = false;
+        boolean hadRejection = false;
 
         int flushLimit = IMPORT_FLUSH_MAX_KEYS;
         if (importBufferFlushLimited) {
             int newKeys = Math.max(0, importBuffer.size() - importBufferRemainingKeys);
-            flushLimit = newKeys > 0
+            int candidateLimit = newKeys > 0
                     ? Math.max(IMPORT_FLUSH_MAX_KEYS, newKeys)
                     : importBuffer.size();
+            if (flushState.previousFlushHadRejection()) {
+                // Once a slice has rejected anything, keep every following
+                // slice bounded as well.  The cross-slice counters decide
+                // when a type is fully rejected; they must not turn a small
+                // untested count into a one-key-per-flush fairness penalty.
+                flushLimit = Math.min(candidateLimit, IMPORT_FLUSH_MAX_KEYS);
+            } else {
+                flushLimit = candidateLimit;
+            }
         }
 
         var it = importBuffer.entrySet().iterator();
         int attemptedKeys = 0;
+        int visitedKeys = 0;
         var rotated = new ArrayList<AEKey>();
         while (it.hasNext() && attemptedKeys < flushLimit) {
             attemptedKeys++;
+            visitedKeys++;
             var buffered = it.next();
             var key = buffered.getKey();
+            var type = key.getType();
+            touchedTypes.put(type, true);
             long amount = buffered.getValue();
             if (amount <= 0) {
                 it.remove();
+                flushState.onAttempt(type, true, true);
                 changed = true;
                 continue;
             }
 
             long inserted = me.insert(key, amount, Actionable.MODULATE, src);
-            var type = key.getType();
             if (inserted >= amount) {
                 it.remove();
-                typeProgressed.put(type, true);
+                flushState.onAttempt(type, true, true);
                 changed = true;
             } else if (inserted > 0) {
                 buffered.setValue(amount - inserted);
-                typeProgressed.put(type, true);
+                flushState.onAttempt(type, true, false);
                 changed = true;
             } else {
-                typeFullyRejected.putIfAbsent(type, true);
+                flushState.onAttempt(type, false, false);
+                hadRejection = true;
             }
 
             if (importBuffer.containsKey(key)) {
@@ -2146,15 +2308,6 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         // Move unfinished entries behind the untouched tail so a single
         // rejected key cannot monopolize every bounded flush slice.
         boolean hasUntouchedEntries = it.hasNext();
-        var typeHasUntouchedEntries = new IdentityHashMap<AEKeyType, Boolean>();
-        if (hasUntouchedEntries && !typeFullyRejected.isEmpty()) {
-            while (it.hasNext()) {
-                var untouched = it.next();
-                if (untouched.getValue() > 0) {
-                    typeHasUntouchedEntries.put(untouched.getKey().getType(), true);
-                }
-            }
-        }
         for (var key : rotated) {
             var remaining = importBuffer.remove(key);
             if (remaining != null) {
@@ -2165,21 +2318,18 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         importBufferFlushLimited = changed && hasUntouchedEntries;
         importBufferRemainingKeys = importBufferFlushLimited ? importBuffer.size() : 0;
 
-        for (var type : typeProgressed.keySet()) {
-            if (keyTypeLockUntil.remove(type) != null) {
-                changed = true;
-            }
-        }
-        for (var type : typeFullyRejected.keySet()) {
-            // A bounded slice is not evidence that the whole key type is
-            // unavailable.  Do not lock a type when an untouched tail of the
-            // same type still has a chance to accept its key.
-            if (!typeProgressed.getOrDefault(type, false)
-                    && !typeHasUntouchedEntries.getOrDefault(type, false)) {
+        for (var type : touchedTypes.keySet()) {
+            var decision = flushState.finishType(type);
+            if (decision.progressed()) {
+                if (keyTypeLockUntil.remove(type) != null) {
+                    changed = true;
+                }
+            } else if (decision.rejectionPassComplete()) {
                 keyTypeLockUntil.put(type, now + STOP_IMPORT_TTL);
             }
         }
 
+        flushState.recordFlush(hadRejection);
         if (changed) {
             saveChanges.run();
         }
@@ -2187,7 +2337,8 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
                 importBufferLastFlushTick,
                 importBufferFlushLimited,
                 importBufferRemainingKeys,
-                changed);
+                changed,
+                visitedKeys);
     }
 
     private void flushImportBuffer(MEStorage me, IActionSource src, long now) {
@@ -2197,6 +2348,7 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
                 importBufferLastFlushTick,
                 importBufferFlushLimited,
                 importBufferRemainingKeys,
+                importBufferFlushState,
                 me,
                 src,
                 now,
@@ -2217,17 +2369,22 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
     }
 
     public void addImportBufferDrops(List<ItemStack> drops) {
-        if (importBuffer.isEmpty()) return;
+        if (importBuffer.isEmpty()) {
+            importBufferFlushState.clear();
+            return;
+        }
         for (var buffered : importBuffer.entrySet()) {
             buffered.getKey().addDrops(buffered.getValue(), drops, getLevel(), getBlockPos());
         }
         importBuffer.clear();
+        importBufferFlushState.clear();
         importBufferFlushLimited = false;
         importBufferRemainingKeys = 0;
     }
 
     public void clearImportBuffer() {
         importBuffer.clear();
+        importBufferFlushState.clear();
         keyTypeLockUntil.clear();
         importBufferLastFlushTick = Long.MIN_VALUE;
         importBufferFlushLimited = false;
@@ -2566,6 +2723,7 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         importBufferLastFlushTick = d.contains(TAG_IMPORT_FLUSH_TICK)
                 ? d.getLong(TAG_IMPORT_FLUSH_TICK)
                 : Long.MIN_VALUE;
+        importBufferFlushState.rebuildFrom(importBuffer);
         keyTypeLockUntil.clear();
         invalidateConnectionCache();
         refreshEjectRegistrations();

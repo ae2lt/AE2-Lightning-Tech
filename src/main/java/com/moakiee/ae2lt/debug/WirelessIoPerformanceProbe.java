@@ -58,6 +58,20 @@ public final class WirelessIoPerformanceProbe {
     private static long gcCollectionsAtStart;
     private static long gcMillisAtStart;
     private static long peakUsedHeap;
+    private static long workloadProducedItems;
+    private static long workloadExtractedItems;
+    private static long workloadNetworkImportedItems;
+    private static long workloadBufferedItems;
+    private static long workloadMaxBufferedItems;
+    private static long workloadMaxBufferedKeys;
+    private static long workloadExtractLatencyP50 = -1;
+    private static long workloadExtractLatencyP95 = -1;
+    private static long workloadExtractLatencyP99 = -1;
+    private static long workloadExtractLatencyMax = -1;
+    private static long workloadNetworkLatencyP50 = -1;
+    private static long workloadNetworkLatencyP95 = -1;
+    private static long workloadNetworkLatencyP99 = -1;
+    private static long workloadNetworkLatencyMax = -1;
 
     private WirelessIoPerformanceProbe() {
     }
@@ -96,6 +110,46 @@ public final class WirelessIoPerformanceProbe {
                     "Wireless I/O benchmark workload detected: scenario={}, warmup={} ticks, sample={} ticks",
                     SCENARIO, WARMUP_TICKS, SAMPLE_TICKS);
         }
+    }
+
+    /**
+     * Records counters measured by a real GameTest fixture without adding
+     * storage scans to the server tick probe.  The fixture derives extracted
+     * and network-imported ownership from its production-path observations;
+     * the timing probe persists the latest counters beside MSPT and GC data.
+     */
+    public static void recordImportWorkload(
+            long producedItems,
+            long extractedItems,
+            long networkImportedItems,
+            long bufferedItems,
+            long maxBufferedItems,
+            long maxBufferedKeys,
+            long extractLatencyP50,
+            long extractLatencyP95,
+            long extractLatencyP99,
+            long extractLatencyMax,
+            long networkLatencyP50,
+            long networkLatencyP95,
+            long networkLatencyP99,
+            long networkLatencyMax) {
+        if (!shouldMeasure()) {
+            return;
+        }
+        workloadProducedItems = Math.max(0L, producedItems);
+        workloadExtractedItems = Math.max(0L, extractedItems);
+        workloadNetworkImportedItems = Math.max(0L, networkImportedItems);
+        workloadBufferedItems = Math.max(0L, bufferedItems);
+        workloadMaxBufferedItems = Math.max(workloadMaxBufferedItems, maxBufferedItems);
+        workloadMaxBufferedKeys = Math.max(workloadMaxBufferedKeys, maxBufferedKeys);
+        workloadExtractLatencyP50 = extractLatencyP50;
+        workloadExtractLatencyP95 = extractLatencyP95;
+        workloadExtractLatencyP99 = extractLatencyP99;
+        workloadExtractLatencyMax = extractLatencyMax;
+        workloadNetworkLatencyP50 = networkLatencyP50;
+        workloadNetworkLatencyP95 = networkLatencyP95;
+        workloadNetworkLatencyP99 = networkLatencyP99;
+        workloadNetworkLatencyMax = networkLatencyMax;
     }
 
     public static void endServerTick(MinecraftServer server) {
@@ -202,7 +256,21 @@ public final class WirelessIoPerformanceProbe {
                 + "  \"configuredConnectionVisits\": " + visits + ",\n"
                 + "  \"gcCollections\": " + gcCollections + ",\n"
                 + "  \"gcMillis\": " + gcMillis + ",\n"
-                + "  \"peakUsedHeapBytes\": " + peakUsedHeap + "\n"
+                + "  \"peakUsedHeapBytes\": " + peakUsedHeap + ",\n"
+                + "  \"workloadProducedItems\": " + workloadProducedItems + ",\n"
+                + "  \"workloadExtractedItems\": " + workloadExtractedItems + ",\n"
+                + "  \"workloadNetworkImportedItems\": " + workloadNetworkImportedItems + ",\n"
+                + "  \"workloadBufferedItems\": " + workloadBufferedItems + ",\n"
+                + "  \"workloadMaxBufferedItems\": " + workloadMaxBufferedItems + ",\n"
+                + "  \"workloadMaxBufferedKeys\": " + workloadMaxBufferedKeys + ",\n"
+                + "  \"workloadExtractLatencyTicks\": {\"p50\": "
+                + workloadExtractLatencyP50 + ", \"p95\": " + workloadExtractLatencyP95
+                + ", \"p99\": " + workloadExtractLatencyP99 + ", \"max\": "
+                + workloadExtractLatencyMax + "},\n"
+                + "  \"workloadNetworkLatencyTicks\": {\"p50\": "
+                + workloadNetworkLatencyP50 + ", \"p95\": " + workloadNetworkLatencyP95
+                + ", \"p99\": " + workloadNetworkLatencyP99 + ", \"max\": "
+                + workloadNetworkLatencyMax + "}\n"
                 + "}\n";
     }
 

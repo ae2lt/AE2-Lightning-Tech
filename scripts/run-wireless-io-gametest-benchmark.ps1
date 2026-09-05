@@ -8,6 +8,9 @@ param(
     [ValidateRange(200, 1200)]
     [int] $SampleTicks = 1200,
 
+    [ValidateSet("1024x27", "high-cardinality-reject")]
+    [string] $Profile = "1024x27",
+
     [string] $Commit = "",
 
     [string] $OutputDirectory = ""
@@ -40,7 +43,7 @@ function Invoke-BenchmarkRun {
         [Parameter(Mandatory)] [int] $Run
     )
 
-    $scenario = "gametest-$Kind-1024x27-run$Run"
+    $scenario = "gametest-$Kind-$Profile-run$Run"
     $before = Get-Date
     $arguments = @(
         "runWirelessIoGameTestServer",
@@ -54,7 +57,7 @@ function Invoke-BenchmarkRun {
         $arguments += "-Pae2ltBenchmarkControl=true"
     }
 
-    Write-Host "[$Kind $Run/$Runs] starting a fresh GameTestServer JVM"
+    Write-Host "[$Profile $Kind $Run/$Runs] starting a fresh GameTestServer JVM"
     & $gradle @arguments
     if ($LASTEXITCODE -ne 0) {
         throw "GameTestServer failed for $scenario"
@@ -90,6 +93,7 @@ $manifest = [ordered]@{
     runs = $Runs
     warmupTicks = $WarmupTicks
     sampleTicks = $SampleTicks
+    profile = $Profile
     generatedAt = (Get-Date).ToUniversalTime().ToString("o")
 }
 $manifest | ConvertTo-Json | Set-Content -LiteralPath `
