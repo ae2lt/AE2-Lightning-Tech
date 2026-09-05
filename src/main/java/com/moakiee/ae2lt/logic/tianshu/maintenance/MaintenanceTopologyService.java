@@ -9,6 +9,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 /** Builds the target-first dependency order used by reserve-stock configuration. */
 public final class MaintenanceTopologyService {
@@ -18,11 +19,18 @@ public final class MaintenanceTopologyService {
 
     public static List<Entry> build(ICraftingService crafting, AEKey target) {
         if (crafting == null) return List.of();
-        return build(crafting::getCraftingFor, target);
+        return build(crafting::getCraftingFor, crafting::canEmitFor, target);
     }
 
     public static List<Entry> build(
             Function<AEKey, ? extends Iterable<IPatternDetails>> patternsFor,
+            AEKey target) {
+        return build(patternsFor, ignored -> false, target);
+    }
+
+    public static List<Entry> build(
+            Function<AEKey, ? extends Iterable<IPatternDetails>> patternsFor,
+            Predicate<AEKey> emittable,
             AEKey target) {
         if (patternsFor == null || target == null) return List.of();
         var depths = new LinkedHashMap<AEKey, Integer>();
@@ -35,23 +43,25 @@ public final class MaintenanceTopologyService {
             var key = queue.removeFirst();
             int depth = depths.get(key);
             if (depth >= MAX_DEPTH) continue;
-            var patterns = patternsFor.apply(key);
-            boolean hasPattern = false;
-            if (patterns != null) {
-                for (var pattern : patterns) {
-                    if (!produces(pattern, key)) continue;
-                    hasPattern = true;
-                    for (var input : pattern.getInputs()) {
-                        for (var possible : input.getPossibleInputs()) {
-                            var inputKey = possible.what();
-                            if (inputKey == null || depths.containsKey(inputKey)) continue;
-                            depths.put(inputKey, depth + 1);
-                            queue.addLast(inputKey);
+            boolean hasPattern = emittable != null && emittable.test(key);
+            if (!hasPattern) {
+                var patterns = patternsFor.apply(key);
+                if (patterns != null) {
+                    for (var pattern : patterns) {
+                        if (!produces(pattern, key)) continue;
+                        hasPattern = true;
+                        for (var input : pattern.getInputs()) {
+                            for (var possible : input.getPossibleInputs()) {
+                                var inputKey = possible.what();
+                                if (inputKey == null || depths.containsKey(inputKey)) continue;
+                                depths.put(inputKey, depth + 1);
+                                queue.addLast(inputKey);
+                                if (depths.size() >= MAX_KEYS) break;
+                            }
                             if (depths.size() >= MAX_KEYS) break;
                         }
                         if (depths.size() >= MAX_KEYS) break;
                     }
-                    if (depths.size() >= MAX_KEYS) break;
                 }
             }
             craftable.put(key, hasPattern);

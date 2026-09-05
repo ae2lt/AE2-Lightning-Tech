@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.AEKeyType;
@@ -496,6 +497,21 @@ class ClosedLoopPatternRepositoryTest {
                 topology.stream().map(MaintenanceTopologyService.Entry::key).toList());
         assertEquals(List.of(0, 1, 1, 2),
                 topology.stream().map(MaintenanceTopologyService.Entry::depth).toList());
+    }
+
+    @Test
+    void reserveTopologyTreatsCraftingEmitterOutputAsRequestableLeaf() {
+        var target = new TestKey("emitter_target");
+        var unusedInput = new TestKey("unused_input");
+
+        var topology = MaintenanceTopologyService.build(
+                key -> key.equals(target) ? List.of(pattern(target, unusedInput)) : List.of(),
+                target::equals,
+                target);
+
+        assertEquals(List.of(target),
+                topology.stream().map(MaintenanceTopologyService.Entry::key).toList());
+        assertTrue(topology.getFirst().craftable());
     }
 
     private static IPatternDetails pattern(AEKey output, AEKey... inputs) {
