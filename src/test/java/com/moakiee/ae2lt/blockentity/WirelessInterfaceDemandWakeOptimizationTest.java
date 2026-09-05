@@ -45,7 +45,9 @@ class WirelessInterfaceDemandWakeOptimizationTest {
         for (var scenario : scenarios) {
             var result = WirelessInterfaceSchedulingPressureModel.run(scenario);
             assertNoSemanticLoss(result);
-            assertTrue(result.meanWork() >= 0 && result.p99Work() >= result.meanWork(),
+            assertTrue(result.meanWork() >= 0 && result.p99Work() >= 0
+                            && result.maximumWork() >= result.p99Work()
+                            && result.maximumWork() >= result.meanWork(),
                     () -> scenario.id() + " produced invalid work distribution");
             if (scenario.loadShape() == LoadShape.FOUR_TICK_BURST) {
                 assertTrue(result.minimumWindowThroughput()
@@ -83,7 +85,7 @@ class WirelessInterfaceDemandWakeOptimizationTest {
                 "one-pulse workload did not record concentrated work");
     }
 
-    private static List<Scenario> focusedScenarios() {
+    static List<Scenario> focusedScenarios() {
         return List.of(
                 importScenario("wake-opt-zero-1024", 1024,
                         TickOrder.MACHINE_THEN_IO, PhaseMode.HASHED,

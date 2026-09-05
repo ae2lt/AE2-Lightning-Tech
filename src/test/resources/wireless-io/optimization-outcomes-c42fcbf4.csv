@@ -1,0 +1,10 @@
+scenario,min_window,min_machine,pressure_events,p99_latency,max_demand_wait,backlog_item_ticks,final_output,produced_output,extracted_output
+wake-opt-zero-1024,1.00000000,1.00000000,0,-1,0,0,0,0,0
+wake-opt-one-pulse-1,1.00000000,1.00000000,0,0,0,0,0,32,32
+wake-opt-one-pulse-64,1.00000000,1.00000000,0,0,0,0,0,2048,2048
+wake-opt-one-pulse-1024-sync,1.00000000,1.00000000,0,0,0,0,0,32768,32768
+wake-opt-one-pulse-1024-hashed-io-first,1.00000000,1.00000000,0,5,5,98304,3904,32768,28864
+wake-opt-four-burst-1024-sync-io-first,1.00000000,1.00000000,0,5,5,2129920,0,1900544,1900544
+wake-opt-four-burst-1024-hashed,1.00000000,1.00000000,0,2,4,96608,0,1936320,1936320
+wake-opt-target-outage-1024,0.61000000,0.89736842,39936,0,40,2621440,0,12484608,12484608
+wake-opt-hot-restart-1024,1.00000000,1.00000000,0,0,1,32768,0,3932160,3932160
