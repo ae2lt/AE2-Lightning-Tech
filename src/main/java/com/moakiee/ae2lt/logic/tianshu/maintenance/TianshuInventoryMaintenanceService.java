@@ -308,7 +308,7 @@ public final class TianshuInventoryMaintenanceService
             statuses.put(rule.id(), InventoryMaintenanceStatus.CALCULATING);
             return;
         }
-        if (!crafting.isCraftable(rule.key())) {
+        if (!MaintenanceRequestability.isRequestable(crafting, rule.key())) {
             statuses.put(rule.id(), InventoryMaintenanceStatus.MISSING_PATTERN);
             scheduleRetry(rule.id());
             InventoryMaintenanceCalculationClaims.release(grid, rule.key(), rule.id());

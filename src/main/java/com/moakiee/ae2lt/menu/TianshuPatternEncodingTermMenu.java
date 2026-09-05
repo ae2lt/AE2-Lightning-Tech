@@ -47,6 +47,7 @@ import com.moakiee.ae2lt.logic.tianshu.terminal.PatternEncodingDuplicateFilter;
 import com.moakiee.ae2lt.me.GridNodeAccess;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.InventoryMaintenanceRule;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.InventoryMaintenanceStatus;
+import com.moakiee.ae2lt.logic.tianshu.maintenance.MaintenanceRequestability;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.MaintenanceTopologyService;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.ReservedStockMatchMode;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.TianshuInventoryMaintenanceService;
@@ -1891,7 +1892,8 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         var grid = target.getGrid();
         if (maintenance == null) return;
         if (maintenance.repository().get(key) == null
-                && (grid == null || !grid.getCraftingService().isCraftable(key))) {
+                && (grid == null || !MaintenanceRequestability.isRequestable(
+                        grid.getCraftingService(), key))) {
             serverPlayer.displayClientMessage(net.minecraft.network.chat.Component.translatable(
                     "ae2lt.tianshu.maintenance.unsupported"), true);
             return;
@@ -1966,7 +1968,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
                     boolean ruleReserveOverflow = service.reservedStock(rule.id()).size()
                             > TianshuPacketLimits.MAX_LIST_ENTRIES;
                     long storedAmount = available != null ? Math.max(0L, available.get(rule.key())) : 0L;
-                    boolean craftable = crafting != null && crafting.isCraftable(rule.key());
+                    boolean craftable = MaintenanceRequestability.isRequestable(crafting, rule.key());
                     summaries.put(rule.key(), new MaintenanceSummarySyncPacket.Entry(
                             rule.key(), true,
                             maintenanceSummaryStatus(rule, service.status(rule.id()), grid != null, craftable),
@@ -1982,7 +1984,7 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
                         break;
                     }
                     long storedAmount = available != null ? Math.max(0L, available.get(reserve.key())) : 0L;
-                    boolean craftable = crafting != null && crafting.isCraftable(reserve.key());
+                    boolean craftable = MaintenanceRequestability.isRequestable(crafting, reserve.key());
                     var existing = summaries.get(reserve.key());
                     summaries.put(reserve.key(), existing == null
                             ? new MaintenanceSummarySyncPacket.Entry(
@@ -2177,7 +2179,8 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
                         variant.key(), variant.storedAmount(), variant.craftable()))
                 .toList();
         long currentStock = available != null ? Math.max(0L, available.get(key)) : 0L;
-        boolean craftable = grid != null && grid.getCraftingService().isCraftable(key);
+        boolean craftable = grid != null && MaintenanceRequestability.isRequestable(
+                grid.getCraftingService(), key);
         var editorStatus = rule != null
                 ? maintenanceSummaryStatus(rule, maintenance.status(rule.id()), grid != null, craftable)
                 : InventoryMaintenanceStatus.IDLE;
@@ -2272,7 +2275,8 @@ public class TianshuPatternEncodingTermMenu extends PatternEncodingTermMenu {
         }
         if (existing == null) {
             var grid = target.getGrid();
-            if (grid == null || !grid.getCraftingService().isCraftable(packet.target())) {
+            if (grid == null || !MaintenanceRequestability.isRequestable(
+                    grid.getCraftingService(), packet.target())) {
                 player.displayClientMessage(net.minecraft.network.chat.Component.translatable(
                         "ae2lt.tianshu.maintenance.unsupported"), true);
                 return;
