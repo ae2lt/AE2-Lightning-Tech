@@ -24,6 +24,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+. (Join-Path $PSScriptRoot 'wireless-io-benchmark-common.ps1')
 if ($WarmupTicks + $SampleTicks -gt 1420) {
     throw "WarmupTicks + SampleTicks must not exceed the 1420-tick GameTest sampling budget"
 }
@@ -32,11 +33,12 @@ $gradle = Join-Path $projectDirectory "gradlew.bat"
 $sourceDirectory = Join-Path $projectDirectory `
     "run-wireless-io-gametest\benchmark-reports\wireless-interface-io"
 
+$identity = Get-WirelessIoGitIdentity -Directory $projectDirectory
+$gitHead = $identity.Head
+$gitDirty = $identity.Dirty
 if ([string]::IsNullOrWhiteSpace($Commit)) {
-    $Commit = (& git -C $projectDirectory rev-parse --short=12 HEAD).Trim()
+    $Commit = $gitHead.Substring(0, 12)
 }
-$gitHead = (& git -C $projectDirectory rev-parse HEAD).Trim()
-$gitDirty = -not [string]::IsNullOrWhiteSpace((& git -C $projectDirectory status --porcelain).Trim())
 if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
     $OutputDirectory = Join-Path $projectDirectory `
         "benchmark-results\wireless-io-gametest-$Commit"
@@ -106,6 +108,7 @@ $manifest = [ordered]@{
     warmupTicks = $WarmupTicks
     sampleTicks = $SampleTicks
     profile = $Profile
+    comparisonKind = $(if ($Profile.StartsWith('equal-load-')) { 'repeated-load' } else { 'idle-control' })
     diagnostics = $Diagnostics.IsPresent
     gitHead = $gitHead
     workingTreeDirty = $gitDirty

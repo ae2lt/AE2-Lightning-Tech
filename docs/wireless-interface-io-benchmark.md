@@ -1895,3 +1895,73 @@ cadence 或批量能源核算方案。
 逐目标网络 P99；这些只能在诊断模式或加入可信端点事件后补齐。下一轮应继续以实际
 刷新/扫描/抽取/类型状态维护/对象分配成本为证据选择单一候选，而不是先固定每 tick
 上限或以空闲样本制造收益。
+
+### 16.8 2026-09-05 非调度路径与基准工具修正
+
+用户将本轮范围限定为当前无线接口优化线中调度策略之外的部分。起点为干净
+`be595e2a`；本轮不修改时间轮、watchdog、相位、catch-up、拒收轮判断或刷新预算。
+
+#### 缓冲刷新中的冗余操作
+
+完整遍历 buffer 后，所有保留键原本已经按原顺序排列。旧代码仍把这些键逐个
+`remove/put` 到尾部，生成新的 LinkedHashMap 节点；每个已处理的正数量键还会执行
+一次 `containsKey`。现在仅在确实存在未访问尾部时才记录和旋转保留键，记录列表也
+延迟到首次需要时分配；是否保留直接使用本次插入结果判断。
+
+新增生产路径测试验证全部拒收以及接受/部分接受/拒收混合的完整遍历：键顺序、数量、
+实际插入量和类型锁不变。对完整拒收的 16,384 键，仍执行相同的 16,384 次网络插入
+尝试，但显式 Map 移除/插入从 32,768 次降为 0，存在性查询从 16,384 次降为 0，
+并省去这些键的旋转列表与重新插入节点。原有跨片可接收尾部、公平性及拒收恢复测试
+仍保留。此处证明的是冗余操作消除，不是已测得的整服 MSPT 百分比收益。
+
+#### Git 身份、报告缓存和比较口径
+
+- Git 空输出异常已复现并修复：通过数组接收 `status --porcelain`，使用独立 helper
+  检查 Git 返回码和 HEAD 格式。干净、一个修改、多个修改及 Git 失败均有临时仓库
+  测试，不依赖用户仓库状态，也不启动 GameTest。
+- `equal-load-*` 的 control/stress 实际是同负载重复运行，夹具没有关闭 control 的
+  无线 I/O。现按每版本共 10 次负载运行取中位数（偶数样本取中间两数平均），不再
+  对两次相同负载做相减。表中 adjustedMean/adjustedP99 为 N/A。`1024x27` 等原有
+  真正空载控制组仍按 5 个配对比较。原始绝对 MSPT、无线 I/O 和相对回归阈值未改；
+  单对比较入口拒绝误用 equal-load 数据。
+- 第 16.7 节的控制校正 PASS/FAIL 不再是这些 equal-load 场景的有效性能证据，尤其
+  sustained 的差分 P99 失败不能直接归因于生产算法。其原始数值保留，不能通过这次
+  比较器修正反向宣称生产性能提高。新的 GC 口径还要求两版本使用同一探针重新采集。
+- 比较器验证 profile、角色、run ID、样本/预热、Java/服务端版本，拒绝诊断报告混入
+  正式比较。固定负载还验证计划/实际/抽取/入网一致、无剩余、无源端受阻及窗口/目标
+  吞吐，避免少做工作仍判定为优化。对应负例测试覆盖不等负载、诊断、混合 profile、
+  混合 GC 窗口和真实原始 P99 回归。
+- 工具测试发现原比较任务只跟踪报告路径，同路径 JSON 内容更新后可能显示
+  `UP-TO-DATE` 而跳过新检查。现在把 JSON 文件内容纳入 Gradle inputs；负例测试
+  会在同一路径修改内容，确认确实重新验收。
+- 比较脚本新增 `-OutputDirectory`，对应 Gradle 属性
+  `ae2ltBenchmarkLiveComparisonDir`，方便归档每次对照，也让合成工具测试使用自己的
+  临时报告目录，不覆盖真实比较报告。
+
+#### GC/堆窗口对齐
+
+旧 GC 起点在首次探测到接口工作时，终点在服务器关闭写报告时，包含预热和采样后的
+工作，堆峰值也包含预热。现在完整报告的 GC 起点在第一个正式采样 tick 开始前，
+终点冻结在最后一个采样 tick，堆峰值只观察正式采样 tick。为此 JSON schema 升至 3，
+标记 `gcMeasurementWindow=sample-ticks-only`；比较器禁止旧/新 GC 窗口混合比较。
+提前结束的 partial 报告只作诊断，本来就不能进入正式验收。关服后的最终物品守恒
+观测仍保留，不被 GC 冻结提前截断。
+
+#### 验证与边界
+
+```powershell
+.\scripts\test-wireless-io-benchmark.ps1
+.\gradlew.bat test wirelessInterfaceIoModelAcceptance wirelessInterfaceIoModelEnduranceAcceptance
+.\scripts\run-wireless-io-gametest-benchmark.ps1 -Runs 1 -WarmupTicks 200 -SampleTicks 300 -Profile equal-load-sustained -Commit be595e2a-nonscheduling-review -OutputDirectory benchmark-results/wireless-io-nonscheduling-smoke
+```
+
+真实服务端冒烟的两次独立 JVM 均通过：每份 JSON/CSV 均有 300 个样本，schema=3，
+GC 窗口和 repeated-load 标记正确；两次产出/入网都为 10,616,832，最终剩余为 0。
+普通测试 811 个、0 failures、0 errors；完整模型严格验收和 20,000 tick endurance
+均通过。工具测试还验证了原始 P99 回归仍会失败、原有 idle-control 比较仍可正常
+通过；工具测试日志与合成报告位于 `build/benchmark-tool-tests-b6e859e6923e4505b8cd4928fb16acd2/`，
+Java 验证日志为 `build/non-scheduling-final-verification.log`。
+该短运行只验证脚本、探针和生产路径，不用于宣称性能通过或替代正式五轮 A/B。
+本轮没有重新执行五轮等负载基线/候选，也没有修改全局 FIFO 网络延迟估算的性质，
+没有扩大周期 sustained 场景的覆盖结论。真正逐键网络端点时间戳、恢复阶段独立
+MSPT 和连续热负载的正式对照仍需后续专门采集，不能由本轮 Map 操作数推导。

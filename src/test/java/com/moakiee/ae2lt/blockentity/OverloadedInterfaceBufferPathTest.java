@@ -37,6 +37,76 @@ class OverloadedInterfaceBufferPathTest {
     private static final TestKeyType FLUIDS = new TestKeyType("fluids");
 
     @Test
+    void fullFlushKeepsSurvivorOrderWithoutReinsertingEntries() {
+        var rejected = new TestKey(ITEMS, "full-rejected");
+        var accepted = new TestKey(ITEMS, "full-accepted");
+        var partial = new TestKey(ITEMS, "full-partial");
+        var buffer = new CountingBuffer();
+        buffer.put(rejected, 4L);
+        buffer.put(accepted, 5L);
+        buffer.put(partial, 6L);
+        buffer.mutations = 0;
+        var storage = new ProgrammableStorage(key -> key.equals(rejected), Map.of(partial, 2L));
+        var state = new OverloadedInterfaceBlockEntity.ImportBufferFlushState();
+        var result = OverloadedInterfaceBlockEntity.flushImportBufferEntries(
+                buffer, new IdentityHashMap<>(), Long.MIN_VALUE, false, 0,
+                state, storage, IActionSource.empty(), 0, () -> {});
+        assertEquals(List.of(rejected, partial), List.copyOf(buffer.keySet()));
+        assertEquals(4L, buffer.get(rejected));
+        assertEquals(4L, buffer.get(partial));
+        assertEquals(7L, storage.totalInserted());
+        assertEquals(0, buffer.mutations, "a complete pass needs no survivor remove/put operations");
+        assertEquals(0, buffer.containsChecks, "insert result already identifies retained keys");
+        assertEquals(3, result.visitedKeys());
+    }
+
+    private static final class CountingBuffer extends LinkedHashMap<AEKey, Long> {
+        int mutations;
+        int containsChecks;
+
+        @Override
+        public Long put(AEKey key, Long value) {
+            mutations++;
+            return super.put(key, value);
+        }
+
+        @Override
+        public Long remove(Object key) {
+            mutations++;
+            return super.remove(key);
+        }
+
+        @Override
+        public boolean containsKey(Object key) {
+            containsChecks++;
+            return super.containsKey(key);
+        }
+    }
+
+    @Test
+    void fullRejectedSliceAvoidsPerKeyMapReallocationAndPreservesBackpressure() {
+        var buffer = new CountingBuffer();
+        for (int i = 0; i < 16_384; i++) {
+            buffer.put(new TestKey(ITEMS, "full-reject-" + i), 1L);
+        }
+        var order = List.copyOf(buffer.keySet());
+        buffer.mutations = 0;
+        var locks = new IdentityHashMap<AEKeyType, Long>();
+        var storage = new ProgrammableStorage(ignored -> true);
+        var result = OverloadedInterfaceBlockEntity.flushImportBufferEntries(
+                buffer, locks, Long.MIN_VALUE, false, 0,
+                new OverloadedInterfaceBlockEntity.ImportBufferFlushState(),
+                storage, IActionSource.empty(), 0, () -> {});
+        assertEquals(16_384, storage.attempts);
+        assertEquals(16_384, result.visitedKeys());
+        assertEquals(order, List.copyOf(buffer.keySet()));
+        assertEquals(0, buffer.mutations);
+        assertEquals(0, buffer.containsChecks);
+        assertEquals(20L, locks.get(ITEMS));
+        assertEquals(16_384L, buffer.values().stream().mapToLong(Long::longValue).sum());
+    }
+
+    @Test
     void rejectedPrefixDoesNotLockAnUntouchedTailOfTheSameKeyType() {
         var buffer = new LinkedHashMap<AEKey, Long>();
         TestKey tail = null;

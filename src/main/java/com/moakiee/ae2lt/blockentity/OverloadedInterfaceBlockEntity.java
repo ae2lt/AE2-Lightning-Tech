@@ -2297,7 +2297,10 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         var it = importBuffer.entrySet().iterator();
         int attemptedKeys = 0;
         int visitedKeys = 0;
-        var rotated = new ArrayList<AEKey>();
+        // A full traversal already leaves survivors in their original order.
+        // Only a sliced traversal needs to move survivors behind an untouched tail.
+        ArrayList<AEKey> rotated = null;
+        boolean mayHaveUntouchedTail = importBuffer.size() > flushLimit;
         while (it.hasNext() && attemptedKeys < flushLimit) {
             attemptedKeys++;
             visitedKeys++;
@@ -2327,7 +2330,8 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
                 hadRejection = true;
             }
 
-            if (importBuffer.containsKey(key)) {
+            if (inserted < amount && mayHaveUntouchedTail) {
+                if (rotated == null) rotated = new ArrayList<>();
                 rotated.add(key);
             }
         }
@@ -2335,10 +2339,12 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         // Move unfinished entries behind the untouched tail so a single
         // rejected key cannot monopolize every bounded flush slice.
         boolean hasUntouchedEntries = it.hasNext();
-        for (var key : rotated) {
-            var remaining = importBuffer.remove(key);
-            if (remaining != null) {
-                importBuffer.put(key, remaining);
+        if (hasUntouchedEntries && rotated != null) {
+            for (var key : rotated) {
+                var remaining = importBuffer.remove(key);
+                if (remaining != null) {
+                    importBuffer.put(key, remaining);
+                }
             }
         }
 

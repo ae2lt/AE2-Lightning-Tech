@@ -3,7 +3,9 @@ param(
     [string] $BaselineDirectory,
 
     [Parameter(Mandatory)]
-    [string] $CandidateDirectory
+    [string] $CandidateDirectory,
+
+    [string] $OutputDirectory = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -38,6 +40,9 @@ $arguments = @(
     "-Pae2ltBenchmarkCandidateControlReports=$(Get-Reports $candidate 'control')",
     "--no-daemon"
 )
+if (-not [string]::IsNullOrWhiteSpace($OutputDirectory)) {
+    $arguments += "-Pae2ltBenchmarkLiveComparisonDir=$OutputDirectory"
+}
 
 & $gradle @arguments
 exit $LASTEXITCODE

@@ -739,6 +739,9 @@ tasks.register('checkWirelessIoBenchmark') {
         def parser = new groovy.json.JsonSlurper()
         def stress = parser.parse(new File(stressPath))
         def control = parser.parse(new File(controlPath))
+        if (stress.scenario?.contains('equal-load-') || control.scenario?.contains('equal-load-')) {
+            throw new GradleException('Equal-load profiles are loaded repetitions; use checkWirelessIoBenchmarkRegression')
+        }
         def failures = []
         def requireAtMost = { label, actualValue, maximumValue ->
             double actual = actualValue as double
@@ -799,8 +802,9 @@ def wirelessIoLiveCandidateStressArg = providers.gradleProperty(
         'ae2ltBenchmarkCandidateStressReports').getOrElse('')
 def wirelessIoLiveCandidateControlArg = providers.gradleProperty(
         'ae2ltBenchmarkCandidateControlReports').getOrElse('')
-def wirelessIoLiveComparisonOutput = layout.buildDirectory
-        .dir('reports/wireless-interface-io-live-comparison').get().asFile.absolutePath
+def wirelessIoLiveComparisonOutput = file(providers.gradleProperty('ae2ltBenchmarkLiveComparisonDir')
+        .getOrElse(layout.buildDirectory.dir('reports/wireless-interface-io-live-comparison')
+                .get().asFile.absolutePath)).absolutePath
 
 tasks.register('checkWirelessIoBenchmarkRegression') {
     description = 'Compares five paired baseline and candidate live wireless I/O benchmark runs.'
@@ -809,6 +813,10 @@ tasks.register('checkWirelessIoBenchmarkRegression') {
     inputs.property 'baselineControlReports', wirelessIoLiveBaselineControlArg
     inputs.property 'candidateStressReports', wirelessIoLiveCandidateStressArg
     inputs.property 'candidateControlReports', wirelessIoLiveCandidateControlArg
+    inputs.files([wirelessIoLiveBaselineStressArg, wirelessIoLiveBaselineControlArg,
+                  wirelessIoLiveCandidateStressArg, wirelessIoLiveCandidateControlArg]
+            .collectMany { it.split(';').collect { path -> path.trim() }.findAll { !it.isEmpty() } })
+            .withPropertyName('liveReportContents')
     inputs.property 'projectDirectory', projectDir.absolutePath
     outputs.dir wirelessIoLiveComparisonOutput
     doLast {
@@ -839,30 +847,34 @@ tasks.register('checkWirelessIoBenchmarkRegression') {
         }
         def median = { values ->
             def sorted = values.collect { it as double }.sort()
-            return sorted[sorted.size().intdiv(2)] as double
+            int middle = sorted.size().intdiv(2)
+            return sorted.size() % 2 == 0
+                    ? (sorted[middle - 1] + sorted[middle]) / 2.0
+                    : sorted[middle] as double
         }
-        def summarize = { stress, control ->
+        def summarize = { stress, control, repeatedLoad ->
+            def measured = repeatedLoad ? stress + control : stress
             def pairedMean = []
             def pairedP99 = []
-            for (int i = 0; i < stress.size(); i++) {
+            for (int i = 0; !repeatedLoad && i < stress.size(); i++) {
                 pairedMean << ((stress[i].tickMs.mean as double)
                         - (control[i].tickMs.mean as double))
                 pairedP99 << ((stress[i].tickMs.p99 as double)
                         - (control[i].tickMs.p99 as double))
             }
             return [
-                    mean: median(stress.collect { it.tickMs.mean }),
-                    p95: median(stress.collect { it.tickMs.p95 }),
-                    p99: median(stress.collect { it.tickMs.p99 }),
-                    over50: median(stress.collect { it.ticksOver50MsRatio }),
-                    capacityTps: median(stress.collect { it.capacityTps }),
-                    ioP99: median(stress.collect { it.wirelessIoMs.p99 }),
-                    gcRatio: median(stress.collect {
+                    mean: median(measured.collect { it.tickMs.mean }),
+                    p95: median(measured.collect { it.tickMs.p95 }),
+                    p99: median(measured.collect { it.tickMs.p99 }),
+                    over50: median(measured.collect { it.ticksOver50MsRatio }),
+                    capacityTps: median(measured.collect { it.capacityTps }),
+                    ioP99: median(measured.collect { it.wirelessIoMs.p99 }),
+                    gcRatio: median(measured.collect {
                         (it.gcMillis as double) / ((it.samples as double) * 50.0)
                     }),
-                    heap: median(stress.collect { it.peakUsedHeapBytes }),
-                    adjustedMean: median(pairedMean),
-                    adjustedP99: median(pairedP99)
+                    heap: median(measured.collect { it.peakUsedHeapBytes }),
+                    adjustedMean: repeatedLoad ? null : median(pairedMean),
+                    adjustedP99: repeatedLoad ? null : median(pairedP99)
             ]
         }
         def baselineStress = splitReports(inputs.properties.baselineStressReports,
@@ -873,8 +885,62 @@ tasks.register('checkWirelessIoBenchmarkRegression') {
                 'candidate stress reports')
         def candidateControl = splitReports(inputs.properties.candidateControlReports,
                 'candidate control reports')
-        def baseline = summarize(baselineStress, baselineControl)
-        def candidate = summarize(candidateStress, candidateControl)
+        def groups = [baselineStress, baselineControl, candidateStress, candidateControl]
+        def allReports = groups.flatten()
+        def profiles = []
+        groups.eachWithIndex { reports, groupIndex ->
+            def expectedRole = groupIndex % 2 == 0 ? 'stress' : 'control'
+            def runIds = []
+            reports.each { report ->
+                def match = (report.scenario =~ /^gametest-(control|stress)-(.+)-run([1-5])$/)
+                if (!match.matches() || match[0][1] != expectedRole) {
+                    throw new GradleException("Unexpected benchmark role/scenario: ${report.scenario}")
+                }
+                profiles << match[0][2]
+                runIds << match[0][3]
+                if (report.workloadObservationMode?.startsWith('diagnostic')) {
+                    throw new GradleException('Diagnostic reports cannot be used for formal comparison')
+                }
+            }
+            if (runIds.toSet().size() != 5) throw new GradleException('Duplicate benchmark run IDs')
+            reports.sort { a, b -> a.scenario <=> b.scenario }
+        }
+        if (profiles.toSet().size() != 1) throw new GradleException('Mixed benchmark profiles')
+        boolean repeatedLoad = profiles[0].startsWith('equal-load-')
+        if (allReports.collect { it.gcMeasurementWindow ?: 'legacy-workload-to-shutdown' }.toSet().size() != 1) {
+            throw new GradleException('Incompatible GC measurement windows; rerun both versions with the same probe')
+        }
+        if (allReports.any { it.comparisonKind != null && it.comparisonKind != (repeatedLoad ? 'repeated-load' : 'idle-control') }) {
+            throw new GradleException('Comparison kind conflicts with benchmark profile')
+        }
+        ['samples', 'warmupTicks', 'javaVersion', 'serverVersion'].each { field ->
+            if (allReports.any { it[field] == null } || allReports.collect { it[field] }.toSet().size() != 1) {
+                throw new GradleException("Incompatible benchmark ${field}")
+            }
+        }
+        if (repeatedLoad) {
+            ['workloadPlannedProductionItems', 'workloadActualProductionItems',
+             'workloadProducedItems', 'workloadExtractedItems', 'workloadNetworkImportedItems',
+             'workloadRecoveryTick'].each { field ->
+                if (allReports.any { it[field] == null } || allReports.collect { it[field] }.toSet().size() != 1) {
+                    throw new GradleException("Unequal workload: ${field}")
+                }
+            }
+            allReports.each { r ->
+                if (!(r.workloadProducedItems > 0)
+                        || r.workloadPlannedProductionItems != r.workloadActualProductionItems
+                        || r.workloadProducedItems != r.workloadActualProductionItems
+                        || r.workloadProducedItems != r.workloadNetworkImportedItems
+                        || r.workloadFinalRemainingItems != 0 || r.workloadBufferedItems != 0
+                        || r.workloadBlockedProductionEvents != 0
+                        || r.workloadMinimumWindowThroughput == null || r.workloadMinimumWindowThroughput < 0.99
+                        || r.workloadMinimumTargetThroughput == null || r.workloadMinimumTargetThroughput < 0.99) {
+                    throw new GradleException("Incomplete or blocked fixed workload: ${r.scenario}")
+                }
+            }
+        }
+        def baseline = summarize(baselineStress, baselineControl, repeatedLoad)
+        def candidate = summarize(candidateStress, candidateControl, repeatedLoad)
         def failures = []
         def notes = []
         def atMost = { label, actualValue, limitValue ->
@@ -906,18 +972,22 @@ tasks.register('checkWirelessIoBenchmarkRegression') {
         atMost('candidate median p99 MSPT', candidate.p99, 45.0)
         atMost('candidate median >50 ms ratio', candidate.over50, 0.001)
         atMost('candidate median GC pause ratio', candidate.gcRatio, 0.02)
-        atMost('candidate paired control-adjusted mean MSPT', candidate.adjustedMean, 10.0)
-        atMost('candidate paired control-adjusted p99 MSPT', candidate.adjustedP99, 15.0)
+        if (!repeatedLoad) {
+            atMost('candidate paired control-adjusted mean MSPT', candidate.adjustedMean, 10.0)
+            atMost('candidate paired control-adjusted p99 MSPT', candidate.adjustedP99, 15.0)
+        }
         atMost('candidate median wireless I/O p99', candidate.ioP99, 12.0)
         if ((candidate.capacityTps as double) < 19.8) {
             failures << "candidate median capacity TPS ${candidate.capacityTps} < 19.8"
         }
         noRegression('median mean MSPT', baseline.mean, candidate.mean, 0.03, 0.20)
         noRegression('median p99 MSPT', baseline.p99, candidate.p99, 0.05, 0.5)
-        noRegression('paired control-adjusted mean MSPT', baseline.adjustedMean,
+        if (!repeatedLoad) {
+            noRegression('paired control-adjusted mean MSPT', baseline.adjustedMean,
                 candidate.adjustedMean, 0.03, 0.20)
-        noRegression('paired control-adjusted p99 MSPT', baseline.adjustedP99,
+            noRegression('paired control-adjusted p99 MSPT', baseline.adjustedP99,
                 candidate.adjustedP99, 0.05, 0.5)
+        }
         noRegression('median >50 ms ratio', baseline.over50, candidate.over50,
                 0.0, 1.0 / 1200.0)
         noRegression('median wireless I/O p99', baseline.ioP99, candidate.ioP99,
@@ -938,6 +1008,9 @@ tasks.register('checkWirelessIoBenchmarkRegression') {
         outputDirectory.mkdirs()
         File markdown = new File(outputDirectory, 'live-comparison.md')
         def body = new StringBuilder('# Wireless I/O live comparison\n\n')
+                .append(repeatedLoad
+                        ? 'Method: ten repeated loaded runs per version; control/stress are filename labels. No control subtraction.\n\n'
+                        : 'Method: five stress runs with paired idle controls.\n\n')
                 .append("Result: **${failures.isEmpty() ? 'PASS' : 'FAIL'}**\n\n")
                 .append("Optimization status: **${measurableImprovement
                         ? 'MEASURABLE_IMPROVEMENT' : 'NO_MEASURABLE_IMPROVEMENT'}**\n\n")
@@ -945,7 +1018,7 @@ tasks.register('checkWirelessIoBenchmarkRegression') {
                 .append('|---|---:|---:|\n')
         ['mean', 'p95', 'p99', 'adjustedMean', 'adjustedP99', 'over50',
          'capacityTps', 'ioP99', 'gcRatio', 'heap'].each { metric ->
-            body.append("| ${metric} | ${baseline[metric]} | ${candidate[metric]} |\n")
+            body.append("| ${metric} | ${baseline[metric] == null ? 'N/A' : baseline[metric]} | ${candidate[metric] == null ? 'N/A' : candidate[metric]} |\n")
         }
         body.append('\n## Failures\n\n')
         if (failures.isEmpty()) body.append('- None\n')

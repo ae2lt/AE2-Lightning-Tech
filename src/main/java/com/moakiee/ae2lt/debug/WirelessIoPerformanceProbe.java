@@ -63,6 +63,8 @@ public final class WirelessIoPerformanceProbe {
     private static boolean reportWritten;
     private static long gcCollectionsAtStart;
     private static long gcMillisAtStart;
+    private static long sampledGcCollections;
+    private static long sampledGcMillis;
     private static long peakUsedHeap;
     private static long workloadProducedItems;
     private static long workloadExtractedItems;
@@ -110,6 +112,10 @@ public final class WirelessIoPerformanceProbe {
     public static void beginServerTick() {
         if (!shouldMeasure()) {
             return;
+        }
+        if (workloadSeen && warmupSeen >= WARMUP_TICKS && samples == 0) {
+            gcCollectionsAtStart = gcCollections();
+            gcMillisAtStart = gcMillis();
         }
         currentTickStarted = System.nanoTime();
         currentWirelessIoNanos = 0;
@@ -229,8 +235,6 @@ public final class WirelessIoPerformanceProbe {
             return;
         }
         long elapsed = Math.max(0L, System.nanoTime() - currentTickStarted);
-        peakUsedHeap = Math.max(peakUsedHeap,
-                Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory());
         if (warmupSeen < WARMUP_TICKS) {
             warmupSeen++;
             return;
@@ -238,6 +242,8 @@ public final class WirelessIoPerformanceProbe {
         if (samples >= SAMPLE_TICKS) {
             return;
         }
+        peakUsedHeap = Math.max(peakUsedHeap,
+                Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory());
 
         tickNanos[samples] = elapsed;
         wirelessIoNanos[samples] = currentWirelessIoNanos;
@@ -245,6 +251,10 @@ public final class WirelessIoPerformanceProbe {
         fastInterfaceCalls[samples] = currentFastInterfaceCalls;
         connectionVisits[samples] = currentConnectionVisits;
         samples++;
+        if (samples == SAMPLE_TICKS) {
+            sampledGcCollections = Math.max(0L, gcCollections() - gcCollectionsAtStart);
+            sampledGcMillis = Math.max(0L, gcMillis() - gcMillisAtStart);
+        }
     }
 
     public static void finish(MinecraftServer server) {
@@ -266,8 +276,8 @@ public final class WirelessIoPerformanceProbe {
         long visits = sum(connectionVisits, count);
         long over50ms = countAbove(tickNanos, count, 50_000_000L);
         long over100ms = countAbove(tickNanos, count, 100_000_000L);
-        long gcCollections = Math.max(0L, gcCollections() - gcCollectionsAtStart);
-        long gcMillis = Math.max(0L, gcMillis() - gcMillisAtStart);
+        long gcCollections = partial ? Math.max(0L, gcCollections() - gcCollectionsAtStart) : sampledGcCollections;
+        long gcMillis = partial ? Math.max(0L, gcMillis() - gcMillisAtStart) : sampledGcMillis;
         double capacityTps = tickStats.meanNanos <= 0
                 ? 20.0
                 : Math.min(20.0, 1_000_000_000.0 / tickStats.meanNanos);
@@ -300,7 +310,10 @@ public final class WirelessIoPerformanceProbe {
             long over50ms, long over100ms, double capacityTps,
             long gcCollections, long gcMillis) {
         return "{\n"
-                + "  \"schema\": 2,\n"
+                + "  \"schema\": 3,\n"
+                + "  \"gcMeasurementWindow\": \"sample-ticks-only\",\n"
+                + "  \"comparisonKind\": \""
+                + (SCENARIO.contains("equal-load-") ? "repeated-load" : "idle-control") + "\",\n"
                 + "  \"scenario\": \"" + escapeJson(SCENARIO) + "\",\n"
                 + "  \"commit\": \"" + escapeJson(COMMIT) + "\",\n"
                 + "  \"gitHead\": \"" + escapeJson(GIT_HEAD) + "\",\n"
