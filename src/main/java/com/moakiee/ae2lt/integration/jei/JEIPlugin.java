@@ -36,6 +36,8 @@ import mezz.jei.api.registration.IRecipeCatalystRegistration;
 import mezz.jei.api.registration.IRecipeCategoryRegistration;
 import mezz.jei.api.registration.IRecipeRegistration;
 import mezz.jei.api.registration.IRecipeTransferRegistration;
+import com.moakiee.ae2lt.menu.PigmeeSynthesisStationMenu;
+import tamaized.ae2jeiintegration.integration.modules.jei.transfer.UseCraftingRecipeTransfer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
@@ -184,6 +186,9 @@ public class JEIPlugin implements IModPlugin {
             return;
         }
         var helper = registration.getTransferHelper();
+        registration.addRecipeTransferHandler(new UseCraftingRecipeTransfer<>(
+                PigmeeSynthesisStationMenu.class, PigmeeSynthesisStationMenu.TYPE, helper),
+                mezz.jei.api.constants.RecipeTypes.CRAFTING);
         var visibility = registration.getJeiHelpers().getIngredientVisibility();
         registration.addUniversalRecipeTransferHandler(new EncodePatternTransferHandler<>(
                 TianshuPatternEncodingTermMenu.TYPE,

@@ -6,6 +6,7 @@
   "mixins": [
     "ServerLevelMixin",
     "AEBaseMenuManagedSlotClickMixin",
+    "PigmeeRecipeTransferStorageMixin",
     "AnnihilationPlaneFirmamentDustMixin",
     "PatternProviderLogicAccessor",
     "PatternProviderLogicMixin",

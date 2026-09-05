@@ -1,0 +1,12 @@
+// Run the station regressions with the required mods only in an isolated world.
+// This changes development runtime dependencies, not the published jar.
+allprojects {
+    afterEvaluate {
+        configurations.runtimeOnly.dependencies.removeIf { dep ->
+            !(dep.group == 'com.moakiee.thunderbolt' || dep.group == 'org.appliedenergistics')
+        }
+        neoForge.runs.gameTestServer {
+            gameDirectory = project.layout.buildDirectory.dir('pigmee-gametest').get().asFile
+        }
+    }
+}
