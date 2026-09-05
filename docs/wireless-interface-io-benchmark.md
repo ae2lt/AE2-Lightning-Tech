@@ -1306,6 +1306,105 @@ benchmark-results/wireless-io-live-current-head-baseline/manifest.json
 进入生产，仍必须先加入与现有 9 行相同的模型状态/所有权/恢复验证，再跑
 真实 GameTest；本轮没有实现它。
 
+### 12.9 2026-09-05 demand-wake 负结论与批量能源核算候选撤回记录
+
+本轮按第 12.8 节的推荐方向完成了研究，并实现、验证了一个生产候选；
+候选在模型口径全部通过，但正式五轮真实 GameTest 出现一致回归，
+已按第 9、10 节规则撤回。生产代码最终恢复为与 `9897232b` 等价，
+本节只记录结论与证据，未修改 acceptance 逻辑、场景、窗口、阈值或缓冲。
+
+#### 需求唤醒（demand-wake）方向评估：当前不可落地，记录负结论
+
+按第 12.8 节要求逐项检验后，该方向在本仓库无法给出可交付实现：
+
+- 提示由哪个生产状态变化产生：无线连接的目标是任意第三方方块实体
+  （基准夹具为 1024 个原版木桶）。“目标产生新输出”发生在目标容器内部，
+  接口侧没有任何可观察钩子：AE2 `ExternalStorageStrategy.createWrapper`
+  的回调只在 wrapper 自身注入/抽出时触发，不响应外部写入；NeoForge 对
+  任意 `IItemHandler` 也没有外部内容变更监听。要给木桶类目标发提示只能
+  全局拦截所有容器写入（mixin），风险面与本基准的授权修改范围不匹配。
+- 不丢 wake、不重复转移：若强行实现，watchdog 保留为回退（唤醒只提前、
+  不推迟截止期），提示为一次性边沿并在服务时清除，访问复用同一条
+  extract 路径——语义上可以保住，但这不改变下面的可行性与收益结论。
+- 没有新输出时哪些 idle visits 可以安全跳过：只有“提示通道可信”的
+  连接才能跳过 watchdog 轮询；对第三方目标该通道不可得，因此不存在
+  可证明安全的跳过集合，pulse 场景的 5-tick 需求等待预算不允许放宽。
+- FOUR_TICK_BURST：连续热负载下提示命中的都是“下一 tick 本来就会
+  访问”的连接，visits 与工作量都不会减少。
+- 真实压力组实测为连续热负载：1024 连接每 tick 全部 productive，
+  `configuredConnectionVisits=1024/tick`，采样窗口内无线 I/O 恒定约
+  `19.7 ms/tick`，仅停产后最后 3 个样本衰减。提示没有收益空间。
+- 模型镜像：模型 machine 可在 `produce()` 的空→非空边沿置 hint 并在
+  同 tick 服务，所有权守恒不受影响；但该镜像不对应任何可交付的生产
+  信号源，因此本轮没有实现，也没有为它保留测试或生产代码。
+
+#### 候选：import 提取 pass 的 visit 级能源核算合并（已撤回）
+
+真实基线数据显示每 visit 对 27 个 key 各调用一次
+`PowerCostUtil.maxAffordable`（`extractAEPower(SIMULATE)`）与一次
+`consume`（`MODULATE`），约 54 次 grid 能源服务遍历、每 tick 约 5.5 万次。
+假设：当一次 `canAfford`（与 `maxAffordable` 同一谓词）能证明整批成本
+上界加空闲储备可支付时，把逐 key 能源核算合并为整批一次 SIMULATE 与
+一次 MODULATE；预算截断或证明不了时逐 key 路径原样回退。逐 key 等价性
+由归纳证明（`need_K ≤ bound` ⇒ 每 key cap 都返回全额；批量计费等于
+Σ 每 key 实际成本）。未混入 cache、phase、buffer、阈值或 acceptance 改动。
+
+验证结果：
+
+- `compileJava compileTestJava test wirelessInterfaceIoModelQuick
+  wirelessInterfaceIoModel` 与 `wirelessInterfaceIoModelAcceptance` 全部
+  PASS（模型不建模能源路径，改动不触及调度器）。
+- 固定 9 行需求唤醒诊断候选前后逐字节一致：
+  `benchmark-results/wireless-io-wake/head-9897232-recheck/`（与
+  `head-9897232-baseline/` 一致）对比
+  `benchmark-results/wireless-io-wake/hb-batched-import-power/`。
+- 300 tick smoke（40/200 预热、300 采样）同参数 A/B 中候选更快
+  （基线 mean/P95/P99/max `50.566/59.673/69.512/184.229 ms`、>50ms 170 个，
+  候选 `47.572/55.908/67.133/139.730 ms`、>50ms 106 个；候选 JSON/CSV 保存在
+  `benchmark-results/wireless-io-smoke-hb-batched-import-power/`）。该结论
+  是冷 JIT 伪影：短运行的解释调用开销放大了能源调用成本。
+- 正式五轮（200/1200，C1→S1→…→C5→S5）推翻 smoke 结论。原始结果在
+  `benchmark-results/wireless-io-live-hb-batched-import-power/`（含归档的
+  `live-comparison.md`）。压力组中位数（最差轮）与
+  `wireless-io-live-current-head-baseline` 对比：
+
+| 指标 | 基线中位（最差轮） | 候选中位（最差轮） |
+|---|---:|---:|
+| mean MSPT | 26.760493（27.007414） | 27.774114（28.032586） |
+| P95 MSPT | 32.088900（32.511800） | 35.219100（35.523000） |
+| P99 MSPT | 35.996400（36.342000） | 39.181500（40.163300） |
+| max MSPT | 85.095900（93.369800） | 84.561200（106.779200） |
+| wireless I/O P99 | 26.855700（27.409100） | 29.990000（30.295700） |
+| 容量 TPS | 20 / 20 | 20 / 20 |
+| >50 ms 比例 | 0.000833（0.000833） | 0.001667（0.001667） |
+| GC 次数 / ms | 266 / 655 | 246 / 647 |
+| 控制校正 mean/P99 | 26.318345 / 34.050500 | 27.426982 / 37.716200 |
+
+- `compare-wireless-io-gametest-benchmarks.ps1` 判定 mean、P99、控制校正
+  mean/P99 与 wireless I/O P99 全部回归且超出容差；控制组同期不升反降
+  （中位 mean `0.335` vs 基线 `0.439`），排除机器状态漂移。五轮压力组
+  逐轮全部劣于基线中位，方向一致，是真实回归。
+- 机制解释：稳态 C2 内联后，小网格上每次 `extractAEPower` 近乎免费，
+  合并 54 次调用的收益趋零；新增的成本上界遍历成为净增开销。冷 JIT
+  smoke 的收益方向与热稳态相反——这再次说明最终性能结论只能来自正式
+  200/1200 五轮，不能来自 smoke。
+
+撤回即日生效：`scanImportKeys`/`extractExactImportKeys` 恢复原实现，
+恢复后 `compileJava compileTestJava test wirelessInterfaceIoModelQuick
+wirelessInterfaceIoModel wirelessInterfaceIoModelAcceptance` 全部 PASS，
+工作树与 `93c96572` 逐字节一致。
+
+#### 剩余失败与未执行项目
+
+- 真实 GameTest 绝对门槛仍未通过：压力 mean > 25 ms、控制校正 mean/P99
+  超标、wireless I/O P99 > 12 ms，与 12.8 节基线状态相同；本轮没有把
+  模型 PASS 或已撤回候选的任何数字解释为性能通过。
+- 本轮未运行 `wirelessInterfaceIoModelEndurance`、普通
+  `runGameTestServer` transition 用例与手工世界校准（与 12.8 节一致）。
+- 需求唤醒方向若要重启，前提是出现可信的目标侧变更信号（例如本模组
+  自有方块实体接入提示接口），届时仍需按第 12.6/12.7 节契约与遥测、
+  再按第 8、9、10 节流程验证。
+
 ## 13. 结果记录模板
 
 ```text
