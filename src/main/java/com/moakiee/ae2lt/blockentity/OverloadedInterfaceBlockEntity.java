@@ -142,10 +142,7 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
     private static final double NORMAL_TARGET_FILL = 0.85;
     private static final double RATE_EMA_ALPHA = 0.2;
     private static final int IO_WHEEL_SLOTS = 128;
-    private static final int IMPORT_KEY_CACHE_TTL = 40;
     private static final int IMPORT_EMPTY_KEY_CACHE_TTL = 20;
-    private static final int IMPORT_KEY_CACHE_MAX_KEYS = 256;
-    private static final int IMPORT_KEY_CACHE_TRUNCATED_TTL = 5;
     private static final int EXPORT_REJECT_BACKOFF_INIT = 10;
     private static final int EXPORT_REJECT_BACKOFF_MAX = 80;
     /** Number of completely rejected FAST passes before retrying full keys quickly. */
@@ -167,13 +164,13 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
     private static final int FAST_CATCH_UP_GAP = FAST_SLOW_PRODUCER_INTERVAL * 3;
     private static final int FAST_CATCH_UP_RETRIES = 10;
 
-    /** Scan buffer for import — replaced after scans to avoid large-map clear costs. */
-    private KeyCounter scanBuffer = new KeyCounter();
+    private final ImportScanBuffer scanBuffer = new ImportScanBuffer();
     private final Map<AEKey, Long> importBuffer = new LinkedHashMap<>();
     private final Map<AEKeyType, Long> keyTypeLockUntil = new IdentityHashMap<>();
     private final ImportBufferFlushState importBufferFlushState = new ImportBufferFlushState();
     private final Map<AEKeyType, List<ExportConfigEntry>> exportConfigCache = new IdentityHashMap<>();
     private long importBufferLastFlushTick = Long.MIN_VALUE;
+    private long importBufferLastSaveTick = Long.MIN_VALUE;
     private boolean importBufferFlushLimited;
     private int importBufferRemainingKeys;
     private long exportConfigCacheTick = Long.MIN_VALUE;
@@ -461,35 +458,54 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         }
     }
 
-    static final class ImportKeyCache {
-        final List<AEKey> keys = new ArrayList<>();
-        long lastFullScanTick = Long.MIN_VALUE;
-        boolean truncated;
+    /** Reuse small scan maps without retaining large or obsolete target inventories. */
+    static final class ImportScanBuffer {
+        private static final int MAX_RETAINED_KEYS = 256;
+        private KeyCounter counter = new KeyCounter();
+        private boolean borrowed;
 
-        boolean isScanFresh(long now) {
-            if (lastFullScanTick == Long.MIN_VALUE) return false;
-            int ttl;
-            if (keys.isEmpty()) {
-                ttl = IMPORT_EMPTY_KEY_CACHE_TTL;
-            } else if (truncated) {
-                ttl = IMPORT_KEY_CACHE_TRUNCATED_TTL;
-            } else {
-                ttl = IMPORT_KEY_CACHE_TTL;
-            }
-            return now - lastFullScanTick < ttl;
+        KeyCounter acquire() {
+            // A third-party storage callback may re-enter I/O. Its temporary
+            // scan must not clear or mutate the outer pass's snapshot.
+            if (borrowed) return new KeyCounter();
+            borrowed = true;
+            counter.clear();
+            return counter;
         }
 
-        void update(List<AEKey> scannedKeys, boolean wasTruncated, long now) {
-            keys.clear();
-            keys.addAll(scannedKeys);
+        void release(KeyCounter scanned) {
+            if (scanned != counter) return;
+            // clear() preserves AE2's per-primary maps. Remove primary types
+            // absent from this target, otherwise unrelated machines slowly
+            // enlarge every following clear/iteration.
+            scanned.removeEmptySubmaps();
+            if (scanned.size() > MAX_RETAINED_KEYS) {
+                counter = new KeyCounter();
+            }
+            borrowed = false;
+        }
+    }
+
+    /** Only NORMAL I/O reuses an empty observation; FAST deadlines own polling. */
+    static final class ImportScanCache {
+        boolean empty;
+        long lastFullScanTick = Long.MIN_VALUE;
+
+        boolean canReuseEmpty(long now, IOSpeedMode mode) {
+            return mode == IOSpeedMode.NORMAL && empty
+                    && lastFullScanTick != Long.MIN_VALUE
+                    && now >= lastFullScanTick
+                    && now - lastFullScanTick < IMPORT_EMPTY_KEY_CACHE_TTL;
+        }
+
+        void update(boolean empty, long now) {
+            this.empty = empty;
             lastFullScanTick = now;
-            truncated = wasTruncated;
         }
 
         void clear() {
-            keys.clear();
+            empty = false;
             lastFullScanTick = Long.MIN_VALUE;
-            truncated = false;
         }
     }
 
@@ -520,7 +536,7 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         final Map<AEKeyType, CooldownTracker> exportCDs = new IdentityHashMap<>();
         final Map<AEKeyType, ProbeState> importProbeStates = new IdentityHashMap<>();
         final Map<AEKeyType, KeyModel> keyModels = new IdentityHashMap<>();
-        final Map<AEKeyType, ImportKeyCache> importKeyCaches = new IdentityHashMap<>();
+        final Map<AEKeyType, ImportScanCache> importScanCaches = new IdentityHashMap<>();
         final Map<AEKey, ExportRejectState> exportRejects = new HashMap<>();
 
         @Nullable WeakReference<BlockEntity> storageBERef;
@@ -541,8 +557,8 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
             return keyModels.computeIfAbsent(type, ignored -> new KeyModel());
         }
 
-        ImportKeyCache importKeyCacheFor(AEKeyType type) {
-            return importKeyCaches.computeIfAbsent(type, ignored -> new ImportKeyCache());
+        ImportScanCache importScanCacheFor(AEKeyType type) {
+            return importScanCaches.computeIfAbsent(type, ignored -> new ImportScanCache());
         }
 
         void resetWirelessIo(IOSpeedMode mode) {
@@ -550,7 +566,7 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
             exportCDs.values().forEach(cd -> cd.reset(mode));
             importProbeStates.values().forEach(ProbeState::reset);
             keyModels.values().forEach(KeyModel::resetCycle);
-            importKeyCaches.values().forEach(ImportKeyCache::clear);
+            importScanCaches.values().forEach(ImportScanCache::clear);
             exportRejects.clear();
         }
 
@@ -1909,8 +1925,8 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         if (exactFilterKeys != null) {
             result = extractExactImportKeys(keyType, wrapper, src, transferLimit, exactFilterKeys);
         } else {
-            var cache = state.importKeyCacheFor(keyType);
-            if (cache.isScanFresh(now) && cache.keys.isEmpty()) {
+            var cache = state.importScanCacheFor(keyType);
+            if (cache.canReuseEmpty(now, ioSpeedMode)) {
                 result = new ImportResult(0, 0);
             } else {
                 result = scanImportKeys(keyType, wrapper, src, cache, now, transferLimit, true);
@@ -1921,7 +1937,7 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         model.onExtract(result.totalAvail(), result.moved(), now);
         var cd = state.cdFor(keyType, IoDirection.IMPORT);
         if (result.moved() > 0) {
-            saveChanges();
+            saveImportBufferChanges(now);
             cd.onSuccess(now, ioSpeedMode, model);
         } else {
             cd.onFail(now, ioSpeedMode);
@@ -1936,8 +1952,8 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
             return observeExactImportAvailable(keyType, wrapper, src, probeLimit, exactFilterKeys);
         }
 
-        var cache = state.importKeyCacheFor(keyType);
-        if (cache.isScanFresh(now) && cache.keys.isEmpty()) {
+        var cache = state.importScanCacheFor(keyType);
+        if (cache.canReuseEmpty(now, ioSpeedMode)) {
             return 0;
         }
         return scanImportKeys(keyType, wrapper, src, cache, now, probeLimit, false).totalAvail();
@@ -1976,39 +1992,33 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
     }
 
     private ImportResult scanImportKeys(AEKeyType keyType, MEStorage wrapper, IActionSource src,
-                                        ImportKeyCache cache, long now, long transferLimit,
+                                        ImportScanCache cache, long now, long transferLimit,
                                         boolean extract) {
-        var buffer = freshScanBuffer();
-        wrapper.getAvailableStacks(buffer);
-        var scannedKeys = new ArrayList<AEKey>();
-        boolean truncated = false;
-        long budget = transferLimit;
-        long total = 0;
-        long moved = 0;
-        for (var available : buffer) {
-            var key = available.getKey();
-            if (key.getType() != keyType || !isImportAllowed(key)) continue;
-            long amount = available.getLongValue();
-            if (amount <= 0) continue;
-            total += amount;
-            if (scannedKeys.size() < IMPORT_KEY_CACHE_MAX_KEYS) {
-                scannedKeys.add(key);
-            } else {
-                truncated = true;
+        var buffer = scanBuffer.acquire();
+        try {
+            wrapper.getAvailableStacks(buffer);
+            boolean empty = true;
+            long budget = transferLimit;
+            long total = 0;
+            long moved = 0;
+            for (var available : buffer) {
+                var key = available.getKey();
+                if (key.getType() != keyType || !isImportAllowed(key)) continue;
+                long amount = available.getLongValue();
+                if (amount <= 0) continue;
+                empty = false;
+                total += amount;
+                if (extract && budget > 0) {
+                    long extracted = importExtractToBuffer(key, Math.min(amount, budget), wrapper, src);
+                    moved += extracted;
+                    budget -= extracted;
+                }
             }
-            if (extract && budget > 0) {
-                long extracted = importExtractToBuffer(key, Math.min(amount, budget), wrapper, src);
-                moved += extracted;
-                budget -= extracted;
-            }
+            cache.update(empty, now);
+            return new ImportResult(total, moved);
+        } finally {
+            scanBuffer.release(buffer);
         }
-        cache.update(scannedKeys, truncated, now);
-        return new ImportResult(total, moved);
-    }
-
-    private KeyCounter freshScanBuffer() {
-        scanBuffer = new KeyCounter();
-        return scanBuffer;
     }
 
     private long importExtractToBuffer(AEKey key, long amount, MEStorage wrapper, IActionSource src) {
@@ -2135,7 +2145,7 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
             cd.onFail(now, ioSpeedMode);
         }
         if (overflowed) {
-            saveChanges();
+            saveImportBufferChanges(now);
         }
 
         return moved;
@@ -2212,7 +2222,19 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
             // merely because it arrived after the rejection pass closed.
             keyTypeLockUntil.remove(key.getType());
         }
-        alertGridTicker();
+        // All additions originate in the active grid import/export pass.
+        // ProxyTicker returns URGENT for that work; AE2 ignores alerts for
+        // the currently ticking node, so there is no per-key wakeup to send.
+    }
+
+    private void saveImportBufferChanges(long now) {
+        if (importBufferLastSaveTick != now) {
+            importBufferLastSaveTick = now;
+            // AE2 queues setChanged for the end of the tick, but still looks
+            // up the chunk on every saveChanges call. One call covers all
+            // buffer mutations in this tick, including subsequent targets.
+            saveChanges();
+        }
     }
 
     /** Read-only observation used by the self-contained development GameTest fixture. */
@@ -2385,7 +2407,7 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
                 me,
                 src,
                 now,
-                this::saveChanges);
+                () -> saveImportBufferChanges(now));
         importBufferLastFlushTick = result.lastFlushTick();
         importBufferFlushLimited = result.flushLimited();
         importBufferRemainingKeys = result.remainingKeys();
@@ -2420,6 +2442,7 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         importBufferFlushState.clear();
         keyTypeLockUntil.clear();
         importBufferLastFlushTick = Long.MIN_VALUE;
+        importBufferLastSaveTick = Long.MIN_VALUE;
         importBufferFlushLimited = false;
         importBufferRemainingKeys = 0;
     }
@@ -2741,6 +2764,7 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         filterInv.readFromNBT(d, TAG_FILTER_INV, r);
         rebuildFilter();
         importBuffer.clear();
+        importBufferLastSaveTick = Long.MIN_VALUE;
         importBufferFlushLimited = false;
         importBufferRemainingKeys = 0;
         if (d.contains(TAG_IMPORT_BUFFER, Tag.TAG_LIST)) {

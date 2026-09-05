@@ -329,19 +329,17 @@ final class WirelessInterfaceIoStressModel {
         require(!OverloadedInterfaceBlockEntity.hasWirelessConnectionCapacity(1025),
                 "an already-overfull list must remain rejected");
 
-        var cache = new OverloadedInterfaceBlockEntity.ImportKeyCache();
-        cache.update(List.of(), false, 10);
-        require(cache.isScanFresh(29), "empty cache TTL must include tick 29");
-        require(!cache.isScanFresh(30), "empty cache TTL must expire at tick 30");
-        cache.update(java.util.Collections.nCopies(255, null), false, 10);
-        require(cache.isScanFresh(49), "255-key cache TTL must include tick 49");
-        require(!cache.isScanFresh(50), "255-key cache TTL must expire at tick 50");
-        cache.update(java.util.Collections.nCopies(256, null), false, 10);
-        require(cache.isScanFresh(49), "256-key cache TTL must include tick 49");
-        require(!cache.isScanFresh(50), "256-key cache TTL must expire at tick 50");
-        cache.update(java.util.Collections.nCopies(256, null), true, 10);
-        require(cache.isScanFresh(14), "truncated cache TTL must include tick 14");
-        require(!cache.isScanFresh(15), "truncated cache TTL must expire at tick 15");
+        var cache = new OverloadedInterfaceBlockEntity.ImportScanCache();
+        cache.update(true, 10);
+        require(cache.canReuseEmpty(29, IOSpeedMode.NORMAL),
+                "NORMAL empty cache TTL must include tick 29");
+        require(!cache.canReuseEmpty(30, IOSpeedMode.NORMAL),
+                "NORMAL empty cache TTL must expire at tick 30");
+        require(!cache.canReuseEmpty(11, IOSpeedMode.FAST),
+                "FAST scheduled work must observe new output after an empty scan");
+        cache.update(false, 10);
+        require(!cache.canReuseEmpty(11, IOSpeedMode.NORMAL),
+                "nonempty observations must never hide changed keys");
     }
 
     private static void require(boolean condition, String message) {
