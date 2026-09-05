@@ -1184,6 +1184,128 @@ build/reports/wireless-interface-io-wake/demand-wake-optimization.md
 
 测试夹具曾短暂使用 160 tick 的 burst 窗口并从 tick 40 开始统计，IO_THEN_MACHINE 行得到 `min_window/min_machine=0.800000/0.833333`、压力比例 `0.166667`，HASHED 行得到 `0.908537/0.833333`、压力比例 `0.075684`。这是把首个边界 burst 纳入过短诊断窗口造成的夹具伪影，不是新的生产回归；原始数值保留在此，当前已对齐正式矩阵的 `acceptanceStart=80` 和 640 tick，并重新验证为 `1.000000/1.000000`、零压力。
 
+### 12.8 2026-09-05 当前 HEAD 基线重验与候选收敛记录
+
+本节记录当前生产 HEAD 的重新验证结果。之前的
+`benchmark-results/wireless-io-live-baseline/` 和
+`benchmark-results/wireless-io-live-candidate/` 无法证明与当前 HEAD、同一
+JVM、同一 CPU、电源策略和同一夹具完全对应，因此没有把它们当作本轮的
+精确回归基线；本节的真实基线是重新运行得到的
+`benchmark-results/wireless-io-live-current-head-baseline/`。
+
+执行时的仓库与环境为：
+
+```text
+branch: test/wireless-interface-io-benchmark
+commit: 9897232b7a0248a4f55f508c6c42513a9ee335d1
+dirty worktree: no
+OS: Windows 11 amd64
+CPU: Intel Core i7-13650HX, 20 logical processors
+power policy: Balanced
+Java: Eclipse Adoptium 21.0.11 (GameTest/Gradle toolchain)
+server: Minecraft 1.21.1
+fixture: gametest-import-1024x27
+warmup/sample: 200/1200 tick per run, 5 control + 5 stress runs
+```
+
+本轮在恢复后的 clean HEAD 上执行了：
+
+```powershell
+.\gradlew.bat compileJava compileTestJava test wirelessInterfaceIoModelQuick wirelessInterfaceIoModel --rerun-tasks
+.\gradlew.bat wirelessInterfaceIoModelAcceptance --rerun-tasks
+```
+
+编译、普通测试（797 tests、0 failures、0 errors）、quick/full 模型以及
+严格 `wirelessInterfaceIoModelAcceptance` 均通过；完整模型保留 25 个语义
+工作负载场景和 178 个压力场景，所有权、正确性、负数状态、吞吐、恢复和
+压力门槛均为 PASS。模型中的 work 仍只是工作量代理，不是毫秒或 TPS。
+
+当前 HEAD 的固定 9 行需求唤醒诊断位于：
+
+```text
+benchmark-results/wireless-io-wake/head-9897232-baseline/demand-wake-optimization.csv
+benchmark-results/wireless-io-wake/head-9897232-baseline/demand-wake-optimization.md
+```
+
+关键字段如下；`visits/idle` 是 scheduler visits/idle visits，`work` 顺序为
+`mean/p99/max`，`lat/demand/gap` 顺序为 P99 latency、最大需求等待和最大
+service gap。所有这 9 行的 ownership/correctness/negative-state 检查均保持
+通过，且 FOUR_TICK_BURST 两行窗口/机器吞吐均为 `1.000000/1.000000`、压力
+为 `0`。
+
+| 场景 | visits/idle | idle/connection-tick | work | p99/mean | lat/demand/gap | min window/machine | pressure events |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| `wake-opt-zero-1024` | 16384/16384 | 0.20000000 | 1642/8196/8196 | 4.9915 | -1/0/5 | 1.000000/1.000000 | 0 |
+| `wake-opt-one-pulse-1` | 24/23 | 0.28750000 | 8/140/140 | 17.5000 | 0/0/5 | 1.000000/1.000000 | 0 |
+| `wake-opt-one-pulse-64` | 1572/1508 | 0.29453125 | 263/8708/8708 | 33.1103 | 0/0/5 | 1.000000/1.000000 | 0 |
+| `wake-opt-one-pulse-1024-sync` | 25243/24219 | 0.29564209 | 4166/139268/139268 | 33.4297 | 0/0/5 | 1.000000/1.000000 | 0 |
+| `wake-opt-one-pulse-1024-hashed-io-first` | 18899/17997 | 0.21968994 | 3337/25476/25476 | 7.6344 | 5/5/5 | 1.000000/1.000000 | 0 |
+| `wake-opt-four-burst-1024-sync-io-first` | 594587/536219 | 0.81820526 | 19314/139268/270340 | 7.2107 | 5/5/1 | 1.000000/1.000000 | 0 |
+| `wake-opt-four-burst-1024-hashed` | 598105/538340 | 0.82144165 | 19582/32460/42988 | 1.6576 | 2/4/5 | 1.000000/1.000000 | 0 |
+| `wake-opt-target-outage-1024` | 400384/12288 | 0.02857143 | 128325/139268/270340 | 1.0853 | 0/40/5 | 0.610000/0.897368 | 39936 |
+| `wake-opt-hot-restart-1024` | 146432/24576 | 0.10000000 | 70421/139268/270340 | 1.9776 | 0/1/5 | 1.000000/1.000000 | 0 |
+
+真实 GameTest 当前 HEAD 基线的原始 JSON 和逐 tick CSV 位于：
+
+```text
+benchmark-results/wireless-io-live-current-head-baseline/control-run1.json ... control-run5.json
+benchmark-results/wireless-io-live-current-head-baseline/stress-run1.json ... stress-run5.json
+benchmark-results/wireless-io-live-current-head-baseline/control-run1-ticks.csv ... control-run5-ticks.csv
+benchmark-results/wireless-io-live-current-head-baseline/stress-run1-ticks.csv ... stress-run5-ticks.csv
+benchmark-results/wireless-io-live-current-head-baseline/manifest.json
+```
+
+10 份 JSON 均为完整的 1200 sample，10 份逐 tick CSV 均为 1200 行；每轮
+`interfaceCalls=1200`、`configuredConnectionVisits=1228800`。下表是各指标的
+“五轮中位数 / 五轮最大值”；控制校正的数值按同编号压力组减控制组，取五
+个配对差值的中位数：
+
+| 组/指标 | mean MSPT | P95 MSPT | P99 MSPT | max MSPT | wireless I/O P99 | TPS | >50 ms / >100 ms 比例 | GC 次数 / ms | 堆峰值 bytes |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| control | 0.438734/0.503780 | 1.204200/1.675500 | 1.778800/2.699400 | 11.596400/20.351700 | 1.212000/1.979200 | 20/20 | 0/0 | 1/1 / 8/10 | 711547680/718547520 |
+| stress | 26.760493/27.007414 | 32.088900/32.511800 | 35.996400/36.342000 | 85.095900/93.369800 | 26.855700/27.409100 | 20/20 | 0.000833/0.000833 / 0/0 | 266/267 / 655/668 | 853985216/1116634688 |
+
+压力组的配对控制校正为 mean/P95/P99 MSPT
+`26.318345/30.974200/34.050500`，无线 I/O P99 配对差值中位数为
+`25.809200`。这是当前生产代码的真实性能基线，不是候选通过结论；它的
+压力 mean 和控制校正后的 mean/P99、无线 I/O P99 仍高于绝对 acceptance
+门槛，所以不能把模型 PASS 或相对基线信息写成严格性能通过。
+
+#### 候选筛选结论
+
+本轮逐个提出并验证了生产调度假设，没有把多个优化混在同一候选中。所有
+未通过者均已撤回；已生成的原始诊断目录保留在
+`benchmark-results/wireless-io-wake/`，最新候选在写诊断文件前就因断言失败，
+其失败数值记录在本节：
+
+- 高基数 phase-spread 在 `candidate-high-cardinality-phased-idle/` 中降低了
+  同步 1024 pulse 的 visits，但完整 acceptance 在 cold-start slot 32/33/63
+  及大堆边界失败（最低窗口约 `0.5479`，另一个边界约 `0.7554`），撤回。
+- 空 cache 直接延后到 TTL 的方案在重复四 tick burst 中把窗口吞吐降到
+  `0.4`，撤回。
+- 成功后 phase/pacing 方案虽然降低部分 idle visits，但 pulse 的
+  `p99/mean` 变差（例如 `17.50→20.00`、`33.11→33.62`、`33.43→33.92`），
+  或提高 service gap，撤回。
+- 有界 high-cardinality phase 方案使 FOUR_TICK_BURST 的 idle visits 增加，
+  并把 pulse 的需求等待/间隔从 `0/5` 推到约 `4/9`，撤回。
+- 最新“按已知成功间隔直接预约下一次服务”的方案在固定诊断中使
+  `FOUR_TICK_BURST` 窗口吞吐降至 `0.5842`；完整 quick 还出现 pulse P99
+  `10～13 tick`、需求等待 `13 tick` 和 rate-switch 吞吐/压力失败，撤回。
+
+因此当前仍没有生产候选可以进入 300 tick smoke 或正式五轮候选对比；没有
+更新 acceptance 逻辑、场景、窗口、阈值、缓冲或物品语义，也没有把失败候选
+的模型收益解释为真实毫秒收益。
+
+#### 是否还有优化空间
+
+有，但当前诊断已经说明“只调 watchdog 时间/phase”缺少足够信息：生产调度
+无法可靠区分“真正孤立的单 tick pulse”和“FOUR_TICK_BURST 的第一拍”。
+下一步最值得验证的单一方向是：由生产端实际产生新输出时提供一个有界的
+需求唤醒提示，接口只在收到提示时提前唤醒，同时保留现有 watchdog 作为
+漏信号、目标 outage、scheduler rebuild 和 hot restart 的回退。该方向若要
+进入生产，仍必须先加入与现有 9 行相同的模型状态/所有权/恢复验证，再跑
+真实 GameTest；本轮没有实现它。
+
 ## 13. 结果记录模板
 
 ```text
