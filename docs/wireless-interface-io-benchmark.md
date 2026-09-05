@@ -1516,11 +1516,12 @@ Notes:
 
 ### 16.3 优先待验证的代码问题与测试缺口
 
-以下是代码审查发现/待测假设，不是本轮已经修复或用实测证明的热点：
+以下是交接时记录的代码审查发现；本轮完成的修复和实测结果以 16.5 为准，仍未完成的
+覆盖缺口保留在条目中：
 
 1. `flushImportBuffer` 的 16,384 是初始片大小，后续 `flushLimit` 会随新增键增大；没有新增键时可刷新全部剩余积压。验证停产后大积压、持续新增唯一键、部分接收下的每 tick 尝试数、排空时间和端到端延迟。不能直接改成固定硬上限而放任输入速率高于排空速率。
-2. 分片内同类型全部拒收时，可能锁住整个类型 20 tick，即使未访问尾部仍有可接收键。添加按键可编程的真实 `MEStorage` 替身或 GameTest，覆盖“前 16,384 键拒收、尾部同类型接受”、混合类型、部分插入、拒收恢复；断言无误锁、无饥饿、逐键守恒。当前百分比接收模型无法复现键顺序问题，不应靠扩展百分比公式宣称覆盖。
-3. `runExport` 的 `fastRejectRetry` 仅检查失败次数，目标恢复截止期也未限制 FAST；需验证 NORMAL 是否出现意外策略变化。测试需覆盖 FAST/NORMAL、IMPORT/EXPORT、满目标、目标短暂与长期不可用、模式切换，明确正常模式的预期行为后再修复。
+2. 分片内同类型全部拒收时，可能锁住整个类型 20 tick，即使未访问尾部仍有可接收键。本轮已用按键可编程的真实生产 `MEStorage` helper 覆盖“前 16,384 键拒收、尾部同类型接受”、混合类型、部分插入、拒收恢复；持续高基数的每 tick 成本仍见 16.5，真实第三方 capability 端到端覆盖未完成。
+3. `runExport` 的 `fastRejectRetry` 已增加 `IOSpeedMode.FAST` 门槛，并用生产 helper 检查 NORMAL 不会选中 FAST 重试；现有模型覆盖 FAST 的 IMPORT/EXPORT、满载/目标短长期不可用和调度切换。NORMAL + EXPORT 的完整真实方块实体模式切换场景仍未补齐，不能据此扩大性能结论。
 4. 当前主压力模型是 FAST item I/O，真实性能夹具是单接口 1024×27 桶。新增真实 export、双向、多接口、目标冷热切换、高基数/拒收及端到端延迟观测，才能支持更广泛的优化结论。流体、过滤、能源不足、区块卸载、持久化/重载还需对应生产路径测试。
 
 优先用同负载 JFR/分配采样或可关闭的阶段计时区分 wrapper 扫描、抽取、能源服务、buffer 插入与对象分配；诊断轮与正式计时轮分开。持续热负载的主要机会可能是降低每次服务成本，具体优先级由采样决定。第 12.9 节的 C2 内联机制解释应视为待 profiler 验证的解释；五轮回归数据本身不等于已证明 JIT 原因或排除了所有环境漂移。
@@ -1532,3 +1533,125 @@ Notes:
 允许为真实覆盖缺口修改测试、夹具和增加场景，但要保留旧场景、原始样本和比较结果。若发现夹具错误，先用独立证据证明错误，再对基线与候选同时重跑；不能只改候选的阈值、窗口或预热设置。
 
 每个候选只改一个可解释的热点。记录代码身份（包括未提交 diff）、Java/硬件/电源策略、负载、原始 CSV/JSON、模型和实测结论。先过新增保护与完整模型，再运行必要的真实语义测试；最终用相同环境的五轮控制/压力组、200 tick 预热与 1200 tick 采样比较。已有历史数据用于参考，不能替代新环境下的配对基线。失败候选撤回其生产改动，保留有效测试与负结论。
+
+### 16.5 2026-09-05 实际热点定位、候选撤回与最终验证
+
+本轮从交接提交 `e4c7bf76` 的实际工作树开始，分支为
+`test/wireless-interface-io-benchmark`。仓库根目录没有适用的 `AGENTS.md`；发现的
+`Source Code/1.21.1/SuperFactoryManager-1.21.1/docs/AGENTS.md` 属于嵌套的第三方工程，
+未套用到本仓库。交接提交本身没有生产代码修改。最终未提交身份为：生产跟踪 diff
+`ce948744ac34cee47ce43c6f2c374433ccc392a1`，新增生产路径测试文件 SHA-1 为
+`10a7af51521fb4e76e528afee516be4d9cad5fa2`；工作树中的其他既有修改均未覆盖。
+
+#### 诊断证据
+
+正式计时之外另跑了延迟启动 JFR：
+`benchmark-results/diagnostics/current-head-jfr-delayed/wireless-io-33212.jfr`。
+该轮有效时间约 18 秒，包含启动/世界成本，只用于定位，未混入五轮 JSON/CSV。JFR
+分配站点中 `BlockPos.relative` 占 41.22%（主要是 GameTest 夹具/世界工作），
+`Object2LongOpenHashMap.<init>` 占 20.64%；调用栈对应 `scanImportKeys → freshScanBuffer`
+的 `KeyCounter` 临时 map 分配。CPU 样本中 `ServerChunkCache.getChunk` 占 40.72%，
+`Long2ObjectLinkedOpenHashMap.get` 占 11.93%，`EnergyService.extractProviderPower`
+占 0.82%，`scanImportKeys` 占 0.45%，`isImportAllowed` 占 0.60%。因此没有把
+`configuredConnectionVisits` 当作实际 capability 访问证明，也没有把夹具的
+`BlockPos.relative` 误报成无线接口本身的唯一热点。
+
+#### 保留的生产修改与语义保护
+
+- `flushImportBufferEntries` 是生产 flush 路径的可测试提取；类型锁只有在本片已完整
+  检查且没有未访问同类型正积压时才建立。前 16,384 个同类型键全部拒收时，尾部
+  可接收键不会再被错误锁住；部分插入、混合类型、拒收恢复仍按键保留所有权。
+- `runExport` 的拒收快速重试现在必须同时满足 `IOSpeedMode.FAST` 和失败次数门槛，
+  NORMAL 不会意外获得 FAST 重试。现有 FAST import/export 的目标拒收、短/长期
+  outage 和模式切换模型继续通过；NORMAL 的完整真实方块实体双向场景仍是后续覆盖项，
+  因而本轮不把这条小修复夸大成全模式语义验收。
+- 新的 `OverloadedInterfaceBufferPathTest` 直接调用上述生产 helper 和可编程
+  `MEStorage`，没有复制一份简化生产逻辑。它覆盖：前 16,384 键拒收/尾部同类型
+  接收、部分插入、混合类型、拒收恢复、FAST/NORMAL 重试门槛，以及 49,152 键停产
+  积压的排空与逐键守恒。
+
+高基数测试实际观测到：首 tick 尝试 16,384 键、剩余 32,768 键；下一 tick 为保持
+排空能力会尝试 32,768 键并完全清空，未丢失 49,152 个键。这确认 16,384 只是首片
+预算，不是硬上限；本轮没有用简单固定上限制造 MSPT 收益，也没有放任输入速率高于
+排空速率。持续高基数/部分接收的生产路径仍需以后用真实第三方 capability 做端到端
+延迟观测。
+
+#### 两个有证据候选的正式对照
+
+基线和候选均由 `scripts/run-wireless-io-gametest-benchmark.ps1` 以 5 轮、每轮
+预热 200 tick、采样 1200 tick、独立 GameTestServer JVM 完成。基线 manifest 为
+`e4c7bf76-dirty-f6aa23ee29bb`，原始目录为
+`benchmark-results/wireless-io-live-baseline-f6aa23ee29bb`。候选一只做了 JFR 指向的
+远端连接重复校验消除，目录为
+`benchmark-results/wireless-io-live-candidate-b8f405ffad70`；它的 compare 状态为
+`NO_MEASURABLE_IMPROVEMENT`，均值反而 `26.459880→26.525482 ms`，已撤回。
+
+候选二只把 `freshScanBuffer` 的新建 `KeyCounter` 改为 `clear()` 后复用，正式目录为
+`benchmark-results/wireless-io-live-candidate2-6f469e174337`，manifest 身份为
+`e4c7bf76-dirty-6f469e174337`。它降低了堆和 GC，但没有达到项目定义的可测优化门槛，
+因此也已撤回生产改动。官方比较命令的结果为 `FAIL / NO_MEASURABLE_IMPROVEMENT`；
+原始报告仍保留在 `build/reports/wireless-interface-io-live-comparison/live-comparison.md`。
+
+| 压力组中位数 | 基线 | 候选二（已撤回） | 变化 |
+|---|---:|---:|---:|
+| mean MSPT | 26.459880 | 26.141824 | -1.20% |
+| P95 MSPT | 31.7697 | 31.5660 | -0.64% |
+| P99 MSPT | 36.0126 | 35.0907 | -2.56% |
+| max MSPT（五轮 max 的中位数） | 84.1662 | 75.5524 | -10.23% |
+| >50 ms tick | 1/1200（0.0833%） | 1/1200（0.0833%） | 持平 |
+| >100 ms tick | 0 | 0 | 持平 |
+| 无线 I/O P99 | 26.3064 ms | 26.1739 ms | -0.50% |
+| GC 次数 / GC ms | 240 / 610 | 238 / 577 | -0.83% / -5.41% |
+| GC 比例 | 1.0167% | 0.9617% | -5.41% |
+| 峰值已用堆 | 905,618,864 B | 733,424,416 B | -19.01% |
+| `capacityTps` | 20.000 | 20.000 | 持平（由 mean MSPT 推导） |
+
+逐轮控制校正的中位数为 mean `26.127743→25.786079 ms`、P99
+`34.5911→33.4790 ms`；控制组自身 mean/P99 为 `0.332137/1.5539` 到
+`0.350606/1.6117 ms`，所以低负载控制波动也保留在原始数据中。候选的
+`configuredConnectionVisits=1,228,800`、`interfaceCalls=1,200` 与基线完全相同；
+这只说明配置列表累计访问量相同，不能推出每次都访问了远端 capability 或都是
+productive。`capacityTps=20` 同样只是 `min(20,1000/meanMSPT)` 的容量推导，不是
+独立 TPS 实测。
+
+比较结果的绝对门槛：P95、P99、>50 ms、>100 ms、GC 比例和推导容量在本表满足，
+但 mean MSPT `26.141824>25`、控制校正 mean `25.786079>10`、控制校正 P99
+`33.4790>15`、无线 I/O P99 `26.1739>12`，所以绝对性能验收失败。相对门槛没有
+发现候选回归，但改善不足以被 compare 认定为 `MEASURABLE_IMPROVEMENT`；不能把
+堆/GC 改善宣称为正式性能通过。
+
+#### 吞吐、守恒、积压和两段搬运延迟
+
+固定九行 outcome 与交接基线逐字段比较为 0 个差异；窗口/最差机器吞吐、压力事件、
+P99 抽取延迟、最长需求等待、backlog item-ticks、最终输出、产出和抽取量均未变。
+完整 `wirelessInterfaceIoModelAcceptance` 的 25 个语义场景和 178 个压力场景全部
+PASS，`wirelessInterfaceIoModelEnduranceAcceptance` 的 20,000 tick import/export/
+bidirectional 场景也全部 PASS。
+
+模型报告仍把两段延迟分开。例如 `import-fast-1024x32-continuous` 中产生/回收
+`9,830,400`，但真正进入 ME 网络为 `9,748,480`，结束时持久 import buffer 仍有
+`81,920`；`import-fast-1024-burst-20t` 则产生、回收和入网均为 `819,200`，结束
+buffer 为 0，最大 buffer key 数为 `32,768`。因此“产出→接口 buffer”不能写成完整
+“产出→ME 网络”延迟；当前真实 MSPT JSON 没有逐物品端到端时间戳，模型的
+`network_imported`、`final_import_buffer`、backlog item-ticks 和需求等待只能作为
+补充，不能替代真实第三方容器端到端观测。
+
+#### 最终测试状态、环境与后续
+
+- 选择性回归：`test` 803 个、0 failures、0 errors；包含交接的 DemandWake/Guardrail
+  与新增 buffer path 测试。
+- `test wirelessInterfaceIoModelAcceptance`：通过；25/178 全部通过。
+- `wirelessInterfaceIoModelEnduranceAcceptance`：通过。
+- 普通 `runGameTestServer`：只失败既有 `fastimport256transitions`，阻塞生产率
+  `0.1328125>0.001`；日志中 256 connections/valid、buffer=0、最终 network 有量，
+  与文档既有 256 连接 transition 失败一致，未发现本轮新增的第二个 GameTest 失败。
+- 正式环境：Windows 11，i7-13650HX，20 logical processors，AC Balanced，Gradle
+  8.8，Eclipse Adoptium Java 21.0.11；每个正式场景均为独立 JVM。原始 JSON/CSV、
+  manifest 和 compare 报告均保留在上述目录。
+
+本轮没有保留可宣称的 MSPT 优化候选。未执行/未保留的项目包括：硬性固定每 tick
+buffer 上限、需求唤醒 API、phase/watchdog/空 cache TTL/历史 cadence 调参、批量能源
+核算，以及未具备可信变更通知的第三方容器 demand-wake。下一步应在不改变排空延迟和
+吞吐的前提下，为高基数/拒收真实 capability 增加端到端时间戳与阶段计时，优先验证
+buffer 全量排空的单 tick 成本；同时补充 NORMAL + EXPORT、满载/短长期 outage 和
+模式切换的真实 GameTest，再以同样五轮口径重新筛选单一热点候选。

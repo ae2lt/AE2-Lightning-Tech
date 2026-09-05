@@ -628,6 +628,17 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
     private record ImportResult(long totalAvail, long moved) {}
     private record ExportConfigEntry(AEKey key, long maxAmount) {}
 
+    /**
+     * Result of one persistent-import-buffer flush.  Keeping the
+     * state transition in the production helper lets the regression tests
+     * exercise the exact map/MEStorage path without building a second model.
+     */
+    record ImportBufferFlushResult(
+            long lastFlushTick,
+            boolean flushLimited,
+            int remainingKeys,
+            boolean changed) {}
+
     static final class IoScheduledEntry {
         final WirelessConnection conn;
         final ConnectionState state;
@@ -1915,8 +1926,8 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         boolean overflowed = false;
         var grid = getMainNode().getGrid();
         var cd = state.cdFor(keyType, IoDirection.EXPORT);
-        boolean fastRejectRetry = cd.consecutiveFailures()
-                >= EXPORT_REJECT_FAST_RETRY_THRESHOLD;
+        boolean fastRejectRetry = shouldUseFastExportRejectRetry(
+                ioSpeedMode, cd.consecutiveFailures());
 
         for (var entry : entries) {
             var key = entry.key();
@@ -1967,6 +1978,12 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         }
 
         return moved;
+    }
+
+    static boolean shouldUseFastExportRejectRetry(
+            IOSpeedMode mode, int consecutiveFailures) {
+        return mode == IOSpeedMode.FAST
+                && consecutiveFailures >= EXPORT_REJECT_FAST_RETRY_THRESHOLD;
     }
 
     private List<ExportConfigEntry> exportEntriesForType(AEKeyType keyType, long now) {
@@ -2053,12 +2070,31 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
                 + ", bufferedAmount=" + benchmarkBufferedImportAmount();
     }
 
-    private void flushImportBuffer(MEStorage me, IActionSource src, long now) {
-        if (importBuffer.isEmpty()) return;
+    static ImportBufferFlushResult flushImportBufferEntries(
+            Map<AEKey, Long> importBuffer,
+            Map<AEKeyType, Long> keyTypeLockUntil,
+            long importBufferLastFlushTick,
+            boolean importBufferFlushLimited,
+            int importBufferRemainingKeys,
+            MEStorage me,
+            IActionSource src,
+            long now,
+            Runnable saveChanges) {
+        if (importBuffer.isEmpty()) {
+            return new ImportBufferFlushResult(
+                    importBufferLastFlushTick,
+                    importBufferFlushLimited,
+                    importBufferRemainingKeys,
+                    false);
+        }
         boolean continueLimitedFlush = importBufferFlushLimited && !importBuffer.isEmpty();
         if (!continueLimitedFlush && importBufferLastFlushTick != Long.MIN_VALUE
                 && now - importBufferLastFlushTick < IMPORT_FLUSH_INTERVAL) {
-            return;
+            return new ImportBufferFlushResult(
+                    importBufferLastFlushTick,
+                    importBufferFlushLimited,
+                    importBufferRemainingKeys,
+                    false);
         }
         importBufferLastFlushTick = now;
 
@@ -2110,6 +2146,15 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         // Move unfinished entries behind the untouched tail so a single
         // rejected key cannot monopolize every bounded flush slice.
         boolean hasUntouchedEntries = it.hasNext();
+        var typeHasUntouchedEntries = new IdentityHashMap<AEKeyType, Boolean>();
+        if (hasUntouchedEntries && !typeFullyRejected.isEmpty()) {
+            while (it.hasNext()) {
+                var untouched = it.next();
+                if (untouched.getValue() > 0) {
+                    typeHasUntouchedEntries.put(untouched.getKey().getType(), true);
+                }
+            }
+        }
         for (var key : rotated) {
             var remaining = importBuffer.remove(key);
             if (remaining != null) {
@@ -2126,14 +2171,39 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
             }
         }
         for (var type : typeFullyRejected.keySet()) {
-            if (!typeProgressed.getOrDefault(type, false)) {
+            // A bounded slice is not evidence that the whole key type is
+            // unavailable.  Do not lock a type when an untouched tail of the
+            // same type still has a chance to accept its key.
+            if (!typeProgressed.getOrDefault(type, false)
+                    && !typeHasUntouchedEntries.getOrDefault(type, false)) {
                 keyTypeLockUntil.put(type, now + STOP_IMPORT_TTL);
             }
         }
 
         if (changed) {
-            saveChanges();
+            saveChanges.run();
         }
+        return new ImportBufferFlushResult(
+                importBufferLastFlushTick,
+                importBufferFlushLimited,
+                importBufferRemainingKeys,
+                changed);
+    }
+
+    private void flushImportBuffer(MEStorage me, IActionSource src, long now) {
+        var result = flushImportBufferEntries(
+                importBuffer,
+                keyTypeLockUntil,
+                importBufferLastFlushTick,
+                importBufferFlushLimited,
+                importBufferRemainingKeys,
+                me,
+                src,
+                now,
+                this::saveChanges);
+        importBufferLastFlushTick = result.lastFlushTick();
+        importBufferFlushLimited = result.flushLimited();
+        importBufferRemainingKeys = result.remainingKeys();
     }
 
     private long lockedUntil(AEKeyType type, long now) {
