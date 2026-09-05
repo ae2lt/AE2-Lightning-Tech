@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": ["IPI", "CTC", "III"],
+  "key": {
+    "I": {"item": "minecraft:iron_ingot"},
+    "P": {"item": "ae2lt:pigmee_fumo"},
+    "C": {"item": "minecraft:chest"},
+    "T": {"item": "minecraft:crafting_table"}
+  },
+  "result": {"id": "ae2lt:pigmee_synthesis_station", "count": 1}
+}

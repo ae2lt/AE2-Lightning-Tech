@@ -1,0 +1,17 @@
+// Isolated client runtime with AE2, Thunderbolt, JEI and EMI.
+allprojects {
+    afterEvaluate {
+        configurations.runtimeOnly.dependencies.removeIf { dep ->
+            !(dep.group in ['com.moakiee.thunderbolt', 'org.appliedenergistics', 'dev.emi']
+                || dep.name in ['jei-238222', 'ae2-jei-integration-1074338'])
+        }
+        neoForge.runs.client {
+            gameDirectory = project.layout.buildDirectory.dir('pigmee-client').get().asFile
+            if (project.hasProperty('pigmeeClientProbe')) {
+                systemProperty 'ae2lt.pigmeeClientProbe', 'true'
+                programArguments.addAll '--quickPlaySingleplayer',
+                        project.findProperty('pigmeeProbeWorld') ?: 'PigmeeClientTest'
+            }
+        }
+    }
+}

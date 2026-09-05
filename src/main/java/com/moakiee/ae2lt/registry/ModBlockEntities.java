@@ -22,6 +22,7 @@ import com.moakiee.ae2lt.blockentity.OverloadedPowerSupplyBlockEntity;
 import com.moakiee.ae2lt.blockentity.PigmeeMentalmathUnitBlockEntity;
 import com.moakiee.ae2lt.blockentity.PigmeeMolecularAssemblerBlockEntity;
 import com.moakiee.ae2lt.blockentity.PigmeePatternProviderBlockEntity;
+import com.moakiee.ae2lt.blockentity.PigmeeSynthesisStationBlockEntity;
 import com.moakiee.ae2lt.blockentity.TeslaCoilBlockEntity;
 import com.moakiee.ae2lt.blockentity.TianshuSupercomputerControllerBlockEntity;
 import com.moakiee.ae2lt.blockentity.TianshuSupercomputerPortBlockEntity;
@@ -192,6 +193,14 @@ public final class ModBlockEntities {
                     () -> BlockEntityType.Builder.of(
                             PigmeeMolecularAssemblerBlockEntity::new,
                             ModBlocks.PIGMEE_MOLECULAR_ASSEMBLER.get())
+                            .build(null));
+
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<PigmeeSynthesisStationBlockEntity>>
+            PIGMEE_SYNTHESIS_STATION = BLOCK_ENTITY_TYPES.register(
+                    "pigmee_synthesis_station",
+                    () -> BlockEntityType.Builder.of(
+                            PigmeeSynthesisStationBlockEntity::new,
+                            ModBlocks.PIGMEE_SYNTHESIS_STATION.get())
                             .build(null));
 
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TianshuSupercomputerControllerBlockEntity>>

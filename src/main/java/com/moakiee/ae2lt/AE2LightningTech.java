@@ -340,6 +340,7 @@ public class AE2LightningTech {
                         output.accept(ModBlocks.PIGMEE_MENTALMATH_UNIT);
                         output.accept(ModBlocks.PIGMEE_PATTERN_PROVIDER);
                         output.accept(ModBlocks.PIGMEE_MOLECULAR_ASSEMBLER);
+                        output.accept(ModBlocks.PIGMEE_SYNTHESIS_STATION);
                         output.accept(ModItems.PIGMEE_CORE);
                         output.accept(ModItems.PIGMEE_ITEM_CELL_HOUSING);
                         output.accept(ModItems.PIGMEE_STORAGE_COMPONENT);
@@ -861,6 +862,13 @@ public class AE2LightningTech {
                     pigmeePatternProviderBeType,
                     null,
                     PigmeePatternProviderBlockEntity::serverTick);
+
+            var pigmeeStationBlock = ModBlocks.PIGMEE_SYNTHESIS_STATION.get();
+            var pigmeeStationType = ModBlockEntities.PIGMEE_SYNTHESIS_STATION.get();
+            pigmeeStationBlock.setBlockEntity(
+                    com.moakiee.ae2lt.blockentity.PigmeeSynthesisStationBlockEntity.class,
+                    pigmeeStationType, null, null);
+            AEBaseBlockEntity.registerBlockEntityItem(pigmeeStationType, pigmeeStationBlock.asItem());
 
             var pigmeeAssemblerBlock = ModBlocks.PIGMEE_MOLECULAR_ASSEMBLER.get();
             var pigmeeAssemblerBeType = ModBlockEntities.PIGMEE_MOLECULAR_ASSEMBLER.get();

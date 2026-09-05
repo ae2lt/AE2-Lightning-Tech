@@ -20,6 +20,7 @@
     "ae2lt:pigmee_mentalmath_unit",
     "ae2lt:pigmee_pattern_provider",
     "ae2lt:pigmee_molecular_assembler",
+    "ae2lt:pigmee_synthesis_station",
     {
       "id": "ae2lt:overloaded_power_supply",
       "required": false

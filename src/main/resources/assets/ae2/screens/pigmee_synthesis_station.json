@@ -1,0 +1,26 @@
+{
+  "$schema": "schema.json",
+  "includes": [
+    "terminals/crafting_terminal.json"
+  ],
+  "text": {
+    "dialog_title": {
+      "text": {
+        "translate": "block.ae2lt.pigmee_synthesis_station"
+      },
+      "position": {
+        "left": 8,
+        "top": 6
+      }
+    },
+    "crafting_grid_title": {
+      "text": {
+        "translate": "gui.ae2lt.pigmee_synthesis_station.crafting_grid"
+      },
+      "position": {
+        "left": 8,
+        "bottom": 177
+      }
+    }
+  }
+}
