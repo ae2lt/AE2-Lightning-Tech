@@ -12,6 +12,7 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 
 import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.celestweave.MovementAssistRules;
+import com.moakiee.ae2lt.celestweave.FlightSneakMovement;
 import com.moakiee.ae2lt.celestweave.module.MovementAssistSubmodule;
 import com.moakiee.ae2lt.celestweave.service.ArmorCapabilityCollector.ActiveCapability;
 import com.moakiee.ae2lt.device.capability.DeviceCapability;
@@ -32,7 +33,8 @@ public final class ArmorMovementAssistService {
         boolean active = false;
         double movementMultiplier = 1.0D;
         double stepHeight = MovementAssistRules.VANILLA_STEP_HEIGHT;
-        boolean suppressGroundMovement = player.getAbilities().flying
+        boolean flightSneaking = FlightSneakMovement.isActive(player);
+        boolean suppressGroundMovement = player.getAbilities().flying && !flightSneaking
                 || player.isFallFlying()
                 || player.isSwimming();
 
@@ -42,7 +44,7 @@ public final class ArmorMovementAssistService {
             }
             double candidateMovementMultiplier = MovementAssistRules.movementMultiplier(
                     suppressGroundMovement,
-                    player.isCrouching(),
+                    flightSneaking || player.isCrouching(),
                     player.isSprinting(),
                     MovementAssistSubmodule.walkSpeedMultiplier(capability.armor()),
                     MovementAssistSubmodule.sprintSpeedMultiplier(capability.armor()),

@@ -17,6 +17,7 @@ import net.minecraft.world.entity.Pose;
 import net.minecraft.world.phys.Vec3;
 
 import com.moakiee.ae2lt.celestweave.PhaseFlightControlRules;
+import com.moakiee.ae2lt.celestweave.FlightSneakMovement;
 import com.moakiee.ae2lt.celestweave.PhaseFlightMovementGuard;
 import com.moakiee.ae2lt.celestweave.PhaseFlightPlayerState;
 import com.moakiee.ae2lt.celestweave.module.PhaseFlightSubmodule;
@@ -35,6 +36,8 @@ public abstract class PlayerPhaseFlightMixin implements PhaseFlightPlayerState.A
     private boolean ae2lt$phaseJumpHeld;
     @Unique
     private boolean ae2lt$phaseFlightLocked = true;
+    @Unique
+    private boolean ae2lt$sneakHoverTravel;
 
     @Override
     public boolean ae2lt$isPhaseFlightControlled() {
@@ -148,12 +151,23 @@ public abstract class PlayerPhaseFlightMixin implements PhaseFlightPlayerState.A
 
     @Inject(method = "travel", at = @At("HEAD"))
     private void ae2lt$beginPlayerAuthorizedTravel(Vec3 travelVector, CallbackInfo ci) {
-        PhaseFlightMovementGuard.beginSelfMovement((Player) (Object) this);
+        Player player = (Player) (Object) this;
+        PhaseFlightMovementGuard.beginSelfMovement(player);
+        ae2lt$sneakHoverTravel = player.isControlledByLocalInstance() && FlightSneakMovement.isActive(player);
+        if (ae2lt$sneakHoverTravel) {
+            player.setSprinting(false);
+            player.setDeltaMovement(Vec3.ZERO);
+        }
     }
 
     @Inject(method = "travel", at = @At("RETURN"))
     private void ae2lt$endPlayerAuthorizedTravel(Vec3 travelVector, CallbackInfo ci) {
-        PhaseFlightMovementGuard.endSelfMovement((Player) (Object) this);
+        Player player = (Player) (Object) this;
+        if (ae2lt$sneakHoverTravel) {
+            player.setDeltaMovement(Vec3.ZERO);
+            ae2lt$sneakHoverTravel = false;
+        }
+        PhaseFlightMovementGuard.endSelfMovement(player);
     }
 
     @Inject(
