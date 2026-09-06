@@ -9,13 +9,14 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import com.moakiee.ae2lt.celestweave.CelestweaveArmorState;
 import com.moakiee.ae2lt.celestweave.PhaseFlightPlayerState;
+import com.moakiee.ae2lt.celestweave.module.PhaseFlightMode;
 
 public record FlightInertiaSyncPacket(
         UUID armorId,
         boolean inertiaEnabled,
         boolean flightControlActive,
         boolean flying,
-        boolean phaseModeEnabled,
+        PhaseFlightMode phaseMode,
         boolean flightLockEnabled)
         implements CustomPacketPayload {
 
@@ -36,7 +37,7 @@ public record FlightInertiaSyncPacket(
                 buf.readBoolean(),
                 buf.readBoolean(),
                 buf.readBoolean(),
-                buf.readBoolean(),
+                buf.readEnum(PhaseFlightMode.class),
                 buf.readBoolean());
     }
 
@@ -45,7 +46,7 @@ public record FlightInertiaSyncPacket(
         buf.writeBoolean(inertiaEnabled);
         buf.writeBoolean(flightControlActive);
         buf.writeBoolean(flying);
-        buf.writeBoolean(phaseModeEnabled);
+        buf.writeEnum(phaseMode);
         buf.writeBoolean(flightLockEnabled);
     }
 
@@ -54,7 +55,7 @@ public record FlightInertiaSyncPacket(
             CelestweaveArmorState.setClientFlightSettings(
                     payload.armorId(),
                     payload.inertiaEnabled(),
-                    payload.phaseModeEnabled());
+                    payload.phaseMode());
             var player = context.player();
             if (payload.flightControlActive() || payload.flightLockEnabled()) {
                 PhaseFlightPlayerState.activate(player);

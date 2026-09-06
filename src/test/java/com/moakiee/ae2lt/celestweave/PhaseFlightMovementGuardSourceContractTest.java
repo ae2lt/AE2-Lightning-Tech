@@ -106,7 +106,7 @@ class PhaseFlightMovementGuardSourceContractTest {
         assertTrue(mayFlyMixin.contains("original"));
         assertTrue(mayFlyMixin.contains("PhaseWingFlight.canUse(player)"));
         assertTrue(phaseFlight.contains("PhaseFlightPlayerState.isFlying(player)"));
-        assertTrue(clientHandler.contains("PhaseWingFlight.isFlightActive(player)"));
+        assertTrue(clientHandler.contains("PhaseFlightMovementGuard.isPhaseFlightActive(player)"));
         assertTrue(clientMixin.contains("PhaseFlightPlayerState.applyFlightInput"));
         assertTrue(clientMixin.contains("PhaseFlightInputPacket.flight"));
         assertTrue(inputPacket.contains("PhaseFlightPlayerState.applyFlightInput"));
@@ -115,6 +115,9 @@ class PhaseFlightMovementGuardSourceContractTest {
         assertFalse(packetMixin.contains("reconcileVanillaAbilities"));
         assertTrue(settingsPacket.contains("boolean flightControlActive"));
         assertTrue(settingsPacket.contains("boolean flying"));
+        assertTrue(settingsPacket.contains("PhaseFlightMode phaseMode"));
+        assertTrue(settingsPacket.contains("buf.readEnum(PhaseFlightMode.class)"));
+        assertTrue(settingsPacket.contains("buf.writeEnum(phaseMode)"));
         assertTrue(settingsPacket.contains("boolean flightLockEnabled"));
         assertTrue(settingsPacket.contains("PhaseFlightPlayerState.synchronizeFlying(player, payload.flying())"));
         int settingsHandler = settingsPacket.indexOf("public static void handle");

@@ -25,6 +25,7 @@ import com.moakiee.ae2lt.network.FlightInertiaSyncPacket;
 import com.moakiee.ae2lt.network.PhaseLockProtectionSyncPacket;
 import com.moakiee.ae2lt.celestweave.module.FlightSubmodule;
 import com.moakiee.ae2lt.celestweave.module.PhaseFlightSubmodule;
+import com.moakiee.ae2lt.celestweave.module.PhaseFlightMode;
 import com.moakiee.ae2lt.celestweave.module.PhaseLockSubmodule;
 import com.moakiee.ae2lt.celestweave.module.CelestweaveArmorSubmodule;
 import com.moakiee.ae2lt.celestweave.module.CelestweaveArmorSubmoduleItem;
@@ -40,7 +41,7 @@ public final class CelestweaveArmorState {
     public static final int SLOT_COUNT = 1;
     private static volatile boolean CLIENT_FLIGHT_INERTIA = true;
     private static volatile UUID CLIENT_FLIGHT_INERTIA_ARMOR_ID = null;
-    private static volatile boolean CLIENT_PHASE_MODE_ENABLED = true;
+    private static volatile PhaseFlightMode CLIENT_PHASE_MODE = PhaseFlightMode.ALL;
     private static volatile UUID CLIENT_PHASE_LOCK_ARMOR_ID = null;
     private static volatile boolean CLIENT_PHASE_LOCK_BLOCK_EXTERNAL_FORCES = false;
     // Server-authoritative client cache for modules using the shared hover/glide controls.
@@ -546,7 +547,7 @@ public final class CelestweaveArmorState {
         }
         CLIENT_FLIGHT_INERTIA = true;
         CLIENT_FLIGHT_INERTIA_ARMOR_ID = null;
-        CLIENT_PHASE_MODE_ENABLED = true;
+        CLIENT_PHASE_MODE = PhaseFlightMode.ALL;
         CLIENT_PHASE_LOCK_ARMOR_ID = null;
         CLIENT_PHASE_LOCK_BLOCK_EXTERNAL_FORCES = false;
     }
@@ -659,18 +660,18 @@ public final class CelestweaveArmorState {
     public static void setClientFlightSettings(
             UUID armorId,
             boolean inertiaEnabled,
-            boolean phaseModeEnabled) {
+            PhaseFlightMode phaseMode) {
         CLIENT_FLIGHT_INERTIA = inertiaEnabled;
         CLIENT_FLIGHT_INERTIA_ARMOR_ID = armorId;
-        CLIENT_PHASE_MODE_ENABLED = phaseModeEnabled;
+        CLIENT_PHASE_MODE = phaseMode;
     }
 
     public static boolean getClientFlightInertia() {
         return CLIENT_FLIGHT_INERTIA;
     }
 
-    public static boolean getClientPhaseModeEnabled() {
-        return CLIENT_PHASE_MODE_ENABLED;
+    public static PhaseFlightMode getClientPhaseMode() {
+        return CLIENT_PHASE_MODE;
     }
 
     public static void setClientPhaseLockProtection(
@@ -714,9 +715,9 @@ public final class CelestweaveArmorState {
                 inertia,
                 flightControlActive,
                 flying,
-                phaseFlightActive
-                        && AE2LTCommonConfig.overloadArmorPhaseFlightEnabled()
-                        && PhaseFlightSubmodule.isPhaseModeEnabled(flightArmor),
+                phaseFlightActive && AE2LTCommonConfig.overloadArmorPhaseFlightEnabled()
+                        ? PhaseFlightSubmodule.selectedPhaseMode(flightArmor)
+                        : PhaseFlightMode.OFF,
                 flightLockActive));
     }
 

@@ -124,8 +124,9 @@ public final class PhaseFlightSubmodule extends AbstractCelestweaveArmorSubmodul
             return true;
         }
         if (PHASE_MODE_CONFIG_KEY.equals(key)) {
+            var mode = PhaseFlightMode.fromTag(value);
             var options = getOptions(armor);
-            options.put(key, value instanceof ByteTag bt ? bt : ByteTag.valueOf(true));
+            options.put(key, mode.toTag());
             setOptions(armor, options);
             return true;
         }
@@ -174,16 +175,34 @@ public final class PhaseFlightSubmodule extends AbstractCelestweaveArmorSubmodul
     }
 
     public static boolean isPhaseModeEnabled(ItemStack armor) {
-        return booleanOption(armor, PHASE_MODE_CONFIG_KEY, true);
+        return selectedPhaseMode(armor) != PhaseFlightMode.OFF;
+    }
+
+    public static PhaseFlightMode selectedPhaseMode(ItemStack armor) {
+        return PhaseFlightMode.fromTag(INSTANCE.getOptions(armor).get(PHASE_MODE_CONFIG_KEY));
     }
 
     private CelestweaveArmorSubmoduleConfig phaseModeConfig(ItemStack armor) {
+        PhaseFlightMode selected = selectedPhaseMode(armor);
         return config(
                 PHASE_MODE_CONFIG_KEY,
                 Component.translatable("ae2lt.celestweave.config.phase_mode"),
-                ByteTag.valueOf(isPhaseModeEnabled(armor)),
-                booleanChoices(),
+                selected.toTag(),
+                phaseModeChoices(),
                 Component.translatable("ae2lt.celestweave.config.phase_mode.hint"));
+    }
+
+    private List<CelestweaveArmorSubmoduleConfigChoice> phaseModeChoices() {
+        return List.of(
+                phaseModeChoice(PhaseFlightMode.OFF),
+                phaseModeChoice(PhaseFlightMode.CREATIVE_FLIGHT_ONLY),
+                phaseModeChoice(PhaseFlightMode.ALL));
+    }
+
+    private CelestweaveArmorSubmoduleConfigChoice phaseModeChoice(PhaseFlightMode mode) {
+        return choice(
+                mode.toTag(),
+                Component.translatable("ae2lt.celestweave.config.phase_mode." + mode.id()));
     }
 
     private static boolean booleanOption(ItemStack armor, String key, boolean defaultValue) {
@@ -234,8 +253,10 @@ public final class PhaseFlightSubmodule extends AbstractCelestweaveArmorSubmodul
 
     public static boolean shouldUsePhaseTraversal(Player player, ItemStack armor) {
         return player != null
-                && PhaseWingFlight.isFlightActive(player)
-                && isPhaseModeConfigured(armor);
+                && AE2LTCommonConfig.overloadArmorPhaseFlightEnabled()
+                && selectedPhaseMode(armor).allows(
+                        PhaseFlightPlayerState.isFlying(player),
+                        PhaseWingFlight.isFlightActive(player));
     }
 
     private static void updatePhaseTraversal(Player player, ItemStack armor) {
@@ -249,10 +270,6 @@ public final class PhaseFlightSubmodule extends AbstractCelestweaveArmorSubmodul
             return;
         }
         stopPhaseTraversal(player);
-    }
-
-    private static boolean isPhaseModeConfigured(ItemStack armor) {
-        return AE2LTCommonConfig.overloadArmorPhaseFlightEnabled() && isPhaseModeEnabled(armor);
     }
 
     private static void stopPhaseTraversal(Player player) {
@@ -384,10 +401,11 @@ public final class PhaseFlightSubmodule extends AbstractCelestweaveArmorSubmodul
     }
 
     private static void updateMovementGuards(Player player, ItemStack armor) {
+        boolean phaseTraversalActive = shouldUsePhaseTraversal(player, armor);
         PhaseFlightMovementGuard.updatePhaseFlightState(
                 player,
-                isPhaseModeConfigured(armor),
-                PhaseWingFlight.isFlightActive(player));
+                phaseTraversalActive,
+                phaseTraversalActive);
     }
 
     private static void clearEscapePhase(Player player) {

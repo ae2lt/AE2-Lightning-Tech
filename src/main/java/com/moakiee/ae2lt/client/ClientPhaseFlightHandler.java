@@ -86,9 +86,7 @@ public final class ClientPhaseFlightHandler {
     }
 
     private static boolean isClientPhaseActive(net.minecraft.world.entity.player.Player player) {
-        return CelestweaveArmorState.isAnyClientFlightControlActive()
-                && PhaseWingFlight.isFlightActive(player)
-                && CelestweaveArmorState.getClientPhaseModeEnabled();
+        return PhaseFlightMovementGuard.isPhaseFlightActive(player);
     }
 
     private static void syncJumpInput(Minecraft minecraft, boolean flightModuleActive) {
