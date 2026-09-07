@@ -47,11 +47,19 @@ public final class OverloadedInterfaceIoGameTests {
 
     @GameTest(template = "wireless_io_empty", batch = "wireless_io_02_exact_filter", timeoutTicks = 180)
     public static void fastWirelessExactImportRespectsExportExclusion(GameTestHelper helper) {
+        if (Boolean.getBoolean("ae2lt.wirelessIoBenchmark")) {
+            helper.succeed();
+            return;
+        }
         checkExactImportExclusion(helper, false);
     }
 
     @GameTest(template = "wireless_io_empty", batch = "wireless_io_02_exact_filter", timeoutTicks = 180)
     public static void fastLocalExactImportRespectsExportExclusion(GameTestHelper helper) {
+        if (Boolean.getBoolean("ae2lt.wirelessIoBenchmark")) {
+            helper.succeed();
+            return;
+        }
         checkExactImportExclusion(helper, true);
     }
 
@@ -149,11 +157,19 @@ public final class OverloadedInterfaceIoGameTests {
 
     @GameTest(template = "wireless_io_empty", batch = "wireless_io_02_exact_plan", timeoutTicks = 150)
     public static void fastWirelessExcludedImportStopsAndWakes(GameTestHelper helper) {
+        if (Boolean.getBoolean("ae2lt.wirelessIoBenchmark")) {
+            helper.succeed();
+            return;
+        }
         checkExcludedImportStopsAndWakes(helper, false);
     }
 
     @GameTest(template = "wireless_io_empty", batch = "wireless_io_02_exact_plan", timeoutTicks = 150)
     public static void fastLocalExcludedImportStopsAndWakes(GameTestHelper helper) {
+        if (Boolean.getBoolean("ae2lt.wirelessIoBenchmark")) {
+            helper.succeed();
+            return;
+        }
         checkExcludedImportStopsAndWakes(helper, true);
     }
 
@@ -245,6 +261,10 @@ public final class OverloadedInterfaceIoGameTests {
 
     @GameTest(template = "wireless_io_empty", batch = "wireless_io_02_exact_plan", timeoutTicks = 180)
     public static void exactImportPlanKeepsBufferFlushAndExport(GameTestHelper helper) {
+        if (Boolean.getBoolean("ae2lt.wirelessIoBenchmark")) {
+            helper.succeed();
+            return;
+        }
         var fixture = createFixture(helper, 1, false);
         var owner = fixture.blockEntity;
         var target = fixture.inventories[0];
@@ -293,6 +313,10 @@ public final class OverloadedInterfaceIoGameTests {
 
     @GameTest(template = "wireless_io_empty", batch = "wireless_io_02_exact_plan", timeoutTicks = 140)
     public static void exactImportPlanDoesNotPruneFuzzyOrInvertedFilters(GameTestHelper helper) {
+        if (Boolean.getBoolean("ae2lt.wirelessIoBenchmark")) {
+            helper.succeed();
+            return;
+        }
         var fixture = createFixture(helper, 1);
         var owner = fixture.blockEntity;
         var target = fixture.inventories[0];
@@ -342,6 +366,10 @@ public final class OverloadedInterfaceIoGameTests {
             batch = "wireless_io_02_transitions",
             timeoutTicks = 260)
     public static void fastImportBufferSurvivesSaveAndReload(GameTestHelper helper) {
+        if (Boolean.getBoolean("ae2lt.wirelessIoBenchmark")) {
+            helper.succeed();
+            return;
+        }
         var fixture = createFixture(helper, 1, false);
         var stacks = List.of(highCardinalityStack(2_000_001),
                 highCardinalityStack(2_000_002), new ItemStack(Items.STONE, 64));
@@ -397,21 +425,37 @@ public final class OverloadedInterfaceIoGameTests {
 
     @GameTest(template = "wireless_io_empty", batch = "wireless_io_06_recovery", timeoutTicks = 240)
     public static void fastWirelessImportResumesAfterStorageRecovery(GameTestHelper helper) {
+        if (Boolean.getBoolean("ae2lt.wirelessIoBenchmark")) {
+            helper.succeed();
+            return;
+        }
         checkImportStorageRecovery(helper, false, false);
     }
 
     @GameTest(template = "wireless_io_empty", batch = "wireless_io_06_recovery", timeoutTicks = 240)
     public static void fastLocalImportResumesAfterStorageRecovery(GameTestHelper helper) {
+        if (Boolean.getBoolean("ae2lt.wirelessIoBenchmark")) {
+            helper.succeed();
+            return;
+        }
         checkImportStorageRecovery(helper, true, false);
     }
 
     @GameTest(template = "wireless_io_empty", batch = "wireless_io_06_recovery", timeoutTicks = 240)
     public static void fastWirelessImportRestartsAfterIdle(GameTestHelper helper) {
+        if (Boolean.getBoolean("ae2lt.wirelessIoBenchmark")) {
+            helper.succeed();
+            return;
+        }
         checkImportStorageRecovery(helper, false, true);
     }
 
     @GameTest(template = "wireless_io_empty", batch = "wireless_io_06_recovery", timeoutTicks = 240)
     public static void fastLocalImportRestartsAfterIdle(GameTestHelper helper) {
+        if (Boolean.getBoolean("ae2lt.wirelessIoBenchmark")) {
+            helper.succeed();
+            return;
+        }
         checkImportStorageRecovery(helper, true, true);
     }
 
@@ -496,11 +540,19 @@ public final class OverloadedInterfaceIoGameTests {
 
     @GameTest(template = "wireless_io_empty", batch = "wireless_io_07_refill", timeoutTicks = 300)
     public static void wirelessExportFillsOnceAndBatchesRefills(GameTestHelper helper) {
+        if (Boolean.getBoolean("ae2lt.wirelessIoBenchmark")) {
+            helper.succeed();
+            return;
+        }
         checkFullExport(helper, false);
     }
 
     @GameTest(template = "wireless_io_empty", batch = "wireless_io_07_refill", timeoutTicks = 300)
     public static void localExportFillsOnceAndBatchesRefills(GameTestHelper helper) {
+        if (Boolean.getBoolean("ae2lt.wirelessIoBenchmark")) {
+            helper.succeed();
+            return;
+        }
         checkFullExport(helper, true);
     }
 
@@ -555,6 +607,10 @@ public final class OverloadedInterfaceIoGameTests {
 
     @GameTest(template = "wireless_io_empty", batch = "wireless_io_07_refill", timeoutTicks = 140)
     public static void missingExportKeyDoesNotBlockOtherKeys(GameTestHelper helper) {
+        if (Boolean.getBoolean("ae2lt.wirelessIoBenchmark")) {
+            helper.succeed();
+            return;
+        }
         var fixture = createFixture(helper, 1);
         var owner = fixture.blockEntity;
         var target = fixture.inventories[0];

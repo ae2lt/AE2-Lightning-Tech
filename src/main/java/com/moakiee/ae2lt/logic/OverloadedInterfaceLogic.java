@@ -7,6 +7,7 @@ import java.util.Set;
 import org.jetbrains.annotations.Nullable;
 
 import com.moakiee.ae2lt.blockentity.OverloadedInterfaceBlockEntity;
+import com.moakiee.ae2lt.debug.WirelessIoPerformanceProbe;
 import com.moakiee.ae2lt.logic.energy.PowerCostUtil;
 
 import appeng.api.config.Actionable;
@@ -255,9 +256,19 @@ public class OverloadedInterfaceLogic extends InterfaceLogic {
             // the interface stuck after the external condition recovers.
             if (!mainNode.isActive()) return TickRateModulation.IDLE;
 
-            boolean hasItemIoWork = owner.hasGridItemIoWork();
-            if (hasItemIoWork) {
-                owner.tickGridItemIo();
+            boolean measured = WirelessIoPerformanceProbe.shouldMeasureGridTicker()
+                    && owner.getInterfaceMode() == OverloadedInterfaceBlockEntity.InterfaceMode.WIRELESS;
+            long started = measured ? System.nanoTime() : 0;
+            boolean hasItemIoWork;
+            try {
+                hasItemIoWork = owner.hasGridItemIoWork();
+                if (hasItemIoWork) owner.tickGridItemIo();
+            } finally {
+                if (measured) {
+                    WirelessIoPerformanceProbe.recordWirelessInterfaceIo(
+                            System.nanoTime() - started, owner.getConnections().size(),
+                            owner.getIOSpeedMode() == OverloadedInterfaceBlockEntity.IOSpeedMode.FAST);
+                }
             }
 
             boolean craftingCardInstalled = ourUpgrades.isInstalled(AEItems.CRAFTING_CARD);

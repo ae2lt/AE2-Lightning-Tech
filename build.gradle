@@ -179,6 +179,33 @@ neoForge {
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }
 
+        // Fully generated wireless-I/O fixture: no saved world or manual block setup.
+        wirelessIoGameTestServer {
+            type = "gameTestServer"
+            gameDirectory = project.file('run-wireless-io-gametest')
+            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+            systemProperty 'ae2lt.wirelessIoBenchmark', 'true'
+            systemProperty 'ae2lt.wirelessIoBenchmark.warmupTicks',
+                    providers.gradleProperty('ae2ltBenchmarkWarmupTicks').getOrElse('40')
+            systemProperty 'ae2lt.wirelessIoBenchmark.sampleTicks',
+                    providers.gradleProperty('ae2ltBenchmarkSampleTicks').getOrElse('300')
+            systemProperty 'ae2lt.wirelessIoBenchmark.scenario',
+                    providers.gradleProperty('ae2ltBenchmarkScenario')
+                            .getOrElse('gametest-import-1024x27-continuous')
+            systemProperty 'ae2lt.wirelessIoBenchmark.commit',
+                    providers.gradleProperty('ae2ltBenchmarkCommit').getOrElse('working-tree')
+            systemProperty 'ae2lt.wirelessIoBenchmark.gitHead',
+                    providers.gradleProperty('ae2ltBenchmarkGitHead').getOrElse('unknown')
+            systemProperty 'ae2lt.wirelessIoBenchmark.worktreeDirty',
+                    providers.gradleProperty('ae2ltBenchmarkWorktreeDirty').getOrElse('false')
+            systemProperty 'ae2lt.wirelessIoBenchmark.diagnostics',
+                    providers.gradleProperty('ae2ltBenchmarkDiagnostics').getOrElse('false')
+            systemProperty 'ae2lt.wirelessIoGameTest.control',
+                    providers.gradleProperty('ae2ltBenchmarkControl').getOrElse('false')
+            systemProperty 'ae2lt.wirelessIoBenchmark.includeEligibility',
+                    providers.gradleProperty('ae2ltBenchmarkIncludeEligibility').getOrElse('false')
+        }
+
         data {
             data()
 
@@ -360,6 +387,398 @@ tasks.register('adaptiveBatchStress', Test) {
         includeTags 'adaptive-batch-stress'
     }
     shouldRunAfter tasks.named('test')
+}
+
+def wirelessIoStressReportArg = providers.gradleProperty('ae2ltBenchmarkStressReport').getOrElse('')
+def wirelessIoControlReportArg = providers.gradleProperty('ae2ltBenchmarkControlReport').getOrElse('')
+def wirelessIoStressReportPath = wirelessIoStressReportArg
+        ? file(wirelessIoStressReportArg).absolutePath : ''
+def wirelessIoControlReportPath = wirelessIoControlReportArg
+        ? file(wirelessIoControlReportArg).absolutePath : ''
+def wirelessIoMaxP99Ms = providers.gradleProperty('ae2ltBenchmarkMaxIoP99Ms')
+        .getOrElse('12.0')
+
+tasks.register('checkWirelessIoBenchmark') {
+    description = 'Checks live server MSPT/TPS reports against the wireless I/O performance budget.'
+    group = 'verification'
+    inputs.property 'stressReportPath', wirelessIoStressReportPath
+    inputs.property 'controlReportPath', wirelessIoControlReportPath
+    inputs.property 'maxIoP99Ms', wirelessIoMaxP99Ms
+    doLast {
+        def stressPath = inputs.properties.stressReportPath as String
+        def controlPath = inputs.properties.controlReportPath as String
+        if (!stressPath || !controlPath) {
+            throw new GradleException(
+                    'Pass -Pae2ltBenchmarkStressReport=<json> and '
+                            + '-Pae2ltBenchmarkControlReport=<json>.')
+        }
+
+        def parser = new groovy.json.JsonSlurper()
+        def stress = parser.parse(new File(stressPath))
+        def control = parser.parse(new File(controlPath))
+        if (stress.scenario?.contains('equal-load-') || control.scenario?.contains('equal-load-')) {
+            throw new GradleException('Equal-load profiles are loaded repetitions; use checkWirelessIoBenchmarkRegression')
+        }
+        def failures = []
+        def requireAtMost = { label, actualValue, maximumValue ->
+            double actual = actualValue as double
+            double maximum = maximumValue as double
+            if (actual > maximum) {
+                failures << "${label} ${String.format(java.util.Locale.ROOT, '%.3f', actual)} > ${maximum}"
+            }
+        }
+        def requireAtLeast = { label, actualValue, minimumValue ->
+            double actual = actualValue as double
+            double minimum = minimumValue as double
+            if (actual < minimum) {
+                failures << "${label} ${String.format(java.util.Locale.ROOT, '%.3f', actual)} < ${minimum}"
+            }
+        }
+
+        if (stress.partial || stress.samples < 1200) {
+            failures << "stress report is partial or has fewer than 1200 samples"
+        }
+        if (control.partial || control.samples < 1200) {
+            failures << "control report is partial or has fewer than 1200 samples"
+        }
+        requireAtMost('stress mean MSPT', stress.tickMs.mean as double, 25.0)
+        requireAtMost('stress p95 MSPT', stress.tickMs.p95 as double, 35.0)
+        requireAtMost('stress p99 MSPT', stress.tickMs.p99 as double, 45.0)
+        requireAtMost('ticks over 50 ms ratio', stress.ticksOver50MsRatio as double, 0.001)
+        requireAtMost('GC pause ratio',
+                (stress.gcMillis as double) / ((stress.samples as double) * 50.0), 0.02)
+        requireAtLeast('capacity TPS', stress.capacityTps as double, 19.8)
+        requireAtMost('mean MSPT delta from control',
+                (stress.tickMs.mean as double) - (control.tickMs.mean as double), 10.0)
+        requireAtMost('p99 MSPT delta from control',
+                (stress.tickMs.p99 as double) - (control.tickMs.p99 as double), 15.0)
+        double maxIoP99 = (inputs.properties.maxIoP99Ms as String).toDouble()
+        requireAtMost('wireless I/O p99', stress.wirelessIoMs.p99 as double, maxIoP99)
+        if ((stress.fastInterfaceCalls as long) != (stress.interfaceCalls as long)) {
+            failures << 'not every measured wireless interface call used FAST mode'
+        }
+        if ((stress.interfaceCalls as long) <= 0L) {
+            failures << 'stress report did not measure any wireless interface calls'
+        }
+
+        println "Live wireless I/O benchmark: stress=${stress.scenario}, control=${control.scenario}"
+        println("MSPT mean/p95/p99=${stress.tickMs.mean}/${stress.tickMs.p95}/${stress.tickMs.p99}, "
+                + "wirelessIoP99=${stress.wirelessIoMs.p99}, capacityTPS=${stress.capacityTps}")
+        if (!failures.isEmpty()) {
+            throw new GradleException('Wireless I/O live benchmark failed:\n' + failures.join('\n'))
+        }
+        println 'Wireless I/O live MSPT/TPS acceptance: PASS'
+    }
+}
+
+def wirelessIoLiveBaselineStressArg = providers.gradleProperty(
+        'ae2ltBenchmarkBaselineStressReports').getOrElse('')
+def wirelessIoLiveBaselineControlArg = providers.gradleProperty(
+        'ae2ltBenchmarkBaselineControlReports').getOrElse('')
+def wirelessIoLiveCandidateStressArg = providers.gradleProperty(
+        'ae2ltBenchmarkCandidateStressReports').getOrElse('')
+def wirelessIoLiveCandidateControlArg = providers.gradleProperty(
+        'ae2ltBenchmarkCandidateControlReports').getOrElse('')
+def wirelessIoLiveComparisonOutput = file(providers.gradleProperty('ae2ltBenchmarkLiveComparisonDir')
+        .getOrElse(layout.buildDirectory.dir('reports/wireless-interface-io-live-comparison')
+                .get().asFile.absolutePath)).absolutePath
+
+tasks.register('checkWirelessIoBenchmarkRegression') {
+    description = 'Compares five paired baseline and candidate live wireless I/O benchmark runs.'
+    group = 'verification'
+    inputs.property 'baselineStressReports', wirelessIoLiveBaselineStressArg
+    inputs.property 'baselineControlReports', wirelessIoLiveBaselineControlArg
+    inputs.property 'candidateStressReports', wirelessIoLiveCandidateStressArg
+    inputs.property 'candidateControlReports', wirelessIoLiveCandidateControlArg
+    inputs.property 'maxIoP99Ms', wirelessIoMaxP99Ms
+    inputs.files([wirelessIoLiveBaselineStressArg, wirelessIoLiveBaselineControlArg,
+                  wirelessIoLiveCandidateStressArg, wirelessIoLiveCandidateControlArg]
+            .collectMany { it.split(';').collect { path -> path.trim() }.findAll { !it.isEmpty() } })
+            .withPropertyName('liveReportContents')
+    inputs.property 'projectDirectory', projectDir.absolutePath
+    outputs.dir wirelessIoLiveComparisonOutput
+    doLast {
+        def splitReports = { value, label ->
+            def paths = (value as String).split(';').collect { it.trim() }
+                    .findAll { !it.isEmpty() }
+            if (paths.size() != 5) {
+                throw new GradleException("${label} must contain exactly five JSON paths separated by ';'")
+            }
+            def parser = new groovy.json.JsonSlurper()
+            return paths.collect { path ->
+                File rawFile = new File(path)
+                File file = rawFile.isAbsolute()
+                        ? rawFile : new File(inputs.properties.projectDirectory as String, path)
+                if (!file.isFile()) {
+                    throw new GradleException("Missing live benchmark report: ${file}")
+                }
+                def report = parser.parse(file)
+                if (report.partial || (report.samples as int) < 1200) {
+                    throw new GradleException("Incomplete live benchmark report: ${file}")
+                }
+                if ((report.interfaceCalls as long) <= 0
+                        || (report.fastInterfaceCalls as long) != (report.interfaceCalls as long)) {
+                    throw new GradleException("Report is not a measured pure-FAST run: ${file}")
+                }
+                return report
+            }
+        }
+        def median = { values ->
+            def sorted = values.collect { it as double }.sort()
+            int middle = sorted.size().intdiv(2)
+            return sorted.size() % 2 == 0
+                    ? (sorted[middle - 1] + sorted[middle]) / 2.0
+                    : sorted[middle] as double
+        }
+        def summarize = { stress, control, repeatedLoad ->
+            def measured = repeatedLoad ? stress + control : stress
+            def pairedMean = []
+            def pairedP99 = []
+            for (int i = 0; !repeatedLoad && i < stress.size(); i++) {
+                pairedMean << ((stress[i].tickMs.mean as double)
+                        - (control[i].tickMs.mean as double))
+                pairedP99 << ((stress[i].tickMs.p99 as double)
+                        - (control[i].tickMs.p99 as double))
+            }
+            return [
+                    mean: median(measured.collect { it.tickMs.mean }),
+                    p95: median(measured.collect { it.tickMs.p95 }),
+                    p99: median(measured.collect { it.tickMs.p99 }),
+                    over50: median(measured.collect { it.ticksOver50MsRatio }),
+                    capacityTps: median(measured.collect { it.capacityTps }),
+                    ioP99: median(measured.collect { it.wirelessIoMs.p99 }),
+                    ioMean: measured.every { it.wirelessIoMs.mean != null }
+                            ? median(measured.collect { it.wirelessIoMs.mean }) : null,
+                    gcRatio: median(measured.collect {
+                        (it.gcMillis as double) / ((it.samples as double) * 50.0)
+                    }),
+                    heap: median(measured.collect { it.peakUsedHeapBytes }),
+                    adjustedMean: repeatedLoad ? null : median(pairedMean),
+                    adjustedP99: repeatedLoad ? null : median(pairedP99)
+            ]
+        }
+        def baselineStress = splitReports(inputs.properties.baselineStressReports,
+                'baseline stress reports')
+        def baselineControl = splitReports(inputs.properties.baselineControlReports,
+                'baseline control reports')
+        def candidateStress = splitReports(inputs.properties.candidateStressReports,
+                'candidate stress reports')
+        def candidateControl = splitReports(inputs.properties.candidateControlReports,
+                'candidate control reports')
+        def groups = [baselineStress, baselineControl, candidateStress, candidateControl]
+        def allReports = groups.flatten()
+        def profiles = []
+        groups.eachWithIndex { reports, groupIndex ->
+            def expectedRole = groupIndex % 2 == 0 ? 'stress' : 'control'
+            def runIds = []
+            reports.each { report ->
+                def match = (report.scenario =~ /^gametest-(control|stress)-(.+)-run([1-5])$/)
+                if (!match.matches() || match[0][1] != expectedRole) {
+                    throw new GradleException("Unexpected benchmark role/scenario: ${report.scenario}")
+                }
+                profiles << match[0][2]
+                runIds << match[0][3]
+                if (report.workloadObservationMode?.startsWith('diagnostic')) {
+                    throw new GradleException('Diagnostic reports cannot be used for formal comparison')
+                }
+            }
+            if (runIds.toSet().size() != 5) throw new GradleException('Duplicate benchmark run IDs')
+            reports.sort { a, b -> a.scenario <=> b.scenario }
+        }
+        if (profiles.toSet().size() != 1) throw new GradleException('Mixed benchmark profiles')
+        boolean repeatedLoad = profiles[0].startsWith('equal-load-')
+        boolean exportProfile = profiles[0].startsWith('export-')
+        boolean repeatedIdle = profiles[0] ==~ /^export-(empty|mismatch)-\d+$/
+        boolean repeated = repeatedLoad || repeatedIdle
+        String comparisonKind = repeatedIdle ? 'repeated-idle' : (repeatedLoad ? 'repeated-load' : 'idle-control')
+        def measurementScopes = allReports.collect { it.ioMeasurementScope ?: 'wireless-io-body' }.toSet()
+        if (measurementScopes.size() != 1) {
+            throw new GradleException('Incompatible I/O measurement scopes; rerun both versions with the same probe')
+        }
+        if (allReports.collect { it.gcMeasurementWindow ?: 'legacy-workload-to-shutdown' }.toSet().size() != 1) {
+            throw new GradleException('Incompatible GC measurement windows; rerun both versions with the same probe')
+        }
+        if (allReports.any { it.comparisonKind != null && it.comparisonKind != comparisonKind }) {
+            throw new GradleException('Comparison kind conflicts with benchmark profile')
+        }
+        ['samples', 'warmupTicks', 'javaVersion', 'serverVersion'].each { field ->
+            if (allReports.any { it[field] == null } || allReports.collect { it[field] }.toSet().size() != 1) {
+                throw new GradleException("Incompatible benchmark ${field}")
+            }
+        }
+        if (repeatedLoad) {
+            ['workloadPlannedProductionItems', 'workloadActualProductionItems',
+             'workloadProducedItems', 'workloadExtractedItems', 'workloadNetworkImportedItems',
+             'workloadRecoveryTick'].each { field ->
+                if (allReports.any { it[field] == null } || allReports.collect { it[field] }.toSet().size() != 1) {
+                    throw new GradleException("Unequal workload: ${field}")
+                }
+            }
+            allReports.each { r ->
+                if (!(r.workloadProducedItems > 0)
+                        || r.workloadPlannedProductionItems != r.workloadActualProductionItems
+                        || r.workloadProducedItems != r.workloadActualProductionItems
+                        || r.workloadProducedItems != r.workloadNetworkImportedItems
+                        || r.workloadFinalRemainingItems != 0 || r.workloadBufferedItems != 0
+                        || r.workloadBlockedProductionEvents != 0
+                        || r.workloadMinimumWindowThroughput == null || r.workloadMinimumWindowThroughput < 0.99
+                        || r.workloadMinimumTargetThroughput == null || r.workloadMinimumTargetThroughput < 0.99) {
+                    throw new GradleException("Incomplete or blocked fixed workload: ${r.scenario}")
+                }
+            }
+        }
+        if (exportProfile) {
+            def match = profiles[0] =~ /^export-(empty|mismatch|continuous)-(64|256|1024)(?:x(1|27))?$/
+            if (!match.matches()) throw new GradleException('Unknown export benchmark profile')
+            String kind = match[0][1]
+            int targets = match[0][2] as int
+            int itemKeys = match[0][3] == null ? 0 : match[0][3] as int
+            if ((kind == 'continuous') != (itemKeys > 0)) throw new GradleException('Invalid export key count')
+            int configuredKeys = kind == 'mismatch' ? 1 : itemKeys
+            allReports.each { r ->
+                def w = r.exportWorkload
+                boolean consuming = !repeatedIdle && r.scenario.startsWith('gametest-stress-')
+                long demandTicks = (r.warmupTicks as long) + (r.samples as long) - 40L
+                long plannedEvents = consuming ? targets * demandTicks : 0L
+                long steadyEvents = consuming ? targets * (demandTicks - 40L) : 0L
+                long supplied = targets * (demandTicks + 1) * itemKeys * 64L
+                def nonnegative = ['suppliedItems', 'networkRemainingItems', 'targetRemainingItems', 'bufferedItems',
+                        'plannedItems', 'consumedItems', 'plannedEvents', 'completedEvents', 'starvedEvents', 'maxStarveStreak',
+                        'steadyPlannedEvents', 'steadyCompletedEvents', 'steadyStarvedEvents', 'steadyMaxStarveStreak']
+                if (r.schema == null || r.schema < 4
+                        || r.ioMeasurementScope != 'grid-item-io-including-eligibility'
+                        || w == null || w.contract != 'consumer-start40-steady80-v1'
+                        || w.profile != profiles[0] || w.targets != targets
+                        || w.itemKeys != itemKeys || w.configuredKeys != configuredKeys || w.unitsPerKey != 64
+                        || w.consuming != consuming || demandTicks < 140
+                        || r.configuredConnectionVisits != (r.interfaceCalls as long) * targets
+                        || nonnegative.any { w[it] == null || w[it] < 0 }) {
+                    throw new GradleException("Invalid export fixture or timing metadata: ${r.scenario}")
+                }
+                if (w.suppliedItems != supplied || w.plannedEvents != plannedEvents
+                        || w.plannedItems != plannedEvents * itemKeys * 64L
+                        || w.consumedItems != w.completedEvents * itemKeys * 64L
+                        || w.completedEvents > w.plannedEvents || w.starvedEvents != w.plannedEvents - w.completedEvents
+                        || w.steadyPlannedEvents != steadyEvents || w.steadyCompletedEvents > steadyEvents
+                        || w.steadyCompletedEvents > w.completedEvents
+                        || w.steadyStarvedEvents != steadyEvents - w.steadyCompletedEvents
+                        || w.steadyStarvedEvents > w.starvedEvents || w.steadyMaxStarveStreak > w.maxStarveStreak
+                        || w.suppliedItems != w.networkRemainingItems + w.targetRemainingItems + w.bufferedItems + w.consumedItems
+                        || w.bufferedItems != 0 || w.targetRemainingItems != targets * itemKeys * 64L) {
+                    throw new GradleException("Export workload or ownership mismatch: ${r.scenario}")
+                }
+                if (consuming && (w.minimumWindowThroughput == null || w.minimumWindowThroughput < 0.99
+                        || w.minimumTargetThroughput == null || w.minimumTargetThroughput < 0.99
+                        || (w.steadyStarvedEvents as double) / steadyEvents > 0.001 || w.steadyMaxStarveStreak > 2)) {
+                    throw new GradleException("Export starvation or throughput gate failed: ${r.scenario}")
+                }
+                if (kind == 'continuous' && (w.startupWaitTicks == null || w.startupWaitTicks < 0 || w.startupWaitTicks > 40)) {
+                    throw new GradleException("Export startup exceeded its budget: ${r.scenario}")
+                }
+                if (!consuming && (w.minimumWindowThroughput != -1 || w.minimumTargetThroughput != -1)) {
+                    throw new GradleException("Idle export incorrectly reports consumer throughput: ${r.scenario}")
+                }
+            }
+        }
+        def baseline = summarize(baselineStress, baselineControl, repeated)
+        def candidate = summarize(candidateStress, candidateControl, repeated)
+        def failures = []
+        def notes = []
+        def atMost = { label, actualValue, limitValue ->
+            double actual = actualValue as double
+            double limit = limitValue as double
+            if (actual > limit) {
+                failures << String.format(java.util.Locale.ROOT,
+                        '%s %.6f > %.6f', label, actual, limit)
+            }
+        }
+        def noRegression = { label, beforeValue, afterValue,
+                             relativeTolerance, absoluteTolerance ->
+            double before = beforeValue as double
+            double after = afterValue as double
+            double tolerance = Math.max(absoluteTolerance as double,
+                    Math.abs(before) * (relativeTolerance as double))
+            if (after > before + tolerance) {
+                failures << String.format(java.util.Locale.ROOT,
+                        '%s regressed %.6f -> %.6f (tolerance %.6f)',
+                        label, before, after, tolerance)
+            } else if (after < before - tolerance) {
+                notes << String.format(java.util.Locale.ROOT,
+                        '%s improved %.6f -> %.6f', label, before, after)
+            }
+        }
+
+        atMost('candidate median mean MSPT', candidate.mean, 25.0)
+        atMost('candidate median p95 MSPT', candidate.p95, 35.0)
+        atMost('candidate median p99 MSPT', candidate.p99, 45.0)
+        atMost('candidate median >50 ms ratio', candidate.over50, 0.001)
+        atMost('candidate median GC pause ratio', candidate.gcRatio, 0.02)
+        if (!repeated) {
+            atMost('candidate paired control-adjusted mean MSPT', candidate.adjustedMean, 10.0)
+            atMost('candidate paired control-adjusted p99 MSPT', candidate.adjustedP99, 15.0)
+        }
+        atMost('candidate median wireless I/O p99', candidate.ioP99, (inputs.properties.maxIoP99Ms as String).toDouble())
+        if ((candidate.capacityTps as double) < 19.8) {
+            failures << "candidate median capacity TPS ${candidate.capacityTps} < 19.8"
+        }
+        noRegression('median mean MSPT', baseline.mean, candidate.mean, 0.03, 0.20)
+        noRegression('median p99 MSPT', baseline.p99, candidate.p99, 0.05, 0.5)
+        if (!repeated) {
+            noRegression('paired control-adjusted mean MSPT', baseline.adjustedMean,
+                candidate.adjustedMean, 0.03, 0.20)
+            noRegression('paired control-adjusted p99 MSPT', baseline.adjustedP99,
+                candidate.adjustedP99, 0.05, 0.5)
+        }
+        noRegression('median >50 ms ratio', baseline.over50, candidate.over50,
+                0.0, 1.0 / 1200.0)
+        noRegression('median wireless I/O p99', baseline.ioP99, candidate.ioP99,
+                0.05, 0.05)
+        noRegression('median GC pause ratio', baseline.gcRatio, candidate.gcRatio,
+                0.10, 0.001)
+        noRegression('median heap peak', baseline.heap, candidate.heap, 0.10,
+                1024.0 * 1024.0)
+
+        boolean measurableImprovement = notes.any {
+            it.startsWith('median mean MSPT improved')
+                    || it.startsWith('median p99 MSPT improved')
+                    || it.startsWith('paired control-adjusted mean MSPT improved')
+                    || it.startsWith('paired control-adjusted p99 MSPT improved')
+                    || it.startsWith('median wireless I/O p99 improved')
+        }
+        File outputDirectory = new File(wirelessIoLiveComparisonOutput)
+        outputDirectory.mkdirs()
+        File markdown = new File(outputDirectory, 'live-comparison.md')
+        def body = new StringBuilder('# Wireless I/O live comparison\n\n')
+                .append(repeatedIdle
+                        ? 'Method: ten repeated idle runs per version; control/stress are filename labels. No control subtraction.\n\n'
+                        : repeatedLoad
+                        ? 'Method: ten repeated loaded runs per version; control/stress are filename labels. No control subtraction.\n\n'
+                        : 'Method: five stress runs with paired idle controls.\n\n')
+                .append("I/O scope: `${measurementScopes.first()}`; P99 budget: ${inputs.properties.maxIoP99Ms} ms.\n\n")
+                .append("Result: **${failures.isEmpty() ? 'PASS' : 'FAIL'}**\n\n")
+                .append("Optimization status: **${measurableImprovement
+                        ? 'MEASURABLE_IMPROVEMENT' : 'NO_MEASURABLE_IMPROVEMENT'}**\n\n")
+                .append('| metric | baseline median | candidate median |\n')
+                .append('|---|---:|---:|\n')
+        ['mean', 'p95', 'p99', 'adjustedMean', 'adjustedP99', 'over50',
+         'capacityTps', 'ioMean', 'ioP99', 'gcRatio', 'heap'].each { metric ->
+            body.append("| ${metric} | ${baseline[metric] == null ? 'N/A' : baseline[metric]} | ${candidate[metric] == null ? 'N/A' : candidate[metric]} |\n")
+        }
+        body.append('\n## Failures\n\n')
+        if (failures.isEmpty()) body.append('- None\n')
+        else failures.each { body.append("- ${it}\n") }
+        body.append('\n## Improvements outside tolerance\n\n')
+        if (notes.isEmpty()) body.append('- None\n')
+        else notes.each { body.append("- ${it}\n") }
+        markdown.setText(body.toString(), 'UTF-8')
+        println("Live benchmark comparison: ${failures.isEmpty() ? 'PASS' : 'FAIL'}, "
+                + "optimization=${measurableImprovement ? 'MEASURABLE' : 'NOT_MEASURABLE'}")
+        println "Report: ${markdown}"
+        if (!failures.isEmpty()) {
+            throw new GradleException('Wireless I/O live regression check failed:\n'
+                    + failures.join('\n'))
+        }
+    }
 }
 
 // Keep the source and adapted third-party licensing notices inside every published mod jar.

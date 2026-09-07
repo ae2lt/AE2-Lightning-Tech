@@ -22,6 +22,7 @@ import com.moakiee.ae2lt.item.OverloadedFilterComponentItem;
 import com.moakiee.ae2lt.logic.AppFluxHelper;
 import com.moakiee.ae2lt.logic.ConnectionEndpoints;
 import com.moakiee.ae2lt.logic.EjectModeRegistry;
+import com.moakiee.ae2lt.debug.WirelessIoPerformanceProbe;
 import com.moakiee.ae2lt.logic.FilteredInsertGenericInv;
 import com.moakiee.ae2lt.logic.OverloadedInterfaceLogic;
 import com.moakiee.ae2lt.logic.OverloadedInterfaceTickDecider;
@@ -1173,7 +1174,19 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
             return;
         }
         if (interfaceMode == InterfaceMode.WIRELESS) {
-            tickWirelessIO(sl);
+            if (WirelessIoPerformanceProbe.shouldMeasureIoBody()) {
+                long started = System.nanoTime();
+                try {
+                    tickWirelessIO(sl);
+                } finally {
+                    WirelessIoPerformanceProbe.recordWirelessInterfaceIo(
+                            System.nanoTime() - started,
+                            connections.size(),
+                            ioSpeedMode == IOSpeedMode.FAST);
+                }
+            } else {
+                tickWirelessIO(sl);
+            }
         } else {
             tickNormalIO(sl);
         }
@@ -1759,6 +1772,32 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
             // buffer mutations in this tick, including subsequent targets.
             saveChanges();
         }
+    }
+
+    /** Read-only observation used by the self-contained development GameTest fixture. */
+    long benchmarkBufferedImportAmount() {
+        long total = 0;
+        for (long amount : importBuffer.values()) {
+            total = total > Long.MAX_VALUE - amount ? Long.MAX_VALUE : total + amount;
+        }
+        return total;
+    }
+
+    /** Read-only observation used by the self-contained development GameTest fixture. */
+    int benchmarkBufferedImportKeys() {
+        return importBuffer.size();
+    }
+
+    /** Read-only scheduler observation used by the development GameTest fixture. */
+    String benchmarkWirelessIoState() {
+        return "mode=" + interfaceMode + "/" + ioSpeedMode + "/" + importMode
+                + ", connections=" + connections.size()
+                + ", valid=" + validConnectionsCache.size()
+                + ", states=" + connectionStates.size()
+                + ", entries=" + ioEntries.size()
+                + ", wheelDirty=" + ioWheelDirty
+                + ", bufferedKeys=" + importBuffer.size()
+                + ", bufferedAmount=" + benchmarkBufferedImportAmount();
     }
 
     static ImportBufferFlushResult flushImportBufferEntries(

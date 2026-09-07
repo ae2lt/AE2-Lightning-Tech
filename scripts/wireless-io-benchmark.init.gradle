@@ -1,0 +1,22 @@
+// Optional, identical minimal runtime for isolated A/B GameTest measurements.
+// AE2 and NeoForge are implementation dependencies and remain present.
+allprojects {
+    afterEvaluate {
+        if (gradle.startParameter.taskNames.any { it.tokenize(':').last() == 'runWirelessIoGameTestServer' }) {
+            // Skipped GameTests still create template chunks/markers. Register the
+            // same two fixture classes in both versions for comparable heap/tick costs.
+            sourceSets.jdb.java.setIncludes([
+                    '**/WirelessInterfaceGameTests.java',
+                    '**/WirelessInterfaceExportGameTests.java'])
+        }
+        configurations.runtimeOnly.dependencies.removeIf { dep ->
+            !(dep.group == 'com.moakiee.thunderbolt' || dep.group == 'org.appliedenergistics')
+        }
+        neoForge.runs.gameTestServer {
+            gameDirectory = project.layout.buildDirectory.dir('wireless-io-semantic-gametest').get().asFile
+        }
+        neoForge.runs.wirelessIoGameTestServer {
+            jvmArguments.addAll('-Xms512m', '-Xmx2g')
+        }
+    }
+}
