@@ -9,10 +9,12 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.player.Abilities;
 import net.minecraft.world.phys.Vec3;
 
 import com.moakiee.ae2lt.celestweave.PhaseFlightMovementGuard;
+import com.moakiee.ae2lt.celestweave.FlightSneakMovement;
 import com.moakiee.ae2lt.celestweave.PhaseFlightControlRules;
 import com.moakiee.ae2lt.celestweave.PhaseFlightPlayerState;
 import com.moakiee.ae2lt.celestweave.CelestweaveArmorState;
@@ -22,6 +24,18 @@ import com.moakiee.ae2lt.network.PhaseFlightInputPacket;
 /** Authorizes the vanilla space/shift vertical-flight impulse without authorizing world forces. */
 @Mixin(LocalPlayer.class)
 public abstract class LocalPlayerPhaseMovementMixin {
+    @ModifyExpressionValue(
+            method = "aiStep",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/player/LocalPlayer;isMovingSlowly()Z"))
+    private boolean ae2lt$applySneakInputWithoutKeyDelay(boolean movingSlowly) {
+        LocalPlayer player = (LocalPlayer) (Object) this;
+        if (PhaseFlightPlayerState.isControlled(player) && PhaseFlightPlayerState.isFlying(player)) {
+            var options = Minecraft.getInstance().options;
+            return FlightSneakMovement.isActive(player, options.keyJump.isDown(), options.keyShift.isDown());
+        }
+        return movingSlowly;
+    }
+
     @ModifyExpressionValue(
             method = "aiStep",
             at = @At(

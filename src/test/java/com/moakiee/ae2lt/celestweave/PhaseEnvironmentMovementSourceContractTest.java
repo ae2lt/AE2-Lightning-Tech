@@ -72,7 +72,13 @@ final class PhaseEnvironmentMovementSourceContractTest {
         assertTrue(playerMixin.contains("Player;setDeltaMovement(DDD)V"));
         assertTrue(playerMixin.contains("runAsVanillaTravelMovement("));
         assertFalse(playerMixin.contains("@WrapMethod(method = \"travel\")"));
-        assertFalse(playerMixin.contains("runAsSelfMovement("));
+        // Precision hover may authorize its own zero-velocity writes, but must never
+        // authorize the entire travel call (which would admit external fluid forces).
+        String hoverReset = "PhaseFlightMovementGuard.runAsSelfMovement(player, () -> player.setDeltaMovement(Vec3.ZERO));";
+        assertTrue(playerMixin.contains(hoverReset));
+        assertFalse(playerMixin.replace(hoverReset, "").contains("runAsSelfMovement("));
+        assertFalse(playerMixin.contains("beginSelfMovement("));
+        assertFalse(playerMixin.contains("endSelfMovement("));
     }
 
     private static String methodBody(String source, String start, String end) {

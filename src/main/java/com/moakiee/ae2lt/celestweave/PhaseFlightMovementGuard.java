@@ -165,7 +165,9 @@ public final class PhaseFlightMovementGuard {
         }
         if (player.level().isClientSide()) {
             return CelestweaveArmorState.isAnyClientFlightControlActive()
-                    && CelestweaveArmorState.getClientPhaseModeEnabled();
+                    && CelestweaveArmorState.getClientPhaseMode().allows(
+                            PhaseFlightPlayerState.isFlying(player),
+                            PhaseWingFlight.isFlightActive(player));
         }
         ServerSettings settings = SERVER_SETTINGS.get(player.getUUID());
         return settings != null && settings.owner() == player && settings.phaseModeEnabled();

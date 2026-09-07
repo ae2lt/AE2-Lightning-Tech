@@ -132,7 +132,7 @@ public final class ClientNetworkPacketHandlers {
 
     public static void handleFlightInertia(FlightInertiaSyncPacket packet) {
         CelestweaveArmorState.setClientFlightSettings(
-                packet.armorId(), packet.inertiaEnabled(), packet.phaseModeEnabled());
+                packet.armorId(), packet.inertiaEnabled(), packet.phaseMode());
 
         LocalPlayer player = Minecraft.getInstance().player;
         if (player == null) {

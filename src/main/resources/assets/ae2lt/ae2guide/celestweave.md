@@ -110,11 +110,11 @@ The Phase Lock Module uses the chestplate as its controller and exposes four ind
 | Module | Effect |
 |--------|--------|
 | Creative Flight | Provides hovering and wing gliding; speed and inertia are configurable |
-| Phase Flight | Provides hovering and phase-wing gliding; Phase Mode controls whether flight passes through blocks |
+| Phase Flight | Provides hovering and phase-wing gliding; Phase Mode offers Off, Creative Flight Only, or Creative + Elytra |
 
 Creative Flight and Phase Flight share the same install group, so only one can be installed on the leggings. Phase Flight is disabled by default after installation and must be enabled in the Device Hub.
 
-Both flight modules share vanilla-style controls: tap Jump in midair to deploy the wings, or double-tap Jump to toggle hovering. Hold Jump while gliding to thrust along the look direction. While hovering, Jump ascends and Sneak descends; holding both cancels vertical input and exposes a crouching state to other mods. Only Phase Flight exposes Phase Mode; when enabled, both hovering and gliding pass through blocks. Flight Lock is controlled centrally by the chestplate's Phase Lock Module.
+Both flight modules share vanilla-style controls: tap Jump in midair to deploy the wings, or double-tap Jump to toggle hovering. Hold Jump while gliding to thrust along the look direction. While hovering, Jump ascends and Sneak descends; holding both cancels vertical input and exposes a crouching state to other mods. Crouching while hovering uses ground sneaking speed (including sneaking attributes and Movement Assist sneak multipliers), temporarily disables inertia, and stops immediately when directional input is released. Leaving crouch restores the configured flight speed and inertia. Only Phase Flight exposes Phase Mode: **Off** disables phase traversal without disabling flight, **Creative Flight Only** phases hovering but keeps normal collision while gliding, and **Creative + Elytra** phases both hovering and gliding. Flight Lock is controlled centrally by the chestplate's Phase Lock Module.
 
 ## Boots Modules
 

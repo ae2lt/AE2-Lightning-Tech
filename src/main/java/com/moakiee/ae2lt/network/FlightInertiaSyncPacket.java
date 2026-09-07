@@ -4,7 +4,9 @@ import java.util.function.Supplier;
 import java.util.UUID;
 
 import com.moakiee.ae2lt.client.ClientNetworkPacketHandlers;
+import com.moakiee.ae2lt.celestweave.module.PhaseFlightMode;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.nbt.ByteTag;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.network.NetworkEvent;
@@ -14,7 +16,7 @@ public record FlightInertiaSyncPacket(
         boolean inertiaEnabled,
         boolean flightControlActive,
         boolean flying,
-        boolean phaseModeEnabled,
+        PhaseFlightMode phaseMode,
         boolean flightLockEnabled) {
     public static FlightInertiaSyncPacket decode(FriendlyByteBuf buf) {
         return new FlightInertiaSyncPacket(
@@ -22,7 +24,7 @@ public record FlightInertiaSyncPacket(
                 buf.readBoolean(),
                 buf.readBoolean(),
                 buf.readBoolean(),
-                buf.readBoolean(),
+                PhaseFlightMode.fromTag(ByteTag.valueOf(buf.readByte())),
                 buf.readBoolean());
     }
 
@@ -31,7 +33,8 @@ public record FlightInertiaSyncPacket(
         buf.writeBoolean(inertiaEnabled);
         buf.writeBoolean(flightControlActive);
         buf.writeBoolean(flying);
-        buf.writeBoolean(phaseModeEnabled);
+        // Preserve the Forge channel's legacy boolean values: 0=off, 1=all; 2 adds hover-only.
+        buf.writeByte(phaseMode.toTag().getAsByte());
         buf.writeBoolean(flightLockEnabled);
     }
 
