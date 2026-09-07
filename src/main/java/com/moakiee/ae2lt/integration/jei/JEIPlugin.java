@@ -38,6 +38,8 @@ import mezz.jei.api.registration.IRecipeCatalystRegistration;
 import mezz.jei.api.registration.IRecipeCategoryRegistration;
 import mezz.jei.api.registration.IRecipeRegistration;
 import mezz.jei.api.registration.IRecipeTransferRegistration;
+import com.moakiee.ae2lt.menu.PigmeeSynthesisStationMenu;
+import appeng.integration.modules.jei.transfer.UseCraftingRecipeTransfer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
@@ -193,6 +195,9 @@ public class JEIPlugin implements IModPlugin {
         // AE2 1.20.1 ships its own EncodePatternTransferHandler for the vanilla
         // JEI plugin; its constructor takes (MenuType, Class, transfer-helper).
         var helper = registration.getTransferHelper();
+        registration.addRecipeTransferHandler(new UseCraftingRecipeTransfer<>(
+                PigmeeSynthesisStationMenu.class, PigmeeSynthesisStationMenu.TYPE, helper),
+                mezz.jei.api.constants.RecipeTypes.CRAFTING);
         registration.addUniversalRecipeTransferHandler(new UniversalEncodePatternTransferHandler<>(
                 TianshuPatternEncodingTermMenu.TYPE,
                 TianshuPatternEncodingTermMenu.class,

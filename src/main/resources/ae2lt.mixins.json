@@ -9,6 +9,7 @@
     "ServerLevelMixin",
     "AEBaseMenuManagedSlotClickMixin",
     "ItemEntityMixin",
+    "PigmeeRecipeTransferStorageMixin",
     "AnnihilationPlaneFirmamentDustMixin",
     "PatternProviderLogicAccessor",
     "PatternProviderLogicMixin",

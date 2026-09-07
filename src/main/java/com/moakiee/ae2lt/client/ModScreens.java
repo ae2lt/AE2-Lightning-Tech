@@ -30,6 +30,7 @@ import com.moakiee.ae2lt.menu.OverloadedPatternProviderMenu;
 import com.moakiee.ae2lt.menu.OverloadedPowerSupplyMenu;
 import com.moakiee.ae2lt.menu.PigmeePatternProviderMenu;
 import com.moakiee.ae2lt.menu.PigmeeMolecularAssemblerMenu;
+import com.moakiee.ae2lt.menu.PigmeeSynthesisStationMenu;
 import com.moakiee.ae2lt.menu.TeslaCoilMenu;
 import com.moakiee.ae2lt.menu.TianshuSupercomputerControllerMenu;
 import com.moakiee.ae2lt.menu.TianshuPatternEncodingTermMenu;
@@ -51,6 +52,7 @@ public class ModScreens {
             MenuScreens.register(OverloadedPatternProviderMenu.TYPE, ModScreens::createOverloadedPatternProviderScreen);
             MenuScreens.register(PigmeePatternProviderMenu.TYPE, ModScreens::createPigmeePatternProviderScreen);
             MenuScreens.register(PigmeeMolecularAssemblerMenu.TYPE, ModScreens::createPigmeeMolecularAssemblerScreen);
+            MenuScreens.register(PigmeeSynthesisStationMenu.TYPE, ModScreens::createPigmeeSynthesisStationScreen);
             MenuScreens.register(OverloadPatternEncoderMenu.TYPE, OverloadPatternEncoderScreen::new);
             MenuScreens.register(OverloadDeviceWorkbenchMenu.TYPE, OverloadDeviceWorkbenchScreen::new);
             MenuScreens.register(OverloadedInterfaceMenu.TYPE, ModScreens::createOverloadedInterfaceScreen);
@@ -120,6 +122,14 @@ public class ModScreens {
             PigmeeMolecularAssemblerMenu menu, Inventory inv, Component title) {
         var style = StyleManager.loadStyleDoc("/screens/pigmee_molecular_assembler.json");
         return new PigmeeMolecularAssemblerScreen(menu, inv, title, style);
+    }
+
+    private static PigmeeSynthesisStationScreen createPigmeeSynthesisStationScreen(
+            PigmeeSynthesisStationMenu menu, Inventory inv, Component title) {
+        var style = StyleManager.loadStyleDoc("/screens/pigmee_synthesis_station.json");
+        style.getTerminalStyle().setSupportsAutoCrafting(false);
+
+        return new PigmeeSynthesisStationScreen(menu, inv, title, style);
     }
 
     private static OverloadedInterfaceScreen createOverloadedInterfaceScreen(
