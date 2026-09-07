@@ -1,7 +1,9 @@
 {
-  "parent": "ae2:block/molecular_assembler",
+  "parent": "minecraft:block/cube_bottom_top",
   "textures": {
-    "particle": "ae2lt:block/pigmee_molecular_assembler",
-    "base": "ae2lt:block/pigmee_molecular_assembler"
+    "particle": "ae2lt:block/pigmee_synthesis_station",
+    "side": "ae2lt:block/pigmee_synthesis_station",
+    "top": "ae2lt:block/pigmee_synthesis_station_top",
+    "bottom": "ae2lt:block/pigmee_mentalmath_unit_bottom"
   }
 }
