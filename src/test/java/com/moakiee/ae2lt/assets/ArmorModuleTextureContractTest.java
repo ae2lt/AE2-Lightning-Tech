@@ -54,6 +54,6 @@ final class ArmorModuleTextureContractTest {
 
         assertFalse(
                 source.contains("new ArmorMaterial.Layer"),
-                "Celestweave should remain equipable without rendering a worn armor model");
+                "Celestweave uses a procedural field instead of opaque vanilla armor layers");
     }
 }

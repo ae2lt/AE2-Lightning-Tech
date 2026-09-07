@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>苍穹织雷 · 雷电灵甲</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#0b1020;color:#e2eeff;font:15px system-ui}main{max-width:1200px;margin:40px auto;padding:0 24px}small{color:#91caff;letter-spacing:3px}h1{font-size:32px;font-weight:550;letter-spacing:3px;margin:12px 0}p{color:#a5b5cf;line-height:1.8}.toolbar{display:flex;flex-wrap:wrap;gap:10px;margin:22px 0}button{font:inherit;cursor:pointer;background:#18243b;color:#bcdfff;border:1px solid #385474;border-radius:8px;padding:11px 20px}button[aria-pressed=true]{background:#c7e9ff;color:#142236;border-color:#c7e9ff}button.purple[aria-pressed=true]{background:#dbc0ff;color:#261638;border-color:#dbc0ff}img{display:block;width:100%;border-radius:10px;border:1px solid #2b3d5b}footer{margin:18px 0;color:#93a5c0;font-size:13px}
+</style>
+<main><small>CELESTWEAVE / LIGHTNING FIELD</small><h1>苍穹织雷 · 雷电灵甲</h1>
+<p>额顶雷纹 · 胸前分叉主脉 · 分区像素纹饰</p>
+<div class="toolbar" role="group" aria-label="比较内核状态">
+<button aria-pressed="true" data-image="lightning-blue.png?detail=5" data-caption="未安装内核 · 淡蓝色雷电">无内核 · 淡蓝</button>
+<button class="purple" aria-pressed="false" data-image="lightning-purple.png?detail=5" data-caption="仅胸甲安装过载内核 · 整套变为紫色">过载内核 · 紫色</button>
+</div>
+<img id="shot" src="lightning-blue.png?detail=5" alt="无内核时的淡蓝雷电灵甲实机截图">
+<footer><span id="caption">未安装内核 · 淡蓝色雷电</span> ｜ LT 2.1.0-beta.5 / TB 2.0.0-beta.4 ｜ 同一日光场景的实机截图</footer>
+<p>任一已穿戴的苍穹部件装入过载内核，整套外观转为紫色；全部卸下后恢复淡蓝。客户端保留在专用试穿存档，F1 显示界面，F5 切换视角。</p>
+</main><script>
+for(const button of document.querySelectorAll('button'))button.addEventListener('click',()=>{
+for(const other of document.querySelectorAll('button'))other.setAttribute('aria-pressed',String(other===button));
+document.getElementById('shot').src=button.dataset.image;
+document.getElementById('shot').alt=button.dataset.caption+'实机截图';
+document.getElementById('caption').textContent=button.dataset.caption;
+});
+</script></html>
