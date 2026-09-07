@@ -538,6 +538,102 @@ class ProviderTargetTest {
     }
 
     @Test
+    void mainSnapshotWithoutReservoirFieldsRestoresSafely() {
+        var tag = new net.minecraft.nbt.CompoundTag();
+        var step = new net.minecraft.nbt.CompoundTag();
+        step.putInt("next_chunk", 16);
+        step.putInt("proven_chunk", 8);
+        step.putInt("proven_successes", 1);
+        step.putBoolean("repeat_current", false);
+        step.putBoolean("growth_capped", false);
+        step.putBoolean("backing_off", false);
+        step.putLong("last_successful_tick", 20);
+        step.putLong("last_attempt_tick", 20);
+        tag.put("step", step);
+
+        var snapshot = AdaptiveBatchStatePersistence.readSnapshot(tag);
+        assertFalse(snapshot.step().reservoirMode());
+        assertEquals(Long.MIN_VALUE, snapshot.step().lastReservoirTailAttemptTick());
+        var pattern = new EmptyPattern();
+        target.restoreAdaptiveBatchSnapshot(pattern, snapshot);
+        var chunks = new ArrayList<Integer>();
+        var result = target.pushPatternStep(pattern, 32, 21, true, () -> false, copies -> {
+            chunks.add(copies);
+            return new ProviderTarget.BatchChunk(copies, true, false);
+        });
+        assertEquals(List.of(8, 8, 16), chunks);
+        assertEquals(32, result.ownedCopies());
+    }
+
+    @Test
+    void reservoirSnapshotRestoresTailBoundsAndRequiresFreshPhysicalPrefixes() {
+        var snapshot = learnedReservoirSnapshot();
+        assertTrue(snapshot.step().reservoirMode());
+        assertEquals(8, snapshot.step().reservoirTailLower());
+        assertEquals(16, snapshot.step().reservoirTailUpperExclusive());
+        var decoded = AdaptiveBatchStatePersistence.readSnapshot(
+                AdaptiveBatchStatePersistence.writeSnapshot(snapshot));
+        assertEquals(snapshot, decoded);
+        for (boolean rejectSecondPrefix : List.of(false, true)) {
+            var restored = new ProviderTarget(Level.OVERWORLD, BlockPos.ZERO, Direction.NORTH);
+            var pattern = new EmptyPattern();
+            restored.restoreAdaptiveBatchSnapshot(pattern, decoded);
+            assertFalse(restored.consumeAdaptiveBatchHistoryDirty());
+            var chunks = new ArrayList<Integer>();
+            var result = restored.pushPatternStep(pattern, 1_000, 3, true, () -> false, copies -> {
+                chunks.add(copies);
+                return rejectSecondPrefix && chunks.size() == 2
+                        ? ProviderTarget.BatchChunk.REJECTED
+                        : new ProviderTarget.BatchChunk(copies, true, false);
+            });
+            assertEquals(rejectSecondPrefix ? List.of(8, 8) : List.of(8, 8, 12), chunks);
+            assertEquals(rejectSecondPrefix ? 8 : 28, result.ownedCopies());
+            assertTrue(restored.consumeAdaptiveBatchHistoryDirty());
+        }
+    }
+
+    @Test
+    void invalidPersistedReservoirBoundsFailClosed() {
+        var snapshot = learnedReservoirSnapshot();
+        for (int upper : List.of(-1, 0, 8)) {
+            var tag = AdaptiveBatchStatePersistence.writeSnapshot(snapshot);
+            tag.getCompound("step").putInt("reservoir_tail_upper", upper);
+            assertEquals(null, AdaptiveBatchStatePersistence.readSnapshot(tag));
+        }
+    }
+
+    @Test
+    void expiredBatchQueriesMarkPersistenceDirtyWithoutRepeatedChanges() {
+        var snapshot = learnedReservoirSnapshot();
+        for (int query = 0; query < 4; query++) {
+            var restored = new ProviderTarget(Level.OVERWORLD, BlockPos.ZERO, Direction.NORTH);
+            var pattern = new EmptyPattern();
+            restored.restoreAdaptiveBatchSnapshot(pattern, snapshot);
+            switch (query) {
+                case 0 -> restored.batchStepCandidate(pattern, 1000, 103);
+                case 1 -> restored.batchStepProvenChunk(pattern, 1000, 103);
+                case 2 -> restored.hasReservoirBatchState(pattern, 103);
+                case 3 -> restored.batchStepRampAllowance(pattern, 1000, 103);
+            }
+            assertTrue(restored.consumeAdaptiveBatchHistoryDirty());
+            assertEquals(1, restored.batchStepCandidate(pattern, 1000, 103));
+            assertFalse(restored.consumeAdaptiveBatchHistoryDirty());
+        }
+    }
+
+    private ProviderTarget.AdaptiveBatchSnapshot learnedReservoirSnapshot() {
+        var pattern = new EmptyPattern();
+        target.pushPatternStep(pattern, 16, 0, true, () -> false,
+                copies -> new ProviderTarget.BatchChunk(copies, true, false));
+        target.pushPatternStep(pattern, 1_000, 1, true, () -> false,
+                copies -> copies < 16 ? new ProviderTarget.BatchChunk(copies, true, false)
+                        : ProviderTarget.BatchChunk.REJECTED);
+        target.pushPatternStep(pattern, 1_000, 2, true, () -> false,
+                copies -> new ProviderTarget.BatchChunk(copies, true, false));
+        return target.adaptiveBatchSnapshots().get(pattern);
+    }
+
+    @Test
     void corruptedPersistedBatchHistoryFailsClosed() {
         var tag = new net.minecraft.nbt.CompoundTag();
         var step = new net.minecraft.nbt.CompoundTag();
@@ -591,7 +687,102 @@ class ProviderTargetTest {
     }
 
     @Test
-    void wirelessBatchStepCapsGrowthAtProvenChunk() {
+    void partialSecondBaselineDoesNotBecomeAReservoirPrefixSample() {
+        var pattern = new EmptyPattern();
+        target.pushPatternStep(
+                pattern,
+                4L,
+                0L,
+                true,
+                () -> false,
+                copies -> new ProviderTarget.BatchChunk(
+                        copies, true, false));
+
+        int[] calls = {0};
+        var partial = target.pushPatternStep(
+                pattern,
+                10L,
+                1L,
+                true,
+                () -> false,
+                copies -> calls[0]++ == 0
+                        ? new ProviderTarget.BatchChunk(
+                                copies, true, false)
+                        : new ProviderTarget.BatchChunk(
+                                1L, false, false));
+
+        assertEquals(3L, partial.ownedCopies());
+        assertEquals(
+                ProviderTarget.BaselineStatus.NONE,
+                partial.baselineStatus());
+    }
+
+    @Test
+    void provenRefillAllowancePerformsOnePhysicalInsertion() {
+        var pattern = new EmptyPattern();
+        target.pushPatternStep(
+                pattern,
+                16L,
+                0L,
+                true,
+                () -> false,
+                copies -> new ProviderTarget.BatchChunk(
+                        copies, true, false));
+
+        int refill = target.batchStepProvenChunk(
+                pattern, Long.MAX_VALUE, 1L);
+        var chunks = new ArrayList<Integer>();
+        var result = target.pushPatternStep(
+                pattern,
+                refill,
+                1L,
+                true,
+                () -> false,
+                copies -> {
+                    chunks.add(copies);
+                    return new ProviderTarget.BatchChunk(
+                            copies, true, false);
+                });
+
+        assertEquals(8, refill);
+        assertEquals(8L, result.ownedCopies());
+        assertEquals(List.of(8), chunks);
+    }
+
+    @Test
+    void provenSingleChunkRefillsKeepPhysicalHistoryAlive() {
+        var pattern = new EmptyPattern();
+        target.pushPatternStep(
+                pattern,
+                16L,
+                0L,
+                true,
+                () -> false,
+                copies -> new ProviderTarget.BatchChunk(
+                        copies, true, false));
+
+        for (long tick = 1L; tick <= 200L; tick++) {
+            int refill = target.batchStepProvenChunk(
+                    pattern, Long.MAX_VALUE, tick);
+            var chunks = new ArrayList<Integer>();
+            target.pushPatternStep(
+                    pattern,
+                    refill,
+                    tick,
+                    true,
+                    () -> false,
+                    copies -> {
+                        chunks.add(copies);
+                        return new ProviderTarget.BatchChunk(
+                                copies, true, false);
+                    });
+            assertEquals(List.of(8), chunks,
+                    "physical proof expired at tick " + tick);
+        }
+    }
+
+    @Test
+    void wirelessBatchStepBoundsReservoirTailAfterRejectedGrowth() {
         var pattern = new EmptyPattern();
         target.pushPatternStep(
                 pattern,
@@ -630,9 +821,14 @@ class ProviderTargetTest {
                     return new ProviderTarget.BatchChunk(
                             copies, true, false);
                 });
-        assertEquals(16L, recovered.ownedCopies());
+        assertTrue(recovered.ownedCopies() > 16 && recovered.ownedCopies() < 32);
+        assertEquals(6, chunks.size());
+        assertEquals(List.of(8, 8), chunks.subList(3, 5));
+        assertTrue(chunks.get(5) > 0 && chunks.get(5) < 16);
+        assertEquals(chunks.subList(3, 6).stream().mapToLong(Integer::longValue).sum(),
+                recovered.ownedCopies(), "ownership must equal actual accepted insertions");
 
-        target.pushPatternStep(
+        var next = target.pushPatternStep(
                 pattern,
                 1_000L,
                 3L,
@@ -643,7 +839,12 @@ class ProviderTargetTest {
                     return new ProviderTarget.BatchChunk(
                             copies, true, false);
                 });
-        assertEquals(List.of(8, 8, 16, 8, 8, 8, 8), chunks);
+        // Two proven prefix chunks plus at most one bounded tail probe per visit.
+        assertEquals(9, chunks.size());
+        assertEquals(List.of(8, 8), chunks.subList(6, 8));
+        assertTrue(chunks.get(8) > 0 && chunks.get(8) < 16);
+        assertEquals(chunks.subList(6, 9).stream().mapToLong(Integer::longValue).sum(),
+                next.ownedCopies());
     }
 
     @Test

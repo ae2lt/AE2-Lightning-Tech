@@ -9,7 +9,9 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Set;
-import java.util.TreeMap;
+
+import it.unimi.dsi.fastutil.longs.Long2IntAVLTreeMap;
+import it.unimi.dsi.fastutil.objects.Reference2LongOpenHashMap;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -126,6 +128,13 @@ final class DispatchFairnessScheduler<T, P> {
         pausedTargets.clear();
     }
 
+    boolean removePattern(P pattern) {
+        var state = patterns.get(pattern);
+        if (state != null && state.passOpen) return false;
+        patterns.remove(pattern);
+        return true;
+    }
+
     long dispatchCount(P pattern, T target, long gameTick) {
         var patternState = stateFor(pattern, gameTick);
         activateDueTargets(patternState, gameTick);
@@ -204,9 +213,11 @@ final class DispatchFairnessScheduler<T, P> {
 
     private void expireAmounts(
             PatternState<T> state,
-            Map<TargetState<T>, Long> amounts,
+            Reference2LongOpenHashMap<TargetState<T>> amounts,
             boolean schedulingCredit) {
-        for (var entry : amounts.entrySet()) {
+        var entries = amounts.reference2LongEntrySet().fastIterator();
+        while (entries.hasNext()) {
+            var entry = entries.next();
             var targetState = entry.getKey();
             if (state.targets.get(targetState.target) != targetState) {
                 continue;
@@ -215,7 +226,7 @@ final class DispatchFairnessScheduler<T, P> {
                     schedulingCredit
                             ? targetState.schedulingCredit
                             : targetState.ownedCopies,
-                    entry.getValue());
+                    entry.getLongValue());
             if (amount <= 0L) {
                 continue;
             }
@@ -372,19 +383,19 @@ final class DispatchFairnessScheduler<T, P> {
         var amounts = schedulingCredit
                 ? bucket.schedulingCredits
                 : bucket.ownedCopies;
-        amounts.merge(
+        amounts.mergeLong(
                 targetState,
                 amount,
                 DispatchFairnessScheduler::saturatingAdd);
     }
 
     private static <T> void addFrequency(PatternState<T> state, long count) {
-        state.activeCountFrequencies.merge(count, 1, Integer::sum);
+        state.activeCountFrequencies.addTo(count, 1);
     }
 
     private static <T> void removeFrequency(PatternState<T> state, long count) {
         var occurrences = state.activeCountFrequencies.get(count);
-        if (occurrences == null) {
+        if (occurrences == 0) {
             return;
         }
         if (occurrences <= 1) {
@@ -518,7 +529,7 @@ final class DispatchFairnessScheduler<T, P> {
                     patternState.activeSum, patternState.activeCount);
             long minimum = patternState.activeCountFrequencies.isEmpty()
                     ? 0L
-                    : patternState.activeCountFrequencies.firstKey();
+                    : patternState.activeCountFrequencies.firstLongKey();
             long ratioCeiling = saturatingAdd(
                     Math.max(1L, minimum),
                     Math.max(1L, minimum));
@@ -641,7 +652,7 @@ final class DispatchFairnessScheduler<T, P> {
                         .thenComparingLong(entry -> entry.tieSequence));
         private final PriorityQueue<CooldownEntry<T>> cooldowns =
                 new PriorityQueue<>(Comparator.comparingLong(entry -> entry.retryAfter));
-        private final TreeMap<Long, Integer> activeCountFrequencies = new TreeMap<>();
+        private final Long2IntAVLTreeMap activeCountFrequencies = new Long2IntAVLTreeMap();
         private final ArrayDeque<WindowBucket<T>> history = new ArrayDeque<>();
         private long lastAdvancedTick = Long.MIN_VALUE;
         private long topologyVersion = Long.MIN_VALUE;
@@ -687,8 +698,10 @@ final class DispatchFairnessScheduler<T, P> {
 
     private static final class WindowBucket<T> {
         private final long gameTick;
-        private final Map<TargetState<T>, Long> ownedCopies = new HashMap<>();
-        private final Map<TargetState<T>, Long> schedulingCredits = new HashMap<>();
+        private final Reference2LongOpenHashMap<TargetState<T>> ownedCopies =
+                new Reference2LongOpenHashMap<>();
+        private final Reference2LongOpenHashMap<TargetState<T>> schedulingCredits =
+                new Reference2LongOpenHashMap<>(0);
 
         private WindowBucket(long gameTick) {
             this.gameTick = gameTick;

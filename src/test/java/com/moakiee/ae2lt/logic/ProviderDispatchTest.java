@@ -23,6 +23,259 @@ import com.moakiee.ae2lt.blockentity.OverloadedPatternProviderBlockEntity.Wirele
 import com.moakiee.ae2lt.blockentity.OverloadedPatternProviderBlockEntity.WirelessDispatchMode;
 
 class ProviderDispatchTest {
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({"false,false", "false,true", "true,false", "true,true"})
+    void continuouslyBlockedTargetsBackOffAndResumeWithinTheExistingLimit(boolean fast, boolean batch) {
+        var dispatch = new ProviderWirelessDispatch();
+        var pattern = new ExplosiveEqualityPattern();
+        var connections = List.of(connection(0), connection(1));
+        var rejectedAt = new ArrayList<Long>();
+        var recoveredAt = new ArrayList<Long>();
+        var healthyCopies = new AtomicInteger();
+        for (long tick = 0; tick < 240; tick++) {
+            long now = tick;
+            dispatch.prepare(connections, now, fast, WirelessDispatchMode.EVEN_DISTRIBUTION);
+            ProviderWirelessDispatch.SingleAttempt attempt = target -> {
+                if (target.equals(connections.getFirst())) {
+                    if (now < 200) {
+                        rejectedAt.add(now);
+                        return WirelessPushOutcome.SOFT_FAIL;
+                    }
+                    recoveredAt.add(now);
+                } else {
+                    healthyCopies.incrementAndGet();
+                }
+                return WirelessPushOutcome.SUCCESS;
+            };
+            if (batch) {
+                dispatch.dispatchBatch(WirelessDispatchMode.EVEN_DISTRIBUTION,
+                        pattern, 2, now, fast,
+                        (target, allowance, exploratory, preserve) -> {
+                            var outcome = attempt.push(target);
+                            return outcome == WirelessPushOutcome.SUCCESS
+                                    ? successfulBatch(1) : rejectedBatch(0);
+                        }, ignored -> true, ignored -> { throw new AssertionError(); });
+            } else {
+                // Two calls permit both targets to work once a tick when available.
+                for (int call = 0; call < 2; call++) {
+                    dispatch.dispatchSingleCopy(WirelessDispatchMode.EVEN_DISTRIBUTION,
+                            pattern, now, fast, 2, attempt, ignored -> true,
+                            ignored -> { throw new AssertionError(); });
+                }
+            }
+        }
+        assertEquals(fast ? List.of(0L, 2L, 5L, 9L, 14L) : List.of(0L, 5L, 14L, 27L, 44L),
+                rejectedAt.subList(0, 5));
+        assertTrue(rejectedAt.size() <= (fast ? 25 : 12), "blocked calls: " + rejectedAt);
+        assertTrue(!recoveredAt.isEmpty() && recoveredAt.getFirst() < 200 + (fast ? 10 : 40));
+        assertTrue(healthyCopies.get() >= 240, "a blocked target must not idle the healthy machine");
+    }
+
+    @Test
+    void rejectionHistoryResetsOnSuccessAndExpiresWhenUnused() {
+        var dispatch = new ProviderWirelessDispatch();
+        var target = connection(0);
+        var pattern = new ExplosiveEqualityPattern();
+        var other = new ExplosiveEqualityPattern();
+        assertEquals(5, dispatch.recordRejection(target, pattern, 0, false));
+        assertEquals(Long.MIN_VALUE, dispatch.retryAfter(target, pattern, 5));
+        assertEquals(14, dispatch.recordRejection(target, pattern, 5, false));
+        assertEquals(10, dispatch.recordRejection(target, other, 5, false));
+        dispatch.recordSuccess(target, pattern, 6, true);
+        assertEquals(8, dispatch.recordRejection(target, pattern, 7, false));
+        assertEquals(205, dispatch.recordRejection(target, pattern, 200, false));
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(ints = {1, 2, 5, 6, 10, 20, 60})
+    void busyGatePollingKeepsSerialMachinesWorkingAtTheirRealCycle(int period) {
+        for (boolean fast : new boolean[] {false, true}) {
+            for (boolean batch : new boolean[] {false, true}) {
+                simulateBusyGate(new int[] {period}, fast, batch);
+            }
+        }
+    }
+
+    @Test
+    void busyGatePollingRelearnsFasterAndSlowerSerialMachines() {
+        for (boolean fast : new boolean[] {false, true}) {
+            for (boolean batch : new boolean[] {false, true}) {
+                simulateBusyGate(new int[] {20, 1, 6, 60, 5, 10, 2}, fast, batch);
+            }
+        }
+    }
+
+    private static void simulateBusyGate(int[] periods, boolean fast, boolean batch) {
+        var dispatch = new ProviderWirelessDispatch();
+        var pattern = new ExplosiveEqualityPattern();
+        var targets = List.of(connection(0));
+        long[] finishAt = {-1};
+        long[] completed = new long[periods.length];
+        long[] calls = new long[periods.length];
+        for (long tick = 0; tick < periods.length * 2000L; tick++) {
+            int stage = (int) (tick / 2000);
+            boolean measured = tick % 2000 >= 200;
+            if (finishAt[0] == tick && measured) completed[stage]++;
+            long now = tick;
+            dispatch.prepare(targets, now, fast, WirelessDispatchMode.EVEN_DISTRIBUTION);
+            ProviderWirelessDispatch.SingleAttempt attempt = target -> {
+                if (measured) calls[stage]++;
+                if (finishAt[0] > now) return WirelessPushOutcome.SOFT_FAIL;
+                // Completion is relative to insertion, not a free-running clock.
+                // A late retry really idles the machine and reduces throughput.
+                finishAt[0] = now + periods[stage];
+                return WirelessPushOutcome.SUCCESS;
+            };
+            if (batch) {
+                dispatch.dispatchBatch(WirelessDispatchMode.EVEN_DISTRIBUTION,
+                        pattern, 1, now, fast,
+                        (target, allowance, exploratory, preserve) ->
+                                attempt.push(target) == WirelessPushOutcome.SUCCESS
+                                        ? successfulBatch(1) : rejectedBatch(0),
+                        ignored -> true, ignored -> { throw new AssertionError(); });
+            } else {
+                dispatch.dispatchSingleCopy(WirelessDispatchMode.EVEN_DISTRIBUTION,
+                        pattern, now, fast, 1, attempt, ignored -> true,
+                        ignored -> { throw new AssertionError(); });
+            }
+        }
+        for (int stage = 0; stage < periods.length; stage++) {
+            long ideal = 1800 / periods[stage];
+            String context = "period=" + periods[stage] + ", fast=" + fast + ", batch=" + batch;
+            assertTrue(completed[stage] >= ideal * 95 / 100, context + ", completed=" + completed[stage]);
+            assertTrue(calls[stage] <= 2 * (ideal + 1), context + ", calls=" + calls[stage]);
+        }
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({
+            "1,1", "16,1", "256,1", "257,2", "512,2", "513,3",
+            "2000,8", "4096,16", "4097,16", "10000,16"
+    })
+    void groupedBatchesUseOnlyNeededMachinesAndRetainPhysicalRamp(long copies, int expectedTargets) {
+        var dispatch = new ProviderWirelessDispatch();
+        var pattern = new ExplosiveEqualityPattern();
+        var connections = java.util.stream.IntStream.range(0, 16)
+                .mapToObj(ProviderDispatchTest::connection).toList();
+        var owned = new ArrayList<Long>();
+        var chunks = new ArrayList<List<Integer>>();
+        dispatch.prepare(connections, 0L, false, WirelessDispatchMode.EVEN_DISTRIBUTION);
+
+        long remaining = dispatch.dispatchBatch(
+                WirelessDispatchMode.EVEN_DISTRIBUTION, pattern, copies, 0L, false, 256,
+                (target, allowance, exploratory, preserveHistory) -> {
+                    var physical = new ArrayList<Integer>();
+                    var step = target.pushPatternStep(pattern, allowance, 0L, true, preserveHistory,
+                            () -> false, count -> {
+                                physical.add(count);
+                                return new ProviderTarget.BatchChunk(count, true, false);
+                            });
+                    chunks.add(physical);
+                    owned.add(step.ownedCopies());
+                    return new ProviderWirelessDispatch.BatchAttemptResult(
+                            step.ownedCopies(), step.attemptedCopies(), step.acceptedFullChunk(),
+                            step.requestLimited(), step.baselineStatus(), WirelessPushOutcome.SUCCESS);
+                }, ignored -> true, ignored -> { throw new AssertionError(); });
+
+        assertEquals(0L, remaining);
+        assertEquals(expectedTargets, owned.size());
+        assertEquals(copies, owned.stream().mapToLong(Long::longValue).sum());
+        long minimum = owned.stream().mapToLong(Long::longValue).min().orElseThrow();
+        long maximum = owned.stream().mapToLong(Long::longValue).max().orElseThrow();
+        assertTrue(maximum - minimum <= 1L);
+        if (copies == 16L) {
+            assertEquals(List.of(1, 1, 2, 4, 8), chunks.getFirst());
+        }
+        if (copies == 257L) {
+            assertEquals(List.of(129L, 128L), owned);
+        }
+    }
+
+    @Test
+    void groupedTargetCountHandlesLongRequestsAndEmptyTopology() {
+        assertEquals(16, ProviderWirelessDispatch.groupedTargetCount(Long.MAX_VALUE, 256, 16));
+        assertEquals(16, ProviderWirelessDispatch.groupedTargetCount(Long.MAX_VALUE, Integer.MAX_VALUE, 16));
+        assertEquals(0, ProviderWirelessDispatch.groupedTargetCount(0, 256, 16));
+        assertEquals(0, ProviderWirelessDispatch.groupedTargetCount(16, 256, 0));
+    }
+
+    @Test
+    void groupedRejectionsAllowBackupMachinesWithoutConsumingSuccessfulSlots() {
+        var dispatch = new ProviderWirelessDispatch();
+        var pattern = new ExplosiveEqualityPattern();
+        var connections = java.util.stream.IntStream.range(0, 16)
+                .mapToObj(ProviderDispatchTest::connection).toList();
+        dispatch.prepare(connections, 0L, false, WirelessDispatchMode.EVEN_DISTRIBUTION);
+        var visits = new AtomicInteger();
+        var shares = new ArrayList<Long>();
+        long remaining = dispatch.dispatchBatch(
+                WirelessDispatchMode.EVEN_DISTRIBUTION, pattern, 257L, 0L, false, 256,
+                (target, allowance, exploratory, preserve) -> {
+                    if (visits.incrementAndGet() <= 3) return rejectedBatch(1);
+                    shares.add(allowance);
+                    return successfulBatch((int) allowance);
+                }, ignored -> true, ignored -> { throw new AssertionError(); });
+        assertEquals(0L, remaining);
+        assertEquals(5, visits.get());
+        assertEquals(List.of(129L, 128L), shares);
+    }
+
+    @Test
+    void groupedPartialAcceptanceSpillsToBackupMachinesWithinOnePass() {
+        var dispatch = new ProviderWirelessDispatch();
+        var pattern = new ExplosiveEqualityPattern();
+        var connections = java.util.stream.IntStream.range(0, 16)
+                .mapToObj(ProviderDispatchTest::connection).toList();
+        dispatch.prepare(connections, 0L, false, WirelessDispatchMode.EVEN_DISTRIBUTION);
+        var visits = new AtomicInteger();
+        long remaining = dispatch.dispatchBatch(
+                WirelessDispatchMode.EVEN_DISTRIBUTION, pattern, 16L, 0L, false, 256,
+                (target, allowance, exploratory, preserve) -> {
+                    visits.incrementAndGet();
+                    return new ProviderWirelessDispatch.BatchAttemptResult(Math.min(3L, allowance), 4, false, false,
+                            ProviderTarget.BaselineStatus.NONE, WirelessPushOutcome.SUCCESS);
+                }, ignored -> true, ignored -> { throw new AssertionError(); });
+        assertEquals(0L, remaining);
+        assertEquals(6, visits.get());
+    }
+
+    @Test
+    void groupedGlobalAbortPreservesOwnershipAndStopsImmediately() {
+        for (int owned : new int[] {0, 3}) {
+            var dispatch = new ProviderWirelessDispatch();
+            var pattern = new ExplosiveEqualityPattern();
+            dispatch.prepare(List.of(connection(0), connection(1)), 0L, false,
+                    WirelessDispatchMode.EVEN_DISTRIBUTION);
+            var visits = new AtomicInteger();
+            long remaining = dispatch.dispatchBatch(
+                    WirelessDispatchMode.EVEN_DISTRIBUTION, pattern, 257L, 0L, false, 256,
+                    (target, allowance, exploratory, preserve) -> {
+                        visits.incrementAndGet();
+                        return new ProviderWirelessDispatch.BatchAttemptResult(owned, 4, false, false,
+                                ProviderTarget.BaselineStatus.NONE, WirelessPushOutcome.GLOBAL_ABORT);
+                    }, ignored -> true, ignored -> { throw new AssertionError(); });
+            assertEquals(257L - owned, remaining);
+            assertEquals(1, visits.get());
+        }
+    }
+
+    @Test
+    void singleTargetBatchIgnoresMachineParallelism() {
+        var dispatch = new ProviderWirelessDispatch();
+        var pattern = new ExplosiveEqualityPattern();
+        dispatch.prepare(List.of(connection(0), connection(1)), 0L, false,
+                WirelessDispatchMode.SINGLE_TARGET);
+        var shares = new ArrayList<Long>();
+        long remaining = dispatch.dispatchBatch(
+                WirelessDispatchMode.SINGLE_TARGET, pattern, 2000L, 0L, false, 256,
+                (target, allowance, exploratory, preserve) -> {
+                    shares.add(allowance);
+                    return successfulBatch((int) allowance);
+                }, ignored -> true, ignored -> { throw new AssertionError(); });
+        assertEquals(0L, remaining);
+        assertEquals(List.of(2000L), shares);
+    }
+
     @Test
     void normalBatchVisitsAnotherTargetAfterOneRejects() {
         var dispatch = new ProviderNormalDispatch();
@@ -383,7 +636,7 @@ class ProviderDispatchTest {
                 connection, pattern, 20L, false));
         assertEquals(25L, wireless.retryAfter(
                 connection, pattern, 20L));
-        wireless.recordSuccess(connection, pattern);
+        wireless.recordSuccess(connection, pattern, 20L, true);
         assertEquals(Long.MIN_VALUE, wireless.retryAfter(
                 connection, pattern, 20L));
     }
@@ -607,7 +860,7 @@ class ProviderDispatchTest {
 
         @Override
         public int hashCode() {
-            return 31;
+            throw new AssertionError("third-party pattern hashCode must not run during dispatch");
         }
     }
 }

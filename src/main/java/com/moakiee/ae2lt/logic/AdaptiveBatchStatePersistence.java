@@ -53,6 +53,11 @@ final class AdaptiveBatchStatePersistence {
     private static final String TAG_BACKING_OFF = "backing_off";
     private static final String TAG_LAST_SUCCESSFUL_TICK = "last_successful_tick";
     private static final String TAG_LAST_ATTEMPT_TICK = "last_attempt_tick";
+    private static final String TAG_RESERVOIR_MODE = "reservoir_mode";
+    private static final String TAG_RESERVOIR_TAIL_LOWER = "reservoir_tail_lower";
+    private static final String TAG_RESERVOIR_TAIL_UPPER = "reservoir_tail_upper";
+    private static final String TAG_RESERVOIR_TAIL_SUPPRESSED = "reservoir_tail_suppressed";
+    private static final String TAG_LAST_TAIL_ATTEMPT = "last_tail_attempt_tick";
 
     @Nullable
     private PendingState pending;
@@ -341,6 +346,11 @@ final class AdaptiveBatchStatePersistence {
                     step.lastSuccessfulTick());
             stepTag.putLong(
                     TAG_LAST_ATTEMPT_TICK, step.lastAttemptTick());
+            stepTag.putBoolean(TAG_RESERVOIR_MODE, step.reservoirMode());
+            stepTag.putInt(TAG_RESERVOIR_TAIL_LOWER, step.reservoirTailLower());
+            stepTag.putInt(TAG_RESERVOIR_TAIL_UPPER, step.reservoirTailUpperExclusive());
+            stepTag.putBoolean(TAG_RESERVOIR_TAIL_SUPPRESSED, step.reservoirTailSuppressed());
+            stepTag.putLong(TAG_LAST_TAIL_ATTEMPT, step.lastReservoirTailAttemptTick());
             tag.put(TAG_STEP, stepTag);
         }
         return tag;
@@ -364,7 +374,13 @@ final class AdaptiveBatchStatePersistence {
                     stepTag.getBoolean(TAG_GROWTH_CAPPED),
                     stepTag.getBoolean(TAG_BACKING_OFF),
                     stepTag.getLong(TAG_LAST_SUCCESSFUL_TICK),
-                    stepTag.getLong(TAG_LAST_ATTEMPT_TICK));
+                    stepTag.getLong(TAG_LAST_ATTEMPT_TICK),
+                    stepTag.getBoolean(TAG_RESERVOIR_MODE),
+                    stepTag.getInt(TAG_RESERVOIR_TAIL_LOWER),
+                    stepTag.getInt(TAG_RESERVOIR_TAIL_UPPER),
+                    stepTag.getBoolean(TAG_RESERVOIR_TAIL_SUPPRESSED),
+                    stepTag.contains(TAG_LAST_TAIL_ATTEMPT, Tag.TAG_LONG)
+                            ? stepTag.getLong(TAG_LAST_TAIL_ATTEMPT) : Long.MIN_VALUE);
         }
         var snapshot = new ProviderTarget.AdaptiveBatchSnapshot(
                 rememberedChunk, step);

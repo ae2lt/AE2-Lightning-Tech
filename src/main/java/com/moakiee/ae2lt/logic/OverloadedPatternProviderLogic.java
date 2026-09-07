@@ -98,7 +98,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
 
     /** Owns wireless scheduling, target retries and overflow deadlines. */
     private final ProviderWirelessDispatch wirelessDispatch =
-            new ProviderWirelessDispatch();
+            new ProviderWirelessDispatch(this::alertGridTick, this::saveChanges);
     private final WirelessOverflowQueue wirelessOverflow =
             wirelessDispatch.overflow();
     private final WirelessOverflowPersistence wirelessOverflowPersistence =
@@ -564,6 +564,8 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
                 maxCraft,
                 gameTick,
                 fastMode,
+                overloadedHost.isAdaptiveBatchEnabled()
+                        ? overloadedHost.getMachineParallelism() : 1,
                 (connection, share, exploratoryAttempt,
                         preserveBatchHistoryOnRejection) -> {
                     var result = tryPushBatchToConnection(
@@ -1625,7 +1627,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
 
     private boolean hasCombinedGridTickWork() {
         var accessor = (PatternProviderLogicAccessor) this;
-        return accessor.invokeHasWorkToDo() || hasAnyTickWork();
+        return accessor.invokeHasWorkToDo() || hasAnyTickWork() || wirelessDispatch.hasMaintenanceWork();
     }
 
     private boolean hasActiveOverloadedTickWork(long gameTick) {
@@ -1869,6 +1871,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
             tickAutoReturn();
             var level = overloadedHost.getLevel();
             long gameTick = level instanceof ServerLevel sl ? sl.getGameTime() : Long.MAX_VALUE;
+            wirelessDispatch.maintain(gameTick);
 
             if (hasActiveOverloadedTickWork(gameTick)) {
                 return TickRateModulation.URGENT;
@@ -1884,7 +1887,7 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
                         : TickRateModulation.SLOWER;
             }
 
-            if (hasAnyTickWork()) {
+            if (hasAnyTickWork() || wirelessDispatch.hasMaintenanceWork()) {
                 return TickRateModulation.SLOWER;
             }
 
@@ -2093,14 +2096,17 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
         if (!(level instanceof ServerLevel serverLevel)) {
             return;
         }
-        adaptiveBatchStatePersistence.finishLoad(
+        if (adaptiveBatchStatePersistence.finishLoad(
                 serverLevel,
                 overloadedHost.getBlockPos(),
                 ((PatternProviderLogicAccessor) this).getPatternInventory(),
                 patternCatalog,
                 normalDispatch,
                 activeNormalTargetDirections(),
-                overloadedHost.getConnections());
+                overloadedHost.getConnections())) {
+            wirelessDispatch.registerRestoredHistory(
+                    overloadedHost.getConnections(), serverLevel.getGameTime());
+        }
     }
 
     private boolean hasLocalDirectionalOverflow() {
