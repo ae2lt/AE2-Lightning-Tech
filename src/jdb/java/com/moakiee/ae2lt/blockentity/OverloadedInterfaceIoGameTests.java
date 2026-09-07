@@ -559,6 +559,7 @@ public final class OverloadedInterfaceIoGameTests {
     private static void checkFullExport(GameTestHelper helper, boolean local) {
         var fixture = local ? createLocalFixture(helper, true) : createFixture(helper, 1);
         var owner = fixture.blockEntity;
+        owner.setIOSpeedMode(IOSpeedMode.NORMAL); // Batch-cost contract belongs to NORMAL.
         var target = fixture.inventories[0];
         var stone = AEItemKey.of(Items.STONE);
         long[] calls = {0}, consumed = {0};

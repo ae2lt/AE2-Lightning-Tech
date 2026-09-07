@@ -25,14 +25,74 @@ class OverloadedInterfaceTransferCadenceTest {
                 // Independently require at most four probes per 100-tick
                 // adaptation horizon, or the mode's stricter maximum wait.
                 long budget = Math.max(4 * idealFills, Math.max(4 * 4500 / 100, 4500 / maxWait)) + 2;
-                assertTrue(result.visits <= budget, "excessive visits: " + result + ", budget=" + budget);
+                if (mode == IOSpeedMode.NORMAL) {
+                    assertTrue(result.visits <= budget, "excessive visits: " + result + ", budget=" + budget);
+                } else {
+                    // FAST prioritizes the next opening, including one per tick.
+                    assertTrue(result.visits <= old.visits + 2, "fast polling regressed: " + result);
+                }
                 System.out.printf("interface-refill mode=%s capacity=%d rate=%d/%dt min100=%.2f%% visits(old/new)=%d/%d%n",
                         mode, model[0], model[1], model[2], 100 * result.minimumThroughput, old.visits, result.visits);
-                if (model[0] == 2048 && model[2] == 1) {
+                if (mode == IOSpeedMode.NORMAL && model[0] == 2048 && model[2] == 1) {
                     assertTrue(result.visits < old.visits, "amount learning did not batch plentiful stock");
                 }
             }
         }
+    }
+
+    @Test
+    void normalBatchesHalfTheActualStockIncludingWarmContainers() {
+        for (int initial : new int[] {0, 50, 90, 100}) {
+            for (int limit : new int[] {10, 64, 100, Integer.MAX_VALUE}) {
+                for (var mode : IOSpeedMode.values()) {
+                    var transfer = new ExportTransferState();
+                    long stock = initial;
+                    int observeAt = 0;
+                    int visits = 0;
+                    for (int tick = 0; tick < 2000; tick++) {
+                        if (tick > 0) {
+                            if (tick >= 500) assertTrue(stock >= 10, "production starved");
+                            stock = Math.max(0, stock - 10);
+                        }
+                        if (tick < transfer.untilTick) continue;
+                        if (tick >= 500) visits++;
+                        long accepted = Math.min(limit, 100 - stock);
+                        long observation = tick >= observeAt ? stock : -1;
+                        if (observation >= 0) observeAt = tick + 100;
+                        if (accepted > 0) {
+                            transfer.accepted(tick, accepted, accepted >= limit, mode, observation);
+                            stock += accepted;
+                        } else transfer.rejected(tick, mode, observation);
+                    }
+                    int expected = mode == IOSpeedMode.FAST || limit == 10 ? 1500 : 300;
+                    assertEquals(expected, visits, mode + " initial=" + initial + " limit=" + limit);
+                }
+            }
+        }
+    }
+
+    @Test
+    void growingBatchesAreNotMistakenForIncreasingConsumption() {
+        var budget = new OverloadedInterfaceBlockEntity.StockBudget();
+        assertEquals(1, budget.transferred(0, 100, 100, false));
+        assertEquals(5, budget.transferred(1, 10, 100, false));
+        for (int tick = 6; tick < 1000; tick += 5) {
+            assertEquals(5, budget.transferred(tick, 50, 100, false));
+        }
+        // Abrupt acceleration exhausts the buffer: measure again next tick.
+        assertEquals(1, budget.transferred(1001, 100, 100, false));
+        assertEquals(1, budget.transferred(1002, 100, 100, false));
+    }
+
+    @Test
+    void partialDrainAndLongPausesCannotProduceALongBudget() {
+        var budget = new OverloadedInterfaceBlockEntity.StockBudget();
+        budget.transferred(0, 10, 100, false);
+        assertEquals(5, budget.transferred(1, 10, 100, false));
+        assertEquals(1, budget.transferred(6, 50, 100, true));
+        assertEquals(1, budget.transferred(7, 10, 100, false));
+        assertEquals(1, budget.transferred(1000, 10, 100, false));
+        assertEquals(5, budget.transferred(1001, 10, 100, false));
     }
 
     @Test
@@ -123,6 +183,26 @@ class OverloadedInterfaceTransferCadenceTest {
         assertTrue(visits <= 510);
         transfer.accepted(tick, 128, false, IOSpeedMode.FAST);
         assertEquals(tick + 1, transfer.untilTick);
+    }
+
+    @Test
+    void warmSourceShortageDoesNotRetainAnActiveTargetPollingBudget() {
+        for (var mode : IOSpeedMode.values()) {
+            var transfer = new ExportTransferState();
+            transfer.accepted(0, 64, false, mode);
+            int visits = 0;
+            long tick = transfer.untilTick;
+            while (tick < 1000) {
+                transfer.unavailable(tick, mode);
+                tick = transfer.untilTick;
+                visits++;
+            }
+            int maximum = mode == IOSpeedMode.FAST ? 20 : 80;
+            assertTrue(visits <= 1000 / maximum + 12,
+                    mode + " spent " + visits + " empty source/energy queries after a previous success");
+            transfer.accepted(tick, 64, true, mode);
+            assertEquals(tick + 1, transfer.untilTick);
+        }
     }
 
     @Test

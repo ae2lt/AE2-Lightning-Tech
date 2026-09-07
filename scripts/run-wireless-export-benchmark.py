@@ -40,7 +40,8 @@ def main():
     args = parser.parse_args()
     if args.warmup < 40 or args.samples < 200 or args.warmup + args.samples > 1420:
         parser.error("require warmup >= 40, samples >= 200, total <= 1420")
-    allowed = {"1024x27", "import-period60-1024x27", "export-empty-1024", "export-mismatch-1024"} | {
+    allowed = {"1024x27", "import-period60-1024x27", "import-buffered-normal-1024x27",
+               "export-empty-1024", "export-mismatch-1024"} | {
         f"export-continuous-{targets}x{keys}" for targets in (64, 256, 1024) for keys in (1, 27)}
     if not set(args.profiles) <= allowed:
         parser.error("unknown wireless I/O profile")

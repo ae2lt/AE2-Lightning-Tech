@@ -26,7 +26,6 @@ import com.moakiee.ae2lt.debug.WirelessIoPerformanceProbe;
 import com.moakiee.ae2lt.logic.FilteredInsertGenericInv;
 import com.moakiee.ae2lt.logic.OverloadedInterfaceLogic;
 import com.moakiee.ae2lt.logic.OverloadedInterfaceTickDecider;
-import com.moakiee.ae2lt.logic.TransferCadence;
 import com.moakiee.ae2lt.logic.WirelessConnectionLists;
 import com.moakiee.ae2lt.logic.WirelessConnectionRange;
 import com.moakiee.ae2lt.logic.WirelessConnectionRef;
@@ -246,6 +245,16 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
                 cooldownUntil = now + idleDelay;
             }
         }
+
+        void onUnavailable(long now, IOSpeedMode newMode) {
+            if (mode != newMode) reset(newMode);
+            int maximum = mode == IOSpeedMode.FAST ? FAST_CD_MAX : NORMAL_CD_MAX;
+            int delay = lastSuccess != Long.MIN_VALUE ? 1
+                    : Math.min(maximum, idleDelay + Math.max(1, maximum / 10));
+            reset(newMode);
+            idleDelay = delay;
+            cooldownUntil = now + delay;
+        }
     }
 
     static final class ImportScanBuffer {
@@ -279,6 +288,27 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
     static final class ImportSlotKeyCache {
         private static final int MAX_CACHED_SLOTS = 4096;
         private AEItemKey[] slotKeys;
+        private StockBudget[] drainBudgets;
+
+        void prepareBudgets(int slots) {
+            int retained = Math.min(slots, MAX_CACHED_SLOTS);
+            if (drainBudgets == null || drainBudgets.length != retained) {
+                drainBudgets = new StockBudget[retained];
+            }
+        }
+
+        int drained(int slot, long now, long amount, long extracted, long capacity) {
+            if (drainBudgets == null || slot >= drainBudgets.length) return 1;
+            var budget = drainBudgets[slot];
+            if (budget == null) drainBudgets[slot] = budget = new StockBudget();
+            return budget.transferred(now, amount, capacity, extracted != amount);
+        }
+
+        void forgetDrain(int slot) {
+            if (drainBudgets != null && slot < drainBudgets.length && drainBudgets[slot] != null) {
+                drainBudgets[slot].reset();
+            }
+        }
 
         void prepareSlots(int slots) {
             int retained = Math.min(slots, MAX_CACHED_SLOTS);
@@ -295,6 +325,7 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
             // Handlers may mutate a returned stack in place. Compare against
             // the key's immutable snapshot, never the live stack's identity.
             if (key == null || !key.matches(stack)) {
+                forgetDrain(slot);
                 key = AEItemKey.of(stack);
                 slotKeys[slot] = key;
             }
@@ -303,6 +334,42 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
 
         void clear() {
             slotKeys = null;
+            drainBudgets = null;
+        }
+    }
+
+    /**
+     * A successful full refill/drain measures flow over the preceding interval.
+     * Spend at most half the observed buffer before returning. Keep the faster
+     * of two rate samples so one quiet interval cannot immediately spend the
+     * safety reserve. Caller limits and a completely exhausted buffer require
+     * a next-tick observation instead of extrapolating a censored rate.
+     */
+    static final class StockBudget {
+        private long lastTick = Long.MIN_VALUE;
+        private double previousRate;
+
+        int transferred(long now, long amount, long capacity, boolean limited) {
+            long elapsed = lastTick == Long.MIN_VALUE ? 0 : now - lastTick;
+            if (limited || amount <= 0) {
+                reset();
+                return 1;
+            }
+            lastTick = now;
+            if (elapsed <= 0 || elapsed >= 100) {
+                previousRate = 0;
+                return 1;
+            }
+            double rate = (double) amount / elapsed;
+            double safeRate = Math.max(rate, previousRate);
+            previousRate = rate;
+            if (amount >= capacity) return 1;
+            return (int) Math.clamp(Math.floor(capacity / (2.0 * safeRate)), 1, NORMAL_CD_MAX);
+        }
+
+        void reset() {
+            lastTick = Long.MIN_VALUE;
+            previousRate = 0;
         }
     }
 
@@ -333,23 +400,45 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
 
     static final class ExportTransferState {
         long untilTick;
-        private final TransferCadence schedule = new TransferCadence();
+        private final CooldownTracker poller = new CooldownTracker();
+        private StockBudget budget;
+        private long capacity;
 
         void accepted(long now, long amount, boolean requestLimited, IOSpeedMode mode) {
-            untilTick = now + Math.min(maximumDelay(mode), schedule.success(now, amount, requestLimited));
+            accepted(now, amount, requestLimited, mode, -1);
+        }
+
+        void accepted(long now, long amount, boolean requestLimited, IOSpeedMode mode, long stockBefore) {
+            poller.onSuccess(now, mode);
+            untilTick = poller.cooldownUntil();
+            if (mode == IOSpeedMode.NORMAL) {
+                if (budget == null) budget = new StockBudget();
+                capacity = stockBefore >= 0 ? saturatedAdd(stockBefore, amount) : Math.max(capacity, amount);
+                untilTick = now + budget.transferred(now, amount, capacity, requestLimited);
+            }
         }
 
         void rejected(long now, IOSpeedMode mode) {
-            untilTick = now + Math.min(maximumDelay(mode), schedule.blocked(now));
+            rejected(now, mode, -1);
+        }
+
+        void rejected(long now, IOSpeedMode mode, long stock) {
+            if (stock >= 0) capacity = stock;
+            poller.onFail(now, mode);
+            untilTick = poller.cooldownUntil();
         }
 
         void unavailable(long now, IOSpeedMode mode) {
-            untilTick = now + schedule.unavailable(now, maximumDelay(mode));
+            // Shortage is not evidence that the target is full or consuming slowly.
+            if (budget != null) budget.reset();
+            capacity = 0;
+            poller.onUnavailable(now, mode);
+            untilTick = poller.cooldownUntil();
         }
+    }
 
-        private static int maximumDelay(IOSpeedMode mode) {
-            return mode == IOSpeedMode.FAST ? FAST_CD_MAX : NORMAL_CD_MAX;
-        }
+    private static long saturatedAdd(long a, long b) {
+        return a > Long.MAX_VALUE - b ? Long.MAX_VALUE : a + b;
     }
 
     // ══════════════════════════════════════════════════════════════════════
@@ -367,6 +456,7 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         @Nullable Map<AEKeyType, MEStorage> storageWrappers;
         @Nullable BlockCapabilityCache<IItemHandler, Direction> itemHandlerCache;
         long storageWrapperTick = -1;
+        long exportStockTick = Long.MIN_VALUE;
 
         CooldownTracker cdFor(AEKeyType type, IoDirection direction) {
             var cds = direction == IoDirection.IMPORT ? importCDs : exportCDs;
@@ -378,6 +468,7 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
             exportCDs.values().forEach(cd -> cd.reset(mode));
             exportTransfers.clear();
             importSlotKeys.clear();
+            exportStockTick = Long.MIN_VALUE;
         }
 
         private ExportTransferState exportState(AEKey key) {
@@ -405,6 +496,8 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
                 storageBERef = null; storageStrategies = null;
                 storageWrappers = null; itemHandlerCache = null;
                 importSlotKeys.clear();
+                exportTransfers.clear();
+                exportStockTick = Long.MIN_VALUE;
                 return null;
             }
             if (storageBERef == null || storageBERef.get() != be
@@ -414,6 +507,8 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
                 storageBERef = new WeakReference<>(be);
                 storageWrappers = null; storageWrapperTick = -1;
                 importSlotKeys.clear();
+                exportTransfers.clear();
+                exportStockTick = Long.MIN_VALUE;
                 itemHandlerCache = BlockCapabilityCache.create(
                         Capabilities.ItemHandler.BLOCK, level, conn.pos(), conn.boundFace());
             }
@@ -1457,19 +1552,23 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
     private long runExtract(ConnectionState state, AEKeyType keyType, MEStorage wrapper,
                             IActionSource src, long now, long transferLimit) {
         var exactFilterKeys = getExactImportFilterKeys(keyType);
+        var cd = state.cdFor(keyType, IoDirection.IMPORT);
+        var handler = keyType == AEKeyType.items() && wrapper instanceof ExternalStorageFacade
+                && (exactFilterKeys == null || ioSpeedMode == IOSpeedMode.NORMAL)
+                ? state.resolveItemHandler() : null;
         long moved;
-        if (exactFilterKeys != null) {
+        if (handler != null) {
+            // NORMAL observes each occupied output slot in the existing drain
+            // pass. Empty unrelated slots are never counted as output capacity.
+            moved = scanItemHandlerSlots(handler, state.importSlotKeys, transferLimit, cd, now);
+            return moved;
+        } else if (exactFilterKeys != null) {
             moved = extractExactImportKeys(keyType, wrapper, src, transferLimit, exactFilterKeys);
         } else {
             // Custom MEStorage wrappers keep their own transfer contract.
-            var handler = keyType == AEKeyType.items() && wrapper instanceof ExternalStorageFacade
-                    ? state.resolveItemHandler() : null;
-            moved = handler != null
-                    ? scanItemHandlerSlots(handler, state.importSlotKeys, transferLimit)
-                    : scanImportKeys(keyType, wrapper, src, transferLimit);
+            moved = scanImportKeys(keyType, wrapper, src, transferLimit);
         }
 
-        var cd = state.cdFor(keyType, IoDirection.IMPORT);
         if (moved > 0) {
             saveImportBufferChanges(now);
             cd.onSuccess(now, ioSpeedMode);
@@ -1560,19 +1659,39 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
     }
 
     /** Walk each live item slot once instead of rescanning all slots per key. */
-    private long scanItemHandlerSlots(IItemHandler handler, ImportSlotKeyCache cache, long transferLimit) {
+    private long scanItemHandlerSlots(IItemHandler handler, ImportSlotKeyCache cache, long transferLimit,
+                                     CooldownTracker cd, long now) {
         long budget = transferLimit;
         long moved = 0;
         int slots = handler.getSlots();
         cache.prepareSlots(slots);
+        boolean batching = ioSpeedMode == IOSpeedMode.NORMAL;
+        if (batching) cache.prepareBudgets(slots);
+        int nextDrain = NORMAL_CD_MAX;
         for (int slot = 0; slot < slots && budget > 0; slot++) {
             var stack = handler.getStackInSlot(slot);
-            if (stack.isEmpty()) continue;
+            if (stack.isEmpty()) {
+                if (batching) cache.forgetDrain(slot);
+                continue;
+            }
             var key = cache.keyForSlot(slot, stack);
-            if (key == null || !isImportAllowed(key)) continue;
-            long extracted = importExtractSlotToBuffer(handler, slot, key, Math.min(stack.getCount(), budget));
+            if (key == null || !isImportAllowed(key)) {
+                if (batching) cache.forgetDrain(slot);
+                continue;
+            }
+            int count = stack.getCount();
+            int capacity = batching ? Math.min(handler.getSlotLimit(slot), stack.getMaxStackSize()) : 0;
+            long extracted = importExtractSlotToBuffer(handler, slot, key, Math.min(count, budget));
+            if (batching) nextDrain = Math.min(nextDrain, cache.drained(slot, now, count, extracted, capacity));
             moved += extracted;
             budget -= extracted;
+        }
+        if (moved > 0) {
+            saveImportBufferChanges(now);
+            cd.onSuccess(now, ioSpeedMode);
+            if (batching && budget > 0) cd.cooldownUntil = now + nextDrain;
+        } else {
+            cd.onFail(now, ioSpeedMode);
         }
         return moved;
     }
@@ -1661,15 +1780,32 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
     private long runExport(ConnectionState state, AEKeyType keyType, MEStorage wrapper,
                            MEStorage me, IActionSource src, long now) {
         var entries = exportEntriesForType(keyType, now);
+        KeyCounter stock = null;
         long moved = 0;
         long next = Long.MAX_VALUE;
-        for (var entry : entries) {
-            // One state lookup per key, including deriving the type's deadline.
-            var transfer = state.exportState(entry.key());
-            if (now >= transfer.untilTick) {
-                moved += exportKey(transfer, entry, wrapper, me, src, now);
+        try {
+            if (ioSpeedMode == IOSpeedMode.NORMAL && !entries.isEmpty() && keyType == AEKeyType.items()
+                    && wrapper instanceof ExternalStorageFacade
+                    && (state.exportStockTick == Long.MIN_VALUE || now < state.exportStockTick
+                            || now - state.exportStockTick >= 100)) {
+                var handler = state.resolveItemHandler();
+                if (handler != null) {
+                    stock = scanBuffer.acquire();
+                    observeInsertableStock(handler, state.importSlotKeys, stock);
+                    state.exportStockTick = now;
+                }
             }
-            next = Math.min(next, transfer.untilTick);
+            for (var entry : entries) {
+                // One state lookup per key, including deriving the type's deadline.
+                var transfer = state.exportState(entry.key());
+                if (now >= transfer.untilTick) {
+                    moved += exportKey(transfer, entry, wrapper, me, src, now,
+                            stock != null ? stock.get(entry.key()) : -1);
+                }
+                next = Math.min(next, transfer.untilTick);
+            }
+        } finally {
+            if (stock != null) scanBuffer.release(stock);
         }
         var cd = state.cdFor(keyType, IoDirection.EXPORT);
         if (entries.isEmpty()) {
@@ -1680,8 +1816,20 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         return moved;
     }
 
+    /** One bounded-frequency scan for every configured item, using only public capabilities. */
+    static void observeInsertableStock(IItemHandler handler, ImportSlotKeyCache cache, KeyCounter stock) {
+        int slots = handler.getSlots();
+        cache.prepareSlots(slots);
+        for (int slot = 0; slot < slots; slot++) {
+            var stack = handler.getStackInSlot(slot);
+            if (stack.isEmpty() || !handler.isItemValid(slot, stack)) continue;
+            var key = cache.keyForSlot(slot, stack);
+            if (key != null) stock.add(key, stack.getCount());
+        }
+    }
+
     private long exportKey(ExportTransferState transfer, ExportConfigEntry entry,
-                           MEStorage wrapper, MEStorage me, IActionSource src, long now) {
+                           MEStorage wrapper, MEStorage me, IActionSource src, long now, long stockBefore) {
         var key = entry.key();
         long available = me.extract(key, entry.maxAmount(), Actionable.SIMULATE, src);
         if (available <= 0) {
@@ -1691,7 +1839,7 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         long requested = Math.min(entry.maxAmount(), available);
         long canAccept = wrapper.insert(key, requested, Actionable.SIMULATE, src);
         if (canAccept <= 0) {
-            transfer.rejected(now, ioSpeedMode);
+            transfer.rejected(now, ioSpeedMode, stockBefore);
             return 0;
         }
         long target = Math.min(requested, canAccept);
@@ -1711,8 +1859,9 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
             PowerCostUtil.consume(grid, key, inserted);
             // Equal acceptance of a bounded request does not establish fullness.
             // Only target-limited samples may infer a longer refill horizon.
-            boolean requestLimited = canAccept >= requested || affordable < target || extracted < affordable;
-            transfer.accepted(now, inserted, requestLimited, ioSpeedMode);
+            boolean requestLimited = canAccept >= requested || affordable < target || extracted < affordable
+                    || inserted < extracted;
+            transfer.accepted(now, inserted, requestLimited, ioSpeedMode, stockBefore);
         } else {
             transfer.rejected(now, ioSpeedMode);
         }

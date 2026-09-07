@@ -516,9 +516,11 @@ tasks.register('checkWirelessIoBenchmarkRegression') {
                 if (report.partial || (report.samples as int) < 1200) {
                     throw new GradleException("Incomplete live benchmark report: ${file}")
                 }
+                boolean normalBuffer = report.scenario ==~ /^gametest-(control|stress)-import-buffered-normal-1024x27-run[1-5]$/
+                long expectedFastCalls = normalBuffer ? 0L : (report.interfaceCalls as long)
                 if ((report.interfaceCalls as long) <= 0
-                        || (report.fastInterfaceCalls as long) != (report.interfaceCalls as long)) {
-                    throw new GradleException("Report is not a measured pure-FAST run: ${file}")
+                        || (report.fastInterfaceCalls as long) != expectedFastCalls) {
+                    throw new GradleException("Report does not use the profile's I/O mode: ${file}")
                 }
                 return report
             }
@@ -600,6 +602,22 @@ tasks.register('checkWirelessIoBenchmarkRegression') {
         }
         if (allReports.any { it.comparisonKind != null && it.comparisonKind != comparisonKind }) {
             throw new GradleException('Comparison kind conflicts with benchmark profile')
+        }
+        if (profiles[0] == 'import-buffered-normal-1024x27') {
+            allReports.each { r ->
+                boolean consuming = r.scenario.startsWith('gametest-stress-')
+                long planned = consuming ? ((r.warmupTicks as long) + (r.samples as long) - 40L) * 1024 * 27 * 10 : 0L
+                if (r.configuredConnectionVisits != (r.interfaceCalls as long) * 1024
+                        || r.workloadPlannedProductionItems != planned
+                        || r.workloadProductionOpportunities * 270L != planned
+                        || r.workloadActualProductionItems + r.workloadBlockedProductionEvents * 270L != planned
+                        || r.workloadProducedItems != r.workloadActualProductionItems
+                        || r.workloadExtractedItems != r.workloadProducedItems
+                        || r.workloadNetworkImportedItems != r.workloadProducedItems
+                        || r.workloadBufferedItems != 0 || r.workloadFinalRemainingItems != 0) {
+                    throw new GradleException("Buffered NORMAL workload or ownership mismatch: ${r.scenario}")
+                }
+            }
         }
         ['samples', 'warmupTicks', 'javaVersion', 'serverVersion'].each { field ->
             if (allReports.any { it[field] == null } || allReports.collect { it[field] }.toSet().size() != 1) {

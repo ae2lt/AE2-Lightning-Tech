@@ -628,6 +628,10 @@ public final class WirelessInterfaceGameTests {
         var fixture = createFixture(helper, 1024);
         var state = new WorkloadState(1024);
         boolean control = Boolean.getBoolean("ae2lt.wirelessIoGameTest.control");
+        boolean buffered = System.getProperty("ae2lt.wirelessIoBenchmark.scenario", "")
+                .contains("-import-buffered-normal-");
+        if (buffered) fixture.blockEntity.setIOSpeedMode(IOSpeedMode.NORMAL);
+        int itemsPerBatch = buffered ? 10 * ITEMS_PER_TARGET : ITEMS_PER_BATCH;
         // Explicit fixed-rate benchmark; the original continuous plan remains
         // one full output batch per target per tick in every other scenario.
         int productionPeriod = System.getProperty("ae2lt.wirelessIoBenchmark.scenario", "")
@@ -653,7 +657,8 @@ public final class WirelessInterfaceGameTests {
             }
             if (!control && tick >= 40 && tick < finishTick - 40
                     && (tick - 40) % productionPeriod == 0) {
-                produceAtomicBatches(fixture, state);
+                if (buffered) produceBufferedBatches(fixture, state);
+                else produceAtomicBatches(fixture, state);
             }
             if (tick == finishTick) {
                 if (control) {
@@ -667,7 +672,7 @@ public final class WirelessInterfaceGameTests {
                 // Observe once after the timed window. Keep the complete producer
                 // plan separate from the steady pressure counters reset at tick 80.
                 WirelessIoPerformanceProbe.recordProductionPlan(
-                        state.totalOpportunities * ITEMS_PER_BATCH, state.producedItems,
+                        state.totalOpportunities * itemsPerBatch, state.producedItems,
                         state.totalBlocked, state.totalOpportunities, -1, -1,
                         -1, -1, remainingItems(fixture));
                 WirelessIoPerformanceProbe.recordImportWorkload(
@@ -677,7 +682,7 @@ public final class WirelessInterfaceGameTests {
                         "not-recorded", -1, -1, -1, -1, -1, 0, -1);
                 org.slf4j.LoggerFactory.getLogger(WirelessInterfaceGameTests.class).info(
                         "Continuous import: produced={}, planned={}, steadyOpportunities={}, steadyBlocked={}",
-                        state.producedItems, state.totalOpportunities * ITEMS_PER_BATCH,
+                        state.producedItems, state.totalOpportunities * itemsPerBatch,
                         state.opportunities, state.blocked);
                 helper.succeed();
             }
@@ -1539,6 +1544,31 @@ public final class WirelessInterfaceGameTests {
             }
             inventory.setChanged();
             state.producedItems += ITEMS_PER_BATCH;
+        }
+    }
+
+    /** Same finite 27-slot target, but each producer adds 10 per slot per tick. */
+    private static void produceBufferedBatches(Fixture fixture, WorkloadState state) {
+        state.opportunities += fixture.inventories.length;
+        state.totalOpportunities += fixture.inventories.length;
+        for (int index = 0; index < fixture.inventories.length; index++) {
+            var inventory = fixture.inventories[index];
+            boolean ready = true;
+            for (int slot = 0; slot < ITEMS_PER_TARGET; slot++) {
+                if (inventory.getItem(slot).getCount() + 10 > 64) { ready = false; break; }
+            }
+            if (!ready) {
+                state.blocked++;
+                state.totalBlocked++;
+                state.maximumBlockedStreak = Math.max(state.maximumBlockedStreak, ++state.blockedStreak[index]);
+                continue;
+            }
+            state.blockedStreak[index] = 0;
+            for (int slot = 0; slot < ITEMS_PER_TARGET; slot++) {
+                inventory.setItem(slot, new ItemStack(DISTINCT_ITEMS.get(slot), inventory.getItem(slot).getCount() + 10));
+            }
+            inventory.setChanged();
+            state.producedItems += 10 * ITEMS_PER_TARGET;
         }
     }
 

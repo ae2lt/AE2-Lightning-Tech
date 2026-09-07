@@ -33,6 +33,44 @@ class OverloadedInterfaceStorageCostTest {
     }
 
     @Test
+    void exportStockCalibrationReadsEachSlotOnceAndExcludesOutputOnlySlots() {
+        var handler = new CountingHandler(64) {
+            @Override
+            public boolean isItemValid(int slot, ItemStack stack) { return slot < 32; }
+        };
+        fill(handler, 8);
+        handler.reads = 0;
+        var stock = new KeyCounter();
+        OverloadedInterfaceBlockEntity.observeInsertableStock(handler,
+                new OverloadedInterfaceBlockEntity.ImportSlotKeyCache(), stock);
+        assertEquals(64, handler.reads);
+        assertEquals(8, stock.size());
+        for (var entry : stock) assertEquals(4 * 64, entry.getLongValue());
+    }
+
+    @Test
+    void outputSlotBudgetBatchesWithoutCountingUnrelatedEmptySlots() {
+        var cache = new OverloadedInterfaceBlockEntity.ImportSlotKeyCache();
+        cache.prepareSlots(27);
+        cache.prepareBudgets(27);
+        int due = 0, stock = 0, visits = 0;
+        for (int tick = 0; tick < 1000; tick++) {
+            assertTrue(stock + 10 <= 64, "output buffer blocked production");
+            stock += 10;
+            if (tick < due) continue;
+            cache.keyForSlot(0, new ItemStack(Items.STONE, stock));
+            due = tick + cache.drained(0, tick, stock, stock, 64);
+            stock = 0;
+            if (tick >= 100) visits++;
+        }
+        assertEquals(300, visits);
+        cache.keyForSlot(0, new ItemStack(Items.DIRT, 10));
+        assertEquals(1, cache.drained(0, 1000, 10, 10, 64), "replacement key inherited a stale rate");
+        cache.forgetDrain(0);
+        assertEquals(1, cache.drained(0, 1020, 10, 10, 64), "a pause was treated as slow production");
+    }
+
+    @Test
     void wrapperRefreshesAreSpreadWithoutSkippingAnyInventoryTransfer() {
         var key = AEItemKey.of(Items.STONE);
         var states = new ArrayList<OverloadedInterfaceBlockEntity.ConnectionState>();
@@ -138,7 +176,7 @@ class OverloadedInterfaceStorageCostTest {
         }
     }
 
-    private static final class CountingHandler extends ItemStackHandler {
+    private static class CountingHandler extends ItemStackHandler {
         long reads;
         CountingHandler(int slots) { super(slots); }
         @Override
