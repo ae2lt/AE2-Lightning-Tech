@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test;
 class TransferPollScheduleTest {
     @Test
     void saturatedMachinesKeepEveryProcessingOpportunityWithBoundedPolling() {
-        for (int period : new int[] {1, 2, 5, 20, 60}) {
+        for (int period : new int[] {1, 2, 5, 6, 10, 20, 60}) {
             for (int idleLimit : new int[] {20, 80}) {
                 var schedule = new TransferPollSchedule();
                 long due = 0;
@@ -43,10 +43,10 @@ class TransferPollScheduleTest {
         var schedule = new TransferPollSchedule();
         long due = 0;
         int stock = 0;
-        int[] actual = new int[4];
-        int[] possible = new int[4];
-        int[] periods = {20, 1, 5, 2};
-        for (int tick = 0; tick < 2_000; tick++) {
+        int[] periods = {20, 1, 6, 60, 5, 10, 2};
+        int[] actual = new int[periods.length];
+        int[] possible = new int[periods.length];
+        for (int tick = 0; tick < periods.length * 500; tick++) {
             int stage = tick / 500;
             if (tick % periods[stage] == 0) {
                 if (tick % 500 >= 100) {
@@ -90,7 +90,7 @@ class TransferPollScheduleTest {
         var schedule = new TransferPollSchedule();
         schedule.success(0);
         schedule.failure(1, 80);
-        assertEquals(19, schedule.success(20));
+        assertEquals(10, schedule.success(20));
         assertEquals(1, schedule.success(5));
         schedule.reset();
         assertEquals(1, schedule.success(1000));

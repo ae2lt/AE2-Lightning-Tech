@@ -279,18 +279,21 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
                 storageBERef = new WeakReference<>(be);
                 storageWrappers = null; storageWrapperTick = -1;
             }
-            if (storageStrategies.isEmpty()) return null;
+            return refreshWrappers(level.getGameTime());
+        }
 
-            long gt = level.getGameTime();
+        @Nullable
+        Map<AEKeyType, MEStorage> refreshWrappers(long gt) {
+            if (storageStrategies.isEmpty()) return null;
             if (storageWrappers == null
-                    || gt - storageWrapperTick >= WRAPPER_REFRESH_TICKS) {
+                    || gt < storageWrapperTick || gt - storageWrapperTick >= WRAPPER_REFRESH_TICKS) {
                 var map = new IdentityHashMap<AEKeyType, MEStorage>(
                         storageStrategies.size());
                 for (var e : storageStrategies.entrySet()) {
                     var w = e.getValue().createWrapper(false, Runnables.doNothing());
                     if (w != null) map.put(e.getKey(), w);
                 }
-                storageWrappers = map.isEmpty() ? null : map;
+                storageWrappers = map;
                 storageWrapperTick = gt;
             }
             return storageWrappers;
@@ -1008,15 +1011,36 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
 
     private void refreshIOWheel(ServerLevel sl, List<WirelessConnection> valid,
                                 long now, boolean activeImport, boolean activeExport) {
-        if (!ioWheelDirty && lastIOEntryRefreshTick != Long.MIN_VALUE
-                && now - lastIOEntryRefreshTick < WRAPPER_REFRESH_TICKS) {
-            return;
+        if (!ioWheelDirty && lastIOEntryRefreshTick == now) return;
+        if (ioWheelDirty || lastIOEntryRefreshTick == Long.MIN_VALUE
+                || now < lastIOEntryRefreshTick
+                || now - lastIOEntryRefreshTick >= WRAPPER_REFRESH_TICKS) {
+            refreshIOEntries(sl, valid, 0, valid.size(), now, activeImport, activeExport);
+        } else {
+            // Discovery has the same 20-tick bound; ordinary due transfers below
+            // still execute every tick. Catch up only the slices actually missed.
+            for (long tick = lastIOEntryRefreshTick + 1; tick <= now; tick++) {
+                int phase = (int) Math.floorMod(tick, WRAPPER_REFRESH_TICKS);
+                int start = (int) ((long) phase * valid.size() / WRAPPER_REFRESH_TICKS);
+                int end = (int) ((long) (phase + 1) * valid.size() / WRAPPER_REFRESH_TICKS);
+                refreshIOEntries(sl, valid, start, end, now, activeImport, activeExport);
+            }
         }
         lastIOEntryRefreshTick = now;
-        for (var conn : valid) {
+        ioWheelDirty = false;
+    }
+
+    private void refreshIOEntries(ServerLevel sl, List<WirelessConnection> valid,
+                                   int start, int end, long now,
+                                   boolean activeImport, boolean activeExport) {
+        for (int index = start; index < end; index++) {
+            var conn = valid.get(index);
             var state = getOrCreateState(conn);
             var targetLevel = resolveTargetLevel(sl, conn);
             if (targetLevel == null) continue;
+            // Align wrapper refresh and type discovery in the same slice.
+            // Separate deadlines could take 20 + 20 ticks to discover a type.
+            state.storageWrappers = null;
             var wrappers = state.resolveWrappers(targetLevel, conn);
             if (wrappers == null) continue;
             for (var keyType : wrappers.keySet()) {
@@ -1029,7 +1053,6 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
                 }
             }
         }
-        ioWheelDirty = false;
     }
 
     private void ensureIOEntry(WirelessConnection conn, ConnectionState state,

@@ -166,6 +166,13 @@ final class WirelessBatchCadence<T> {
         states.remove(target);
     }
 
+    void removePattern(T target, IPatternDetails pattern) {
+        var byPattern = states.get(target);
+        if (byPattern == null) return;
+        byPattern.remove(pattern);
+        if (byPattern.isEmpty()) states.remove(target);
+    }
+
     void clear() {
         states.clear();
     }

@@ -944,6 +944,11 @@ public class ProviderTarget extends TargetAddress {
         runtime.batchSteps.clear();
     }
 
+    final void clearBatchHistory(IPatternDetails pattern) {
+        runtime.batchChunks.remove(pattern);
+        runtime.batchSteps.remove(pattern);
+    }
+
     private void invalidatePhysicalState() {
         runtime.blockEntityRef = null;
         runtime.adapter = null;

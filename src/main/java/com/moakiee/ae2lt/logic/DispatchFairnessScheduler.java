@@ -128,6 +128,13 @@ final class DispatchFairnessScheduler<T, P> {
         pausedTargets.clear();
     }
 
+    boolean removePattern(P pattern) {
+        var state = patterns.get(pattern);
+        if (state != null && state.passOpen) return false;
+        patterns.remove(pattern);
+        return true;
+    }
+
     long dispatchCount(P pattern, T target, long gameTick) {
         var patternState = stateFor(pattern, gameTick);
         activateDueTargets(patternState, gameTick);
