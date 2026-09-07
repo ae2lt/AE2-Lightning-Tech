@@ -1087,6 +1087,7 @@
   "ae2lt.tianshu.gui.unformed": "结构未成形",
   "ae2lt.tianshu.gui.label_storage": "合成容量",
   "ae2lt.tianshu.gui.label_dispatches": "并行派发",
+  "ae2lt.tianshu.gui.label_batch": "批量并行",
   "ae2lt.tianshu.gui.label_loop": "闭环存储",
   "ae2lt.tianshu.gui.value_loop": "样板 %s · 种子 %s",
   "ae2lt.tianshu.gui.label_fast": "快速计算",
