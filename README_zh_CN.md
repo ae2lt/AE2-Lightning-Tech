@@ -40,7 +40,7 @@
 .\gradlew.bat test build
 ```
 
-可发布制品位于 `build/libs/ae2lt-forge-1.20.1-2.1.0-beta.3.jar`。
+可发布制品位于 `build/libs/ae2lt-forge-1.20.1-2.1.0-beta.4.jar`。
 带 `-slim.jar` 后缀的是开发中间制品，不应对外发布。
 
 ## 公开 API

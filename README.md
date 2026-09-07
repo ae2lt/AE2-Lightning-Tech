@@ -40,7 +40,7 @@ Use Java 17 and run:
 .\gradlew.bat test build
 ```
 
-The distributable artifact is `build/libs/ae2lt-forge-1.20.1-2.1.0-beta.3.jar`.
+The distributable artifact is `build/libs/ae2lt-forge-1.20.1-2.1.0-beta.4.jar`.
 The `-slim.jar` artifact is an intermediate development artifact and must not be distributed.
 
 ## Public API
