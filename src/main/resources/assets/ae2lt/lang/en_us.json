@@ -1084,6 +1084,7 @@
   "ae2lt.tianshu.gui.unformed": "Structure Not Formed",
   "ae2lt.tianshu.gui.label_storage": "Crafting Storage",
   "ae2lt.tianshu.gui.label_dispatches": "Parallel Dispatch",
+  "ae2lt.tianshu.gui.label_batch": "Batch Parallelism",
   "ae2lt.tianshu.gui.label_loop": "Closed-loop Storage",
   "ae2lt.tianshu.gui.value_loop": "patterns %s · seeds %s",
   "ae2lt.tianshu.gui.label_fast": "Fast Planning",
