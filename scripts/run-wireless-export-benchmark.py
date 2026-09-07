@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run sequential, fresh-JVM export A/B measurements on macOS/Linux/Windows.
+"""Run sequential, fresh-JVM wireless I/O A/B measurements on macOS/Linux/Windows.
 
 One round is a pilot; five rounds enable the unchanged Gradle acceptance check.
 Failed runs retain their logs and reports and never become successful samples.
@@ -40,10 +40,10 @@ def main():
     args = parser.parse_args()
     if args.warmup < 40 or args.samples < 200 or args.warmup + args.samples > 1420:
         parser.error("require warmup >= 40, samples >= 200, total <= 1420")
-    allowed = {"export-empty-1024", "export-mismatch-1024"} | {
+    allowed = {"1024x27", "import-period60-1024x27", "export-empty-1024", "export-mismatch-1024"} | {
         f"export-continuous-{targets}x{keys}" for targets in (64, 256, 1024) for keys in (1, 27)}
     if not set(args.profiles) <= allowed:
-        parser.error("unknown export profile")
+        parser.error("unknown wireless I/O profile")
     projects = {"baseline": args.baseline.resolve(), "candidate": args.candidate.resolve()}
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=False)

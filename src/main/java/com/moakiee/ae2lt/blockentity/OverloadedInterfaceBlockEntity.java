@@ -26,7 +26,6 @@ import com.moakiee.ae2lt.debug.WirelessIoPerformanceProbe;
 import com.moakiee.ae2lt.logic.FilteredInsertGenericInv;
 import com.moakiee.ae2lt.logic.OverloadedInterfaceLogic;
 import com.moakiee.ae2lt.logic.OverloadedInterfaceTickDecider;
-import com.moakiee.ae2lt.logic.TransferPollSchedule;
 import com.moakiee.ae2lt.logic.TransferCadence;
 import com.moakiee.ae2lt.logic.WirelessConnectionLists;
 import com.moakiee.ae2lt.logic.WirelessConnectionRange;
@@ -190,31 +189,62 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
 
     enum IoDirection { IMPORT, EXPORT }
 
+    /**
+     * Pull polling observes drain times, not a producer's clock. A single long
+     * gap can be a pause, so it must not by itself become the next wait. The
+     * median of three gaps is the smallest history that rejects one outlier.
+     * This is a prediction, not a guaranteed production period; continuous
+     * successful drains always take precedence over it.
+     */
     static final class CooldownTracker {
+        private static final int ACTIVE_LEARNING_TICKS = 100;
         private IOSpeedMode mode = IOSpeedMode.NORMAL;
-        private final TransferPollSchedule schedule = new TransferPollSchedule();
         private long cooldownUntil = -1;
+        private long lastSuccess = Long.MIN_VALUE;
+        private int previousGap = 1;
+        private int latestGap = 1;
+        private int predictedGap = 1;
+        private int idleDelay = 1;
+        private boolean emptySinceSuccess;
 
         long cooldownUntil() { return cooldownUntil; }
 
         void reset(IOSpeedMode newMode) {
             mode = newMode;
-            schedule.reset();
             cooldownUntil = -1;
+            lastSuccess = Long.MIN_VALUE;
+            previousGap = latestGap = predictedGap = idleDelay = 1;
+            emptySinceSuccess = false;
         }
 
         void onSuccess(long now, IOSpeedMode newMode) {
             if (mode != newMode) reset(newMode);
-            schedule.success(now);
-            // A drained output can immediately refill. Confirm continued
-            // production next tick; only an actual empty observation may wait.
+            long elapsed = lastSuccess == Long.MIN_VALUE ? 0 : now - lastSuccess;
+            int gap = emptySinceSuccess && elapsed > 0 && elapsed < ACTIVE_LEARNING_TICKS
+                    ? (int) elapsed : 1;
+            predictedGap = gap == 1 ? 1
+                    : Math.max(Math.min(previousGap, latestGap),
+                            Math.min(Math.max(previousGap, latestGap), gap));
+            previousGap = latestGap;
+            latestGap = gap;
+            lastSuccess = now;
+            emptySinceSuccess = false;
+            idleDelay = 1;
+            // A drained output may immediately refill, regardless of the estimate.
             cooldownUntil = now + 1;
         }
 
         void onFail(long now, IOSpeedMode newMode) {
             if (mode != newMode) reset(newMode);
-            cooldownUntil = now + schedule.failure(now,
-                    mode == IOSpeedMode.FAST ? FAST_CD_MAX : NORMAL_CD_MAX);
+            emptySinceSuccess = true;
+            long elapsed = lastSuccess == Long.MIN_VALUE ? ACTIVE_LEARNING_TICKS : now - lastSuccess;
+            if (elapsed >= 0 && elapsed < ACTIVE_LEARNING_TICKS) {
+                cooldownUntil = now + Math.max(1, predictedGap - (int) elapsed);
+            } else {
+                int maximum = mode == IOSpeedMode.FAST ? FAST_CD_MAX : NORMAL_CD_MAX;
+                idleDelay = Math.min(maximum, idleDelay + Math.max(1, maximum / 10));
+                cooldownUntil = now + idleDelay;
+            }
         }
     }
 

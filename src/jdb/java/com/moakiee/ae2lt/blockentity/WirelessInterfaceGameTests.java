@@ -628,6 +628,10 @@ public final class WirelessInterfaceGameTests {
         var fixture = createFixture(helper, 1024);
         var state = new WorkloadState(1024);
         boolean control = Boolean.getBoolean("ae2lt.wirelessIoGameTest.control");
+        // Explicit fixed-rate benchmark; the original continuous plan remains
+        // one full output batch per target per tick in every other scenario.
+        int productionPeriod = System.getProperty("ae2lt.wirelessIoBenchmark.scenario", "")
+                .contains("-import-period60-") ? 60 : 1;
         int warmupTicks = Integer.getInteger(
                 "ae2lt.wirelessIoBenchmark.warmupTicks", 40);
         int sampleTicks = Integer.getInteger(
@@ -647,7 +651,8 @@ public final class WirelessInterfaceGameTests {
             if (tick == 80) {
                 state.resetPressureCounters();
             }
-            if (!control && tick >= 40 && tick < finishTick - 40) {
+            if (!control && tick >= 40 && tick < finishTick - 40
+                    && (tick - 40) % productionPeriod == 0) {
                 produceAtomicBatches(fixture, state);
             }
             if (tick == finishTick) {
