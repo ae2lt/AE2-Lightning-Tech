@@ -7,7 +7,7 @@ import appeng.api.crafting.IPatternDetails;
 /**
  * Target/pattern scheduling key whose pattern half uses canonical identity.
  *
- * <p>It caches the canonical pattern's hash and never invokes pattern equality.</p>
+ * <p>It caches an identity hash for the pattern, without invoking third-party methods.</p>
  */
 final class TargetPatternKey<T> {
     private final T target;
@@ -18,7 +18,7 @@ final class TargetPatternKey<T> {
         this.target = Objects.requireNonNull(target, "target");
         this.pattern = pattern;
         this.hashCode = 31 * target.hashCode()
-                + (pattern == null ? 0 : pattern.hashCode());
+                + System.identityHashCode(pattern);
     }
 
     T target() {

@@ -248,11 +248,14 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         }
 
         private ExportRejectState exportState(AEKey key) {
-            if (!exportRejects.containsKey(key)
-                    && exportRejects.size() >= EXPORT_REJECT_BACKOFF_MAX_KEYS) {
+            var existing = exportRejects.get(key);
+            if (existing != null) return existing;
+            if (exportRejects.size() >= EXPORT_REJECT_BACKOFF_MAX_KEYS) {
                 exportRejects.clear();
             }
-            return exportRejects.computeIfAbsent(key, ignored -> new ExportRejectState());
+            var created = new ExportRejectState();
+            exportRejects.put(key, created);
+            return created;
         }
 
         /**

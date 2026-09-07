@@ -1172,7 +1172,7 @@ class AdaptiveBatchDispatchStressTest {
 
         @Override
         public int hashCode() {
-            return 31;
+            throw new AssertionError("third-party pattern hashCode must not run during dispatch");
         }
     }
 }

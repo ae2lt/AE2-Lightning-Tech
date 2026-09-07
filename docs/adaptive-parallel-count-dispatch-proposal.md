@@ -77,7 +77,7 @@ Java 21，Thunderbolt 使用与该旧基线接口匹配的 `88f5f01`，通过独
 
 | 检查 | 原提交 d59bf97e | 当前试验 |
 |---|---:|---:|
-| 普通测试 | 632 项 / 14 失败 | 653 项 / 0 失败 |
+| 普通测试 | 632 项 / 14 失败 | 656 项 / 0 失败 |
 | 自适应压力模型 | 6 项 / 4 失败 | 6 项 / 2 失败 |
 | ProviderDispatchTest | 11 项 / 0 失败 | 26 项 / 0 失败 |
 | 接口轮询新测试 | 无 | 4 项 / 0 失败 |
@@ -110,7 +110,35 @@ Java 21，Thunderbolt 使用与该旧基线接口匹配的 `88f5f01`，通过独
 
 本轮进一步删除节拍器无效保底分支、恒为无限的限额接口和未使用的样本参数，节拍器相对原提交净减少87行。精简前后所有压力模型的吞吐、物理调用、失败调用和公平性输出逐项一致。复用更大尾部批次的性能试验造成其他变速场景吞吐下降，已撤回。
 
-当前普通行为与发配正确性测试全部通过，保留上述两个调用成本边界，未为消除警告而扩大成本预算或增加复杂预测状态。用户已接受这两个调用成本边界，要求整体交付到独立新分支。没有启动游戏或测量实机MSPT，尚未合入main或发布正式版本。
+当前普通行为与发配正确性测试全部通过，保留上述两个调用成本边界，未为消除警告而扩大成本预算或增加复杂预测状态。用户已接受这两个调用成本边界；整体实现已提交为 `abf4abf6` 并推送到 `origin/feat/provider-machine-parallelism-trial`。没有启动游戏或测量实机MSPT，尚未合入main或发布正式版本。
+
+## 常数与复杂度审查
+
+后续优化保持调度策略、物理发配顺序的约束及100tick公平窗口，使用已有fastutil依赖：
+
+- `CanonicalPatternMaps` 使用引用哈希表，`TargetPatternKey` 使用 `System.identityHashCode(pattern)`。样板原本就按引用比较，运行期不再触发第三方 `equals/hashCode`。1024样板的身份测试和生产调度压力用例会在这两个方法被调用时直接失败。
+- 公平历史从 `Map<TargetState, Long>` 改为原生long值的引用哈希表，合并继续使用饱和加法；过期遍历使用原生值迭代器；合并计数避免Long装箱，fastutil迭代项复用。
+- 最小公平计数索引从 `TreeMap<Long, Integer>` 改为 `Long2IntAVLTreeMap`，消除long键和int计数装箱。保留有序索引和有界优先队列，单次队列更新仍为O(log E)，避免全表扫描或引入自定义堆。
+- ME接口命中已有拒收记录时，从 `containsKey + computeIfAbsent` 两次查询缩为一次 `get`。目标地址的缓存哈希继续保留；目标地址和AEKey保留原有内容相等语义，保证重新构造的连接和物品键仍能匹配。
+- 到期队列、100tick公平历史、容量/节拍证据分别服务于不同失效条件，继续保留；没有增加新预测状态机或跨回调的长期状态引用缓存。
+
+独立 `DispatchCostBenchmarkTest`：本机Java21，真实ProviderWirelessDispatch，512个目标，预热300tick后测500tick，三轮。目标回调固定成功并核对发配总量，排除真实机器capability和世界tick成本。
+
+| 指标 | 优化前 abf4abf6 | 优化后 |
+|---|---:|---:|
+| 每次目标访问分配 | 373.86 B | 182.06 B |
+| 500tick样板hashCode调用 | 1,280,500 | 0 |
+| 每tick调度耗时中位数 | 0.176 ms | 0.156 ms |
+
+分配量降低约51.3%；耗时是本机短基准观察值，不设置时间断言，不等价于游戏MSPT。不同JVM和机器应重新测量。容器优化前后全部压力模型的吞吐、物理调用、失败调用和公平性输出逐项一致，两个已接受的调用成本TODO保持不变。普通测试656项全部通过，包含新身份语义回归和基准工作量守恒检查。
+
+复现独立基准：
+
+```sh
+./gradlew --offline -I scripts/provider-machine-parallelism.init.gradle test --tests '*DispatchCostBenchmarkTest'
+```
+
+原始对照数据在本工作树 `build/reports/scheduler-validation/constants-before.txt` 和 `constants-after-isolated.txt`；完整回归计数在 `constants-test-summary.json`。
 
 ## 复现构建
 
