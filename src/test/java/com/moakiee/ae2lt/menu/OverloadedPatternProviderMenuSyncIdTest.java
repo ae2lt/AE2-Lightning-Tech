@@ -27,7 +27,7 @@ class OverloadedPatternProviderMenuSyncIdTest {
                     id >= AE2LT_SYNC_ID_MIN && id <= AE2LT_SYNC_ID_MAX,
                     () -> field.getName() + " uses collision-prone GUI sync ID " + id);
         }
-        assertEquals(11, synchronizedFields);
+        assertEquals(12, synchronizedFields);
     }
 
     @Test

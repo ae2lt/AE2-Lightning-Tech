@@ -11,8 +11,8 @@ import appeng.api.crafting.IPatternDetails;
  * <p>A successful visit gives two useful facts: how many copies were drained
  * since the previous success and how long that drain took. Together with the
  * largest observed fill this estimates the time required to empty the target.
- * The next visit probes at one quarter of that interval. A rejected early
- * probe waits out the rest of the predicted interval. This
+ * The next visit probes halfway through that interval (one quarter while
+ * learning a faster drain). A rejected early probe waits out the remainder. This
  * keeps the state bounded and reacts to both capacity and processing-speed
  * changes without retaining a separate mode for every workload shape.</p>
  *
@@ -27,76 +27,15 @@ final class WirelessBatchCadence<T> {
     private final Map<T, Map<IPatternDetails, State>> states =
             new HashMap<>();
 
-    int recordSuccess(
-            T target,
-            IPatternDetails pattern,
-            long gameTick,
-            long ownedCopies,
-            boolean acceptedFullChunk,
-            boolean requestLimited) {
-        return recordSuccess(
-                target,
-                pattern,
-                gameTick,
-                ownedCopies,
-                acceptedFullChunk,
-                requestLimited,
-                false,
-                ProviderTarget.BaselineStatus.NONE,
-                false);
+    int recordSuccess(T target, IPatternDetails pattern, long gameTick,
+            long ownedCopies, boolean acceptedFullChunk) {
+        return recordSuccess(target, pattern, gameTick, ownedCopies,
+                acceptedFullChunk, ProviderTarget.BaselineStatus.NONE);
     }
 
-    int recordSuccess(
-            T target,
-            IPatternDetails pattern,
-            long gameTick,
-            long ownedCopies,
-            boolean acceptedFullChunk,
-            boolean requestLimited,
-            boolean exploratoryAttempt) {
-        return recordSuccess(
-                target,
-                pattern,
-                gameTick,
-                ownedCopies,
-                acceptedFullChunk,
-                requestLimited,
-                exploratoryAttempt,
-                ProviderTarget.BaselineStatus.NONE,
-                false);
-    }
-
-    int recordSuccess(
-            T target,
-            IPatternDetails pattern,
-            long gameTick,
-            long ownedCopies,
-            boolean acceptedFullChunk,
-            boolean requestLimited,
-            boolean exploratoryAttempt,
+    int recordSuccess(T target, IPatternDetails pattern, long gameTick,
+            long ownedCopies, boolean acceptedFullChunk,
             ProviderTarget.BaselineStatus baselineStatus) {
-        return recordSuccess(
-                target,
-                pattern,
-                gameTick,
-                ownedCopies,
-                acceptedFullChunk,
-                requestLimited,
-                exploratoryAttempt,
-                baselineStatus,
-                false);
-    }
-
-    int recordSuccess(
-            T target,
-            IPatternDetails pattern,
-            long gameTick,
-            long ownedCopies,
-            boolean acceptedFullChunk,
-            boolean requestLimited,
-            boolean exploratoryAttempt,
-            ProviderTarget.BaselineStatus baselineStatus,
-            boolean reservoirBatch) {
         if (ownedCopies <= 0L) {
             throw new IllegalArgumentException(
                     "Successful cadence samples must own at least one copy");
@@ -120,6 +59,11 @@ final class WirelessBatchCadence<T> {
             }
             int candidate = estimateFullInterval(
                     state.capacityEstimate, elapsed, ownedCopies);
+            // A fully accepted caller-limited refill is a censored rate sample:
+            // the machine may have consumed more than this visit was allowed to send.
+            if (acceptedFullChunk) {
+                candidate = Math.min(candidate, (int) Math.min(MAX_COVERAGE_TICKS, elapsed));
+            }
             if (state.rapidSamples > 0) {
                 state.fullInterval = candidate;
                 state.fasterCandidate = 0;
@@ -142,6 +86,7 @@ final class WirelessBatchCadence<T> {
             state.fullInterval = 1;
         }
 
+        boolean rejectedSinceSuccess = state.rejectedElapsed > 0;
         state.lastSuccessTick = gameTick;
         state.lastActivityTick = gameTick;
         state.lastOwnedCopies = ownedCopies;
@@ -150,26 +95,13 @@ final class WirelessBatchCadence<T> {
                 state.fullInterval, state.rapidSamples > 0);
         state.nextExploratory = state.nextInterval < state.fullInterval;
         state.nextCapacityAudit = state.nextExploratory
+                && !rejectedSinceSuccess
                 && gameTick - state.lastCapacityAuditTick
                         >= CAPACITY_AUDIT_INTERVAL;
         return state.nextInterval;
     }
 
-    int recordFailure(
-            T target,
-            IPatternDetails pattern,
-            long gameTick,
-            int attemptedCopies) {
-        return recordFailure(
-                target, pattern, gameTick, attemptedCopies, false);
-    }
-
-    int recordFailure(
-            T target,
-            IPatternDetails pattern,
-            long gameTick,
-            int attemptedCopies,
-            boolean exploratoryAttempt) {
+    int recordFailure(T target, IPatternDetails pattern, long gameTick) {
         var state = state(target, pattern);
         state.expireIfIdle(gameTick);
         state.finishCapacityAudit(gameTick);
@@ -177,9 +109,6 @@ final class WirelessBatchCadence<T> {
         state.fasterCandidate = 0;
         state.nextExploratory = false;
         state.nextCapacityAudit = false;
-        if (!exploratoryAttempt) {
-            state.clearStablePrefix();
-        }
 
         if (state.lastSuccessTick == Long.MIN_VALUE) {
             state.nextInterval = Math.min(
@@ -218,25 +147,9 @@ final class WirelessBatchCadence<T> {
         return state != null && state.nextCapacityAudit;
     }
 
-    boolean isFillFallback(T target, IPatternDetails pattern) {
-        return false;
-    }
-
     boolean usesSingleChunkRefill(T target, IPatternDetails pattern) {
         var state = existingState(target, pattern);
         return state != null && state.singleChunkRefill;
-    }
-
-    boolean usesProvenChunkProbe(T target, IPatternDetails pattern) {
-        var state = existingState(target, pattern);
-        return state != null
-                && state.singleChunkRefill
-                && state.nextExploratory
-                && !state.nextCapacityAudit;
-    }
-
-    long reservoirAllowance(T target, IPatternDetails pattern) {
-        return Long.MAX_VALUE;
     }
 
     boolean shouldPreserveBatchHistory(

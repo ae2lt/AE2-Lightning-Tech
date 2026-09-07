@@ -551,6 +551,8 @@ public class OverloadedPatternProviderLogic extends PatternProviderLogic
                 maxCraft,
                 gameTick,
                 fastMode,
+                overloadedHost.isAdaptiveBatchEnabled()
+                        ? overloadedHost.getMachineParallelism() : 1,
                 (connection, share, exploratoryAttempt,
                         preserveBatchHistoryOnRejection) -> {
                     var result = tryPushBatchToConnection(

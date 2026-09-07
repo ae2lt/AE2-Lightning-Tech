@@ -598,7 +598,7 @@ class ProviderTargetTest {
     }
 
     @Test
-    void wirelessBatchStepCapsGrowthAtProvenChunk() {
+    void wirelessBatchStepBoundsReservoirTailAfterRejectedGrowth() {
         var pattern = new EmptyPattern();
         target.pushPatternStep(
                 pattern,
@@ -637,9 +637,14 @@ class ProviderTargetTest {
                     return new ProviderTarget.BatchChunk(
                             copies, true, false);
                 });
-        assertEquals(16L, recovered.ownedCopies());
+        assertTrue(recovered.ownedCopies() > 16 && recovered.ownedCopies() < 32);
+        assertEquals(6, chunks.size());
+        assertEquals(List.of(8, 8), chunks.subList(3, 5));
+        assertTrue(chunks.get(5) > 0 && chunks.get(5) < 16);
+        assertEquals(chunks.subList(3, 6).stream().mapToLong(Integer::longValue).sum(),
+                recovered.ownedCopies(), "ownership must equal actual accepted insertions");
 
-        target.pushPatternStep(
+        var next = target.pushPatternStep(
                 pattern,
                 1_000L,
                 3L,
@@ -650,7 +655,12 @@ class ProviderTargetTest {
                     return new ProviderTarget.BatchChunk(
                             copies, true, false);
                 });
-        assertEquals(List.of(8, 8, 16, 8, 8, 8, 8), chunks);
+        // Two proven prefix chunks plus at most one bounded tail probe per visit.
+        assertEquals(9, chunks.size());
+        assertEquals(List.of(8, 8), chunks.subList(6, 8));
+        assertTrue(chunks.get(8) > 0 && chunks.get(8) < 16);
+        assertEquals(chunks.subList(6, 9).stream().mapToLong(Integer::longValue).sum(),
+                next.ownedCopies());
     }
 
     @Test

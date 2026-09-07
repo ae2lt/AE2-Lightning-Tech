@@ -194,13 +194,27 @@ final class ProviderWirelessDispatch {
             BatchAttempt attempt,
             Predicate<WirelessConnection> alive,
             Consumer<WirelessConnection> targetRemoved) {
+        return dispatchBatch(mode, pattern, maxCopies, gameTick, fastMode, 1,
+                attempt, alive, targetRemoved);
+    }
+
+    long dispatchBatch(
+            WirelessDispatchMode mode,
+            IPatternDetails pattern,
+            long maxCopies,
+            long gameTick,
+            boolean fastMode,
+            int machineParallelism,
+            BatchAttempt attempt,
+            Predicate<WirelessConnection> alive,
+            Consumer<WirelessConnection> targetRemoved) {
         if (mode == WirelessDispatchMode.SINGLE_TARGET) {
             return dispatchSingleTargetBatch(
                     maxCopies, gameTick, fastMode,
                     attempt, alive, targetRemoved);
         }
         return dispatchFairBatch(
-                pattern, maxCopies, gameTick, fastMode,
+                pattern, maxCopies, gameTick, fastMode, machineParallelism,
                 attempt, alive, targetRemoved);
     }
 
@@ -347,19 +361,34 @@ final class ProviderWirelessDispatch {
         return remaining;
     }
 
+    static int groupedTargetCount(long copies, int parallelism, int availableTargets) {
+        if (copies <= 0L || availableTargets <= 0) {
+            return 0;
+        }
+        return (int) Math.min(availableTargets,
+                1L + (copies - 1L) / Math.max(1, parallelism));
+    }
+
     private long dispatchFairBatch(
             IPatternDetails pattern,
             long maxCopies,
             long gameTick,
             boolean fastMode,
+            int machineParallelism,
             BatchAttempt attempt,
             Predicate<WirelessConnection> alive,
             Consumer<WirelessConnection> targetRemoved) {
         long remaining = maxCopies;
         try (var pass = beginFairPass(pattern, gameTick)) {
             int attemptBudget = pass.activeTargetsAtStart();
+            boolean grouped = machineParallelism > 1;
+            int targetLimit = grouped
+                    ? groupedTargetCount(maxCopies, machineParallelism, attemptBudget)
+                    : attemptBudget;
+            int successfulTargets = 0;
             for (int attempts = 0;
-                 attempts < attemptBudget && remaining > 0L;
+                 attempts < attemptBudget && remaining > 0L
+                        && successfulTargets < targetLimit;
                  attempts++) {
                 var connection = pass.poll();
                 if (connection == null) {
@@ -398,8 +427,17 @@ final class ProviderWirelessDispatch {
                     ((ProviderTarget) connection)
                             .reopenReservoirTailAudit(pattern, gameTick);
                 }
+                // P is a grouping hint, not a physical batch size. Let the
+                // existing H,H,2H ramp prove what the selected machine accepts.
+                int groupedSlotsLeft = Math.min(
+                        targetLimit - successfulTargets, attemptBudget - attempts);
+                long groupedShare = grouped
+                        ? 1L + (remaining - 1L) / groupedSlotsLeft
+                        : remaining;
                 long share = Math.min(
-                        remaining, pass.allowance(connection));
+                        remaining, grouped
+                                ? pass.raiseAllowance(connection, groupedShare)
+                                : pass.allowance(connection));
                 int targetsLeft = attemptBudget - attempts;
                 long equalShareLimit = targetsLeft <= 0
                         ? 0L
@@ -414,31 +452,16 @@ final class ProviderWirelessDispatch {
                             pass.raiseAllowance(
                                     connection, rampAllowance));
                 }
-                boolean fillFallback = batchCadence.isFillFallback(
-                        connection, pattern);
-                if (fillFallback) {
-                    int candidate = ((ProviderTarget) connection)
-                            .batchStepCandidate(
-                                    pattern, remaining, gameTick);
-                    share = Math.min(
-                            remaining,
-                            pass.raiseAllowance(connection, candidate));
-                }
-                if (!fillFallback
-                        && (!exploratoryAttempt
-                                        && batchCadence.usesSingleChunkRefill(
-                                                connection, pattern)
-                                || batchCadence.usesProvenChunkProbe(
-                                        connection, pattern))) {
+                if (batchCadence.usesSingleChunkRefill(connection, pattern)
+                        && (!exploratoryAttempt || !reopenReservoirTail)) {
                     int candidate = ((ProviderTarget) connection)
                             .batchStepProvenChunk(
                                     pattern, remaining, gameTick);
                     share = Math.min(share, candidate);
                 }
-                share = Math.min(
-                        share,
-                        batchCadence.reservoirAllowance(
-                                connection, pattern));
+                if (grouped) {
+                    share = Math.min(share, groupedShare);
+                }
                 if (share <= 0L) {
                     continue;
                 }
@@ -456,18 +479,18 @@ final class ProviderWirelessDispatch {
                     state.probeArmed = false;
                 }
                 if (result.ownedCopies > 0L) {
-                    boolean reservoirBatch = ((ProviderTarget) connection)
-                            .hasReservoirBatchState(pattern, gameTick);
+                    // A partially accepting machine must not strand the remainder
+                    // while backup machines are idle. Each target still gets at most one visit.
+                    if (!grouped || result.ownedCopies >= groupedShare) {
+                        successfulTargets++;
+                    }
                     int coverageTicks = batchCadence.recordSuccess(
                             connection,
                             pattern,
                             gameTick,
                             result.ownedCopies,
                             result.acceptedFullChunk,
-                            result.requestLimited,
-                            exploratoryAttempt,
-                            result.baselineStatus,
-                            reservoirBatch);
+                            result.baselineStatus);
                     pass.successAndCover(
                             connection, result.ownedCopies, coverageTicks);
                     recordSuccess(connection, pattern);
@@ -486,8 +509,7 @@ final class ProviderWirelessDispatch {
                 switch (result.outcome) {
                     case HARD_FAIL -> {
                         int retryDelay = recordBatchFailure(
-                                connection, pattern, gameTick, result,
-                                exploratoryAttempt);
+                                connection, pattern, gameTick, result);
                         if (!alive.test(connection)) {
                             pass.remove(connection);
                             removeTarget(connection);
@@ -501,8 +523,7 @@ final class ProviderWirelessDispatch {
                     }
                     case SOFT_FAIL -> {
                         int retryDelay = recordBatchFailure(
-                                connection, pattern, gameTick, result,
-                                exploratoryAttempt);
+                                connection, pattern, gameTick, result);
                         long due = batchRetryAfter(
                                 connection, pattern, gameTick,
                                 fastMode, result, retryDelay);
@@ -523,15 +544,9 @@ final class ProviderWirelessDispatch {
             WirelessConnection connection,
             IPatternDetails pattern,
             long gameTick,
-            BatchAttemptResult result,
-            boolean exploratoryAttempt) {
+            BatchAttemptResult result) {
         if (result.attemptedCopies > 0) {
-            return batchCadence.recordFailure(
-                    connection,
-                    pattern,
-                    gameTick,
-                    result.attemptedCopies,
-                    exploratoryAttempt);
+            return batchCadence.recordFailure(connection, pattern, gameTick);
         }
         return 0;
     }

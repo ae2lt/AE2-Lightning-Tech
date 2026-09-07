@@ -1,0 +1,10 @@
+allprojects {
+    afterEvaluate {
+        configurations.configureEach {
+            dependencies.removeIf { dep -> dep.group == 'com.moakiee.thunderbolt' }
+        }
+        dependencies.add('compileOnly', project.files(project.layout.projectDirectory.file('build/test-dependencies/thunderbolt-88f5f01.jar')))
+        dependencies.add('runtimeOnly', project.files(project.layout.projectDirectory.file('build/test-dependencies/thunderbolt-88f5f01.jar')))
+        dependencies.add('testRuntimeOnly', project.files(project.layout.projectDirectory.file('build/test-dependencies/thunderbolt-88f5f01.jar')))
+    }
+}
