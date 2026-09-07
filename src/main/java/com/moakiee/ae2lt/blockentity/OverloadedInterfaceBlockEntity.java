@@ -26,6 +26,7 @@ import com.moakiee.ae2lt.logic.FilteredInsertGenericInv;
 import com.moakiee.ae2lt.logic.OverloadedInterfaceLogic;
 import com.moakiee.ae2lt.logic.OverloadedInterfaceTickDecider;
 import com.moakiee.ae2lt.logic.TransferPollSchedule;
+import com.moakiee.ae2lt.logic.TransferCadence;
 import com.moakiee.ae2lt.logic.WirelessConnectionLists;
 import com.moakiee.ae2lt.logic.WirelessConnectionRange;
 import com.moakiee.ae2lt.logic.WirelessConnectionRef;
@@ -138,7 +139,7 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
     private static final int IMPORT_FLUSH_MAX_KEYS = 16_384;
     private static final int STOP_IMPORT_TTL = 20;
     private static final int IO_WHEEL_SLOTS = 128;
-    private static final int EXPORT_REJECT_BACKOFF_MAX_KEYS = 128;
+    private static final int EXPORT_TRANSFER_MAX_KEYS = 128;
     private static final long IMPORT_TRANSFER_LIMIT = Long.MAX_VALUE;
 
     private final ImportScanBuffer scanBuffer = new ImportScanBuffer();
@@ -203,7 +204,10 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
 
         void onSuccess(long now, IOSpeedMode newMode) {
             if (mode != newMode) reset(newMode);
-            cooldownUntil = now + schedule.success(now);
+            schedule.success(now);
+            // A drained output can immediately refill. Confirm continued
+            // production next tick; only an actual empty observation may wait.
+            cooldownUntil = now + 1;
         }
 
         void onFail(long now, IOSpeedMode newMode) {
@@ -296,9 +300,25 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         }
     }
 
-    static final class ExportRejectState {
+    static final class ExportTransferState {
         long untilTick;
-        final TransferPollSchedule schedule = new TransferPollSchedule();
+        private final TransferCadence schedule = new TransferCadence();
+
+        void accepted(long now, long amount, boolean requestLimited, IOSpeedMode mode) {
+            untilTick = now + Math.min(maximumDelay(mode), schedule.success(now, amount, requestLimited));
+        }
+
+        void rejected(long now, IOSpeedMode mode) {
+            untilTick = now + Math.min(maximumDelay(mode), schedule.blocked(now));
+        }
+
+        void unavailable(long now, IOSpeedMode mode) {
+            untilTick = now + schedule.unavailable(now, maximumDelay(mode));
+        }
+
+        private static int maximumDelay(IOSpeedMode mode) {
+            return mode == IOSpeedMode.FAST ? FAST_CD_MAX : NORMAL_CD_MAX;
+        }
     }
 
     // ══════════════════════════════════════════════════════════════════════
@@ -308,7 +328,7 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
     static final class ConnectionState {
         final Map<AEKeyType, CooldownTracker> importCDs = new IdentityHashMap<>();
         final Map<AEKeyType, CooldownTracker> exportCDs = new IdentityHashMap<>();
-        final Map<AEKey, ExportRejectState> exportRejects = new HashMap<>();
+        final Map<AEKey, ExportTransferState> exportTransfers = new HashMap<>();
         final ImportSlotKeyCache importSlotKeys = new ImportSlotKeyCache();
 
         @Nullable WeakReference<BlockEntity> storageBERef;
@@ -325,34 +345,18 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
         void resetWirelessIo(IOSpeedMode mode) {
             importCDs.values().forEach(cd -> cd.reset(mode));
             exportCDs.values().forEach(cd -> cd.reset(mode));
-            exportRejects.clear();
+            exportTransfers.clear();
             importSlotKeys.clear();
         }
 
-        boolean isExportRejected(AEKey key, long now) {
-            var state = exportRejects.get(key);
-            return state != null && now < state.untilTick;
-        }
-
-        void onExportRejected(AEKey key, long now, IOSpeedMode mode) {
-            var state = exportState(key);
-            state.untilTick = now + state.schedule.failure(now,
-                    mode == IOSpeedMode.FAST ? FAST_CD_MAX : NORMAL_CD_MAX);
-        }
-
-        void onExportAccepted(AEKey key, long now) {
-            var state = exportState(key);
-            state.untilTick = now + state.schedule.success(now);
-        }
-
-        private ExportRejectState exportState(AEKey key) {
-            var existing = exportRejects.get(key);
+        private ExportTransferState exportState(AEKey key) {
+            var existing = exportTransfers.get(key);
             if (existing != null) return existing;
-            if (exportRejects.size() >= EXPORT_REJECT_BACKOFF_MAX_KEYS) {
-                exportRejects.clear();
+            if (exportTransfers.size() >= EXPORT_TRANSFER_MAX_KEYS) {
+                exportTransfers.clear();
             }
-            var created = new ExportRejectState();
-            exportRejects.put(key, created);
+            var created = new ExportTransferState();
+            exportTransfers.put(key, created);
             return created;
         }
 
@@ -1615,73 +1619,66 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
                            MEStorage me, IActionSource src, long now) {
         var entries = exportEntriesForType(keyType, now);
         long moved = 0;
-        boolean overflowed = false;
-        var grid = getMainNode().getGrid();
-
+        long next = Long.MAX_VALUE;
         for (var entry : entries) {
-            var key = entry.key();
-            if (state.isExportRejected(key, now)) continue;
-
-            long toMove = entry.maxAmount();
-
-            long available = me.extract(key, toMove, Actionable.SIMULATE, src);
-            if (available <= 0) {
-                state.onExportRejected(key, now, ioSpeedMode);
-                continue;
+            // One state lookup per key, including deriving the type's deadline.
+            var transfer = state.exportState(entry.key());
+            if (now >= transfer.untilTick) {
+                moved += exportKey(transfer, entry, wrapper, me, src, now);
             }
-
-            long requested = Math.min(toMove, available);
-            long canAccept = wrapper.insert(key, requested, Actionable.SIMULATE, src);
-            if (canAccept <= 0) {
-                state.onExportRejected(key, now, ioSpeedMode);
-                continue;
-            }
-
-            long target = Math.min(requested, canAccept);
-            long affordable = PowerCostUtil.maxAffordable(grid, key, target);
-            if (affordable <= 0) {
-                state.onExportRejected(key, now, ioSpeedMode);
-                continue;
-            }
-
-            long extracted = me.extract(key, affordable, Actionable.MODULATE, src);
-            if (extracted <= 0) {
-                state.onExportRejected(key, now, ioSpeedMode);
-                continue;
-            }
-
-            long inserted = wrapper.insert(key, extracted, Actionable.MODULATE, src);
-            if (inserted > 0) {
-                PowerCostUtil.consume(grid, key, inserted);
-                state.onExportAccepted(key, now);
-                moved += inserted;
-            } else {
-                state.onExportRejected(key, now, ioSpeedMode);
-            }
-
-            long overflow = extracted - inserted;
-            if (overflow > 0) {
-                addToImportBuffer(key, overflow);
-                overflowed = true;
-            }
+            next = Math.min(next, transfer.untilTick);
         }
-
         var cd = state.cdFor(keyType, IoDirection.EXPORT);
         if (entries.isEmpty()) {
             cd.onFail(now, ioSpeedMode);
         } else {
-            long next = Long.MAX_VALUE;
-            for (var entry : entries) {
-                var rejection = state.exportRejects.get(entry.key());
-                next = Math.min(next, rejection == null ? now + 1 : rejection.untilTick);
-            }
             cd.cooldownUntil = Math.max(now + 1, next);
         }
-        if (overflowed) {
+        return moved;
+    }
+
+    private long exportKey(ExportTransferState transfer, ExportConfigEntry entry,
+                           MEStorage wrapper, MEStorage me, IActionSource src, long now) {
+        var key = entry.key();
+        long available = me.extract(key, entry.maxAmount(), Actionable.SIMULATE, src);
+        if (available <= 0) {
+            transfer.unavailable(now, ioSpeedMode);
+            return 0;
+        }
+        long requested = Math.min(entry.maxAmount(), available);
+        long canAccept = wrapper.insert(key, requested, Actionable.SIMULATE, src);
+        if (canAccept <= 0) {
+            transfer.rejected(now, ioSpeedMode);
+            return 0;
+        }
+        long target = Math.min(requested, canAccept);
+        var grid = getMainNode().getGrid();
+        long affordable = PowerCostUtil.maxAffordable(grid, key, target);
+        if (affordable <= 0) {
+            transfer.unavailable(now, ioSpeedMode);
+            return 0;
+        }
+        long extracted = me.extract(key, affordable, Actionable.MODULATE, src);
+        if (extracted <= 0) {
+            transfer.unavailable(now, ioSpeedMode);
+            return 0;
+        }
+        long inserted = wrapper.insert(key, extracted, Actionable.MODULATE, src);
+        if (inserted > 0) {
+            PowerCostUtil.consume(grid, key, inserted);
+            // Equal acceptance of a bounded request does not establish fullness.
+            // Only target-limited samples may infer a longer refill horizon.
+            boolean requestLimited = canAccept >= requested || affordable < target || extracted < affordable;
+            transfer.accepted(now, inserted, requestLimited, ioSpeedMode);
+        } else {
+            transfer.rejected(now, ioSpeedMode);
+        }
+        long overflow = extracted - inserted;
+        if (overflow > 0) {
+            addToImportBuffer(key, overflow);
             saveImportBufferChanges(now);
         }
-
-        return moved;
+        return inserted;
     }
 
     private List<ExportConfigEntry> exportEntriesForType(AEKeyType keyType, long now) {

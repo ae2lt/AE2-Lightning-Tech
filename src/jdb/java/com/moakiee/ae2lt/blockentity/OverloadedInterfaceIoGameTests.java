@@ -397,15 +397,25 @@ public final class OverloadedInterfaceIoGameTests {
 
     @GameTest(template = "wireless_io_empty", batch = "wireless_io_06_recovery", timeoutTicks = 240)
     public static void fastWirelessImportResumesAfterStorageRecovery(GameTestHelper helper) {
-        checkImportStorageRecovery(helper, false);
+        checkImportStorageRecovery(helper, false, false);
     }
 
     @GameTest(template = "wireless_io_empty", batch = "wireless_io_06_recovery", timeoutTicks = 240)
     public static void fastLocalImportResumesAfterStorageRecovery(GameTestHelper helper) {
-        checkImportStorageRecovery(helper, true);
+        checkImportStorageRecovery(helper, true, false);
     }
 
-    private static void checkImportStorageRecovery(GameTestHelper helper, boolean local) {
+    @GameTest(template = "wireless_io_empty", batch = "wireless_io_06_recovery", timeoutTicks = 240)
+    public static void fastWirelessImportRestartsAfterIdle(GameTestHelper helper) {
+        checkImportStorageRecovery(helper, false, true);
+    }
+
+    @GameTest(template = "wireless_io_empty", batch = "wireless_io_06_recovery", timeoutTicks = 240)
+    public static void fastLocalImportRestartsAfterIdle(GameTestHelper helper) {
+        checkImportStorageRecovery(helper, true, true);
+    }
+
+    private static void checkImportStorageRecovery(GameTestHelper helper, boolean local, boolean idleRestart) {
         var fixture = local ? createLocalFixture(helper, false) : createFixture(helper, 1, false);
         var owner = fixture.blockEntity;
         var target = fixture.inventories[0];
@@ -447,10 +457,9 @@ public final class OverloadedInterfaceIoGameTests {
                 if (observation.secondBatchInNetwork < 0 && stored >= 128) {
                     observation.secondBatchInNetwork = tick;
                 }
-                // Continue producing as soon as capacity has actually resumed,
-                // through the old 20-tick deadline. A separate idle/restart
-                // cycle would test cold polling policy rather than this wake.
-                long hotStart = observation.sourceDrained + 1;
+                // Exercise continuous recovery and the previously failing
+                // 25-tick idle gap as separate workloads with the same strict gates.
+                long hotStart = idleRestart ? observation.recovered + 25 : observation.sourceDrained + 1;
                 if (observation.sourceDrained >= 0 && tick >= hotStart && tick < hotStart + 40) {
                     if (target.isEmpty()) {
                         produceSingleKeyBatch(target);
@@ -469,9 +478,9 @@ public final class OverloadedInterfaceIoGameTests {
                 long networkWait = observation.secondBatchInNetwork - observation.recovered;
                 long resumeAfterCommit = observation.sourceDrained - observation.firstBatchInNetwork;
                 org.slf4j.LoggerFactory.getLogger("ae2lt-wireless-io-test").info(
-                        "Storage recovery local={}: recovered={}, oldBatchInNetwork={}, sourceDrained={}, "
+                        "Storage recovery local={}, idleRestart={}: recovered={}, oldBatchInNetwork={}, sourceDrained={}, "
                                 + "outputWait={}, networkWait={}, resumeAfterCommit={}, hotBlocked={}, produced={}",
-                        local, observation.recovered, observation.firstBatchInNetwork, observation.sourceDrained,
+                        local, idleRestart, observation.recovered, observation.firstBatchInNetwork, observation.sourceDrained,
                         outputWait, networkWait, resumeAfterCommit, observation.hotBlocked, observation.produced);
                 require(observation.sourceDrained >= 0 && outputWait <= 6, "source recovery wait " + outputWait);
                 require(observation.secondBatchInNetwork >= 0 && networkWait <= 11,
@@ -483,6 +492,130 @@ public final class OverloadedInterfaceIoGameTests {
                 helper.succeed();
             }
         });
+    }
+
+    @GameTest(template = "wireless_io_empty", batch = "wireless_io_07_refill", timeoutTicks = 300)
+    public static void wirelessExportFillsOnceAndBatchesRefills(GameTestHelper helper) {
+        checkFullExport(helper, false);
+    }
+
+    @GameTest(template = "wireless_io_empty", batch = "wireless_io_07_refill", timeoutTicks = 300)
+    public static void localExportFillsOnceAndBatchesRefills(GameTestHelper helper) {
+        checkFullExport(helper, true);
+    }
+
+    private static void checkFullExport(GameTestHelper helper, boolean local) {
+        var fixture = local ? createLocalFixture(helper, true) : createFixture(helper, 1);
+        var owner = fixture.blockEntity;
+        var target = fixture.inventories[0];
+        var stone = AEItemKey.of(Items.STONE);
+        long[] calls = {0}, consumed = {0};
+        helper.onEachTick(() -> {
+            long tick = helper.getTick();
+            if (tick < 40) return;
+            var storage = owner.getMainNode().getGrid().getStorageService().getInventory();
+            if (tick == 40) {
+                owner.setImportMode(ImportMode.OFF);
+                owner.getInterfaceLogic().getConfig().setStack(0, new appeng.api.stacks.GenericStack(stone, 64));
+                owner.setSlotUnlimited(0, true);
+                owner.setExportMode(ExportMode.AUTO);
+                require(storage.insert(stone, 100000, Actionable.MODULATE, IActionSource.empty()) == 100000,
+                        "export fixture source was not stocked");
+                countExportCalls(helper, fixture, local, calls);
+            }
+            if (tick == 43) {
+                require(remainingItems(fixture) == 27 * 64,
+                        "independent-key export did not fill the whole barrel in its first visit");
+            }
+            if (tick == 80) calls[0] = 0;
+            if (tick >= 60 && tick < 260 && tick % 5 == 0) {
+                int remaining = 64;
+                for (int slot = 0; slot < target.getContainerSize() && remaining > 0; slot++) {
+                    int count = Math.min(remaining, target.getItem(slot).getCount());
+                    target.removeItem(slot, count);
+                    remaining -= count;
+                }
+                require(remaining == 0, "refill timing left a processing opportunity idle at " + tick);
+                consumed[0] += 64;
+            }
+            require(storedAmount(storage, stone) + remainingItems(fixture) + bufferedAmount(owner)
+                            + consumed[0] == 100000,
+                    "refill changed per-tick item ownership");
+            if (tick == 260) {
+                require(consumed[0] == 40 * 64, "export missed its fixed production plan");
+                org.slf4j.LoggerFactory.getLogger("ae2lt-wireless-io-test").info(
+                        "Full export local={}: consumed={}, measuredTicks=180, insertCalls={}",
+                        local, consumed[0], calls[0]);
+                require(calls[0] > 0 && calls[0] <= 60,
+                        "180-tick refill window used too many physical calls: " + calls[0]);
+                helper.succeed();
+            }
+        });
+    }
+
+    @GameTest(template = "wireless_io_empty", batch = "wireless_io_07_refill", timeoutTicks = 140)
+    public static void missingExportKeyDoesNotBlockOtherKeys(GameTestHelper helper) {
+        var fixture = createFixture(helper, 1);
+        var owner = fixture.blockEntity;
+        var target = fixture.inventories[0];
+        var stone = AEItemKey.of(Items.STONE);
+        var dirt = AEItemKey.of(Items.DIRT);
+        helper.onEachTick(() -> {
+            long tick = helper.getTick();
+            if (tick < 40) return;
+            var storage = owner.getMainNode().getGrid().getStorageService().getInventory();
+            if (tick == 40) {
+                owner.setImportMode(ImportMode.OFF);
+                owner.getInterfaceLogic().getConfig().setStack(0, new appeng.api.stacks.GenericStack(stone, 64));
+                owner.getInterfaceLogic().getConfig().setStack(1, new appeng.api.stacks.GenericStack(dirt, 64));
+                owner.setSlotUnlimited(0, true);
+                owner.setSlotUnlimited(1, true);
+                owner.setExportMode(ExportMode.AUTO);
+                require(storage.insert(dirt, 10000, Actionable.MODULATE, IActionSource.empty()) == 10000,
+                        "independent-key fixture source was not stocked");
+            }
+            if (tick == 55) {
+                require(remainingItems(fixture) == 1728 && target.getItem(0).is(Items.DIRT),
+                        "missing stone blocked independently available dirt");
+            }
+            if (tick == 55) {
+                require(storedAmount(storage, dirt) + remainingItems(fixture) == 10000
+                                && storedAmount(storage, stone) == 0 && bufferedAmount(owner) == 0,
+                        "independent export changed per-key ownership");
+                helper.succeed();
+            }
+        });
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void countExportCalls(GameTestHelper helper, Fixture fixture, boolean local, long[] calls) {
+        var level = helper.getLevel();
+        var pos = ((net.minecraft.world.level.block.entity.BlockEntity) fixture.inventories[0]).getBlockPos();
+        var connection = new WirelessConnection(level.dimension(), pos, local ? Direction.NORTH : Direction.UP);
+        var state = new OverloadedInterfaceBlockEntity.ConnectionState();
+        var delegate = state.resolveWrappers(level, connection).get(AEKeyType.items());
+        // Keep the counter in the factory so normal 20-tick wrapper refreshes
+        // cannot silently stop measuring the production path.
+        state.storageStrategies = Map.of(AEKeyType.items(), (extractable, listener) -> new appeng.api.storage.MEStorage() {
+            @Override
+            public long insert(appeng.api.stacks.AEKey key, long amount, Actionable mode, IActionSource source) {
+                calls[0]++;
+                return delegate.insert(key, amount, mode, source);
+            }
+
+            @Override
+            public Component getDescription() { return delegate.getDescription(); }
+        });
+        state.storageWrappers = null;
+        try {
+            var field = OverloadedInterfaceBlockEntity.class.getDeclaredField(
+                    local ? "normalConnectionStates" : "connectionStates");
+            field.setAccessible(true);
+            var states = (Map<Object, OverloadedInterfaceBlockEntity.ConnectionState>) field.get(fixture.blockEntity);
+            states.put(local ? Direction.SOUTH : connection, state);
+        } catch (ReflectiveOperationException exception) {
+            throw new AssertionError("cannot install export call counter", exception);
+        }
     }
 
     @SuppressWarnings("unchecked")
