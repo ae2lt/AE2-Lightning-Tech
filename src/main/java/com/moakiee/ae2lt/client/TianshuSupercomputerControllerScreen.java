@@ -86,6 +86,10 @@ public class TianshuSupercomputerControllerScreen
                 capped ? COL_AMBER : COL_VALUE);
         y += LINE_H;
 
+        drawRow(graphics, y, Component.translatable("ae2lt.tianshu.gui.label_batch"),
+                formatCount(menu.getMaxCopiesPerTick()) + "/t", COL_VALUE);
+        y += LINE_H;
+
         drawRow(graphics, y, Component.translatable("ae2lt.tianshu.gui.label_loop"),
                 I18n.get("ae2lt.tianshu.gui.value_loop",
                         formatCount(menu.getClosedLoopPatternStorages()),
