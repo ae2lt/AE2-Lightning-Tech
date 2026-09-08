@@ -114,6 +114,8 @@ import com.moakiee.ae2lt.recipe.RecipeConflictScanner;
 import com.moakiee.ae2lt.logic.tianshu.loop.ClosedLoopPatternDecoder;
 
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.eventbus.api.EventPriority;
+import com.moakiee.ae2lt.debug.WirelessIoPerformanceProbe;
 import net.minecraftforge.event.server.ServerStartingEvent;
 import net.minecraftforge.event.server.ServerStoppedEvent;
 import net.minecraftforge.event.TickEvent;
@@ -416,6 +418,10 @@ public class AE2LightningTech {
 
         MinecraftForge.EVENT_BUS.addListener(this::onServerStarting);
         MinecraftForge.EVENT_BUS.addListener(this::onServerStopped);
+        if (WirelessIoPerformanceProbe.shouldMeasure()) {
+            MinecraftForge.EVENT_BUS.addListener(EventPriority.HIGHEST, this::onBenchmarkServerTickStart);
+            MinecraftForge.EVENT_BUS.addListener(EventPriority.LOWEST, this::onBenchmarkServerTickEnd);
+        }
         MinecraftForge.EVENT_BUS.addListener(this::onServerTick);
         MinecraftForge.EVENT_BUS.addGenericListener(BlockEntity.class, this::attachBlockEntityCapabilities);
         MinecraftForge.EVENT_BUS.addGenericListener(ItemStack.class, this::attachItemCapabilities);
@@ -1221,6 +1227,7 @@ public class AE2LightningTech {
     }
 
     private void onServerStopped(ServerStoppedEvent event) {
+        WirelessIoPerformanceProbe.finish(event.getServer());
         WirelessLinkRegistry.onServerStop();
         WirelessFrequencyManager.onServerStop();
         CRAFTING_CORE_REGISTRY.clear();
@@ -1231,6 +1238,14 @@ public class AE2LightningTech {
      * Forge 1.20.1 only has the combined ServerTickEvent; the NeoForge
      * ServerTickEvent.Post subclass does not exist. Filter by phase instead.
      */
+    private void onBenchmarkServerTickStart(TickEvent.ServerTickEvent event) {
+        if (event.phase == TickEvent.Phase.START) WirelessIoPerformanceProbe.beginServerTick();
+    }
+
+    private void onBenchmarkServerTickEnd(TickEvent.ServerTickEvent event) {
+        if (event.phase == TickEvent.Phase.END) WirelessIoPerformanceProbe.endServerTick(event.getServer());
+    }
+
     private void onServerTick(TickEvent.ServerTickEvent event) {
         if (event.phase != TickEvent.Phase.END) {
             return;
