@@ -4,7 +4,7 @@ import appeng.api.stacks.AEKey;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.InventoryMaintenanceStatus;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.ReservedStockMatchMode;
 import com.moakiee.ae2lt.logic.tianshu.terminal.MaintenanceEditorData;
-import com.moakiee.ae2lt.menu.TianshuPatternEncodingTermMenu;
+import com.moakiee.ae2lt.menu.TianshuMaintenanceMenu;
 import com.moakiee.ae2lt.network.NetworkInit;
 import java.util.ArrayList;
 import java.util.UUID;
@@ -98,8 +98,8 @@ public record MaintenanceEditorSyncPacket(
 
     public static void handle(MaintenanceEditorSyncPacket packet, IPayloadContext context) {
         context.enqueueWork(() -> {
-            if (context.player().containerMenu instanceof TianshuPatternEncodingTermMenu menu
-                    && menu.containerId == packet.containerId()) {
+            if (context.player().containerMenu instanceof TianshuMaintenanceMenu menu
+                    && menu.maintenanceMenu().containerId == packet.containerId()) {
                 menu.receiveMaintenanceEditorData(packet.selectionRevision(), packet.data());
             }
         });

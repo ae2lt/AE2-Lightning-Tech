@@ -181,6 +181,12 @@ public class JEIPlugin implements IModPlugin {
 
     @Override
     public void registerRecipeTransferHandlers(IRecipeTransferRegistration registration) {
+        registration.addUniversalRecipeTransferHandler(new TianshuCraftingTransferHandler<>(
+                com.moakiee.ae2lt.menu.TianshuCraftingTermMenu.class, com.moakiee.ae2lt.menu.TianshuCraftingTermMenu.TYPE,
+                registration.getTransferHelper()));
+        registration.addUniversalRecipeTransferHandler(new TianshuCraftingTransferHandler<>(
+                com.moakiee.ae2lt.menu.TianshuWirelessCraftingTermMenu.class, com.moakiee.ae2lt.menu.TianshuWirelessCraftingTermMenu.TYPE,
+                registration.getTransferHelper()));
         if (!ModList.get().isLoaded(AE2_JEI_INTEGRATION_MODID)) {
             return;
         }
@@ -201,6 +207,8 @@ public class JEIPlugin implements IModPlugin {
 
     @Override
     public void registerGuiHandlers(IGuiHandlerRegistration registration) {
+        registration.addGhostIngredientHandler(com.moakiee.ae2lt.client.TianshuCraftingTermScreen.class,
+                new TianshuCraftingGhostHandler());
         registration.addGuiContainerHandler(LightningAssemblyChamberScreen.class,
                 clickableAreaHandler(83, 22, 42, 46, LightningAssemblyCategory.TYPE));
         registration.addGuiContainerHandler(LightningSimulationChamberScreen.class,

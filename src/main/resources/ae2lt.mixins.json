@@ -4,6 +4,7 @@
   "package": "com.moakiee.ae2lt.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
+    "OverloadAlloyAnvilMenuMixin",
     "ServerLevelMixin",
     "AEBaseMenuManagedSlotClickMixin",
     "AnnihilationPlaneFirmamentDustMixin",
@@ -34,7 +35,8 @@
     "thunderbolt.AdvCraftingCpuLogicMixin",
     "thunderbolt.ECOCraftingCpuLogicMixin",
     "ControllerValidatorMixin",
-    "ShulkerBulletMixin"
+    "ShulkerBulletMixin",
+    "TianshuStonecutterMenuMixin"
   ],
   "client": [
     "client.CableBusRenderStateMixin",

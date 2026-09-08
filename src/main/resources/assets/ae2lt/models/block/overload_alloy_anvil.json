@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/anvil",
+  "textures": {
+    "body": "ae2lt:block/overload_machine_frame"
+  }
+}

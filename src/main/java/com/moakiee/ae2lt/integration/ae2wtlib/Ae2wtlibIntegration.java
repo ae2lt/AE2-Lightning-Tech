@@ -25,6 +25,8 @@ import de.mari_023.ae2wtlib.api.registration.WTDefinition;
  */
 public final class Ae2wtlibIntegration {
     public static final String TIANSHU_TERMINAL_NAME = "tianshu_pattern_encoding";
+    public static final String TIANSHU_CRAFTING_NAME = "tianshu_crafting";
+    private static com.moakiee.ae2lt.item.TianshuWirelessCraftingTerminalItem craftingTerminal;
     private static final Icon TIANSHU_TERMINAL_ICON = new Icon(
             0, 0, 16, 16,
             new Icon.Texture(ResourceLocation.fromNamespaceAndPath(
@@ -55,6 +57,11 @@ public final class Ae2wtlibIntegration {
         return tianshuTerminal;
     }
 
+    public static synchronized com.moakiee.ae2lt.item.TianshuWirelessCraftingTerminalItem craftingTerminal() {
+        if (craftingTerminal == null) craftingTerminal = new com.moakiee.ae2lt.item.TianshuWirelessCraftingTerminalItem();
+        return craftingTerminal;
+    }
+
     /**
      * Installs the handler when the item registry opens. Delaying registration until this point
      * lets AE2WTLib add its built-in terminals first, which also determines the selector order.
@@ -77,11 +84,20 @@ public final class Ae2wtlibIntegration {
                         terminal(),
                         TIANSHU_TERMINAL_ICON)
                 .addTerminal());
+        AddTerminalEvent.register(event -> event.builder(TIANSHU_CRAFTING_NAME,
+                        com.moakiee.ae2lt.logic.tianshu.terminal.TianshuWirelessCraftingTermMenuHost::new,
+                        com.moakiee.ae2lt.menu.TianshuWirelessCraftingTermMenu.TYPE,
+                        craftingTerminal(), de.mari_023.ae2wtlib.api.gui.Icon.CRAFTING)
+                .addTerminal());
         terminalRegistrationRequested = true;
     }
 
     /** Fails fast if an incompatible API/event ordering prevented the definition from registering. */
     public static void verifyTerminalRegistration() {
+        if (!WTDefinition.exists(TIANSHU_CRAFTING_NAME)
+                || WTDefinition.of(TIANSHU_CRAFTING_NAME).item() != ModItems.TIANSHU_WIRELESS_CRAFTING_TERMINAL.get()) {
+            throw new IllegalStateException("AE2WTLib did not register the wireless Tianshu crafting terminal");
+        }
         if (!WTDefinition.exists(TIANSHU_TERMINAL_NAME)
                 || WTDefinition.of(TIANSHU_TERMINAL_NAME).item()
                         != ModItems.TIANSHU_WIRELESS_PATTERN_ENCODING_TERMINAL.get()) {
@@ -97,5 +113,6 @@ public final class Ae2wtlibIntegration {
      */
     public static void register() {
         UpgradeHelper.addUpgradeToAllTerminals(ModItems.OVERLOADED_FREQUENCY_CARD.get(), 1);
+        if (net.neoforged.fml.ModList.get().isLoaded("ae2wtlib")) TianshuWctIntegration.registerUpgrades();
     }
 }

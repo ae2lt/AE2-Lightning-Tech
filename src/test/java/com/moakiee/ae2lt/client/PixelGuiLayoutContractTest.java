@@ -231,9 +231,9 @@ final class PixelGuiLayoutContractTest {
         assertEquals(0x00000000, image.getRGB(319, 319));
 
         String terminal = Files.readString(Path.of(
-                "src/main/java/com/moakiee/ae2lt/client/TianshuPatternEncodingTermScreen.java"));
+                "src/main/java/com/moakiee/ae2lt/client/TianshuMaintenanceTermScreen.java"));
         String menu = Files.readString(Path.of(
-                "src/main/java/com/moakiee/ae2lt/menu/TianshuPatternEncodingTermMenu.java"));
+                "src/main/java/com/moakiee/ae2lt/menu/TianshuMaintenanceSession.java"));
         String overview = Files.readString(Path.of(
                 "src/main/java/com/moakiee/ae2lt/client/TianshuGlobalReserveScreen.java"));
         String rule = Files.readString(Path.of(

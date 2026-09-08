@@ -1,6 +1,6 @@
 package com.moakiee.ae2lt.network.tianshu;
 
-import com.moakiee.ae2lt.menu.TianshuPatternEncodingTermMenu;
+import com.moakiee.ae2lt.menu.TianshuMaintenanceMenu;
 import com.moakiee.ae2lt.network.NetworkInit;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
@@ -30,8 +30,8 @@ public record OpenMaintenanceEditorPacket(
 
     public static void handle(OpenMaintenanceEditorPacket packet, IPayloadContext context) {
         context.enqueueWork(() -> {
-            if (context.player().containerMenu instanceof TianshuPatternEncodingTermMenu menu
-                    && menu.containerId == packet.containerId()) {
+            if (context.player().containerMenu instanceof TianshuMaintenanceMenu menu
+                    && menu.maintenanceMenu().containerId == packet.containerId()) {
                 menu.openMaintenanceEditor(packet.selectionRevision(), packet.key());
             }
         });

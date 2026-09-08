@@ -1,0 +1,22 @@
+{
+  "$schema": "../schema.json",
+  "includes": [
+    "crafting_terminal.json",
+    "tianshu_work_pages.json"
+  ],
+  "slots": {
+    "TOOLBOX": {
+      "right": -1,
+      "bottom": 84,
+      "grid": "BREAK_AFTER_3COLS"
+    }
+  },
+  "widgets": {
+    "toolbox": {
+      "right": 0,
+      "bottom": 90,
+      "width": 59,
+      "height": 66
+    }
+  }
+}

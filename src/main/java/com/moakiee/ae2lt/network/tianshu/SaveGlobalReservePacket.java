@@ -2,7 +2,7 @@ package com.moakiee.ae2lt.network.tianshu;
 
 import appeng.api.stacks.AEKey;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.ReservedStockMatchMode;
-import com.moakiee.ae2lt.menu.TianshuPatternEncodingTermMenu;
+import com.moakiee.ae2lt.menu.TianshuMaintenanceMenu;
 import com.moakiee.ae2lt.network.NetworkInit;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
@@ -36,8 +36,8 @@ public record SaveGlobalReservePacket(
 
     public static void handle(SaveGlobalReservePacket packet, IPayloadContext context) {
         context.enqueueWork(() -> {
-            if (context.player().containerMenu instanceof TianshuPatternEncodingTermMenu menu
-                    && menu.containerId == packet.containerId()) menu.saveGlobalReserve(packet);
+            if (context.player().containerMenu instanceof TianshuMaintenanceMenu menu
+                    && menu.maintenanceMenu().containerId == packet.containerId()) menu.saveGlobalReserve(packet);
         });
     }
 }

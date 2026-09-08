@@ -1,0 +1,17 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "ae2wtlib"
+    }
+  ],
+  "type": "ae2wtlib:combine",
+  "terminalA": {
+    "item": "ae2lt:wireless_tianshu_pattern_encoding_terminal"
+  },
+  "terminalB": {
+    "item": "ae2lt:wireless_tianshu_crafting_terminal"
+  },
+  "terminalAName": "tianshu_pattern_encoding",
+  "terminalBName": "tianshu_crafting"
+}

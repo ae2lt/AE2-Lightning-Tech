@@ -1,0 +1,41 @@
+{
+  "$schema": "schema.json",
+  "includes": [
+    "terminals/tianshu_crafting_terminal.json",
+    "wtlib/universal_terminal.json"
+  ],
+  "slots": {
+    "AE2WTLIB_HELMET": {
+      "left": -10000,
+      "top": -10000
+    },
+    "AE2WTLIB_CHESTPLATE": {
+      "left": -10000,
+      "top": -10000
+    },
+    "AE2WTLIB_LEGGINGS": {
+      "left": -10000,
+      "top": -10000
+    },
+    "AE2WTLIB_BOOTS": {
+      "left": -10000,
+      "top": -10000
+    },
+    "AE2WTLIB_OFFHAND": {
+      "left": -10000,
+      "top": -10000
+    },
+    "AE2WTLIB_TRASH": {
+      "left": -10000,
+      "top": -10000
+    },
+    "AE2WTLIB_PICKUP_CONFIG": {
+      "left": -10000,
+      "top": -10000
+    },
+    "AE2WTLIB_INSERT_CONFIG": {
+      "left": -10000,
+      "top": -10000
+    }
+  }
+}
