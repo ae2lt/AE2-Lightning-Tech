@@ -240,6 +240,11 @@ public class OverloadedInterfaceBlockEntity extends InterfaceBlockEntity
             if (elapsed >= 0 && elapsed < ACTIVE_LEARNING_TICKS) {
                 cooldownUntil = now + Math.max(1, predictedGap - (int) elapsed);
             } else {
+                // TODO: Improve first-output / long-idle detection without increasing empty polling.
+                // FAST's 20-tick cap permits a 19-tick cold wait; the two strict cold-start
+                // GameTests remain known failures. A 5-tick cap would quadruple steady idle
+                // visits, so retain this budget pending an external inventory-change signal
+                // or a separately evaluated polling tradeoff. See wireless-io-alpha3-test-port.md.
                 int maximum = mode == IOSpeedMode.FAST ? FAST_CD_MAX : NORMAL_CD_MAX;
                 idleDelay = Math.min(maximum, idleDelay + Math.max(1, maximum / 10));
                 cooldownUntil = now + idleDelay;
