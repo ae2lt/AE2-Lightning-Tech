@@ -2,25 +2,28 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "pattern": [
-    "AEA",
-    "DCD",
-    "ABA"
+    "RPR",
+    "GSG",
+    "ICI"
   ],
   "key": {
-    "A": {
-      "item": "ae2:charged_certus_quartz_crystal"
+    "R": {
+      "item": "ae2:crystal_resonance_generator"
     },
-    "B": {
-      "item": "ae2:vibration_chamber"
-    },
-    "C": {
-      "item": "ae2:growth_accelerator"
-    },
-    "D": {
+    "P": {
       "item": "ae2lt:pigmee_fumo"
     },
-    "E": {
-      "item": "ae2:crystal_resonance_generator"
+    "G": {
+      "item": "ae2:growth_accelerator"
+    },
+    "S": {
+      "item": "ae2:cell_component_1k"
+    },
+    "I": {
+      "item": "minecraft:iron_ingot"
+    },
+    "C": {
+      "item": "minecraft:copper_ingot"
     }
   },
   "result": {
