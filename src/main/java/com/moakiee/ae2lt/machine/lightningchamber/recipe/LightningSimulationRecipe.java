@@ -1,5 +1,6 @@
 package com.moakiee.ae2lt.machine.lightningchamber.recipe;
 
+import com.moakiee.ae2lt.util.LargeStackStreamCodecs;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import java.util.ArrayList;
@@ -351,7 +352,7 @@ public final class LightningSimulationRecipe implements Recipe<LightningSimulati
                     recipeId,
                     buffer.readInt(),
                     inputs,
-                    buffer.readItem(),
+                    LargeStackStreamCodecs.readItemStack(buffer),
                     buffer.readLong(),
                     buffer.readInt(),
                     buffer.readEnum(LightningKey.Tier.class));
@@ -364,7 +365,7 @@ public final class LightningSimulationRecipe implements Recipe<LightningSimulati
                 input.toNetwork(buffer);
             }
             buffer.writeInt(recipe.priority());
-            buffer.writeItem(recipe.rawResult());
+            LargeStackStreamCodecs.writeItemStack(buffer, recipe.rawResult());
             buffer.writeLong(recipe.totalEnergy());
             buffer.writeInt(recipe.lightningCost());
             buffer.writeEnum(recipe.lightningTier());

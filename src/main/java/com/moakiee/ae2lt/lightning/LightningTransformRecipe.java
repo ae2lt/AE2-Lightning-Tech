@@ -1,5 +1,6 @@
 package com.moakiee.ae2lt.lightning;
 
+import com.moakiee.ae2lt.util.LargeStackStreamCodecs;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import java.util.ArrayList;
@@ -304,7 +305,7 @@ public final class LightningTransformRecipe implements Recipe<LightningTransform
                 inputs.add(CountedIngredient.fromNetwork(buffer));
             }
 
-            return new LightningTransformRecipe(recipeId, priority, inputs, buffer.readItem());
+            return new LightningTransformRecipe(recipeId, priority, inputs, LargeStackStreamCodecs.readItemStack(buffer));
         }
 
         @Override
@@ -314,7 +315,7 @@ public final class LightningTransformRecipe implements Recipe<LightningTransform
             for (CountedIngredient input : recipe.inputs()) {
                 input.toNetwork(buffer);
             }
-            buffer.writeItem(recipe.rawResult());
+            LargeStackStreamCodecs.writeItemStack(buffer, recipe.rawResult());
         }
     }
 }

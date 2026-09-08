@@ -1,5 +1,6 @@
 package com.moakiee.ae2lt.machine.overloadfactory.recipe;
 
+import com.moakiee.ae2lt.util.LargeStackStreamCodecs;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import java.util.ArrayList;
@@ -500,7 +501,7 @@ public final class OverloadProcessingRecipe implements Recipe<OverloadProcessing
             int resultCount = buffer.readInt();
             List<ItemStack> itemResults = new ArrayList<>(resultCount);
             for (int i = 0; i < resultCount; i++) {
-                itemResults.add(buffer.readItem());
+                itemResults.add(LargeStackStreamCodecs.readItemStack(buffer));
             }
 
             FluidStack resultFluid = buffer.readBoolean() ? buffer.readFluidStack() : FluidStack.EMPTY;
@@ -532,7 +533,7 @@ public final class OverloadProcessingRecipe implements Recipe<OverloadProcessing
 
             buffer.writeInt(recipe.rawItemResults().size());
             for (ItemStack itemResult : recipe.rawItemResults()) {
-                buffer.writeItem(itemResult);
+                LargeStackStreamCodecs.writeItemStack(buffer, itemResult);
             }
 
             FluidStack resultFluid = recipe.rawFluidResult();

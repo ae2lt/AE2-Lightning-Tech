@@ -9,6 +9,7 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 
+import com.moakiee.ae2lt.util.LargeStackNbt;
 import com.moakiee.ae2lt.me.key.LightningKey;
 
 public final class CrystalCatalyzerLockedRecipe {
@@ -97,7 +98,7 @@ public final class CrystalCatalyzerLockedRecipe {
     public CompoundTag toTag() {
         CompoundTag tag = new CompoundTag();
         tag.putString(TAG_RECIPE_ID, recipeId.toString());
-        tag.put(TAG_OUTPUT, output.save(new CompoundTag()));
+        tag.put(TAG_OUTPUT, LargeStackNbt.save(output));
         tag.putInt(TAG_ENERGY, energyPerCycle);
         tag.putInt(TAG_OUTPUT_MULTIPLIER, outputMultiplier);
         tag.putInt(TAG_LIGHTNING_COST, lightningCost);
@@ -118,7 +119,7 @@ public final class CrystalCatalyzerLockedRecipe {
             return null;
         }
 
-        ItemStack output = ItemStack.of(tag.getCompound(TAG_OUTPUT));
+        ItemStack output = LargeStackNbt.load(tag.getCompound(TAG_OUTPUT));
         if (output.isEmpty()) {
             return null;
         }

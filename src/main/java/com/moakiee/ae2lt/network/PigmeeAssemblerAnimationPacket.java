@@ -2,6 +2,7 @@ package com.moakiee.ae2lt.network;
 
 import java.util.function.Supplier;
 
+import com.moakiee.ae2lt.util.LargeStackStreamCodecs;
 import com.moakiee.ae2lt.client.ClientNetworkPacketHandlers;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
@@ -18,13 +19,13 @@ public record PigmeeAssemblerAnimationPacket(
         return new PigmeeAssemblerAnimationPacket(
                 buffer.readBlockPos(),
                 buffer.readByte(),
-                buffer.readItem());
+                LargeStackStreamCodecs.readItemStack(buffer));
     }
 
     public void write(FriendlyByteBuf buffer) {
         buffer.writeBlockPos(pos);
         buffer.writeByte(speed);
-        buffer.writeItem(output);
+        LargeStackStreamCodecs.writeItemStack(buffer, output);
     }
 
     public static void handle(

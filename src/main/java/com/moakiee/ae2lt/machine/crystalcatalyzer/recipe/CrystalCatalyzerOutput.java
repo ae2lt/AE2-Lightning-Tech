@@ -1,5 +1,6 @@
 package com.moakiee.ae2lt.machine.crystalcatalyzer.recipe;
 
+import com.moakiee.ae2lt.util.LargeStackStreamCodecs;
 import com.google.gson.JsonObject;
 import java.util.Iterator;
 import net.minecraft.core.Holder;
@@ -58,7 +59,7 @@ public sealed interface CrystalCatalyzerOutput
     static void encode(FriendlyByteBuf buf, CrystalCatalyzerOutput output) {
         if (output instanceof OfItem item) {
             buf.writeBoolean(false);
-            buf.writeItem(item.stack());
+            LargeStackStreamCodecs.writeItemStack(buf, item.stack());
             return;
         }
         if (output instanceof OfTag tag) {
@@ -76,7 +77,7 @@ public sealed interface CrystalCatalyzerOutput
             int count = buf.readInt();
             return new OfTag(TagKey.create(Registries.ITEM, tagId), count);
         }
-        ItemStack stack = buf.readItem();
+        ItemStack stack = LargeStackStreamCodecs.readItemStack(buf);
         return new OfItem(stack);
     }
 

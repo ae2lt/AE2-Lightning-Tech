@@ -14,6 +14,7 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 
+import com.moakiee.ae2lt.util.LargeStackNbt;
 import com.moakiee.ae2lt.machine.firmament.FirmamentConversionInventory;
 
 public final class FirmamentConversionLockedRecipe {
@@ -98,7 +99,7 @@ public final class FirmamentConversionLockedRecipe {
         tag.putString(TAG_RECIPE_ID, recipeId.toString());
         ListTag resultTags = new ListTag();
         for (ItemStack result : results) {
-            resultTags.add(result.save(new CompoundTag()));
+            resultTags.add(LargeStackNbt.save(result));
         }
         tag.put(TAG_RESULTS, resultTags);
         tag.putInt(TAG_PROCESS_TIME, processTime);
@@ -139,7 +140,7 @@ public final class FirmamentConversionLockedRecipe {
 
             List<ItemStack> results = new ArrayList<>(resultTags.size());
             for (int index = 0; index < resultTags.size(); index++) {
-                ItemStack result = ItemStack.of(resultTags.getCompound(index));
+                ItemStack result = LargeStackNbt.load(resultTags.getCompound(index));
                 if (result.isEmpty()) {
                     return List.of();
                 }
@@ -149,7 +150,7 @@ public final class FirmamentConversionLockedRecipe {
         }
 
         if (tag.contains(TAG_RESULT, Tag.TAG_COMPOUND)) {
-            ItemStack result = ItemStack.of(tag.getCompound(TAG_RESULT));
+            ItemStack result = LargeStackNbt.load(tag.getCompound(TAG_RESULT));
             return result.isEmpty() ? List.of() : List.of(result);
         }
 

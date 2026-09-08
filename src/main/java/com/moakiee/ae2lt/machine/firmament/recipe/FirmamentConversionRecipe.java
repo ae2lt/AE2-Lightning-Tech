@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
+import com.moakiee.ae2lt.util.LargeStackStreamCodecs;
 import com.google.gson.JsonObject;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.JsonOps;
@@ -350,7 +351,7 @@ public final class FirmamentConversionRecipe implements Recipe<FirmamentConversi
             int resultCount = buf.readVarInt();
             List<ItemStack> results = new ArrayList<>(resultCount);
             for (int i = 0; i < resultCount; i++) {
-                results.add(buf.readItem());
+                results.add(LargeStackStreamCodecs.readItemStack(buf));
             }
             int processTime = buf.readVarInt();
             FirmamentConversionRecipe recipe =
@@ -369,7 +370,7 @@ public final class FirmamentConversionRecipe implements Recipe<FirmamentConversi
             }
             buf.writeVarInt(recipe.results.size());
             for (var result : recipe.results) {
-                buf.writeItem(result);
+                LargeStackStreamCodecs.writeItemStack(buf, result);
             }
             buf.writeVarInt(recipe.processTime);
         }

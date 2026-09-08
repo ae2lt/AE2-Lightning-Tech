@@ -11,6 +11,7 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 
+import com.moakiee.ae2lt.util.LargeStackNbt;
 import com.moakiee.ae2lt.machine.lightningassembly.LightningAssemblyChamberInventory;
 import com.moakiee.ae2lt.me.key.LightningKey;
 
@@ -103,7 +104,7 @@ public final class LightningAssemblyLockedRecipe {
     public CompoundTag toTag() {
         CompoundTag tag = new CompoundTag();
         tag.putString(TAG_RECIPE_ID, recipeId.toString());
-        tag.put(TAG_RESULT, result.save(new CompoundTag()));
+        tag.put(TAG_RESULT, LargeStackNbt.save(result));
         tag.putLong(TAG_TOTAL_ENERGY, totalEnergy);
         tag.putInt(TAG_LIGHTNING_COST, lightningCost);
         tag.putString(TAG_LIGHTNING_TIER, lightningTier.getSerializedName());
@@ -117,7 +118,7 @@ public final class LightningAssemblyLockedRecipe {
             return null;
         }
 
-        ItemStack result = ItemStack.of(tag.getCompound(TAG_RESULT));
+        ItemStack result = LargeStackNbt.load(tag.getCompound(TAG_RESULT));
         if (result.isEmpty()) {
             return null;
         }

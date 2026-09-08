@@ -29,7 +29,9 @@ public final class LargeStackStreamCodecs {
             return ItemStack.EMPTY;
         }
 
-        return stack.copyWithCount(count);
+        // readItem creates a fresh stack; restore its count without copying its NBT again.
+        stack.setCount(count);
+        return stack;
     }
 
     static void writeStackCount(FriendlyByteBuf buffer, int count) {

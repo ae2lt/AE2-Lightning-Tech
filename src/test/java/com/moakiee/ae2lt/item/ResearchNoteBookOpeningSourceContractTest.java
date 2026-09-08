@@ -48,7 +48,7 @@ class ResearchNoteBookOpeningSourceContractTest {
     }
 
     @Test
-    void openPacketIsAppendedAsAClientboundProtocolThreeMessage() throws Exception {
+    void openPacketRemainsLastInTheCurrentProtocol() throws Exception {
         String network = source("src/main/java/com/moakiee/ae2lt/network/NetworkInit.java");
         List<String> expectedOrder = List.of(
                 "WirelessConnectorUsePacket",
@@ -102,7 +102,7 @@ class ResearchNoteBookOpeningSourceContractTest {
         int openPacket = network.indexOf("OpenResearchNotePacket.class");
         int direction = network.indexOf("Optional.of(NetworkDirection.PLAY_TO_CLIENT)", openPacket);
 
-        assertTrue(network.contains("PROTOCOL_VERSION = \"3\""));
+        assertTrue(network.contains("PROTOCOL_VERSION = \"4\""));
         assertTrue(direction > openPacket, "The research-note packet must only travel to clients");
         assertEquals(expectedOrder, actualOrder,
                 "Existing packet discriminators must remain stable and the new packet must stay last");
