@@ -1,6 +1,3 @@
 {
-  "parent": "ae2lt:block/pigmee_crystal_catalyzer_off",
-  "textures": {
-    "crystal": "ae2:item/certus_quartz_crystal_charged"
-  }
+  "parent": "ae2lt:block/pigmee_crystal_catalyzer_off"
 }

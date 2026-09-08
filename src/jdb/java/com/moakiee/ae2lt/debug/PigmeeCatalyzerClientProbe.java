@@ -42,6 +42,7 @@ public final class PigmeeCatalyzerClientProbe {
     public static void tick(ClientTickEvent.Post event) {
         if (!Boolean.getBoolean("ae2lt.pigmeeCatalyzerClientProbe") || finished) return;
         var mc = Minecraft.getInstance();
+        mc.options.pauseOnLostFocus = false;
         if (mc.player == null || mc.getSingleplayerServer() == null) return;
         if (++ticks % 40 != 0) return;
         try {
@@ -137,6 +138,29 @@ public final class PigmeeCatalyzerClientProbe {
                 }
                 case 9 -> {
                     capture("pigmee-catalyzer-emi.png");
+                    mc.player.closeContainer();
+                    mc.options.hideGui = true;
+                    onServer(() -> {
+                        var player = mc.getSingleplayerServer().getPlayerList().getPlayer(mc.player.getUUID());
+                        player.setGameMode(GameType.SPECTATOR);
+                        player.teleportTo(player.serverLevel(), .5, 102.2, .5, java.util.Set.of(), 180, 90);
+                    });
+                }
+                case 10 -> {
+                    capture("pigmee-catalyzer-top.png");
+                    onServer(() -> {
+                        var player = mc.getSingleplayerServer().getPlayerList().getPlayer(mc.player.getUUID());
+                        player.teleportTo(player.serverLevel(), 2.6, 101.8, 3.2, java.util.Set.of(), 142, 43);
+                    });
+                }
+                case 11 -> {
+                    capture("pigmee-catalyzer-angled.png");
+                    mc.options.hideGui = false;
+                    onServer(() -> {
+                        var player = mc.getSingleplayerServer().getPlayerList().getPlayer(mc.player.getUUID());
+                        player.setGameMode(GameType.SURVIVAL);
+                        player.teleportTo(player.serverLevel(), 2.6, 100, 4.3, java.util.Set.of(), 151, 18);
+                    });
                     report("PASS: real world model and screen loaded; item capability insertion, water-bucket client packet, "
                             + "empty-bucket return, hidden matrix slot, crystal-mode lock, zero FE, synchronized progress, "
                             + "16 output / 1000 mB water / 64 retained catalysts; shared recipe still declares "

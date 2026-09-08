@@ -1,12 +1,12 @@
 {
   "format_version": "1.9.0",
-  "credit": "Geometry by TedXenon; Pigmee texture mapping uses existing AE2LT family and AE2 crystal assets",
+  "credit": "Geometry by TedXenon; Pigmee family casing with user-selected coral-pink top",
   "parent": "block/block",
   "render_type": "cutout",
   "texture_size": [16, 16],
   "textures": {
     "frame": "ae2lt:block/pigmee_pattern_provider_side",
-    "crystal": "ae2:item/certus_quartz_crystal",
+    "top": "ae2lt:block/pigmee_crystal_catalyzer_top",
     "particle": "ae2lt:block/pigmee_pattern_provider_side"
   },
   "elements": [
@@ -32,7 +32,7 @@
         "east": {"uv": [0, 0, 16, 3], "texture": "#frame", "cullface": "east"},
         "south": {"uv": [0, 0, 16, 3], "texture": "#frame", "cullface": "south"},
         "west": {"uv": [0, 0, 16, 3], "texture": "#frame", "cullface": "west"},
-        "up": {"uv": [0, 0, 16, 16], "texture": "#frame", "cullface": "up"},
+        "up": {"uv": [0, 0, 16, 16], "texture": "#top", "cullface": "up"},
         "down": {"uv": [0, 0, 16, 16], "texture": "#frame"}
       }
     },
@@ -247,14 +247,6 @@
         "east": {"uv": [3, 0, 13, 3], "texture": "#frame"},
         "south": {"uv": [3, 0, 13, 3], "texture": "#frame"},
         "west": {"uv": [3, 0, 13, 3], "texture": "#frame"}
-      }
-    },
-    {
-      "name": "certus_emblem",
-      "from": [3, 16.01, 3],
-      "to": [13, 16.01, 13],
-      "faces": {
-        "up": {"uv": [0, 0, 16, 16], "texture": "#crystal"}
       }
     }
   ],
