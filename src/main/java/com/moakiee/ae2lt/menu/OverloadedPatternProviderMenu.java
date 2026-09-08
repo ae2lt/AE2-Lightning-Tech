@@ -74,6 +74,9 @@ public class OverloadedPatternProviderMenu extends PatternProviderMenu implement
     @GuiSync(22010)
     public int adaptiveBatchEnabled;
 
+    @GuiSync(22011)
+    public int machineParallelism = 1;
+
     @GuiSync(22004)
     public int currentPage;
 
@@ -100,6 +103,7 @@ public class OverloadedPatternProviderMenu extends PatternProviderMenu implement
         registerClientAction("toggleWirelessSpeedMode", this::toggleWirelessSpeedMode);
         registerClientAction("toggleFilteredImport", this::toggleFilteredImport);
         registerClientAction("toggleAdaptiveBatch", this::toggleAdaptiveBatch);
+        registerClientAction("setMachineParallelism", Integer.class, this::setMachineParallelism);
         registerClientAction("cycleBlockingMode", this::cycleBlockingMode);
         registerClientAction("nextPage", this::nextPage);
         registerClientAction("prevPage", this::prevPage);
@@ -137,6 +141,7 @@ public class OverloadedPatternProviderMenu extends PatternProviderMenu implement
             wirelessSpeedMode = be.getWirelessSpeedMode().ordinal();
             blockingMode = getBlockingState(be);
             adaptiveBatchEnabled = be.isAdaptiveBatchEnabled() ? 1 : 0;
+            machineParallelism = be.getMachineParallelism();
             syncUiProfile(be);
             var logic = (OverloadedPatternProviderLogic) be.getLogic();
             currentPage = logic.getCurrentPage();
@@ -188,6 +193,17 @@ public class OverloadedPatternProviderMenu extends PatternProviderMenu implement
             if (!isFilteredImportVisible(be)) return;
             be.setFilteredImport(!be.isFilteredImport());
         }
+    }
+
+    private void setMachineParallelism(int value) {
+        if (isServerSide() && host instanceof OverloadedPatternProviderBlockEntity be) {
+            if (!isWirelessTuningVisible(be)) return;
+            be.setMachineParallelism(value);
+        }
+    }
+
+    public void clientSetMachineParallelism(int value) {
+        sendClientAction("setMachineParallelism", value);
     }
 
     private void toggleAdaptiveBatch() {

@@ -11,6 +11,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 
 import org.jetbrains.annotations.Nullable;
+import it.unimi.dsi.fastutil.objects.Reference2LongLinkedOpenHashMap;
 
 import appeng.api.crafting.IPatternDetails;
 
@@ -24,6 +25,9 @@ final class ProviderWirelessDispatch {
     private static final int COOLDOWN_MAX = 40;
     private static final int COOLDOWN_NEAR_BAND = 4;
     private static final int COOLDOWN_STABLE_SUCCESSES = 2;
+    private static final int REJECTION_HISTORY_TICKS = 100;
+    private static final int IDLE_PATTERN_TICKS = 100;
+    private static final int PATTERN_CLEANUP_BUDGET = 4;
     private static final float[] PROBE_LEVELS =
             {5f, 3f, 2f, 1f, 0.5f, 0.3f, 0.1f};
 
@@ -45,14 +49,27 @@ final class ProviderWirelessDispatch {
             new HashMap<>();
     private final DueTaskQueue<TargetPatternKey<WirelessConnection>> penaltyExpirations =
             new DueTaskQueue<>();
+    // Access order finds cold patterns without scanning hot ones. One primitive
+    // timestamp per pattern, never one expiry object per dispatch.
+    private final Reference2LongLinkedOpenHashMap<IPatternDetails> patternActivity =
+            new Reference2LongLinkedOpenHashMap<>();
+    private final Runnable wakeMaintenance;
+    private final Runnable saveHistoryChanges;
+    private long lastMaintenanceTick = Long.MIN_VALUE;
 
     private List<WirelessConnection> validReference = List.of();
     private boolean structuresDirty = true;
     private long lastWheelTick = -1L;
     private long topologyVersion;
 
-    @SuppressWarnings("unchecked")
     ProviderWirelessDispatch() {
+        this(() -> {}, () -> {});
+    }
+
+    @SuppressWarnings("unchecked")
+    ProviderWirelessDispatch(Runnable wakeMaintenance, Runnable saveHistoryChanges) {
+        this.wakeMaintenance = wakeMaintenance;
+        this.saveHistoryChanges = saveHistoryChanges;
         wheel = new List[WHEEL_SIZE];
         for (int i = 0; i < wheel.length; i++) {
             wheel[i] = new ArrayList<>();
@@ -84,6 +101,7 @@ final class ProviderWirelessDispatch {
 
     DispatchFairnessScheduler<WirelessConnection, IPatternDetails>.Pass beginFairPass(
             IPatternDetails pattern, long gameTick) {
+        touchPattern(pattern, gameTick);
         return fairness.beginPass(
                 pattern, validReference, topologyVersion, gameTick);
     }
@@ -98,7 +116,8 @@ final class ProviderWirelessDispatch {
             return Long.MIN_VALUE;
         }
         var penalty = byPattern.get(pattern);
-        return penalty == null ? Long.MIN_VALUE : penalty.retryAfter;
+        return penalty == null || penalty.retryAfter <= gameTick
+                ? Long.MIN_VALUE : penalty.retryAfter;
     }
 
     long recordRejection(
@@ -107,28 +126,40 @@ final class ProviderWirelessDispatch {
             long gameTick,
             boolean fast) {
         purgeExpiredPenalties(gameTick);
-        int initial = fast ? 2 : 5;
         int maximum = fast ? 10 : 40;
         var byPattern = penalties.computeIfAbsent(
                 target, ignored -> CanonicalPatternMaps.create());
-        var previous = byPattern.get(pattern);
-        int cooldown = previous == null
-                ? initial
-                : Math.min(maximum, previous.cooldown * 2);
-        long retryAfter = gameTick + cooldown;
-        byPattern.put(pattern, new Penalty(retryAfter, cooldown));
-        penaltyExpirations.schedule(
-                new TargetPatternKey<>(target, pattern), retryAfter);
-        return retryAfter;
+        var penalty = byPattern.get(pattern);
+        if (penalty == null) {
+            penalty = new Penalty();
+            byPattern.put(pattern, penalty);
+            penaltyExpirations.schedule(new TargetPatternKey<>(target, pattern),
+                    gameTick + REJECTION_HISTORY_TICKS);
+        }
+        penalty.lastActivityTick = gameTick;
+        penalty.retryAfter = gameTick + penalty.schedule.failure(gameTick, maximum);
+        return penalty.retryAfter;
     }
 
     void recordSuccess(
-            WirelessConnection target, IPatternDetails pattern) {
+            WirelessConnection target, IPatternDetails pattern, long gameTick,
+            boolean scheduleNextPoll) {
         var byPattern = penalties.get(target);
-        if (byPattern == null) {
+        var penalty = byPattern == null ? null : byPattern.get(pattern);
+        if (penalty != null) {
+            int delay = penalty.schedule.success(gameTick);
+            penalty.lastActivityTick = gameTick;
+            // Adaptive batches already have their own amount-aware cadence.
+            penalty.retryAfter = scheduleNextPoll && delay > 1
+                    ? gameTick + delay : Long.MIN_VALUE;
+        }
+    }
+
+    private void removeRejectionHistory(WirelessConnection target, IPatternDetails pattern) {
+        var byPattern = penalties.get(target);
+        if (byPattern == null || byPattern.remove(pattern) == null) {
             return;
         }
-        byPattern.remove(pattern);
         penaltyExpirations.remove(new TargetPatternKey<>(target, pattern));
         if (byPattern.isEmpty()) {
             penalties.remove(target);
@@ -167,6 +198,7 @@ final class ProviderWirelessDispatch {
     }
 
     void patternsChanged() {
+        patternActivity.clear();
         penalties.clear();
         penaltyExpirations.clear();
         batchCadence.clear();
@@ -181,6 +213,7 @@ final class ProviderWirelessDispatch {
             long gameTick,
             boolean fastMode,
             WirelessDispatchMode mode) {
+        maintain(gameTick);
         if (structuresDirty || valid != validReference) {
             if (!structuresDirty && valid.equals(validReference)) {
                 validReference = valid;
@@ -200,13 +233,28 @@ final class ProviderWirelessDispatch {
             BatchAttempt attempt,
             Predicate<WirelessConnection> alive,
             Consumer<WirelessConnection> targetRemoved) {
+        return dispatchBatch(mode, pattern, maxCopies, gameTick, fastMode, 1,
+                attempt, alive, targetRemoved);
+    }
+
+    long dispatchBatch(
+            WirelessDispatchMode mode,
+            IPatternDetails pattern,
+            long maxCopies,
+            long gameTick,
+            boolean fastMode,
+            int machineParallelism,
+            BatchAttempt attempt,
+            Predicate<WirelessConnection> alive,
+            Consumer<WirelessConnection> targetRemoved) {
         if (mode == WirelessDispatchMode.SINGLE_TARGET) {
+            touchPattern(pattern, gameTick);
             return dispatchSingleTargetBatch(
                     maxCopies, gameTick, fastMode,
                     attempt, alive, targetRemoved);
         }
         return dispatchFairBatch(
-                pattern, maxCopies, gameTick, fastMode,
+                pattern, maxCopies, gameTick, fastMode, machineParallelism,
                 attempt, alive, targetRemoved);
     }
 
@@ -219,6 +267,7 @@ final class ProviderWirelessDispatch {
             SingleAttempt attempt,
             Predicate<WirelessConnection> alive,
             Consumer<WirelessConnection> targetRemoved) {
+        if (mode == WirelessDispatchMode.EVEN_DISTRIBUTION) touchPattern(pattern, gameTick);
         var readyQueue = readyQueue(mode);
         int scanBudget = Math.min(targetAttempts, readyQueue.size());
         while (scanBudget-- > 0 && !readyQueue.isEmpty()) {
@@ -247,7 +296,7 @@ final class ProviderWirelessDispatch {
             switch (outcome) {
                 case SUCCESS -> {
                     if (mode == WirelessDispatchMode.EVEN_DISTRIBUTION) {
-                        recordSuccess(connection, pattern);
+                        recordSuccess(connection, pattern, gameTick, true);
                     }
                     recordPushSuccess(state, probing, gameTick);
                     if (blocked.test(connection)) {
@@ -353,19 +402,34 @@ final class ProviderWirelessDispatch {
         return remaining;
     }
 
+    static int groupedTargetCount(long copies, int parallelism, int availableTargets) {
+        if (copies <= 0L || availableTargets <= 0) {
+            return 0;
+        }
+        return (int) Math.min(availableTargets,
+                1L + (copies - 1L) / Math.max(1, parallelism));
+    }
+
     private long dispatchFairBatch(
             IPatternDetails pattern,
             long maxCopies,
             long gameTick,
             boolean fastMode,
+            int machineParallelism,
             BatchAttempt attempt,
             Predicate<WirelessConnection> alive,
             Consumer<WirelessConnection> targetRemoved) {
         long remaining = maxCopies;
         try (var pass = beginFairPass(pattern, gameTick)) {
             int attemptBudget = pass.activeTargetsAtStart();
+            boolean grouped = machineParallelism > 1;
+            int targetLimit = grouped
+                    ? groupedTargetCount(maxCopies, machineParallelism, attemptBudget)
+                    : attemptBudget;
+            int successfulTargets = 0;
             for (int attempts = 0;
-                 attempts < attemptBudget && remaining > 0L;
+                 attempts < attemptBudget && remaining > 0L
+                        && successfulTargets < targetLimit;
                  attempts++) {
                 var connection = pass.poll();
                 if (connection == null) {
@@ -394,8 +458,27 @@ final class ProviderWirelessDispatch {
                 }
 
                 boolean probing = isProbing(state, gameTick);
+                boolean exploratoryAttempt =
+                        batchCadence.isExploratoryAttempt(
+                                connection, pattern);
+                boolean reopenReservoirTail =
+                        batchCadence.shouldReopenReservoirTail(
+                                connection, pattern);
+                if (reopenReservoirTail) {
+                    ((ProviderTarget) connection)
+                            .reopenReservoirTailAudit(pattern, gameTick);
+                }
+                // P is a grouping hint, not a physical batch size. Let the
+                // existing H,H,2H ramp prove what the selected machine accepts.
+                int groupedSlotsLeft = Math.min(
+                        targetLimit - successfulTargets, attemptBudget - attempts);
+                long groupedShare = grouped
+                        ? 1L + (remaining - 1L) / groupedSlotsLeft
+                        : remaining;
                 long share = Math.min(
-                        remaining, pass.allowance(connection));
+                        remaining, grouped
+                                ? pass.raiseAllowance(connection, groupedShare)
+                                : pass.allowance(connection));
                 int targetsLeft = attemptBudget - attempts;
                 long equalShareLimit = targetsLeft <= 0
                         ? 0L
@@ -410,25 +493,24 @@ final class ProviderWirelessDispatch {
                             pass.raiseAllowance(
                                     connection, rampAllowance));
                 }
-                boolean fillFallback = batchCadence.isFillFallback(
-                        connection, pattern);
-                if (fillFallback) {
+                if (batchCadence.usesSingleChunkRefill(connection, pattern)
+                        && (!exploratoryAttempt || !reopenReservoirTail)) {
                     int candidate = ((ProviderTarget) connection)
-                            .batchStepCandidate(
+                            .batchStepProvenChunk(
                                     pattern, remaining, gameTick);
-                    share = Math.min(
-                            remaining,
-                            pass.raiseAllowance(connection, candidate));
+                    share = Math.min(share, candidate);
+                }
+                if (grouped) {
+                    share = Math.min(share, groupedShare);
                 }
                 if (share <= 0L) {
                     continue;
                 }
-                boolean exploratoryAttempt =
-                        batchCadence.isExploratoryAttempt(
-                                connection, pattern);
                 boolean preserveBatchHistory =
                         batchCadence.shouldPreserveBatchHistory(
-                                connection, pattern, gameTick);
+                                connection, pattern, gameTick)
+                        || ((ProviderTarget) connection)
+                                .hasReservoirBatchState(pattern, gameTick);
                 var result = attempt.push(
                         connection,
                         share,
@@ -438,18 +520,21 @@ final class ProviderWirelessDispatch {
                     state.probeArmed = false;
                 }
                 if (result.ownedCopies > 0L) {
+                    // A partially accepting machine must not strand the remainder
+                    // while backup machines are idle. Each target still gets at most one visit.
+                    if (!grouped || result.ownedCopies >= groupedShare) {
+                        successfulTargets++;
+                    }
                     int coverageTicks = batchCadence.recordSuccess(
                             connection,
                             pattern,
                             gameTick,
                             result.ownedCopies,
                             result.acceptedFullChunk,
-                            result.requestLimited,
-                            exploratoryAttempt,
                             result.baselineStatus);
                     pass.successAndCover(
                             connection, result.ownedCopies, coverageTicks);
-                    recordSuccess(connection, pattern);
+                    recordSuccess(connection, pattern, gameTick, false);
                     remaining -= result.ownedCopies;
                     recordPushSuccess(state, probing, gameTick);
                     if (blocked.test(connection)) {
@@ -465,8 +550,7 @@ final class ProviderWirelessDispatch {
                 switch (result.outcome) {
                     case HARD_FAIL -> {
                         int retryDelay = recordBatchFailure(
-                                connection, pattern, gameTick, result,
-                                exploratoryAttempt);
+                                connection, pattern, gameTick, result);
                         if (!alive.test(connection)) {
                             pass.remove(connection);
                             removeTarget(connection);
@@ -480,8 +564,7 @@ final class ProviderWirelessDispatch {
                     }
                     case SOFT_FAIL -> {
                         int retryDelay = recordBatchFailure(
-                                connection, pattern, gameTick, result,
-                                exploratoryAttempt);
+                                connection, pattern, gameTick, result);
                         long due = batchRetryAfter(
                                 connection, pattern, gameTick,
                                 fastMode, result, retryDelay);
@@ -502,15 +585,9 @@ final class ProviderWirelessDispatch {
             WirelessConnection connection,
             IPatternDetails pattern,
             long gameTick,
-            BatchAttemptResult result,
-            boolean exploratoryAttempt) {
+            BatchAttemptResult result) {
         if (result.attemptedCopies > 0) {
-            return batchCadence.recordFailure(
-                    connection,
-                    pattern,
-                    gameTick,
-                    result.attemptedCopies,
-                    exploratoryAttempt);
+            return batchCadence.recordFailure(connection, pattern, gameTick);
         }
         return 0;
     }
@@ -634,6 +711,49 @@ final class ProviderWirelessDispatch {
         }
     }
 
+    private void touchPattern(IPatternDetails pattern, long gameTick) {
+        boolean wasEmpty = patternActivity.isEmpty();
+        patternActivity.putAndMoveToLast(pattern, gameTick);
+        if (wasEmpty) wakeMaintenance.run();
+    }
+
+    boolean hasMaintenanceWork() {
+        return !patternActivity.isEmpty() || penaltyExpirations.size() > 0;
+    }
+
+    void registerRestoredHistory(List<WirelessConnection> connections, long gameTick) {
+        for (var target : connections) {
+            state(target);
+            ((ProviderTarget) target).forEachBatchHistoryPattern(
+                    pattern -> touchPattern(pattern, gameTick));
+        }
+    }
+
+    void maintain(long gameTick) {
+        if (lastMaintenanceTick == gameTick) return;
+        lastMaintenanceTick = gameTick;
+        purgeExpiredPenalties(gameTick);
+        boolean historyRemoved = false;
+        for (int budget = PATTERN_CLEANUP_BUDGET; budget > 0 && !patternActivity.isEmpty(); budget--) {
+            var pattern = patternActivity.firstKey();
+            long lastUsed = patternActivity.getLong(pattern);
+            if (gameTick >= lastUsed && gameTick - lastUsed <= IDLE_PATTERN_TICKS) break;
+            if (!fairness.removePattern(pattern)) {
+                // A reentrant world callback must not invalidate an open pass.
+                patternActivity.putAndMoveToLast(pattern, gameTick);
+                continue;
+            }
+            patternActivity.removeFirstLong();
+            historyRemoved = true;
+            for (var target : states.keySet()) {
+                batchCadence.removePattern(target, pattern);
+                ((ProviderTarget) target).clearBatchHistory(pattern);
+                removeRejectionHistory(target, pattern);
+            }
+        }
+        if (historyRemoved) saveHistoryChanges.run();
+    }
+
     private void purgeExpiredPenalties(long gameTick) {
         TargetPatternKey<WirelessConnection> expired;
         while ((expired = penaltyExpirations.pollDue(gameTick)) != null) {
@@ -642,7 +762,12 @@ final class ProviderWirelessDispatch {
                 continue;
             }
             var penalty = byPattern.get(expired.pattern());
-            if (penalty == null || penalty.retryAfter > gameTick) {
+            if (penalty == null) continue;
+            // Renew only when the old expiry is reached, not on every transfer.
+            // Retry readiness and forgetting the learned period are separate.
+            long expires = penalty.lastActivityTick + REJECTION_HISTORY_TICKS;
+            if (expires > gameTick) {
+                penaltyExpirations.schedule(expired, expires);
                 continue;
             }
             byPattern.remove(expired.pattern());
@@ -853,7 +978,10 @@ final class ProviderWirelessDispatch {
         }
     }
 
-    private record Penalty(long retryAfter, int cooldown) {
+    private static final class Penalty {
+        private final TransferPollSchedule schedule = new TransferPollSchedule();
+        private long lastActivityTick;
+        private long retryAfter;
     }
 
     @FunctionalInterface

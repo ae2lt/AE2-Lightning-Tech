@@ -450,13 +450,11 @@ public class ProviderTarget extends TargetAddress {
 
         BatchStepResult result;
         if (!state.backingOff) {
-            result = pushSameTickRamp(
-                    state,
-                    maxCopies,
-                    gameTick,
-                    preserveBatchHistoryOnRejection,
-                    blocked,
-                    pushChunk);
+            result = state.reservoirMode
+                    ? pushReservoirRamp(state, maxCopies, gameTick,
+                            preserveBatchHistoryOnRejection, blocked, pushChunk)
+                    : pushSameTickRamp(state, maxCopies, gameTick,
+                            preserveBatchHistoryOnRejection, blocked, pushChunk);
         } else {
             result = pushBackoffStep(
                     state,
@@ -555,6 +553,7 @@ public class ProviderTarget extends TargetAddress {
                     } else if (baselineSuccesses >= 2) {
                         state.growthCapped = true;
                         state.nextChunk = Math.max(1, state.provenChunk);
+                        state.beginReservoirSearch(attemptedChunk);
                     }
                 }
                 if (ownedCopies > 0L) {
@@ -573,9 +572,6 @@ public class ProviderTarget extends TargetAddress {
             boolean fullyInserted = chunk.ownedCopies() == attemptedChunk
                     && chunk.fullyInserted();
             if (!fullyInserted) {
-                BaselineStatus stopStatus = baselineSuccesses == 1
-                        ? BaselineStatus.PREFIX_COMPLETE
-                        : BaselineStatus.NONE;
                 allFullyInserted = false;
                 if (!preserveBatchHistoryOnRejection) {
                     if (baselineSuccesses == 0) {
@@ -592,7 +588,10 @@ public class ProviderTarget extends TargetAddress {
                         false,
                         false,
                         requestLimited,
-                        stopStatus);
+                        // Partial ownership/overflow is not evidence that the
+                        // second H was cleanly rejected, so it must never feed
+                        // the stable reservoir-prefix learner.
+                        BaselineStatus.NONE);
             }
             if (requestLimited) {
                 state.lastSuccessfulTick = gameTick;
@@ -605,6 +604,11 @@ public class ProviderTarget extends TargetAddress {
                         BaselineStatus.NONE);
             }
 
+            // A steady-state refill can intentionally stop after this first
+            // proven H. Refresh the physical-history lifetime before the
+            // prefix branch continues, otherwise repeated single-H refills
+            // still expire exactly 100 ticks after the original growth proof.
+            state.lastSuccessfulTick = gameTick;
             if (baselineSuccesses < 2) {
                 baselineSuccesses++;
                 state.provenChunk = Math.max(state.provenChunk, baseline);
@@ -632,7 +636,6 @@ public class ProviderTarget extends TargetAddress {
                 state.backingOff = false;
                 nextChunk = state.nextChunk;
             }
-            state.lastSuccessfulTick = gameTick;
             if (desiredCopies == Integer.MAX_VALUE) {
                 break;
             }
@@ -649,6 +652,143 @@ public class ProviderTarget extends TargetAddress {
                         : BaselineStatus.NONE);
     }
 
+    /**
+     * Replays the proven baseline twice, then spends at most one additional
+     * insertion on the non-power-of-two reservoir tail. The tail is learned
+     * between ticks; a failed insertion still ends the current tick, so no
+     * rejected chunk is hidden by an in-call binary search.
+     */
+    private static BatchStepResult pushReservoirRamp(
+            BatchStepState state,
+            long maxCopies,
+            long gameTick,
+            boolean preserveBatchHistoryOnRejection,
+            BooleanSupplier blocked,
+            IntFunction<BatchChunk> pushChunk) {
+        int baseline = Math.max(1, state.provenChunk);
+        long ownedCopies = 0L;
+        long attemptedCopies = 0L;
+
+        for (int baselineIndex = 0; baselineIndex < 2; baselineIndex++) {
+            if (blocked.getAsBoolean() || ownedCopies >= maxCopies) {
+                break;
+            }
+            long remaining = maxCopies - ownedCopies;
+            int attemptedChunk = (int) Math.min(
+                    Math.min((long) baseline, remaining),
+                    Integer.MAX_VALUE);
+            boolean requestLimited = attemptedChunk < baseline;
+            attemptedCopies = Math.min(
+                    Integer.MAX_VALUE, attemptedCopies + attemptedChunk);
+            var chunk = pushChunk.apply(attemptedChunk);
+            if (chunk.globalAbort()) {
+                return new BatchStepResult(
+                        ownedCopies,
+                        (int) attemptedCopies,
+                        false,
+                        true,
+                        requestLimited,
+                        BaselineStatus.NONE);
+            }
+            boolean fullyInserted = chunk.ownedCopies() == attemptedChunk
+                    && chunk.fullyInserted();
+            if (!fullyInserted) {
+                if (chunk.ownedCopies() > 0L) {
+                    ownedCopies += chunk.ownedCopies();
+                    state.lastSuccessfulTick = gameTick;
+                } else if (baselineIndex == 0
+                        && !preserveBatchHistoryOnRejection) {
+                    state.backOffReservoirBaseline(baseline);
+                }
+                return new BatchStepResult(
+                        ownedCopies,
+                        (int) attemptedCopies,
+                        false,
+                        false,
+                        requestLimited,
+                        chunk.ownedCopies() <= 0L && baselineIndex == 1
+                                ? BaselineStatus.PREFIX_COMPLETE
+                                : BaselineStatus.NONE);
+            }
+            ownedCopies += chunk.ownedCopies();
+            state.lastSuccessfulTick = gameTick;
+            if (requestLimited) {
+                return new BatchStepResult(
+                        ownedCopies,
+                        (int) attemptedCopies,
+                        true,
+                        false,
+                        true,
+                        BaselineStatus.NONE);
+            }
+        }
+
+        boolean searchingTail = state.isReservoirTailSearching();
+        int tail = state.reservoirTailCandidate(gameTick);
+        if (tail <= 0 || blocked.getAsBoolean() || ownedCopies >= maxCopies) {
+            // Reaching the caller's allowance after the first proven H is a
+            // normal bounded refill, not completion of the reservoir search.
+            // Reporting GROWTH_COMPLETE here made cadence discard the stable
+            // single-H refill proof on every successful capped visit.
+            boolean completedSearch = searchingTail
+                    && tail <= 0
+                    && ownedCopies < maxCopies
+                    && !blocked.getAsBoolean();
+            return new BatchStepResult(
+                    ownedCopies,
+                    (int) attemptedCopies,
+                    true,
+                    false,
+                    false,
+                    completedSearch
+                            ? BaselineStatus.GROWTH_COMPLETE
+                            : BaselineStatus.NONE);
+        }
+
+        long remaining = maxCopies - ownedCopies;
+        int attemptedTail = (int) Math.min(
+                Math.min((long) tail, remaining),
+                Integer.MAX_VALUE);
+        boolean requestLimited = attemptedTail < tail;
+        attemptedCopies = Math.min(
+                Integer.MAX_VALUE, attemptedCopies + attemptedTail);
+        var chunk = pushChunk.apply(attemptedTail);
+        if (chunk.globalAbort()) {
+            return new BatchStepResult(
+                    ownedCopies,
+                    (int) attemptedCopies,
+                    false,
+                    true,
+                    requestLimited,
+                    BaselineStatus.NONE);
+        }
+        boolean fullyInserted = chunk.ownedCopies() == attemptedTail
+                && chunk.fullyInserted();
+        if (!requestLimited) {
+            if (fullyInserted) {
+                state.acceptReservoirTail(tail, gameTick);
+            } else if (chunk.ownedCopies() <= 0L) {
+                state.rejectReservoirTail(
+                        tail, gameTick, searchingTail);
+            }
+        }
+        if (chunk.ownedCopies() > 0L) {
+            ownedCopies += chunk.ownedCopies();
+            state.lastSuccessfulTick = gameTick;
+        }
+        return new BatchStepResult(
+                ownedCopies,
+                (int) attemptedCopies,
+                fullyInserted,
+                false,
+                requestLimited,
+                searchingTail
+                        ? BaselineStatus.GROWTH_COMPLETE
+                        : !fullyInserted && chunk.ownedCopies() <= 0L
+                                ? BaselineStatus.RESERVOIR_PREFIX_COMPLETE
+                                : BaselineStatus.NONE);
+    }
+
     private static int saturatingDouble(int value) {
         return value >= Integer.MAX_VALUE / 2
                 ? Integer.MAX_VALUE
@@ -663,14 +803,59 @@ public class ProviderTarget extends TargetAddress {
         }
         var state = runtime.batchSteps.computeIfAbsent(
                 pattern, ignored -> new BatchStepState());
-        var previousState = state.snapshot();
-        state.expireIfIdle(gameTick, true);
-        if (!previousState.equals(state.snapshot())) {
-            runtime.batchHistoryDirty = true;
-        }
+        runtime.batchHistoryDirty |= state.expireIfIdle(gameTick, true);
         return (int) Math.min(
                 Math.min((long) state.nextChunk, maxCopies),
                 Integer.MAX_VALUE);
+    }
+
+    /**
+     * Returns the chunk whose complete insertion has already been proven.
+     * Unlike {@link #batchStepCandidate(IPatternDetails, long, long)}, this
+     * never exposes the next growth level. Dispatch uses it for steady-state
+     * reservoir refills, where one physical insertion must replenish the
+     * observed drain without starting another {@code H,H,2H} proof.
+     */
+    final int batchStepProvenChunk(
+            IPatternDetails pattern, long maxCopies, long gameTick) {
+        if (maxCopies <= 0L) {
+            return 0;
+        }
+        var state = runtime.batchSteps.computeIfAbsent(
+                pattern, ignored -> new BatchStepState());
+        runtime.batchHistoryDirty |= state.expireIfIdle(gameTick, true);
+        int proven = state.provenChunk > 0
+                ? state.provenChunk
+                : state.nextChunk;
+        return (int) Math.min(
+                Math.min((long) Math.max(1, proven), maxCopies),
+                Integer.MAX_VALUE);
+    }
+
+    /** Keeps a learned reservoir transaction alive while the tank is full. */
+    final boolean hasReservoirBatchState(
+            IPatternDetails pattern, long gameTick) {
+        var state = runtime.batchSteps.get(pattern);
+        if (state == null) {
+            return false;
+        }
+        runtime.batchHistoryDirty |= state.expireIfIdle(gameTick, true);
+        return state.reservoirMode;
+    }
+
+    final void reopenReservoirTailAudit(
+            IPatternDetails pattern, long gameTick) {
+        var state = runtime.batchSteps.get(pattern);
+        if (state == null) {
+            return;
+        }
+        runtime.batchHistoryDirty |= state.expireIfIdle(gameTick, true);
+        if (state.reservoirMode
+                && !state.isReservoirTailSearching()
+                && state.reservoirTailSuppressed) {
+            state.reservoirTailSuppressed = false;
+            runtime.batchHistoryDirty = true;
+        }
     }
 
     /**
@@ -686,8 +871,13 @@ public class ProviderTarget extends TargetAddress {
         }
         var state = runtime.batchSteps.computeIfAbsent(
                 pattern, ignored -> new BatchStepState());
-        state.expireIfIdle(gameTick, true);
+        runtime.batchHistoryDirty |= state.expireIfIdle(gameTick, true);
         if (state.growthCapped) {
+            if (state.reservoirMode) {
+                return Math.min(
+                        maxCopies,
+                        state.reservoirAllowance(gameTick));
+            }
             return batchStepCandidate(pattern, maxCopies, gameTick);
         }
         return maxCopies;
@@ -743,6 +933,7 @@ public class ProviderTarget extends TargetAddress {
     public enum BaselineStatus {
         NONE,
         PREFIX_COMPLETE,
+        RESERVOIR_PREFIX_COMPLETE,
         COMPLETE,
         GROWTH_COMPLETE
     }
@@ -816,6 +1007,17 @@ public class ProviderTarget extends TargetAddress {
         runtime.batchSteps.clear();
     }
 
+    final void clearBatchHistory(IPatternDetails pattern) {
+        boolean removed = runtime.batchChunks.remove(pattern) != null;
+        removed |= runtime.batchSteps.remove(pattern) != null;
+        runtime.batchHistoryDirty |= removed;
+    }
+
+    final void forEachBatchHistoryPattern(java.util.function.Consumer<IPatternDetails> consumer) {
+        runtime.batchChunks.keySet().forEach(consumer);
+        runtime.batchSteps.keySet().forEach(consumer);
+    }
+
     final Map<IPatternDetails, AdaptiveBatchSnapshot>
             adaptiveBatchSnapshots() {
         var result = new IdentityHashMap<
@@ -874,14 +1076,25 @@ public class ProviderTarget extends TargetAddress {
             boolean growthCapped,
             boolean backingOff,
             long lastSuccessfulTick,
-            long lastAttemptTick) {
+            long lastAttemptTick,
+            boolean reservoirMode,
+            int reservoirTailLower,
+            int reservoirTailUpperExclusive,
+            boolean reservoirTailSuppressed,
+            long lastReservoirTailAttemptTick) {
         boolean isValid() {
             return nextChunk > 0
                     && provenChunk >= 0
                     && provenSuccesses >= 0
                     && (provenChunk > 0
-                            || nextChunk == 1 && !backingOff);
+                            || nextChunk == 1 && !backingOff)
+                    && reservoirTailLower >= 0
+                    && reservoirTailUpperExclusive >= 0
+                    && (!reservoirMode || provenChunk > 0
+                            && !backingOff
+                            && reservoirTailUpperExclusive > reservoirTailLower);
         }
+
     }
 
     private void invalidatePhysicalState() {
@@ -937,6 +1150,11 @@ public class ProviderTarget extends TargetAddress {
         private boolean repeatCurrent = true;
         private boolean growthCapped;
         private boolean backingOff;
+        private boolean reservoirMode;
+        private int reservoirTailLower;
+        private int reservoirTailUpperExclusive;
+        private boolean reservoirTailSuppressed;
+        private long lastReservoirTailAttemptTick = Long.MIN_VALUE;
         private long lastSuccessfulTick = Long.MIN_VALUE;
         private long lastAttemptTick = Long.MIN_VALUE;
 
@@ -952,6 +1170,11 @@ public class ProviderTarget extends TargetAddress {
             this.backingOff = snapshot.backingOff();
             this.lastSuccessfulTick = snapshot.lastSuccessfulTick();
             this.lastAttemptTick = snapshot.lastAttemptTick();
+            this.reservoirMode = snapshot.reservoirMode();
+            this.reservoirTailLower = snapshot.reservoirTailLower();
+            this.reservoirTailUpperExclusive = snapshot.reservoirTailUpperExclusive();
+            this.reservoirTailSuppressed = snapshot.reservoirTailSuppressed();
+            this.lastReservoirTailAttemptTick = snapshot.lastReservoirTailAttemptTick();
         }
 
         private BatchStepSnapshot snapshot() {
@@ -963,16 +1186,21 @@ public class ProviderTarget extends TargetAddress {
                     growthCapped,
                     backingOff,
                     lastSuccessfulTick,
-                    lastAttemptTick);
+                    lastAttemptTick,
+                    reservoirMode,
+                    reservoirTailLower,
+                    reservoirTailUpperExclusive,
+                    reservoirTailSuppressed,
+                    lastReservoirTailAttemptTick);
         }
 
-        private void expireIfIdle(
+        private boolean expireIfIdle(
                 long gameTick, boolean preserveAttemptHistory) {
             long referenceTick = preserveAttemptHistory
                     ? lastAttemptTick
                     : lastSuccessfulTick;
             if (referenceTick == Long.MIN_VALUE) {
-                return;
+                return false;
             }
             boolean expired = preserveAttemptHistory
                     ? gameTick < referenceTick
@@ -986,9 +1214,11 @@ public class ProviderTarget extends TargetAddress {
                 repeatCurrent = true;
                 growthCapped = false;
                 backingOff = false;
+                clearReservoirSearch();
                 lastSuccessfulTick = Long.MIN_VALUE;
                 lastAttemptTick = Long.MIN_VALUE;
             }
+            return expired;
         }
 
         private void advance(int acceptedChunk) {
@@ -1019,19 +1249,98 @@ public class ProviderTarget extends TargetAddress {
                     : acceptedChunk * 2;
         }
 
+        private void beginReservoirSearch(int rejectedGrowthChunk) {
+            if (provenChunk <= 0 || rejectedGrowthChunk <= 1) {
+                return;
+            }
+            reservoirMode = true;
+            reservoirTailLower = 0;
+            reservoirTailUpperExclusive = rejectedGrowthChunk;
+            reservoirTailSuppressed = false;
+            lastReservoirTailAttemptTick = Long.MIN_VALUE;
+        }
+
+        private void clearReservoirSearch() {
+            reservoirMode = false;
+            reservoirTailLower = 0;
+            reservoirTailUpperExclusive = 0;
+            reservoirTailSuppressed = false;
+            lastReservoirTailAttemptTick = Long.MIN_VALUE;
+        }
+
+        private void backOffReservoirBaseline(int rejectedBaseline) {
+            int smaller = Math.max(1, rejectedBaseline / 2);
+            clearReservoirSearch();
+            provenChunk = smaller;
+            provenSuccesses = 0;
+            nextChunk = smaller;
+            repeatCurrent = false;
+            growthCapped = true;
+            backingOff = false;
+        }
+
+        private boolean isReservoirTailSearching() {
+            return reservoirMode
+                    && reservoirTailUpperExclusive - reservoirTailLower > 1;
+        }
+
+        private int reservoirTailCandidate(long gameTick) {
+            if (!reservoirMode || reservoirTailUpperExclusive <= 1) {
+                return reservoirTailLower;
+            }
+            int gap = reservoirTailUpperExclusive - reservoirTailLower;
+            if (gap <= 1) {
+                if (reservoirTailSuppressed) {
+                    return 0;
+                }
+                return reservoirTailLower;
+            }
+            return reservoirTailLower + gap / 2;
+        }
+
+        private void acceptReservoirTail(int acceptedTail, long gameTick) {
+            reservoirTailLower = Math.max(
+                    reservoirTailLower, acceptedTail);
+            reservoirTailSuppressed = false;
+            lastReservoirTailAttemptTick = gameTick;
+            long transactionCopies = 2L * Math.max(1, provenChunk)
+                    + reservoirTailLower;
+            if (isPositivePowerOfTwo(transactionCopies)) {
+                provenChunk = Math.max(provenChunk, acceptedTail);
+                nextChunk = Math.max(1, provenChunk);
+                growthCapped = true;
+                clearReservoirSearch();
+            }
+        }
+
+        private static boolean isPositivePowerOfTwo(long value) {
+            return value > 0L && (value & (value - 1L)) == 0L;
+        }
+
+        private void rejectReservoirTail(
+                int rejectedTail, long gameTick, boolean searching) {
+            if (searching) {
+                reservoirTailUpperExclusive = Math.min(
+                        reservoirTailUpperExclusive, rejectedTail);
+            } else {
+                reservoirTailSuppressed = true;
+            }
+            lastReservoirTailAttemptTick = gameTick;
+        }
+
+        private long reservoirAllowance(long gameTick) {
+            long baselineCopies = 2L * Math.max(1, provenChunk);
+            return Math.min(
+                    Integer.MAX_VALUE,
+                    baselineCopies + reservoirTailCandidate(gameTick));
+        }
+
         private void reject(int rejectedChunk, boolean requestLimited) {
             if (requestLimited) {
                 return;
             }
             if (provenChunk > 0 && rejectedChunk > provenChunk) {
                 growthCapped = true;
-                nextChunk = provenChunk;
-                repeatCurrent = false;
-                return;
-            }
-            if (growthCapped
-                    && rejectedChunk >= provenChunk
-                    && provenSuccesses < 3) {
                 nextChunk = provenChunk;
                 repeatCurrent = false;
                 return;

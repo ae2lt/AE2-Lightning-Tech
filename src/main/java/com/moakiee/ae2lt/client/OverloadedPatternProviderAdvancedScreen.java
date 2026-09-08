@@ -5,11 +5,14 @@ import java.util.List;
 import org.lwjgl.glfw.GLFW;
 
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.network.chat.Component;
 
 import appeng.client.gui.AESubScreen;
 import appeng.client.gui.Icon;
 import appeng.client.gui.widgets.TabButton;
+import appeng.client.gui.widgets.AETextField;
 import appeng.menu.SlotSemantics;
 
 import com.moakiee.ae2lt.menu.OverloadedPatternProviderMenu;
@@ -24,6 +27,9 @@ public final class OverloadedPatternProviderAdvancedScreen<M extends OverloadedP
     private final TextureToggleButton wirelessStrategyButton;
     private final TextureToggleButton wirelessSpeedButton;
     private final TextureToggleButton filteredImportButton;
+    private final AETextField machineParallelism;
+    private final Button applyParallelism;
+    private int lastSyncedParallelism;
 
     public OverloadedPatternProviderAdvancedScreen(OverloadedPatternProviderScreen<M> parent) {
         super(parent, "/screens/overloaded_pattern_provider_advanced.json");
@@ -57,6 +63,41 @@ public final class OverloadedPatternProviderAdvancedScreen<M extends OverloadedP
         this.filteredImportButton.setTooltipOff(
                 List.of(Component.translatable("ae2lt.gui.filtered_import.off")));
         widgets.add("filteredImport", this.filteredImportButton);
+
+        machineParallelism = widgets.addTextField("machineParallelism");
+        machineParallelism.setMaxLength(10);
+        machineParallelism.setFilter(OverloadedPatternProviderAdvancedScreen::isParallelismDraft);
+        lastSyncedParallelism = menu.machineParallelism;
+        machineParallelism.setValue(Integer.toString(lastSyncedParallelism));
+        machineParallelism.setTooltip(Tooltip.create(Component.translatable(
+                "ae2lt.gui.provider_advanced.machine_parallelism_tooltip")));
+        applyParallelism = widgets.addButton("applyParallelism",
+                Component.translatable("gui.done"), this::applyParallelism);
+    }
+
+    private static boolean isParallelismDraft(String text) {
+        if (text.isEmpty()) return true;
+        try {
+            return text.chars().allMatch(c -> c >= '0' && c <= '9')
+                    && Integer.parseInt(text) >= 0;
+        } catch (NumberFormatException ignored) {
+            return false;
+        }
+    }
+
+    private int draftedParallelism() {
+        try {
+            return Integer.parseInt(machineParallelism.getValue());
+        } catch (NumberFormatException ignored) {
+            return 0;
+        }
+    }
+
+    private void applyParallelism() {
+        int value = draftedParallelism();
+        if (value > 0) {
+            menu.clientSetMachineParallelism(value);
+        }
     }
 
     @Override
@@ -82,6 +123,20 @@ public final class OverloadedPatternProviderAdvancedScreen<M extends OverloadedP
 
         this.filteredImportButton.setState(menu.isFilteredImport());
         this.filteredImportButton.setVisibility(menu.isFilteredImportVisible());
+
+        if (lastSyncedParallelism != menu.machineParallelism) {
+            if (!machineParallelism.isFocused()
+                    || draftedParallelism() == lastSyncedParallelism) {
+                machineParallelism.setValue(Integer.toString(menu.machineParallelism));
+            }
+            lastSyncedParallelism = menu.machineParallelism;
+        }
+        machineParallelism.setVisible(wirelessTuningVisible);
+        machineParallelism.setEditable(wirelessTuningActive);
+        applyParallelism.visible = wirelessTuningVisible;
+        applyParallelism.active = wirelessTuningActive
+                && draftedParallelism() > 0
+                && draftedParallelism() != menu.machineParallelism;
     }
 
     @Override
@@ -115,12 +170,20 @@ public final class OverloadedPatternProviderAdvancedScreen<M extends OverloadedP
                     0x404040,
                     false);
         }
+        if (wirelessTuningVisible) {
+            guiGraphics.drawString(font,
+                    Component.translatable("ae2lt.gui.provider_advanced.machine_parallelism"),
+                    14, 105, wirelessColor, false);
+            guiGraphics.drawString(font,
+                    Component.translatable("ae2lt.gui.provider_advanced.parallelism_hint"),
+                    14, 147, 0x707070, false);
+        }
         if (wirelessTuningVisible && !menu.isWirelessMode()) {
             guiGraphics.drawString(
                     font,
                     Component.translatable("ae2lt.gui.provider_advanced.wireless_hint"),
                     14,
-                    105,
+                    161,
                     0x707070,
                     false);
         }
@@ -133,8 +196,14 @@ public final class OverloadedPatternProviderAdvancedScreen<M extends OverloadedP
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (machineParallelism.isFocused()
+                && (keyCode == GLFW.GLFW_KEY_ENTER || keyCode == GLFW.GLFW_KEY_KP_ENTER)) {
+            if (applyParallelism.active) applyParallelism();
+            return true;
+        }
         if (keyCode == GLFW.GLFW_KEY_ESCAPE
-                || this.minecraft.options.keyInventory.matches(keyCode, scanCode)) {
+                || !machineParallelism.isFocused()
+                        && this.minecraft.options.keyInventory.matches(keyCode, scanCode)) {
             returnToParent();
             return true;
         }

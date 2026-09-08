@@ -1,9 +1,11 @@
 {
   "$schema": "schema.json",
-  "includes": ["common/common.json"],
+  "includes": [
+    "common/common.json"
+  ],
   "generatedBackground": {
     "width": 176,
-    "height": 122
+    "height": 178
   },
   "text": {
     "dialog_title": {
@@ -34,6 +36,18 @@
     "filteredImport": {
       "left": 14,
       "top": 76
+    },
+    "machineParallelism": {
+      "left": 14,
+      "top": 120,
+      "width": 92,
+      "height": 16
+    },
+    "applyParallelism": {
+      "left": 112,
+      "top": 118,
+      "width": 50,
+      "height": 20
     }
   }
 }
