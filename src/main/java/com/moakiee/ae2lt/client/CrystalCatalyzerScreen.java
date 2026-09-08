@@ -25,6 +25,7 @@ public class CrystalCatalyzerScreen extends AEBaseScreen<CrystalCatalyzerMenu> {
     private final ToggleButton autoExportButton;
     private final ActionButton configureOutputButton;
     private final TextureToggleButton modeButton;
+    private final TextureToggleButton frequencyButton;
     private final CrystalCatalyzerFluidWidget fluidWidget;
 
     public CrystalCatalyzerScreen(
@@ -33,7 +34,8 @@ public class CrystalCatalyzerScreen extends AEBaseScreen<CrystalCatalyzerMenu> {
         this.imageWidth = 176;
         this.imageHeight = 190;
 
-        addToLeftToolbar(FrequencyBindingClient.createToolbarButton(menu));
+        this.frequencyButton = FrequencyBindingClient.createToolbarButton(menu);
+        addToLeftToolbar(this.frequencyButton);
 
         widgets.add("energyBar", new CrystalCatalyzerEnergyBar(menu, style.getImage("energyBar")));
         this.fluidWidget = new CrystalCatalyzerFluidWidget(
@@ -74,21 +76,45 @@ public class CrystalCatalyzerScreen extends AEBaseScreen<CrystalCatalyzerMenu> {
                 Component.translatable("ae2lt.gui.crystal_catalyzer.mode.tooltip.dust")));
         addToLeftToolbar(this.modeButton);
 
-        widgets.add("lightningStatus", new LightningStatusIconWidget(() -> List.of(
-                LightningStatusLines.title(),
-                LightningStatusLines.status(menu.isWorking()),
-                LightningStatusLines.progress(menu.getProgress()),
-                LightningStatusLines.energy(menu.getStoredEnergy(), menu.getEnergyCapacity()),
-                LightningStatusLines.highVoltage(menu.getHighVoltageAvailable()),
-                LightningStatusLines.extremeHighVoltage(menu.getExtremeHighVoltageAvailable()))));
+        widgets.add("lightningStatus", new LightningStatusIconWidget(() -> menu.isPigmeeVariant()
+                ? List.of(
+                        LightningStatusLines.title(),
+                        LightningStatusLines.status(menu.isWorking()),
+                        LightningStatusLines.progress(menu.getProgress()))
+                : List.of(
+                        LightningStatusLines.title(),
+                        LightningStatusLines.status(menu.isWorking()),
+                        LightningStatusLines.progress(menu.getProgress()),
+                        LightningStatusLines.energy(menu.getStoredEnergy(), menu.getEnergyCapacity()),
+                        LightningStatusLines.highVoltage(menu.getHighVoltageAvailable()),
+                        LightningStatusLines.extremeHighVoltage(menu.getExtremeHighVoltageAvailable()))));
     }
 
     @Override
     protected void updateBeforeRender() {
         super.updateBeforeRender();
+        setTextContent("dialog_title", Component.translatable(menu.isPigmeeVariant()
+                ? "block.ae2lt.pigmee_crystal_catalyzer"
+                : "block.ae2lt.crystal_catalyzer"));
         this.autoExportButton.setState(menu.isAutoExportEnabled());
         this.configureOutputButton.setVisibility(menu.isAutoExportEnabled());
+        this.frequencyButton.setVisibility(!menu.isPigmeeVariant());
+        this.modeButton.setVisibility(!menu.isPigmeeVariant());
         this.modeButton.setState(menu.getMode() == Mode.DUST);
+    }
+
+    @Override
+    public void drawBG(GuiGraphics graphics, int offsetX, int offsetY,
+                       int mouseX, int mouseY, float partialTicks) {
+        super.drawBG(graphics, offsetX, offsetY, mouseX, mouseY, partialTicks);
+        if (menu.isPigmeeVariant()) {
+            // Cover the shared background's FE scale and unused matrix branch with its own blank texture.
+            var background = new net.minecraft.resources.ResourceLocation(
+                    "ae2lt", "textures/guis/crystal_catalyzer.png");
+            graphics.blit(background, offsetX + 138, offsetY + 28, 150, 28, 10, 22);
+            // Matrix connectors begin directly below the horizontal arrow at y=40.
+            graphics.blit(background, offsetX + 80, offsetY + 40, 150, 28, 24, 33);
+        }
     }
 
     @Override

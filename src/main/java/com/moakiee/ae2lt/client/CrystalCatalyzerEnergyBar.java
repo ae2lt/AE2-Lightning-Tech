@@ -25,6 +25,9 @@ public class CrystalCatalyzerEnergyBar extends AbstractWidget implements IToolti
 
     @Override
     protected void renderWidget(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+        if (menu.isPigmeeVariant()) {
+            return;
+        }
         fill.copy().opacity(0.2f).dest(getX(), getY(), width, height).blit(guiGraphics);
 
         long capacity = Math.max(1L, menu.getEnergyCapacity());
@@ -58,7 +61,7 @@ public class CrystalCatalyzerEnergyBar extends AbstractWidget implements IToolti
 
     @Override
     public boolean isTooltipAreaVisible() {
-        return true;
+        return !menu.isPigmeeVariant();
     }
 
     @Override

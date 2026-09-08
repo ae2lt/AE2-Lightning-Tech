@@ -122,6 +122,14 @@ public final class ModBlockEntities {
                             ModBlocks.CRYSTAL_CATALYZER.get())
                             .build(null));
 
+    public static final RegistryObject<BlockEntityType<CrystalCatalyzerBlockEntity>>
+            PIGMEE_CRYSTAL_CATALYZER = BLOCK_ENTITY_TYPES.register(
+                    "pigmee_crystal_catalyzer",
+                    () -> BlockEntityType.Builder.of(
+                            CrystalCatalyzerBlockEntity::new,
+                            ModBlocks.PIGMEE_CRYSTAL_CATALYZER.get())
+                            .build(null));
+
     public static final RegistryObject<BlockEntityType<OverloadedPatternProviderBlockEntity>>
             OVERLOADED_PATTERN_PROVIDER = BLOCK_ENTITY_TYPES.register(
                     "overloaded_pattern_provider",

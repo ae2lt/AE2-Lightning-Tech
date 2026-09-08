@@ -43,14 +43,14 @@ public final class CrystalCatalyzerLockedRecipe {
         if (output.isEmpty()) {
             throw new IllegalArgumentException("output cannot be empty");
         }
-        if (energyPerCycle <= 0) {
-            throw new IllegalArgumentException("energyPerCycle must be positive");
+        if (energyPerCycle < 0) {
+            throw new IllegalArgumentException("energyPerCycle must be non-negative");
         }
         if (outputMultiplier <= 0) {
             throw new IllegalArgumentException("outputMultiplier must be positive");
         }
-        if (lightningCost < 1) {
-            throw new IllegalArgumentException("lightningCost must be positive");
+        if (lightningCost < 0) {
+            throw new IllegalArgumentException("lightningCost must be non-negative");
         }
     }
 
@@ -125,7 +125,7 @@ public final class CrystalCatalyzerLockedRecipe {
         }
 
         int energy = tag.getInt(TAG_ENERGY);
-        if (energy <= 0) {
+        if (energy < 0) {
             return null;
         }
 
@@ -139,8 +139,8 @@ public final class CrystalCatalyzerLockedRecipe {
         int lightningCost = tag.contains(TAG_LIGHTNING_COST, Tag.TAG_ANY_NUMERIC)
                 ? tag.getInt(TAG_LIGHTNING_COST)
                 : CrystalCatalyzerRecipe.DEFAULT_LIGHTNING_COST;
-        if (lightningCost < 1) {
-            lightningCost = CrystalCatalyzerRecipe.DEFAULT_LIGHTNING_COST;
+        if (lightningCost < 0) {
+            lightningCost = 0;
         }
 
         LightningKey.Tier lightningTier = tag.contains(TAG_LIGHTNING_TIER, Tag.TAG_STRING)

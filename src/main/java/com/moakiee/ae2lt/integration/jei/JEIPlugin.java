@@ -179,6 +179,7 @@ public class JEIPlugin implements IModPlugin {
         registration.addRecipeCatalyst(new ItemStack(ModBlocks.OVERLOAD_PROCESSING_FACTORY.get()), OverloadProcessingCategory.TYPE);
         registration.addRecipeCatalyst(new ItemStack(ModBlocks.TESLA_COIL.get()), TeslaCoilCategory.TYPE);
         registration.addRecipeCatalyst(new ItemStack(ModBlocks.CRYSTAL_CATALYZER.get()), CrystalCatalyzerCategory.TYPE);
+        registration.addRecipeCatalyst(new ItemStack(ModBlocks.PIGMEE_CRYSTAL_CATALYZER.get()), CrystalCatalyzerCategory.TYPE);
         registration.addRecipeCatalyst(new ItemStack(ModBlocks.FIRMAMENT_CONVERSION_CORE.get()), FirmamentConversionCategory.TYPE);
         if (!isEmiLoaded()) {
             registration.addRecipeCatalyst(

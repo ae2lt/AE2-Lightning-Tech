@@ -1,0 +1,25 @@
+// Isolated regression/client worlds; never load a development user's normal saves.
+allprojects {
+    afterEvaluate {
+        sourceSets.jdb.java.setIncludes([
+                '**/PigmeeCrystalCatalyzerGameTests.java',
+                '**/PigmeeCatalyzerClientProbe.java'])
+        configurations.runtimeOnly.dependencies.removeIf { dep ->
+            !(dep.group in ['com.moakiee.thunderbolt', 'org.appliedenergistics', 'dev.emi']
+                    || dep.name in ['jei-238222', 'ae2-jei-integration-1074338'])
+        }
+        minecraft.runs.gameTestServer {
+            workingDirectory project.layout.buildDirectory.dir('pigmee-catalyzer-gametest').get().asFile
+            property 'forge.logging.console.level', 'info'
+            mods { "${project.mod_id}" { source sourceSets.jdb } }
+        }
+        minecraft.runs.client {
+            workingDirectory project.layout.buildDirectory.dir('pigmee-catalyzer-client').get().asFile
+            property 'ae2lt.pigmeeCatalyzerClientProbe', 'true'
+            mods { "${project.mod_id}" { source sourceSets.jdb } }
+            if (project.hasProperty('pigmeeQuickPlay')) {
+                args '--quickPlaySingleplayer', 'PigmeeCatalyzerTest'
+            }
+        }
+    }
+}
