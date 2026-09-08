@@ -1,0 +1,671 @@
+package com.moakiee.ae2lt.blockentity;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.IdentityHashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Predicate;
+
+import org.junit.jupiter.api.Test;
+
+import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+
+import appeng.api.config.Actionable;
+import appeng.api.networking.security.IActionSource;
+import appeng.api.stacks.AEKey;
+import appeng.api.stacks.AEKeyType;
+import appeng.api.storage.MEStorage;
+
+/** Regression coverage for the production persistent-buffer and retry paths. */
+class OverloadedInterfaceBufferPathTest {
+    private static final TestKeyType ITEMS = new TestKeyType("items");
+    private static final TestKeyType FLUIDS = new TestKeyType("fluids");
+
+    @Test
+    void fullFlushKeepsSurvivorOrderWithoutReinsertingEntries() {
+        var rejected = new TestKey(ITEMS, "full-rejected");
+        var accepted = new TestKey(ITEMS, "full-accepted");
+        var partial = new TestKey(ITEMS, "full-partial");
+        var buffer = new CountingBuffer();
+        buffer.put(rejected, 4L);
+        buffer.put(accepted, 5L);
+        buffer.put(partial, 6L);
+        buffer.mutations = 0;
+        var storage = new ProgrammableStorage(key -> key.equals(rejected), Map.of(partial, 2L));
+        var state = new OverloadedInterfaceBlockEntity.ImportBufferFlushState();
+        var result = OverloadedInterfaceBlockEntity.flushImportBufferEntries(
+                buffer, new IdentityHashMap<>(), Long.MIN_VALUE, false, 0,
+                state, storage, IActionSource.empty(), 0, () -> {});
+        assertEquals(List.of(rejected, partial), List.copyOf(buffer.keySet()));
+        assertEquals(4L, buffer.get(rejected));
+        assertEquals(4L, buffer.get(partial));
+        assertEquals(7L, storage.totalInserted());
+        assertEquals(0, buffer.mutations, "a complete pass needs no survivor remove/put operations");
+        assertEquals(0, buffer.containsChecks, "insert result already identifies retained keys");
+        assertEquals(3, result.visitedKeys());
+    }
+
+    private static final class CountingBuffer extends LinkedHashMap<AEKey, Long> {
+        int mutations;
+        int containsChecks;
+
+        @Override
+        public Long put(AEKey key, Long value) {
+            mutations++;
+            return super.put(key, value);
+        }
+
+        @Override
+        public Long remove(Object key) {
+            mutations++;
+            return super.remove(key);
+        }
+
+        @Override
+        public boolean containsKey(Object key) {
+            containsChecks++;
+            return super.containsKey(key);
+        }
+    }
+
+    @Test
+    void fullRejectedSliceAvoidsPerKeyMapReallocationAndPreservesBackpressure() {
+        var buffer = new CountingBuffer();
+        for (int i = 0; i < 16_384; i++) {
+            buffer.put(new TestKey(ITEMS, "full-reject-" + i), 1L);
+        }
+        var order = List.copyOf(buffer.keySet());
+        buffer.mutations = 0;
+        var locks = new IdentityHashMap<AEKeyType, Long>();
+        var storage = new ProgrammableStorage(ignored -> true);
+        var result = OverloadedInterfaceBlockEntity.flushImportBufferEntries(
+                buffer, locks, Long.MIN_VALUE, false, 0,
+                new OverloadedInterfaceBlockEntity.ImportBufferFlushState(),
+                storage, IActionSource.empty(), 0, () -> {});
+        assertEquals(16_384, storage.attempts);
+        assertEquals(16_384, result.visitedKeys());
+        assertEquals(order, List.copyOf(buffer.keySet()));
+        assertEquals(0, buffer.mutations);
+        assertEquals(0, buffer.containsChecks);
+        assertEquals(20L, locks.get(ITEMS));
+        assertEquals(16_384L, buffer.values().stream().mapToLong(Long::longValue).sum());
+    }
+
+    @Test
+    void rejectedPrefixDoesNotLockAnUntouchedTailOfTheSameKeyType() {
+        var buffer = new LinkedHashMap<AEKey, Long>();
+        TestKey tail = null;
+        var rejected = new HashSet<AEKey>();
+        for (int i = 0; i < 16_385; i++) {
+            var key = new TestKey(ITEMS, "item-" + i);
+            buffer.put(key, 1L);
+            if (i < 16_384) {
+                rejected.add(key);
+            } else {
+                tail = key;
+            }
+        }
+
+        var locks = new IdentityHashMap<AEKeyType, Long>();
+        var flushState = new OverloadedInterfaceBlockEntity.ImportBufferFlushState();
+        flushState.rebuildFrom(buffer);
+        var storage = new ProgrammableStorage(key -> rejected.contains(key));
+        var first = OverloadedInterfaceBlockEntity.flushImportBufferEntries(
+                buffer, locks, Long.MIN_VALUE, false, 0,
+                flushState,
+                storage, IActionSource.empty(), 0, () -> {});
+
+        assertEquals(16_384, storage.attempts);
+        assertFalse(locks.containsKey(ITEMS),
+                "a bounded prefix cannot prove that the whole type is rejected");
+        assertEquals(16_385, buffer.size());
+
+        var second = OverloadedInterfaceBlockEntity.flushImportBufferEntries(
+                buffer, locks, first.lastFlushTick(), first.flushLimited(),
+                first.remainingKeys(), flushState,
+                storage, IActionSource.empty(), 5, () -> {});
+
+        assertTrue(storage.inserted.getOrDefault(tail, 0L) > 0,
+                "the accepted tail key must be reached after the prefix rotates");
+        assertNull(buffer.get(tail));
+        assertFalse(locks.containsKey(ITEMS));
+        assertEquals(16_384, buffer.size());
+        assertEquals(1L, storage.totalInserted(), "every accepted key is accounted once");
+        assertEquals(16_384L, buffer.values().stream().mapToLong(Long::longValue).sum());
+        assertEquals(second.lastFlushTick(), 5L);
+    }
+
+    @Test
+    void newlyAppendedAcceptedTailIsObservedBeforeATypeLock() {
+        int initialKeys = 16_385;
+        var buffer = new LinkedHashMap<AEKey, Long>(initialKeys + 1);
+        for (int i = 0; i < initialKeys; i++) {
+            buffer.put(new TestKey(ITEMS, "late-reject-" + i), 1L);
+        }
+        var acceptedTail = new TestKey(ITEMS, "late-accepted-tail");
+        var locks = new IdentityHashMap<AEKeyType, Long>();
+        var flushState = new OverloadedInterfaceBlockEntity.ImportBufferFlushState();
+        flushState.rebuildFrom(buffer);
+        var storage = new ProgrammableStorage(key -> !key.equals(acceptedTail));
+
+        var result = OverloadedInterfaceBlockEntity.flushImportBufferEntries(
+                buffer, locks, Long.MIN_VALUE, false, 0, flushState,
+                storage, IActionSource.empty(), 0, () -> {});
+        assertEquals(16_384, result.visitedKeys());
+        assertFalse(locks.containsKey(ITEMS));
+
+        addBufferedForTest(buffer, flushState, acceptedTail, 1L, true);
+        boolean accepted = false;
+        for (int tick = 5; tick <= 25 && !accepted; tick += 5) {
+            result = OverloadedInterfaceBlockEntity.flushImportBufferEntries(
+                    buffer, locks, result.lastFlushTick(), result.flushLimited(),
+                    result.remainingKeys(), flushState, storage, IActionSource.empty(),
+                    tick, () -> {});
+            accepted = storage.inserted.getOrDefault(acceptedTail, 0L) > 0;
+            assertFalse(locks.containsKey(ITEMS),
+                    "an unvisited accepted tail must not be hidden by a type lock");
+        }
+
+        assertTrue(accepted, "the newly appended accepted tail was never observed");
+        assertNull(buffer.get(acceptedTail));
+        assertEquals(initialKeys, buffer.size());
+        assertEquals(1L, storage.totalInserted());
+    }
+
+    @Test
+    void partialInsertAndMixedTypesKeepPerKeyOwnershipAndOnlyLockFullyTestedTypes() {
+        var aRejected = new TestKey(ITEMS, "reject");
+        var aPartial = new TestKey(ITEMS, "partial");
+        var bAccepted = new TestKey(FLUIDS, "accepted");
+        var buffer = new LinkedHashMap<AEKey, Long>();
+        buffer.put(aRejected, 4L);
+        buffer.put(aPartial, 10L);
+        buffer.put(bAccepted, 7L);
+
+        var capacities = Map.of(aPartial, 2L, bAccepted, 7L);
+        var storage = new ProgrammableStorage(key -> key.equals(aRejected), capacities);
+        var locks = new IdentityHashMap<AEKeyType, Long>();
+        var flushState = new OverloadedInterfaceBlockEntity.ImportBufferFlushState();
+        flushState.rebuildFrom(buffer);
+        var result = OverloadedInterfaceBlockEntity.flushImportBufferEntries(
+                buffer, locks, Long.MIN_VALUE, false, 0,
+                flushState,
+                storage, IActionSource.empty(), 0, () -> {});
+
+        assertEquals(4L, buffer.get(aRejected));
+        assertEquals(8L, buffer.get(aPartial));
+        assertNull(buffer.get(bAccepted));
+        assertFalse(locks.containsKey(ITEMS),
+                "a partial insert proves that this type is not fully rejected");
+        assertFalse(locks.containsKey(FLUIDS));
+        assertEquals(9L, storage.totalInserted());
+        assertTrue(result.changed());
+    }
+
+    @Test
+    void stoppedHighCardinalityBacklogDrainsWithoutDroppingKeys() {
+        int keyCount = 49_152;
+        var buffer = new LinkedHashMap<AEKey, Long>(keyCount);
+        for (int i = 0; i < keyCount; i++) {
+            buffer.put(new TestKey(ITEMS, "drain-" + i), 1L);
+        }
+
+        var storage = new ProgrammableStorage(ignored -> false);
+        var locks = new IdentityHashMap<AEKeyType, Long>();
+        var flushState = new OverloadedInterfaceBlockEntity.ImportBufferFlushState();
+        flushState.rebuildFrom(buffer);
+        var first = OverloadedInterfaceBlockEntity.flushImportBufferEntries(
+                buffer, locks, Long.MIN_VALUE, false, 0,
+                flushState,
+                storage, IActionSource.empty(), 0, () -> {});
+
+        assertEquals(16_384, storage.attempts,
+                "the initial flush must honor the configured first slice");
+        assertEquals(16_384, first.visitedKeys(),
+                "the rejected slice must not inspect the untouched tail");
+        assertEquals(32_768, buffer.size());
+        assertTrue(first.flushLimited());
+
+        int attemptsAfterFirst = storage.attempts;
+        var second = OverloadedInterfaceBlockEntity.flushImportBufferEntries(
+                buffer, locks, first.lastFlushTick(), first.flushLimited(),
+                first.remainingKeys(), flushState,
+                storage, IActionSource.empty(), 1, () -> {});
+
+        assertEquals(32_768, storage.attempts - attemptsAfterFirst,
+                "the current stopped-backlog path expands the next drain slice; "
+                        + "keep this cost visible when evaluating a bounded replacement");
+        assertEquals(32_768, second.visitedKeys(),
+                "an all-accepting stopped backlog may still use the fast drain path");
+        assertTrue(buffer.isEmpty());
+        assertFalse(second.flushLimited());
+        assertEquals(keyCount, storage.totalInserted());
+        assertTrue(locks.isEmpty());
+    }
+
+    @Test
+    void aRejectedSliceDoesNotScanTheWholeRemainingBacklog() {
+        int keyCount = 49_152;
+        var partial = new TestKey(ITEMS, "partial-first");
+        var buffer = new LinkedHashMap<AEKey, Long>(keyCount);
+        buffer.put(partial, 2L);
+        for (int i = 1; i < keyCount; i++) {
+            buffer.put(new TestKey(ITEMS, "rejected-" + i), 1L);
+        }
+
+        var capacities = Map.of(partial, 1L);
+        var storage = new ProgrammableStorage(key -> !key.equals(partial), capacities);
+        var locks = new IdentityHashMap<AEKeyType, Long>();
+        var flushState = new OverloadedInterfaceBlockEntity.ImportBufferFlushState();
+        flushState.rebuildFrom(buffer);
+
+        var first = OverloadedInterfaceBlockEntity.flushImportBufferEntries(
+                buffer, locks, Long.MIN_VALUE, false, 0,
+                flushState, storage, IActionSource.empty(), 0, () -> {});
+        assertEquals(16_384, first.visitedKeys());
+        assertTrue(first.flushLimited(),
+                "partial progress plus a rejected key must retain bounded continuation state");
+
+        int attemptsAfterFirst = storage.attempts;
+        var second = OverloadedInterfaceBlockEntity.flushImportBufferEntries(
+                buffer, locks, first.lastFlushTick(), first.flushLimited(),
+                first.remainingKeys(), flushState,
+                storage, IActionSource.empty(), 1, () -> {});
+        assertEquals(16_384, second.visitedKeys(),
+                "a rejected continuation must not rescan all 49,152 pending keys");
+        assertEquals(16_384, storage.attempts - attemptsAfterFirst);
+        assertEquals(49_152L,
+                buffer.values().stream().mapToLong(Long::longValue).sum(),
+                "partial ownership must remain in the buffer without duplication");
+        assertFalse(locks.containsKey(ITEMS),
+                "the partial key remains evidence against a type-wide rejection lock");
+    }
+
+    @Test
+    void aRejectedTypeRecoversAndItsLockIsRemovedAfterARealSuccessfulFlush() {
+        var key = new TestKey(ITEMS, "recovery");
+        var buffer = new LinkedHashMap<AEKey, Long>();
+        buffer.put(key, 6L);
+        var locks = new IdentityHashMap<AEKeyType, Long>();
+        var flushState = new OverloadedInterfaceBlockEntity.ImportBufferFlushState();
+        flushState.rebuildFrom(buffer);
+        var unavailable = new ProgrammableStorage(ignored -> true);
+
+        var first = OverloadedInterfaceBlockEntity.flushImportBufferEntries(
+                buffer, locks, Long.MIN_VALUE, false, 0,
+                flushState,
+                unavailable, IActionSource.empty(), 0, () -> {});
+        assertEquals(20L, locks.get(ITEMS));
+        assertEquals(6L, buffer.get(key));
+
+        unavailable.rejection = ignored -> false;
+        var second = OverloadedInterfaceBlockEntity.flushImportBufferEntries(
+                buffer, locks, first.lastFlushTick(), first.flushLimited(),
+                first.remainingKeys(), flushState,
+                unavailable, IActionSource.empty(), 5, () -> {});
+
+        assertTrue(second.changed());
+        assertFalse(locks.containsKey(ITEMS));
+        assertTrue(buffer.isEmpty());
+        assertEquals(6L, unavailable.totalInserted());
+    }
+
+    @Test
+    void lockedTypeTracksOldReplenishmentAlongsideANewKey() {
+        var first = new TestKey(ITEMS, "locked-old");
+        var second = new TestKey(ITEMS, "locked-second");
+        var late = new TestKey(ITEMS, "locked-late-new");
+        var buffer = new LinkedHashMap<AEKey, Long>();
+        buffer.put(first, 1L);
+        buffer.put(second, 1L);
+        var locks = new IdentityHashMap<AEKeyType, Long>();
+        var flushState = new OverloadedInterfaceBlockEntity.ImportBufferFlushState();
+        flushState.rebuildFrom(buffer);
+        var storage = new ProgrammableStorage(ignored -> true);
+
+        var result = OverloadedInterfaceBlockEntity.flushImportBufferEntries(
+                buffer, locks, Long.MIN_VALUE, false, 0, flushState,
+                storage, IActionSource.empty(), 0, () -> {});
+        assertTrue(locks.containsKey(ITEMS));
+
+        addBufferedForTest(buffer, flushState, late, 1L, true);
+        addBufferedForTest(buffer, flushState, first, 1L, false);
+        // addToImportBuffer removes this stale lock for a new key. The helper
+        // test adds directly to the production state, so mirror that map
+        // transition before the next real flush.
+        locks.clear();
+        result = OverloadedInterfaceBlockEntity.flushImportBufferEntries(
+                buffer, locks, result.lastFlushTick(), result.flushLimited(),
+                result.remainingKeys(), flushState, storage, IActionSource.empty(),
+                5, () -> {});
+        assertTrue(locks.containsKey(ITEMS),
+                "the old key and deferred new key must both be observed as rejected");
+
+        storage.rejection = ignored -> false;
+        result = OverloadedInterfaceBlockEntity.flushImportBufferEntries(
+                buffer, locks, result.lastFlushTick(), result.flushLimited(),
+                result.remainingKeys(), flushState, storage, IActionSource.empty(),
+                10, () -> {});
+        assertTrue(buffer.isEmpty());
+        assertTrue(result.changed());
+        assertFalse(locks.containsKey(ITEMS));
+        assertEquals(4L, storage.totalInserted());
+    }
+
+    @Test
+    void allRejectedHighCardinalityLocksAcrossSlicesWithContinuousInputAndRecovers() {
+        int initialKeys = 16_385;
+        var buffer = new LinkedHashMap<AEKey, Long>(initialKeys + 4);
+        for (int i = 0; i < initialKeys; i++) {
+            buffer.put(new TestKey(ITEMS, "rejecting-" + i), 1L);
+        }
+
+        var locks = new IdentityHashMap<AEKeyType, Long>();
+        var flushState = new OverloadedInterfaceBlockEntity.ImportBufferFlushState();
+        flushState.rebuildFrom(buffer);
+        var storage = new ProgrammableStorage(ignored -> true);
+
+        var result = OverloadedInterfaceBlockEntity.flushImportBufferEntries(
+                buffer, locks, Long.MIN_VALUE, false, 0,
+                flushState, storage, IActionSource.empty(), 0, () -> {});
+        assertEquals(16_384, result.visitedKeys());
+        assertFalse(locks.containsKey(ITEMS));
+
+        for (int round = 1; round <= 2; round++) {
+            var newKey = new TestKey(ITEMS, "continuous-" + round);
+            buffer.put(newKey, 1L);
+            flushState.onBuffered(newKey, true);
+
+            result = OverloadedInterfaceBlockEntity.flushImportBufferEntries(
+                    buffer, locks, result.lastFlushTick(), result.flushLimited(),
+                    result.remainingKeys(), flushState,
+                    storage, IActionSource.empty(), round * 5L, () -> {});
+            assertEquals(16_384, result.visitedKeys(),
+                    "cross-slice rejection must remain bounded by the remote-attempt slice");
+        }
+
+        for (int tick = 15; tick <= 35 && !locks.containsKey(ITEMS); tick += 5) {
+            result = OverloadedInterfaceBlockEntity.flushImportBufferEntries(
+                    buffer, locks, result.lastFlushTick(), result.flushLimited(),
+                    result.remainingKeys(), flushState, storage, IActionSource.empty(),
+                    tick, () -> {});
+            assertTrue(result.visitedKeys() <= 16_384);
+        }
+
+        assertTrue(locks.containsKey(ITEMS),
+                "a completed all-rejected pass must establish type backpressure");
+        assertEquals(16_387, buffer.size());
+
+        storage.rejection = ignored -> false;
+        result = OverloadedInterfaceBlockEntity.flushImportBufferEntries(
+                buffer, locks, result.lastFlushTick(), result.flushLimited(),
+                result.remainingKeys(), flushState,
+                storage, IActionSource.empty(), result.lastFlushTick() + 5, () -> {});
+        assertFalse(locks.containsKey(ITEMS),
+                "a real successful flush must release the type lock");
+        assertTrue(result.visitedKeys() <= 16_384);
+
+        result = OverloadedInterfaceBlockEntity.flushImportBufferEntries(
+                buffer, locks, result.lastFlushTick(), result.flushLimited(),
+                result.remainingKeys(), flushState,
+                storage, IActionSource.empty(), 16, () -> {});
+        assertTrue(buffer.isEmpty(), "recovery must drain the complete retained backlog");
+        assertEquals(16_387L, storage.totalInserted());
+    }
+
+    @Test
+    void continuousReplenishmentDoesNotRestartARejectedObservationForever() {
+        assertContinuousReplenishmentEventuallyLocksAndRecovers(16_385, 12);
+        assertContinuousReplenishmentEventuallyLocksAndRecovers(49_152, 12);
+    }
+
+    private static void assertContinuousReplenishmentEventuallyLocksAndRecovers(
+            int initialKeys, int rounds) {
+        var buffer = new LinkedHashMap<AEKey, Long>(initialKeys + rounds);
+        var keys = new java.util.ArrayList<TestKey>(initialKeys);
+        for (int i = 0; i < initialKeys; i++) {
+            var key = new TestKey(ITEMS, "replenish-" + initialKeys + "-" + i);
+            keys.add(key);
+            buffer.put(key, 1L);
+        }
+
+        var locks = new IdentityHashMap<AEKeyType, Long>();
+        var flushState = new OverloadedInterfaceBlockEntity.ImportBufferFlushState();
+        flushState.rebuildFrom(buffer);
+        var storage = new ProgrammableStorage(ignored -> true);
+        var result = OverloadedInterfaceBlockEntity.flushImportBufferEntries(
+                buffer, locks, Long.MIN_VALUE, false, 0, flushState,
+                storage, IActionSource.empty(), 0, () -> {});
+        assertEquals(16_384, result.visitedKeys());
+
+        long expectedInserted = 0;
+        for (int round = 1; round <= rounds; round++) {
+            addBufferedForTest(buffer, flushState, keys.get(0), 1L, false);
+            addBufferedForTest(buffer, flushState, keys.get(initialKeys - 1), 1L, false);
+            var newKey = new TestKey(ITEMS, "replenish-new-" + initialKeys + "-" + round);
+            addBufferedForTest(buffer, flushState, newKey, 1L, true);
+            expectedInserted += 3L;
+
+            result = OverloadedInterfaceBlockEntity.flushImportBufferEntries(
+                    buffer, locks, result.lastFlushTick(), result.flushLimited(),
+                    result.remainingKeys(), flushState, storage, IActionSource.empty(),
+                    round * 5L, () -> {});
+            assertTrue(result.visitedKeys() <= 16_384,
+                    "rejection observation must retain a bounded remote-attempt slice");
+        }
+
+        for (int idle = 0; idle < 8 && !locks.containsKey(ITEMS); idle++) {
+            result = OverloadedInterfaceBlockEntity.flushImportBufferEntries(
+                    buffer, locks, result.lastFlushTick(), result.flushLimited(),
+                    result.remainingKeys(), flushState, storage, IActionSource.empty(),
+                    (rounds + idle + 1L) * 5L, () -> {});
+            assertTrue(result.visitedKeys() <= 16_384,
+                    "post-production observation must remain bounded");
+        }
+
+        assertTrue(locks.containsKey(ITEMS),
+                "finite observation must complete despite replenishing tested and untested keys; initial="
+                        + initialKeys + ", untested=" + flushState.untestedKeys()
+                        + ", buffer=" + buffer.size() + ", attempts=" + storage.attempts);
+
+        // This is the same state transition used by the production mode
+        // setters through wakeWirelessIo(). It must not discard the retained
+        // buffer while it starts a fresh observation pass.
+        int retainedKeys = buffer.size();
+        flushState.resetPasses();
+        locks.clear();
+        assertEquals(retainedKeys, buffer.size());
+
+        storage.rejection = ignored -> false;
+        int recoveryFlushes = 0;
+        long now = result.lastFlushTick() + 5;
+        while (!buffer.isEmpty() && recoveryFlushes++ < 12) {
+            result = OverloadedInterfaceBlockEntity.flushImportBufferEntries(
+                    buffer, locks, result.lastFlushTick(), result.flushLimited(),
+                    result.remainingKeys(), flushState, storage, IActionSource.empty(),
+                    now++, () -> {});
+        }
+        assertTrue(buffer.isEmpty(),
+                "network recovery must drain the retained replenished backlog");
+        assertFalse(locks.containsKey(ITEMS));
+        assertEquals(initialKeys + expectedInserted, storage.totalInserted());
+    }
+
+    private static void addBufferedForTest(
+            Map<AEKey, Long> buffer,
+            OverloadedInterfaceBlockEntity.ImportBufferFlushState flushState,
+            AEKey key, long amount, boolean newKey) {
+        buffer.merge(key, amount, Long::sum);
+        flushState.onBuffered(key, newKey);
+    }
+
+    @Test
+    void programmableStorageKeepsInfiniteAndFiniteCapacitySemantics() {
+        var infinite = new TestKey(ITEMS, "infinite");
+        var finite = new TestKey(ITEMS, "finite");
+        var storage = new ProgrammableStorage(ignored -> false, Map.of(finite, 5L));
+
+        assertEquals(4L, storage.insert(infinite, 4L, Actionable.SIMULATE, IActionSource.empty()));
+        assertEquals(0L, storage.totalInserted(), "SIMULATE must not record an insertion");
+        assertEquals(Long.MAX_VALUE, storage.remainingCapacity(infinite));
+
+        assertEquals(4L, storage.insert(infinite, 4L, Actionable.MODULATE, IActionSource.empty()));
+        assertEquals(6L, storage.insert(infinite, 6L, Actionable.MODULATE, IActionSource.empty()));
+        assertEquals(10L, storage.inserted.get(infinite));
+        assertEquals(Long.MAX_VALUE, storage.remainingCapacity(infinite));
+
+        assertEquals(5L, storage.insert(finite, 9L, Actionable.SIMULATE, IActionSource.empty()));
+        assertEquals(5L, storage.remainingCapacity(finite),
+                "SIMULATE must not consume finite capacity");
+        assertEquals(5L, storage.insert(finite, 9L, Actionable.MODULATE, IActionSource.empty()));
+        assertEquals(0L, storage.remainingCapacity(finite));
+        assertEquals(0L, storage.insert(finite, 1L, Actionable.MODULATE, IActionSource.empty()),
+                "an exhausted finite key cannot return a negative accepted amount");
+        assertEquals(15L, storage.totalInserted());
+    }
+
+
+
+    private static final class ProgrammableStorage implements MEStorage {
+        private Predicate<AEKey> rejection;
+        private final Map<AEKey, Long> capacity;
+        private final Map<AEKey, Long> inserted = new HashMap<>();
+        private int attempts;
+
+        private ProgrammableStorage(Predicate<AEKey> rejection) {
+            this(rejection, Map.of());
+        }
+
+        private ProgrammableStorage(
+                Predicate<AEKey> rejection, Map<? extends AEKey, Long> capacity) {
+            this.rejection = rejection;
+            this.capacity = new HashMap<>(capacity);
+        }
+
+        @Override
+        public Component getDescription() {
+            return Component.literal("programmable test storage");
+        }
+
+        @Override
+        public long insert(
+                AEKey key, long amount, Actionable mode, IActionSource source) {
+            attempts++;
+            if (rejection.test(key) || amount <= 0) return 0;
+            Long remaining = capacity.get(key);
+            long accepted = remaining == null
+                    ? amount
+                    : Math.min(amount, Math.max(0L, remaining));
+            if (mode == Actionable.MODULATE && accepted > 0) {
+                inserted.merge(key, accepted, Long::sum);
+                if (remaining != null) {
+                    capacity.put(key, remaining - accepted);
+                }
+            }
+            return accepted;
+        }
+
+        private long totalInserted() {
+            return inserted.values().stream().mapToLong(Long::longValue).sum();
+        }
+
+        private long remainingCapacity(AEKey key) {
+            return capacity.getOrDefault(key, Long.MAX_VALUE);
+        }
+    }
+
+    private static final class TestKey extends AEKey {
+        private final AEKeyType type;
+        private final String id;
+
+        private TestKey(AEKeyType type, String id) {
+            this.type = type;
+            this.id = id;
+        }
+
+        @Override
+        public AEKeyType getType() {
+            return type;
+        }
+
+        @Override
+        public AEKey dropSecondary() {
+            return this;
+        }
+
+        @Override
+        public CompoundTag toTag() {
+            var tag = new CompoundTag();
+            tag.putString("id", id);
+            return tag;
+        }
+
+        @Override
+        public Object getPrimaryKey() {
+            return id;
+        }
+
+        @Override
+        public ResourceLocation getId() {
+            return new ResourceLocation("ae2lt_test", id);
+        }
+
+        @Override
+        public void writeToPacket(FriendlyByteBuf data) {
+        }
+
+        @Override
+        protected Component computeDisplayName() {
+            return Component.literal(id);
+        }
+
+        @Override
+        public void addDrops(long amount, List<ItemStack> drops, Level level, BlockPos pos) {
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof TestKey other
+                    && type == other.type
+                    && id.equals(other.id);
+        }
+
+        @Override
+        public int hashCode() {
+            return 31 * System.identityHashCode(type) + id.hashCode();
+        }
+    }
+
+    private static final class TestKeyType extends AEKeyType {
+        private TestKeyType(String id) {
+            super(
+                    new ResourceLocation("ae2lt_test", id),
+                    TestKey.class,
+                    Component.literal(id));
+        }
+
+        @Override
+        public AEKey loadKeyFromTag(CompoundTag tag) {
+            return null;
+        }
+
+        @Override
+        public AEKey readFromPacket(FriendlyByteBuf input) {
+            return null;
+        }
+    }
+}
