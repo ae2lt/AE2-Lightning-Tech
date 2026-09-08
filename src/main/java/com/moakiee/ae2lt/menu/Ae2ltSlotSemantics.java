@@ -75,6 +75,12 @@ public final class Ae2ltSlotSemantics {
     // real menu slot lets AE2's JEI/EMI ghost-ingredient handlers discover it.
     public static final SlotSemantic TIANSHU_GLOBAL_RESERVE_MARK =
             SlotSemantics.register("AE2LT_TIANSHU_GLOBAL_RESERVE_MARK", false);
+    public static final SlotSemantic TIANSHU_OMNIVERSAL_INPUTS =
+            SlotSemantics.register("AE2LT_TIANSHU_OMNIVERSAL_INPUTS", false);
+    public static final SlotSemantic TIANSHU_OMNIVERSAL_OUTPUTS =
+            SlotSemantics.register("AE2LT_TIANSHU_OMNIVERSAL_OUTPUTS", false);
+    public static final SlotSemantic TIANSHU_OMNIVERSAL_MOLDS =
+            SlotSemantics.register("AE2LT_TIANSHU_OMNIVERSAL_MOLDS", false);
 
     // Overload Device Workbench
     public static final SlotSemantic OVERLOAD_DEVICE_WORKBENCH_DEVICE =

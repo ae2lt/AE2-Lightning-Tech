@@ -1332,5 +1332,22 @@
   "ae2lt.tianshu.reserve.empty": "尚未配置全局保留项",
   "ae2lt.tianshu.issue.chunks_unloaded": "结构覆盖的区块未完整加载",
   "ae2lt.gui.matrix_port.search": "搜索矩阵样板",
-  "ae2lt.gui.matrix_port.title": "样板管理"
+  "ae2lt.gui.matrix_port.title": "样板管理",
+  "ae2lt.tianshu.terminal.mode.omniversal": "万象样板",
+  "ae2lt.tianshu.omniversal.choose": "请填入输入、输出和模具，或从 JEI / EMI 填充配方",
+  "ae2lt.tianshu.omniversal.selected": "配方已选定",
+  "ae2lt.tianshu.omniversal.invalid": "配方已失效或内容不匹配，请重新选择",
+  "ae2lt.tianshu.omniversal.encoded": "万象样板已编码",
+  "ae2lt.tianshu.omniversal.molds.tooltip": "可修改的模具筛选槽。模具参与配方匹配，需装入合金炉或模具总枢纽，不作为样板原料消耗。",
+  "ae2lt.tianshu.omniversal.encode_upload": "编码并上传",
+  "ae2lt.tianshu.omniversal.encode_upload.tooltip": "自动选择已装好对应模具且有空位的多方块 ME 样板总成，其次选择对应模具的单方块合金炉。没有合适目标时样板保留在终端。",
+  "ae2lt.tianshu.omniversal.upload.no_target": "网络中没有可用的万象合金炉",
+  "ae2lt.tianshu.omniversal.upload.unformed": "多方块 ME 样板总成未连接已成型的合金炉",
+  "ae2lt.tianshu.omniversal.upload.requires_multiblock": "该配方需要多个模具，请连接多方块合金炉",
+  "ae2lt.tianshu.omniversal.upload.full": "兼容合金炉的样板槽已满",
+  "ae2lt.tianshu.omniversal.upload.success": "已上传到万象合金炉",
+  "ae2lt.tianshu.omniversal.upload.rejected": "合金炉拒绝接收，样板保留在终端",
+  "ae2lt.tianshu.omniversal.upload.missing_mold": "没有已装好对应模具的可用合金炉",
+  "ae2lt.tianshu.omniversal.edited": "配方已修改，编码时校验输入、输出和模具",
+  "ae2lt.tianshu.omniversal.no_match": "没有同时匹配输入、输出、数量和模具的万象配方，无法编码"
 }

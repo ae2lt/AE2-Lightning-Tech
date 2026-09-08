@@ -67,7 +67,7 @@ public final class TianshuDirectUploadClient {
                 ? TianshuPatternUploadRouting.Route.INVALID
                 : TianshuPatternUploadRouting.classify(stack, minecraft.level);
         switch (route) {
-            case CLOSED_LOOP_STORAGE, CRAFTING_ASSEMBLER -> {
+            case CLOSED_LOOP_STORAGE, CRAFTING_ASSEMBLER, OMNIVERSAL_FURNACE -> {
                 if (consumeDirectRequest(menu)) {
                     menu.uploadEncodedPattern();
                     awaitResult(menu, null);

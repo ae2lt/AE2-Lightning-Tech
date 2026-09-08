@@ -5,9 +5,11 @@
   "compatibilityLevel": "JAVA_21",
   "plugin": "com.moakiee.ae2lt.mixin.recipeviewer.RecipeViewerMixinPlugin",
   "client": [
+    "useless.OmniversalPatternJeiTransferMixin",
     "jei.JeiEncodePatternTransferMixin",
     "jei.JeiRecipeTransferButtonControllerMixin",
     "emi.EmiEncodePatternTransferMixin",
+    "emi.JemiRecipeAccessor",
     "emi.EmiRecipeTransferResultAccessor"
   ],
   "injectors": {

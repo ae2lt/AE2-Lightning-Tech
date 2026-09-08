@@ -179,6 +179,21 @@ neoForge {
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }
 
+        // Opt-in native compatibility suite; uses only its own generated fixtures and world.
+        omniversalGameTestServer {
+            type = "gameTestServer"
+            gameDirectory = project.file('run-omniversal-gametest')
+            systemProperty 'neoforge.enabledGameTestNamespaces', 'ae2lt_omniversal'
+        }
+
+        omniversalClient {
+            client()
+            gameDirectory = project.file('run-omniversal-client')
+            systemProperty 'ae2lt.omniversalClientProbe', 'true'
+            programArguments.addAll '--username', 'OmniProbe', '--quickPlaySingleplayer', 'OmniProbe'
+            jvmArguments.add '-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5007'
+        }
+
         // Fully generated wireless-I/O fixture: no saved world or manual block setup.
         wirelessIoGameTestServer {
             type = "gameTestServer"
@@ -323,6 +338,11 @@ dependencies {
     compileOnly "mekanism:Mekanism:1.21.1-10.7.19.85"
     compileOnly "curse.maven:flux-networks-248020:6089446"
     compileOnly "curse.maven:ae2-jei-integration-1074338:7727898"
+    // Optional Omniversal Pattern support. The mod is never bundled or required at runtime.
+    compileOnly "curse.maven:some-useless-things-1401600:8790729"
+    if (providers.gradleProperty('ae2ltEnableUselessDevRuntime').getOrElse('false').toBoolean()) {
+        runtimeOnly "curse.maven:some-useless-things-1401600:8790729"
+    }
     runtimeOnly "curse.maven:ae2-jei-integration-1074338:7727898"
     runtimeOnly "curse.maven:applied-mekanistics-574300:7096962"
     runtimeOnly "curse.maven:mekanism-extras-1026040:8677677"

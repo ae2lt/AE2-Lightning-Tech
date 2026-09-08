@@ -25,7 +25,17 @@ The Closed-Loop Pattern Storage installed in the bound Tianshu's cooling-compati
 
 ## Encoding Modes
 
-The terminal offers the normal terminal's crafting, processing, stonecutting, and smithing modes, plus an additional **Closed-Loop Pattern** mode (see below). Mode switching works the same as on the normal terminal.
+The terminal offers crafting, processing, stonecutting, smithing, and **Closed-Loop Pattern** modes. Installing Useless Mod also adds a dedicated **Omniversal Pattern** mode.
+
+## Omniversal Patterns
+
+Transfer an Omniversal recipe from JEI or EMI to open its dedicated page. Inputs, outputs, and molds are editable fake slots and can also be filled manually. Encoding searches native recipes that match all inputs, outputs, quantities and molds, including valid alternatives within ingredient tags. No match prevents encoding; identical matches use the first recipe. Install molds in the furnace or mold hub; they are not consumed as pattern inputs.
+
+Keep blank patterns in ME storage, then click **Encode and upload**. The terminal creates a native Omniversal Pattern and automatically chooses a machine on this network with the required molds and a free pattern slot. A formed multiblock's **ME Pattern Assembly** has priority over a matching single-block furnace. A full multiblock or one with mismatched molds falls back to a matching single furnace; recipes requiring multiple molds only route to multiblocks. No manual machine selection is needed.
+
+Encoding follows the existing upload-trigger setting: by default, click to encode and upload, or **hold Shift while encoding** to keep the result in the terminal. If matching molds or a suitable target are unavailable, the structure is unformed, or compatible slots are full, the paid pattern stays in the result slot. Hover an empty area of the page for details. Putting an existing Omniversal Pattern in that slot restores its binding, and both wired and wireless terminals retain all edited slots when reopened, including invalid drafts. Other encoding pages do not overwrite the Omniversal draft.
+
+Hold **Alt** while transferring an Omniversal recipe from JEI or EMI to encode and attempt uploading immediately. Select the recipe again if it becomes unavailable or no longer matches.
 
 ## Processing-Mode Enhancements
 
@@ -49,7 +59,7 @@ The provider-selection screen also supports **alias mappings**. A JEI/EMI transf
 
 The terminal settings configure an **upload trigger**: holding a chosen key (or no key) while encoding automatically enters the matching upload flow; it can also be set to manual upload only. The manual upload button always remains available.
 
-### Direct Encoding and Upload from JEI / EMI
+### Direct Encoding and Upload from JEI or EMI / EMI
 
 Prepare a blank pattern in the Tianshu Pattern Encoding Terminal and use any non-closed-loop encoding mode. On a JEI or EMI recipe page, **hold `Alt` while transferring the recipe**. After the viewer confirms that the transfer succeeded, the terminal encodes the pattern and immediately attempts to upload it according to its type. A failed transfer starts neither encoding nor upload.
 
@@ -143,7 +153,7 @@ Click any entry under **Crafting topology** to set how much of that material mai
 
 ### Global Reserves
 A global reserve protects a quantity of an item from automatic maintenance jobs. Player-requested crafting jobs may still use this protected stock.
-Use the search box to find stored network content and click an item to configure it. Items may also be dragged from JEI or EMI onto the target in the lower-left corner.
+Use the search box to find stored network content and click an item to configure it. Items may also be dragged from JEI or EMI or EMI onto the target in the lower-left corner.
 **Exact match** protects only the selected component variant, including properties such as durability and enchantments. **Ignore components** groups all variants with the same item ID.
 **Reserve** sets the protected quantity. Set it to `-1` to reserve all existing stock.
 

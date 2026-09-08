@@ -4,6 +4,7 @@ import appeng.api.crafting.PatternDetailsHelper;
 import appeng.api.implementations.blockentities.PatternContainerGroup;
 import com.moakiee.ae2lt.AE2LightningTech;
 import com.moakiee.ae2lt.item.ClosedLoopPatternItem;
+import com.moakiee.ae2lt.integration.useless.UselessModCompat;
 import java.util.Set;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
@@ -30,7 +31,8 @@ public final class TianshuPatternUploadRouting {
         CLOSED_LOOP_STORAGE,
         CRAFTING_ASSEMBLER,
         PROCESSING_PROVIDER,
-        INVALID
+        INVALID,
+        OMNIVERSAL_FURNACE
     }
 
     private TianshuPatternUploadRouting() {
@@ -41,6 +43,7 @@ public final class TianshuPatternUploadRouting {
         if (mode == null) return Route.INVALID;
         return switch (mode) {
             case CLOSED_LOOP -> Route.CLOSED_LOOP_STORAGE;
+            case OMNIVERSAL -> Route.OMNIVERSAL_FURNACE;
             case CRAFTING, STONECUTTING, SMITHING_TABLE -> Route.CRAFTING_ASSEMBLER;
             case PROCESSING -> Route.PROCESSING_PROVIDER;
         };
@@ -54,6 +57,7 @@ public final class TianshuPatternUploadRouting {
         }
         var details = PatternDetailsHelper.decodePattern(stack, level);
         if (details == null) return Route.INVALID;
+        if (UselessModCompat.isOmniversalPattern(stack)) return Route.OMNIVERSAL_FURNACE;
         if (!details.supportsPushInputsToExternalInventory()) {
             return Route.CRAFTING_ASSEMBLER;
         }
