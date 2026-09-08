@@ -17,6 +17,7 @@ import com.moakiee.ae2lt.network.tianshu.SaveMaintenanceRulePacket;
 import com.moakiee.ae2lt.network.tianshu.MaintenanceSummarySyncPacket;
 import com.moakiee.ae2lt.network.tianshu.SaveGlobalReservePacket;
 import com.moakiee.ae2lt.network.tianshu.RequestUploadTargetsPacket;
+import com.moakiee.ae2lt.network.tianshu.SelectOmniversalPatternPacket;
 import com.moakiee.ae2lt.network.tianshu.UploadPatternToTargetPacket;
 import com.moakiee.ae2lt.network.tianshu.UploadTargetsSyncPacket;
 import net.minecraft.resources.ResourceLocation;
@@ -193,6 +194,10 @@ public final class NetworkInit {
                 SaveGlobalReservePacket.TYPE,
                 SaveGlobalReservePacket.STREAM_CODEC,
                 SaveGlobalReservePacket::handle);
+        registrar.playToServer(
+                SelectOmniversalPatternPacket.TYPE,
+                SelectOmniversalPatternPacket.STREAM_CODEC,
+                SelectOmniversalPatternPacket::handle);
         registrar.playToServer(
                 RequestUploadTargetsPacket.TYPE,
                 RequestUploadTargetsPacket.STREAM_CODEC,

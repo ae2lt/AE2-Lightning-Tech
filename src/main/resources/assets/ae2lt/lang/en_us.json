@@ -1371,5 +1371,22 @@
   "ae2lt.tianshu.work.scroll_upgrades": "Upgrade cards: scroll over the right-hand slots to browse slots.",
   "ae2lt.tianshu.wireless.trash_notice": "Discarded on exit",
   "ae2lt.tianshu.work.cell_copy_clear": "Currently clears the configuration pane when the cell is removed.",
-  "ae2lt.tianshu.work.cell_copy_keep": "Currently keeps the configuration pane when the cell is removed."
+  "ae2lt.tianshu.work.cell_copy_keep": "Currently keeps the configuration pane when the cell is removed.",
+  "ae2lt.tianshu.terminal.mode.omniversal": "Omniversal patterns",
+  "ae2lt.tianshu.omniversal.choose": "Enter inputs, outputs and molds, or transfer a recipe from JEI / EMI",
+  "ae2lt.tianshu.omniversal.selected": "Recipe selected",
+  "ae2lt.tianshu.omniversal.invalid": "Recipe is unavailable or no longer matches; select it again",
+  "ae2lt.tianshu.omniversal.encoded": "Omniversal pattern encoded",
+  "ae2lt.tianshu.omniversal.molds.tooltip": "Editable mold filter. Molds participate in recipe matching and must be installed in the furnace or mold hub; they are not consumed as pattern inputs.",
+  "ae2lt.tianshu.omniversal.encode_upload": "Encode and upload",
+  "ae2lt.tianshu.omniversal.encode_upload.tooltip": "Automatically choose a multiblock ME Pattern Assembly with the required molds and a free slot, then a matching single-block furnace. If no suitable target exists, keep the pattern here.",
+  "ae2lt.tianshu.omniversal.upload.no_target": "No available Omniversal furnace on this network",
+  "ae2lt.tianshu.omniversal.upload.unformed": "The multiblock ME Pattern Assembly is not linked to a formed furnace",
+  "ae2lt.tianshu.omniversal.upload.requires_multiblock": "This recipe needs multiple molds; connect a multiblock furnace",
+  "ae2lt.tianshu.omniversal.upload.full": "Compatible furnaces have no free pattern slots",
+  "ae2lt.tianshu.omniversal.upload.success": "Uploaded to an Omniversal furnace",
+  "ae2lt.tianshu.omniversal.upload.rejected": "The furnace rejected this pattern; it remains in the terminal",
+  "ae2lt.tianshu.omniversal.upload.missing_mold": "No available furnace has the required molds",
+  "ae2lt.tianshu.omniversal.edited": "Draft edited; encoding validates inputs, outputs and molds",
+  "ae2lt.tianshu.omniversal.no_match": "No Omniversal recipe matches these inputs, outputs, quantities and molds"
 }

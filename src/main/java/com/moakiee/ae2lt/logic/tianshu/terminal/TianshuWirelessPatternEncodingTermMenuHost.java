@@ -33,6 +33,8 @@ public final class TianshuWirelessPatternEncodingTermMenuHost extends WTMenuHost
     private static final String TAG_TIANSHU_MODE = "tianshuMode";
     private static final String TAG_CLOSED_LOOP_DRAFT = "tianshuClosedLoopDraft";
     private static final String TAG_PROCESSING_DRAFT = "tianshuProcessingDraft";
+    private static final String TAG_OMNIVERSAL_DRAFT = "tianshuOmniversalDraft";
+    private OmniversalPatternDraft omniversalDraft = OmniversalPatternDraft.empty();
 
     private final PatternEncodingLogic logic = new PatternEncodingLogic(this);
     private TianshuEncodingMode tianshuMode = TianshuEncodingMode.CRAFTING;
@@ -73,9 +75,11 @@ public final class TianshuWirelessPatternEncodingTermMenuHost extends WTMenuHost
     @Override
     public void markForSave() {
         CompoundTag data = getItemStack().getOrDefault(
-                AE2wtlibComponents.PATTERN_ENCODING_LOGIC, new CompoundTag());
+                AE2wtlibComponents.PATTERN_ENCODING_LOGIC, new CompoundTag()).copy();
         HolderLookup.Provider registries = getPlayer().registryAccess();
         logic.writeToNBT(data, registries);
+        if (omniversalDraft.isEmpty()) data.remove(TAG_OMNIVERSAL_DRAFT);
+        else data.put(TAG_OMNIVERSAL_DRAFT, omniversalDraft.write(registries));
         data.putString(TAG_TIANSHU_MODE, tianshuMode.name());
         if (closedLoopDraft != null) {
             data.put(TAG_CLOSED_LOOP_DRAFT, closedLoopDraft.write(registries));
@@ -93,6 +97,18 @@ public final class TianshuWirelessPatternEncodingTermMenuHost extends WTMenuHost
     @Override
     public TianshuEncodingMode getTianshuEncodingMode() {
         return tianshuMode;
+    }
+
+    @Override
+    public OmniversalPatternDraft getOmniversalPatternDraft() {
+        return omniversalDraft;
+    }
+
+    @Override
+    public void setOmniversalPatternDraft(OmniversalPatternDraft draft) {
+        if (omniversalDraft.equals(draft)) return;
+        omniversalDraft = draft;
+        markForSave();
     }
 
     @Override
@@ -132,6 +148,7 @@ public final class TianshuWirelessPatternEncodingTermMenuHost extends WTMenuHost
     }
 
     private void readTianshuState(CompoundTag data, HolderLookup.Provider registries) {
+        omniversalDraft = OmniversalPatternDraft.read(data.getCompound(TAG_OMNIVERSAL_DRAFT), registries);
         try {
             tianshuMode = TianshuEncodingMode.valueOf(data.getString(TAG_TIANSHU_MODE));
         } catch (IllegalArgumentException ignored) {

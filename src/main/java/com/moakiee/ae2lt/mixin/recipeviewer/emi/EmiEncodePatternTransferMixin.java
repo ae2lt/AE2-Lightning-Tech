@@ -8,6 +8,11 @@ package com.moakiee.ae2lt.mixin.recipeviewer.emi;
 import appeng.integration.modules.emi.EmiEncodePatternHandler;
 import appeng.integration.modules.emi.EmiStackHelper;
 import appeng.menu.AEBaseMenu;
+import appeng.menu.me.items.PatternEncodingTermMenu;
+import appeng.api.stacks.GenericStack;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import com.moakiee.ae2lt.integration.useless.UselessModCompat;
 import com.moakiee.ae2lt.client.TianshuDirectUploadClient;
 import com.moakiee.ae2lt.client.TianshuRecipeTransferContext;
 import com.moakiee.ae2lt.client.TianshuUploadAliasRules;
@@ -16,6 +21,7 @@ import com.moakiee.ae2lt.menu.TianshuPatternEncodingTermMenu;
 import dev.emi.emi.api.EmiApi;
 import dev.emi.emi.api.recipe.EmiRecipe;
 import java.util.ArrayList;
+import java.util.List;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.world.item.crafting.RecipeHolder;
@@ -48,6 +54,7 @@ public abstract class EmiEncodePatternTransferMixin {
         // An actual transfer starts a new metadata generation. Clear before every early return so
         // recipes without a discoverable type/ID can never inherit the previous recipe's ID.
         TianshuRecipeTransferContext.clear(tianshuMenu);
+        if (ae2lt$omniversalRecipe(emiRecipe) != null) return;
         if (tianshuMenu.tianshuMode == TianshuEncodingMode.CLOSED_LOOP && emiRecipe != null) {
             var output = EmiStackHelper.ofOutputs(emiRecipe).stream().findFirst().orElse(null);
             if (output != null && tianshuMenu.markClosedLoopPrimaryOutput(
@@ -105,6 +112,38 @@ public abstract class EmiEncodePatternTransferMixin {
             TianshuRecipeTransferContext.publish(
                     tianshuMenu, sourceKey, recipeId, defaultAliases);
         }
+    }
+
+    @Unique
+    private static Object ae2lt$omniversalRecipe(EmiRecipe recipe) {
+        if (recipe instanceof JemiRecipeAccessor wrapped
+                && UselessModCompat.isViewerRecipe(wrapped.ae2lt$getRecipe())) {
+            return wrapped.ae2lt$getRecipe();
+        }
+        return null;
+    }
+
+    @WrapOperation(
+            method = "transferRecipe(Lappeng/menu/me/items/PatternEncodingTermMenu;"
+                    + "Lnet/minecraft/world/item/crafting/RecipeHolder;"
+                    + "Ldev/emi/emi/api/recipe/EmiRecipe;Z)"
+                    + "Lappeng/integration/modules/emi/AbstractRecipeHandler$Result;",
+            at = @At(value = "INVOKE", target = "Lappeng/integration/modules/itemlists/EncodingHelper;"
+                    + "encodeProcessingRecipe(Lappeng/menu/me/items/PatternEncodingTermMenu;"
+                    + "Ljava/util/List;Ljava/util/List;)V"),
+            require = 1)
+    private void ae2lt$transferOmniversalRecipe(
+            PatternEncodingTermMenu menu, List<List<GenericStack>> inputs, List<GenericStack> outputs,
+            Operation<Void> original, PatternEncodingTermMenu targetMenu, RecipeHolder<?> holder,
+            EmiRecipe recipe, boolean doTransfer) {
+        var nativeRecipe = ae2lt$omniversalRecipe(recipe);
+        if (menu instanceof TianshuPatternEncodingTermMenu tianshu && nativeRecipe != null) {
+            var pattern = UselessModCompat.encodeViewerRecipe(nativeRecipe, menu.getPlayer().level());
+            // A stale native recipe must enter the server's rejection path, never become a plain pattern.
+            tianshu.selectOmniversalPattern(pattern.isEmpty() ? UselessModCompat.icon() : pattern);
+            return;
+        }
+        original.call(menu, inputs, outputs);
     }
 
     @Inject(

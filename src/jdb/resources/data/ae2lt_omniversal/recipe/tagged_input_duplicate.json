@@ -1,0 +1,31 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "useless_mod"
+    }
+  ],
+  "type": "useless_mod:advanced_alloy_furnace",
+  "id": "ae2lt_omniversal:tagged_input_duplicate",
+  "ingredients": [
+    {
+      "count": 2,
+      "ingredient": {
+        "tag": "ae2lt_omniversal:test_planks"
+      }
+    }
+  ],
+  "outputs": [
+    {
+      "id": "minecraft:amethyst_shard",
+      "count": 7
+    }
+  ],
+  "energy": 1000,
+  "process_time": 40,
+  "molds": [
+    {
+      "item": "minecraft:stick"
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "useless_mod"
+    }
+  ],
+  "type": "useless_mod:advanced_alloy_furnace",
+  "id": "ae2lt_omniversal:one_mold",
+  "ingredients": [
+    {
+      "count": 2,
+      "ingredient": {
+        "item": "minecraft:iron_ingot"
+      }
+    }
+  ],
+  "outputs": [
+    {
+      "id": "minecraft:gold_ingot"
+    }
+  ],
+  "energy": 1000,
+  "process_time": 40,
+  "molds": [
+    {
+      "item": "minecraft:stick"
+    }
+  ]
+}
