@@ -112,7 +112,8 @@ public class CrystalCatalyzerScreen extends AEBaseScreen<CrystalCatalyzerMenu> {
             var background = net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(
                     "ae2lt", "textures/guis/crystal_catalyzer.png");
             graphics.blit(background, offsetX + 138, offsetY + 28, 150, 28, 10, 22);
-            graphics.blit(background, offsetX + 80, offsetY + 43, 150, 28, 24, 30);
+            // Matrix connectors begin directly below the horizontal arrow at y=40.
+            graphics.blit(background, offsetX + 80, offsetY + 40, 150, 28, 24, 33);
         }
     }
 
