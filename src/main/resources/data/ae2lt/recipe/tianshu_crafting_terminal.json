@@ -1,0 +1,28 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "ae2:crafting_terminal"
+    },
+    {
+      "item": "ae2lt:overload_processor"
+    },
+    {
+      "item": "ae2lt:overload_alloy_anvil"
+    },
+    {
+      "item": "minecraft:smithing_table"
+    },
+    {
+      "item": "minecraft:stonecutter"
+    },
+    {
+      "item": "ae2:cell_workbench"
+    }
+  ],
+  "result": {
+    "id": "ae2lt:tianshu_crafting_terminal",
+    "count": 1
+  }
+}

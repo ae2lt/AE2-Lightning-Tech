@@ -31,6 +31,10 @@ public final class AE2LTEmiPlugin implements EmiPlugin {
 
     @Override
     public void register(EmiRegistry registry) {
+        registry.addRecipeHandler(com.moakiee.ae2lt.menu.TianshuCraftingTermMenu.TYPE,
+                new TianshuCraftingRecipeHandler<>(com.moakiee.ae2lt.menu.TianshuCraftingTermMenu.class));
+        registry.addRecipeHandler(com.moakiee.ae2lt.menu.TianshuWirelessCraftingTermMenu.TYPE,
+                new TianshuCraftingRecipeHandler<>(com.moakiee.ae2lt.menu.TianshuWirelessCraftingTermMenu.class));
         EmiMultiblockInputEvents.register();
         registry.addRecipeHandler(PigmeeSynthesisStationMenu.TYPE,
                 new EmiUseCraftingRecipeHandler<>(PigmeeSynthesisStationMenu.class));

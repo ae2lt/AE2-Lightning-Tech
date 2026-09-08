@@ -5,8 +5,16 @@
   "compatibilityLevel": "JAVA_21",
   "plugin": "com.moakiee.ae2lt.mixin.ae2wtlib.Ae2wtlibMixinPlugin",
   "mixins": [
-    "WTMenuHostMixin"
+    "WTMenuHostMixin",
+    "CraftingTerminalHandlerMixin",
+    "CraftingTerminalHandlerAccessor",
+    "TianshuMagnetMenuMixin",
+    "WutCraftingPredicateMixin",
+    "TianshuMagnetHandlerMixin",
+    "TianshuTerminalMergeMixin",
+    "TianshuTerminalRecipeMixin"
   ],
+  "client": ["client.TianshuMagnetScreenMixin"],
   "injectors": {
     "defaultRequire": 0
   }

@@ -127,7 +127,8 @@ neoForge {
     runs {
         client {
             client()
-            jvmArguments.add '-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005'
+            jvmArguments.add '-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:' +
+                    providers.gradleProperty('ae2ltDebugPort').getOrElse('5005')
             if (System.getProperty('os.name').toLowerCase().contains('mac')) {
                 jvmArguments.addAll '-Xdock:name=Minecraft AE2LT Dev', '-Dapple.awt.application.name=Minecraft AE2LT Dev'
             }
@@ -290,7 +291,13 @@ dependencies {
     }
     compileOnly "top.theillusivec4.curios:curios-neoforge:${curios_version}:api"
     runtimeOnly "top.theillusivec4.curios:curios-neoforge:${curios_version}"
-    runtimeOnly("de.mari_023:ae2wtlib:${ae2wtlib_version}") {
+    if (!providers.gradleProperty('ae2ltDisableWtlibDevRuntime').getOrElse('false').toBoolean()) {
+        runtimeOnly("de.mari_023:ae2wtlib:${ae2wtlib_version}") {
+            transitive = false
+        }
+    }
+    // Full WCT features live behind an optional bridge; the API-only terminal stays loadable alone.
+    compileOnly("de.mari_023:ae2wtlib:${ae2wtlib_version}") {
         transitive = false
     }
     compileOnly "org.appliedenergistics:guideme:${guideme_version}"

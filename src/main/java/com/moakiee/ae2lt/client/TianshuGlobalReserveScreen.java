@@ -17,7 +17,8 @@ import com.moakiee.ae2lt.logic.tianshu.maintenance.InventoryMaintenanceBadge;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.InventoryMaintenanceStatus;
 import com.moakiee.ae2lt.logic.tianshu.maintenance.ReservedStockMatchMode;
 import com.moakiee.ae2lt.menu.Ae2ltSlotSemantics;
-import com.moakiee.ae2lt.menu.TianshuPatternEncodingTermMenu;
+import com.moakiee.ae2lt.menu.TianshuMaintenanceMenu;
+import appeng.menu.me.common.MEStorageMenu;
 import com.moakiee.ae2lt.network.tianshu.MaintenanceSummarySyncPacket;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -30,8 +31,8 @@ import net.minecraft.network.chat.Component;
 import org.lwjgl.glfw.GLFW;
 
 /** Inventory-maintenance and Tianshu-wide reserved-stock overview. */
-public final class TianshuGlobalReserveScreen<M extends TianshuPatternEncodingTermMenu>
-        extends AESubScreen<M, TianshuPatternEncodingTermScreen<M>> {
+public final class TianshuGlobalReserveScreen<M extends MEStorageMenu & TianshuMaintenanceMenu>
+        extends AESubScreen<M, TianshuMaintenanceTermScreen<M>> {
     private static final int LIST_LEFT = 9;
     private static final int LIST_RIGHT = 187;
     private static final int LIST_CENTER_X = (LIST_LEFT + LIST_RIGHT) / 2;
@@ -54,9 +55,9 @@ public final class TianshuGlobalReserveScreen<M extends TianshuPatternEncodingTe
     private boolean awaitingRuleEditor;
     private int requestedRuleEditorRevision;
 
-    public TianshuGlobalReserveScreen(TianshuPatternEncodingTermScreen<M> parent) {
+    public TianshuGlobalReserveScreen(TianshuMaintenanceTermScreen<M> parent) {
         super(parent, "/screens/tianshu_inventory_overview.json");
-        restoreMaintainableView = menu.maintainableView;
+        restoreMaintainableView = menu.isMaintainableView();
         if (restoreMaintainableView) menu.setMaintainableView(false);
 
         scrollbar = widgets.addScrollBar("scrollbar", Scrollbar.SMALL);
@@ -98,14 +99,9 @@ public final class TianshuGlobalReserveScreen<M extends TianshuPatternEncodingTe
     }
 
     void hideSlots() {
-        for (var semantic : List.of(SlotSemantics.CRAFTING_GRID, SlotSemantics.CRAFTING_RESULT,
-                SlotSemantics.PROCESSING_INPUTS, SlotSemantics.PROCESSING_OUTPUTS,
-                SlotSemantics.SMITHING_TABLE_TEMPLATE, SlotSemantics.SMITHING_TABLE_BASE,
-                SlotSemantics.SMITHING_TABLE_ADDITION, SlotSemantics.SMITHING_TABLE_RESULT,
-                SlotSemantics.STONECUTTING_INPUT, SlotSemantics.BLANK_PATTERN,
-                SlotSemantics.ENCODED_PATTERN, SlotSemantics.PLAYER_INVENTORY,
-                SlotSemantics.PLAYER_HOTBAR)) {
-            setSlotsHidden(semantic, true);
+        for (var slot : menu.slots) {
+            var semantic = menu.getSlotSemantic(slot);
+            if (semantic != null && semantic != Ae2ltSlotSemantics.TIANSHU_GLOBAL_RESERVE_MARK) setSlotsHidden(semantic, true);
         }
     }
 
@@ -152,7 +148,7 @@ public final class TianshuGlobalReserveScreen<M extends TianshuPatternEncodingTe
         markSlot.setActive(visible);
         setSlotsHidden(Ae2ltSlotSemantics.TIANSHU_GLOBAL_RESERVE_MARK, !visible);
         addReserveButton.active = visible
-                && menu.maintenanceAvailable
+                && menu.isMaintenanceAvailable()
                 && markedReserveKey() != null
                 && parsedAddAmount() != Long.MIN_VALUE;
     }
@@ -183,7 +179,7 @@ public final class TianshuGlobalReserveScreen<M extends TianshuPatternEncodingTe
     private void addMarkedReserve() {
         var key = markedReserveKey();
         long value = parsedAddAmount();
-        if (key == null || value == Long.MIN_VALUE || !menu.maintenanceAvailable) return;
+        if (key == null || value == Long.MIN_VALUE || !menu.isMaintenanceAvailable()) return;
         menu.sendGlobalReserve(key, value, ReservedStockMatchMode.EXACT);
         menu.getGlobalReserveMarkSlot().setFilterTo(
                 net.minecraft.world.item.ItemStack.EMPTY);
@@ -280,7 +276,7 @@ public final class TianshuGlobalReserveScreen<M extends TianshuPatternEncodingTe
                     view == View.RESERVES && summary.globalReserve() != 0L ? 0x245E91 : 0x3D4650);
         }
 
-        if (!menu.maintenanceAvailable) {
+        if (!menu.isMaintenanceAvailable()) {
             graphics.drawCenteredString(font,
                     Component.translatable("ae2lt.tianshu.maintenance.unavailable"),
                     LIST_CENTER_X, EMPTY_TEXT_Y, 0xA73535);
@@ -294,7 +290,7 @@ public final class TianshuGlobalReserveScreen<M extends TianshuPatternEncodingTe
                     LIST_CENTER_X, EMPTY_TEXT_Y, 0x555B64);
         }
 
-        if (view == View.RESERVES && menu.maintenanceAvailable) {
+        if (view == View.RESERVES && menu.isMaintenanceAvailable()) {
             graphics.drawString(font,
                     font.plainSubstrByWidth(Component.translatable(
                             "ae2lt.tianshu.reserve.add_hint").getString(), 188),
@@ -482,7 +478,7 @@ public final class TianshuGlobalReserveScreen<M extends TianshuPatternEncodingTe
             AEKey key, long storedAmount, boolean craftable, boolean exactReserveConfigured) {
     }
 
-    private static final class GlobalReserveEditScreen<M extends TianshuPatternEncodingTermMenu>
+    private static final class GlobalReserveEditScreen<M extends MEStorageMenu & TianshuMaintenanceMenu>
             extends AESubScreen<M, TianshuGlobalReserveScreen<M>> {
         private static final int VARIANT_FIRST_ROW = 134;
         private static final int VARIANT_ROW_HEIGHT = 17;

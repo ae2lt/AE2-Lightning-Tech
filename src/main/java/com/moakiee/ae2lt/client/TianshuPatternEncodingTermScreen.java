@@ -67,7 +67,7 @@ import org.jetbrains.annotations.Nullable;
 
 @IPNIgnore
 public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTermMenu>
-        extends MEStorageScreen<M> {
+        extends TianshuMaintenanceTermScreen<M> {
     private final Map<EncodingMode, TianshuEncodingModePanel> modePanels =
             new EnumMap<>(EncodingMode.class);
     private final Map<TianshuEncodingMode, TabButton> modeTabs =
@@ -80,14 +80,7 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
     private final Item blankPatternItem;
     @Nullable
     private GridInventoryEntry cachedNetworkBlankPatternEntry;
-    private boolean awaitingMaintenanceEditor;
-    private int requestedMaintenanceRevision;
-    private int observedTianshuSelectionRevision = Integer.MIN_VALUE;
-    private boolean observedMaintainableView;
-    private long observedMaintenanceFilterRevision = Long.MIN_VALUE;
     private int observedEncodingAck;
-    private final Map<appeng.api.stacks.AEKey, Long> syntheticMaintenanceEntries = new HashMap<>();
-    private long nextSyntheticMaintenanceSerial = -10_000_000L;
 
     public TianshuPatternEncodingTermScreen(
             M menu,
@@ -138,8 +131,6 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
         blankPatternItem = AEItems.BLANK_PATTERN.asItem();
         networkBlankPatternSlot = new NetworkBlankPatternSlot(repo);
         observedEncodingAck = menu.triggeredUploadAck;
-        replaceViewModeButton();
-        addToLeftToolbar(new MaintenanceOverviewButton());
     }
 
     @Override
@@ -190,26 +181,11 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
             modePanels.get(mode).setVisible(modeSelected);
         }
         modeTabs.forEach((mode, button) -> button.setSelected(mode == selected));
-        if (observedTianshuSelectionRevision != menu.tianshuSelectionRevision) {
-            observedTianshuSelectionRevision = menu.tianshuSelectionRevision;
-            awaitingMaintenanceEditor = false;
-            removeSyntheticMaintenanceEntries();
-            menu.resetClientTianshuScopedState();
-        }
-        syncSyntheticMaintenanceEntries();
-        refreshMaintenancePartitionIfNeeded();
         if (menu.hasTriggeredUploadAck()
                 && TianshuRecipeTransferContext.isEncodingResultReady(
                         menu, firstEncodedPattern())
                 && menu.consumeTriggeredUpload()) {
             openUploadScreen(menu.consumeDirectUploadRequest());
-            return;
-        }
-        if (awaitingMaintenanceEditor
-                && menu.getMaintenanceEditorRevision() != requestedMaintenanceRevision
-                && menu.getMaintenanceEditorData() != null) {
-            awaitingMaintenanceEditor = false;
-            switchToScreen(new TianshuMaintenanceRuleScreen<>(this, menu.getMaintenanceEditorData()));
             return;
         }
         boolean processing = selected == TianshuEncodingMode.PROCESSING;
@@ -290,120 +266,19 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
         return true;
     }
 
-    private TianshuViewModeButton replaceViewModeButton() {
-        var toolbar = ((AEBaseScreenAccessor) this).ae2lt$getVerticalToolbar();
-        var buttons = ((VerticalButtonBarAccessor) toolbar).ae2lt$getButtons();
-        for (int i = 0; i < buttons.size(); i++) {
-            if (buttons.get(i) instanceof SettingToggleButton<?> settingButton
-                    && settingButton.getSetting() == Settings.VIEW_MODE) {
-                var replacement = new TianshuViewModeButton();
-                buttons.set(i, replacement);
-                return replacement;
-            }
-        }
-        throw new IllegalStateException("AE2 view-mode button is missing");
-    }
 
-    private void cycleViewMode(boolean reverse) {
-        var current = menu.getConfigManager().getSetting(Settings.VIEW_MODE);
-        ViewItems next;
-        if (menu.maintainableView) {
-            menu.setMaintainableView(false);
-            next = reverse ? ViewItems.CRAFTABLE : ViewItems.ALL;
-        } else if (reverse) {
-            next = switch (current) {
-                case ALL -> null;
-                case STORED -> ViewItems.ALL;
-                case CRAFTABLE -> ViewItems.STORED;
-            };
-        } else {
-            next = switch (current) {
-                case ALL -> ViewItems.STORED;
-                case STORED -> ViewItems.CRAFTABLE;
-                case CRAFTABLE -> null;
-            };
-        }
-        if (next == null) {
-            // Maintainable is an ALL-based filtered view. Keeping the client setting in ALL makes
-            // AE2 render the current stored amount instead of the craftable-only "+" marker.
-            menu.getConfigManager().putSetting(Settings.VIEW_MODE, ViewItems.ALL);
-            menu.setMaintainableView(true);
-        } else {
-            setViewMode(next);
-        }
-    }
 
-    private void setViewMode(ViewItems viewMode) {
-        menu.getConfigManager().putSetting(Settings.VIEW_MODE, viewMode);
-        PacketDistributor.sendToServer(new ConfigValuePacket(Settings.VIEW_MODE, viewMode));
-    }
 
-    private final class TianshuViewModeButton extends IconButton {
-        private TianshuViewModeButton() {
-            super(ignored -> cycleViewMode(hasShiftDown()));
-        }
 
-        @Override
-        protected Icon getIcon() {
-            if (menu.maintainableView) return Icon.VIEW_MODE_CRAFTING;
-            return switch (menu.getConfigManager().getSetting(Settings.VIEW_MODE)) {
-                case ALL -> Icon.VIEW_MODE_ALL;
-                case STORED -> Icon.VIEW_MODE_STORED;
-                case CRAFTABLE -> Icon.VIEW_MODE_CRAFTING;
-            };
-        }
 
-        @Override
-        public java.util.List<Component> getTooltipMessage() {
-            var value = menu.maintainableView
-                    ? Component.translatable("ae2lt.tianshu.maintenance.view")
-                    : switch (menu.getConfigManager().getSetting(Settings.VIEW_MODE)) {
-                        case ALL -> Component.translatable(ButtonToolTips.StoredCraftable.getTranslationKey());
-                        case STORED -> Component.translatable(ButtonToolTips.StoredItems.getTranslationKey());
-                        case CRAFTABLE -> Component.translatable(ButtonToolTips.Craftable.getTranslationKey());
-                    };
-            return java.util.List.of(
-                    Component.translatable(ButtonToolTips.View.getTranslationKey()), value);
-        }
-    }
 
-    private final class MaintenanceOverviewButton extends TextureToggleButton {
-        private MaintenanceOverviewButton() {
-            super(ButtonType.INVENTORY_MAINTENANCE,
-                    ignored -> switchToScreen(new TianshuGlobalReserveScreen<>(
-                            TianshuPatternEncodingTermScreen.this)));
-            var label = Component.translatable("ae2lt.tianshu.maintenance.overview_button");
-            setMessage(label);
-            setTooltipAt(0, List.of(label));
-        }
-    }
+
+
+
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (button == GLFW.GLFW_MOUSE_BUTTON_MIDDLE && hasShiftDown()
-                && getSlotUnderMouse() instanceof RepoSlot repoSlot) {
-            if (!menu.maintenanceAvailable) {
-                if (minecraft.player != null) minecraft.player.displayClientMessage(
-                        Component.translatable("ae2lt.tianshu.maintenance.unavailable"), true);
-                return true;
-            }
-            var entry = repoSlot.getEntry();
-            if (entry != null && entry.getWhat() != null) {
-                var summary = menu.getMaintenanceSummaryEntry(entry.getWhat());
-                if ((summary == null || !summary.ruleConfigured()) && !entry.isCraftable()) {
-                    if (minecraft.player != null) minecraft.player.displayClientMessage(
-                            Component.translatable("ae2lt.tianshu.maintenance.unsupported"), true);
-                    return true;
-                }
-                requestMaintenanceEditorFor(entry.getWhat());
-                return true;
-            }
-        }
-
-        if (getSlotUnderMouse() instanceof RepoSlot repoSlot
-                && isSyntheticMaintenanceEntry(repoSlot.getEntry())) {
-            return true;
-        }
+        if (handleMaintenanceClick(button)) return true;
 
         if (minecraft.options.keyPickItem.matchesMouse(button)) {
             var slot = getSlotUnderMouse();
@@ -446,13 +321,7 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
         return super.mouseClicked(mouseX, mouseY, button);
     }
 
-    @Override
-    protected void slotClicked(Slot slot, int slotIndex, int mouseButton, ClickType clickType) {
-        if (slot instanceof RepoSlot repoSlot && isSyntheticMaintenanceEntry(repoSlot.getEntry())) {
-            return;
-        }
-        super.slotClicked(slot, slotIndex, mouseButton, clickType);
-    }
+
 
     @Override
     protected void renderTooltip(GuiGraphics graphics, int x, int y) {
@@ -487,47 +356,7 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
         }
     }
 
-    @Override
-    protected void renderGridInventoryEntryTooltip(
-            GuiGraphics graphics, GridInventoryEntry entry, int x, int y) {
-        var summary = entry != null ? menu.getMaintenanceSummaryEntry(entry.getWhat()) : null;
-        if (summary == null || !summary.ruleConfigured()) {
-            super.renderGridInventoryEntryTooltip(graphics, entry, x, y);
-            return;
-        }
 
-        var lines = AEKeyRendering.getTooltip(entry.getWhat());
-        if (Tooltips.shouldShowAmountTooltip(entry.getWhat(), summary.storedAmount())) {
-            lines.add(Tooltips.getAmountTooltip(
-                    ButtonToolTips.StoredAmount, entry.getWhat(), summary.storedAmount()));
-        }
-        lines.add(Component.translatable("ae2lt.tianshu.maintenance.tooltip.thresholds",
-                summary.lowerThreshold(), summary.upperThreshold())
-                .withStyle(ChatFormatting.DARK_GRAY));
-        lines.add(Component.translatable("ae2lt.tianshu.maintenance.tooltip.batch",
-                summary.amountPerJob()).withStyle(ChatFormatting.DARK_GRAY));
-        lines.add(Component.translatable("ae2lt.tianshu.maintenance.status."
-                + summary.status().name().toLowerCase(java.util.Locale.ROOT))
-                .withStyle(statusFormatting(summary.status())));
-        if (summary.globalReserve() != 0L) {
-            lines.add(Component.translatable("ae2lt.tianshu.maintenance.tooltip.reserve",
-                    formatReserve(summary.globalReserve()),
-                    Component.translatable(summary.globalMode()
-                            == com.moakiee.ae2lt.logic.tianshu.maintenance.ReservedStockMatchMode.EXACT
-                                    ? "ae2lt.tianshu.reserve.exact"
-                                    : "ae2lt.tianshu.reserve.ignore_nbt"))
-                    .withStyle(ChatFormatting.DARK_AQUA));
-        }
-        lines.add(Component.translatable("ae2lt.tianshu.maintenance.tooltip.edit")
-                .withStyle(ChatFormatting.GRAY));
-
-        if (entry.getWhat() instanceof AEItemKey itemKey) {
-            var stack = itemKey.getReadOnlyStack();
-            graphics.renderTooltip(font, lines, stack.getTooltipImage(), stack, x, y);
-        } else {
-            graphics.renderComponentTooltip(font, lines, x, y);
-        }
-    }
 
     private boolean isClosedLoopMemberSlot(Slot slot) {
         return slot != null
@@ -546,18 +375,9 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
     }
 
     /** Also used by the dedicated maintenance overview for zero-stock entries. */
-    public void requestMaintenanceEditorFor(appeng.api.stacks.AEKey key) {
-        if (key == null) return;
-        requestedMaintenanceRevision = menu.getMaintenanceEditorRevision();
-        awaitingMaintenanceEditor = true;
-        menu.requestMaintenanceEditor(key);
-    }
 
-    List<GridInventoryEntry> getNetworkEntriesForMaintenance() {
-        return repo.getAllEntries().stream()
-                .filter(entry -> entry.getWhat() != null && !isSyntheticMaintenanceEntry(entry))
-                .toList();
-    }
+
+
 
     @Override
     public void renderSlot(GuiGraphics graphics, Slot slot) {
@@ -594,17 +414,7 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
             poseStack.popPose();
         }
 
-        var repoEntry = slot instanceof RepoSlot repoSlot ? repoSlot.getEntry() : null;
-        if (repoEntry == null) return;
-        var summary = menu.getMaintenanceSummaryEntry(repoEntry.getWhat());
-        if (summary == null || !summary.ruleConfigured()) return;
-        int color = switch (InventoryMaintenanceBadge.from(summary.status())) {
-            case GREEN -> 0xFF33CC44;
-            case YELLOW -> 0xFFFFCC33;
-            case RED -> 0xFFDD3333;
-            case GRAY -> 0xFF888888;
-        };
-        graphics.fill(slot.x + 12, slot.y, slot.x + 16, slot.y + 4, color);
+
     }
 
     /**
@@ -613,119 +423,20 @@ public class TianshuPatternEncodingTermScreen<M extends TianshuPatternEncodingTe
      * bounded synthetic entry for that otherwise-invisible key. The entry remains client-only and
      * every interaction except opening the maintenance editor is swallowed above.
      */
-    private void syncSyntheticMaintenanceEntries() {
-        if (!menu.maintainableView) {
-            removeSyntheticMaintenanceEntries();
-            return;
-        }
 
-        var repoEntries = List.copyOf(repo.getAllEntries());
-        var presentSerials = new HashSet<Long>();
-        var realKeys = new HashSet<appeng.api.stacks.AEKey>();
-        var knownSyntheticSerials = new HashSet<>(syntheticMaintenanceEntries.values());
-        for (var entry : repoEntries) {
-            presentSerials.add(entry.getSerial());
-            if (!knownSyntheticSerials.contains(entry.getSerial()) && entry.getWhat() != null) {
-                realKeys.add(entry.getWhat());
-            }
-        }
-
-        var summaries = menu.getMaintenanceSummary();
-        for (var iterator = syntheticMaintenanceEntries.entrySet().iterator(); iterator.hasNext();) {
-            var synthetic = iterator.next();
-            var summary = summaries.get(synthetic.getKey());
-            if (summary == null || !summary.ruleConfigured() || realKeys.contains(synthetic.getKey())) {
-                if (presentSerials.contains(synthetic.getValue())) {
-                    repo.handleUpdate(false, List.of(new GridInventoryEntry(
-                            synthetic.getValue(), null, 0L, 0L, false)));
-                }
-                iterator.remove();
-            }
-        }
-
-        presentSerials.clear();
-        for (var entry : repo.getAllEntries()) presentSerials.add(entry.getSerial());
-        for (var summary : summaries.values()) {
-            if (!summary.ruleConfigured() || realKeys.contains(summary.key())) continue;
-            long serial = syntheticMaintenanceEntries.computeIfAbsent(
-                    summary.key(), ignored -> nextSyntheticMaintenanceSerial--);
-            if (!presentSerials.contains(serial)) {
-                // requestable=1 keeps an unavailable zero-stock entry meaningful to AE2's Repo.
-                repo.handleUpdate(false, List.of(new GridInventoryEntry(
-                        serial, summary.key(), summary.storedAmount(),
-                        summary.craftable() ? 0L : 1L, summary.craftable())));
-            }
-        }
-    }
 
     /** Filters the visible view without deleting entries from AE2's client repository. */
-    private void refreshMaintenancePartitionIfNeeded() {
-        long summaryRevision = menu.getMaintenanceSummaryRevision();
-        if (observedMaintainableView == menu.maintainableView
-                && (!menu.maintainableView
-                        || observedMaintenanceFilterRevision == summaryRevision)) {
-            return;
-        }
-        observedMaintainableView = menu.maintainableView;
-        observedMaintenanceFilterRevision = summaryRevision;
-        repo.setPartitionList(createPartitionList(menu.getViewCells()));
-    }
 
-    @Nullable
-    @Override
-    protected IPartitionList createPartitionList(List<ItemStack> viewCells) {
-        var viewCellFilter = super.createPartitionList(viewCells);
-        if (!menu.maintainableView) return viewCellFilter;
 
-        Set<appeng.api.stacks.AEKey> maintainedKeys = menu.getMaintenanceSummary().values().stream()
-                .filter(entry -> entry.ruleConfigured())
-                .map(entry -> entry.key())
-                .collect(java.util.stream.Collectors.toUnmodifiableSet());
-        return new IPartitionList() {
-            @Override
-            public boolean isListed(appeng.api.stacks.AEKey key) {
-                return maintainedKeys.contains(key)
-                        && (viewCellFilter == null || viewCellFilter.isListed(key));
-            }
 
-            @Override
-            public boolean isEmpty() {
-                return maintainedKeys.isEmpty();
-            }
 
-            @Override
-            public Iterable<appeng.api.stacks.AEKey> getItems() {
-                return maintainedKeys;
-            }
-        };
-    }
 
-    private void removeSyntheticMaintenanceEntries() {
-        if (syntheticMaintenanceEntries.isEmpty()) return;
-        var removals = syntheticMaintenanceEntries.values().stream()
-                .map(serial -> new GridInventoryEntry(serial, null, 0L, 0L, false))
-                .toList();
-        syntheticMaintenanceEntries.clear();
-        repo.handleUpdate(false, removals);
-    }
 
-    private boolean isSyntheticMaintenanceEntry(GridInventoryEntry entry) {
-        return entry != null && syntheticMaintenanceEntries.containsValue(entry.getSerial());
-    }
 
-    private static String formatReserve(long amount) {
-        return amount < 0L ? "∞" : Long.toString(amount);
-    }
 
-    private static ChatFormatting statusFormatting(
-            com.moakiee.ae2lt.logic.tianshu.maintenance.InventoryMaintenanceStatus status) {
-        return switch (InventoryMaintenanceBadge.from(status)) {
-            case GREEN -> ChatFormatting.GREEN;
-            case YELLOW -> ChatFormatting.GOLD;
-            case RED -> ChatFormatting.RED;
-            case GRAY -> ChatFormatting.GRAY;
-        };
-    }
+
+
+
 
     @Override
     protected List<Component> getTooltipFromContainerItem(ItemStack stack) {

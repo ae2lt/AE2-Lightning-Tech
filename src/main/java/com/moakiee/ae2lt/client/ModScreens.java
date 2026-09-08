@@ -68,9 +68,27 @@ public class ModScreens {
         event.register(MatrixPortMenu.TYPE, MatrixPortScreen::new);
         event.register(TianshuSupercomputerControllerMenu.TYPE, TianshuSupercomputerControllerScreen::new);
         event.register(TianshuPatternEncodingTermMenu.TYPE, ModScreens::createTianshuPatternEncodingTermScreen);
+        event.register(com.moakiee.ae2lt.menu.TianshuCraftingTermMenu.TYPE, ModScreens::createTianshuCraftingTermScreen);
+        event.register(com.moakiee.ae2lt.menu.TianshuWirelessCraftingTermMenu.TYPE, ModScreens::createTianshuWirelessCraftingTermScreen);
         event.register(TianshuWirelessPatternEncodingTermMenu.TYPE,
                 ModScreens::createTianshuWirelessPatternEncodingTermScreen);
         event.register(TianshuSeedStorageMenu.TYPE, ModScreens::createTianshuSeedStorageScreen);
+    }
+
+    private static TianshuCraftingTermScreen<com.moakiee.ae2lt.menu.TianshuCraftingTermMenu> createTianshuCraftingTermScreen(
+            com.moakiee.ae2lt.menu.TianshuCraftingTermMenu menu, Inventory inventory, Component title) {
+        return new TianshuCraftingTermScreen<>(menu, inventory, title,
+                StyleManager.loadStyleDoc("/screens/terminals/tianshu_crafting_terminal.json"));
+    }
+
+    private static TianshuWirelessCraftingTermScreen<com.moakiee.ae2lt.menu.TianshuWirelessCraftingTermMenu> createTianshuWirelessCraftingTermScreen(
+            com.moakiee.ae2lt.menu.TianshuWirelessCraftingTermMenu menu, Inventory inventory, Component title) {
+        if (net.neoforged.fml.ModList.get().isLoaded("ae2wtlib")) {
+            var style = StyleManager.loadStyleDoc("/screens/wireless_tianshu_enhanced_crafting_terminal.json");
+            return new com.moakiee.ae2lt.integration.ae2wtlib.client.TianshuEnhancedWirelessCraftingScreen(menu, inventory, title, style);
+        }
+        var style = StyleManager.loadStyleDoc("/screens/wireless_tianshu_crafting_terminal.json");
+        return new TianshuWirelessCraftingTermScreen<>(menu, inventory, title, style);
     }
 
     private static TianshuPatternEncodingTermScreen<TianshuPatternEncodingTermMenu> createTianshuPatternEncodingTermScreen(

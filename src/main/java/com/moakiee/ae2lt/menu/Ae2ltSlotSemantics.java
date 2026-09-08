@@ -86,4 +86,11 @@ public final class Ae2ltSlotSemantics {
 
     private Ae2ltSlotSemantics() {
     }
+
+    public static final SlotSemantic TIANSHU_SMITHING = SlotSemantics.register("AE2LT_TIANSHU_SMITHING", false);
+    public static final SlotSemantic TIANSHU_ANVIL = SlotSemantics.register("AE2LT_TIANSHU_ANVIL", false);
+    public static final SlotSemantic TIANSHU_STONECUTTING = SlotSemantics.register("AE2LT_TIANSHU_STONECUTTING", false);
+    public static final SlotSemantic TIANSHU_CELL = SlotSemantics.register("AE2LT_TIANSHU_CELL", false);
+    public static final SlotSemantic TIANSHU_CELL_UPGRADE = SlotSemantics.register("AE2LT_TIANSHU_CELL_UPGRADE", false);
+    public static final SlotSemantic TIANSHU_CELL_CONFIG = SlotSemantics.register("AE2LT_TIANSHU_CELL_CONFIG", false);
 }

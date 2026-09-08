@@ -61,6 +61,10 @@ public final class ModBlocks {
 
     public static final DeferredRegister.Blocks BLOCKS = DeferredRegister.createBlocks(AE2LightningTech.MODID);
 
+    public static final DeferredBlock<com.moakiee.ae2lt.block.OverloadAlloyAnvilBlock> OVERLOAD_ALLOY_ANVIL =
+            registerBlock("overload_alloy_anvil", () -> new com.moakiee.ae2lt.block.OverloadAlloyAnvilBlock(
+                    BlockBehaviour.Properties.ofFullCopy(net.minecraft.world.level.block.Blocks.ANVIL)));
+
     private static final BlockBehaviour.Properties BUDDING_PROPERTIES = BlockBehaviour.Properties.of()
             .mapColor(MapColor.COLOR_CYAN)
             .strength(3.0F, 5.0F)

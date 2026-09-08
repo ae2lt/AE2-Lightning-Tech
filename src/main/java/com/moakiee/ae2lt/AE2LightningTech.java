@@ -217,6 +217,9 @@ public class AE2LightningTech {
                         output.accept(ModBlocks.CLOSED_LOOP_PATTERN_STORAGE);
                         output.accept(ModBlocks.CLOSED_LOOP_SEED_STORAGE);
                         output.accept(ModItems.TIANSHU_PATTERN_ENCODING_TERMINAL);
+                        output.accept(ModItems.TIANSHU_CRAFTING_TERMINAL);
+                        output.accept(ModItems.TIANSHU_WIRELESS_CRAFTING_TERMINAL);
+                        output.accept(ModBlocks.OVERLOAD_ALLOY_ANVIL);
                         output.accept(ModItems.TIANSHU_WIRELESS_PATTERN_ENCODING_TERMINAL);
 
                         // 天枢物质扭曲矩阵

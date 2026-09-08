@@ -151,4 +151,11 @@ public final class ModMenuTypes {
 
     private ModMenuTypes() {
     }
+
+    public static final DeferredHolder<MenuType<?>, MenuType<com.moakiee.ae2lt.menu.TianshuCraftingTermMenu>>
+            TIANSHU_CRAFTING_TERMINAL = MENU_TYPES.register("tianshu_crafting_terminal",
+                    () -> com.moakiee.ae2lt.menu.TianshuCraftingTermMenu.TYPE);
+    public static final DeferredHolder<MenuType<?>, MenuType<com.moakiee.ae2lt.menu.TianshuWirelessCraftingTermMenu>>
+            TIANSHU_WIRELESS_CRAFTING_TERMINAL = MENU_TYPES.register("wireless_tianshu_crafting_terminal",
+                    () -> com.moakiee.ae2lt.menu.TianshuWirelessCraftingTermMenu.TYPE);
 }
