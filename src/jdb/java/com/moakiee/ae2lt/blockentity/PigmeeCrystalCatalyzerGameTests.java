@@ -111,14 +111,14 @@ public final class PigmeeCrystalCatalyzerGameTests {
             if (firstProgress[0] < 0) return;
             require(host.getInventory().getStackInSlot(CATALYST).getCount() == 64, "catalyst was consumed");
             if (amount == 0) require(host.getFluid().getAmount() == 2000, "water spent before completion");
-            if (amount == 16 && firstCompletion[0] < 0) {
-                require(tick - firstProgress[0] == 299, "first cycle must take exactly 300 active ticks: "
+            if (amount == 1 && firstCompletion[0] < 0) {
+                require(tick - firstProgress[0] == 99, "first cycle must take exactly 100 active ticks: "
                         + firstProgress[0] + " -> " + tick);
                 require(host.getFluid().getAmount() == 1000, "first cycle must consume exactly 1000 mB");
                 firstCompletion[0] = tick;
             }
-            if (amount == 32) {
-                require(tick - firstCompletion[0] == 300, "continuous cycle must take exactly 300 ticks");
+            if (amount == 2) {
+                require(tick - firstCompletion[0] == 100, "continuous cycle must take exactly 100 ticks");
                 require(host.getFluid().isEmpty(), "second cycle water accounting failed");
                 helper.succeed();
             }
@@ -139,8 +139,8 @@ public final class PigmeeCrystalCatalyzerGameTests {
             host.getTank().fill(new FluidStack(Fluids.WATER, 1), FluidAction.EXECUTE);
         });
         helper.onEachTick(() -> {
-            if (output(host) == 16) {
-                require(helper.getTick() >= 699, "waiting time was counted as active processing");
+            if (output(host) == 1) {
+                require(helper.getTick() >= 499, "waiting time was counted as active processing");
                 require(host.getFluid().isEmpty(), "water recovery did not consume exactly one bucket");
                 require(host.getInventory().getStackInSlot(CATALYST).getCount() == 64, "catalyst loss after recovery");
                 helper.succeed();
@@ -153,23 +153,23 @@ public final class PigmeeCrystalCatalyzerGameTests {
         var host = machine(helper);
         int[] pausedAt = {-1};
         helper.runAfterDelay(20, () -> supply(host, 64, 1000));
-        helper.runAfterDelay(120, () -> {
+        helper.runAfterDelay(60, () -> {
             require(host.getProcessingTicksSpent() > 0 && output(host) == 0, "fixture never started");
             pausedAt[0] = host.getProcessingTicksSpent();
-            host.getInventory().setItemDirect(OUTPUT, AEItems.CERTUS_QUARTZ_CRYSTAL.stack(1016));
+            host.getInventory().setItemDirect(OUTPUT, AEItems.CERTUS_QUARTZ_CRYSTAL.stack(1024));
         });
         helper.runAfterDelay(450, () -> {
             require(host.getProcessingTicksSpent() == pausedAt[0], "full output failed to pause progress");
-            require(host.getFluid().getAmount() == 1000 && output(host) == 1016, "blocked cycle spent resources");
+            require(host.getFluid().getAmount() == 1000 && output(host) == 1024, "blocked cycle spent resources");
             var items = helper.getLevel().getCapability(Capabilities.ItemHandler.BLOCK, helper.absolutePos(POS), Direction.UP);
-            require(items != null && items.extractItem(OUTPUT, 1016, true).getCount() == 1016,
+            require(items != null && items.extractItem(OUTPUT, 1, true).getCount() == 1,
                     "output simulation did not expose retained products");
-            require(output(host) == 1016, "simulated extraction changed ownership");
-            require(items.extractItem(OUTPUT, 1016, false).getCount() == 1016, "output pipe extraction lost products");
+            require(output(host) == 1024, "simulated extraction changed ownership");
+            require(items.extractItem(OUTPUT, 1, false).getCount() == 1, "output pipe extraction lost products");
         });
         helper.onEachTick(() -> {
-            if (helper.getTick() > 450 && output(host) == 16) {
-                require(helper.getTick() >= 450 + 300 - pausedAt[0] - 1, "paused time accelerated the recipe");
+            if (helper.getTick() > 450 && output(host) == 1024) {
+                require(helper.getTick() >= 450 + 100 - pausedAt[0] - 1, "paused time accelerated the recipe");
                 require(host.getFluid().isEmpty() && host.getInventory().getStackInSlot(CATALYST).getCount() == 64,
                         "resumed cycle resource accounting failed");
                 helper.succeed();
@@ -181,20 +181,23 @@ public final class PigmeeCrystalCatalyzerGameTests {
     public static void pigmeeSavedProgressAndLegacyRecipeIdResume(GameTestHelper helper) {
         var host = machine(helper);
         helper.runAfterDelay(20, () -> supply(host, 64, 1000));
-        helper.runAfterDelay(150, () -> {
+        helper.runAfterDelay(50, () -> {
             require(host.getProcessingTicksSpent() > 0 && host.hasLockedRecipe(), "fixture never started");
             int progress = host.getProcessingTicksSpent();
             var tag = new CompoundTag();
             host.saveAdditional(tag, helper.getLevel().registryAccess());
             tag.getCompound("LockedRecipe").putString("RecipeId", "ae2lt:crystal_catalyzer/pigmee_quartz_block");
             tag.getCompound("LockedRecipe").putInt("Energy", 400_000);
+            tag.getCompound("LockedRecipe").put("Output", AEItems.CERTUS_QUARTZ_CRYSTAL.stack(16)
+                    .save(helper.getLevel().registryAccess(), new CompoundTag()));
             tag.putLong("ConsumedEnergy", 123_456);
             host.clearContent();
             host.loadTag(tag, helper.getLevel().registryAccess());
             require(host.getProcessingTicksSpent() == progress, "NBT load lost progress");
             var restored = host.getLockedRecipe().orElseThrow();
             require(restored.recipeId().toString().equals("ae2lt:crystal_catalyzer/quartz_block")
-                            && restored.totalEnergy() == 400_000 && host.getConsumedEnergy() == 0,
+                            && restored.totalEnergy() == 400_000 && host.getConsumedEnergy() == 0
+                            && restored.output().getCount() == 16,
                     "legacy ID migration must preserve metadata and bypass FE at the machine");
             tag.getCompound("LockedRecipe").putInt("Energy", 0);
             host.loadTag(tag, helper.getLevel().registryAccess());
@@ -206,13 +209,13 @@ public final class PigmeeCrystalCatalyzerGameTests {
                     "NBT load lost inventory/fluid");
         });
         helper.onEachTick(() -> {
-            if (output(host) == 16) {
-                require(helper.getTick() < 400, "load restarted the entire cycle");
+            if (output(host) == 1) {
+                require(helper.getTick() < 200, "load restarted the entire cycle");
                 var drops = new ArrayList<ItemStack>();
                 host.addAdditionalDrops(helper.getLevel(), helper.absolutePos(POS), drops);
                 require(drops.stream().filter(s -> s.is(AEBlocks.QUARTZ_BLOCK.asItem())).mapToInt(ItemStack::getCount).sum() == 64,
                         "breaking the machine would lose catalysts");
-                require(drops.stream().filter(s -> s.is(AEItems.CERTUS_QUARTZ_CRYSTAL.asItem())).mapToInt(ItemStack::getCount).sum() == 16,
+                require(drops.stream().filter(s -> s.is(AEItems.CERTUS_QUARTZ_CRYSTAL.asItem())).mapToInt(ItemStack::getCount).sum() == 1,
                         "breaking the machine would lose output");
                 helper.succeed();
             }

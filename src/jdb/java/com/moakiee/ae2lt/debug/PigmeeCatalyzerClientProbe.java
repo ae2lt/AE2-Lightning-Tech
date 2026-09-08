@@ -105,19 +105,16 @@ public final class PigmeeCatalyzerClientProbe {
                 }
                 case 5 -> {
                     require(menu().getMode() == Mode.CRYSTAL, "client action changed Pigmee mode");
-                    mc.player.closeContainer();
                 }
-                case 6 -> capture("pigmee-catalyzer-working.png");
-                case 7 -> onServer(PigmeeCatalyzerClientProbe::openMenu);
-                case 8 -> {
+                case 6 -> {
                     var menu = menu();
                     var output = menu.getSlots(SlotSemantics.MACHINE_OUTPUT).getFirst().getItem();
                     if (output.isEmpty()) {
                         require(ticks < 1000, "client never received completed output");
                         return;
                     }
-                    require(output.is(AEItems.CERTUS_QUARTZ_CRYSTAL.asItem()) && output.getCount() == 16,
-                            "client output must contain exactly 16 certus crystals");
+                    require(output.is(AEItems.CERTUS_QUARTZ_CRYSTAL.asItem()) && output.getCount() == 1,
+                            "client output must contain exactly 1 certus crystal");
                     require(menu.getFluid().isEmpty(), "completed cycle must debit 1000 mB water");
                     require(menu.getSlots(Ae2ltSlotSemantics.CRYSTAL_CATALYZER_CATALYST).getFirst().getItem().getCount() == 64,
                             "catalysts must remain in the client inventory");
@@ -136,7 +133,7 @@ public final class PigmeeCatalyzerClientProbe {
                             "client recipe data must retain original costs and quantities");
                     EmiApi.displayRecipe(recipe);
                 }
-                case 9 -> {
+                case 7 -> {
                     capture("pigmee-catalyzer-emi.png");
                     mc.player.closeContainer();
                     mc.options.hideGui = true;
@@ -146,14 +143,14 @@ public final class PigmeeCatalyzerClientProbe {
                         player.teleportTo(player.serverLevel(), .5, 102.2, .5, java.util.Set.of(), 180, 90);
                     });
                 }
-                case 10 -> {
+                case 8 -> {
                     capture("pigmee-catalyzer-top.png");
                     onServer(() -> {
                         var player = mc.getSingleplayerServer().getPlayerList().getPlayer(mc.player.getUUID());
                         player.teleportTo(player.serverLevel(), 2.6, 101.8, 3.2, java.util.Set.of(), 142, 43);
                     });
                 }
-                case 11 -> {
+                case 9 -> {
                     capture("pigmee-catalyzer-angled.png");
                     mc.options.hideGui = false;
                     onServer(() -> {
@@ -163,7 +160,7 @@ public final class PigmeeCatalyzerClientProbe {
                     });
                     report("PASS: real world model and screen loaded; item capability insertion, water-bucket client packet, "
                             + "empty-bucket return, hidden matrix slot, crystal-mode lock, zero FE, synchronized progress, "
-                            + "16 output / 1000 mB water / 64 retained catalysts; shared recipe still declares "
+                            + "1 output / 1000 mB water / 64 retained catalysts; shared recipe still declares "
                             + "100000 FE / 1 lightning / 1 catalyst / 1 output, with no duplicate Pigmee recipe in EMI.");
                     finished = true;
                 }

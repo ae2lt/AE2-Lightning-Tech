@@ -358,7 +358,9 @@ public class CrystalCatalyzerBlockEntity extends AENetworkedBlockEntity
 
     private ItemStack getLockedRecipeOutputStack(CrystalCatalyzerLockedRecipe lockedRecipe) {
         ItemStack template = lockedRecipe.output();
-        long outputCount = (long) template.getCount() * lockedRecipe.outputMultiplier();
+        // Apply the fixed Pigmee yield to older in-flight snapshots as well.
+        long outputCount = isPigmeeVariant() ? CrystalCatalyzerLogic.PIGMEE_OUTPUT_COUNT
+                : (long) template.getCount() * lockedRecipe.outputMultiplier();
         if (outputCount <= 0 || outputCount > Integer.MAX_VALUE) {
             return ItemStack.EMPTY;
         }

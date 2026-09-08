@@ -18,8 +18,8 @@ public final class CrystalCatalyzerLogic extends AbstractGridRecipeMachineLogic<
         CrystalCatalyzerRecipeCandidate> {
 
     private static final long MAX_ENERGY_PER_TICK = 200_000L;
-    public static final int PIGMEE_PROCESS_TICKS = 15 * 20;
-    public static final int PIGMEE_OUTPUT_COUNT = 16;
+    public static final int PIGMEE_PROCESS_TICKS = 5 * 20;
+    public static final int PIGMEE_OUTPUT_COUNT = 1;
 
     public CrystalCatalyzerLogic(CrystalCatalyzerBlockEntity host) {
         super(host);

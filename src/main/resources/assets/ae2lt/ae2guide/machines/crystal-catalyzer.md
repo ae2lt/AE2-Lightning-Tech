@@ -17,7 +17,7 @@ item_ids:
 
 The **Crystal Catalyzer** is a specialty processing machine that uses water, FE, lightning from the ME network, and the item in its catalyst slot. It has two operating modes: **Crystal Mode** and **Dust Mode**.
 
-The **Pigmee Crystal Catalyzer** is a simplified variant. Put one full stack (64) of a supported crystal block in its catalyst slot; it keeps the blocks and produces 16 matching crystals every 15 seconds, or one full stack per minute. It consumes only 1,000 mB of water, uses no FE at all, and never needs Lightning or a Collapse Matrix.
+The **Pigmee Crystal Catalyzer** is a simplified variant. Put one full stack (64) of a supported crystal block in its catalyst slot; it keeps the blocks and produces 1 matching crystal every 5 seconds, or 12 per minute. It consumes only 1,000 mB of water, uses no FE at all, and never needs Lightning or a Collapse Matrix.
 
 Both machines use the original crystal-processing recipes. The recipe viewer retains the standard machine's FE, Lightning, quantity and timing data. The Pigmee machine bypasses those energy costs and applies its own fixed stock, duration and output rules at runtime; it does not register separate zero-cost recipes.
 
@@ -60,7 +60,7 @@ If the network does not have enough lightning when the operation is ready to com
 
 Each operation always consumes **1,000 mB of water**. Parallel output and the matrix bonus do not increase the water cost.
 
-For the normal machine, the stack size in the catalyst slot determines the parallel count: parallel count = slot amount / recipe required amount. The built-in normal recipes currently require 1 matching block each, so inserting 64 valid blocks makes the machine calculate 64 parallel outputs per operation. The Pigmee variant requires exactly one full stack (64 blocks) and always produces 16 crystals per operation.
+For the normal machine, the stack size in the catalyst slot determines the parallel count: parallel count = slot amount / recipe required amount. The built-in normal recipes currently require 1 matching block each, so inserting 64 valid blocks makes the machine calculate 64 parallel outputs per operation. The Pigmee variant requires exactly one full stack (64 blocks) and always produces 1 crystal per operation.
 
 The parallel count is locked when processing starts. Adding or removing items from the catalyst slot during processing will not change the already locked output for that operation.
 
@@ -68,7 +68,7 @@ The parallel count is locked when processing starts. Adding or removing items fr
 
 <ItemImage id="ae2lt:lightning_collapse_matrix" scale="2" float="left" />
 
-With a **Lightning Collapse Matrix** installed in the matrix slot, the normal Crystal Catalyzer's per-operation output is increased to **4×**. The matrix is not consumed during processing. The Pigmee variant has no matrix slot effect and always produces its fixed 16-crystal output.
+With a **Lightning Collapse Matrix** installed in the matrix slot, the normal Crystal Catalyzer's per-operation output is increased to **4×**. The matrix is not consumed during processing. The Pigmee variant has no matrix slot effect and always produces its fixed single-crystal output.
 
 Final output = base output × parallel count × matrix multiplier.
 
@@ -79,4 +79,4 @@ Final output = base output × parallel count × matrix multiplier.
 * The machine itself is also an ME network device — connecting it to the network lets you feed it through AE2 Interfaces or Pattern Providers
 * Supports Auto Export; output sides can be configured in the GUI
 * The Crystal Catalyzer **does not** support Speed Cards
-* Crystal Mode completes in **1 second** minimum; Dust Mode completes in **2 seconds** minimum; Pigmee Crystal Catalyzer cycles take **15 seconds** (no FE required)
+* Crystal Mode completes in **1 second** minimum; Dust Mode completes in **2 seconds** minimum; Pigmee Crystal Catalyzer cycles take **5 seconds** (no FE required)
