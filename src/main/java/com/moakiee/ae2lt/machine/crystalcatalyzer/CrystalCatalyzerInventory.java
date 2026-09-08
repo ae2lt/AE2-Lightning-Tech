@@ -28,7 +28,7 @@ public class CrystalCatalyzerInventory extends LargeStackItemHandler {
     public static final int SLOT_COUNT = 3;
 
     public static final int CATALYST_SLOT_LIMIT = 256;
-    /** Pigmee catalyzer consumes a single full stack as its fixed input. */
+    /** Pigmee catalyzer requires one full stack of reusable catalysts. */
     public static final int PIGMEE_CATALYST_SLOT_LIMIT = 64;
     public static final int OUTPUT_SLOT_LIMIT = 1024;
     public static final int MATRIX_SLOT_LIMIT = 1;

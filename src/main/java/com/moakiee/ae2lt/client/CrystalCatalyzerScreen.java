@@ -25,6 +25,7 @@ public class CrystalCatalyzerScreen extends AEBaseScreen<CrystalCatalyzerMenu> {
     private final ToggleButton autoExportButton;
     private final ActionButton configureOutputButton;
     private final TextureToggleButton modeButton;
+    private final TextureToggleButton frequencyButton;
     private final CrystalCatalyzerFluidWidget fluidWidget;
 
     public CrystalCatalyzerScreen(
@@ -33,7 +34,8 @@ public class CrystalCatalyzerScreen extends AEBaseScreen<CrystalCatalyzerMenu> {
         this.imageWidth = 176;
         this.imageHeight = 190;
 
-        addToLeftToolbar(FrequencyBindingClient.createToolbarButton(menu));
+        this.frequencyButton = FrequencyBindingClient.createToolbarButton(menu);
+        addToLeftToolbar(this.frequencyButton);
 
         widgets.add("energyBar", new CrystalCatalyzerEnergyBar(menu, style.getImage("energyBar")));
         this.fluidWidget = new CrystalCatalyzerFluidWidget(
@@ -78,8 +80,7 @@ public class CrystalCatalyzerScreen extends AEBaseScreen<CrystalCatalyzerMenu> {
                 ? List.of(
                         LightningStatusLines.title(),
                         LightningStatusLines.status(menu.isWorking()),
-                        LightningStatusLines.progress(menu.getProgress()),
-                        LightningStatusLines.energy(menu.getStoredEnergy(), menu.getEnergyCapacity()))
+                        LightningStatusLines.progress(menu.getProgress()))
                 : List.of(
                         LightningStatusLines.title(),
                         LightningStatusLines.status(menu.isWorking()),
@@ -97,8 +98,22 @@ public class CrystalCatalyzerScreen extends AEBaseScreen<CrystalCatalyzerMenu> {
                 : "block.ae2lt.crystal_catalyzer"));
         this.autoExportButton.setState(menu.isAutoExportEnabled());
         this.configureOutputButton.setVisibility(menu.isAutoExportEnabled());
+        this.frequencyButton.setVisibility(!menu.isPigmeeVariant());
         this.modeButton.setVisibility(!menu.isPigmeeVariant());
         this.modeButton.setState(menu.getMode() == Mode.DUST);
+    }
+
+    @Override
+    public void drawBG(GuiGraphics graphics, int offsetX, int offsetY,
+                       int mouseX, int mouseY, float partialTicks) {
+        super.drawBG(graphics, offsetX, offsetY, mouseX, mouseY, partialTicks);
+        if (menu.isPigmeeVariant()) {
+            // Cover the shared background's FE scale and unused matrix branch with its own blank texture.
+            var background = net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(
+                    "ae2lt", "textures/guis/crystal_catalyzer.png");
+            graphics.blit(background, offsetX + 138, offsetY + 28, 150, 28, 10, 22);
+            graphics.blit(background, offsetX + 80, offsetY + 43, 150, 28, 24, 30);
+        }
     }
 
     @Override

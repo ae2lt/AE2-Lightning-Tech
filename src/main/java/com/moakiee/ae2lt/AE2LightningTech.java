@@ -468,6 +468,11 @@ public class AE2LightningTech {
 
         event.registerBlockEntity(
                 Capabilities.ItemHandler.BLOCK,
+                ModBlockEntities.PIGMEE_CRYSTAL_CATALYZER.get(),
+                (blockEntity, side) -> blockEntity.getAutomationInventory());
+
+        event.registerBlockEntity(
+                Capabilities.ItemHandler.BLOCK,
                 ModBlockEntities.PIGMEE_MOLECULAR_ASSEMBLER.get(),
                 (blockEntity, side) -> blockEntity.getExposedItemHandler(side));
 
@@ -508,6 +513,11 @@ public class AE2LightningTech {
         event.registerBlockEntity(
                 Capabilities.FluidHandler.BLOCK,
                 ModBlockEntities.CRYSTAL_CATALYZER.get(),
+                (blockEntity, side) -> blockEntity.getFluidHandlerCapability(side));
+
+        event.registerBlockEntity(
+                Capabilities.FluidHandler.BLOCK,
+                ModBlockEntities.PIGMEE_CRYSTAL_CATALYZER.get(),
                 (blockEntity, side) -> blockEntity.getFluidHandlerCapability(side));
 
         event.registerBlockEntity(
@@ -594,6 +604,11 @@ public class AE2LightningTech {
         event.registerBlockEntity(
                 AECapabilities.IN_WORLD_GRID_NODE_HOST,
                 ModBlockEntities.CRYSTAL_CATALYZER.get(),
+                (blockEntity, context) -> (IInWorldGridNodeHost) blockEntity);
+
+        event.registerBlockEntity(
+                AECapabilities.IN_WORLD_GRID_NODE_HOST,
+                ModBlockEntities.PIGMEE_CRYSTAL_CATALYZER.get(),
                 (blockEntity, context) -> (IInWorldGridNodeHost) blockEntity);
 
         event.registerBlockEntity(
