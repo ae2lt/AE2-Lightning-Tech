@@ -122,7 +122,7 @@ public abstract class AbstractGridRecipeMachineLogic<
 
     /**
      * Lets a machine opt out of the optional Applied Flux network refill. This
-     * is used by recipes whose processing cost is explicitly zero FE.
+     * is used by machines that bypass a recipe's FE cost.
      */
     protected boolean shouldRechargeFromAppliedFlux() {
         return true;

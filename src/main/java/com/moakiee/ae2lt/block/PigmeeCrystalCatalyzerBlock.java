@@ -31,5 +31,7 @@ public final class PigmeeCrystalCatalyzerBlock extends CrystalCatalyzerBlock {
                 .withStyle(ChatFormatting.GRAY));
         tooltipComponents.add(Component.translatable("tooltip.ae2lt.pigmee_crystal_catalyzer.2")
                 .withStyle(ChatFormatting.LIGHT_PURPLE));
+        tooltipComponents.add(Component.translatable("tooltip.ae2lt.pigmee_crystal_catalyzer.3")
+                .withStyle(ChatFormatting.GRAY));
     }
 }

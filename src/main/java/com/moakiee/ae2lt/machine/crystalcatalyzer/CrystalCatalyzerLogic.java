@@ -19,6 +19,7 @@ public final class CrystalCatalyzerLogic extends AbstractGridRecipeMachineLogic<
 
     private static final long MAX_ENERGY_PER_TICK = 200_000L;
     public static final int PIGMEE_PROCESS_TICKS = 15 * 20;
+    public static final int PIGMEE_OUTPUT_COUNT = 16;
 
     public CrystalCatalyzerLogic(CrystalCatalyzerBlockEntity host) {
         super(host);
@@ -36,7 +37,7 @@ public final class CrystalCatalyzerLogic extends AbstractGridRecipeMachineLogic<
 
     @Override
     protected long getTotalEnergy(CrystalCatalyzerLockedRecipe lockedRecipe) {
-        return lockedRecipe.totalEnergy();
+        return host.isPigmeeVariant() ? 0L : lockedRecipe.totalEnergy();
     }
 
     @Override
@@ -53,7 +54,9 @@ public final class CrystalCatalyzerLogic extends AbstractGridRecipeMachineLogic<
     protected Optional<CrystalCatalyzerRecipeCandidate> validateLockedRecipe(
             CrystalCatalyzerLockedRecipe lockedRecipe) {
         return CrystalCatalyzerRecipeService.findRecipeById(host.getLevel(), lockedRecipe.recipeId())
-                .filter(candidate -> candidate.recipe().value().pigmee() == host.isPigmeeVariant())
+                .filter(candidate -> !host.isPigmeeVariant()
+                        || host.getInventory().getStackInSlot(CrystalCatalyzerInventory.SLOT_CATALYST).getCount()
+                                >= CrystalCatalyzerInventory.PIGMEE_CATALYST_SLOT_LIMIT)
                 .filter(candidate -> candidate.recipe().value().mode() == host.getMode())
                 .filter(candidate -> candidate.recipe().value().matches(
                         com.moakiee.ae2lt.machine.crystalcatalyzer.recipe.CrystalCatalyzerRecipeInput

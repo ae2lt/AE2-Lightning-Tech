@@ -19,6 +19,8 @@ The **Crystal Catalyzer** is a specialty processing machine that uses water, FE,
 
 The **Pigmee Crystal Catalyzer** is a simplified variant. Put one full stack (64) of a supported crystal block in its catalyst slot; it keeps the blocks and produces 16 matching crystals every 15 seconds, or one full stack per minute. It consumes only 1,000 mB of water, uses no FE at all, and never needs Lightning or a Collapse Matrix.
 
+Both machines use the original crystal-processing recipes. The recipe viewer retains the standard machine's FE, Lightning, quantity and timing data. The Pigmee machine bypasses those energy costs and applies its own fixed stock, duration and output rules at runtime; it does not register separate zero-cost recipes.
+
 ## Slots and Capacity
 
 | Slot | Capacity | Notes |

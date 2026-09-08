@@ -41,13 +41,10 @@ final class EmiCrystalCatalyzerRecipe extends EmiBackedRecipe<CrystalCatalyzerRe
             int perInstance = Math.max(1, recipe.catalystCount());
             EmiRecipeWidgets.addLargeStackSlot(widgets, inputs.get(1), 34, 16)
                     .drawBack(false)
-                    .appendTooltip(Component.translatable(recipe.pigmee()
-                            ? "jei.ae2lt.crystal_catalyzer.catalyst_pigmee"
-                            : "jei.ae2lt.crystal_catalyzer.catalyst_parallel",
+                    .appendTooltip(Component.translatable(
+                            "jei.ae2lt.crystal_catalyzer.catalyst_parallel",
                             perInstance,
-                            recipe.pigmee()
-                                    ? CrystalCatalyzerInventory.PIGMEE_CATALYST_SLOT_LIMIT
-                                    : CrystalCatalyzerInventory.CATALYST_SLOT_LIMIT));
+                            CrystalCatalyzerInventory.CATALYST_SLOT_LIMIT));
         }
 
         int baseCount = recipe.getOutputTemplate().getCount();
@@ -56,15 +53,13 @@ final class EmiCrystalCatalyzerRecipe extends EmiBackedRecipe<CrystalCatalyzerRe
         EmiRecipeWidgets.addLargeStackSlot(widgets, outputs.getFirst(), 95, 16)
                 .drawBack(false)
                 .recipeContext(this)
-                .appendTooltip(recipe.pigmee()
-                        ? Component.translatable("jei.ae2lt.crystal_catalyzer.output_pigmee", baseCount)
-                        : Component.translatable(
-                                "jei.ae2lt.crystal_catalyzer.output_base", baseCount, matrixMultiplier))
-                .appendTooltip(recipe.pigmee()
-                        ? Component.translatable("jei.ae2lt.crystal_catalyzer.pigmee_note_line2")
-                        : Component.translatable(
-                                "jei.ae2lt.crystal_catalyzer.output_parallel",
-                                catalystPerInstance));
+                .appendTooltip(Component.translatable(
+                        "jei.ae2lt.crystal_catalyzer.output_base",
+                        baseCount,
+                        matrixMultiplier))
+                .appendTooltip(Component.translatable(
+                        "jei.ae2lt.crystal_catalyzer.output_parallel",
+                        catalystPerInstance));
 
         widgets.addAnimatedTexture(
                 TEXTURE,
@@ -74,7 +69,7 @@ final class EmiCrystalCatalyzerRecipe extends EmiBackedRecipe<CrystalCatalyzerRe
                 10,
                 176,
                 18,
-                recipe.pigmee() ? 15_000 : recipe.mode() == Mode.CRYSTAL ? 1_000 : 2_000,
+                recipe.mode() == Mode.CRYSTAL ? 1_000 : 2_000,
                 true,
                 false,
                 false);
@@ -97,32 +92,27 @@ final class EmiCrystalCatalyzerRecipe extends EmiBackedRecipe<CrystalCatalyzerRe
                 widgets,
                 Component.translatable(
                         "jei.ae2lt.crystal_catalyzer.time",
-                        recipe.pigmee() ? "15s" : recipe.mode() == Mode.CRYSTAL ? "1s" : "2s"),
+                        recipe.mode() == Mode.CRYSTAL ? "1s" : "2s"),
                 firstLineY + lineSpacing,
                 compactText);
         statusText(
                 widgets,
-                recipe.pigmee()
-                        ? Component.translatable("jei.ae2lt.crystal_catalyzer.lightning_none")
-                        : Component.translatable(
-                                "jei.ae2lt.crystal_catalyzer.lightning",
-                                recipe.lightningCost(),
-                                EmiRecipeWidgets.tierName(recipe.lightningTier())),
+                Component.translatable(
+                        "jei.ae2lt.crystal_catalyzer.lightning",
+                        recipe.lightningCost(),
+                        EmiRecipeWidgets.tierName(recipe.lightningTier())),
                 firstLineY + lineSpacing * 2,
                 compactText);
         statusText(
                 widgets,
-                Component.translatable(recipe.pigmee()
-                        ? "jei.ae2lt.crystal_catalyzer.pigmee_note_line1"
-                        : "jei.ae2lt.crystal_catalyzer.matrix_note_line1"),
+                Component.translatable("jei.ae2lt.crystal_catalyzer.matrix_note_line1"),
                 firstLineY + lineSpacing * 3,
                 compactText);
         statusText(
                 widgets,
-                recipe.pigmee()
-                        ? Component.translatable("jei.ae2lt.crystal_catalyzer.pigmee_note_line2")
-                        : Component.translatable(
-                                "jei.ae2lt.crystal_catalyzer.matrix_note_line2", matrixMultiplier),
+                Component.translatable(
+                        "jei.ae2lt.crystal_catalyzer.matrix_note_line2",
+                        matrixMultiplier),
                 firstLineY + lineSpacing * 4,
                 compactText);
     }

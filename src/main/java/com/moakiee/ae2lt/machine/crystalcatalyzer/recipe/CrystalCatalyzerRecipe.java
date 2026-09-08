@@ -32,10 +32,7 @@ import com.moakiee.ae2lt.registry.ModRecipeTypes;
  *         when present, the slot content must match the ingredient and have at least
  *         {@code catalystCount} items (the stack is <em>not</em> consumed).</li>
  *     <li>{@code output}: base per-cycle item output (final count = {@code output.count} × matrix multiplier).</li>
- *     <li>{@code energyPerCycle}: total FE energy consumed per cycle. Pigmee
- *         recipes may set this to {@code 0}.</li>
- *     <li>{@code pigmee}: selects the simplified Pigmee machine variant. Pigmee recipes
- *         use a full 64-item catalyst stack and never consume lightning.</li>
+ *     <li>{@code energyPerCycle}: total energy (AE) consumed per cycle.</li>
  * </ul>
  *
  * <p>Fluid cost is <strong>not</strong> part of the recipe anymore — the machine always
@@ -45,9 +42,9 @@ import com.moakiee.ae2lt.registry.ModRecipeTypes;
 public final class CrystalCatalyzerRecipe implements Recipe<CrystalCatalyzerRecipeInput> {
     public static final int MIN_ENERGY_PER_CYCLE = 1;
 
-    private static final Codec<Integer> NON_NEGATIVE_ENERGY_CODEC = Codec.INT.validate(energy -> {
-        if (energy < 0) {
-            return DataResult.error(() -> "energyPerCycle must be non-negative");
+    private static final Codec<Integer> POSITIVE_ENERGY_CODEC = Codec.INT.validate(energy -> {
+        if (energy < MIN_ENERGY_PER_CYCLE) {
+            return DataResult.error(() -> "energyPerCycle must be at least " + MIN_ENERGY_PER_CYCLE);
         }
         return DataResult.success(energy);
     });
@@ -59,9 +56,9 @@ public final class CrystalCatalyzerRecipe implements Recipe<CrystalCatalyzerReci
         return DataResult.success(count);
     });
 
-    private static final Codec<Integer> NON_NEGATIVE_LIGHTNING_COST_CODEC = Codec.INT.validate(cost -> {
-        if (cost < 0) {
-            return DataResult.error(() -> "lightningCost must be non-negative");
+    private static final Codec<Integer> POSITIVE_LIGHTNING_COST_CODEC = Codec.INT.validate(cost -> {
+        if (cost < 1) {
+            return DataResult.error(() -> "lightningCost must be at least 1");
         }
         return DataResult.success(cost);
     });
@@ -78,7 +75,6 @@ public final class CrystalCatalyzerRecipe implements Recipe<CrystalCatalyzerReci
     private final int lightningCost;
     private final LightningKey.Tier lightningTier;
     private final Mode mode;
-    private final boolean pigmee;
 
     public CrystalCatalyzerRecipe(
             Optional<Ingredient> catalyst,
@@ -86,7 +82,7 @@ public final class CrystalCatalyzerRecipe implements Recipe<CrystalCatalyzerReci
             ItemStack output,
             int energyPerCycle) {
         this(catalyst, catalystCount, CrystalCatalyzerOutput.ofItem(output), energyPerCycle, 1,
-                LightningKey.Tier.HIGH_VOLTAGE, Mode.CRYSTAL, false);
+                LightningKey.Tier.HIGH_VOLTAGE, Mode.CRYSTAL);
     }
 
     public CrystalCatalyzerRecipe(
@@ -97,18 +93,6 @@ public final class CrystalCatalyzerRecipe implements Recipe<CrystalCatalyzerReci
             int lightningCost,
             LightningKey.Tier lightningTier,
             Mode mode) {
-        this(catalyst, catalystCount, output, energyPerCycle, lightningCost, lightningTier, mode, false);
-    }
-
-    public CrystalCatalyzerRecipe(
-            Optional<Ingredient> catalyst,
-            int catalystCount,
-            CrystalCatalyzerOutput output,
-            int energyPerCycle,
-            int lightningCost,
-            LightningKey.Tier lightningTier,
-            Mode mode,
-            boolean pigmee) {
         this.catalyst = Objects.requireNonNull(catalyst, "catalyst");
         this.catalystCount = catalystCount;
         this.output = Objects.requireNonNull(output, "output");
@@ -116,17 +100,14 @@ public final class CrystalCatalyzerRecipe implements Recipe<CrystalCatalyzerReci
         this.lightningCost = lightningCost;
         this.lightningTier = Objects.requireNonNull(lightningTier, "lightningTier");
         this.mode = Objects.requireNonNull(mode, "mode");
-        this.pigmee = pigmee;
         if (catalyst.isPresent() && catalystCount <= 0) {
             throw new IllegalArgumentException("catalystCount must be positive when catalyst is present");
         }
-        if (energyPerCycle < 0 || (!pigmee && energyPerCycle < MIN_ENERGY_PER_CYCLE)) {
-            throw new IllegalArgumentException(pigmee
-                    ? "energyPerCycle must be non-negative"
-                    : "energyPerCycle must be at least " + MIN_ENERGY_PER_CYCLE);
+        if (energyPerCycle < MIN_ENERGY_PER_CYCLE) {
+            throw new IllegalArgumentException("energyPerCycle must be at least " + MIN_ENERGY_PER_CYCLE);
         }
-        if (lightningCost < 0) {
-            throw new IllegalArgumentException("lightningCost must be non-negative");
+        if (lightningCost < 1) {
+            throw new IllegalArgumentException("lightningCost must be at least 1");
         }
     }
 
@@ -160,10 +141,6 @@ public final class CrystalCatalyzerRecipe implements Recipe<CrystalCatalyzerReci
 
     public Mode mode() {
         return mode;
-    }
-
-    public boolean pigmee() {
-        return pigmee;
     }
 
     public boolean catalystMatches(ItemStack stack) {
@@ -216,8 +193,7 @@ public final class CrystalCatalyzerRecipe implements Recipe<CrystalCatalyzerReci
     @Override
     public boolean isIncomplete() {
         return output.resolve().isEmpty()
-                || energyPerCycle < 0
-                || (!pigmee && energyPerCycle < MIN_ENERGY_PER_CYCLE)
+                || energyPerCycle < MIN_ENERGY_PER_CYCLE
                 || (catalyst.isPresent() && catalystCount <= 0);
     }
 
@@ -226,11 +202,10 @@ public final class CrystalCatalyzerRecipe implements Recipe<CrystalCatalyzerReci
                         Ingredient.CODEC_NONEMPTY.optionalFieldOf("catalyst").forGetter(CrystalCatalyzerRecipe::catalyst),
                         NON_NEGATIVE_COUNT_CODEC.optionalFieldOf("catalystCount", 0).forGetter(CrystalCatalyzerRecipe::catalystCount),
                         CrystalCatalyzerOutput.CODEC.fieldOf("output").forGetter(CrystalCatalyzerRecipe::outputSpec),
-                        NON_NEGATIVE_ENERGY_CODEC.fieldOf("energyPerCycle").forGetter(CrystalCatalyzerRecipe::energyPerCycle),
-                        NON_NEGATIVE_LIGHTNING_COST_CODEC.optionalFieldOf("lightningCost", 1).forGetter(CrystalCatalyzerRecipe::lightningCost),
+                        POSITIVE_ENERGY_CODEC.fieldOf("energyPerCycle").forGetter(CrystalCatalyzerRecipe::energyPerCycle),
+                        POSITIVE_LIGHTNING_COST_CODEC.fieldOf("lightningCost").forGetter(CrystalCatalyzerRecipe::lightningCost),
                         LightningKey.Tier.CODEC.optionalFieldOf("lightningTier", LightningKey.Tier.HIGH_VOLTAGE).forGetter(CrystalCatalyzerRecipe::lightningTier),
-                        Mode.CODEC.optionalFieldOf("mode", Mode.CRYSTAL).forGetter(CrystalCatalyzerRecipe::mode),
-                        Codec.BOOL.optionalFieldOf("pigmee", false).forGetter(CrystalCatalyzerRecipe::pigmee))
+                        Mode.CODEC.optionalFieldOf("mode", Mode.CRYSTAL).forGetter(CrystalCatalyzerRecipe::mode))
                 .apply(instance, CrystalCatalyzerRecipe::new));
 
         private static final StreamCodec<RegistryFriendlyByteBuf, Optional<Ingredient>> OPTIONAL_INGREDIENT_STREAM_CODEC =
@@ -247,7 +222,6 @@ public final class CrystalCatalyzerRecipe implements Recipe<CrystalCatalyzerReci
             ByteBufCodecs.VAR_INT.encode(buf, recipe.lightningCost);
             TIER_STREAM_CODEC.encode(buf, recipe.lightningTier);
             ByteBufCodecs.VAR_INT.encode(buf, recipe.mode.ordinal());
-            buf.writeBoolean(recipe.pigmee);
         }
 
         private static CrystalCatalyzerRecipe decode(RegistryFriendlyByteBuf buf) {
@@ -261,9 +235,8 @@ public final class CrystalCatalyzerRecipe implements Recipe<CrystalCatalyzerReci
             Mode mode = modeOrdinal >= 0 && modeOrdinal < Mode.values().length
                     ? Mode.values()[modeOrdinal]
                     : Mode.CRYSTAL;
-            boolean pigmee = buf.readBoolean();
             return new CrystalCatalyzerRecipe(catalyst, catalystCount, output, energyPerCycle,
-                    lightningCost, lightningTier, mode, pigmee);
+                    lightningCost, lightningTier, mode);
         }
 
         @Override

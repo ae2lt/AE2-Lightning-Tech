@@ -13,6 +13,7 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -278,9 +279,14 @@ public class CrystalCatalyzerBlockEntity extends AENetworkedBlockEntity
         if (!hasEnoughFixedFluid()) {
             return Optional.empty();
         }
+        if (isPigmeeVariant()
+                && inventory.getStackInSlot(CrystalCatalyzerInventory.SLOT_CATALYST).getCount()
+                        < CrystalCatalyzerInventory.PIGMEE_CATALYST_SLOT_LIMIT) {
+            return Optional.empty();
+        }
 
         Optional<CrystalCatalyzerRecipeCandidate> candidate = CrystalCatalyzerRecipeService.findRecipe(
-                level, inventory, getMode(), isPigmeeVariant());
+                level, inventory, getMode());
         if (candidate.isEmpty()) {
             return Optional.empty();
         }
@@ -319,8 +325,13 @@ public class CrystalCatalyzerBlockEntity extends AENetworkedBlockEntity
 
     private boolean canAcceptRecipeOutput(CrystalCatalyzerRecipeCandidate candidate) {
         return canAcceptRecipeOutput(
-                candidate.recipe().value().getOutputTemplate(),
+                getMachineOutput(candidate),
                 getCurrentOutputMultiplier(candidate));
+    }
+
+    private ItemStack getMachineOutput(CrystalCatalyzerRecipeCandidate candidate) {
+        var output = candidate.recipe().value().getOutputTemplate();
+        return isPigmeeVariant() ? output.copyWithCount(CrystalCatalyzerLogic.PIGMEE_OUTPUT_COUNT) : output;
     }
 
     public boolean canAcceptLockedRecipeOutput(CrystalCatalyzerLockedRecipe lockedRecipe) {
@@ -418,8 +429,16 @@ public class CrystalCatalyzerBlockEntity extends AENetworkedBlockEntity
             return Optional.empty();
         }
 
-        lockedRecipe = CrystalCatalyzerLockedRecipe.fromCandidate(
-                candidate.get(), getCurrentOutputMultiplier(candidate.get()));
+        if (isPigmeeVariant()) {
+            var holder = candidate.get().recipe();
+            var recipe = holder.value();
+            // Keep the shared recipe's cost metadata. This machine bypasses energy in its tick driver.
+            lockedRecipe = new CrystalCatalyzerLockedRecipe(holder.id(), getMachineOutput(candidate.get()),
+                    recipe.energyPerCycle(), 1, recipe.lightningCost(), recipe.lightningTier());
+        } else {
+            lockedRecipe = CrystalCatalyzerLockedRecipe.fromCandidate(
+                    candidate.get(), getCurrentOutputMultiplier(candidate.get()));
+        }
         saveChanges();
         return Optional.of(lockedRecipe);
     }
@@ -769,17 +788,18 @@ public class CrystalCatalyzerBlockEntity extends AENetworkedBlockEntity
             consumedEnergy = 0L;
             processingTicksSpent = 0;
         } else {
-            // Pigmee recipes were previously assigned a positive FE cost. If a
-            // world is upgraded while one of those old recipes is mid-cycle,
-            // migrate the locked snapshot so the new zero-FE rule applies too.
-            if (isPigmeeVariant() && lockedRecipe.energyPerCycle() > 0) {
-                lockedRecipe = new CrystalCatalyzerLockedRecipe(
-                        lockedRecipe.recipeId(),
-                        lockedRecipe.output(),
-                        0,
-                        lockedRecipe.outputMultiplier(),
-                        lockedRecipe.lightningCost(),
-                        lockedRecipe.lightningTier());
+            if (isPigmeeVariant()) {
+                // Earlier versions duplicated recipes under pigmee_* IDs. Keep an in-flight cycle
+                // and its output/progress while resolving it against the original shared recipe.
+                var id = lockedRecipe.recipeId();
+                var oldPrefix = "crystal_catalyzer/pigmee_";
+                if (id.getNamespace().equals("ae2lt") && id.getPath().startsWith(oldPrefix)) {
+                    var sharedId = ResourceLocation.fromNamespaceAndPath("ae2lt",
+                            "crystal_catalyzer/" + id.getPath().substring(oldPrefix.length()));
+                    lockedRecipe = new CrystalCatalyzerLockedRecipe(sharedId, lockedRecipe.output(),
+                            lockedRecipe.energyPerCycle(), lockedRecipe.outputMultiplier(),
+                            lockedRecipe.lightningCost(), lockedRecipe.lightningTier());
+                }
                 consumedEnergy = 0L;
             }
             consumedEnergy = Math.min(consumedEnergy, lockedRecipe.totalEnergy());

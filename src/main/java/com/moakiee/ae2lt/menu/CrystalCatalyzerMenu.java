@@ -202,13 +202,11 @@ public class CrystalCatalyzerMenu extends AEBaseMenu implements FrequencyBinding
     }
 
     public double getProgress() {
-        if (totalEnergy <= 0L) {
-            return pigmeeVariant
-                    ? Math.min(1.0D, (double) processingTicksSpent
-                            / (double) CrystalCatalyzerLogic.PIGMEE_PROCESS_TICKS)
-                    : 0.0D;
+        if (pigmeeVariant) {
+            return Math.min(1.0D, (double) processingTicksSpent
+                    / (double) CrystalCatalyzerLogic.PIGMEE_PROCESS_TICKS);
         }
-        return Math.min(1.0D, (double) consumedEnergy / (double) totalEnergy);
+        return totalEnergy <= 0L ? 0.0D : Math.min(1.0D, (double) consumedEnergy / (double) totalEnergy);
     }
 
     public FluidStack getFluid() {

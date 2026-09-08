@@ -8,6 +8,7 @@ import appeng.menu.locator.MenuLocators;
 import com.moakiee.ae2lt.blockentity.CrystalCatalyzerBlockEntity;
 import com.moakiee.ae2lt.client.CrystalCatalyzerScreen;
 import com.moakiee.ae2lt.machine.crystalcatalyzer.recipe.Mode;
+import com.moakiee.ae2lt.machine.crystalcatalyzer.recipe.CrystalCatalyzerRecipe;
 import com.moakiee.ae2lt.menu.Ae2ltSlotSemantics;
 import com.moakiee.ae2lt.menu.CrystalCatalyzerMenu;
 import com.moakiee.ae2lt.registry.ModBlocks;
@@ -121,15 +122,25 @@ public final class PigmeeCatalyzerClientProbe {
                             "catalysts must remain in the client inventory");
                     capture("pigmee-catalyzer-complete-gui.png");
                     var recipe = EmiApi.getRecipeManager().getRecipe(ResourceLocation.fromNamespaceAndPath(
-                            "ae2lt", "crystal_catalyzer/pigmee_quartz_block"));
-                    require(recipe != null, "Pigmee recipe missing from live EMI index");
+                            "ae2lt", "crystal_catalyzer/quartz_block"));
+                    require(recipe != null, "shared recipe missing from live EMI index");
+                    require(EmiApi.getRecipeManager().getRecipe(ResourceLocation.fromNamespaceAndPath(
+                            "ae2lt", "crystal_catalyzer/pigmee_quartz_block")) == null,
+                            "EMI must not contain a separate zero-cost Pigmee recipe");
+                    var shared = (CrystalCatalyzerRecipe) mc.level.getRecipeManager().byKey(
+                            ResourceLocation.fromNamespaceAndPath("ae2lt", "crystal_catalyzer/quartz_block"))
+                            .orElseThrow().value();
+                    require(shared.energyPerCycle() == 100_000 && shared.lightningCost() == 1
+                                    && shared.catalystCount() == 1 && shared.getOutputTemplate().getCount() == 1,
+                            "client recipe data must retain original costs and quantities");
                     EmiApi.displayRecipe(recipe);
                 }
                 case 9 -> {
                     capture("pigmee-catalyzer-emi.png");
                     report("PASS: real world model and screen loaded; item capability insertion, water-bucket client packet, "
                             + "empty-bucket return, hidden matrix slot, crystal-mode lock, zero FE, synchronized progress, "
-                            + "16 output / 1000 mB water / 64 retained catalysts and live EMI recipe display verified.");
+                            + "16 output / 1000 mB water / 64 retained catalysts; shared recipe still declares "
+                            + "100000 FE / 1 lightning / 1 catalyst / 1 output, with no duplicate Pigmee recipe in EMI.");
                     finished = true;
                 }
                 default -> throw new IllegalStateException("Unexpected phase " + phase);

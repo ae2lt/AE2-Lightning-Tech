@@ -52,7 +52,7 @@ public final class PigmeeCrystalCatalyzerGameTests {
     }
 
     @GameTest(template = "pigmee_station_empty", timeoutTicks = 100)
-    public static void pigmeeCapabilitiesAndVariantIsolation(GameTestHelper helper) {
+    public static void pigmeeCapabilitiesAndSharedRecipe(GameTestHelper helper) {
         var host = machine(helper);
         helper.runAfterDelay(10, () -> {
             var level = helper.getLevel();
@@ -79,14 +79,17 @@ public final class PigmeeCrystalCatalyzerGameTests {
             supply(host, 64, 1000);
             host.cycleMode();
             require(host.getMode() == Mode.CRYSTAL, "Pigmee must remain in crystal mode");
-            var pigmee = host.findProcessableRecipe().orElseThrow().recipe().value();
-            require(pigmee.pigmee() && pigmee.energyPerCycle() == 0 && pigmee.lightningCost() == 0,
-                    "Pigmee selected a powered recipe");
-            var normal = CrystalCatalyzerRecipeService.findRecipe(level, host.getInventory(), Mode.CRYSTAL, false)
-                    .orElseThrow().recipe().value();
-            require(!normal.pigmee() && normal.energyPerCycle() > 0, "normal recipe isolation failed");
+            var pigmee = host.findProcessableRecipe().orElseThrow().recipe();
+            var normal = CrystalCatalyzerRecipeService.findRecipe(level, host.getInventory(), Mode.CRYSTAL)
+                    .orElseThrow().recipe();
+            require(pigmee.id().equals(normal.id()) && pigmee.value() == normal.value(),
+                    "both machines must reuse the same registered recipe");
+            require(pigmee.value().energyPerCycle() == 100_000 && pigmee.value().lightningCost() == 1
+                            && pigmee.value().catalystCount() == 1 && pigmee.value().getOutputTemplate().getCount() == 1,
+                    "machine overrides must not rewrite shared recipe costs or quantities");
             var loaded = level.getRecipeManager().getAllRecipesFor(ModRecipeTypes.CRYSTAL_CATALYZER_TYPE.get());
-            require(loaded.stream().filter(r -> r.value().pigmee()).count() >= 4, "base Pigmee recipes missing");
+            require(loaded.stream().noneMatch(r -> r.id().getPath().startsWith("crystal_catalyzer/pigmee_")),
+                    "duplicate Pigmee recipes must not be registered");
             helper.succeed();
         });
     }
@@ -102,6 +105,9 @@ public final class PigmeeCrystalCatalyzerGameTests {
             int amount = output(host);
             if (host.getProcessingTicksSpent() > 0 && firstProgress[0] < 0) firstProgress[0] = tick;
             require(host.getMachineStoredEnergy() == 0 && host.getConsumedEnergy() == 0, "Pigmee used FE");
+            host.getLockedRecipe().ifPresent(recipe -> require(
+                    recipe.energyPerCycle() == 100_000 && recipe.lightningCost() == 1,
+                    "Pigmee must bypass recipe costs without rewriting the locked metadata"));
             if (firstProgress[0] < 0) return;
             require(host.getInventory().getStackInSlot(CATALYST).getCount() == 64, "catalyst was consumed");
             if (amount == 0) require(host.getFluid().getAmount() == 2000, "water spent before completion");
@@ -172,7 +178,7 @@ public final class PigmeeCrystalCatalyzerGameTests {
     }
 
     @GameTest(template = "pigmee_station_empty", timeoutTicks = 500)
-    public static void pigmeeSavedProgressAndLegacyEnergyResume(GameTestHelper helper) {
+    public static void pigmeeSavedProgressAndLegacyRecipeIdResume(GameTestHelper helper) {
         var host = machine(helper);
         helper.runAfterDelay(20, () -> supply(host, 64, 1000));
         helper.runAfterDelay(150, () -> {
@@ -180,13 +186,22 @@ public final class PigmeeCrystalCatalyzerGameTests {
             int progress = host.getProcessingTicksSpent();
             var tag = new CompoundTag();
             host.saveAdditional(tag, helper.getLevel().registryAccess());
+            tag.getCompound("LockedRecipe").putString("RecipeId", "ae2lt:crystal_catalyzer/pigmee_quartz_block");
             tag.getCompound("LockedRecipe").putInt("Energy", 400_000);
             tag.putLong("ConsumedEnergy", 123_456);
             host.clearContent();
             host.loadTag(tag, helper.getLevel().registryAccess());
             require(host.getProcessingTicksSpent() == progress, "NBT load lost progress");
-            require(host.getLockedRecipe().orElseThrow().totalEnergy() == 0 && host.getConsumedEnergy() == 0,
-                    "legacy powered Pigmee snapshot failed migration");
+            var restored = host.getLockedRecipe().orElseThrow();
+            require(restored.recipeId().toString().equals("ae2lt:crystal_catalyzer/quartz_block")
+                            && restored.totalEnergy() == 400_000 && host.getConsumedEnergy() == 0,
+                    "legacy ID migration must preserve metadata and bypass FE at the machine");
+            tag.getCompound("LockedRecipe").putInt("Energy", 0);
+            host.loadTag(tag, helper.getLevel().registryAccess());
+            require(host.getProcessingTicksSpent() == progress
+                            && host.getLockedRecipe().orElseThrow().recipeId().toString()
+                                    .equals("ae2lt:crystal_catalyzer/quartz_block"),
+                    "legacy zero-energy snapshot must also migrate without losing progress");
             require(host.getFluid().getAmount() == 1000 && host.getInventory().getStackInSlot(CATALYST).getCount() == 64,
                     "NBT load lost inventory/fluid");
         });
