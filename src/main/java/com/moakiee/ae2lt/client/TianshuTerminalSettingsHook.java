@@ -4,7 +4,7 @@ import appeng.client.gui.me.common.TerminalSettingsScreen;
 import appeng.client.gui.Icon;
 import appeng.client.gui.widgets.IconButton;
 import com.moakiee.ae2lt.AE2LightningTech;
-import com.moakiee.ae2lt.menu.TianshuPatternEncodingTermMenu;
+import com.moakiee.ae2lt.menu.TianshuMaintenanceMenu;
 import com.moakiee.ae2lt.mixin.client.AEBaseScreenAccessor;
 import com.moakiee.ae2lt.mixin.client.VerticalButtonBarAccessor;
 import com.moakiee.ae2lt.registry.ModItems;
@@ -26,7 +26,7 @@ public final class TianshuTerminalSettingsHook {
     @SuppressWarnings({"rawtypes", "unchecked"})
     public static void addTianshuSettingsTab(ScreenEvent.Init.Post event) {
         if (!(event.getScreen() instanceof TerminalSettingsScreen settings)
-                || !(settings.getMenu() instanceof TianshuPatternEncodingTermMenu)) return;
+                || !(settings.getMenu() instanceof TianshuMaintenanceMenu)) return;
 
         // AE2's help button is owned by the native left toolbar. Add this button to
         // the same toolbar so its width, right edge, spacing, background, and resize

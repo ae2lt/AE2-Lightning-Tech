@@ -5,6 +5,7 @@
   "compatibilityLevel": "JAVA_21",
   "plugin": "com.moakiee.ae2lt.mixin.recipeviewer.RecipeViewerMixinPlugin",
   "client": [
+    "jeisupply.JeiWirelessSupplyMixin",
     "useless.OmniversalPatternJeiTransferMixin",
     "jei.JeiEncodePatternTransferMixin",
     "jei.JeiRecipeTransferButtonControllerMixin",

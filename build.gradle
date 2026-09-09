@@ -187,6 +187,20 @@ neoForge {
             systemProperty 'neoforge.enabledGameTestNamespaces', 'ae2lt_omniversal'
         }
 
+        jeiSupplyGameTestServer {
+            type = "gameTestServer"
+            gameDirectory = project.file('run-jei-supply-gametest')
+            systemProperty 'neoforge.enabledGameTestNamespaces', 'ae2lt_jei_supply'
+        }
+
+        jeiSupplyClient {
+            client()
+            gameDirectory = project.file('run-jei-supply-client')
+            systemProperty 'ae2lt.jeiSupplyClientProbe', 'true'
+            programArguments.addAll '--username', 'JeiSupplyQA', '--quickPlaySingleplayer', 'JeiSupplyQA'
+            jvmArguments.add '-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=127.0.0.1:5010'
+        }
+
         omniversalClient {
             client()
             gameDirectory = project.file('run-omniversal-client')
@@ -327,7 +341,9 @@ dependencies {
     // are installed by the modpack.
     compileOnly "curse.maven:polymorph-388800:${polymorph_curse_file_id}"
     compileOnly "dev.emi:emi-neoforge:${emi_version}:api"
-    runtimeOnly "dev.emi:emi-neoforge:${emi_version}"
+    if (!providers.gradleProperty('ae2ltDisableEmiDevRuntime').getOrElse('false').toBoolean()) {
+        runtimeOnly "dev.emi:emi-neoforge:${emi_version}"
+    }
     compileOnly "curse.maven:jade-324717:6291517"
     runtimeOnly "curse.maven:jade-324717:6291517"
     runtimeOnly "curse.maven:mekanism-268560:7904058"

@@ -1388,5 +1388,13 @@
   "ae2lt.tianshu.omniversal.upload.rejected": "合金炉拒绝接收，样板保留在终端",
   "ae2lt.tianshu.omniversal.upload.missing_mold": "没有已装好对应模具的可用合金炉",
   "ae2lt.tianshu.omniversal.edited": "配方已修改，编码时校验输入、输出和模具",
-  "ae2lt.tianshu.omniversal.no_match": "没有同时匹配输入、输出、数量和模具的万象配方，无法编码"
+  "ae2lt.tianshu.omniversal.no_match": "没有同时匹配输入、输出、数量和模具的万象配方，无法编码",
+  "ae2lt.tianshu.settings.jei_supply": "JEI 无线取料",
+  "ae2lt.tianshu.settings.jei_supply.hint": "在已有 JEI 填充支持的机器中，从背包或饰品栏里的无线天枢终端补足物品。需要终端连通、有电且背包有空间；仅对当前客户端生效。",
+  "ae2lt.tianshu.settings.jei_supply.on": "已开启：从无线终端补料",
+  "ae2lt.tianshu.settings.jei_supply.off": "已关闭：使用原有填充",
+  "ae2lt.tianshu.jei_supply.available": "从随身无线天枢终端补足材料并填充（背包需有空间）",
+  "ae2lt.tianshu.jei_supply.waiting": "正在从无线终端补料…",
+  "ae2lt.tianshu.jei_supply.no_space": "背包没有足够空间容纳材料",
+  "ae2lt.tianshu.jei_supply.retry": "未能完成填充，请检查终端连接、电量、材料和背包空间后重试。已取出的物品保留在背包。"
 }

@@ -9,6 +9,7 @@ public final class AE2LTClientConfig {
     public static final ModConfigSpec SPEC;
     private static final ModConfigSpec.EnumValue<TianshuUploadTrigger> TIANSHU_UPLOAD_TRIGGER;
     private static final ModConfigSpec.BooleanValue TIANSHU_INTERCEPT_DUPLICATE_ENCODING;
+    private static final ModConfigSpec.BooleanValue TIANSHU_JEI_WIRELESS_SUPPLY;
     private static final ModConfigSpec.ConfigValue<List<? extends String>> TIANSHU_UPLOAD_ALIASES;
     private static final ModConfigSpec.BooleanValue DISABLE_CORE_SHADER_RENDERING;
     private static final ModConfigSpec.BooleanValue RENDER_MULTIBLOCK_CORE_EFFECTS;
@@ -22,6 +23,9 @@ public final class AE2LTClientConfig {
         TIANSHU_INTERCEPT_DUPLICATE_ENCODING = builder
                 .comment("Cancel encoding when the same pattern already exists on the ME network")
                 .define("interceptDuplicatePatternEncoding", true);
+        TIANSHU_JEI_WIRELESS_SUPPLY = builder
+                .comment("Let existing JEI recipe-transfer handlers refill the backpack from a carried wireless Tianshu terminal")
+                .define("jeiWirelessSupply", false);
         TIANSHU_UPLOAD_ALIASES = builder
                 .comment("Recipe type/category id to pattern-provider alias mappings (source=alias)")
                 .defineListAllowEmpty("uploadAliases", List.of(),
@@ -59,6 +63,13 @@ public final class AE2LTClientConfig {
 
     public static boolean interceptDuplicatePatternEncoding() {
         return TIANSHU_INTERCEPT_DUPLICATE_ENCODING.get();
+    }
+
+    public static boolean jeiWirelessSupply() { return TIANSHU_JEI_WIRELESS_SUPPLY.get(); }
+
+    public static void setJeiWirelessSupply(boolean enabled) {
+        TIANSHU_JEI_WIRELESS_SUPPLY.set(enabled);
+        if (SPEC.isLoaded()) SPEC.save();
     }
 
     public static boolean renderMultiblockCoreEffects() {

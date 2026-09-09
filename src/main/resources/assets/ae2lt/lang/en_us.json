@@ -1388,5 +1388,13 @@
   "ae2lt.tianshu.omniversal.upload.rejected": "The furnace rejected this pattern; it remains in the terminal",
   "ae2lt.tianshu.omniversal.upload.missing_mold": "No available furnace has the required molds",
   "ae2lt.tianshu.omniversal.edited": "Draft edited; encoding validates inputs, outputs and molds",
-  "ae2lt.tianshu.omniversal.no_match": "No Omniversal recipe matches these inputs, outputs, quantities and molds"
+  "ae2lt.tianshu.omniversal.no_match": "No Omniversal recipe matches these inputs, outputs, quantities and molds",
+  "ae2lt.tianshu.settings.jei_supply": "JEI wireless ingredients",
+  "ae2lt.tianshu.settings.jei_supply.hint": "Refill items through a wireless Tianshu terminal in your inventory or Curios when a machine already supports JEI transfer. Requires a powered connection and inventory space. Applies to this client.",
+  "ae2lt.tianshu.settings.jei_supply.on": "On: refill from wireless terminal",
+  "ae2lt.tianshu.settings.jei_supply.off": "Off: original recipe transfer",
+  "ae2lt.tianshu.jei_supply.available": "Refill missing ingredients from a carried wireless Tianshu terminal, then transfer (requires backpack space)",
+  "ae2lt.tianshu.jei_supply.waiting": "Refilling from the wireless terminal…",
+  "ae2lt.tianshu.jei_supply.no_space": "Not enough backpack space for the ingredients",
+  "ae2lt.tianshu.jei_supply.retry": "Transfer could not finish. Check the terminal connection, power, ingredients and backpack space, then retry. Extracted items remain in your backpack."
 }

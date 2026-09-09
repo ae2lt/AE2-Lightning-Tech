@@ -17,6 +17,7 @@ docs/
 !docs/
 docs/*
 !docs/wireless-io-alpha3-test-port.md
+!docs/jei-wireless-supply.md
 
 # Bundled source mirrors / references
 Source Code/
@@ -41,6 +42,8 @@ run/
 /run-gametest/
 /run-wireless-io-gametest/
 /run-omniversal-gametest/
+/run-jei-supply-gametest/
+/run-jei-supply-client/
 /run-omniversal-client/
 /benchmark-results/
 out/
