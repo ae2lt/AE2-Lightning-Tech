@@ -320,6 +320,8 @@ public class AE2LightningTech {
 
                         // 电磁炮与模块
                         output.accept(ModItems.ELECTROMAGNETIC_RAILGUN);
+                        output.accept(com.moakiee.ae2lt.item.staff.StaffEnergy.charged(new net.minecraft.world.item.ItemStack(ModItems.MIMICRY_STAFF.get())));
+                        ModItems.MIMICRY_MODULES.values().forEach(output::accept);
                         output.accept(ModItems.RAILGUN_MODULE_CORE);
                         output.accept(ModItems.RAILGUN_MODULE_COMPUTE);
                         output.accept(ModItems.RAILGUN_MODULE_ACCELERATION);
@@ -406,6 +408,8 @@ public class AE2LightningTech {
     };
 
     private void registerCapabilities(RegisterCapabilitiesEvent event) {
+        event.registerItem(Capabilities.EnergyStorage.ITEM,
+                (stack, context) -> com.moakiee.ae2lt.item.staff.StaffEnergy.capability(stack), ModItems.MIMICRY_STAFF.get(), ModItems.MIMICRY_STAFF_PROJECTION.get());
         if (net.neoforged.fml.ModList.get().isLoaded("mekanism")) {
             MekanismArmorIntegration.registerCapabilities(event);
         }

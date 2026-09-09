@@ -55,3 +55,7 @@ DevLog/
 .codex-tmp/
 .eclipse/
 CLAUDE.local.md
+
+# Isolated mimicry staff verification worlds
+run-staff-gametest/
+run-staff-client/

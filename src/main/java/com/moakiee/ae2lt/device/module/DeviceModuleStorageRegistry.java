@@ -15,6 +15,7 @@ public final class DeviceModuleStorageRegistry {
 
     static {
         register(RailgunModuleStorage.INSTANCE);
+        register(com.moakiee.ae2lt.item.staff.StaffModuleStorage.INSTANCE);
         register(ArmorModuleStorage.HEAD);
         register(ArmorModuleStorage.CHEST);
         register(ArmorModuleStorage.LEGS);

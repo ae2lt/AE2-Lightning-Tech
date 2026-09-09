@@ -17,7 +17,8 @@ import com.moakiee.ae2lt.device.module.OverloadDeviceModuleItem;
 
 public class RailgunModuleItem extends Item implements OverloadDeviceModuleItem {
     private static final Set<DeviceKind> RAILGUN_ONLY = Set.of(DeviceKind.RAILGUN);
-    private static final Set<DeviceKind> CORE_ACCEPTS = Set.of(DeviceKind.RAILGUN, DeviceKind.CELESTWEAVE_CORE);
+    private static final Set<DeviceKind> CORE_ACCEPTS = Set.of(DeviceKind.RAILGUN, DeviceKind.CELESTWEAVE_CORE, DeviceKind.MIMICRY_STAFF);
+    private static final Set<DeviceKind> EXECUTION_ACCEPTS = Set.of(DeviceKind.RAILGUN, DeviceKind.MIMICRY_STAFF);
 
     private final RailgunModuleType type;
 
@@ -43,7 +44,11 @@ public class RailgunModuleItem extends Item implements OverloadDeviceModuleItem 
 
     @Override
     public Set<DeviceKind> acceptableDevices() {
-        return type == RailgunModuleType.CORE ? CORE_ACCEPTS : RAILGUN_ONLY;
+        return switch (type) {
+            case CORE -> CORE_ACCEPTS;
+            case OVERLOAD_EXECUTION, MULTIDIMENSIONAL_EXECUTION -> EXECUTION_ACCEPTS;
+            default -> RAILGUN_ONLY;
+        };
     }
 
     @Override
@@ -63,6 +68,10 @@ public class RailgunModuleItem extends Item implements OverloadDeviceModuleItem 
     }
 
     static boolean accepts(RailgunModuleType type, DeviceKind deviceKind, DeviceSlotType slotType) {
+        if (deviceKind == DeviceKind.MIMICRY_STAFF) {
+            return slotType == DeviceSlotType.STAFF_MODULE && (type == RailgunModuleType.CORE
+                    || type == RailgunModuleType.OVERLOAD_EXECUTION || type == RailgunModuleType.MULTIDIMENSIONAL_EXECUTION);
+        }
         if (type == RailgunModuleType.CORE && deviceKind == DeviceKind.CELESTWEAVE_CORE) {
             return slotType == DeviceSlotType.CHEST_MODULE;
         }

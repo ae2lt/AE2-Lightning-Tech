@@ -1,6 +1,8 @@
 package com.moakiee.ae2lt.logic.railgun;
 
 import java.util.UUID;
+import java.util.function.LongPredicate;
+import com.moakiee.ae2lt.item.staff.StaffEnergy;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,8 +37,7 @@ import com.moakiee.ae2lt.registry.ModDamageTypes;
  * multidimensional upgrade enters the same death settlement immediately and for free.
  *
  * <p><b>Activation:</b> either execution module plus the {@code overloadExecution.enabled}
- * config switch. Trigger is gated by the caller (currently only EHv3 charged shots in
- * {@code RailgunFireService.applyAll}).
+ * config switch. Trigger is gated by the caller (EHv3 charged shots or fully charged staff melee hits).
  *
  * <p><b>Model:</b> per railgun ItemStack, a small list of {@code (uuid, recordedHp,
  * lastHitTick)} entries is kept on {@link DataComponents#CUSTOM_DATA}. On each
@@ -128,6 +129,33 @@ public final class OverloadExecutionService {
             applyOrdinaryDamage(target, damageSource, OFF_OVERLOAD_DAMAGE);
             return;
         }
+        applyOverloadDamage(level, player, stack, target, damage, executionMode, damageSource, feCost -> {
+            RailgunEnergyBuffer.refillFromNetwork(stack, player,
+                    Math.max(0L, feCost - RailgunEnergyBuffer.read(stack)));
+            if (RailgunEnergyBuffer.tryConsume(stack, player, feCost)) return true;
+            RailgunFireService.sendFail(player, "ae2lt.railgun.fail.no_fe");
+            return false;
+        });
+    }
+
+    /** Melee uses its selected native damage in OFF mode and the exact shared death/HP engine otherwise. */
+    public static boolean onStaffHit(ServerLevel level, ServerPlayer player, ItemStack stack,
+            LivingEntity target, double damage, boolean multidimensional, RailgunExecutionMode executionMode) {
+        if (!AE2LTCommonConfig.overloadExecutionEnabled() || !executionMode.entersExecutionFlow()) return false;
+        if (!RailgunTargetRules.canAffect(player, target, AE2LTCommonConfig.railgunDamagePlayers())) return false;
+        if (target instanceof Player other && (!level.getServer().isPvpAllowed() || !player.canHarmPlayer(other))) return false;
+        DamageSource damageSource = new DamageSource(ModDamageTypes.electromagneticHolder(level), player, player);
+        if (multidimensional) {
+            execute(target, Math.max(damage, target.getHealth()), damageSource, executionMode.forcesRemoval());
+            return true;
+        }
+        return applyOverloadDamage(level, player, stack, target, damage, executionMode, damageSource,
+                feCost -> StaffEnergy.tryConsumeExecution(stack, feCost));
+    }
+
+    private static boolean applyOverloadDamage(ServerLevel level, ServerPlayer player, ItemStack stack,
+            LivingEntity target, double damage, RailgunExecutionMode executionMode, DamageSource damageSource,
+            LongPredicate consumeEnergy) {
         int maxTracked = AE2LTCommonConfig.overloadExecutionMaxTracked();
         int decayWindow = AE2LTCommonConfig.overloadExecutionDecayWindowTicks();
         double decayPower = AE2LTCommonConfig.overloadExecutionDecayPower();
@@ -141,14 +169,7 @@ public final class OverloadExecutionService {
         ListTag targets = root.getList(TAG_TARGETS, Tag.TAG_COMPOUND);
         int existingIdx = indexOf(targets, targetUuid);
         long feCost = RailgunEnergyRules.overloadExecutionCostFe();
-        RailgunEnergyBuffer.refillFromNetwork(
-                stack,
-                player,
-                Math.max(0L, feCost - RailgunEnergyBuffer.read(stack)));
-        if (!RailgunEnergyBuffer.tryConsume(stack, player, feCost)) {
-            RailgunFireService.sendFail(player, "ae2lt.railgun.fail.no_fe");
-            return;
-        }
+        if (!consumeEnergy.test(feCost)) return false;
 
         // 1. Resolve "basis HP" from the record (or current HP if no record / expired).
         double basis;
@@ -185,7 +206,7 @@ public final class OverloadExecutionService {
                     Math.max(damage, currentHp),
                     damageSource,
                     executionMode.forcesRemoval());
-            return;
+            return true;
         }
 
         // 3. Direct-write branch. Only write if the new value is actually lower than
@@ -208,7 +229,7 @@ public final class OverloadExecutionService {
                 int idx = indexOf(targets, targetUuid);
                 if (idx >= 0) targets.remove(idx);
                 saveTargets(stack, root, targets);
-                return;
+                return true;
             }
         }
 
@@ -228,6 +249,7 @@ public final class OverloadExecutionService {
             }
         }
         saveTargets(stack, root, targets);
+        return true;
     }
 
     /**

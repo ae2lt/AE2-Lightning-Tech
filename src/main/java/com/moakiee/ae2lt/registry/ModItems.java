@@ -72,6 +72,26 @@ import appeng.items.parts.PartModelsHelper;
 public final class ModItems {
     public static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(AE2LightningTech.MODID);
 
+    public static final DeferredItem<com.moakiee.ae2lt.item.staff.MimicryStaffItem> MIMICRY_STAFF = ITEMS.registerItem(
+            "celestweave_mimicry_staff", com.moakiee.ae2lt.item.staff.MimicryStaffItem::new, new Item.Properties());
+
+    public static final DeferredItem<com.moakiee.ae2lt.item.staff.StaffProjectionItem> MIMICRY_STAFF_PROJECTION = ITEMS.registerItem(
+            "mimicry_staff_projection", com.moakiee.ae2lt.item.staff.StaffProjectionItem::new, new Item.Properties());
+
+    public static final java.util.Map<com.moakiee.ae2lt.item.staff.StaffModule,
+            DeferredItem<com.moakiee.ae2lt.item.staff.StaffModuleItem>> MIMICRY_MODULES = registerMimicryModules();
+
+    private static java.util.Map<com.moakiee.ae2lt.item.staff.StaffModule,
+            DeferredItem<com.moakiee.ae2lt.item.staff.StaffModuleItem>> registerMimicryModules() {
+        var modules = new java.util.EnumMap<com.moakiee.ae2lt.item.staff.StaffModule,
+                DeferredItem<com.moakiee.ae2lt.item.staff.StaffModuleItem>>(com.moakiee.ae2lt.item.staff.StaffModule.class);
+        for (var type : com.moakiee.ae2lt.item.staff.StaffModule.values()) {
+            modules.put(type, ITEMS.registerItem(type.id(), properties ->
+                    new com.moakiee.ae2lt.item.staff.StaffModuleItem(properties, type), new Item.Properties()));
+        }
+        return java.util.Collections.unmodifiableMap(modules);
+    }
+
     public static final DeferredItem<Item> OVERLOAD_CRYSTAL = ITEMS.registerItem(
             "overload_crystal",
             OverloadCrystalItem::new,

@@ -18,6 +18,7 @@ public final class DeviceWorkbenchAdapters {
         register(ArmorWorkbenchAdapter.LEGGINGS);
         register(ArmorWorkbenchAdapter.BOOTS);
         register(RailgunWorkbenchAdapter.INSTANCE);
+        register(StaffWorkbenchAdapter.INSTANCE);
     }
 
     private DeviceWorkbenchAdapters() {}
@@ -30,6 +31,7 @@ public final class DeviceWorkbenchAdapters {
         if (stack == null || stack.isEmpty() || !(stack.getItem() instanceof DeviceItem device)) {
             return Optional.empty();
         }
+        if (com.moakiee.ae2lt.item.staff.StaffPhaseService.isProjection(stack)) return Optional.empty();
         return Optional.ofNullable(BY_KIND.get(device.deviceKind()));
     }
 }

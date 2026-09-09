@@ -29,6 +29,35 @@ public final class ModDataComponents {
     public static final DeferredRegister.DataComponents DATA_COMPONENTS =
             DeferredRegister.createDataComponents(Registries.DATA_COMPONENT_TYPE, AE2LightningTech.MODID);
 
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<net.minecraft.world.item.component.ItemContainerContents>>
+            MIMICRY_MODULES = DATA_COMPONENTS.registerComponentType("mimicry_modules", builder -> builder
+                    .persistent(net.minecraft.world.item.component.ItemContainerContents.CODEC)
+                    .networkSynchronized(net.minecraft.world.item.component.ItemContainerContents.STREAM_CODEC));
+
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<com.moakiee.ae2lt.item.staff.StaffSettings>>
+            MIMICRY_SETTINGS = DATA_COMPONENTS.registerComponentType("mimicry_settings", builder -> builder
+                    .persistent(com.moakiee.ae2lt.item.staff.StaffSettings.CODEC)
+                    .networkSynchronized(ByteBufCodecs.fromCodecWithRegistries(com.moakiee.ae2lt.item.staff.StaffSettings.CODEC)));
+
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<Integer>>
+            MIMICRY_ENERGY = DATA_COMPONENTS.registerComponentType("mimicry_energy", builder -> builder
+                    .persistent(Codec.intRange(0, com.moakiee.ae2lt.item.staff.StaffEnergy.CAPACITY))
+                    .networkSynchronized(ByteBufCodecs.VAR_INT));
+
+    /** Opt-in transfer lock; absent means unlocked, including all pre-existing staffs. */
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<Boolean>>
+            MIMICRY_PHASE_LOCK = DATA_COMPONENTS.registerComponentType("mimicry_phase_lock", builder -> builder
+                    .persistent(Codec.BOOL).networkSynchronized(ByteBufCodecs.BOOL));
+
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<com.moakiee.ae2lt.item.staff.StaffProjectionLink>>
+            MIMICRY_PROJECTION_LINK = DATA_COMPONENTS.registerComponentType("mimicry_projection_link", builder -> builder
+                    .persistent(com.moakiee.ae2lt.item.staff.StaffProjectionLink.CODEC)
+                    .networkSynchronized(ByteBufCodecs.fromCodec(com.moakiee.ae2lt.item.staff.StaffProjectionLink.CODEC)));
+
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<com.moakiee.ae2lt.item.staff.StaffProjectionView>>
+            MIMICRY_PROJECTION_VIEW = DATA_COMPONENTS.registerComponentType("mimicry_projection_view", builder -> builder
+                    .networkSynchronized(ByteBufCodecs.fromCodecWithRegistries(com.moakiee.ae2lt.item.staff.StaffProjectionView.CODEC)));
+
     /**
      * A machine-specific configuration blob written by a block entity's
      * {@code exportSettings(MEMORY_CARD, ...)} and read back by

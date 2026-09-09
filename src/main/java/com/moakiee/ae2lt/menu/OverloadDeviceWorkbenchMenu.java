@@ -304,7 +304,8 @@ public class OverloadDeviceWorkbenchMenu extends AEBaseMenu {
         energyCapacity = adapter.energyBuffer().capacity(device);
         energyStored = adapter.energyBuffer().stored(device);
 
-        coreInstalled = structuralInstalled(DeviceSlotType.CORE) ? 1 : 0;
+        coreInstalled = host.getStructuralSlots().stream().noneMatch(spec -> spec.slotType() == DeviceSlotType.CORE)
+                || structuralInstalled(DeviceSlotType.CORE) ? 1 : 0;
     }
 
     private boolean structuralInstalled(DeviceSlotType type) {

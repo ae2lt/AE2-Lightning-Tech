@@ -67,6 +67,10 @@ public final class DeviceHubKeyMappings {
                     defaultTab = DeviceHubMenu.TAB_RAILGUN;
                 }
 
+                if (!DeviceHubMenu.findStaff(minecraft.player).isEmpty()) {
+                    defaultTab = DeviceHubMenu.TAB_STAFF;
+                }
+
                 if (defaultTab < 0) {
                     for (EquipmentSlot slot : new EquipmentSlot[]{
                             EquipmentSlot.CHEST,

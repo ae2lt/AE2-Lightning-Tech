@@ -10,5 +10,6 @@ public enum DeviceSlotType {
     COMPUTE,
     ACCELERATION,
     RANGE,
-    OVERLOAD_EXECUTION
+    OVERLOAD_EXECUTION,
+    STAFF_MODULE
 }

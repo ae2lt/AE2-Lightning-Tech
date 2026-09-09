@@ -1,6 +1,7 @@
 package com.moakiee.ae2lt.menu.hub;
 
 import java.util.List;
+import com.moakiee.ae2lt.item.staff.*;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -48,7 +49,8 @@ public class DeviceHubMenu extends AbstractContainerMenu {
     public static final int TAB_LEGGINGS = 2;
     public static final int TAB_BOOTS = 3;
     public static final int TAB_RAILGUN = 4;
-    public static final int TAB_COUNT = 5;
+    public static final int TAB_STAFF = 5;
+    public static final int TAB_COUNT = 6;
 
     public static final MenuType<DeviceHubMenu> TYPE = IMenuTypeExtension.create(DeviceHubMenu::new);
 
@@ -138,6 +140,8 @@ public class DeviceHubMenu extends AbstractContainerMenu {
         DeviceStatusModel status;
         if (deviceStack.isEmpty()) {
             status = DeviceStatusModel.EMPTY;
+        } else if (selectedTab == TAB_STAFF) {
+            status = StaffHubSettings.snapshot(deviceStack, serverPlayer, selectedModuleIndex);
         } else if (selectedTab == TAB_RAILGUN) {
             status = DeviceStatusModel.fromRailgunStack(deviceStack, serverPlayer, selectedModuleIndex);
         } else {
@@ -351,6 +355,12 @@ public class DeviceHubMenu extends AbstractContainerMenu {
             // Railgun modules are not toggleable
             return;
         }
+        if (selectedTab == TAB_STAFF) {
+            var installed = StaffHubSettings.installed(deviceStack);
+            if (moduleIndex >= 0 && moduleIndex < installed.size())
+                StaffHubSettings.cycle(deviceStack, player, StaffHubSettings.toggleButton(installed.get(moduleIndex)));
+            return;
+        }
         // Armor: toggle submodule
         var submodules = CelestweaveArmorState.collectSubmodules(deviceStack, player.registryAccess());
         if (moduleIndex < 0 || moduleIndex >= submodules.size()) return;
@@ -422,6 +432,18 @@ public class DeviceHubMenu extends AbstractContainerMenu {
         if (selectedTab == TAB_RAILGUN) {
             return;
         }
+        if (selectedTab == TAB_STAFF) {
+            var staffStatus = StaffHubSettings.snapshot(deviceStack, player, selectedModuleIndex);
+            if (optionIndex == staffStatus.moduleConfigs().size() - 1) {
+                StaffHubSettings.cycle(deviceStack, player, 11);
+                return;
+            }
+            var installed = StaffHubSettings.installed(deviceStack);
+            if (selectedModuleIndex < 0 || selectedModuleIndex >= installed.size()) return;
+            var buttons = StaffHubSettings.configButtons(installed.get(selectedModuleIndex));
+            if (optionIndex >= 0 && optionIndex < buttons.size()) StaffHubSettings.cycle(deviceStack, player, buttons.get(optionIndex));
+            return;
+        }
         var submodules = CelestweaveArmorState.collectSubmodules(deviceStack, player.registryAccess());
         if (selectedModuleIndex < 0 || selectedModuleIndex >= submodules.size()) return;
         var submodule = submodules.get(selectedModuleIndex);
@@ -456,6 +478,7 @@ public class DeviceHubMenu extends AbstractContainerMenu {
             case TAB_LEGGINGS -> findArmor(player, EquipmentSlot.LEGS);
             case TAB_BOOTS -> findArmor(player, EquipmentSlot.FEET);
             case TAB_RAILGUN -> findRailgun(player);
+            case TAB_STAFF -> findStaff(player);
             default -> ItemStack.EMPTY;
         };
     }
@@ -469,6 +492,12 @@ public class DeviceHubMenu extends AbstractContainerMenu {
         if (main.getItem() instanceof ElectromagneticRailgunItem) return main;
         ItemStack off = player.getOffhandItem();
         if (off.getItem() instanceof ElectromagneticRailgunItem) return off;
+        return ItemStack.EMPTY;
+    }
+
+    public static ItemStack findStaff(Player player) {
+        if (player.getMainHandItem().getItem() instanceof MimicryStaffItem) return player.getMainHandItem();
+        if (player.getOffhandItem().getItem() instanceof MimicryStaffItem) return player.getOffhandItem();
         return ItemStack.EMPTY;
     }
 

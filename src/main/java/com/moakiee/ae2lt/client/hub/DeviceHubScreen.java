@@ -48,15 +48,15 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
     private static final int BUTTON_FILL_DISABLED = 0xFF7D839B;
     private static final int BUTTON_TEXT = TEXT_ON_DARK_BG;
 
-    private static final int TAB_COUNT = 5;
+    private static final int TAB_COUNT = DeviceHubMenu.TAB_COUNT;
     private static final int TAB_Y = 0;
     private static final int TAB_WIDTH = 31;
     private static final int TAB_HEIGHT = 25;
     private static final int TAB_ICON_SIZE = 16;
     private static final int TAB_ACTIVE_SRC_Y = 225;
     private static final int TAB_ACTIVE_H = 26;
-    private static final int[] TAB_X = {0, 31, 62, 93, 145};
-    private static final int[] TAB_ACTIVE_SRC_X = {0, 31, 62, 93, 145};
+    private static final int[] TAB_X = {0, 29, 58, 87, 116, 145};
+    private static final int[] TAB_ACTIVE_SRC_X = {0, 0, 0, 0, 0, 145};
 
     private static final int STATUS_X = 12;
     private static final int STATUS_Y = 36;
@@ -115,14 +115,16 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
             "ae2lt.device_hub.tab.chestplate",
             "ae2lt.device_hub.tab.leggings",
             "ae2lt.device_hub.tab.boots",
-            "ae2lt.device_hub.tab.railgun"
+            "ae2lt.device_hub.tab.railgun",
+            "ae2lt.device_hub.tab.staff"
     };
     private static final String[] TAB_REQUIRED_KEYS = {
             "ae2lt.device_hub.tab.required.helmet",
             "ae2lt.device_hub.tab.required.chestplate",
             "ae2lt.device_hub.tab.required.leggings",
             "ae2lt.device_hub.tab.required.boots",
-            "ae2lt.device_hub.tab.required.railgun"
+            "ae2lt.device_hub.tab.required.railgun",
+            "ae2lt.device_hub.tab.required.staff"
     };
 
     private int scrollOffset = 0;
@@ -147,6 +149,7 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
     @Override
     protected void renderBg(GuiGraphics gfx, float partialTick, int mouseX, int mouseY) {
         gfx.blit(TEXTURE, leftPos, topPos, 0, 0, GUI_WIDTH, GUI_HEIGHT, TEXTURE_SIZE, TEXTURE_SIZE);
+        for (int x : TAB_X) gfx.blit(TEXTURE, leftPos + x, topPos, 0, 0, TAB_WIDTH, TAB_HEIGHT, TEXTURE_SIZE, TEXTURE_SIZE);
         renderSelectedTabTexture(gfx, menu.getSelectedTab());
     }
 
@@ -234,6 +237,9 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
     }
 
     private Component statusText(boolean railgunTab) {
+        if (menu.getSelectedTab() == DeviceHubMenu.TAB_STAFF && !menu.isPowered()) {
+            return Component.translatable("ae2lt.staff.status.combat_unpowered");
+        }
         if (!railgunTab) {
             return Component.translatable(DeviceHubDisplayRules.armorStatusKey(
                     menu.hasCore(),
@@ -273,13 +279,13 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
             }
 
             int count = idx < moduleCounts.size() ? moduleCounts.get(idx) : 1;
-            int nameMaxWidth = railgunTab
+            int nameMaxWidth = !moduleToggleable(idx)
                     ? MODULE_LIST_RIGHT - MODULE_LIST_X
                     : MODULE_CHECKBOX_X - MODULE_LIST_X - 6;
             String name = truncate(font, moduleName(moduleNameKeys.get(idx), count).getString(), nameMaxWidth);
             gfx.drawString(font, Component.literal(name), leftPos + MODULE_LIST_X, rowY + 2, TEXT_ON_DARK_BG, false);
 
-            if (!railgunTab) {
+            if (moduleToggleable(idx)) {
                 boolean enabled = idx < moduleEnabled.size() && moduleEnabled.get(idx);
                 drawCheckbox(gfx, leftPos + MODULE_CHECKBOX_X, rowY + 1, enabled);
             }
@@ -330,6 +336,7 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
                 break;
             }
             String value = menu.getModuleConfigValues().get(configIndex);
+            if (value.startsWith("ae2lt.staff.value.")) value = Component.translatable(value).getString();
             boolean editable = menu.getModuleConfigEditable().get(configIndex);
             gfx.drawString(font, moduleConfigLabel(configIndex),
                     x, rowY + 1, TEXT_ON_DARK_BG, false);
@@ -477,10 +484,18 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
 
     private Component moduleConfigLabel(int index) {
         String key = menu.getModuleConfigKeys().get(index);
+        if (key != null && key.startsWith("staff_")) return Component.translatable("ae2lt.staff.config." + key.substring(6));
         if (key != null && !key.isBlank()) {
             return Component.translatable("ae2lt.celestweave.config." + key);
         }
         return Component.literal(menu.getModuleConfigLabels().get(index));
+    }
+
+    private boolean moduleToggleable(int index) {
+        if (menu.getSelectedTab() == DeviceHubMenu.TAB_RAILGUN) return false;
+        return menu.getSelectedTab() != DeviceHubMenu.TAB_STAFF
+                || index >= 0 && index < menu.getModuleNameKeys().size()
+                    && com.moakiee.ae2lt.item.staff.StaffHubSettings.toggleableName(menu.getModuleNameKeys().get(index));
     }
 
     private static Component moduleName(String nameKey, int count) {
@@ -542,7 +557,7 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
             int idx = i + scrollOffset;
             int rowY = topPos + MODULE_LIST_Y + i * MODULE_ROW_H;
             int checkboxX = leftPos + MODULE_CHECKBOX_X;
-            if (!railgunTab
+            if (moduleToggleable(idx)
                     && mouseX >= checkboxX
                     && mouseX <= checkboxX + CHECKBOX_WIDTH
                     && mouseY >= rowY + 1
@@ -780,6 +795,7 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
             case DeviceHubMenu.TAB_LEGGINGS -> new ItemStack(ModItems.CELESTWEAVE_CONDUIT.get());
             case DeviceHubMenu.TAB_BOOTS -> new ItemStack(ModItems.CELESTWEAVE_STRIDE.get());
             case DeviceHubMenu.TAB_RAILGUN -> new ItemStack(ModItems.ELECTROMAGNETIC_RAILGUN.get());
+            case DeviceHubMenu.TAB_STAFF -> new ItemStack(ModItems.MIMICRY_STAFF.get());
             default -> ItemStack.EMPTY;
         };
     }
@@ -795,6 +811,7 @@ public class DeviceHubScreen extends AbstractContainerScreen<DeviceHubMenu> {
             case DeviceHubMenu.TAB_LEGGINGS -> armorStack(player, EquipmentSlot.LEGS);
             case DeviceHubMenu.TAB_BOOTS -> armorStack(player, EquipmentSlot.FEET);
             case DeviceHubMenu.TAB_RAILGUN -> railgunStack(player);
+            case DeviceHubMenu.TAB_STAFF -> DeviceHubMenu.findStaff(player);
             default -> ItemStack.EMPTY;
         };
     }

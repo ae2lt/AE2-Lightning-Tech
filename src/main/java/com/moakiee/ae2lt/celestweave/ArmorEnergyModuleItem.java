@@ -68,6 +68,7 @@ public final class ArmorEnergyModuleItem extends Item implements OverloadDeviceM
             case CELESTWEAVE_CONDUIT -> DeviceSlotType.LEGS_MODULE;
             case CELESTWEAVE_STRIDE -> DeviceSlotType.FEET_MODULE;
             case RAILGUN -> DeviceSlotType.OVERLOAD_EXECUTION;
+            case MIMICRY_STAFF -> DeviceSlotType.STAFF_MODULE;
         };
     }
 

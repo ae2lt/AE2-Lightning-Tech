@@ -179,6 +179,20 @@ neoForge {
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }
 
+        staffClient {
+            client()
+            gameDirectory = project.file('run-staff-client')
+            programArguments.addAll '--username', 'StaffTester', '--quickPlaySingleplayer', 'StaffPreview'
+            systemProperty 'ae2lt.staffClientProbe', 'true'
+            systemProperty 'neoforge.enabledGameTestNamespaces', 'ae2lt_staff'
+        }
+
+        staffGameTestServer {
+            type = "gameTestServer"
+            gameDirectory = project.file('run-staff-gametest')
+            systemProperty 'neoforge.enabledGameTestNamespaces', 'ae2lt_staff'
+        }
+
         // Fully generated wireless-I/O fixture: no saved world or manual block setup.
         wirelessIoGameTestServer {
             type = "gameTestServer"

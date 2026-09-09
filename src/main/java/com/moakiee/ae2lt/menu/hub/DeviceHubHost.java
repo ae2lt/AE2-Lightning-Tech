@@ -71,6 +71,7 @@ public class DeviceHubHost implements MenuProvider {
             case DeviceHubMenu.TAB_LEGGINGS -> hasArmor(player, EquipmentSlot.LEGS);
             case DeviceHubMenu.TAB_BOOTS -> hasArmor(player, EquipmentSlot.FEET);
             case DeviceHubMenu.TAB_RAILGUN -> hasRailgun(player);
+            case DeviceHubMenu.TAB_STAFF -> !DeviceHubMenu.findStaff(player).isEmpty();
             default -> false;
         };
     }
