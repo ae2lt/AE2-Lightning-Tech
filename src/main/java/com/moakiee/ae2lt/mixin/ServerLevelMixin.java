@@ -12,26 +12,23 @@ import net.minecraft.world.entity.LightningBolt;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(ServerLevel.class)
 public abstract class ServerLevelMixin {
-    @ModifyArg(
+    // Scope the marker to weather creation, not LightningBolt#setVisualOnly globally:
+    // artificial/modded bolts may call that setter too. Forge and Mohist both retain
+    // this initialization call, whereas Mohist replaces addFreshEntity with strikeLightning.
+    @ModifyReceiver(
             method = "tickChunk",
             at = @At(
                     value = "INVOKE",
-                    target = "Lnet/minecraft/server/level/ServerLevel;addFreshEntity(Lnet/minecraft/world/entity/Entity;)Z",
-                    // In Forge 1.20.1 tickChunk spawns the skeleton horse trap first and the
-                    // actual weather lightning bolt second. We must mark the lightning call.
-                    ordinal = 1))
-    private Entity ae2lt$markNaturalWeatherLightning(Entity entity) {
-        if (entity instanceof LightningBolt lightningBolt) {
-            lightningBolt.getPersistentData().putBoolean(
-                    NaturalLightningTransformationHandler.NATURAL_WEATHER_LIGHTNING_TAG,
-                    true);
-        }
-        return entity;
+                    target = "Lnet/minecraft/world/entity/LightningBolt;setVisualOnly(Z)V"))
+    private LightningBolt ae2lt$markNaturalWeatherLightning(LightningBolt lightningBolt, boolean visualOnly) {
+        lightningBolt.getPersistentData().putBoolean(
+                NaturalLightningTransformationHandler.NATURAL_WEATHER_LIGHTNING_TAG,
+                true);
+        return lightningBolt;
     }
 
     /**
