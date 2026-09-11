@@ -8,7 +8,7 @@
 
 ## 发布方式
 
-本次修复包含公共菜单和新增客户端动作，客户端与服务端必须一起更新。提供的 `workstationfix.1` JAR 基于已部署的 `2.1.0-beta.5-tianshu.2` 制作，并包含此前 `clientfix.1` 的图标与 JEI 提示修复；无需同时安装两份 AE2LT。
+本次修复包含公共菜单和新增客户端动作，客户端与服务端必须一起更新。提供的 `workstationfix.2` JAR 基于已部署的 `2.1.0-beta.5-tianshu.2` 制作，包含此前 `clientfix.1` 的图标与 JEI 提示修复、`workstationfix.1` 的 Ctrl 补料修复，以及下述元件工作台会话修复；无需同时安装多份 AE2LT。
 
 `scripts/package-tianshu-workstation-fix.py` 校验部署基包的 SHA-256，仅替换明确列出的类与模组版本，其余条目逐字节检查不变。测试探针不会打入正式 JAR。服务端应完整停止、替换 JAR 后重新启动，不能用 `/reload` 更新。
 
@@ -21,3 +21,13 @@
 - 回归原有 3×3 合成台的四木板补料，以及没有库存且没有样板时的缺料拒绝。
 
 探针位于 `src/jdb/java/dev/infinity/terminalprobe/`。默认可用 `-I scripts/tianshu-transfer-test.init.gradle compileJdbJava` 编译 JEI 探针；要编译 EMI 探针，同时提供 `-PtianshuEmiProbeJar=/绝对路径/emi-neoforge-1.1.24+1.21.1.jar`。只在隔离测试存档中加载探针，它会清理角色背包并搭建测试网络。
+
+## 元件工作台切换
+
+原先元件属于当前菜单的临时输入，`removed()` 会立即将它返还背包。万能终端切换类型、打开合成确认都需要替换菜单，也会执行此回调；背包满时元件因此掉落。
+
+现在旧菜单把元件及复制模式、过滤配置移交给该玩家的临时会话。同一维度、同一终端位置的 AE2 菜单可接续此会话；无线终端还核对原来的物品实例，防止另一台终端误接。返回天枢菜单时恢复元件和配置，升级卡、存储内容等仍保存在元件原有组件中。会话不与其他玩家共享。
+
+普通工作页继续共用一个菜单。服务器在菜单替换结束后的 tick 核实是否真正离开：关闭界面、打开其他位置的容器、死亡或退出服务器时，按原规则返还元件；背包满时仅此时掉落一次。退出与服务器停止事件也会处理尚未接续的会话。
+
+隔离探针的 `cell:setup` 使用带名称、模糊卡、两行过滤配置及 37 个钻石存储内容的元件（最终内容保留回归）；`cell:full` 填满背包，`cell:held` / `cell:returned` 检查背包与地面的元件总数，`cell:assert` 比较元件全部组件。`clickpage:*` 经实际界面鼠标点击，`wut:*` 经原生终端选择包；`cell:confirm` / `cell:main` 经过原生合成子菜单及返回流程。`cell:copyempty` / `cell:assertcopy` 检查取出元件后保留的复制配置。

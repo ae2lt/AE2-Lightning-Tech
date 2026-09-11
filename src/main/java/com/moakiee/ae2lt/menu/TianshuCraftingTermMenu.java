@@ -126,7 +126,6 @@ public class TianshuCraftingTermMenu extends CraftingTermMenu implements Tianshu
             @Override public boolean mayPickup(Player player) { return workPage == TianshuWorkPage.CELL; }
         };
         addSlot(cellSlot, Ae2ltSlotSemantics.TIANSHU_CELL);
-        extraInputs.add(cellSlot);
         for (int i = 0; i < 8; i++) {
             final int inventoryIndex = i;
             addSlot(new AppEngSlot(cellProxy(true), i) {
@@ -708,6 +707,7 @@ public class TianshuCraftingTermMenu extends CraftingTermMenu implements Tianshu
 
     @Override public void broadcastChanges() {
         if (isServerSide() && maintenanceSession != null) {
+            TianshuCellWorkbenchSession.restore(this, cellWorkbench);
             refreshCell();
             if (boundTianshuTarget == null) {
                 var target = tianshuHost.selectTianshuTarget();
@@ -736,6 +736,7 @@ public class TianshuCraftingTermMenu extends CraftingTermMenu implements Tianshu
     @Override public void removed(Player player) {
         if (isServerSide() && !returnedInputs) {
             returnedInputs = true;
+            TianshuCellWorkbenchSession.retain(this, cellWorkbench);
             // Only real inputs are returned. Card/config inventories remain components of the cell.
             for (var slot : extraInputs) {
                 var stack = slot.remove(slot.getItem().getCount());

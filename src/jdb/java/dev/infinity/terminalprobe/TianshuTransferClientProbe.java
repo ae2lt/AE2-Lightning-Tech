@@ -45,13 +45,15 @@ public final class TianshuTransferClientProbe {
     private static BlockPos base;
     private static ItemStack planksPattern;
     private static String recipeId = "minecraft:crafting_table";
+    private static ItemStack expectedCell = ItemStack.EMPTY;
+    private static int cellMenuId;
     public TianshuTransferClientProbe() {}
 
     public static String command(String command) {
         var mc = Minecraft.getInstance();
         if (command.equals("status")) return status();
         if (command.equals("setup") || command.startsWith("stock:") || command.startsWith("open:")
-                || command.equals("inspect") || command.startsWith("expect:") || command.equals("take") || command.equals("assertresult") || command.equals("native") || command.equals("wirelessfix")) {
+                || command.startsWith("cell:") || command.equals("inspect") || command.startsWith("expect:") || command.equals("take") || command.equals("assertresult") || command.equals("native") || command.equals("wirelessfix")) {
             if (mc.getSingleplayerServer() == null) return "server not ready";
             mc.getSingleplayerServer().execute(() -> runSafely(() -> serverCommand(command)));
         } else mc.tell(() -> runSafely(() -> clientCommand(command)));
@@ -71,7 +73,89 @@ public final class TianshuTransferClientProbe {
     private static void serverCommand(String command) {
         var player = player();
         var level = player.serverLevel();
-        if (command.startsWith("expect:")) {
+        if (command.equals("cell:setup")) {
+            var menu = (TianshuCraftingTermMenu) player.containerMenu;
+            menu.setWorkPage(com.moakiee.ae2lt.logic.tianshu.terminal.TianshuWorkPage.CELL);
+            var stack = AEItems.ITEM_CELL_1K.stack();
+            stack.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Cell switch " + System.nanoTime()));
+            var stored = StorageCells.getCellInventory(stack, null);
+            if (stored.insert(AEItemKey.of(Items.DIAMOND), 37, Actionable.MODULATE, IActionSource.ofPlayer(player)) != 37)
+                throw new IllegalStateException("Could not populate the cell fixture");
+            stored.persist();
+            var item = (appeng.api.storage.cells.ICellWorkbenchItem) stack.getItem();
+            item.getUpgrades(stack).setItemDirect(0, AEItems.FUZZY_CARD.stack());
+            item.getConfigInventory(stack).createMenuWrapper().setItemDirect(0, new ItemStack(Items.DIAMOND));
+            item.getConfigInventory(stack).createMenuWrapper().setItemDirect(12, new ItemStack(Items.EMERALD));
+            menu.getSlots(com.moakiee.ae2lt.menu.Ae2ltSlotSemantics.TIANSHU_CELL).getFirst().set(stack);
+            expectedCell = menu.getCell().copy();
+            cellMenuId = menu.containerId;
+            report = "cell fixture " + expectedCell.save(level.registryAccess());
+        } else if (command.equals("cell:assert")) {
+            var menu = (TianshuCraftingTermMenu) player.containerMenu;
+            if (!ItemStack.matches(expectedCell, menu.getCell()))
+                throw new IllegalStateException("Cell changed on page switch: " + menu.getCell().saveOptional(level.registryAccess()));
+            report = "cell unchanged previousMenu=" + cellMenuId + " menu=" + menu.containerId + " page=" + menu.workPage;
+        } else if (command.equals("cell:held") || command.equals("cell:returned")) {
+            int inventoryCount = 0, droppedCount = 0;
+            for (var stack : player.getInventory().items)
+                if (ItemStack.isSameItemSameComponents(stack, expectedCell)) inventoryCount += stack.getCount();
+            for (var entity : level.getEntitiesOfClass(net.minecraft.world.entity.item.ItemEntity.class, player.getBoundingBox().inflate(32)))
+                if (ItemStack.isSameItemSameComponents(entity.getItem(), expectedCell)) droppedCount += entity.getItem().getCount();
+            int expected = command.equals("cell:held") ? 0 : 1;
+            if (inventoryCount + droppedCount != expected) throw new IllegalStateException("cell outside inventory=" + inventoryCount + " dropped=" + droppedCount + " expected=" + expected);
+            report = "cell ownership inventory=" + inventoryCount + " dropped=" + droppedCount + " menu=" + player.containerMenu.getClass().getSimpleName();
+        } else if (command.equals("cell:full")) {
+            for (int i = 1; i < 36; i++) player.getInventory().setItem(i, new ItemStack(Items.COBBLESTONE, 64));
+            report = "player inventory full except terminal slot";
+        } else if (command.equals("cell:confirm")) {
+            ((TianshuCraftingTermMenu) player.containerMenu).startAutoCrafting(List.of(
+                    new appeng.helpers.ICraftingGridMenu.AutoCraftEntry(AEItemKey.of(Items.QUARTZ_BLOCK), List.of(0))));
+            report = "native confirm opened " + player.containerMenu.getClass().getSimpleName();
+        } else if (command.equals("cell:back")) {
+            ((appeng.menu.me.crafting.CraftConfirmMenu) player.containerMenu).goBack();
+            report = "native confirm returned " + player.containerMenu.getClass().getSimpleName();
+        } else if (command.equals("cell:main")) {
+            var submenu = (appeng.menu.ISubMenu) player.containerMenu;
+            submenu.getHost().returnToMainMenu(player, submenu);
+            report = "native submenu returned to terminal " + player.containerMenu.getClass().getSimpleName();
+        } else if (command.equals("cell:copyempty")) {
+            var menu = (TianshuCraftingTermMenu) player.containerMenu;
+            menu.setWorkPage(com.moakiee.ae2lt.logic.tianshu.terminal.TianshuWorkPage.CELL);
+            menu.setCellCopyMode(appeng.api.config.CopyMode.KEEP_ON_REMOVE);
+            menu.getSlots(com.moakiee.ae2lt.menu.Ae2ltSlotSemantics.TIANSHU_CELL).getFirst().set(ItemStack.EMPTY);
+            report = "empty cell slot with retained copy configuration";
+        } else if (command.equals("cell:assertcopy")) {
+            var menu = (TianshuCraftingTermMenu) player.containerMenu;
+            var marks = menu.getSlots(com.moakiee.ae2lt.menu.Ae2ltSlotSemantics.TIANSHU_CELL_CONFIG);
+            if (!menu.getCell().isEmpty() || menu.cellCopyMode != appeng.api.config.CopyMode.KEEP_ON_REMOVE
+                    || !marks.get(0).getItem().is(Items.DIAMOND) || !marks.get(12).getItem().is(Items.EMERALD))
+                throw new IllegalStateException("Empty workbench copy configuration was lost");
+            report = "empty workbench copy mode and both configuration rows preserved";
+        } else if (command.equals("cell:disconnectorder")) {
+            try {
+                player.disconnect();
+                player.closeContainer();
+                var field = Class.forName("com.moakiee.ae2lt.menu.TianshuCellWorkbenchSession").getDeclaredField("PENDING");
+                field.setAccessible(true);
+                if (((java.util.Map<?, ?>) field.get(null)).containsKey(player))
+                    throw new IllegalStateException("Disconnected player's cell still waits for a server tick");
+                report = "disconnect then menu removal released the cell immediately";
+            } catch (ReflectiveOperationException error) { throw new RuntimeException(error); }
+            finally {
+                try {
+                    var field = ServerPlayer.class.getDeclaredField("disconnected");
+                    field.setAccessible(true);
+                    field.setBoolean(player, false);
+                } catch (ReflectiveOperationException error) { throw new RuntimeException(error); }
+            }
+        } else if (command.equals("cell:saveexpected") || command.equals("cell:loadexpected")) {
+            try {
+                var path = java.nio.file.Path.of("/private/tmp/tianshu-cell-switch-20260911/expected-cell.snbt");
+                if (command.equals("cell:saveexpected")) java.nio.file.Files.writeString(path, expectedCell.save(level.registryAccess()).toString());
+                else expectedCell = ItemStack.parse(level.registryAccess(), net.minecraft.nbt.TagParser.parseTag(java.nio.file.Files.readString(path))).orElseThrow();
+                report = "cell snapshot " + command;
+            } catch (Exception error) { throw new RuntimeException(error); }
+        } else if (command.startsWith("expect:")) {
             var menu = (appeng.menu.me.crafting.CraftConfirmMenu) player.containerMenu;
             try {
                 var field = appeng.menu.me.crafting.CraftConfirmMenu.class.getDeclaredField("amount");
@@ -193,16 +277,24 @@ public final class TianshuTransferClientProbe {
             var part = (appeng.parts.AEBasePart) PartHelper.getPartHost(level, base).getPart(Direction.NORTH);
             MenuOpener.open(TianshuCraftingTermMenu.TYPE, player, MenuLocators.forPart(part));
             report = "wired opened " + player.containerMenu.getClass().getName();
-        } else if (command.equals("open:wireless")) {
+        } else if (command.equals("open:wireless") || command.equals("open:wut")) {
             player.closeContainer();
             player.teleportTo(base.getX() - 3.0, base.getY() - 2.0, base.getZ());
             var item = ModItems.TIANSHU_WIRELESS_CRAFTING_TERMINAL.get();
             var stack = new ItemStack(item);
+            if (command.equals("open:wut")) {
+                var definition = de.mari_023.ae2wtlib.api.registration.WTDefinition.of(stack);
+                stack = de.mari_023.ae2wtlib.api.AE2wtlibAPI.makeWUT(definition.componentType());
+                for (var terminal : de.mari_023.ae2wtlib.api.registration.WTDefinition.wirelessTerminals())
+                    if (terminal.terminalName().equals("crafting")) stack.set(terminal.componentType(), com.mojang.datafixers.util.Unit.INSTANCE);
+                de.mari_023.ae2wtlib.api.terminal.WUTHandler.setCurrentTerminal(player, MenuLocators.forInventorySlot(0), stack, definition);
+            }
             stack.set(AEComponents.STORED_ENERGY, 1000000.0);
             stack.set(AEComponents.WIRELESS_LINK_TARGET, GlobalPos.of(level.dimension(), base.south()));
             player.getInventory().setItem(0, stack);
             player.inventoryMenu.broadcastChanges();
-            item.open(player, MenuLocators.forInventorySlot(0), false);
+            if (command.equals("open:wut")) de.mari_023.ae2wtlib.api.terminal.WUTHandler.open(player, MenuLocators.forInventorySlot(0), false);
+            else item.open(player, MenuLocators.forInventorySlot(0), false);
             report = "wireless opened " + player.containerMenu.getClass().getName();
         } else if (command.equals("take") || command.equals("assertresult")) {
             var menu = (TianshuCraftingTermMenu) player.containerMenu;
@@ -313,7 +405,28 @@ public final class TianshuTransferClientProbe {
     @SuppressWarnings("unchecked")
     private static void clientCommand(String command) {
         var mc = Minecraft.getInstance();
-        if (command.startsWith("emi:")) {
+        if (command.startsWith("wut:")) {
+            try {
+                de.mari_023.ae2wtlib.api.AE2wtlibAPI.class.getMethod("selectTerminal", de.mari_023.ae2wtlib.api.registration.WTDefinition.class)
+                        .invoke(null, de.mari_023.ae2wtlib.api.registration.WTDefinition.of(command.substring(4)));
+            } catch (ReflectiveOperationException error) { throw new RuntimeException(error); }
+            report = "native WUT selection packet " + command;
+        } else if (command.startsWith("clickpage:")) {
+            try {
+                var field = com.moakiee.ae2lt.client.TianshuCraftingTermScreen.class.getDeclaredField("tabs");
+                field.setAccessible(true);
+                var buttons = (java.util.List<appeng.client.gui.widgets.TabButton>) field.get(mc.screen);
+                var button = buttons.get(com.moakiee.ae2lt.logic.tianshu.terminal.TianshuWorkPage.valueOf(command.substring(10)).ordinal());
+                boolean handled = mc.screen.mouseClicked(button.getX() + button.getWidth() / 2.0, button.getY() + button.getHeight() / 2.0, 0);
+                mc.screen.mouseReleased(button.getX() + button.getWidth() / 2.0, button.getY() + button.getHeight() / 2.0, 0);
+                if (!handled) throw new IllegalStateException("Page tab click was not consumed");
+                report = "actual tab click " + command;
+            } catch (ReflectiveOperationException error) { throw new RuntimeException(error); }
+        } else if (command.equals("cellview")) {
+            var menu = (TianshuCraftingTermMenu) mc.player.containerMenu;
+            if (!ItemStack.matches(expectedCell, menu.getCell())) throw new IllegalStateException("Client cell differs from server fixture");
+            report = "client cell and all components synchronized";
+        } else if (command.startsWith("emi:")) {
             try {
                 report = (String) Class.forName("dev.infinity.terminalprobe.TianshuEmiProbe")
                         .getMethod("command", String.class).invoke(null, command.substring(4));
