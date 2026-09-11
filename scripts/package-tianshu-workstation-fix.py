@@ -9,7 +9,7 @@ import zipfile
 
 BASE_SHA256 = "1a1bd97eb93d54fb952b0c0e27c19412563b43eaaf38c032f93f5df70a4c2f31"
 OLD_VERSION = "2.1.0-beta.5-tianshu.2"
-NEW_VERSION = OLD_VERSION + "-workstationfix.3"
+NEW_VERSION = OLD_VERSION + "-workstationfix.4"
 CLASSES = (
     "com/moakiee/ae2lt/client/LightningKeyClientInit.class",
     "com/moakiee/ae2lt/integration/jei/JEIPlugin.class",
@@ -79,7 +79,7 @@ def main():
         "baseline_sha256": BASE_SHA256,
         "changed_entries": sorted(replacements),
         "unchanged_entries_verified": unchanged,
-        "scope": "All Tianshu manual workstation inputs, anvil rename and stone recipe survive menu switches; includes prior JEI/EMI Ctrl fixes; install on both client and server",
+        "scope": "Tianshu manual workstation sounds and input continuity; includes prior JEI/EMI Ctrl fixes; install on both client and server",
     }
     args.output.with_suffix(".json").write_text(json.dumps(report, indent=2) + "\n")
     print(json.dumps(report, indent=2))

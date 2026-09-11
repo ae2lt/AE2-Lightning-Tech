@@ -50,12 +50,23 @@ public final class TianshuTransferClientProbe {
     private static final java.util.List<ItemStack> workInputs = new java.util.ArrayList<>();
     private static final java.util.List<ItemStack> workOutputs = new java.util.ArrayList<>();
     private static int workCost;
-    public TianshuTransferClientProbe() {}
+    private static final java.util.Queue<String> playedWorkSounds = new java.util.concurrent.ConcurrentLinkedQueue<>();
+    public TianshuTransferClientProbe() {
+        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(TianshuTransferClientProbe::recordWorkSound);
+    }
+
+    private static void recordWorkSound(net.neoforged.neoforge.client.event.sound.PlaySoundSourceEvent event) {
+        var sound = event.getSound();
+        if (!List.of("minecraft:block.smithing_table.use", "minecraft:block.anvil.use", "minecraft:ui.stonecutter.take_result").contains(sound.getLocation().toString())) return;
+        playedWorkSounds.add(sound.getLocation().toString());
+        System.out.println("TIANSHU_SOUND_SOURCE " + sound.getLocation() + " source=" + sound.getSource()
+                + " volume=" + sound.getVolume() + " pitch=" + sound.getPitch() + " channel=" + event.getChannel().getClass().getSimpleName());
+    }
 
     public static String command(String command) {
         var mc = Minecraft.getInstance();
         if (command.equals("status")) return status();
-        if (command.startsWith("work:") || command.equals("setup") || command.startsWith("stock:") || command.startsWith("open:")
+        if (command.startsWith("sound:") || command.startsWith("work:") || command.equals("setup") || command.startsWith("stock:") || command.startsWith("open:")
                 || command.startsWith("cell:") || command.equals("inspect") || command.startsWith("expect:") || command.equals("take") || command.equals("assertresult") || command.equals("native") || command.equals("wirelessfix")) {
             if (mc.getSingleplayerServer() == null) return "server not ready";
             mc.getSingleplayerServer().execute(() -> runSafely(() -> serverCommand(command)));
@@ -77,7 +88,58 @@ public final class TianshuTransferClientProbe {
     private static void serverCommand(String command) {
         var player = player();
         var level = player.serverLevel();
-        if (command.equals("work:setup")) {
+        if (command.equals("sound:reset")) {
+            playedWorkSounds.clear();
+            report = "sound source counter reset";
+        } else if (command.startsWith("sound:assert:")) {
+            var parts = command.split(":");
+            var expected = switch (parts[2]) {
+                case "SMITHING" -> "minecraft:block.smithing_table.use";
+                case "ANVIL" -> "minecraft:block.anvil.use";
+                default -> "minecraft:ui.stonecutter.take_result";
+            };
+            int count = Integer.parseInt(parts[3]);
+            if (playedWorkSounds.size() != count || playedWorkSounds.stream().anyMatch(s -> !s.equals(expected)))
+                throw new IllegalStateException("Wrong actual audio source count " + playedWorkSounds + " expected " + count + " of " + expected);
+            report = "PASS actual audio sources " + expected + " count=" + count;
+        } else if (command.startsWith("sound:take:")) {
+            var args = command.split(":");
+            var page = com.moakiee.ae2lt.logic.tianshu.terminal.TianshuWorkPage.valueOf(args[2]);
+            var menu = (TianshuCraftingTermMenu) player.containerMenu;
+            menu.setWorkPage(page);
+            var semantic = switch (page) {
+                case SMITHING -> com.moakiee.ae2lt.menu.Ae2ltSlotSemantics.TIANSHU_SMITHING;
+                case ANVIL -> com.moakiee.ae2lt.menu.Ae2ltSlotSemantics.TIANSHU_ANVIL;
+                default -> com.moakiee.ae2lt.menu.Ae2ltSlotSemantics.TIANSHU_STONECUTTING;
+            };
+            var slots = menu.getSlots(semantic);
+            var result = slots.getLast();
+            var output = result.getItem().copy();
+            if (output.isEmpty()) throw new IllegalStateException("No test output");
+            boolean blocked = args.length > 4;
+            menu.setCarried(blocked && args[4].equals("full") ? new ItemStack(Items.COBBLESTONE, 64) : ItemStack.EMPTY);
+            if (blocked && args[4].equals("xp")) player.setExperienceLevels(0);
+            var before = slots.getFirst().getItem().copy();
+            int inventoryBefore = 0;
+            for (var stack : player.getInventory().items) if (ItemStack.isSameItemSameComponents(stack, output)) inventoryBefore += stack.getCount();
+            menu.doAction(player, appeng.helpers.InventoryAction.valueOf(args[3]), result.index, 0);
+            if (blocked) {
+                if (!ItemStack.matches(before, slots.getFirst().getItem()) || !ItemStack.matches(output, result.getItem()))
+                    throw new IllegalStateException("Rejected take changed inputs or result");
+            } else {
+                boolean toInventory = args[3].equals("CRAFT_SHIFT") || args[3].equals("CRAFT_ALL");
+                int actual = menu.getCarried().getCount();
+                if (toInventory) {
+                    actual = -inventoryBefore;
+                    for (var stack : player.getInventory().items) if (ItemStack.isSameItemSameComponents(stack, output)) actual += stack.getCount();
+                }
+                if (!toInventory && !ItemStack.isSameItemSameComponents(output, menu.getCarried())) throw new IllegalStateException("Result not picked up");
+                int expected = (args[3].equals("CRAFT_ITEM") ? 1 : 7) * output.getCount();
+                if (actual != expected) throw new IllegalStateException("Wrong result amount " + actual + " expected=" + expected);
+            }
+            player.setExperienceLevels(100);
+            report = "PASS sound take page=" + page + " action=" + args[3] + " blocked=" + blocked + " carried=" + menu.getCarried().getCount();
+        } else if (command.equals("work:setup")) {
             level.getServer().setDifficulty(net.minecraft.world.Difficulty.PEACEFUL, true);
             var menu = (TianshuCraftingTermMenu) player.containerMenu;
             workInputs.clear(); workOutputs.clear();

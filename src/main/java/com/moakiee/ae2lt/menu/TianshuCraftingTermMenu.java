@@ -40,6 +40,8 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.TagParser;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
@@ -317,6 +319,7 @@ public class TianshuCraftingTermMenu extends CraftingTermMenu implements Tianshu
                 : new CarriedItemInventory(this);
         var page = workPage;
         int inputCount = workInputCount();
+        boolean tookResult = false;
         for (int i = 0; i < crafts; i++) {
             // Components, batch size, XP and destination capacity are rechecked before every native callback.
             if (workPage != page || !isMainWorkPage() || !allowsSlot(result.index)
@@ -331,6 +334,7 @@ public class TianshuCraftingTermMenu extends CraftingTermMenu implements Tianshu
             var crafted = result.remove(output.getCount());
             if (crafted.isEmpty()) break;
             result.onTake(getPlayer(), crafted.copy());
+            tookResult = true;
             // Replenish only emptied inputs, from ME, using the complete original item key.
             // Variable-count anvil recipes restore the amount the native menu actually consumed.
             var filter = ViewCellItem.createItemFilter(getViewCells());
@@ -350,6 +354,19 @@ public class TianshuCraftingTermMenu extends CraftingTermMenu implements Tianshu
                 var remaining = target.addItems(crafted);
                 if (!remaining.isEmpty()) { getPlayer().drop(remaining, false); break; }
             }
+        }
+        if (tookResult) {
+            // Native engines use NULL world access, so their sound callbacks never run.
+            // Emit once per successful gesture, including a stack or shift-click batch.
+            var sound = switch (page) {
+                case SMITHING -> SoundEvents.SMITHING_TABLE_USE;
+                case ANVIL -> SoundEvents.ANVIL_USE;
+                case STONECUTTING -> SoundEvents.UI_STONECUTTER_TAKE_RESULT;
+                default -> throw new IllegalStateException("Unexpected workstation: " + page);
+            };
+            var player = getPlayer();
+            float pitch = page == TianshuWorkPage.STONECUTTING ? 1.0F : 0.9F + player.getRandom().nextFloat() * 0.1F;
+            player.level().playSound(null, player.blockPosition(), sound, SoundSource.BLOCKS, 1.0F, pitch);
         }
         broadcastChanges();
     }
