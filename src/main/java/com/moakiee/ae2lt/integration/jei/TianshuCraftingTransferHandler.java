@@ -12,11 +12,13 @@ import mezz.jei.api.recipe.RecipeIngredientRole;
 import mezz.jei.api.recipe.transfer.IRecipeTransferError;
 import mezz.jei.api.recipe.transfer.IRecipeTransferHandlerHelper;
 import mezz.jei.api.recipe.transfer.IUniversalRecipeTransferHandler;
+import mezz.jei.api.recipe.vanilla.IJeiAnvilRecipe;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.MenuType;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.CraftingRecipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.SmithingRecipe;
@@ -35,6 +37,17 @@ public final class TianshuCraftingTransferHandler<M extends TianshuCraftingTermM
     @Override public Optional<MenuType<M>> getMenuType() { return Optional.ofNullable(menuType); }
     @Nullable @Override public IRecipeTransferError transferRecipe(M menu, Object displayedRecipe, IRecipeSlotsView slots, Player player, boolean maxTransfer, boolean doTransfer) {
         if (!menu.canUseWorkstations()) return helper.createInternalError();
+        if (displayedRecipe instanceof IJeiAnvilRecipe anvil) {
+            var inputs = slots.getSlotViews(RecipeIngredientRole.INPUT);
+            var left = inputs.isEmpty() ? ItemStack.EMPTY : inputs.getFirst().getDisplayedItemStack().orElse(ItemStack.EMPTY);
+            var right = inputs.size() < 2 ? ItemStack.EMPTY : inputs.get(1).getDisplayedItemStack().orElse(ItemStack.EMPTY);
+            if (left.isEmpty()) left = anvil.getLeftInputs().stream().filter(stack -> !stack.isEmpty()).findFirst().orElse(ItemStack.EMPTY);
+            if (right.isEmpty()) right = anvil.getRightInputs().stream().filter(stack -> !stack.isEmpty()).findFirst().orElse(ItemStack.EMPTY);
+            boolean craftMissing = AbstractContainerScreen.hasControlDown();
+            var error = workFeedback(menu.getAnvilRecipeAvailability(left, right), slots, craftMissing, doTransfer);
+            if (error == null && doTransfer) menu.fillAnvilRecipe(left, right, craftMissing);
+            return error;
+        }
         if (!(displayedRecipe instanceof RecipeHolder<?> holder)) return helper.createInternalError();
         if (holder.value() instanceof CraftingRecipe crafting) {
             if (!crafting.canCraftInDimensions(3, 3)) return helper.createUserErrorWithTooltip(Component.translatable("ae2lt.tianshu.work.recipe_too_large"));
@@ -60,11 +73,24 @@ public final class TianshuCraftingTransferHandler<M extends TianshuCraftingTermM
             return null;
         }
         if (!(holder.value() instanceof SmithingRecipe || holder.value() instanceof StonecutterRecipe)) return helper.createInternalError();
-        if (!menu.canFillWorkRecipe(holder.value())) return missingItems();
-        if (doTransfer) menu.fillWorkRecipe(holder.id().toString());
-        return null;
+        boolean craftMissing = AbstractContainerScreen.hasControlDown();
+        var error = workFeedback(menu.getWorkRecipeAvailability(holder.value()), slots, craftMissing, doTransfer);
+        if (error == null && doTransfer) menu.fillWorkRecipe(holder.id().toString(), craftMissing);
+        return error;
     }
-    private IRecipeTransferError missingItems() { return helper.createUserErrorWithTooltip(Component.translatable("ae2lt.tianshu.work.no_materials")); }
+
+    @Nullable private IRecipeTransferError workFeedback(TianshuCraftingTermMenu.WorkRecipeAvailability available,
+            IRecipeSlotsView slots, boolean craftMissing, boolean doTransfer) {
+        if (available.requiredSlots() == 0) return helper.createInternalError();
+        var missing = available.missing();
+        if (!available.canTransfer()) {
+            var inputs = slots.getSlotViews(RecipeIngredientRole.INPUT);
+            var missingViews = missing.missingSlots().stream()
+                    .filter(index -> index >= 0 && index < inputs.size()).map(inputs::get).toList();
+            return helper.createUserErrorForMissingSlots(Component.translatable("ae2lt.tianshu.work.no_materials"), missingViews);
+        }
+        return !doTransfer && missing.anyMissingOrCraftable() ? new CraftingFeedback(missing, craftMissing) : null;
+    }
 
     /** Keep partial transfers clickable while exposing AE2's missing/autocraft distinction to JEI. */
     private record CraftingFeedback(CraftingTermMenu.MissingIngredientSlots ingredients, boolean craftMissing)

@@ -11,6 +11,7 @@ import appeng.api.storage.StorageHelper;
 import appeng.api.inventories.InternalInventory;
 import appeng.api.storage.cells.ICellWorkbenchItem;
 import appeng.helpers.InventoryAction;
+import appeng.helpers.ICraftingGridMenu;
 import appeng.items.storage.ViewCellItem;
 import appeng.menu.SlotSemantic;
 import appeng.menu.SlotSemantics;
@@ -28,10 +29,16 @@ import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuCraftingTerminalHost;
 import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuTerminalTarget;
 import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuWorkPage;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Predicate;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.nbt.TagParser;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -146,6 +153,8 @@ public class TianshuCraftingTermMenu extends CraftingTermMenu implements Tianshu
         registerClientAction("anvilName", String.class, this::setAnvilName);
         registerClientAction("stoneRecipe", Integer.class, this::selectStoneRecipe);
         registerClientAction("workRecipe", String.class, this::fillWorkRecipe);
+        registerClientAction("craftWorkRecipe", String.class, recipe -> fillWorkRecipe(recipe, true));
+        registerClientAction("anvilRecipe", AnvilTransferRequest.class, this::fillAnvilRecipeFromRequest);
         registerClientAction("clearWorkToNetwork", TianshuWorkPage.class, page -> clearWorkInputs(page, false));
         registerClientAction("clearWorkToPlayer", TianshuWorkPage.class, page -> clearWorkInputs(page, true));
         registerClientAction("setMaintainableView", Boolean.class, this::setMaintainableView);
@@ -374,39 +383,108 @@ public class TianshuCraftingTermMenu extends CraftingTermMenu implements Tianshu
         broadcastChanges();
     }
 
-    private List<Predicate<ItemStack>> workIngredients(Recipe<?> recipe) {
-        if (recipe instanceof SmithingRecipe smith) return List.of(smith::isTemplateIngredient, smith::isBaseIngredient, smith::isAdditionIngredient);
-        if (recipe instanceof StonecutterRecipe stone) return List.of(stack -> stone.matches(new SingleRecipeInput(stack), getPlayer().level()));
+    private record WorkIngredient(Predicate<ItemStack> predicate, int amount) {
+        boolean test(ItemStack stack) { return predicate.test(stack); }
+        boolean optional() { return test(ItemStack.EMPTY); }
+    }
+
+    public record WorkRecipeAvailability(MissingIngredientSlots missing, int requiredSlots) {
+        public boolean canTransfer() { return requiredSlots > 0 && missing.missingSlots().size() < requiredSlots; }
+    }
+
+    /** Only input templates cross the client action. The native anvil owns the output and all costs. */
+    public record AnvilTransferRequest(String left, String right, boolean craftMissing) {}
+
+    private List<WorkIngredient> workIngredients(Recipe<?> recipe) {
+        if (recipe instanceof SmithingRecipe smith) return List.of(
+                new WorkIngredient(smith::isTemplateIngredient, 1),
+                new WorkIngredient(smith::isBaseIngredient, 1),
+                new WorkIngredient(smith::isAdditionIngredient, 1));
+        if (recipe instanceof StonecutterRecipe stone) return List.of(new WorkIngredient(
+                stack -> stone.matches(new SingleRecipeInput(stack), getPlayer().level()), 1));
         return List.of();
     }
 
-    /** Client hint only; extraction and recipe identity are always checked again by the server. */
-    public boolean canFillWorkRecipe(Recipe<?> recipe) {
-        if (!isMainWorkPage()) return false;
-        var ingredients = workIngredients(recipe);
-        if (ingredients.isEmpty()) return false;
-        var engine = recipe instanceof SmithingRecipe ? smithing : stonecutter;
-        var filter = ViewCellItem.createItemFilter(getViewCells());
-        for (int i = 0; i < ingredients.size(); i++) {
-            var predicate = ingredients.get(i);
-            if (!engine.getSlot(i).getItem().isEmpty() && predicate.test(engine.getSlot(i).getItem())) return true;
-            for (int j = 0; j < getPlayerInventory().items.size(); j++) {
-                var stack = getPlayerInventory().getItem(j);
-                if (!isPlayerInventorySlotLocked(j) && !stack.isEmpty() && predicate.test(stack)) return true;
-            }
-            var repo = getClientRepo();
-            if (repo != null && getLinkStatus().connected()) for (var entry : repo.getAllEntries()) {
-                if (entry.getStoredAmount() > 0 && entry.getWhat() instanceof AEItemKey key
-                        && (filter == null || filter.isListed(key))
-                        && predicate.test(key.getReadOnlyStack())) return true;
-            }
-        }
-        return false;
+    private List<WorkIngredient> anvilIngredients(ItemStack left, ItemStack right) {
+        if (left.isEmpty() || right.isEmpty() || left.getCount() != 1
+                || right.getCount() < 1 || right.getCount() > Math.min(64, right.getMaxStackSize())) return List.of();
+        return List.of(anvilIngredient(left, true), anvilIngredient(right, false));
     }
 
-    public void fillWorkRecipe(String recipeName) {
-        if (recipeName.length() > 256) return;
-        if (isClientSide()) { sendClientAction("workRecipe", recipeName); return; }
+    private WorkIngredient anvilIngredient(ItemStack template, boolean left) {
+        var sample = template.copy();
+        return new WorkIngredient(stack -> {
+            if (stack.isEmpty() || !ItemStack.isSameItem(sample, stack)) return false;
+            // JEI/EMI repair examples use illustrative damage. Any damaged instance is valid;
+            // a newly crafted undamaged tool cannot stand in for the tool being repaired.
+            if (left && sample.isDamaged() && !stack.isDamaged()) return false;
+            for (var component : sample.getComponentsPatch().entrySet()) {
+                if (component.getKey() == DataComponents.DAMAGE || component.getKey() == DataComponents.REPAIR_COST) continue;
+                if (!Objects.equals(component.getValue().orElse(null), stack.get(component.getKey()))) return false;
+            }
+            return true;
+        }, sample.getCount());
+    }
+
+    public WorkRecipeAvailability getWorkRecipeAvailability(Recipe<?> recipe) {
+        return workRecipeAvailability(recipe instanceof SmithingRecipe ? smithing : stonecutter, workIngredients(recipe));
+    }
+
+    public WorkRecipeAvailability getAnvilRecipeAvailability(ItemStack left, ItemStack right) {
+        return workRecipeAvailability(anvil, anvilIngredients(left, right));
+    }
+
+    /** Client hint only. Reserve each available unit once, including repeated ingredients. */
+    private WorkRecipeAvailability workRecipeAvailability(AbstractContainerMenu engine, List<WorkIngredient> ingredients) {
+        var missing = new HashSet<Integer>();
+        var craftable = new HashSet<Integer>();
+        var reservedNetwork = new HashMap<AEItemKey, Long>();
+        int[] reservedPlayer = new int[getPlayerInventory().items.size()];
+        var filter = ViewCellItem.createItemFilter(getViewCells());
+        var repo = getClientRepo();
+        var entries = repo != null && getLinkStatus().connected() ? repo.getAllEntries() : java.util.Set.<appeng.menu.me.common.GridInventoryEntry>of();
+        int required = 0;
+        if (!isMainWorkPage()) return new WorkRecipeAvailability(new MissingIngredientSlots(missing, craftable), 0);
+        for (int i = 0; i < ingredients.size(); i++) {
+            var ingredient = ingredients.get(i);
+            if (ingredient.optional()) continue;
+            required++;
+            var current = engine.getSlot(i).getItem();
+            AEItemKey bound = !current.isEmpty() && ingredient.test(current) ? AEItemKey.of(current) : null;
+            int needed = ingredient.amount() - (bound != null ? current.getCount() : 0);
+            for (var entry : entries) {
+                if (needed <= 0) break;
+                if (!(entry.getWhat() instanceof AEItemKey key) || (filter != null && !filter.isListed(key))
+                        || (bound != null && !bound.equals(key)) || !ingredient.test(key.getReadOnlyStack())) continue;
+                int used = (int) Math.min(needed, Math.max(0, entry.getStoredAmount() - reservedNetwork.getOrDefault(key, 0L)));
+                if (used > 0) { bound = key; needed -= used; reservedNetwork.merge(key, (long) used, Long::sum); }
+            }
+            for (int j = 0; j < reservedPlayer.length && needed > 0; j++) {
+                var stack = getPlayerInventory().getItem(j);
+                if (isPlayerInventorySlotLocked(j) || stack.isEmpty() || !ingredient.test(stack)
+                        || (bound != null && !bound.matches(stack))) continue;
+                int used = Math.min(needed, Math.max(0, stack.getCount() - reservedPlayer[j]));
+                if (used > 0) { bound = AEItemKey.of(stack); needed -= used; reservedPlayer[j] += used; }
+            }
+            if (needed <= 0) continue;
+            boolean canCraft = false;
+            for (var entry : entries) {
+                if (entry.isCraftable() && entry.getWhat() instanceof AEItemKey key
+                        && (filter == null || filter.isListed(key)) && (bound == null || bound.equals(key))
+                        && ingredient.test(key.getReadOnlyStack())) { canCraft = true; break; }
+            }
+            if (canCraft) craftable.add(i); else missing.add(i);
+        }
+        return new WorkRecipeAvailability(new MissingIngredientSlots(missing, craftable), required);
+    }
+
+    public boolean canFillWorkRecipe(Recipe<?> recipe) { return getWorkRecipeAvailability(recipe).canTransfer(); }
+
+    public void fillWorkRecipe(String recipeName) { fillWorkRecipe(recipeName, false); }
+
+    public void fillWorkRecipe(String recipeName, boolean craftMissing) {
+        if (recipeName == null || recipeName.length() > 256) return;
+        if (isClientSide()) { sendClientAction(craftMissing ? "craftWorkRecipe" : "workRecipe", recipeName); return; }
         if (!isMainWorkPage() || !isValidMenu() || !stillValid(getPlayer())) return;
         var id = ResourceLocation.tryParse(recipeName);
         if (id == null) return;
@@ -414,52 +492,117 @@ public class TianshuCraftingTermMenu extends CraftingTermMenu implements Tianshu
         if (holder == null) return;
         var ingredients = workIngredients(holder.value());
         if (ingredients.isEmpty()) return;
-        AbstractContainerMenu engine;
-        if (holder.value() instanceof SmithingRecipe) { workPage = TianshuWorkPage.SMITHING; engine = smithing; }
-        else { workPage = TianshuWorkPage.STONECUTTING; engine = stonecutter; }
+        workPage = holder.value() instanceof SmithingRecipe ? TianshuWorkPage.SMITHING : TianshuWorkPage.STONECUTTING;
         updateSlotAccess();
+        var engine = workEngine();
+        var toCraft = fillWorkInputs(engine, ingredients, craftMissing);
+        if (engine == stonecutter) selectStoneRecipe(id);
+        broadcastChanges();
+        if (!toCraft.isEmpty()) startAutoCrafting(toCraft);
+    }
+
+    public void fillAnvilRecipe(ItemStack left, ItemStack right, boolean craftMissing) {
+        if (anvilIngredients(left, right).isEmpty()) return;
+        if (isClientSide()) {
+            var registry = getPlayer().registryAccess();
+            sendClientAction("anvilRecipe", new AnvilTransferRequest(
+                    left.save(registry).toString(), right.save(registry).toString(), craftMissing));
+            return;
+        }
+        if (!isMainWorkPage() || !isValidMenu() || !stillValid(getPlayer())) return;
+        workPage = TianshuWorkPage.ANVIL;
+        updateSlotAccess();
+        var toCraft = fillWorkInputs(anvil, anvilIngredients(left, right), craftMissing);
+        // Transfer can finish while JEI/EMI still covers the terminal's name editor.
+        // Initialize the native name now, so a repair never silently removes a custom name.
+        var input = anvil.getSlot(0).getItem();
+        if (!input.isEmpty()) anvil.setItemName(input.getHoverName().getString());
+        broadcastChanges();
+        if (!toCraft.isEmpty()) startAutoCrafting(toCraft);
+    }
+
+    private void fillAnvilRecipeFromRequest(AnvilTransferRequest request) {
+        if (request == null || request.left() == null || request.right() == null
+                || request.left().length() > 16384 || request.right().length() > 16384) return;
+        ItemStack left, right;
+        try {
+            var registry = getPlayer().registryAccess();
+            left = ItemStack.parseOptional(registry, TagParser.parseTag(request.left()));
+            right = ItemStack.parseOptional(registry, TagParser.parseTag(request.right()));
+        } catch (com.mojang.brigadier.exceptions.CommandSyntaxException | IllegalArgumentException error) { return; }
+        fillAnvilRecipe(left, right, request.craftMissing());
+    }
+
+    private List<ICraftingGridMenu.AutoCraftEntry> fillWorkInputs(AbstractContainerMenu engine,
+            List<WorkIngredient> ingredients, boolean craftMissing) {
+        var toCraft = new LinkedHashMap<AEItemKey, List<Integer>>();
         var filter = ViewCellItem.createItemFilter(getViewCells());
+        var grid = canInteractWithGrid() && getGridNode() != null ? getGridNode().getGrid() : null;
+        var craftables = grid != null && craftMissing ? grid.getCraftingService().getCraftables(AEItemKey.filter()) : java.util.Set.<appeng.api.stacks.AEKey>of();
+        boolean touchedStorage = false;
         for (int i = 0; i < ingredients.size(); i++) {
             var slot = engine.getSlot(i);
-            var predicate = ingredients.get(i);
+            var ingredient = ingredients.get(i);
             var current = slot.getItem();
-            if (!current.isEmpty() && predicate.test(current)) continue;
-            if (!current.isEmpty()) {
+            if (!current.isEmpty() && !ingredient.test(current)) {
                 var remaining = current.copy();
                 var key = AEItemKey.of(remaining);
-                if (canInteractWithGrid() && key != null) {
+                if (grid != null && key != null) {
                     long inserted = StorageHelper.poweredInsert(getEnergySource(), storage, key, remaining.getCount(), getActionSource());
                     remaining.shrink((int) inserted);
+                    touchedStorage |= inserted > 0;
                 }
                 getPlayerInventory().add(remaining);
                 slot.set(remaining.isEmpty() ? ItemStack.EMPTY : remaining);
+                if (slot.hasItem()) continue;
+                current = ItemStack.EMPTY;
             }
-            if (slot.hasItem() || predicate.test(ItemStack.EMPTY)) continue;
-            ItemStack ingredient = ItemStack.EMPTY;
-            // Match complete AEItemKeys, including equipment damage, enchantments and custom components.
-            if (canInteractWithGrid() && getGridNode() != null) {
+            if (ingredient.optional()) continue;
+            int needed = Math.min(ingredient.amount(), slot.getMaxStackSize()) - current.getCount();
+            if (needed <= 0) continue;
+            if (grid != null) {
                 var candidates = new ArrayList<AEItemKey>();
-                var available = getGridNode().getGrid().getStorageService().getCachedInventory();
+                var available = grid.getStorageService().getCachedInventory();
                 for (var entry : available) {
                     if (entry.getLongValue() > 0 && entry.getKey() instanceof AEItemKey key
                             && isKeyVisible(key) && (filter == null || filter.isListed(key))
-                            && predicate.test(key.getReadOnlyStack())) candidates.add(key);
+                            && (current.isEmpty() || key.matches(current)) && ingredient.test(key.getReadOnlyStack())) candidates.add(key);
                 }
                 candidates.sort((a, b) -> Long.compare(available.get(b), available.get(a)));
                 for (var key : candidates) {
-                    if (StorageHelper.poweredExtraction(getEnergySource(), storage, key, 1, getActionSource()) > 0) {
-                        ingredient = key.toStack(); break;
+                    if (!current.isEmpty() && !key.matches(current)) continue;
+                    int extracted = (int) StorageHelper.poweredExtraction(getEnergySource(), storage, key, needed, getActionSource());
+                    if (extracted > 0) {
+                        touchedStorage = true;
+                        current = key.toStack(current.getCount() + extracted);
+                        needed -= extracted;
+                        if (needed == 0) break;
                     }
                 }
             }
-            if (ingredient.isEmpty()) for (int j = 0; j < getPlayerInventory().items.size(); j++) {
+            for (int j = 0; j < getPlayerInventory().items.size() && needed > 0; j++) {
                 var stack = getPlayerInventory().getItem(j);
-                if (!isPlayerInventorySlotLocked(j) && !stack.isEmpty() && predicate.test(stack)) { ingredient = stack.split(1); break; }
+                if (isPlayerInventorySlotLocked(j) || stack.isEmpty() || !ingredient.test(stack)
+                        || (!current.isEmpty() && !ItemStack.isSameItemSameComponents(current, stack))) continue;
+                var taken = stack.split(Math.min(needed, stack.getCount()));
+                current = taken.copyWithCount(current.getCount() + taken.getCount());
+                needed -= taken.getCount();
+                getPlayerInventory().setChanged();
             }
-            slot.set(ingredient);
+            slot.set(current);
+            if (needed <= 0) continue;
+            for (var candidate : craftables) {
+                if (candidate instanceof AEItemKey key && isKeyVisible(key)
+                        && (filter == null || filter.isListed(key)) && (current.isEmpty() || key.matches(current))
+                        && ingredient.test(key.getReadOnlyStack())) {
+                    var slots = toCraft.computeIfAbsent(key, ignored -> new ArrayList<>());
+                    for (int unit = 0; unit < needed; unit++) slots.add(i);
+                    break;
+                }
+            }
         }
-        if (engine == stonecutter) selectStoneRecipe(id);
-        broadcastChanges();
+        if (touchedStorage) grid.getStorageService().invalidateCache();
+        return toCraft.entrySet().stream().map(entry -> new ICraftingGridMenu.AutoCraftEntry(entry.getKey(), entry.getValue())).toList();
     }
 
     private void refreshCell() {

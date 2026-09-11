@@ -1,0 +1,11 @@
+// Compile only the disposable transfer fixture. EMI implementation is optional and supplied explicitly.
+allprojects {
+    afterEvaluate {
+        def probeSources = ['**/TianshuTransferClientProbe.java']
+        if (project.hasProperty('tianshuEmiProbeJar')) {
+            probeSources.add('**/TianshuEmiProbe.java')
+            dependencies.add('jdbCompileOnly', files(project.property('tianshuEmiProbeJar')))
+        }
+        sourceSets.jdb.java.setIncludes(probeSources)
+    }
+}
