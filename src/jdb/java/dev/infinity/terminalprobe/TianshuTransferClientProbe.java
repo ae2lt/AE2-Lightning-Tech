@@ -47,12 +47,15 @@ public final class TianshuTransferClientProbe {
     private static String recipeId = "minecraft:crafting_table";
     private static ItemStack expectedCell = ItemStack.EMPTY;
     private static int cellMenuId;
+    private static final java.util.List<ItemStack> workInputs = new java.util.ArrayList<>();
+    private static final java.util.List<ItemStack> workOutputs = new java.util.ArrayList<>();
+    private static int workCost;
     public TianshuTransferClientProbe() {}
 
     public static String command(String command) {
         var mc = Minecraft.getInstance();
         if (command.equals("status")) return status();
-        if (command.equals("setup") || command.startsWith("stock:") || command.startsWith("open:")
+        if (command.startsWith("work:") || command.equals("setup") || command.startsWith("stock:") || command.startsWith("open:")
                 || command.startsWith("cell:") || command.equals("inspect") || command.startsWith("expect:") || command.equals("take") || command.equals("assertresult") || command.equals("native") || command.equals("wirelessfix")) {
             if (mc.getSingleplayerServer() == null) return "server not ready";
             mc.getSingleplayerServer().execute(() -> runSafely(() -> serverCommand(command)));
@@ -61,6 +64,7 @@ public final class TianshuTransferClientProbe {
     }
 
     private static void runSafely(Runnable work) {
+        report = "OK";
         try { work.run(); }
         catch (Throwable error) { report = "FAIL " + error; error.printStackTrace(); }
         System.out.println("TIANSHU_TRANSFER_PROBE " + report);
@@ -73,7 +77,66 @@ public final class TianshuTransferClientProbe {
     private static void serverCommand(String command) {
         var player = player();
         var level = player.serverLevel();
-        if (command.equals("cell:setup")) {
+        if (command.equals("work:setup")) {
+            level.getServer().setDifficulty(net.minecraft.world.Difficulty.PEACEFUL, true);
+            var menu = (TianshuCraftingTermMenu) player.containerMenu;
+            workInputs.clear(); workOutputs.clear();
+            int index = 0;
+            String stamp = "Work input " + System.nanoTime();
+            for (var semantic : List.of(com.moakiee.ae2lt.menu.Ae2ltSlotSemantics.TIANSHU_SMITHING,
+                    com.moakiee.ae2lt.menu.Ae2ltSlotSemantics.TIANSHU_ANVIL,
+                    com.moakiee.ae2lt.menu.Ae2ltSlotSemantics.TIANSHU_STONECUTTING)) {
+                var slots = menu.getSlots(semantic);
+                for (int i = 0; i < slots.size() - 1; i++) {
+                    String id = List.of("allthemodium:allthemodium_upgrade_smithing_template", "minecraft:netherite_sword",
+                            "allthemodium:allthemodium_ingot", "minecraft:iron_pickaxe", "minecraft:iron_ingot", "minecraft:quartz_block").get(index);
+                    var stack = new ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(ResourceLocation.parse(id)), index == 4 ? 3 : index == 5 ? 7 : 1);
+                    stack.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal(stamp + " " + index));
+                    if (index == 3) {
+                        stack.setDamageValue(200);
+                        stack.enchant(level.registryAccess().registryOrThrow(net.minecraft.core.registries.Registries.ENCHANTMENT)
+                                .getHolderOrThrow(net.minecraft.world.item.enchantment.Enchantments.UNBREAKING), 2);
+                    }
+                    slots.get(i).set(stack); workInputs.add(stack.copy()); index++;
+                }
+            }
+            menu.setWorkPage(com.moakiee.ae2lt.logic.tianshu.terminal.TianshuWorkPage.ANVIL);
+            menu.setAnvilName("Retained Anvil Rename");
+            menu.setWorkPage(com.moakiee.ae2lt.logic.tianshu.terminal.TianshuWorkPage.STONECUTTING);
+            menu.selectStoneRecipe(0);
+            menu.broadcastChanges();
+            workCost = menu.getAnvil().getCost();
+            for (var semantic : List.of(com.moakiee.ae2lt.menu.Ae2ltSlotSemantics.TIANSHU_SMITHING,
+                    com.moakiee.ae2lt.menu.Ae2ltSlotSemantics.TIANSHU_ANVIL, com.moakiee.ae2lt.menu.Ae2ltSlotSemantics.TIANSHU_STONECUTTING)) {
+                var result = menu.getSlots(semantic).getLast().getItem().copy();
+                if (result.isEmpty()) throw new IllegalStateException("Missing fixture result " + semantic);
+                workOutputs.add(result);
+            }
+            report = "six real work inputs and three native results prepared; rename=Retained Anvil Rename; cost=" + workCost;
+        } else if (command.equals("work:assert")) {
+            var menu = (TianshuCraftingTermMenu) player.containerMenu;
+            int input = 0, result = 0;
+            for (var semantic : List.of(com.moakiee.ae2lt.menu.Ae2ltSlotSemantics.TIANSHU_SMITHING,
+                    com.moakiee.ae2lt.menu.Ae2ltSlotSemantics.TIANSHU_ANVIL, com.moakiee.ae2lt.menu.Ae2ltSlotSemantics.TIANSHU_STONECUTTING)) {
+                var slots = menu.getSlots(semantic);
+                for (int i = 0; i < slots.size() - 1; i++) {
+                    if (!ItemStack.matches(workInputs.get(input++), slots.get(i).getItem())) throw new IllegalStateException("Work input lost: " + semantic + "/" + i);
+                }
+                if (!ItemStack.matches(workOutputs.get(result++), slots.getLast().getItem())) throw new IllegalStateException("Native result/selection/rename changed: " + semantic);
+            }
+            if (menu.getAnvil().getCost() != workCost) throw new IllegalStateException("Anvil cost changed on switch");
+            report = "PASS all six work inputs, three recomputed results, anvil rename/cost and stone selection";
+        } else if (command.equals("work:held") || command.equals("work:returned")) {
+            int outside = 0, expected = 0;
+            for (var expectedStack : workInputs) {
+                expected += expectedStack.getCount();
+                for (var stack : player.getInventory().items) if (ItemStack.isSameItemSameComponents(stack, expectedStack)) outside += stack.getCount();
+                for (var entity : level.getEntitiesOfClass(net.minecraft.world.entity.item.ItemEntity.class, player.getBoundingBox().inflate(32)))
+                    if (ItemStack.isSameItemSameComponents(entity.getItem(), expectedStack)) outside += entity.getItem().getCount();
+            }
+            if (outside != (command.equals("work:held") ? 0 : expected)) throw new IllegalStateException("Wrong work input ownership outside=" + outside + " inputTotal=" + expected);
+            report = "work input ownership outside=" + outside + " inputTotal=" + expected + " menu=" + player.containerMenu.getClass().getSimpleName();
+        } else if (command.equals("cell:setup")) {
             var menu = (TianshuCraftingTermMenu) player.containerMenu;
             menu.setWorkPage(com.moakiee.ae2lt.logic.tianshu.terminal.TianshuWorkPage.CELL);
             var stack = AEItems.ITEM_CELL_1K.stack();
@@ -135,7 +198,7 @@ public final class TianshuTransferClientProbe {
             try {
                 player.disconnect();
                 player.closeContainer();
-                var field = Class.forName("com.moakiee.ae2lt.menu.TianshuCellWorkbenchSession").getDeclaredField("PENDING");
+                var field = Class.forName("com.moakiee.ae2lt.menu.TianshuWorkstationSession").getDeclaredField("PENDING");
                 field.setAccessible(true);
                 if (((java.util.Map<?, ?>) field.get(null)).containsKey(player))
                     throw new IllegalStateException("Disconnected player's cell still waits for a server tick");
@@ -405,7 +468,15 @@ public final class TianshuTransferClientProbe {
     @SuppressWarnings("unchecked")
     private static void clientCommand(String command) {
         var mc = Minecraft.getInstance();
-        if (command.startsWith("wut:")) {
+        if (command.equals("workview")) {
+            try {
+                var field = com.moakiee.ae2lt.client.TianshuCraftingTermScreen.class.getDeclaredField("anvilName");
+                field.setAccessible(true);
+                String name = ((appeng.client.gui.widgets.AETextField) field.get(mc.screen)).getValue();
+                if (!name.equals("Retained Anvil Rename")) throw new IllegalStateException("Client rename changed: " + name);
+                report = "PASS visible anvil editor retains renamed text";
+            } catch (ReflectiveOperationException error) { throw new RuntimeException(error); }
+        } else if (command.startsWith("wut:")) {
             try {
                 de.mari_023.ae2wtlib.api.AE2wtlibAPI.class.getMethod("selectTerminal", de.mari_023.ae2wtlib.api.registration.WTDefinition.class)
                         .invoke(null, de.mari_023.ae2wtlib.api.registration.WTDefinition.of(command.substring(4)));
@@ -432,6 +503,7 @@ public final class TianshuTransferClientProbe {
                         .getMethod("command", String.class).invoke(null, command.substring(4));
             } catch (ReflectiveOperationException error) { throw new RuntimeException(error); }
         } else if (command.equals("respawn")) {
+            mc.options.pauseOnLostFocus = false;
             mc.player.respawn();
             mc.setScreen(null);
             report = "fixture player respawned";

@@ -77,6 +77,8 @@ public class TianshuCraftingTermMenu extends CraftingTermMenu implements Tianshu
     @GuiSync(159) public int tianshuSelectionRevision;
     @GuiSync(160) public int cellUpgradeRow;
     @GuiSync(161) public CopyMode cellCopyMode = CopyMode.CLEAR_ON_REMOVE;
+    @GuiSync(162) public String anvilItemName = "";
+    private ItemStack namedAnvilInput = ItemStack.EMPTY;
 
     protected final TianshuCraftingTerminalHost tianshuHost;
     private final TianshuMaintenanceSession maintenanceSession;
@@ -244,8 +246,20 @@ public class TianshuCraftingTermMenu extends CraftingTermMenu implements Tianshu
 
     public void setAnvilName(String name) {
         if (name.length() > 50) return;
-        if (isClientSide()) { sendClientAction("anvilName", name); return; }
-        if (isMainWorkPage() && workPage == TianshuWorkPage.ANVIL) anvil.setItemName(name);
+        if (isClientSide()) { anvilItemName = name; sendClientAction("anvilName", name); return; }
+        if (isMainWorkPage() && workPage == TianshuWorkPage.ANVIL) setAnvilNameInternal(name);
+    }
+
+    private void setAnvilNameInternal(String name) {
+        anvilItemName = name;
+        namedAnvilInput = getAnvilInput().copy();
+        anvil.setItemName(name);
+    }
+
+    private void updateAnvilInputName() {
+        var input = getAnvilInput();
+        if (!ItemStack.matches(namedAnvilInput, input))
+            setAnvilNameInternal(input.isEmpty() ? "" : input.getHoverName().getString());
     }
 
     public void selectStoneRecipe(int index) {
@@ -515,7 +529,7 @@ public class TianshuCraftingTermMenu extends CraftingTermMenu implements Tianshu
         // Transfer can finish while JEI/EMI still covers the terminal's name editor.
         // Initialize the native name now, so a repair never silently removes a custom name.
         var input = anvil.getSlot(0).getItem();
-        if (!input.isEmpty()) anvil.setItemName(input.getHoverName().getString());
+        if (!input.isEmpty()) setAnvilNameInternal(input.getHoverName().getString());
         broadcastChanges();
         if (!toCraft.isEmpty()) startAutoCrafting(toCraft);
     }
@@ -707,7 +721,8 @@ public class TianshuCraftingTermMenu extends CraftingTermMenu implements Tianshu
 
     @Override public void broadcastChanges() {
         if (isServerSide() && maintenanceSession != null) {
-            TianshuCellWorkbenchSession.restore(this, cellWorkbench);
+            TianshuWorkstationSession.restore(this, cellWorkbench);
+            updateAnvilInputName();
             refreshCell();
             if (boundTianshuTarget == null) {
                 var target = tianshuHost.selectTianshuTarget();
@@ -736,17 +751,32 @@ public class TianshuCraftingTermMenu extends CraftingTermMenu implements Tianshu
     @Override public void removed(Player player) {
         if (isServerSide() && !returnedInputs) {
             returnedInputs = true;
-            TianshuCellWorkbenchSession.retain(this, cellWorkbench);
-            // Only real inputs are returned. Card/config inventories remain components of the cell.
-            for (var slot : extraInputs) {
-                var stack = slot.remove(slot.getItem().getCount());
-                if (!stack.isEmpty()) {
-                    if (!player.isAlive() || player instanceof ServerPlayer serverPlayer && serverPlayer.hasDisconnected()) player.drop(stack, false);
-                    else player.getInventory().placeItemBackInInventory(stack);
-                }
-            }
+            TianshuWorkstationSession.retain(this, cellWorkbench);
         }
         super.removed(player);
+    }
+
+    record WorkState(List<ItemStack> inputs, String anvilName, @Nullable ResourceLocation stoneRecipe) {}
+
+    WorkState takeWorkState() {
+        updateAnvilInputName();
+        String name = anvilItemName;
+        int selected = stonecutter.getSelectedRecipeIndex();
+        var recipe = selected >= 0 && selected < stonecutter.getNumRecipes() ? stonecutter.getRecipes().get(selected).id() : null;
+        var inputs = new ArrayList<ItemStack>(extraInputs.size());
+        // Computed outputs are never stored or returned; native engines recreate them from these inputs.
+        for (var slot : extraInputs) inputs.add(slot.remove(slot.getItem().getCount()));
+        return new WorkState(List.copyOf(inputs), name, recipe);
+    }
+
+    void restoreWorkState(WorkState state) {
+        for (int i = 0; i < state.inputs().size(); i++) {
+            var stack = state.inputs().get(i);
+            if (i < extraInputs.size() && !extraInputs.get(i).hasItem()) extraInputs.get(i).set(stack);
+            else TianshuWorkstationSession.returnStack((ServerPlayer) getPlayer(), stack);
+        }
+        setAnvilNameInternal(state.anvilName());
+        if (state.stoneRecipe() != null) selectStoneRecipe(state.stoneRecipe());
     }
 
     @Nullable private TianshuSupercomputerPortBlockEntity resolveBoundTianshu() { return tianshuHost.resolveTianshuTarget(boundTianshuTarget); }

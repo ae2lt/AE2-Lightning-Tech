@@ -234,9 +234,13 @@ public class TianshuCraftingTermScreen<M extends TianshuCraftingTermMenu> extend
         anvilName.active = !menu.getAnvilInput().isEmpty();
         // Keep the same native text-field palette as search; active still gates an empty anvil's editor.
         if (!anvilName.active) anvilName.setFocused(false);
-        if (!ItemStack.matches(observedAnvilInput, menu.getAnvilInput())) {
-            observedAnvilInput = menu.getAnvilInput().copy();
-            anvilName.setValue(observedAnvilInput.isEmpty() ? "" : observedAnvilInput.getHoverName().getString());
+        boolean inputChanged = !ItemStack.matches(observedAnvilInput, menu.getAnvilInput());
+        if (inputChanged) observedAnvilInput = menu.getAnvilInput().copy();
+        if ((inputChanged || !anvilName.isFocused()) && !anvilName.getValue().equals(menu.anvilItemName)) {
+            // Synchronizing a reopened editor must not send the old input name back over a saved rename.
+            anvilName.setResponder(value -> {});
+            anvilName.setValue(menu.anvilItemName);
+            anvilName.setResponder(menu::setAnvilName);
         }
         var stoneInput = menu.getStonecutter().getSlot(0).getItem();
         if (!ItemStack.isSameItemSameComponents(observedStoneInput, stoneInput)) {
