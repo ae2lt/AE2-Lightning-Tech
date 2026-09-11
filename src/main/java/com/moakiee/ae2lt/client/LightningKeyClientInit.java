@@ -82,7 +82,8 @@ public final class LightningKeyClientInit {
         event.register(
                 (stack, tintIndex) -> FastColor.ARGB32.opaque(
                         AEColor.TRANSPARENT.getVariantByTintIndex(tintIndex)),
-                ModItems.TIANSHU_PATTERN_ENCODING_TERMINAL.get());
+                ModItems.TIANSHU_PATTERN_ENCODING_TERMINAL.get(),
+                ModItems.TIANSHU_CRAFTING_TERMINAL.get());
 
         event.register(
                 (stack, tintIndex) -> FastColor.ARGB32.opaque(BasicStorageCell.getColor(stack, tintIndex)),

@@ -189,6 +189,13 @@ public class JEIPlugin implements IModPlugin {
         registration.addUniversalRecipeTransferHandler(new TianshuCraftingTransferHandler<>(
                 com.moakiee.ae2lt.menu.TianshuWirelessCraftingTermMenu.class, com.moakiee.ae2lt.menu.TianshuWirelessCraftingTermMenu.TYPE,
                 registration.getTransferHelper()));
+        if (ModList.get().isLoaded("ae2wtlib")) {
+            // JEI matches the concrete menu class, not its superclass. The enhanced host shares
+            // the base wireless MenuType; its exact class is sufficient for this registration.
+            registration.addUniversalRecipeTransferHandler(new TianshuCraftingTransferHandler<>(
+                    com.moakiee.ae2lt.integration.ae2wtlib.TianshuEnhancedWirelessCraftingMenu.class,
+                    null, registration.getTransferHelper()));
+        }
         if (!ModList.get().isLoaded(AE2_JEI_INTEGRATION_MODID)) {
             return;
         }
