@@ -1,6 +1,7 @@
 package com.moakiee.ae2lt.debug;
 
 import appeng.recipes.handlers.InscriberRecipe;
+import com.google.gson.JsonParser;
 import com.moakiee.ae2lt.machine.overloadfactory.OverloadProcessingFactoryInventory;
 import com.moakiee.ae2lt.machine.overloadfactory.recipe.OverloadProcessingRecipe;
 import com.moakiee.ae2lt.machine.overloadfactory.recipe.OverloadProcessingRecipeInput;
@@ -15,6 +16,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.ShapedRecipe;
+import net.minecraft.world.level.material.Fluids;
 import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.gametest.GameTestHolder;
@@ -97,5 +99,96 @@ public final class AppGenProcessorGameTests {
 
     private static ItemStack item(String id) {
         return new ItemStack(BuiltInRegistries.ITEM.getOptional(ResourceLocation.parse(id)).orElseThrow());
+    }
+
+    @GameTest(template = "pigmee_station_empty")
+    public static void emberSynthesisPreservesUpstreamReaction(GameTestHelper helper) throws Exception {
+        assertReactionRecipe(helper, "ember_crystal");
+    }
+
+    @GameTest(template = "pigmee_station_empty")
+    public static void emberDuplicationPreservesUpstreamReaction(GameTestHelper helper) throws Exception {
+        assertReactionRecipe(helper, "ember_crystal_duplicate");
+    }
+
+    @GameTest(template = "pigmee_station_empty")
+    public static void emberChargingPreservesUpstreamReaction(GameTestHelper helper) throws Exception {
+        assertReactionRecipe(helper, "charged_ember_crystal");
+    }
+
+    private static void assertReactionRecipe(GameTestHelper helper, String name) throws Exception {
+        var level = helper.getLevel();
+        var id = ResourceLocation.parse("ae2lt:overload_processing/appgen_" + name);
+        var holder = level.getRecipeManager().byKey(id);
+        if (!ModList.get().isLoaded("appgen")) {
+            helper.assertTrue(holder.isEmpty(), name + " must be excluded without AppGen");
+            helper.succeed();
+            return;
+        }
+        helper.assertTrue(holder.isPresent() && holder.get().value() instanceof OverloadProcessingRecipe,
+                name + " must load as an overload recipe");
+        var recipe = (OverloadProcessingRecipe) holder.orElseThrow().value();
+        // Compare against the actual optional mod's resource, independently of our converted JSON.
+        var source = level.getServer().getResourceManager().getResourceOrThrow(
+                ResourceLocation.parse("appgen:recipe/reaction/" + name + ".json"));
+        try (var reader = source.openAsReader()) {
+            var upstream = JsonParser.parseReader(reader).getAsJsonObject();
+            var inputs = upstream.getAsJsonArray("input_items");
+            helper.assertTrue(recipe.itemInputs().size() == inputs.size(), "upstream ingredient count retained");
+            var inventory = new OverloadProcessingFactoryInventory(null);
+            for (int slot = 0; slot < inputs.size(); slot++) {
+                var entry = inputs.get(slot).getAsJsonObject();
+                var stack = item(entry.getAsJsonObject("ingredient").get("item").getAsString())
+                        .copyWithCount(entry.get("amount").getAsInt());
+                var converted = recipe.itemInputs().get(slot);
+                helper.assertTrue(converted.count() == stack.getCount() && converted.ingredient().test(stack),
+                        "upstream item and amount retained in slot " + slot);
+                inventory.setStackInSlot(slot, stack);
+            }
+            var upstreamFluid = upstream.getAsJsonObject("input_fluid");
+            var fluid = new FluidStack(BuiltInRegistries.FLUID.getOptional(ResourceLocation.parse(
+                    upstreamFluid.getAsJsonObject("ingredient").get("fluid").getAsString())).orElseThrow(),
+                    upstreamFluid.get("amount").getAsInt());
+            helper.assertTrue(FluidStack.matches(recipe.fluidInput(), fluid), "upstream lava amount retained");
+            var output = upstream.getAsJsonObject("output");
+            var result = item(output.get("id").getAsString()).copyWithCount(output.get("#").getAsInt());
+            helper.assertTrue(recipe.itemResults().size() == 1
+                            && ItemStack.matches(recipe.itemResults().getFirst(), result) && recipe.fluidResult().isEmpty(),
+                    "upstream output and yield retained");
+            helper.assertTrue(recipe.totalEnergy() == upstream.get("input_energy").getAsLong()
+                            && recipe.lightningCost() == 1 && recipe.lightningTier() == LightningKey.Tier.HIGH_VOLTAGE,
+                    "upstream FE retained with the standard one high-voltage lightning cost");
+            var candidate = OverloadProcessingRecipeService.findFirstProcessable(level, inventory,
+                    fluid, FluidStack.EMPTY, 1, 0);
+            helper.assertTrue(candidate.isPresent() && candidate.get().recipe().id().equals(id)
+                            && candidate.get().parallel() == 1, "factory selects the reaction with actual registered inputs");
+            helper.assertTrue(OverloadProcessingRecipeService.findFirstProcessable(level, inventory,
+                    fluid, FluidStack.EMPTY, 0, 0).isEmpty(), "lightning remains required");
+            helper.assertTrue(OverloadProcessingRecipeService.findFirstProcessable(level, inventory,
+                    new FluidStack(Fluids.WATER, fluid.getAmount()), FluidStack.EMPTY, 1, 0).isEmpty(),
+                    "water cannot replace lava");
+            helper.assertTrue(OverloadProcessingRecipeService.findFirstProcessable(level, inventory,
+                    fluid.copyWithAmount(fluid.getAmount() - 1), FluidStack.EMPTY, 1, 0).isEmpty(),
+                    "insufficient lava cannot start a reaction");
+            var input = OverloadProcessingRecipeInput.fromInventory(inventory, fluid);
+            var buffer = new RegistryFriendlyByteBuf(Unpooled.buffer(), level.registryAccess());
+            try {
+                var codec = new OverloadProcessingRecipe.Serializer().streamCodec();
+                codec.encode(buffer, recipe);
+                var copy = codec.decode(buffer);
+                helper.assertTrue(copy.matches(input, level) && FluidStack.matches(copy.fluidInput(), fluid)
+                                && ItemStack.matches(copy.itemResults().getFirst(), result)
+                                && copy.totalEnergy() == recipe.totalEnergy()
+                                && copy.lightningCost() == 1 && copy.lightningTier() == recipe.lightningTier(),
+                        "client synchronization retains ingredients, lava, yield, FE, and lightning");
+            } finally {
+                buffer.release();
+            }
+            var first = inventory.getStackInSlot(0);
+            inventory.setStackInSlot(0, first.copyWithCount(first.getCount() - 1));
+            helper.assertTrue(OverloadProcessingRecipeService.findFirstProcessable(level, inventory,
+                    fluid, FluidStack.EMPTY, 1, 0).isEmpty(), "insufficient items cannot start a reaction");
+        }
+        helper.succeed();
     }
 }
