@@ -2,6 +2,8 @@ package com.moakiee.ae2lt.machine.crystalcatalyzer;
 
 import java.util.Optional;
 
+import appeng.api.networking.ticking.TickRateModulation;
+
 import com.moakiee.ae2lt.blockentity.CrystalCatalyzerBlockEntity;
 import com.moakiee.ae2lt.machine.common.AbstractGridRecipeMachineLogic;
 import com.moakiee.ae2lt.machine.crystalcatalyzer.recipe.CrystalCatalyzerLockedRecipe;
@@ -9,7 +11,7 @@ import com.moakiee.ae2lt.machine.crystalcatalyzer.recipe.CrystalCatalyzerRecipeC
 import com.moakiee.ae2lt.machine.crystalcatalyzer.recipe.CrystalCatalyzerRecipeService;
 
 /**
- * AE grid tick driver for the crystal catalyzer. No speed card support —
+ * Grid/standalone tick driver for the crystal catalyzer. No speed card support —
  * {@link #getMaxEnergyPerTickForSpeedCards} returns a single constant cap.
  */
 public final class CrystalCatalyzerLogic extends AbstractGridRecipeMachineLogic<
@@ -21,8 +23,37 @@ public final class CrystalCatalyzerLogic extends AbstractGridRecipeMachineLogic<
     public static final int PIGMEE_PROCESS_TICKS = 5 * 20;
     public static final int PIGMEE_OUTPUT_COUNT = 1;
 
+    private long lastPigmeeGameTime = Long.MIN_VALUE;
+    private TickRateModulation lastPigmeeModulation = TickRateModulation.SLOWER;
+
     public CrystalCatalyzerLogic(CrystalCatalyzerBlockEntity host) {
         super(host);
+    }
+
+    public void tickStandalone() {
+        if (host.isPigmeeVariant()) {
+            tickMachine();
+        }
+    }
+
+    @Override
+    protected TickRateModulation tickMachine() {
+        if (!host.isPigmeeVariant()) {
+            return super.tickMachine();
+        }
+        var level = host.getLevel();
+        if (host.isRemoved() || level == null || level.isClientSide()) {
+            return TickRateModulation.SLEEP;
+        }
+        // 加速器可能在同一世界刻重复调用 BE ticker 或 grid tick；每刻最多推进一次。
+        // 不补算跳过的刻，缺水、堵输出和区块卸载期间不会积累加工进度。
+        long gameTime = level.getGameTime();
+        if (gameTime == lastPigmeeGameTime) {
+            return lastPigmeeModulation;
+        }
+        lastPigmeeGameTime = gameTime;
+        lastPigmeeModulation = super.tickMachine();
+        return lastPigmeeModulation;
     }
 
     @Override

@@ -1,5 +1,6 @@
 package com.moakiee.ae2lt.integration.jade;
 
+import com.moakiee.ae2lt.block.PigmeeCrystalCatalyzerBlock;
 import com.moakiee.ae2lt.blockentity.FirmamentConversionCoreBlockEntity;
 import com.moakiee.ae2lt.blockentity.LightningCollectorBlockEntity;
 import net.minecraft.world.level.block.Block;
@@ -31,6 +32,7 @@ public class AE2LTJadePlugin implements IWailaPlugin {
 
     @Override
     public void registerClient(IWailaClientRegistration registration) {
+        registration.registerBlockComponent(new PigmeeCrystalCatalyzerJadeProvider(), PigmeeCrystalCatalyzerBlock.class);
         registration.registerBlockComponent(LIGHTNING_COLLECTOR_PROVIDER, Block.class);
         registration.registerBlockComponent(FIRMAMENT_CONVERSION_CORE_PROVIDER, Block.class);
         registration.registerBlockComponent(FREQUENCY_CARD_WIRELESS_NODE_PROVIDER, Block.class);

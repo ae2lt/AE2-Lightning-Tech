@@ -616,11 +616,6 @@ public class AE2LightningTech {
 
         event.registerBlockEntity(
                 AECapabilities.IN_WORLD_GRID_NODE_HOST,
-                ModBlockEntities.PIGMEE_CRYSTAL_CATALYZER.get(),
-                (blockEntity, context) -> (IInWorldGridNodeHost) blockEntity);
-
-        event.registerBlockEntity(
-                AECapabilities.IN_WORLD_GRID_NODE_HOST,
                 ModBlockEntities.OVERLOADED_PATTERN_PROVIDER.get(),
                 (blockEntity, context) -> (IInWorldGridNodeHost) blockEntity);
 

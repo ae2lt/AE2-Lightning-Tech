@@ -34,6 +34,11 @@ public abstract class AbstractGridRecipeMachineLogic<
 
     @Override
     public TickRateModulation tickingRequest(IGridNode node, int ticksSinceLastCall) {
+        return tickMachine();
+    }
+
+    /** One processing step, also usable by standalone variants without an AE grid node. */
+    protected TickRateModulation tickMachine() {
         if (host.isRemoved() || host.getLevel() == null || host.isClientSide()) {
             return TickRateModulation.SLEEP;
         }

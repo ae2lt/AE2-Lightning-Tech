@@ -1,0 +1,14 @@
+// Use only with the disposable PigmeeJadeTest save in this isolated run directory.
+allprojects {
+    afterEvaluate {
+        sourceSets.jdb.java.setIncludes(['**/PigmeeCatalyzerJadeClientProbe.java'])
+        configurations.runtimeOnly.dependencies.removeIf { dep ->
+            !(dep.group in ['com.moakiee.thunderbolt', 'org.appliedenergistics'] || dep.name == 'jade-324717')
+        }
+        neoForge.runs.client {
+            gameDirectory = project.layout.buildDirectory.dir('pigmee-catalyzer-jade-client').get().asFile
+            systemProperty 'ae2lt.pigmeeCatalyzerJadeProbe', 'true'
+            programArguments.addAll '--quickPlaySingleplayer', 'PigmeeJadeTest'
+        }
+    }
+}

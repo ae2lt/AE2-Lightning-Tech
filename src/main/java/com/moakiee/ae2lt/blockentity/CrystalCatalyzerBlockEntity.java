@@ -30,6 +30,7 @@ import net.neoforged.neoforge.items.IItemHandlerModifiable;
 import appeng.api.config.Actionable;
 import appeng.api.networking.IGridNode;
 import appeng.api.networking.IGridNodeListener;
+import appeng.api.networking.IManagedGridNode;
 import appeng.api.networking.security.IActionHost;
 import appeng.api.networking.security.IActionSource;
 import appeng.api.networking.ticking.IGridTickable;
@@ -43,10 +44,13 @@ import appeng.api.util.AECableType;
 import appeng.blockentity.grid.AENetworkedBlockEntity;
 import appeng.menu.MenuOpener;
 import appeng.menu.locator.MenuHostLocator;
+import appeng.me.ManagedGridNode;
+import appeng.me.helpers.BlockEntityNodeListener;
 
 import com.moakiee.ae2lt.block.CrystalCatalyzerBlock;
 import com.moakiee.ae2lt.grid.FrequencyBindingHelper;
 import com.moakiee.ae2lt.grid.FrequencyBindingHost;
+import com.moakiee.ae2lt.grid.WirelessFrequencyManager;
 import com.moakiee.ae2lt.logic.AdjacentItemAutoExportHelper;
 import com.moakiee.ae2lt.logic.MemoryCardConfigSupport;
 import com.moakiee.ae2lt.machine.common.GridRecipeMachineHost;
@@ -68,7 +72,7 @@ import com.moakiee.ae2lt.registry.ModBlocks;
 import com.moakiee.ae2lt.util.NativeStackDropHelper;
 
 public class CrystalCatalyzerBlockEntity extends AENetworkedBlockEntity
-        implements IActionHost, IUpgradeableObject, FrequencyBindingHost,
+        implements IActionHost, IUpgradeableObject,
         LightningCollapseMatrixHost,
         GridRecipeMachineHost<CrystalCatalyzerLockedRecipe, CrystalCatalyzerRecipeCandidate> {
 
@@ -107,7 +111,10 @@ public class CrystalCatalyzerBlockEntity extends AENetworkedBlockEntity
     private final IUpgradeInventory upgrades =
             UpgradeInventories.forMachine(ModBlocks.CRYSTAL_CATALYZER, 0, this::onUpgradesChanged);
     private final CrystalCatalyzerLogic logic;
-    private final FrequencyBindingHelper frequencyBinding = new FrequencyBindingHelper(this);
+    // Only the normal registered subtype implements FrequencyBindingHost.
+    protected final FrequencyBindingHelper frequencyBinding = this instanceof FrequencyBindingHost host
+            ? new FrequencyBindingHelper(host) : null;
+    private int legacyPigmeeFrequencyId = -1;
 
     private CrystalCatalyzerLockedRecipe lockedRecipe;
     private long consumedEnergy;
@@ -120,9 +127,29 @@ public class CrystalCatalyzerBlockEntity extends AENetworkedBlockEntity
     public CrystalCatalyzerBlockEntity(BlockPos pos, BlockState blockState) {
         super(blockEntityTypeFor(blockState), pos, blockState);
         this.logic = new CrystalCatalyzerLogic(this);
-        getMainNode()
-                .setIdlePowerUsage(0)
-                .addService(IGridTickable.class, logic);
+        if (!isPigmeeVariant()) {
+            getMainNode()
+                    .setIdlePowerUsage(0)
+                    .addService(IGridTickable.class, logic);
+        }
+    }
+
+    @Override
+    protected IManagedGridNode createMainNode() {
+        if (!isPigmeeVariant()) {
+            return super.createMainNode();
+        }
+        // Retain the shared AE block/menu lifecycle, but never create a Pigmee grid node.
+        return new ManagedGridNode(this, BlockEntityNodeListener.INSTANCE) {
+            @Override
+            public void create(Level level, BlockPos pos) {
+            }
+
+            @Override
+            public void loadFromNBT(CompoundTag tag) {
+                // Old Pigmee proxy data no longer represents a network node.
+            }
+        };
     }
 
     private static net.minecraft.world.level.block.entity.BlockEntityType<CrystalCatalyzerBlockEntity>
@@ -139,34 +166,18 @@ public class CrystalCatalyzerBlockEntity extends AENetworkedBlockEntity
 
     public static void serverTick(Level level, BlockPos pos, BlockState state, CrystalCatalyzerBlockEntity be) {
         if (!level.isClientSide()) {
-            be.frequencyBinding.serverTick();
+            if (be.isPigmeeVariant()) {
+                be.logic.tickStandalone();
+            } else if (be.frequencyBinding != null) {
+                be.frequencyBinding.serverTick();
+            }
         }
-    }
-
-    @Override
-    public FrequencyBindingHelper getFrequencyBinding() {
-        return frequencyBinding;
-    }
-
-    @Override
-    public AENetworkedBlockEntity getFrequencyBindingBlockEntity() {
-        return this;
-    }
-
-    @Override
-    public void saveFrequencyBindingChanges() {
-        saveChanges();
-    }
-
-    @Override
-    public void markFrequencyBindingForUpdate() {
-        markForUpdate();
     }
 
     @Override
     public void onMainNodeStateChanged(IGridNodeListener.State reason) {
         super.onMainNodeStateChanged(reason);
-        frequencyBinding.onMainNodeStateChanged(reason);
+        if (frequencyBinding != null) frequencyBinding.onMainNodeStateChanged(reason);
     }
 
     public CrystalCatalyzerInventory getInventory() {
@@ -250,7 +261,14 @@ public class CrystalCatalyzerBlockEntity extends AENetworkedBlockEntity
     @Override
     public void onReady() {
         super.onReady();
-        frequencyBinding.onReady();
+        if (frequencyBinding != null) frequencyBinding.onReady();
+        if (isPigmeeVariant() && legacyPigmeeFrequencyId > 0 && level instanceof ServerLevel) {
+            var manager = WirelessFrequencyManager.get();
+            if (manager != null) {
+                manager.unregisterDevice(legacyPigmeeFrequencyId, level.dimension(), worldPosition);
+            }
+            legacyPigmeeFrequencyId = -1;
+        }
         inventory.setLevel(level);
         setWorking(lockedRecipe != null);
     }
@@ -259,19 +277,19 @@ public class CrystalCatalyzerBlockEntity extends AENetworkedBlockEntity
     public void clearRemoved() {
         super.clearRemoved();
         inventory.setLevel(level);
-        frequencyBinding.clearRemoved();
+        if (frequencyBinding != null) frequencyBinding.clearRemoved();
     }
 
     @Override
     public void setRemoved() {
-        frequencyBinding.setRemoved();
+        if (frequencyBinding != null) frequencyBinding.setRemoved();
         super.setRemoved();
         inventory.setLevel(null);
     }
 
     @Override
     public void onChunkUnloaded() {
-        frequencyBinding.onChunkUnloaded();
+        if (frequencyBinding != null) frequencyBinding.onChunkUnloaded();
         super.onChunkUnloaded();
     }
 
@@ -742,7 +760,12 @@ public class CrystalCatalyzerBlockEntity extends AENetworkedBlockEntity
         } else {
             data.remove(TAG_LOCKED_RECIPE);
         }
-        frequencyBinding.save(data);
+        if (frequencyBinding != null) {
+            frequencyBinding.save(data);
+        } else {
+            data.remove(FrequencyBindingHelper.TAG_FREQUENCY_ID);
+            data.remove("proxy");
+        }
     }
 
     @Override
@@ -753,7 +776,11 @@ public class CrystalCatalyzerBlockEntity extends AENetworkedBlockEntity
         energyStorage.loadStoredEnergy(data.getLong(TAG_ENERGY));
         consumedEnergy = Math.max(0L, data.getLong(TAG_CONSUMED_ENERGY));
         processingTicksSpent = Math.max(0, data.getInt(TAG_PROCESSING_TICKS));
-        frequencyBinding.load(data);
+        if (frequencyBinding != null) {
+            frequencyBinding.load(data);
+        } else {
+            legacyPigmeeFrequencyId = data.getInt(FrequencyBindingHelper.TAG_FREQUENCY_ID);
+        }
         autoExport = data.getBoolean(TAG_AUTO_EXPORT);
         allowedOutputs.clear();
         ListTag outputTags = data.getList(TAG_ALLOWED_OUTPUTS, Tag.TAG_STRING);
@@ -868,7 +895,9 @@ public class CrystalCatalyzerBlockEntity extends AENetworkedBlockEntity
         super.exportSettings(mode, builder, player);
         MemoryCardConfigSupport.exportAutoExportSettings(mode, builder, autoExport, allowedOutputs, tag -> {
             MemoryCardConfigSupport.writeEnum(tag, TAG_MODE, this.mode);
-            FrequencyBindingHelper.writeMemoryFrequency(tag, getFrequencyId());
+            if (frequencyBinding != null) {
+                FrequencyBindingHelper.writeMemoryFrequency(tag, frequencyBinding.getFrequencyId());
+            }
             MemoryCardConfigSupport.writeMatrixCount(tag, this);
         });
     }
@@ -891,7 +920,9 @@ public class CrystalCatalyzerBlockEntity extends AENetworkedBlockEntity
                         this.mode = importedMode;
                         abortProcessing();
                     }
-                    FrequencyBindingHelper.importMemoryFrequency(tag, this::setFrequency);
+                    if (frequencyBinding != null) {
+                        FrequencyBindingHelper.importMemoryFrequency(tag, frequencyBinding::setFrequency);
+                    }
                     MemoryCardConfigSupport.restoreMatrixCount(tag, player, this);
                 },
                 () -> {
@@ -915,12 +946,12 @@ public class CrystalCatalyzerBlockEntity extends AENetworkedBlockEntity
 
     @Override
     public Set<Direction> getGridConnectableSides(BlockOrientation orientation) {
-        return EnumSet.allOf(Direction.class);
+        return isPigmeeVariant() ? Set.of() : EnumSet.allOf(Direction.class);
     }
 
     @Override
     public AECableType getCableConnectionType(Direction dir) {
-        return AECableType.SMART;
+        return isPigmeeVariant() ? AECableType.NONE : AECableType.SMART;
     }
 
     private void onInventoryChanged() {

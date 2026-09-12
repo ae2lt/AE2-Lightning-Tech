@@ -5,8 +5,10 @@ allprojects {
                 '**/PigmeeCrystalCatalyzerGameTests.java',
                 '**/PigmeeCatalyzerClientProbe.java'])
         configurations.runtimeOnly.dependencies.removeIf { dep ->
-            !(dep.group in ['com.moakiee.thunderbolt', 'org.appliedenergistics', 'dev.emi']
-                    || dep.name in ['jei-238222', 'ae2-jei-integration-1074338'])
+            !(dep.group in ['com.moakiee.thunderbolt', 'org.appliedenergistics']
+                    || (!project.hasProperty('pigmeeHeadless')
+                        && (dep.group == 'dev.emi'
+                            || dep.name in ['jei-238222', 'ae2-jei-integration-1074338', 'jade-324717'])))
         }
         neoForge.runs.gameTestServer {
             gameDirectory = project.layout.buildDirectory.dir('pigmee-catalyzer-gametest').get().asFile
