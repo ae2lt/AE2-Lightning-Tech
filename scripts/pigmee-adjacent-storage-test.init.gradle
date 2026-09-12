@@ -1,0 +1,19 @@
+// Isolated six-face storage regressions using the real Farmer's Delight cutting board.
+// Supply -PpigmeeCuttingBoardJar=/path/to/FarmersDelight.jar when invoking runGameTestServer.
+allprojects {
+    afterEvaluate {
+        def cuttingBoardJar = providers.gradleProperty('pigmeeCuttingBoardJar').orNull
+        if (cuttingBoardJar == null || !file(cuttingBoardJar).isFile()) {
+            throw new GradleException('Set -PpigmeeCuttingBoardJar to a Farmer\'s Delight 1.21.1 jar.')
+        }
+        configurations.runtimeOnly.dependencies.removeIf { dep ->
+            !(dep.group in ['com.moakiee.thunderbolt', 'org.appliedenergistics'])
+        }
+        dependencies.add('runtimeOnly', files(cuttingBoardJar))
+        neoForge.runs.gameTestServer {
+            gameDirectory = project.layout.buildDirectory.dir('pigmee-adjacent-storage-gametest').get().asFile
+            systemProperty 'neoforge.enabledGameTestNamespaces', 'ae2lt_pigmee_storage'
+            systemProperty 'ae2lt.pigmeeStorageRegression', 'true'
+        }
+    }
+}

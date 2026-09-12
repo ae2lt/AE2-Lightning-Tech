@@ -13,10 +13,10 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 
 /**
- * A Pigmee-themed crafting terminal that reads adjacent non-ME capabilities.
+ * A Pigmee-themed crafting terminal that combines adjacent non-ME capabilities.
  *
  * <p>The block deliberately has no ME storage capability of its own. It is a
- * terminal facade for an adjacent item/fluid capability and needs no network.</p>
+ * terminal facade for all six adjacent item/fluid capabilities and needs no network.</p>
  */
 public final class PigmeeSynthesisStationBlock
         extends AEBaseEntityBlock<PigmeeSynthesisStationBlockEntity> {

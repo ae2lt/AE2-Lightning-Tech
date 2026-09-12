@@ -29,12 +29,15 @@ import com.moakiee.ae2lt.block.PigmeeSynthesisStationBlock;
 import com.moakiee.ae2lt.menu.PigmeeSynthesisStationMenu;
 import com.moakiee.ae2lt.registry.ModBlockEntities;
 import com.moakiee.ae2lt.registry.ModBlocks;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.EnumMap;
 import java.util.IdentityHashMap;
 import appeng.api.behaviors.ExternalStorageStrategy;
 import appeng.api.stacks.AEKeyType;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
@@ -46,11 +49,12 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.neoforged.neoforge.capabilities.Capabilities;
 
 /**
  * Terminal host for {@link PigmeeSynthesisStationBlock}.
  *
- * <p>Only external-storage strategies are accepted from neighbours. In
+ * <p>External-storage strategies from all six neighbours are combined. In
  * particular, a neighbour exposing {@link AECapabilities#ME_STORAGE} is
  * skipped entirely; this keeps the station from becoming a disguised terminal
  * merely by placing it next to an interface.</p>
@@ -61,8 +65,6 @@ public final class PigmeeSynthesisStationBlockEntity extends AEBaseBlockEntity
             CraftingTerminalPart.INV_CRAFTING;
 
     private static final String TAG_CRAFTING = "CraftingInventory";
-    private static final MEStorage EMPTY_STORAGE = new CompositeStorage(Map.of());
-
     private final AppEngInternalInventory craftingInventory =
             new AppEngInternalInventory(this, 9);
     private final IConfigManager configManager = IConfigManager.builder(this::saveChanges)
@@ -79,17 +81,39 @@ public final class PigmeeSynthesisStationBlockEntity extends AEBaseBlockEntity
     private final MEStorage terminalStorage = new MEStorage() {
         @Override
         public long insert(AEKey what, long amount, Actionable mode, IActionSource source) {
-            return findAdjacentStorage().insert(what, amount, mode, source);
+            if (amount <= 0) {
+                return 0;
+            }
+            long remaining = amount;
+            for (var storage : findAdjacentStorages()) {
+                remaining -= storage.insert(what, remaining, mode, source);
+                if (remaining == 0) {
+                    break;
+                }
+            }
+            return amount - remaining;
         }
 
         @Override
         public long extract(AEKey what, long amount, Actionable mode, IActionSource source) {
-            return findAdjacentStorage().extract(what, amount, mode, source);
+            if (amount <= 0) {
+                return 0;
+            }
+            long remaining = amount;
+            for (var storage : findAdjacentStorages()) {
+                remaining -= storage.extract(what, remaining, mode, source);
+                if (remaining == 0) {
+                    break;
+                }
+            }
+            return amount - remaining;
         }
 
         @Override
         public void getAvailableStacks(KeyCounter out) {
-            findAdjacentStorage().getAvailableStacks(out);
+            for (var storage : findAdjacentStorages()) {
+                storage.getAvailableStacks(out);
+            }
         }
 
         @Override
@@ -109,7 +133,7 @@ public final class PigmeeSynthesisStationBlockEntity extends AEBaseBlockEntity
 
     @Override
     public ILinkStatus getLinkStatus() {
-        return findAdjacentStorage() != EMPTY_STORAGE
+        return !findAdjacentStorages().isEmpty()
                 ? ILinkStatus.ofConnected()
                 : ILinkStatus.ofDisconnected(Component.translatable(
                         "ae2lt.pigmee_synthesis_station.no_capability"));
@@ -200,12 +224,14 @@ public final class PigmeeSynthesisStationBlockEntity extends AEBaseBlockEntity
         super.clearRemoved();
     }
 
-    private MEStorage findAdjacentStorage() {
+    private List<MEStorage> findAdjacentStorages() {
         if (level == null || level.isClientSide() || isRemoved()) {
-            return EMPTY_STORAGE;
+            return List.of();
         }
 
         var serverLevel = (net.minecraft.server.level.ServerLevel) level;
+        var storages = new ArrayList<MEStorage>(6);
+        Map<AEKeyType, Set<Object>> seenHandlers = new IdentityHashMap<>();
         for (Direction side : Direction.values()) {
             BlockPos targetPos = worldPosition.relative(side);
             if (!level.hasChunkAt(targetPos)) {
@@ -238,13 +264,27 @@ public final class PigmeeSynthesisStationBlockEntity extends AEBaseBlockEntity
             for (var entry : strategies.entrySet()) {
                 MEStorage wrapper = entry.getValue().createWrapper(false, this::saveChanges);
                 if (wrapper != null) {
-                    wrappers.put(entry.getKey(), wrapper);
+                    // Multiple ports may expose the exact same handler. Count
+                    // and simulate it only once, independently for each key type.
+                    Object identity = null;
+                    if (entry.getKey() == AEKeyType.items()) {
+                        identity = level.getCapability(Capabilities.ItemHandler.BLOCK,
+                                targetPos, targetState, target, side.getOpposite());
+                    } else if (entry.getKey() == AEKeyType.fluids()) {
+                        identity = level.getCapability(Capabilities.FluidHandler.BLOCK,
+                                targetPos, targetState, target, side.getOpposite());
+                    }
+                    if (seenHandlers.computeIfAbsent(entry.getKey(), key ->
+                            Collections.newSetFromMap(new IdentityHashMap<>()))
+                            .add(identity != null ? identity : wrapper)) {
+                        wrappers.put(entry.getKey(), wrapper);
+                    }
                 }
             }
             if (!wrappers.isEmpty()) {
-                return new CompositeStorage(wrappers);
+                storages.add(new CompositeStorage(wrappers));
             }
         }
-        return EMPTY_STORAGE;
+        return storages;
     }
 }

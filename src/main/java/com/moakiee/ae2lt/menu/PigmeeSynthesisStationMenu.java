@@ -11,7 +11,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.MenuType;
 
-/** AE2 crafting-terminal menu backed by a Pigmee station's adjacent capability. */
+/** AE2 crafting-terminal menu backed by a Pigmee station's combined adjacent storage. */
 public final class PigmeeSynthesisStationMenu extends CraftingTermMenu {
     public static final MenuType<PigmeeSynthesisStationMenu> TYPE = MenuTypeBuilder
             .create(PigmeeSynthesisStationMenu::new, PigmeeSynthesisStationBlockEntity.class)
