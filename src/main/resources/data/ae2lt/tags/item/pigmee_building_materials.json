@@ -1,0 +1,7 @@
+{
+  "replace": false,
+  "values": [
+    "ae2lt:pigmee_building_block",
+    "#ae2lt:pigmee_finished_building_panels"
+  ]
+}

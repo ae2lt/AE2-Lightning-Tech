@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "building",
+  "ingredients": [
+    {
+      "tag": "ae2lt:pigmee_finished_building_panels"
+    }
+  ],
+  "result": {
+    "id": "ae2lt:pigmee_building_block",
+    "count": 1
+  }
+}

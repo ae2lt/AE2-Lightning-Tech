@@ -1,0 +1,11 @@
+{
+  "parent": "minecraft:block/block",
+  "loader": "ae2lt:connected_texture",
+  "render_type": "minecraft:solid",
+  "connection": "ae2lt:same_block",
+  "textures": {
+    "base": "ae2lt:block/pigmee_building/blue_pigmee_building_panel",
+    "ctm": "ae2lt:block/pigmee_building/blue_pigmee_building_panel_ctm",
+    "particle": "ae2lt:block/pigmee_building/blue_pigmee_building_panel"
+  }
+}

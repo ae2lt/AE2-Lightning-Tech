@@ -18,6 +18,7 @@ docs/
 docs/*
 !docs/wireless-io-alpha3-test-port.md
 !docs/jei-wireless-supply.md
+!docs/pigmee-building-panels.md
 
 # Bundled source mirrors / references
 Source Code/

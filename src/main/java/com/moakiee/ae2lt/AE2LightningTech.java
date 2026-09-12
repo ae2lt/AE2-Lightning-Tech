@@ -349,6 +349,11 @@ public class AE2LightningTech {
                         output.accept(ModBlocks.PIGMEE_PATTERN_PROVIDER);
                         output.accept(ModBlocks.PIGMEE_MOLECULAR_ASSEMBLER);
                         output.accept(ModBlocks.PIGMEE_SYNTHESIS_STATION);
+                        output.accept(ModBlocks.PIGMEE_BUILDING_BLOCK);
+                        for (var color : net.minecraft.world.item.DyeColor.values()) {
+                            output.accept(ModBlocks.PIGMEE_BUILDING_PANELS.get(color));
+                            output.accept(ModBlocks.PIGMEE_FRAMED_BUILDING_PANELS.get(color));
+                        }
                         output.accept(ModItems.PIGMEE_CORE);
                         output.accept(ModItems.PIGMEE_ITEM_CELL_HOUSING);
                         output.accept(ModItems.PIGMEE_STORAGE_COMPONENT);

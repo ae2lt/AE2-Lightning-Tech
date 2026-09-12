@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/cube_all",
+  "textures": {
+    "all": "ae2lt:block/pigmee_building/white_pigmee_framed_building_panel"
+  }
+}

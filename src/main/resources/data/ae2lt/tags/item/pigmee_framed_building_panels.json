@@ -1,0 +1,21 @@
+{
+  "replace": false,
+  "values": [
+    "ae2lt:white_pigmee_framed_building_panel",
+    "ae2lt:orange_pigmee_framed_building_panel",
+    "ae2lt:magenta_pigmee_framed_building_panel",
+    "ae2lt:light_blue_pigmee_framed_building_panel",
+    "ae2lt:yellow_pigmee_framed_building_panel",
+    "ae2lt:lime_pigmee_framed_building_panel",
+    "ae2lt:pink_pigmee_framed_building_panel",
+    "ae2lt:gray_pigmee_framed_building_panel",
+    "ae2lt:light_gray_pigmee_framed_building_panel",
+    "ae2lt:cyan_pigmee_framed_building_panel",
+    "ae2lt:purple_pigmee_framed_building_panel",
+    "ae2lt:blue_pigmee_framed_building_panel",
+    "ae2lt:brown_pigmee_framed_building_panel",
+    "ae2lt:green_pigmee_framed_building_panel",
+    "ae2lt:red_pigmee_framed_building_panel",
+    "ae2lt:black_pigmee_framed_building_panel"
+  ]
+}

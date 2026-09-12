@@ -1,0 +1,10 @@
+{
+  "type": "minecraft:stonecutting",
+  "ingredient": {
+    "tag": "ae2lt:pigmee_building_materials"
+  },
+  "result": {
+    "id": "ae2lt:purple_pigmee_building_panel",
+    "count": 1
+  }
+}

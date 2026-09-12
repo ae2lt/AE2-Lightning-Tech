@@ -1,6 +1,7 @@
 {
   "replace": false,
   "values": [
+    "ae2lt:pigmee_building_block",
     {
       "id": "ae2lt:silicon_block",
       "required": false
@@ -68,6 +69,38 @@
     "ae2lt:medium_overload_crystal_bud",
     "ae2lt:large_overload_crystal_bud",
     "ae2lt:overload_crystal_cluster",
-    "ae2lt:overload_alloy_anvil"
+    "ae2lt:overload_alloy_anvil",
+    "ae2lt:white_pigmee_building_panel",
+    "ae2lt:white_pigmee_framed_building_panel",
+    "ae2lt:orange_pigmee_building_panel",
+    "ae2lt:orange_pigmee_framed_building_panel",
+    "ae2lt:magenta_pigmee_building_panel",
+    "ae2lt:magenta_pigmee_framed_building_panel",
+    "ae2lt:light_blue_pigmee_building_panel",
+    "ae2lt:light_blue_pigmee_framed_building_panel",
+    "ae2lt:yellow_pigmee_building_panel",
+    "ae2lt:yellow_pigmee_framed_building_panel",
+    "ae2lt:lime_pigmee_building_panel",
+    "ae2lt:lime_pigmee_framed_building_panel",
+    "ae2lt:pink_pigmee_building_panel",
+    "ae2lt:pink_pigmee_framed_building_panel",
+    "ae2lt:gray_pigmee_building_panel",
+    "ae2lt:gray_pigmee_framed_building_panel",
+    "ae2lt:light_gray_pigmee_building_panel",
+    "ae2lt:light_gray_pigmee_framed_building_panel",
+    "ae2lt:cyan_pigmee_building_panel",
+    "ae2lt:cyan_pigmee_framed_building_panel",
+    "ae2lt:purple_pigmee_building_panel",
+    "ae2lt:purple_pigmee_framed_building_panel",
+    "ae2lt:blue_pigmee_building_panel",
+    "ae2lt:blue_pigmee_framed_building_panel",
+    "ae2lt:brown_pigmee_building_panel",
+    "ae2lt:brown_pigmee_framed_building_panel",
+    "ae2lt:green_pigmee_building_panel",
+    "ae2lt:green_pigmee_framed_building_panel",
+    "ae2lt:red_pigmee_building_panel",
+    "ae2lt:red_pigmee_framed_building_panel",
+    "ae2lt:black_pigmee_building_panel",
+    "ae2lt:black_pigmee_framed_building_panel"
   ]
 }
