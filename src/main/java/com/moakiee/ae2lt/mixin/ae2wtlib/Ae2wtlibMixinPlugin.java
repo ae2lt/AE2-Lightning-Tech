@@ -10,19 +10,20 @@ import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
 import net.neoforged.fml.loading.LoadingModList;
 
 /**
- * Gates the ae2wtlib integration mixins so they only apply when ae2wtlib is
- * actually present. The mixin classes reference ae2wtlib API types (only on the
- * compile classpath), so applying them without the mod present would fail to
- * load the target class. We check the loading mod list rather than {@code ModList}
+ * Gates optional implementation integrations on ae2wtlib, while the quantum
+ * bridge fix also applies to the embedded API used by standalone Tianshu terminals.
+ * We check the loading mod list rather than {@code ModList}
  * because mixins are applied before {@code ModList} is initialized.
  */
 public final class Ae2wtlibMixinPlugin implements IMixinConfigPlugin {
 
     private boolean ae2wtlibPresent;
+    private boolean ae2wtlibApiPresent;
 
     @Override
     public void onLoad(String mixinPackage) {
         ae2wtlibPresent = LoadingModList.get().getModFileById("ae2wtlib") != null;
+        ae2wtlibApiPresent = LoadingModList.get().getModFileById("ae2wtlib_api") != null;
     }
 
     @Override
@@ -32,6 +33,9 @@ public final class Ae2wtlibMixinPlugin implements IMixinConfigPlugin {
 
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
+        if (mixinClassName.endsWith(".WTMenuHostQuantumBridgeMixin")) {
+            return ae2wtlibApiPresent;
+        }
         return ae2wtlibPresent;
     }
 

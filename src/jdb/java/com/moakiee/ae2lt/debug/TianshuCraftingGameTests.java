@@ -164,6 +164,10 @@ public final class TianshuCraftingGameTests {
             otherMenu.removed(other);
             long before = count(player, Items.STONE);
             menu.removed(player);
+            player.containerMenu = player.inventoryMenu;
+            // Manual inputs return at tick end, after a possible submenu replacement.
+            com.moakiee.ae2lt.menu.TianshuWorkstationSession.afterServerTick(
+                    new net.neoforged.neoforge.event.tick.ServerTickEvent.Post(() -> true, player.getServer()));
             require(count(player, Items.STONE) == before + 1, "close returns hidden page input");
             menu.removed(player);
             require(count(player, Items.STONE) == before + 1, "repeated close must not duplicate input");
@@ -199,6 +203,10 @@ public final class TianshuCraftingGameTests {
             menu.setCellFuzzyMode(FuzzyMode.PERCENT_50);
             require(cell.getFuzzyMode(cellStack) == FuzzyMode.PERCENT_50, "fuzzy config persists");
             menu.removed(player);
+            player.containerMenu = player.inventoryMenu;
+            // Complete the actual close lifecycle before inspecting the returned cell.
+            com.moakiee.ae2lt.menu.TianshuWorkstationSession.afterServerTick(
+                    new net.neoforged.neoforge.event.tick.ServerTickEvent.Post(() -> true, player.getServer()));
             var returnedCell = player.getInventory().items.stream().filter(s -> s.is(AEItems.ITEM_CELL_1K.asItem())).findFirst().orElseThrow();
             require(count(player, AEItems.ITEM_CELL_1K.asItem()) == 1 && cell.getUpgrades(returnedCell).isInstalled(AEItems.FUZZY_CARD)
                     && cell.getConfigInventory(returnedCell).getKey(54) != null, "close returns whole cell with cards and marks");
