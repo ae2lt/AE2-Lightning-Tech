@@ -1,0 +1,22 @@
+// Optional integration probe. Pass the AppGen, Applied Flux and Glodium JARs via
+// -Pae2ltAppGenProbeMods=<paths separated by the platform path separator>.
+// Omit that property to exercise the mod-absent recipe condition.
+allprojects {
+    afterEvaluate {
+        sourceSets.jdb.java.setIncludes([
+                '**/PigmeeBuildingGameTests.java',
+                '**/AppGenProcessorGameTests.java'])
+        configurations.runtimeOnly.dependencies.removeIf { dep ->
+            !(dep.group in ['com.moakiee.thunderbolt', 'org.appliedenergistics'])
+        }
+        def probeMods = providers.gradleProperty('ae2ltAppGenProbeMods').getOrElse('')
+                .split(java.io.File.pathSeparator).findAll { !it.isBlank() }
+        probeMods.each { path ->
+            dependencies.add('runtimeOnly', files(path))
+        }
+        neoForge.runs.gameTestServer {
+            gameDirectory = project.layout.buildDirectory.dir(
+                    probeMods.isEmpty() ? 'appgen-absent-gametest' : 'appgen-present-gametest').get().asFile
+        }
+    }
+}
