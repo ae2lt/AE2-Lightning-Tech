@@ -1,0 +1,14 @@
+// Isolated native terminal regression fixtures; never included in the published JAR.
+allprojects {
+    afterEvaluate {
+        def fixtures = ['**/TianshuQuantumBridgeGameTests.java']
+        if (providers.gradleProperty('ae2ltQuantumCraftingRegression').getOrElse('false').toBoolean()) {
+            fixtures += ['**/TianshuCraftingGameTests.java', '**/TianshuWorkCraftingGameTests.java',
+                         '**/TianshuWirelessGameTestChecks.java', '**/TianshuCellScrollFixture.java']
+        }
+        sourceSets.jdb.java.setIncludes(fixtures)
+        neoForge.runs.gameTestServer {
+            gameDirectory = project.layout.buildDirectory.dir('tianshu-quantum-bridge-gametest').get().asFile
+        }
+    }
+}
